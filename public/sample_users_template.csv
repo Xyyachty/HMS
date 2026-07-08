@@ -1,0 +1,5 @@
+first_name,last_name,middle_name,email,phone_number,role,status,password
+Juan,Dela Cruz,Santos,juan.delacruz@hms.edu,9123456789,student,active,Password123
+Maria,Garcia,Lopez,maria.garcia@hms.edu,9187654321,faculty,active,Password123
+Pedro,Santos,,pedro.santos@hms.edu,9191234567,student,active,Password123
+Ana,Reyes,Cruz,ana.reyes@hms.edu,,faculty,active,Password123
