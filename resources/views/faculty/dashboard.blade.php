@@ -21,7 +21,7 @@
         </span>
     </div>
     <p class="text-2xl font-bold text-slate-900">{{ $totalStudents }}</p>
-    <p class="text-xs text-slate-400 font-medium mt-0.5">Total Students</p>
+    <p class="text-xs text-slate-400 font-medium mt-0.5">Total Faculty</p>
 </div>
 
 <!-- Teams -->
