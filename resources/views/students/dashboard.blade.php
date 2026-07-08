@@ -162,7 +162,7 @@
                     id="nav-group"
                     class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-400">
                 <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
-                My Group
+                My Group - BAHALA NAKA
             </button>
             <button onclick="showSection('tasks'); closeMobileSidebar();"
                     id="nav-tasks"
