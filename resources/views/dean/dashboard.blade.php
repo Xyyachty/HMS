@@ -86,7 +86,7 @@
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
                 <div>
-                    <h3 class="text-base font-bold text-slate-800">Recent Students</h3>
+                    <h3 class="text-base font-bold text-slate-800">Recent Students TEST</h3>
                     <p class="text-xs text-slate-400 font-light">Latest enrollments & status updates</p>
                 </div>
                 <a href="#" class="text-xs text-rose-500 font-semibold hover:underline">View All</a>

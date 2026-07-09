@@ -156,13 +156,13 @@
                     id="nav-home"
                     class="sidebar-link active w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white">
                 <span class="iconify text-lg" data-icon="mdi:view-dashboard-outline"></span>
-                Dashboard-STUDENT
+                Dashboard
             </button>
             <button onclick="showSection('group'); closeMobileSidebar();"
                     id="nav-group"
                     class="sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-400">
                 <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
-                My Group - BAHALA NAKA
+                My Group
             </button>
             <button onclick="showSection('tasks'); closeMobileSidebar();"
                     id="nav-tasks"
