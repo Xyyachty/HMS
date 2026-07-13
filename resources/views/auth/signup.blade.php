@@ -143,11 +143,11 @@
       <div class="text-left space-y-4 mb-10">
         <div class="flex items-start gap-3">
           <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-            <span class="iconify text-white text-sm" data-icon="mdi:cursor-move"></span>
+            <span class="iconify text-white text-sm" data-icon="mdi:clipboard-check-outline"></span>
           </div>
           <div class="text-left">
-            <p class="text-sm font-semibold text-white/90">Drag & Drop Tasks</p>
-            <p class="text-xs text-white/50 font-light">Organize tasks visually across departments</p>
+            <p class="text-sm font-semibold text-white/90">Department Tasks</p>
+            <p class="text-xs text-white/50 font-light">Organize and complete tasks across hotel departments</p>
           </div>
         </div>
         <div class="flex items-start gap-3">

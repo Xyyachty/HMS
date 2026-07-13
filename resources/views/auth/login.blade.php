@@ -185,7 +185,7 @@
       <img src="{{ asset('chtm-logoo.png') }}" alt="HMS-Learn logo" class="h-16 w-auto object-contain drop-shadow-sm mx-auto mb-8" />
 
       <h1 class="text-4xl font-extrabold text-white tracking-tight mb-4">HMS<span class="text-white/70">-Learn</span></h1>
-      <p class="text-lg text-white/70 font-light leading-relaxed mb-10">Interactive Hospitality Task Management — drag, drop, and manage hotel tasks across departments.</p>
+      <p class="text-lg text-white/70 font-light leading-relaxed mb-10">Interactive Hospitality Task Management — assign, track, and manage hotel tasks across departments.</p>
 
       <!-- Role chips -->
       <div class="flex flex-wrap justify-center gap-2 mb-10">
@@ -209,7 +209,7 @@
 
       <!-- Testimonial -->
       <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 text-left">
-        <p class="text-sm text-white/80 font-light leading-relaxed italic mb-3">"The drag-and-drop task board made it feel like running a real hotel. I finally understood how departments coordinate."</p>
+        <p class="text-sm text-white/80 font-light leading-relaxed italic mb-3">"Working through department templates made it feel like running a real hotel. I finally understood how teams coordinate."</p>
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-xs font-bold text-white">MS</div>
           <div>

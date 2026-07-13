@@ -18,13 +18,14 @@ class DeanSeeder extends Seeder
             [
                 'name'         => 'Dean',
                 'first_name'   => 'System',
-                'middle_name'  => null,
+                'middle_name'  => '',
                 'last_name'    => 'Dean',
                 'email'        => 'dean@hms.edu',
                 'password'     => Hash::make('Dean@1234'),
                 'role'         => 'dean',
-                'phone_number' => null,
+                'phone_number' => '',
                 'status'       => 'active',
+                'email_verified_at' => now(),
             ]
         );
     }

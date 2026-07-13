@@ -566,6 +566,7 @@ Route::get('/auto-login-student', function() {
             'password' => \Illuminate\Support\Facades\Hash::make('Faculty@1234'),
             'role' => 'faculty',
             'status' => 'active',
+            'email_verified_at' => now(),
         ]
     );
     $faculty = \App\Models\Faculty::firstOrCreate(
@@ -583,6 +584,7 @@ Route::get('/auto-login-student', function() {
                 'password' => \Illuminate\Support\Facades\Hash::make('Student@1234'),
                 'role' => 'student',
                 'status' => 'active',
+                'email_verified_at' => now(),
             ]
         );
         $student = \App\Models\Student::firstOrCreate(
@@ -606,6 +608,7 @@ Route::get('/auto-login-student', function() {
 
     foreach ($roles as $role) {
         $studentUser = $students[$role];
+        $student = \App\Models\Student::where('user_id', $studentUser->id)->first();
         \App\Models\Task::firstOrCreate(
             [
                 'title' => 'Sample Task for ' . ucfirst(str_replace('_', ' ', $role)),
@@ -613,6 +616,7 @@ Route::get('/auto-login-student', function() {
             ],
             [
                 'faculty_id' => $faculty->id,
+                'student_id' => $student?->id,
                 'role' => $role,
                 'description' => 'This is a description of the sample task for ' . $role,
                 'due_date' => now()->addDays(2),
