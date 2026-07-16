@@ -3,38 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HMS-Learn | Interactive Hospitality Simulation System</title>
+  <title>HMS | Interactive Hospitality Simulation System</title>
   <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}" />
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Manrope', 'sans-serif'] },
-          colors: {
-            brand: '#DB2777',
-            'brand-light': '#F472B6',
-            'brand-dark': '#9D174D',
-            'brand-soft': '#FDF2F8',
-            'rose-accent': '#FB7185',
-            'plum-accent': '#A855F7',
-          },
-          animation: {
-            'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
-            'fade-in-up-2': 'fadeInUp 0.8s ease-out 0.2s forwards',
-            'fade-in-up-4': 'fadeInUp 0.8s ease-out 0.4s forwards',
-            'fade-in-up-6': 'fadeInUp 0.8s ease-out 0.6s forwards',
-            'float': 'float 6s ease-in-out infinite',
-            'float-delay': 'float 6s ease-in-out 2s infinite',
-            'pulse-soft': 'pulseSoft 3s ease-in-out infinite',
-            'glow-pulse': 'glowPulse 2.5s ease-in-out infinite',
-          }
-        }
-      }
-    }
-  </script>
   <style>
     @keyframes fadeInUp {
       0% { opacity: 0; transform: translateY(30px); }
@@ -128,8 +101,8 @@
     <div class="max-w-7xl mx-auto px-6 md:px-8">
       <div class="flex items-center justify-between h-20">
         <a href="#" class="flex items-center gap-3 group">
-          <img src="{{ asset('chtm-logoo.png') }}" alt="HMS-Learn logo" class="h-16 w-auto object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-sm" />
-          <span class="text-lg font-bold tracking-tight">HMS<span class="text-brand">-Learn</span></span>
+          <img src="{{ asset('chtm-logoo.png') }}" alt="HMS logo" class="h-16 w-auto object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-sm" />
+          <span class="text-lg font-bold tracking-tight">HMS</span>
         </a>
 
         <div class="hidden md:flex items-center gap-1">
@@ -195,7 +168,7 @@
           </h1>
 
           <p class="opacity-0 animate-fade-in-up-4 text-lg md:text-xl text-slate-500 font-light leading-relaxed max-w-lg mb-10">
-            HMS-Learn lets hospitality students select from two default hotel templates, redesign them based on their team's unique hotel concept, and simulate real hotel operations and services — all while faculty oversee progress in real time.
+            HMS lets hospitality students select from two default hotel templates, redesign them based on their team's unique hotel concept, and simulate real hotel operations and services — all while faculty oversee progress in real time.
           </p>
 
           <div class="opacity-0 animate-fade-in-up-6 flex flex-wrap gap-4">
@@ -772,7 +745,7 @@
           <span class="text-xs font-bold uppercase tracking-widest text-brand">Development Team</span>
         </div>
         <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-6">Meet the <span class="gradient-text">Creators</span></h2>
-        <p class="text-lg text-slate-500 font-light leading-relaxed">The team behind HMS-Learn — dedicated to bringing real-world hotel operations into the classroom.</p>
+        <p class="text-lg text-slate-500 font-light leading-relaxed">The team behind HMS — dedicated to bringing real-world hotel operations into the classroom.</p>
       </div>
 
       <!-- [Team section continues unchanged from original] -->

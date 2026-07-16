@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FacultyController;
 use App\Http\Controllers\DeanController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\HotelTemplateController;
 use App\Models\StudentGroup;
 use App\Models\Task;
 use App\Models\GroupSettings;
@@ -29,7 +30,6 @@ Route::get('/', function () {
 Route::get('/login', [AuthController::class, 'login'])->middleware('guest')->name('login');
 Route::post('/login', [AuthController::class, 'authenticate'])->middleware('guest')->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
-Route::get('/signup', [AuthController::class, 'signup'])->middleware('guest')->name('signup');
 Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('guest')->name('forgot-password');
 Route::post('/forgot-password', [AuthController::class, 'forgotPasswordSubmit'])->middleware('guest')->name('forgot-password.submit');
 Route::get('/forgot-password/check-email', [AuthController::class, 'checkForgotPasswordEmail'])
@@ -48,11 +48,14 @@ Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
     Route::get('/faculties', [DeanController::class, 'faculties'])->name('faculties');
     Route::post('/faculties', [DeanController::class, 'storeFaculty'])->name('faculties.store');
     Route::get('/reports', [DeanController::class, 'reports'])->name('reports');
+    Route::get('/activity', [DeanController::class, 'activityLogs'])->name('activity');
 });
 
 // Faculty Routes
 Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function () {
     Route::get('/dashboard', [FacultyController::class, 'dashboard'])->name('dashboard');
+    Route::get('/profile', [FacultyController::class, 'profile'])->name('profile');
+    Route::put('/profile', [FacultyController::class, 'updateProfile'])->name('profile.update');
     Route::get('/students', [FacultyController::class, 'students'])->name('students');
     Route::get('/students/live', [FacultyController::class, 'studentsLive'])->name('students.live');
     Route::post('/students', [FacultyController::class, 'storeStudent'])->name('students.store');
@@ -66,6 +69,10 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     Route::delete('/tasks/{task}', [FacultyController::class, 'destroyTask'])->name('tasks.destroy');
     Route::get('/results', [FacultyController::class, 'results'])->name('results');
     Route::get('/reports', [FacultyController::class, 'reports'])->name('reports');
+    Route::get('/activity', [FacultyController::class, 'activityLogs'])->name('activity');
+
+    Route::get('/templates/grants', [HotelTemplateController::class, 'facultyGrants'])->name('templates.grants');
+    Route::post('/templates/grants', [HotelTemplateController::class, 'facultyGrantStore'])->name('templates.grants.store');
 });
 
 // Student Routes
@@ -126,7 +133,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         // ── Real tasks from faculty ──────────────────────────────────────
         $tasksByRole = collect();
-        $taskCounts  = ['front_desk' => 0, 'restaurant_management' => 0, 'room_management' => 0, 'maintenance' => 0];
+        $taskCounts  = [
+            'front_desk' => 0,
+            'restaurant_management' => 0,
+            'room_management' => 0,
+            'maintenance' => 0,
+            'housekeeping' => 0,
+        ];
         $completedTasksCount = 0;
         $pendingTasksCount = 0;
         $completionRate = 0;
@@ -156,9 +169,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $totalAllTasks = $completedTasksCount + $pendingTasksCount;
             $completionRate = $totalAllTasks > 0 ? round(($completedTasksCount / $totalAllTasks) * 100) : 0;
 
-            $recentTasks = Task::where('faculty_id', $facultyId)
-                ->latest()
-                ->take(3)
+            $recentTasks = Task::with(['student.user', 'assignedTo'])
+                ->where('faculty_id', $facultyId)
+                ->latest('updated_at')
+                ->take(12)
                 ->get();
         }
 
@@ -166,179 +180,227 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $studentRoles = $groupMembership ? $groupMembership->roles->pluck('role')->toArray() : [];
         $myRoleTasks  = $tasksByRole->filter(fn($tasks, $role) => in_array($role, $studentRoles))->flatten();
 
-        $myCompletedTasks = $facultyId && !empty($studentRoles)
+        $myCompletedTasks = $facultyId && $student
+            ? Task::where('faculty_id', $facultyId)
+                ->where('status', 'archived')
+                ->where(function ($q) use ($student, $authUser, $studentRoles) {
+                    $q->where('student_id', $student->id)
+                        ->orWhere('assigned_to', $authUser->id);
+                    if (!empty($studentRoles)) {
+                        $q->orWhereIn('role', $studentRoles);
+                    }
+                })
+                ->orderByDesc('updated_at')
+                ->get()
+                ->unique('id')
+                ->values()
+            : collect();
+
+        $selfActivityLogs = $facultyId && !empty($studentRoles)
             ? Task::where('faculty_id', $facultyId)
                 ->whereIn('role', $studentRoles)
-                ->where('status', 'archived')
                 ->orderByDesc('updated_at')
+                ->take(50)
                 ->get()
             : collect();
 
+        $teamActivityLogs = $facultyId
+            ? Task::with(['student.user', 'assignedTo'])
+                ->where('faculty_id', $facultyId)
+                ->orderByDesc('updated_at')
+                ->take(50)
+                ->get()
+            : collect();
+
+        $studentDisplayName = trim(implode(' ', array_filter([
+            $authUser?->first_name,
+            $authUser?->last_name,
+        ]))) ?: ($authUser?->name ?? 'Student');
+
+        $studentClass = $student?->facultyClass;
 
         return view('students.dashboard', compact(
             'membersByRole', 'group', 'groupMembers',
             'tasksByRole', 'taskCounts', 'totalTasks',
             'studentRoles', 'myRoleTasks', 'completedTasksCount',
             'pendingTasksCount', 'completionRate', 'recentTasks',
-            'myCompletedTasks'
+            'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
+            'studentDisplayName', 'studentClass'
         ));
     })->name('dashboard');
-    Route::get('/roommanagement', function () {
+
+    Route::post('/tasks/{task}/complete', function (Task $task) {
         $authUser = auth()->user();
-        $student  = $authUser?->student;
-        $groupMembership = $student
-            ? StudentGroup::with('student.user', 'roles')->where('student_id', $student->id)->first()
-            : null;
-        $facultyId = $groupMembership?->faculty_id;
-        $groupName = $groupMembership?->group_name;
-        $studentRoles = $groupMembership ? $groupMembership->roles->pluck('role')->toArray() : [];
-
-        $groupMembers = collect();
-        $group = null;
-
-        if ($groupMembership) {
-            $groupMembers = StudentGroup::with('student.user', 'roles')
-                ->where('group_name', $groupName)
-                ->get()
-                ->map(function ($member) {
-                    $user = $member->student?->user;
-                    $displayName = trim(implode(' ', array_filter([
-                        $user?->last_name  ?? null,
-                        $user?->first_name ?? null,
-                        $user?->middle_name ?? null,
-                    ])));
-                    $displayName = $displayName !== '' ? $displayName : ($user?->name ?? 'Student');
-
-                    return (object) [
-                        'id'    => $user?->id,
-                        'name'  => $displayName,
-                        'email' => $user?->email,
-                        'roles' => $member->roles->pluck('role')->toArray(),
-                    ];
-                });
-
-            $group = (object) [
-                'name'    => $groupName,
-                'members' => $groupMembers,
-            ];
+        $student = $authUser?->student;
+        if (!$student) {
+            abort(403);
         }
 
-        $tasks = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('role', 'room_management')->where('status', 'active')->get()
-            : collect();
-
-        $tasksByRole = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('status', 'active')->get()->groupBy('role')
-            : collect();
-
-        $selectedTemplate = null;
-        if ($groupName && $facultyId) {
-            $settings = GroupSettings::where('group_name', $groupName)
-                ->where('faculty_id', $facultyId)
-                ->first();
-            $selectedTemplate = $settings?->selected_template;
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+        if (!$groupMembership || (int) $task->faculty_id !== (int) $groupMembership->faculty_id) {
+            abort(403);
         }
 
-        return view('students.roommanagement', compact('tasks', 'groupMembers', 'group', 'studentRoles', 'tasksByRole', 'groupName', 'facultyId', 'selectedTemplate'));
+        $studentRoles = $groupMembership->roles->pluck('role')->toArray();
+        if (!in_array($task->role, $studentRoles, true)) {
+            return back()->withErrors(['task' => 'This task is not assigned to your role.']);
+        }
+
+        $task->update([
+            'status' => 'archived',
+            'student_id' => $student->id,
+            'assigned_to' => $authUser->id,
+        ]);
+
+        return back()->with('success', 'Task marked as completed.');
+    })->name('tasks.complete');
+    Route::get('/roommanagement', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'room_management');
+        return view('students.roommanagement', $data);
     })->name('roommanagement');
     Route::get('/frontdesk', function () {
-        $authUser = auth()->user();
-        $student  = $authUser?->student;
-        
-        $groupMembership = $student
-            ? StudentGroup::with('student.user', 'roles')
-                ->where('student_id', $student->id)
-                ->first()
-            : null;
-            
-        $groupMembers = collect();
-        $group = null;
-        $facultyId = null;
-        $studentRoles = [];
-
-        if ($groupMembership) {
-            $facultyId = $groupMembership->faculty_id;
-            $groupName = $groupMembership->group_name;
-            $studentRoles = $groupMembership->roles->pluck('role')->toArray();
-            $groupMembers = StudentGroup::with('student.user', 'roles')
-                ->where('group_name', $groupName)
-                ->get()
-                ->map(function ($member) {
-                    $user = $member->student?->user;
-                    $displayName = trim(implode(' ', array_filter([
-                        $user?->last_name  ?? null,
-                        $user?->first_name ?? null,
-                        $user?->middle_name ?? null,
-                    ])));
-                    $displayName = $displayName !== '' ? $displayName : ($user?->name ?? 'Student');
-
-                    return (object) [
-                        'id'    => $user?->id,
-                        'name'  => $displayName,
-                        'email' => $user?->email,
-                        'roles' => $member->roles->pluck('role')->toArray(),
-                    ];
-                });
-
-            $group = (object) [
-                'name'    => $groupName,
-                'members' => $groupMembers,
-            ];
-        }
-
-        $tasks = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('role', 'front_desk')->where('status', 'active')->get()
-            : collect();
-
-        // All tasks grouped by role so sidebar can show each member's tasks
-        $tasksByRole = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('status', 'active')->get()->groupBy('role')
-            : collect();
-
-        // Get selected template for this group
-        $selectedTemplate = null;
-        if ($groupName && $facultyId) {
-            $settings = GroupSettings::where('group_name', $groupName)
-                ->where('faculty_id', $facultyId)
-                ->first();
-            $selectedTemplate = $settings?->selected_template;
-        }
-
-        return view('students.frontdesk.frontdesk', compact('tasks', 'groupMembers', 'group', 'studentRoles', 'tasksByRole', 'groupName', 'facultyId', 'selectedTemplate'));
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.frontdesk.frontdesk', $data);
     })->name('frontdesk');
 
+    Route::post('/group/presence', function (Request $request) {
+        $authUser = auth()->user();
+        if (!$authUser) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $student = $authUser->student;
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->id);
+
+        \App\Support\StudentGroupSync::heartbeat($authUser, $membership);
+
+        if (!$membership) {
+            return response()->json([
+                'online' => [(string) $authUser->id => true],
+                'members' => [],
+            ]);
+        }
+
+        $members = StudentGroup::with('student.user', 'roles')
+            ->where('group_name', $membership->group_name)
+            ->when($membership->faculty_id, fn ($q) => $q->where('faculty_id', $membership->faculty_id))
+            ->get();
+
+        $userIds = $members->map(fn ($m) => $m->student?->user?->id)->filter()->values()->all();
+        $online = \App\Support\StudentGroupSync::onlineMap($userIds, $membership);
+        $online[(string) $authUser->id] = true;
+
+        $payload = $members->map(function ($m) use ($online) {
+            $user = $m->student?->user;
+            $uid = (int) ($user?->id ?? 0);
+            $key = (string) $uid;
+            $displayName = trim(implode(' ', array_filter([
+                $user?->last_name,
+                $user?->first_name,
+                $user?->middle_name,
+            ])));
+            $displayName = $displayName !== '' ? $displayName : ($user?->name ?? 'Student');
+
+            return [
+                'id' => $uid,
+                'name' => $displayName,
+                'roles' => $m->roles->pluck('role')->values()->all(),
+                'online' => (bool) ($online[$key] ?? $online[$uid] ?? false),
+            ];
+        })->values();
+
+        return response()->json([
+            'online' => $online,
+            'members' => $payload,
+        ]);
+    })->name('group.presence');
+
+    // Hotel website template builder (per role, team-synced)
+    Route::get('/templates/{role}', [HotelTemplateController::class, 'show'])->name('templates.show');
+    Route::get('/templates/{role}/sync', [HotelTemplateController::class, 'sync'])->name('templates.sync');
+    Route::post('/templates/{role}/save', [HotelTemplateController::class, 'save'])->name('templates.save');
+    Route::post('/templates/{role}/autosave', [HotelTemplateController::class, 'autosave'])->name('templates.autosave');
+    Route::get('/templates/{role}/versions', [HotelTemplateController::class, 'versions'])->name('templates.versions');
+    Route::post('/templates/{role}/versions/{version}/restore', [HotelTemplateController::class, 'restore'])->name('templates.restore');
+
+    Route::get('/frontdesk/template/sync', function () {
+        $authUser = auth()->user();
+        $student = $authUser?->student;
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->id);
+        if (!$membership) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        if ($authUser) {
+            \App\Support\StudentGroupSync::heartbeat($authUser, $membership);
+        }
+
+        $settings = \App\Support\StudentGroupSync::settingsFor($membership);
+
+        return response()->json([
+            'selected_template' => $settings?->selected_template,
+            'customizations' => $settings?->customizations ?? [],
+            'is_published' => (bool) ($settings?->is_published),
+            'version' => optional($settings?->updated_at)->timestamp ?? 0,
+            'can_edit' => \App\Support\StudentGroupSync::canEditTemplate($membership),
+            'updated_by_roles' => \App\Support\StudentGroupSync::roleKeys($membership),
+        ]);
+    })->name('frontdesk.template.sync');
+
     Route::get('/frontdesk/template/1', function (Request $request) {
-        if ($request->query('save') === '1') {
-            $authUser = auth()->user();
-            $student = $authUser?->student;
-            if ($student) {
-                $groupMembership = StudentGroup::where('student_id', $student->id)->first();
-                if ($groupMembership) {
+        $customizations = [];
+        $canEditTemplate = false;
+        $authUser = auth()->user();
+        $student = $authUser?->student;
+        if ($student) {
+            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+            if ($groupMembership) {
+                if ($request->query('save') === '1') {
+                    if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
+                        abort(403, 'Only Front Desk role can select a template.');
+                    }
                     GroupSettings::updateOrCreate(
                         ['group_name' => $groupMembership->group_name, 'faculty_id' => $groupMembership->faculty_id],
                         ['selected_template' => '1']
                     );
                 }
+                $settings = GroupSettings::where('group_name', $groupMembership->group_name)
+                    ->where('faculty_id', $groupMembership->faculty_id)
+                    ->first();
+                $customizations = $settings?->customizations ?? [];
+                $canEditTemplate = \App\Support\StudentGroupSync::canEditTemplate($groupMembership);
             }
         }
-        return view('students.template.1defaulttemplate');
+
+        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate'));
     })->name('frontdesk.template.1');
 
     Route::get('/frontdesk/template/2', function (Request $request) {
-        if ($request->query('save') === '1') {
-            $authUser = auth()->user();
-            $student = $authUser?->student;
-            if ($student) {
-                $groupMembership = StudentGroup::where('student_id', $student->id)->first();
-                if ($groupMembership) {
+        $customizations = [];
+        $canEditTemplate = false;
+        $authUser = auth()->user();
+        $student = $authUser?->student;
+        if ($student) {
+            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+            if ($groupMembership) {
+                if ($request->query('save') === '1') {
+                    if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
+                        abort(403, 'Only Front Desk role can select a template.');
+                    }
                     GroupSettings::updateOrCreate(
                         ['group_name' => $groupMembership->group_name, 'faculty_id' => $groupMembership->faculty_id],
                         ['selected_template' => '2']
                     );
                 }
+                $settings = GroupSettings::where('group_name', $groupMembership->group_name)
+                    ->where('faculty_id', $groupMembership->faculty_id)
+                    ->first();
+                $customizations = $settings?->customizations ?? [];
+                $canEditTemplate = \App\Support\StudentGroupSync::canEditTemplate($groupMembership);
             }
         }
-        return view('students.template.2defaulttemplate');
+
+        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate'));
     })->name('frontdesk.template.2');
 
     Route::post('/frontdesk/template/select', function (Request $request) {
@@ -358,10 +420,16 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Student not found'], 404);
         }
 
-        $groupMembership = StudentGroup::where('student_id', $student->id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
         if (!$groupMembership) {
             \Log::warning('Template select: group not found', ['student_id' => $student->id]);
             return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
+            return response()->json([
+                'error' => 'Only students with the Front Desk role can select or edit the hotel template. Ask your faculty to assign that role.',
+            ], 403);
         }
 
         \Log::info('Template select: saving', [
@@ -378,281 +446,107 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ['selected_template' => $request->template]
         );
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'template' => $request->template,
+        ]);
     })->name('frontdesk.template.select');
+
+    Route::post('/frontdesk/template/customizations', function (Request $request) {
+        $request->validate([
+            'customizations' => ['required', 'array'],
+            'publish' => ['sometimes', 'boolean'],
+        ]);
+
+        $authUser = auth()->user();
+        $student = $authUser?->student;
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+        if (!$groupMembership) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
+            return response()->json([
+                'error' => 'Only students with the Front Desk role can edit the hotel template. Ask your faculty to change your roles.',
+            ], 403);
+        }
+
+        $payload = [
+            'customizations' => $request->input('customizations', []),
+        ];
+        if ($request->boolean('publish')) {
+            $payload['is_published'] = true;
+        }
+
+        $settings = GroupSettings::updateOrCreate(
+            [
+                'group_name' => $groupMembership->group_name,
+                'faculty_id' => $groupMembership->faculty_id,
+            ],
+            $payload
+        );
+
+        // Force updated_at bump even if JSON content is identical length-wise
+        $settings->touch();
+
+        if ($authUser) {
+            \App\Support\StudentGroupSync::heartbeat($authUser, $groupMembership);
+        }
+
+        return response()->json([
+            'success' => true,
+            'published' => (bool) $settings->is_published,
+            'version' => optional($settings->fresh()->updated_at)->timestamp,
+        ]);
+    })->name('frontdesk.template.customizations');
+
+    Route::post('/frontdesk/template/media', function (Request $request) {
+        $request->validate([
+            'image' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $authUser = auth()->user();
+        $student = $authUser?->student;
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+        if (!$groupMembership) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
+            return response()->json([
+                'error' => 'Only students with the Front Desk role can upload template media.',
+            ], 403);
+        }
+
+        $folder = 'hotel-media/' . ($groupMembership->id ?? $student->id);
+        $path = $request->file('image')->store($folder, 'public');
+
+        return response()->json([
+            'success' => true,
+            'url' => asset('storage/' . $path),
+        ]);
+    })->name('frontdesk.template.media');
 
 
     Route::get('/restaurant', function () {
-        $authUser = auth()->user();
-        $student  = $authUser?->student;
-        $groupMembership = $student
-            ? StudentGroup::with('student.user', 'roles')->where('student_id', $student->id)->first()
-            : null;
-        $facultyId = $groupMembership?->faculty_id;
-        $groupName = $groupMembership?->group_name;
-        $studentRoles = $groupMembership ? $groupMembership->roles->pluck('role')->toArray() : [];
-
-        $groupMembers = collect();
-        $group = null;
-
-        if ($groupMembership) {
-            $groupMembers = StudentGroup::with('student.user', 'roles')
-                ->where('group_name', $groupName)
-                ->get()
-                ->map(function ($member) {
-                    $user = $member->student?->user;
-                    $displayName = trim(implode(' ', array_filter([
-                        $user?->last_name  ?? null,
-                        $user?->first_name ?? null,
-                        $user?->middle_name ?? null,
-                    ])));
-                    $displayName = $displayName !== '' ? $displayName : ($user?->name ?? 'Student');
-
-                    return (object) [
-                        'id'    => $user?->id,
-                        'name'  => $displayName,
-                        'email' => $user?->email,
-                        'roles' => $member->roles->pluck('role')->toArray(),
-                    ];
-                });
-
-            $group = (object) [
-                'name'    => $groupName,
-                'members' => $groupMembers,
-            ];
-        }
-
-        $tasks = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('role', 'restaurant_management')->where('status', 'active')->get()
-            : collect();
-
-        $tasksByRole = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('status', 'active')->get()->groupBy('role')
-            : collect();
-
-        $selectedTemplate = null;
-        if ($groupName && $facultyId) {
-            $settings = GroupSettings::where('group_name', $groupName)
-                ->where('faculty_id', $facultyId)
-                ->first();
-            $selectedTemplate = $settings?->selected_template;
-        }
-
-        return view('students.restaurant', compact('tasks', 'groupMembers', 'group', 'studentRoles', 'tasksByRole', 'groupName', 'facultyId', 'selectedTemplate'));
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');
+        return view('students.restaurant', $data);
     })->name('restaurant');
     Route::get('/maintenance', function () {
-        $authUser = auth()->user();
-        $student  = $authUser?->student;
-        $groupMembership = $student
-            ? StudentGroup::with('student.user', 'roles')->where('student_id', $student->id)->first()
-            : null;
-        $facultyId = $groupMembership?->faculty_id;
-        $groupName = $groupMembership?->group_name;
-        $studentRoles = $groupMembership ? $groupMembership->roles->pluck('role')->toArray() : [];
-
-        $groupMembers = collect();
-        $group = null;
-
-        if ($groupMembership) {
-            $groupMembers = StudentGroup::with('student.user', 'roles')
-                ->where('group_name', $groupName)
-                ->get()
-                ->map(function ($member) {
-                    $user = $member->student?->user;
-                    $displayName = trim(implode(' ', array_filter([
-                        $user?->last_name  ?? null,
-                        $user?->first_name ?? null,
-                        $user?->middle_name ?? null,
-                    ])));
-                    $displayName = $displayName !== '' ? $displayName : ($user?->name ?? 'Student');
-
-                    return (object) [
-                        'id'    => $user?->id,
-                        'name'  => $displayName,
-                        'email' => $user?->email,
-                        'roles' => $member->roles->pluck('role')->toArray(),
-                    ];
-                });
-
-            $group = (object) [
-                'name'    => $groupName,
-                'members' => $groupMembers,
-            ];
-        }
-
-        $tasks = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('role', 'maintenance')->where('status', 'active')->get()
-            : collect();
-
-        $tasksByRole = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('status', 'active')->get()->groupBy('role')
-            : collect();
-
-        $selectedTemplate = null;
-        if ($groupName && $facultyId) {
-            $settings = GroupSettings::where('group_name', $groupName)
-                ->where('faculty_id', $facultyId)
-                ->first();
-            $selectedTemplate = $settings?->selected_template;
-        }
-
-        return view('students.maintenance', compact('tasks', 'groupMembers', 'group', 'studentRoles', 'tasksByRole', 'groupName', 'facultyId', 'selectedTemplate'));
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'maintenance');
+        return view('students.maintenance', $data);
     })->name('maintenance');
     Route::get('/housekeeping', function () {
-        $authUser = auth()->user();
-        $student  = $authUser?->student;
-        $groupMembership = $student
-            ? StudentGroup::with('student.user', 'roles')->where('student_id', $student->id)->first()
-            : null;
-        $facultyId = $groupMembership?->faculty_id;
-        $groupName = $groupMembership?->group_name;
-        $studentRoles = $groupMembership ? $groupMembership->roles->pluck('role')->toArray() : [];
-
-        $groupMembers = collect();
-        $group = null;
-
-        if ($groupMembership) {
-            $groupMembers = StudentGroup::with('student.user', 'roles')
-                ->where('group_name', $groupName)
-                ->get()
-                ->map(function ($member) {
-                    $user = $member->student?->user;
-                    $displayName = trim(implode(' ', array_filter([
-                        $user?->last_name  ?? null,
-                        $user?->first_name ?? null,
-                        $user?->middle_name ?? null,
-                    ])));
-                    $displayName = $displayName !== '' ? $displayName : ($user?->name ?? 'Student');
-
-                    return (object) [
-                        'id'    => $user?->id,
-                        'name'  => $displayName,
-                        'email' => $user?->email,
-                        'roles' => $member->roles->pluck('role')->toArray(),
-                    ];
-                });
-
-            $group = (object) [
-                'name'    => $groupName,
-                'members' => $groupMembers,
-            ];
-        }
-
-        $tasks = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('role', 'housekeeping')->where('status', 'active')->get()
-            : collect();
-
-        $tasksByRole = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('status', 'active')->get()->groupBy('role')
-            : collect();
-
-        $selectedTemplate = null;
-        if ($groupName && $facultyId) {
-            $settings = GroupSettings::where('group_name', $groupName)
-                ->where('faculty_id', $facultyId)
-                ->first();
-            $selectedTemplate = $settings?->selected_template;
-        }
-
-        return view('students.housekeeping', compact('tasks', 'groupMembers', 'group', 'studentRoles', 'tasksByRole', 'groupName', 'facultyId', 'selectedTemplate'));
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
+        return view('students.housekeeping', $data);
     })->name('housekeeping');
-});
-
-Route::get('/auto-login-student', function() {
-    $facultyUser = \App\Models\User::firstOrCreate(
-        ['email' => 'faculty@hms.edu'],
-        [
-            'name' => 'Faculty Teacher',
-            'password' => \Illuminate\Support\Facades\Hash::make('Faculty@1234'),
-            'role' => 'faculty',
-            'status' => 'active',
-        ]
-    );
-    $faculty = \App\Models\Faculty::firstOrCreate(
-        ['user_id' => $facultyUser->id],
-        ['status' => 'active']
-    );
-
-    $roles = ['front_desk', 'restaurant_management', 'room_management', 'maintenance'];
-    $students = [];
-    foreach ($roles as $idx => $role) {
-        $user = \App\Models\User::firstOrCreate(
-            ['email' => "student_$role@hms.edu"],
-            [
-                'name' => "Student " . ucfirst(str_replace('_', ' ', $role)),
-                'password' => \Illuminate\Support\Facades\Hash::make('Student@1234'),
-                'role' => 'student',
-                'status' => 'active',
-            ]
-        );
-        $student = \App\Models\Student::firstOrCreate(
-            ['user_id' => $user->id],
-            ['student_id' => 'STU00' . ($idx + 1)]
-        );
-        
-        \App\Models\StudentGroup::firstOrCreate(
-            [
-                'group_name' => 'Group Alpha',
-                'student_id' => $student->id,
-            ],
-            [
-                'faculty_id' => $faculty->id,
-                'role' => $role,
-            ]
-        );
-        
-        $students[$role] = $user;
-    }
-
-    foreach ($roles as $role) {
-        $studentUser = $students[$role];
-        \App\Models\Task::firstOrCreate(
-            [
-                'title' => 'Sample Task for ' . ucfirst(str_replace('_', ' ', $role)),
-                'assigned_to' => $studentUser->id,
-            ],
-            [
-                'faculty_id' => $faculty->id,
-                'role' => $role,
-                'description' => 'This is a description of the sample task for ' . $role,
-                'due_date' => now()->addDays(2),
-                'priority' => 'high',
-                'status' => 'active',
-            ]
-        );
-    }
-
-    auth()->login($students['front_desk']);
-    return redirect()->route('students.dashboard');
-});
-
-Route::get('/test-faculty-groups', function() {
-    $facultyId = auth()->user()?->faculty?->id;
-    
-    if (!$facultyId) {
-        return 'No faculty ID found. Current user: ' . auth()->user()->name . ' (role: ' . auth()->user()->role . ')';
-    }
-    
-    $groups = \App\Models\StudentGroup::with('student.user')
-        ->where('faculty_id', $facultyId)
-        ->get()
-        ->groupBy('group_name');
-    
-    $output = '<h1>Faculty ID: ' . $facultyId . '</h1>';
-    $output .= '<h2>Total Groups: ' . count($groups) . '</h2>';
-    
-    foreach ($groups as $groupName => $members) {
-        $output .= '<div style="border:1px solid #ccc; padding:10px; margin:10px;">';
-        $output .= '<h3>' . $groupName . '</h3>';
-        $output .= '<ul>';
-        foreach ($members as $member) {
-            $name = $member->student?->user?->name ?? 'Unknown';
-            $output .= '<li>' . $name . ' (' . $member->role . ')</li>';
-        }
-        $output .= '</ul>';
-        $output .= '</div>';
-    }
-    
-    return $output;
 });
 

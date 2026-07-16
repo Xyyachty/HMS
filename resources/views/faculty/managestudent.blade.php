@@ -1,6 +1,6 @@
 @extends('faculty.layout.app')
 
-@section('page_title', 'Manage Students')
+@section('page_title', 'List of Students Information')
 @section('students_active', 'active')
 
 @push('styles')
@@ -15,29 +15,163 @@
         cursor:not-allowed;
         transform:none;
     }
+
+    #studentsTable {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: collapse;
+    }
+    #studentsTable th,
+    #studentsTable td {
+        vertical-align: middle;
+    }
+    #studentsTable .col-id { width: 9%; }
+    #studentsTable .col-name { width: 22%; }
+    #studentsTable .col-email { width: 20%; }
+    #studentsTable .col-phone { width: 13%; }
+    #studentsTable .col-status { width: 11%; }
+    #studentsTable .col-joined { width: 11%; }
+    #studentsTable .col-action { width: 14%; }
+    #studentsTable .cell-truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+        display: block;
+    }
+
+    /* Expandable student search — icon-only until opened */
+    #studentSearchWrap {
+        display: inline-flex;
+        align-items: center;
+        height: 2.5rem;
+        width: 2.5rem;
+        border-radius: 0.75rem;
+        background: #f1f5f9;
+        border: 1px solid transparent;
+        overflow: hidden;
+        transition: width 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    #studentSearchWrap.is-open {
+        width: 12.5rem;
+        background: #fff;
+        border-color: #f9a8d4;
+        box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.12);
+    }
+    #studentSearchWrap .search-toggle {
+        width: 2.5rem;
+        height: 2.5rem;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        border-radius: 0.75rem;
+    }
+    #studentSearchWrap.is-open .search-toggle,
+    #studentSearchWrap .search-toggle:hover {
+        color: #db2777;
+    }
+    #studentSearchInput {
+        width: 0;
+        min-width: 0;
+        opacity: 0;
+        border: 0;
+        outline: none;
+        background: transparent;
+        font-size: 0.875rem;
+        color: #334155;
+        padding: 0;
+        transition: width 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
+    }
+    #studentSearchWrap.is-open #studentSearchInput {
+        width: 100%;
+        opacity: 1;
+        padding-right: 0.75rem;
+    }
+    #studentSearchWrap.is-open #studentSearchInput::placeholder {
+        color: #94a3b8;
+    }
 </style>
 @endpush
 
 @section('content')
 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
 
-    <!-- Header -->
-    <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
-        <div>
-            <h3 class="text-lg font-bold text-slate-800">Student Roster</h3>
-            <p class="text-sm text-slate-500 mt-1">Manage student accounts across the system.</p>
+    <!-- Class tabs + toolbar: [Search icon] [Bulk] [Add Student] -->
+    <div class="px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex flex-wrap gap-2 min-w-0">
+            @forelse(($classes ?? collect()) as $classTab)
+                @php
+                    $taken = $classTab->seats_taken ?? $classTab->students()->count();
+                    $cap = $classTab->capacity ?? $classCapacity;
+                    $isActive = $activeClass && $activeClass->id === $classTab->id;
+                    $isClosed = $classTab->status === 'closed';
+                @endphp
+                <a href="{{ route('faculty.students', ['class' => $classTab->letter]) }}"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 transition
+                   {{ $isActive
+                        ? 'bg-white text-brand border-slate-200 -mb-px relative z-10'
+                        : 'bg-slate-50 text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-100' }}">
+                    <span>{{ $classTab->name }}</span>
+                    <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full
+                        {{ $isClosed ? 'bg-slate-200 text-slate-600' : 'bg-brand-soft text-brand' }}">
+                        {{ $taken }}/{{ $cap }}
+                    </span>
+                    @if(!$isClosed)
+                        <span class="text-[10px] uppercase tracking-wide text-emerald-600">Open</span>
+                    @endif
+                </a>
+            @empty
+                <p class="text-sm text-slate-500 pb-1">
+                    Classes hold up to {{ $classCapacity ?? 40 }} students.
+                </p>
+            @endforelse
         </div>
-        <div class="flex gap-3">
-            <button onclick="openModal('bulkUploadModal')" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition shadow-md shadow-emerald-600/20 flex items-center gap-2">
-                <span class="iconify" data-icon="mdi:upload"></span> Bulk Upload
+
+        <div class="flex items-center gap-2 pb-1 sm:pb-3 shrink-0 ml-auto">
+            <div id="studentSearchWrap" class="shrink-0">
+                <button
+                    type="button"
+                    class="search-toggle"
+                    title="Search students"
+                    aria-label="Search students"
+                    onclick="toggleStudentSearch()"
+                >
+                    <span class="iconify text-lg" data-icon="mdi:magnify"></span>
+                </button>
+                <input
+                    id="studentSearchInput"
+                    type="text"
+                    placeholder="Search students..."
+                    oninput="filterStudentsTable(this.value)"
+                    onkeydown="if (event.key === 'Escape') collapseStudentSearch(true)"
+                >
+            </div>
+            <button
+                type="button"
+                onclick="openModal('bulkUploadModal')"
+                title="Bulk Upload"
+                aria-label="Bulk Upload"
+                class="h-10 shrink-0 bg-emerald-600 text-white px-4 rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20 inline-flex items-center gap-2 whitespace-nowrap"
+            >
+                <span class="iconify text-base" data-icon="mdi:upload"></span>
+                Bulk Upload
             </button>
-            <button onclick="openModal('createStudentModal')" class="bg-brand text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2">
-                <span class="iconify" data-icon="mdi:account-plus-outline"></span> Add Student
+            <button
+                type="button"
+                onclick="openModal('createStudentModal')"
+                class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap"
+            >
+                <span class="iconify text-base" data-icon="mdi:account-plus-outline"></span>
+                Add Student
             </button>
         </div>
     </div>
 
-    <!-- Tab Bar -->
     @if (session('success'))
         <div id="successAlert" class="mx-6 mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {{ session('success') }}
@@ -45,30 +179,30 @@
     @endif
 
     <!-- DataTable -->
-    <div class="p-6">
-        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <table id="studentsTable" class="w-full text-sm">
+    <div class="p-4 md:p-6">
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table id="studentsTable" class="w-full text-sm min-w-[720px]">
                 <thead>
                     <tr class="bg-gradient-to-r from-pink-50 to-rose-50 border-b border-pink-100">
-                    <th class="px-6 py-4 text-left text-[11px] font-extrabold uppercase tracking-widest text-slate-600">
+                    <th class="col-id px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
                         ID Number
                     </th>
-                    <th class="px-6 py-4 text-left text-[11px] font-extrabold uppercase tracking-widest text-slate-600">
+                    <th class="col-name px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
                         Student Name
                     </th>
-                    <th class="px-6 py-4 text-left text-[11px] font-extrabold uppercase tracking-widest text-slate-600">
+                    <th class="col-email px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
                         Email
                     </th>
-                    <th class="px-6 py-4 text-left text-[11px] font-extrabold uppercase tracking-widest text-slate-600">
-                        Phone Number
+                    <th class="col-phone px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
+                        Phone
                     </th>
-                    <th class="px-6 py-4 text-left text-[11px] font-extrabold uppercase tracking-widest text-slate-600">
+                    <th class="col-status px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
                         Status
                     </th>
-                    <th class="px-6 py-4 text-left text-[11px] font-extrabold uppercase tracking-widest text-slate-600">
+                    <th class="col-joined px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
                         Joined
                     </th>
-                    <th class="px-6 py-4 text-center text-[11px] font-extrabold uppercase tracking-widest text-slate-600">
+                    <th class="col-action px-3 py-3 text-center text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
                         Action
                     </th>
                 </tr>
@@ -78,15 +212,22 @@
                     @php
                         $user = $student->user;
 
-                        $displayName = trim(implode(' ', array_filter([
-                            $user->last_name ?? null,
-                            $user->first_name ?? null,
-                            $user->middle_name ?? null,
-                        ])));
+                        $lastName = $user->last_name ?? '';
+                        $firstName = $user->first_name ?? '';
+                        $middleName = $user->middle_name ?? '';
+                        $middleInitial = $middleName !== '' ? mb_substr($middleName, 0, 1) . '.' : '';
 
-                        $displayName = $displayName !== ''
-                            ? $displayName
+                        $primaryName = trim($lastName) !== ''
+                            ? $lastName
                             : ($user->name ?? 'Student');
+                        $secondaryName = trim(implode(' ', array_filter([$firstName, $middleInitial])));
+
+                        $displayName = trim(implode(' ', array_filter([
+                            $lastName ?: null,
+                            $firstName ?: null,
+                            $middleName ?: null,
+                        ])));
+                        $displayName = $displayName !== '' ? $displayName : ($user->name ?? 'Student');
 
                         $status = $user->status ?? 'active';
                     @endphp
@@ -96,70 +237,65 @@
                         data-user-id="{{ $user->id ?? '' }}"
                         class="hover:bg-pink-50/60 transition-all duration-200"
                     >
-                        <td class="px-6 py-4">
-                            <span class="font-mono text-slate-600 font-semibold">
+                        <td class="px-3 py-2.5">
+                            <span class="font-mono text-xs text-slate-600 font-semibold cell-truncate" title="{{ $student->student_id }}">
                                 {{ $student->student_id }}
                             </span>
                         </td>
 
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-3">
+                        <td class="px-3 py-2.5">
+                            <div class="flex items-center gap-2 min-w-0">
                                 <img
-                                    src="https://ui-avatars.com/api/?name={{ urlencode($displayName) }}&background=DB2777&color=fff&size=40"
-                                    class="w-10 h-10 rounded-xl shadow-sm border border-pink-100"
+                                    src="https://ui-avatars.com/api/?name={{ urlencode($displayName) }}&background=DB2777&color=fff&size=32"
+                                    class="w-8 h-8 rounded-lg shadow-sm border border-pink-100 shrink-0"
                                     alt="{{ $displayName }}"
                                 >
-
-                                <div>
-                                    <p class="font-bold text-slate-800">
-                                        {{ $displayName }}
-                                    </p>
-
-                                    <p class="text-xs text-slate-400">
-                                        Student Account
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-bold text-slate-800 text-sm cell-truncate" title="{{ $displayName }}">
+                                        {{ $primaryName }}@if($secondaryName !== ''), {{ $secondaryName }}@endif
                                     </p>
                                 </div>
                             </div>
                         </td>
 
-                        <td class="px-6 py-4">
-                            <span class="text-slate-500">
+                        <td class="px-3 py-2.5">
+                            <span class="text-slate-500 text-xs cell-truncate" title="{{ $user->email ?? '' }}">
                                 {{ $user->email ?? '—' }}
                             </span>
                         </td>
 
-                        <td class="px-6 py-4">
-                            <span class="font-medium text-slate-700">
+                        <td class="px-3 py-2.5">
+                            <span class="font-medium text-slate-700 text-xs cell-truncate" title="{{ $user->phone_number ?? '' }}">
                                 {{ $user->phone_number ?? '—' }}
                             </span>
                         </td>
 
-                        <td class="px-6 py-4">
+                        <td class="px-3 py-2.5">
                             @if ($status === 'active')
-                                <span class="inline-flex items-center gap-2 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-bold text-green-700">
-                                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-2 py-0.5 text-[11px] font-bold text-green-700 whitespace-nowrap">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                                     Active
                                 </span>
 
                             @elseif ($status === 'pending')
-                                <span class="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-700">
-                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-700 whitespace-nowrap">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                                     Pending
                                 </span>
 
                             @else
-                                <span class="inline-flex items-center gap-2 rounded-full bg-red-50 border border-red-200 px-3 py-1 text-xs font-bold text-red-700">
-                                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                                <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-bold text-red-700 whitespace-nowrap">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
                                     Suspended
                                 </span>
                             @endif
                         </td>
 
-                        <td class="px-6 py-4 text-slate-500">
+                        <td class="px-3 py-2.5 text-slate-500 text-xs whitespace-nowrap">
                             {{ optional($user->created_at)->format('M d, Y') }}
                         </td>
 
-                        <td class="px-6 py-4">
+                        <td class="px-3 py-2.5">
                             <div class="flex justify-center">
                                 <button
                                     onclick="openUpdateModal(this)"
@@ -171,9 +307,9 @@
                                     data-email="{{ $user->email ?? '' }}"
                                     data-phone-number="{{ $user->phone_number ?? '' }}"
                                     data-status="{{ $status }}"
-                                    class="inline-flex items-center gap-2 rounded-xl bg-pink-50 px-4 py-2 text-xs font-bold text-pink-700 border border-pink-200 hover:bg-pink-100 transition-all duration-200"
+                                    class="inline-flex items-center gap-1.5 rounded-lg bg-pink-50 px-3 py-1.5 text-[11px] font-bold text-pink-700 border border-pink-200 hover:bg-pink-100 transition-all duration-200 whitespace-nowrap"
                                 >
-                                    <span class="iconify text-base" data-icon="mdi:pencil-outline"></span>
+                                    <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span>
                                     Update
                                 </button>
                             </div>
@@ -186,11 +322,11 @@
                                 <span class="iconify text-5xl text-slate-300" data-icon="mdi:account-group-outline"></span>
 
                                 <p class="font-semibold text-slate-500">
-                                    No students found
+                                    No students in {{ $activeClass->name ?? 'this class' }} yet
                                 </p>
 
                                 <p class="text-xs text-slate-400">
-                                    Student records will appear here.
+                                    Use Add Student or Bulk Upload — seats fill the open class (max {{ $classCapacity ?? 40 }}).
                                 </p>
                             </div>
                         </td>
@@ -804,7 +940,12 @@
             bulkSetStep(3);
 
             if (data.created > 0) {
-                setTimeout(() => window.location.reload(), 800);
+                setTimeout(() => {
+                    const letter = data.open_class || '';
+                    window.location.href = letter
+                        ? @json(route('faculty.students')) + '?class=' + encodeURIComponent(letter)
+                        : window.location.href;
+                }, 1000);
             }
 
         } catch (err) {
@@ -908,6 +1049,60 @@
     @if ($errors->any())
         openModal('createStudentModal');
     @endif
+
+    function filterStudentsTable(query) {
+        const q = (query || '').trim().toLowerCase();
+        const rows = document.querySelectorAll('#studentsTable tbody tr[data-student-id]');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = !q || text.includes(q) ? '' : 'none';
+        });
+    }
+
+    function toggleStudentSearch() {
+        const wrap = document.getElementById('studentSearchWrap');
+        const input = document.getElementById('studentSearchInput');
+        if (!wrap || !input) return;
+
+        if (wrap.classList.contains('is-open')) {
+            if (input.value.trim() === '') {
+                collapseStudentSearch(false);
+            } else {
+                input.focus();
+            }
+            return;
+        }
+
+        wrap.classList.add('is-open');
+        setTimeout(() => input.focus(), 220);
+    }
+
+    function collapseStudentSearch(clearIfEmpty) {
+        const wrap = document.getElementById('studentSearchWrap');
+        const input = document.getElementById('studentSearchInput');
+        if (!wrap || !input) return;
+
+        if (clearIfEmpty && input.value.trim() === '') {
+            input.value = '';
+            filterStudentsTable('');
+        }
+
+        // Keep expanded while there is an active query
+        if (input.value.trim() !== '') {
+            input.blur();
+            return;
+        }
+
+        wrap.classList.remove('is-open');
+        input.blur();
+    }
+
+    document.addEventListener('click', function (e) {
+        const wrap = document.getElementById('studentSearchWrap');
+        if (!wrap || !wrap.classList.contains('is-open')) return;
+        if (wrap.contains(e.target)) return;
+        collapseStudentSearch(true);
+    });
 </script>
 @endpush
 @endsection

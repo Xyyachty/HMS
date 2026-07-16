@@ -1,6 +1,6 @@
 @extends('faculty.layout.app')
 
-@section('page_title', 'Teams')
+@section('page_title', 'List of Teams Information')
 @section('role_active', 'active')
 
 @section('content')
@@ -48,21 +48,56 @@
     .role-dot-room_management       { background:#DB2777; }
     .role-dot-maintenance           { background:#A855F7; }
     .role-dot-housekeeping          { background:#14B8A6; }
-</style>
 
-{{-- ═══════════════════════════════════════════════
-     PAGE HEADER
-═══════════════════════════════════════════════ --}}
-<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    <div>
-        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Teams</h2>
-        <p class="text-sm text-slate-400 mt-1">Manage student teams, assign roles, and create tasks — all in one place.</p>
-    </div>
-    <button onclick="openCreateTeamModal()"
-        class="inline-flex items-center gap-2 bg-brand text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:scale-105 transition shadow-md shadow-brand/20">
-        <span class="iconify" data-icon="mdi:plus"></span> Add Team
-    </button>
-</div>
+    /* ── Teams table layout ── */
+    #teamsTable {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: collapse;
+    }
+    #teamsTable th,
+    #teamsTable td {
+        vertical-align: middle;
+    }
+    #teamsTable .col-team { width: 18%; }
+    #teamsTable .col-count { width: 12%; }
+    #teamsTable .col-roles { width: 50%; }
+    #teamsTable .col-action { width: 20%; }
+    #teamsTable .truncate-cell {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+        display: block;
+    }
+    #teamsTable .member-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        max-width: 100%;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        background: #f1f5f9;
+        font-size: 11px;
+        font-weight: 600;
+        color: #475569;
+        line-height: 1.35;
+    }
+    #teamsTable .member-chip .chip-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 7.5rem;
+    }
+    #teamsTable .role-mini {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        color: #94a3b8;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+</style>
 
 {{-- ═══════════════════════════════════════════════
      SUCCESS / ERROR FLASH
@@ -91,50 +126,42 @@
     }
 @endphp
 
-<div class="flex gap-2 mb-6 overflow-x-auto pb-1" id="mainTabBar">
-    <button onclick="switchTab('teams')" id="tab-btn-teams"
-        class="main-tab-btn {{ $activeTab === 'teams' ? 'active' : '' }}">
-        <span class="iconify text-base" data-icon="mdi:account-group"></span>
-        Teams
-        <span class="tab-badge">{{ count($groups ?? []) }}</span>
-    </button>
-    <button onclick="switchTab('create_task')" id="tab-btn-create_task"
-        class="main-tab-btn {{ $activeTab === 'create_task' ? 'active' : '' }}">
-        <span class="iconify text-base" data-icon="mdi:clipboard-plus-outline"></span>
-        Assign Task
-    </button>
-</div>
-
-
 {{-- ═══════════════════════════════════════════════
      TAB 1 — TEAMS (View all groups)
 ═══════════════════════════════════════════════ --}}
 <div id="panel-teams" class="tab-panel {{ $activeTab === 'teams' ? 'active' : '' }}">
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-
-        <!-- Header -->
-        <div class="p-5 border-b border-slate-200 bg-rose-50/40">
-            <p class="text-sm text-slate-500">Click <strong>View</strong> or <strong>Update</strong> on any team to manage its members and roles.</p>
-        </div>
+        @include('faculty.partials.teams-subnav', [
+            'teamsSubTab' => $activeTab,
+            'groups' => $groups ?? [],
+            'activeClass' => $activeClass ?? null,
+        ])
 
         @php
             $roleLabels = [
                 'front_desk'            => 'Front Desk',
-                'restaurant_management' => 'Restaurant Mgmt',
-                'room_management'       => 'Room Mgmt',
+                'restaurant_management' => 'Restaurant',
+                'room_management'       => 'Rooms',
                 'maintenance'           => 'Maintenance',
                 'housekeeping'          => 'Housekeeping',
+            ];
+            $roleShort = [
+                'front_desk'            => 'FD',
+                'restaurant_management' => 'RST',
+                'room_management'       => 'RM',
+                'maintenance'           => 'MNT',
+                'housekeeping'          => 'HK',
             ];
         @endphp
 
         <div class="overflow-x-auto">
-            <table id="teamsTable" class="w-full text-sm text-slate-700">
+            <table id="teamsTable" class="w-full text-sm text-slate-700 min-w-[640px]">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200">
-                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Team Name</th>
-                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Members</th>
-                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Members & Roles</th>
-                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
+                        <th class="col-team text-left px-3 py-2.5 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Team Name</th>
+                        <th class="col-count text-left px-3 py-2.5 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Total Member</th>
+                        <th class="col-roles text-left px-3 py-2.5 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Members &amp; Roles</th>
+                        <th class="col-action text-center px-3 py-2.5 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -157,48 +184,53 @@
                             $memberJson = json_encode($memberData);
                         @endphp
                         <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-5 py-3.5">
-                                <div class="flex flex-col">
-                                    <span class="font-semibold text-slate-800 text-sm">{{ $groupName }}</span>
-                                    @if($createdAt)
-                                        <span class="text-xs text-slate-400 mt-0.5">{{ $createdAt }}</span>
-                                    @endif
-                                </div>
+                            <td class="px-3 py-2.5">
+                                <span class="font-semibold text-slate-800 text-sm truncate-cell" title="{{ $groupName }}">{{ $groupName }}</span>
+                                @if($createdAt)
+                                    <span class="text-[11px] text-slate-400 truncate-cell">{{ $createdAt }}</span>
+                                @endif
                             </td>
-                            <td class="px-5 py-3.5">
-                                <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-xs font-bold">
-                                    <span class="iconify" data-icon="mdi:account-multiple-outline"></span>
-                                    {{ $groupMembers->count() }} {{ Str::plural('member', $groupMembers->count()) }}
+                            <td class="px-3 py-2.5">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-[11px] font-bold whitespace-nowrap">
+                                    <span class="iconify text-xs" data-icon="mdi:account-multiple-outline"></span>
+                                    {{ $groupMembers->count() }}
                                 </span>
                             </td>
-                            <td class="px-5 py-3.5">
-                                <div class="flex flex-wrap gap-1.5">
+                            <td class="px-3 py-2.5">
+                                <div class="flex flex-wrap gap-1">
                                     @foreach($groupMembers as $member)
                                         @php
                                             $u  = $member->student?->user;
+                                            $last = $u?->last_name ?? '';
+                                            $first = $u?->first_name ?? '';
+                                            $shortName = trim($last !== '' ? ($last . ($first !== '' ? ', ' . mb_substr($first, 0, 1) . '.' : '')) : ($u?->name ?? 'Student'));
                                             $dn = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name, $u?->middle_name])));
                                             $dn = $dn !== '' ? $dn : ($u?->name ?? 'Student');
                                             $memberRoles = $member->roles->pluck('role')->toArray();
+                                            $roleTitle = implode(', ', array_map(fn($r) => $roleLabels[$r] ?? $r, $memberRoles));
                                         @endphp
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-[11px] font-semibold text-slate-600">
-                                            {{ $dn }}
+                                        <span class="member-chip" title="{{ $dn }}{{ $roleTitle !== '' ? ' — ' . $roleTitle : '' }}">
+                                            <span class="chip-name">{{ $shortName }}</span>
                                             @foreach($memberRoles as $mRole)
-                                                <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $mRole }}"></span>
-                                                <span class="text-slate-400">({{ $roleLabels[$mRole] ?? $mRole }})</span>
+                                                <span class="role-mini">
+                                                    <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $mRole }} shrink-0"></span>
+                                                    {{ $roleShort[$mRole] ?? $mRole }}
+                                                </span>
                                             @endforeach
                                         </span>
                                     @endforeach
                                 </div>
                             </td>
-                            <td class="px-5 py-3.5">
-                                <div class="flex items-center gap-2">
-                                    <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }})'
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold hover:bg-rose-100 transition">
-                                        <span class="iconify" data-icon="mdi:eye-outline"></span> View
+                            <td class="px-3 py-2.5">
+                                <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                    <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-[11px] font-bold hover:bg-rose-100 transition whitespace-nowrap">
+                                        <span class="iconify text-sm" data-icon="mdi:eye-outline"></span> View
                                     </button>
                                     <button
-                                        onclick='openUpdateModal(@json($groupName), {{ $memberJson }})'
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-soft text-brand border border-brand/10 rounded-lg text-xs font-bold hover:bg-brand/10 transition">
+                                        type="button"
+                                        onclick='openUpdateModal(@json($groupName), @json($memberData))'
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-soft text-brand border border-brand/10 rounded-lg text-[11px] font-bold hover:bg-brand/10 transition whitespace-nowrap">
                                         <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span> Update
                                     </button>
                                 </div>
@@ -206,14 +238,20 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-5 py-16 text-center">
-                                <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                                    <span class="iconify text-slate-300 text-3xl" data-icon="mdi:account-group-outline"></span>
+                            <td colspan="4" class="px-5 py-12 text-center">
+                                <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                    <span class="iconify text-slate-300 text-2xl" data-icon="mdi:account-group-outline"></span>
                                 </div>
-                                <p class="text-sm font-semibold text-slate-400">No teams created yet.</p>
+                                <p class="text-sm font-semibold text-slate-400">
+                                    @if($activeClass)
+                                        No teams in {{ $activeClass->name }} yet.
+                                    @else
+                                        No teams created yet.
+                                    @endif
+                                </p>
                                 <button onclick="openCreateTeamModal()"
                                     class="mt-3 px-4 py-2 bg-brand text-white text-xs font-bold rounded-xl hover:scale-105 transition shadow-md shadow-brand/20">
-                                    Add First Team
+                                    Add Team{{ $activeClass ? ' for ' . $activeClass->name : '' }}
                                 </button>
                             </td>
                         </tr>
@@ -227,46 +265,35 @@
 <!-- Team Info Modal -->
 <div id="teamInfoModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTeamModal()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg max-h-[85vh] flex flex-col">
+    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 52rem;">
         <!-- Modal Header -->
-        <div class="bg-rose-50 px-6 py-4 border-b border-rose-100 flex justify-between items-center rounded-t-2xl flex-shrink-0">
-            <h4 class="font-bold text-rose-700 text-base flex items-center gap-2">
-                <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
-                Team Details
+        <div class="bg-rose-50 px-4 py-3 border-b border-rose-100 flex justify-between items-center rounded-t-2xl flex-shrink-0">
+            <h4 class="font-bold text-rose-700 text-sm flex items-center gap-1.5 min-w-0">
+                <span class="iconify text-base shrink-0" data-icon="mdi:account-group-outline"></span>
+                <span class="truncate">Team Details<span id="modalTeamNameSuffix" class="font-semibold text-rose-500/80"></span></span>
             </h4>
-            <button onclick="closeTeamModal()" class="text-slate-400 hover:text-rose-500 hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
-                <span class="iconify text-xl" data-icon="mdi:close"></span>
+            <button onclick="closeTeamModal()" class="text-slate-400 hover:text-rose-500 hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0">
+                <span class="iconify text-lg" data-icon="mdi:close"></span>
             </button>
         </div>
 
         <!-- Modal Body -->
-        <div class="overflow-y-auto flex-1 p-6 space-y-5">
-            <!-- Info Grid -->
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Team</p>
-                    <p id="modalTeamName" class="text-sm font-bold text-slate-800">—</p>
-                </div>
-                <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Members</p>
-                    <p id="modalMemberCount" class="text-sm font-bold text-slate-800">—</p>
-                </div>
-                <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Created</p>
-                    <p id="modalCreatedAt" class="text-sm font-bold text-slate-800">—</p>
-                </div>
-            </div>
-
+        <div class="overflow-y-auto flex-1 p-4 space-y-4">
             <!-- Members Table -->
             <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Team Members & Roles</p>
-                <div class="border border-slate-200 rounded-xl overflow-hidden">
-                    <table class="w-full text-sm">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Team Members & Roles</p>
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                    <table class="w-full text-sm" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 2.5rem;">
+                            <col>
+                            <col style="width: 10rem;">
+                        </colgroup>
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="text-left px-4 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">#</th>
-                                <th class="text-left px-4 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Member Name</th>
-                                <th class="text-left px-4 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Member</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
                             </tr>
                         </thead>
                         <tbody id="teamModalMembersBody" class="divide-y divide-slate-100">
@@ -274,11 +301,50 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Activity Logs -->
+            <div>
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Activity Logs</p>
+                    <span id="teamModalActivityMeta" class="text-[10px] font-semibold text-slate-400"></span>
+                </div>
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                    <table class="w-full text-sm" style="table-layout: fixed;">
+                        <colgroup>
+                            <col>
+                            <col style="width: 7rem;">
+                            <col style="width: 6.5rem;">
+                            <col style="width: 6rem;">
+                        </colgroup>
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200">
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Task</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teamModalActivityBody" class="divide-y divide-slate-100">
+                        </tbody>
+                    </table>
+                    <div id="teamModalActivityPager" class="hidden px-3 py-2 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2">
+                        <button type="button" id="teamModalActivityPrev"
+                            class="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                            Previous
+                        </button>
+                        <span id="teamModalActivityPageLabel" class="text-[11px] font-semibold text-slate-500"></span>
+                        <button type="button" id="teamModalActivityNext"
+                            class="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Modal Footer -->
-        <div class="px-6 py-3 border-t border-slate-100 flex justify-end rounded-b-2xl flex-shrink-0 bg-slate-50/50">
-            <button onclick="closeTeamModal()" class="px-4 py-2 rounded-xl bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition font-semibold text-sm">
+        <div class="px-4 py-2.5 border-t border-slate-100 flex justify-end rounded-b-2xl flex-shrink-0 bg-slate-50/50">
+            <button onclick="closeTeamModal()" class="px-3.5 py-1.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition font-semibold text-xs">
                 Close
             </button>
         </div>
@@ -289,7 +355,7 @@
 <!-- Add Team Modal -->
 <div id="createTeamModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeCreateTeamModal()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
         <!-- Modal Header -->
         <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center rounded-t-2xl flex-shrink-0">
             <h4 class="font-bold text-brand text-base flex items-center gap-2">
@@ -313,11 +379,22 @@
             </button>
         </div>
 
+        @php
+            $teamRoleOptions = [
+                'front_desk' => 'Front Desk',
+                'restaurant_management' => 'Restaurant',
+                'room_management' => 'Room Mgmt',
+                'maintenance' => 'Maintenance',
+                'housekeeping' => 'Housekeeping',
+            ];
+        @endphp
+
         <!-- Tab Panel: Add Team -->
         <div id="modal-panel-add_team" class="flex-1 min-h-0 overflow-y-auto">
             <form method="POST" id="createTeamForm" action="{{ route('faculty.role.groups.store') }}">
                 @csrf
                 <input type="hidden" name="_form_source" value="create_team">
+                <input type="hidden" name="class_letter" value="{{ $activeClass->letter ?? '' }}">
 
                 @if($errors->any())
                     <div class="mx-6 mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
@@ -326,51 +403,49 @@
                     </div>
                 @endif
 
-                <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {{-- Left column --}}
-                    <div class="space-y-5">
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Team Name <span class="text-red-400">*</span></label>
-                            <input name="group_name" type="text" placeholder="e.g. Front Desk Team A"
-                                value="{{ old('group_name') }}"
-                                class="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                        </div>
-
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <div class="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Quick Selection</p>
-                                    <p class="text-xs text-slate-400 mt-0.5">Pick members manually or randomize 4 students.</p>
-                                </div>
-                                <button type="button" id="createRandomizeBtn"
-                                    class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand/40 hover:text-brand transition flex items-center gap-1.5">
-                                    <span class="iconify" data-icon="mdi:shuffle-variant"></span> Randomize 4
-                                </button>
-                            </div>
-                            <p id="createRandomizeNote" class="mt-2 text-[11px] text-slate-400"></p>
-                        </div>
-
-                        {{-- Role legend --}}
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Role Color Legend</p>
-                            <div class="grid grid-cols-2 gap-1.5">
-                                @foreach(['front_desk' => 'Front Desk', 'restaurant_management' => 'Restaurant Mgmt', 'room_management' => 'Room Mgmt', 'maintenance' => 'Maintenance', 'housekeeping' => 'Housekeeping'] as $rk => $rl)
-                                    <div class="flex items-center gap-2 text-xs text-slate-600">
-                                        <span class="w-2.5 h-2.5 rounded-full role-dot-{{ $rk }} flex-shrink-0"></span>{{ $rl }}
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
+                <div class="p-6 space-y-5">
+                    {{-- Step 1: Team name --}}
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Team Name <span class="text-red-400">*</span></label>
+                        <input name="group_name" type="text" placeholder="e.g. Front Desk Team A"
+                            value="{{ old('group_name') }}"
+                            class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                     </div>
 
-                    {{-- Right column — member list --}}
+                    {{-- Tools row --}}
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div class="relative flex-1">
+                            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
+                            <input type="text" id="createStudentSearch" placeholder="Search students by name or ID..."
+                                class="w-full h-10 pl-10 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
+                                oninput="filterTeamStudentList('create')">
+                        </div>
+                        <button type="button" id="createRandomizeBtn"
+                            class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand/40 hover:text-brand transition inline-flex items-center justify-center gap-1.5 shrink-0">
+                            <span class="iconify" data-icon="mdi:shuffle-variant"></span> Randomize 4
+                        </button>
+                        <span id="createSelectedCount" class="text-xs font-bold text-slate-500 whitespace-nowrap sm:min-w-[7rem] text-right">0 selected</span>
+                    </div>
+                    <p id="createRandomizeNote" class="text-[11px] text-slate-400 -mt-3"></p>
+
+                    {{-- Role legend --}}
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Roles</span>
+                        @foreach($teamRoleOptions as $rk => $rl)
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600">
+                                <span class="w-2 h-2 rounded-full role-dot-{{ $rk }}"></span>{{ $rl }}
+                            </span>
+                        @endforeach
+                    </div>
+
+                    {{-- Members --}}
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Members & Roles <span class="text-red-400">*</span></label>
-                        <div class="max-h-96 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50">
-                            <div class="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200 bg-slate-100/50">
-                                Select members and assign roles
-                            </div>
-                            <div class="p-3 space-y-2">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Members & Roles <span class="text-red-400">*</span></label>
+                            <span class="text-[11px] text-slate-400">Defaults apply if none selected · {{ ($students ?? collect())->count() }} available</span>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 max-h-[22rem] overflow-y-auto">
+                            <div class="p-3 space-y-2" id="createStudentList">
                                 @forelse($students ?? [] as $student)
                                     @php
                                         $u = $student->user;
@@ -378,38 +453,47 @@
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
                                         $sk = $student->id;
                                         $selectedMembers = array_map('intval', old('members', []));
-                                        $selectedRole = old('member_roles.' . $sk, 'front_desk');
+                                        $selectedRoles = old('member_roles.' . $sk, []);
+                                        if (!is_array($selectedRoles)) $selectedRoles = [$selectedRoles];
+                                        $searchBlob = strtolower($dn . ' ' . $student->student_id);
                                     @endphp
-                                    <div class="student-row flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 border border-slate-200">
-                                        <label class="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
+                                    <div class="team-student-card create-student-card rounded-xl bg-white border border-slate-200 p-3"
+                                         data-search="{{ $searchBlob }}">
+                                        <label class="flex items-center gap-3 cursor-pointer">
                                             <input type="checkbox" name="members[]" value="{{ $sk }}"
                                                 class="create-student-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 shrink-0"
-                                                {{ in_array($sk, $selectedMembers, true) ? 'checked' : '' }}>
-                                            <div class="min-w-0">
-                                                <div class="text-sm font-semibold text-slate-700 truncate">{{ $dn }}</div>
-                                                <div class="text-[11px] text-slate-400 font-mono">#{{ $student->student_id }}</div>
+                                                {{ in_array($sk, $selectedMembers, true) ? 'checked' : '' }}
+                                                onchange="onTeamMemberToggle(this, 'create')">
+                                            <div class="w-9 h-9 rounded-lg bg-brand-soft text-brand text-xs font-bold flex items-center justify-center shrink-0">
+                                                {{ strtoupper(mb_substr($dn, 0, 1)) }}
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
+                                                <p class="text-[11px] text-slate-400 font-mono">
+                                                    #{{ $student->student_id }}
+                                                    @if($student->facultyClass)
+                                                        · {{ $student->facultyClass->name }}
+                                                    @endif
+                                                </p>
                                             </div>
                                         </label>
-                                        <div class="flex flex-wrap gap-1 shrink-0">
-                                            @php
-                                                $selectedRoles = old('member_roles.' . $sk, []);
-                                                if (!is_array($selectedRoles)) $selectedRoles = [$selectedRoles];
-                                            @endphp
-                                            @foreach(['front_desk' => 'Front Desk', 'restaurant_management' => 'Rest. Mgmt', 'room_management' => 'Room Mgmt', 'maintenance' => 'Maintenance', 'housekeeping' => 'Housekeeping'] as $rk => $rl)
-                                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
+                                        <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                                            @foreach($teamRoleOptions as $rk => $rl)
+                                                <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
-                                                        class="rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
+                                                        class="create-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
                                                         {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}>
-                                                    {{ $rl }}
+                                                    <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
+                                                    <span class="truncate">{{ $rl }}</span>
                                                 </label>
                                             @endforeach
                                         </div>
                                     </div>
                                 @empty
-                                    <div class="flex flex-col items-center gap-2 py-8 text-slate-400">
-                                        <span class="iconify text-2xl text-slate-200" data-icon="mdi:account-off-outline"></span>
-                                        <p class="text-sm">No unassigned students available.</p>
-                                        <p class="text-xs text-slate-300">All students are already in a team.</p>
+                                    <div class="flex flex-col items-center gap-2 py-10 text-slate-400">
+                                        <span class="iconify text-3xl text-slate-200" data-icon="mdi:account-off-outline"></span>
+                                        <p class="text-sm font-semibold">No unassigned students</p>
+                                        <p class="text-xs text-slate-300">Add students first, or they may already be in a team.</p>
                                     </div>
                                 @endforelse
                             </div>
@@ -419,59 +503,52 @@
             </form>
         </div>
 
-        <!-- Tab Panel: Insert (assign ungrouped students to existing team) -->
+        <!-- Tab Panel: Insert -->
         <div id="modal-panel-insert" class="flex-1 min-h-0 overflow-y-auto hidden">
             <form method="POST" id="insertStudentForm" action="{{ route('faculty.role.groups.store') }}">
                 @csrf
                 <input type="hidden" name="_form_source" value="insert_student">
+                <input type="hidden" name="class_letter" value="{{ $activeClass->letter ?? '' }}">
 
-                <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {{-- Left column --}}
-                    <div class="space-y-5">
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Existing Team <span class="text-red-400">*</span></label>
-                            <select name="group_name"
-                                class="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
-                                <option value="">Select a team...</option>
-                                @foreach($groups ?? [] as $groupName => $members)
-                                    <option value="{{ $groupName }}" {{ old('group_name') === $groupName ? 'selected' : '' }}>{{ $groupName }} ({{ $members->count() }} {{ Str::plural('member', $members->count()) }})</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <span class="iconify text-blue-500 text-xl" data-icon="mdi:information-outline"></span>
-                                </div>
-                                <div>
-                                    <p class="text-xs font-bold uppercase tracking-wider text-slate-500">How it works</p>
-                                    <p class="text-xs text-slate-400 mt-0.5">Select an existing team from the dropdown, then choose ungrouped students to insert into that team with assigned roles.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Role legend --}}
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Role Color Legend</p>
-                            <div class="grid grid-cols-2 gap-1.5">
-                                @foreach(['front_desk' => 'Front Desk', 'restaurant_management' => 'Restaurant Mgmt', 'room_management' => 'Room Mgmt', 'maintenance' => 'Maintenance', 'housekeeping' => 'Housekeeping'] as $rk => $rl)
-                                    <div class="flex items-center gap-2 text-xs text-slate-600">
-                                        <span class="w-2.5 h-2.5 rounded-full role-dot-{{ $rk }} flex-shrink-0"></span>{{ $rl }}
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
+                <div class="p-6 space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Existing Team <span class="text-red-400">*</span></label>
+                        <select name="group_name"
+                            class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
+                            <option value="">Select a team...</option>
+                            @foreach($groups ?? [] as $groupName => $members)
+                                <option value="{{ $groupName }}" {{ old('group_name') === $groupName ? 'selected' : '' }}>{{ $groupName }} ({{ $members->count() }} {{ Str::plural('member', $members->count()) }})</option>
+                            @endforeach
+                        </select>
+                        <p class="text-[11px] text-slate-400 mt-1.5">Choose a team, then pick unassigned students to add with roles.</p>
                     </div>
 
-                    {{-- Right column — ungrouped student list --}}
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div class="relative flex-1">
+                            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
+                            <input type="text" id="insertStudentSearch" placeholder="Search students by name or ID..."
+                                class="w-full h-10 pl-10 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
+                                oninput="filterTeamStudentList('insert')">
+                        </div>
+                        <span id="insertSelectedCount" class="text-xs font-bold text-slate-500 whitespace-nowrap sm:min-w-[7rem] text-right">0 selected</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Roles</span>
+                        @foreach($teamRoleOptions as $rk => $rl)
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600">
+                                <span class="w-2 h-2 rounded-full role-dot-{{ $rk }}"></span>{{ $rl }}
+                            </span>
+                        @endforeach
+                    </div>
+
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Ungrouped Students <span class="text-red-400">*</span></label>
-                        <div class="max-h-96 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50">
-                            <div class="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200 bg-slate-100/50">
-                                Select students and assign roles
-                            </div>
-                            <div class="p-3 space-y-2">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Ungrouped Students <span class="text-red-400">*</span></label>
+                            <span class="text-[11px] text-slate-400">Defaults apply if none selected · {{ ($students ?? collect())->count() }} available</span>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 max-h-[22rem] overflow-y-auto">
+                            <div class="p-3 space-y-2" id="insertStudentList">
                                 @forelse($students ?? [] as $student)
                                     @php
                                         $u = $student->user;
@@ -479,37 +556,47 @@
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
                                         $sk = $student->id;
                                         $selectedMembers = array_map('intval', old('members', []));
+                                        $selectedRoles = old('member_roles.' . $sk, []);
+                                        if (!is_array($selectedRoles)) $selectedRoles = [$selectedRoles];
+                                        $searchBlob = strtolower($dn . ' ' . $student->student_id);
                                     @endphp
-                                    <div class="student-row flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 border border-slate-200">
-                                        <label class="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
+                                    <div class="team-student-card insert-student-card rounded-xl bg-white border border-slate-200 p-3"
+                                         data-search="{{ $searchBlob }}">
+                                        <label class="flex items-center gap-3 cursor-pointer">
                                             <input type="checkbox" name="members[]" value="{{ $sk }}"
                                                 class="insert-student-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 shrink-0"
-                                                {{ in_array($sk, $selectedMembers, true) ? 'checked' : '' }}>
-                                            <div class="min-w-0">
-                                                <div class="text-sm font-semibold text-slate-700 truncate">{{ $dn }}</div>
-                                                <div class="text-[11px] text-slate-400 font-mono">#{{ $student->student_id }}</div>
+                                                {{ in_array($sk, $selectedMembers, true) ? 'checked' : '' }}
+                                                onchange="onTeamMemberToggle(this, 'insert')">
+                                            <div class="w-9 h-9 rounded-lg bg-brand-soft text-brand text-xs font-bold flex items-center justify-center shrink-0">
+                                                {{ strtoupper(mb_substr($dn, 0, 1)) }}
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
+                                                <p class="text-[11px] text-slate-400 font-mono">
+                                                    #{{ $student->student_id }}
+                                                    @if($student->facultyClass)
+                                                        · {{ $student->facultyClass->name }}
+                                                    @endif
+                                                </p>
                                             </div>
                                         </label>
-                                        <div class="flex flex-wrap gap-1 shrink-0">
-                                            @php
-                                                $selectedRoles = old('member_roles.' . $sk, []);
-                                                if (!is_array($selectedRoles)) $selectedRoles = [$selectedRoles];
-                                            @endphp
-                                            @foreach(['front_desk' => 'Front Desk', 'restaurant_management' => 'Rest. Mgmt', 'room_management' => 'Room Mgmt', 'maintenance' => 'Maintenance', 'housekeeping' => 'Housekeeping'] as $rk => $rl)
-                                                <label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
+                                        <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                                            @foreach($teamRoleOptions as $rk => $rl)
+                                                <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
-                                                        class="rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
+                                                        class="insert-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
                                                         {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}>
-                                                    {{ $rl }}
+                                                    <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
+                                                    <span class="truncate">{{ $rl }}</span>
                                                 </label>
                                             @endforeach
                                         </div>
                                     </div>
                                 @empty
-                                    <div class="flex flex-col items-center gap-2 py-8 text-slate-400">
-                                        <span class="iconify text-2xl text-slate-200" data-icon="mdi:account-check-outline"></span>
-                                        <p class="text-sm">No ungrouped students available.</p>
-                                        <p class="text-xs text-slate-300">All students are already assigned to a team.</p>
+                                    <div class="flex flex-col items-center gap-2 py-10 text-slate-400">
+                                        <span class="iconify text-3xl text-slate-200" data-icon="mdi:account-check-outline"></span>
+                                        <p class="text-sm font-semibold">No ungrouped students</p>
+                                        <p class="text-xs text-slate-300">All of your students are already on a team.</p>
                                     </div>
                                 @endforelse
                             </div>
@@ -551,6 +638,7 @@
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="_form_source" value="update_team">
+                <input type="hidden" name="class_letter" value="{{ $activeClass->letter ?? '' }}">
 
                 <div class="p-6 space-y-4">
                     {{-- Top row: Team Name + Editing Info --}}
@@ -584,28 +672,75 @@
                         </div>
                     </div>
 
+                    {{-- Template edit permissions (faculty grants) --}}
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Template edit permissions</p>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Grant a member access to edit another role’s hotel website section.</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2 mb-3">
+                            <select id="grantStudentSelect" class="flex-1 h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm">
+                                <option value="">Select member…</option>
+                            </select>
+                            <select id="grantRoleSelect" class="h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm">
+                                @foreach(\App\Support\HotelTemplateBuilder::ROLES as $rk => $rl)
+                                    <option value="{{ $rk }}">{{ $rl }}</option>
+                                @endforeach
+                            </select>
+                            <button type="button" id="grantEditBtn"
+                                class="h-10 px-4 rounded-xl bg-brand text-white text-xs font-bold hover:opacity-90">Grant</button>
+                            <button type="button" id="revokeEditBtn"
+                                class="h-10 px-4 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">Revoke</button>
+                        </div>
+                        <div id="grantStatus" class="text-[11px] text-slate-400"></div>
+                    </div>
+
                     {{-- Members & Roles --}}
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Members & Roles <span class="text-red-400">*</span></label>
-                        <p class="text-xs text-slate-400 mb-2">Check members to include and assign one or more roles to each.</p>
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Members & Roles <span class="text-red-400">*</span></label>
+                            <span class="text-[11px] text-slate-400 sm:ml-auto">Only students already on this team. Use Add Team → Insert to add more.</span>
+                        </div>
+                        <div class="relative mb-2">
+                            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
+                            <input type="text" id="updateStudentSearch" placeholder="Search members by name or ID..."
+                                class="w-full h-10 pl-10 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
+                                oninput="filterUpdateStudentList()">
+                        </div>
+                        <p class="text-xs text-slate-400 mb-2">Uncheck to remove a member, or change their roles. Save to apply.</p>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 max-h-[22rem] overflow-y-auto">
                             <div class="p-3 space-y-2" id="updateMemberList">
-                                @foreach($allStudents ?? [] as $student)
+                                @forelse($allStudents ?? [] as $student)
                                     @php
                                         $u = $student->user;
                                         $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
                                         $sk = $student->id;
+                                        $searchBlob = strtolower($dn . ' ' . $student->student_id);
+                                        $teamNames = collect($studentTeamMap[$sk] ?? [])->values()->all();
                                     @endphp
-                                    <div class="student-row update-student-row rounded-xl bg-white px-3 py-3 border border-slate-200"
-                                         data-student-id="{{ $sk }}">
+                                    <div class="student-row update-student-row team-student-card hidden rounded-xl bg-white px-3 py-3 border border-slate-200"
+                                         data-student-id="{{ $sk }}"
+                                         data-search="{{ $searchBlob }}"
+                                         data-teams="{{ e(implode('|', $teamNames)) }}">
                                         {{-- Student info row --}}
                                         <div class="flex items-center gap-3">
                                             <input type="checkbox" name="members[]" value="{{ $sk }}"
-                                                class="update-student-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 shrink-0">
+                                                class="update-student-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 shrink-0"
+                                                onchange="onUpdateMemberToggle(this)">
                                             <div class="min-w-0 flex-1">
-                                                <div class="text-sm font-semibold text-slate-700 truncate">{{ $dn }}</div>
-                                                <div class="text-[11px] text-slate-400 font-mono">#{{ $student->student_id }}</div>
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <div class="text-sm font-semibold text-slate-700 truncate">{{ $dn }}</div>
+                                                    <span class="update-on-team-badge hidden text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">On this team</span>
+                                                </div>
+                                                <div class="text-[11px] text-slate-400 font-mono">
+                                                    #{{ $student->student_id }}
+                                                    @if($student->facultyClass)
+                                                        · {{ $student->facultyClass->name }}
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                         {{-- Role checkboxes row --}}
@@ -620,7 +755,18 @@
                                             @endforeach
                                         </div>
                                     </div>
-                                @endforeach
+                                @empty
+                                    <div class="flex flex-col items-center gap-2 py-10 text-slate-400">
+                                        <span class="iconify text-3xl text-slate-200" data-icon="mdi:account-off-outline"></span>
+                                        <p class="text-sm font-semibold">No students found</p>
+                                        <p class="text-xs text-slate-300">Add students under Manage Students first.</p>
+                                    </div>
+                                @endforelse
+                                <div id="updateNoMembersNote" class="hidden flex flex-col items-center gap-2 py-10 text-slate-400">
+                                    <span class="iconify text-3xl text-slate-200" data-icon="mdi:account-group-outline"></span>
+                                    <p class="text-sm font-semibold">No members on this team</p>
+                                    <p class="text-xs text-slate-300">Use Add Team → Insert to add students.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -644,13 +790,19 @@
 ═══════════════════════════════════════════════ --}}
 <div id="panel-create_task" class="tab-panel {{ $activeTab === 'create_task' ? 'active' : '' }}">
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        @include('faculty.partials.teams-subnav', [
+            'teamsSubTab' => $activeTab,
+            'groups' => $groups ?? [],
+            'activeClass' => $activeClass ?? null,
+        ])
+
         {{-- Header --}}
         <div class="p-5 border-b border-slate-100 bg-brand-soft flex items-center gap-3">
             <div class="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
                 <span class="iconify text-brand text-xl" data-icon="mdi:clipboard-plus-outline"></span>
             </div>
             <div>
-                <h3 class="font-bold text-brand text-base">Assign New Task</h3>
+                <h3 class="font-bold text-brand text-base">Set New Task</h3>
                 <p class="text-xs text-slate-400 mt-0.5">Pick a department, select tasks, set a due date, and assign.</p>
             </div>
         </div>
@@ -875,7 +1027,7 @@
                     <div class="mt-6 flex justify-end">
                         <button type="submit"
                             class="px-6 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2">
-                            <span class="iconify" data-icon="mdi:check-circle-outline"></span> Assign Tasks
+                            <span class="iconify" data-icon="mdi:check-circle-outline"></span> Set Tasks
                         </button>
                     </div>
                 </div>
@@ -982,64 +1134,246 @@ function submitActiveModalTab() {
 
 
 
+// ── Default hotel roles (rotate when assigning) ──
+const TEAM_DEFAULT_ROLES = [
+    'front_desk',
+    'restaurant_management',
+    'room_management',
+    'maintenance',
+    'housekeeping',
+];
+
+function clearStudentRoles(memberCheckbox) {
+    const card = memberCheckbox.closest('.team-student-card');
+    if (!card) return;
+    card.querySelectorAll('input[type="checkbox"][name^="member_roles"]').forEach(cb => {
+        cb.checked = false;
+    });
+}
+
+function assignDefaultRoleToCard(card, roleKey) {
+    if (!card || !roleKey) return;
+    const roleCb = card.querySelector('input[type="checkbox"][name^="member_roles"][value="' + roleKey + '"]');
+    if (roleCb) roleCb.checked = true;
+}
+
+function nextDefaultRoleIndex(mode) {
+    const checked = document.querySelectorAll(
+        (mode === 'insert' ? '.insert-student-checkbox' : '.create-student-checkbox') + ':checked'
+    );
+    // Prefer unused roles among currently selected members, else rotate by count
+    const used = new Set();
+    checked.forEach(cb => {
+        const card = cb.closest('.team-student-card');
+        if (!card) return;
+        card.querySelectorAll('input[type="checkbox"][name^="member_roles"]:checked').forEach(r => {
+            used.add(r.value);
+        });
+    });
+    for (let i = 0; i < TEAM_DEFAULT_ROLES.length; i++) {
+        if (!used.has(TEAM_DEFAULT_ROLES[i])) return i;
+    }
+    return checked.length % TEAM_DEFAULT_ROLES.length;
+}
+
+function onTeamMemberToggle(checkbox, mode) {
+    const card = checkbox.closest('.team-student-card');
+    if (!checkbox.checked) {
+        clearStudentRoles(checkbox);
+    } else if (card) {
+        const anyRole = card.querySelector('input[type="checkbox"][name^="member_roles"]:checked');
+        if (!anyRole) {
+            const idx = nextDefaultRoleIndex(mode);
+            assignDefaultRoleToCard(card, TEAM_DEFAULT_ROLES[idx]);
+        }
+    }
+    updateTeamSelectedCount(mode);
+}
+
 // ── Randomize (Create Team) ─────────────────────
 document.getElementById('createRandomizeBtn').addEventListener('click', function () {
     const checkboxes = Array.from(document.querySelectorAll('.create-student-checkbox'));
     const note = document.getElementById('createRandomizeNote');
     if (!checkboxes.length) { if (note) note.textContent = 'No students available.'; return; }
-    checkboxes.forEach(c => c.checked = false);
+
+    checkboxes.forEach(c => {
+        c.checked = false;
+        clearStudentRoles(c);
+    });
+
     const shuffled = [...checkboxes].sort(() => Math.random() - 0.5);
     const picked = shuffled.slice(0, 4);
-    picked.forEach(c => c.checked = true);
-    if (note) note.textContent = `Selected ${picked.length} random member${picked.length === 1 ? '' : 's'}.`;
+    picked.forEach((c, i) => {
+        c.checked = true;
+        assignDefaultRoleToCard(c.closest('.team-student-card'), TEAM_DEFAULT_ROLES[i % TEAM_DEFAULT_ROLES.length]);
+    });
+
+    if (note) {
+        note.textContent = `Selected ${picked.length} random member${picked.length === 1 ? '' : 's'} with default roles.`;
+    }
+    updateTeamSelectedCount('create');
 });
 
-// ── Open Update Team modal pre-filled ──────────
+function filterTeamStudentList(mode) {
+    const input = document.getElementById(mode === 'insert' ? 'insertStudentSearch' : 'createStudentSearch');
+    const cards = document.querySelectorAll(mode === 'insert' ? '.insert-student-card' : '.create-student-card');
+    const q = (input?.value || '').trim().toLowerCase();
+    cards.forEach(card => {
+        const hay = card.getAttribute('data-search') || '';
+        card.classList.toggle('hidden', q !== '' && !hay.includes(q));
+    });
+}
+
+function updateTeamSelectedCount(mode) {
+    const selector = mode === 'insert' ? '.insert-student-checkbox' : '.create-student-checkbox';
+    const el = document.getElementById(mode === 'insert' ? 'insertSelectedCount' : 'createSelectedCount');
+    const count = document.querySelectorAll(selector + ':checked').length;
+    if (el) el.textContent = count + ' selected';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    updateTeamSelectedCount('create');
+    updateTeamSelectedCount('insert');
+});
+
+// ── Open Update Team modal (members of this team only) ──────────
 function openUpdateModal(groupName, memberData) {
-    // Set form action
     const form = document.getElementById('updateTeamForm');
     form.action = '/faculty/role/groups/' + encodeURIComponent(groupName);
 
-    // Set group name input
     document.getElementById('updateGroupNameInput').value = groupName;
     document.getElementById('updateTeamEditingLabel').textContent = groupName;
 
-    // Build a map: student_id -> roles[]
+    const searchInput = document.getElementById('updateStudentSearch');
+    if (searchInput) searchInput.value = '';
+
     const rolesMap = {};
-    memberData.forEach(m => {
-        rolesMap[m.student_id] = m.roles || (m.role ? [m.role] : []);
+    (memberData || []).forEach(m => {
+        const id = String(m.student_id);
+        rolesMap[id] = m.roles || (m.role ? [m.role] : []);
     });
 
-    // Uncheck all checkboxes first
-    document.querySelectorAll('.update-student-checkbox').forEach(cb => {
-        cb.checked = false;
-    });
-    document.querySelectorAll('.update-role-checkbox').forEach(cb => {
-        cb.checked = false;
-    });
+    document.querySelectorAll('.update-student-checkbox').forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('.update-role-checkbox').forEach(cb => { cb.checked = false; });
 
-    // Check + set roles for members in this group
-    document.querySelectorAll('.update-student-row').forEach(row => {
-        const sid = parseInt(row.dataset.studentId);
-        if (rolesMap.hasOwnProperty(sid)) {
-            const cb  = row.querySelector('.update-student-checkbox');
-            if (cb)  cb.checked = true;
-            // Check role checkboxes
-            rolesMap[sid].forEach(role => {
-                const roleCb = row.querySelector('.update-role-checkbox[value="' + role + '"]');
-                if (roleCb) roleCb.checked = true;
-            });
+    const list = document.getElementById('updateMemberList');
+    const rows = Array.from(document.querySelectorAll('.update-student-row'));
+    let memberCount = 0;
+
+    rows.forEach(row => {
+        const sid = String(row.dataset.studentId || '');
+        const isMember = Object.prototype.hasOwnProperty.call(rolesMap, sid);
+        const cb = row.querySelector('.update-student-checkbox');
+        const onBadge = row.querySelector('.update-on-team-badge');
+
+        // Only this team's members appear in Update Team
+        row.classList.toggle('hidden', !isMember);
+        row.dataset.isTeamMember = isMember ? '1' : '0';
+
+        if (!isMember) {
+            if (cb) cb.checked = false;
+            if (onBadge) onBadge.classList.add('hidden');
+            return;
         }
+
+        memberCount++;
+        if (cb) cb.checked = true;
+        if (onBadge) onBadge.classList.remove('hidden');
+
+        (rolesMap[sid] || []).forEach(role => {
+            const roleCb = row.querySelector('.update-role-checkbox[value="' + role + '"]');
+            if (roleCb) roleCb.checked = true;
+        });
     });
 
-    // Show modal
+    // Members at the top of the list
+    rows.filter(r => r.dataset.isTeamMember === '1').forEach(row => list.appendChild(row));
+
+    const emptyNote = document.getElementById('updateNoMembersNote');
+    if (emptyNote) emptyNote.classList.toggle('hidden', memberCount > 0);
+
+    // Template grant picker
+    const grantSelect = document.getElementById('grantStudentSelect');
+    if (grantSelect) {
+        grantSelect.innerHTML = '<option value="">Select member…</option>';
+        (memberData || []).forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.student_id;
+            opt.textContent = m.name || ('Student #' + m.student_id);
+            grantSelect.appendChild(opt);
+        });
+    }
+    const grantStatus = document.getElementById('grantStatus');
+    if (grantStatus) grantStatus.textContent = '';
+
     document.getElementById('updateTeamModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
 
+async function facultyTemplateGrant(grant) {
+    const groupName = document.getElementById('updateGroupNameInput')?.value;
+    const studentId = document.getElementById('grantStudentSelect')?.value;
+    const role = document.getElementById('grantRoleSelect')?.value;
+    const status = document.getElementById('grantStatus');
+    if (!groupName || !studentId || !role) {
+        if (status) status.textContent = 'Pick a member and a role template first.';
+        return;
+    }
+    try {
+        const res = await fetch(@json(route('faculty.templates.grants.store')), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                group_name: groupName,
+                student_id: parseInt(studentId, 10),
+                role: role,
+                grant: !!grant
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        if (status) status.textContent = (grant ? 'Granted' : 'Revoked') + ' edit access for ' + role.replace(/_/g, ' ') + '.';
+    } catch (e) {
+        if (status) status.textContent = e.message || 'Could not update permission.';
+    }
+}
+
+document.getElementById('grantEditBtn')?.addEventListener('click', () => facultyTemplateGrant(true));
+document.getElementById('revokeEditBtn')?.addEventListener('click', () => facultyTemplateGrant(false));
+
 function closeUpdateModal() {
     document.getElementById('updateTeamModal').classList.add('hidden');
     document.body.style.overflow = 'auto';
+}
+
+function filterUpdateStudentList() {
+    const q = (document.getElementById('updateStudentSearch')?.value || '').trim().toLowerCase();
+    document.querySelectorAll('.update-student-row').forEach(row => {
+        // Never reveal students who are not on this team
+        if (row.dataset.isTeamMember !== '1') {
+            row.classList.add('hidden');
+            return;
+        }
+        const hay = row.getAttribute('data-search') || '';
+        row.classList.toggle('hidden', q !== '' && !hay.includes(q));
+    });
+}
+
+function onUpdateMemberToggle(checkbox) {
+    const card = checkbox.closest('.update-student-row');
+    if (!card) return;
+    const onBadge = card.querySelector('.update-on-team-badge');
+    if (onBadge) onBadge.classList.toggle('hidden', !checkbox.checked);
+
+    if (!checkbox.checked) {
+        card.querySelectorAll('.update-role-checkbox').forEach(cb => { cb.checked = false; });
+    }
 }
 
 // ── Task Assignment Wizard ─────────────────────
@@ -1178,39 +1512,122 @@ document.addEventListener('change', function(e) {
     @if($errors->has('group_name') || $errors->has('members') || $errors->has('member_roles'))
         openCreateTeamModal();
     @endif
+    // Open from Activity Logs "Add Team" (or ?create=1)
+    @if(request()->boolean('create'))
+        openCreateTeamModal();
+        const url = new URL(window.location);
+        url.searchParams.delete('create');
+        history.replaceState(null, '', url);
+    @endif
 })();
 
 // ── Team Info Modal ────────────────────────────
-function openTeamModal(groupName, members, createdAt) {
-    document.getElementById('modalTeamName').textContent = groupName;
-    document.getElementById('modalMemberCount').textContent = members.length + ' member' + (members.length !== 1 ? 's' : '');
-    document.getElementById('modalCreatedAt').textContent = createdAt || '—';
+let teamModalActivityLogs = [];
+let teamModalActivityPage = 1;
+const TEAM_MODAL_ACTIVITY_PER_PAGE = 5;
+
+function escHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function renderTeamModalActivityPage() {
+    const activityBody = document.getElementById('teamModalActivityBody');
+    const pager = document.getElementById('teamModalActivityPager');
+    const meta = document.getElementById('teamModalActivityMeta');
+    const pageLabel = document.getElementById('teamModalActivityPageLabel');
+    const prevBtn = document.getElementById('teamModalActivityPrev');
+    const nextBtn = document.getElementById('teamModalActivityNext');
+    const logs = teamModalActivityLogs;
+    const total = logs.length;
+    const totalPages = Math.max(1, Math.ceil(total / TEAM_MODAL_ACTIVITY_PER_PAGE));
+
+    if (teamModalActivityPage > totalPages) teamModalActivityPage = totalPages;
+    if (teamModalActivityPage < 1) teamModalActivityPage = 1;
+
+    if (total === 0) {
+        activityBody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-slate-400">No activity logs for this team yet.</td></tr>';
+        if (pager) pager.classList.add('hidden');
+        if (meta) meta.textContent = '';
+        return;
+    }
+
+    const start = (teamModalActivityPage - 1) * TEAM_MODAL_ACTIVITY_PER_PAGE;
+    const pageLogs = logs.slice(start, start + TEAM_MODAL_ACTIVITY_PER_PAGE);
+    const end = start + pageLogs.length;
+
+    activityBody.innerHTML = pageLogs.map(function(log) {
+        const isDone = log.status === 'archived';
+        const statusBadge = isDone
+            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Completed</span>'
+            : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Assigned</span>';
+
+        return '<tr class="hover:bg-slate-50 transition-colors">' +
+            '<td class="px-3 py-2">' +
+                '<p class="text-xs font-semibold text-slate-800 truncate" title="' + escHtml(log.title) + '">' + escHtml(log.title || '—') + '</p>' +
+                (log.description ? '<p class="text-[10px] text-slate-400 truncate">' + escHtml(log.description) + '</p>' : '') +
+            '</td>' +
+            '<td class="px-3 py-2 text-[11px] font-semibold text-slate-600 whitespace-nowrap">' + escHtml(log.role_label || log.role || '—') + '</td>' +
+            '<td class="px-3 py-2">' + statusBadge + '</td>' +
+            '<td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">' + escHtml(log.updated_at || '—') + '</td>' +
+        '</tr>';
+    }).join('');
+
+    if (meta) meta.textContent = 'Showing ' + (start + 1) + '–' + end + ' of ' + total;
+    if (pageLabel) pageLabel.textContent = 'Page ' + teamModalActivityPage + ' of ' + totalPages;
+
+    if (pager) {
+        if (total > TEAM_MODAL_ACTIVITY_PER_PAGE) {
+            pager.classList.remove('hidden');
+            pager.classList.add('flex');
+        } else {
+            pager.classList.add('hidden');
+            pager.classList.remove('flex');
+        }
+    }
+    if (prevBtn) prevBtn.disabled = teamModalActivityPage <= 1;
+    if (nextBtn) nextBtn.disabled = teamModalActivityPage >= totalPages;
+}
+
+function openTeamModal(groupName, members, createdAt, activityLogs) {
+    const logs = Array.isArray(activityLogs) ? activityLogs : [];
+    const nameSuffix = document.getElementById('modalTeamNameSuffix');
+    if (nameSuffix) {
+        nameSuffix.textContent = groupName ? ' — ' + groupName : '';
+    }
 
     const tbody = document.getElementById('teamModalMembersBody');
     if (members.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-sm text-slate-400">No members found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-6 text-center text-xs text-slate-400">No members found.</td></tr>';
     } else {
         tbody.innerHTML = members.map(function(m, i) {
             const roleLabels = m.role_labels || [m.role_label || m.role];
             const roleBadges = roleLabels.map(function(rl) {
-                return '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">' + rl + '</span>';
+                return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">' + rl + '</span>';
             }).join(' ');
             return '<tr class="hover:bg-slate-50 transition-colors">' +
-                '<td class="px-4 py-3 text-xs text-slate-400 font-medium">' + (i + 1) + '</td>' +
-                '<td class="px-4 py-3">' +
-                    '<div class="flex items-center gap-2">' +
+                '<td class="px-3 py-2 text-[11px] text-slate-400 font-medium">' + (i + 1) + '</td>' +
+                '<td class="px-3 py-2">' +
+                    '<div class="flex items-center gap-2 min-w-0">' +
                         '<div class="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-[10px] font-bold flex-shrink-0">' +
                             m.name.charAt(0).toUpperCase() +
                         '</div>' +
-                        '<span class="text-sm font-semibold text-slate-700">' + m.name + '</span>' +
+                        '<span class="text-xs font-semibold text-slate-700 truncate" title="' + escHtml(m.name) + '">' + escHtml(m.name) + '</span>' +
                     '</div>' +
                 '</td>' +
-                '<td class="px-4 py-3">' +
+                '<td class="px-3 py-2">' +
                     '<div class="flex flex-wrap gap-1">' + roleBadges + '</div>' +
                 '</td>' +
             '</tr>';
         }).join('');
     }
+
+    teamModalActivityLogs = logs;
+    teamModalActivityPage = 1;
+    renderTeamModalActivityPage();
 
     document.getElementById('teamInfoModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -1220,5 +1637,27 @@ function closeTeamModal() {
     document.getElementById('teamInfoModal').classList.add('hidden');
     document.body.style.overflow = 'auto';
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const prevBtn = document.getElementById('teamModalActivityPrev');
+    const nextBtn = document.getElementById('teamModalActivityNext');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function () {
+            if (teamModalActivityPage > 1) {
+                teamModalActivityPage -= 1;
+                renderTeamModalActivityPage();
+            }
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function () {
+            const totalPages = Math.max(1, Math.ceil(teamModalActivityLogs.length / TEAM_MODAL_ACTIVITY_PER_PAGE));
+            if (teamModalActivityPage < totalPages) {
+                teamModalActivityPage += 1;
+                renderTeamModalActivityPage();
+            }
+        });
+    }
+});
 </script>
 @endsection

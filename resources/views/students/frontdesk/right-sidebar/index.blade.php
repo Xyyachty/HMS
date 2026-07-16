@@ -11,7 +11,7 @@
                     <p class="text-[10px] text-zinc-500 mt-0.5">Style &amp; customize elements</p>
                 </div>
             </div>
-            <button class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-all" title="Reset all styles">
+            <button class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-all" title="Reset selected element styles" onclick="resetSelectedStyles()">
                 <i class="fas fa-rotate-left text-[10px]"></i>
             </button>
         </div>
@@ -27,6 +27,39 @@
                     <i class="fas fa-mouse-pointer text-[9px] text-cyan-400"></i>
                 </div>
                 <span class="text-xs text-zinc-400" id="selectedElement">Select an element to style</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 mt-2.5">
+                <button type="button" onclick="duplicateSelectedElement()" class="py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-300 hover:border-cyan-500/40 hover:text-white transition">
+                    <i class="fas fa-copy mr-1"></i>Duplicate
+                </button>
+                <button type="button" onclick="deleteSelectedElement()" class="py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-rose-300 hover:border-rose-500/40 hover:text-rose-200 transition">
+                    <i class="fas fa-trash mr-1"></i>Delete
+                </button>
+            </div>
+        </div>
+
+        <!-- ── Add Elements ── -->
+        <div class="design-section border-b border-zinc-800/60">
+            <button onclick="toggleSection('add')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-6 h-6 rounded-md bg-cyan-500/15 flex items-center justify-center">
+                        <i class="fas fa-plus text-[9px] text-cyan-400"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Add to page</span>
+                </div>
+                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-add"></i>
+            </button>
+            <div class="section-body px-5 pb-4" id="section-add">
+                <p class="text-[10px] text-zinc-500 mb-2">Adds objects onto the live template. Move and resize them on the page.</p>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" onclick="addCanvasElement('text')" class="add-el-btn"><i class="fas fa-font"></i>Text</button>
+                    <button type="button" onclick="addCanvasElement('button')" class="add-el-btn"><i class="fas fa-square"></i>Button</button>
+                    <button type="button" onclick="addCanvasElement('image')" class="add-el-btn"><i class="fas fa-image"></i>Image</button>
+                    <button type="button" onclick="addCanvasElement('textfield')" class="add-el-btn"><i class="fas fa-i-cursor"></i>Text field</button>
+                    <button type="button" onclick="addCanvasElement('icon')" class="add-el-btn"><i class="fas fa-icons"></i>Icon</button>
+                    <button type="button" onclick="addCanvasElement('card')" class="add-el-btn"><i class="fas fa-id-card"></i>Card</button>
+                    <button type="button" onclick="addCanvasElement('container')" class="add-el-btn col-span-2"><i class="fas fa-border-all"></i>Container</button>
+                </div>
             </div>
         </div>
 
@@ -121,6 +154,28 @@
                     </div>
                 </div>
 
+                <!-- Font Size -->
+                <div>
+                    <label class="settings-label">Font Size</label>
+                    <div class="flex items-center gap-2">
+                        <input id="fontSizeRange" type="range" min="10" max="96" value="16" class="flex-1 accent-cyan-500"
+                            oninput="document.getElementById('fontSizeVal').value = this.value; applyStyle('font-size', this.value + 'px')">
+                        <input id="fontSizeVal" type="number" min="8" max="200" value="16" class="style-input w-16 text-center"
+                            onchange="document.getElementById('fontSizeRange').value = this.value; applyStyle('font-size', this.value + 'px')">
+                    </div>
+                </div>
+
+                <!-- Alignment -->
+                <div>
+                    <label class="settings-label">Align</label>
+                    <div class="flex gap-1">
+                        <button type="button" onclick="applyStyle('text-align','left')" class="style-toggle-btn" title="Left"><i class="fas fa-align-left text-[10px]"></i></button>
+                        <button type="button" onclick="applyStyle('text-align','center')" class="style-toggle-btn" title="Center"><i class="fas fa-align-center text-[10px]"></i></button>
+                        <button type="button" onclick="applyStyle('text-align','right')" class="style-toggle-btn" title="Right"><i class="fas fa-align-right text-[10px]"></i></button>
+                        <button type="button" onclick="applyStyle('text-align','justify')" class="style-toggle-btn" title="Justify"><i class="fas fa-align-justify text-[10px]"></i></button>
+                    </div>
+                </div>
+
                 <!-- Style Toggles -->
                 <div>
                     <label class="settings-label">Style</label>
@@ -135,6 +190,68 @@
                             <i class="fas fa-strikethrough text-[10px]"></i>
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Spacing ── -->
+        <div class="design-section border-t border-zinc-800/60">
+            <button onclick="toggleSection('spacing')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-6 h-6 rounded-md bg-sky-500/15 flex items-center justify-center">
+                        <i class="fas fa-expand text-[9px] text-sky-400"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Spacing</span>
+                </div>
+                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-spacing"></i>
+            </button>
+            <div class="section-body px-5 pb-4 space-y-3" id="section-spacing">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="settings-label">Padding</label>
+                        <input id="padInput" type="text" class="style-input" placeholder="e.g. 12px" onchange="applyStyle('padding', this.value)">
+                    </div>
+                    <div>
+                        <label class="settings-label">Margin</label>
+                        <input id="marginInput" type="text" class="style-input" placeholder="e.g. 8px" onchange="applyStyle('margin', this.value)">
+                    </div>
+                    <div>
+                        <label class="settings-label">Width</label>
+                        <input id="widthInput" type="text" class="style-input" placeholder="e.g. 240px" onchange="applyStyle('width', this.value)">
+                    </div>
+                    <div>
+                        <label class="settings-label">Height</label>
+                        <input id="heightInput" type="text" class="style-input" placeholder="e.g. 80px" onchange="applyStyle('height', this.value)">
+                    </div>
+                    <div>
+                        <label class="settings-label">Radius</label>
+                        <input id="radiusInput" type="text" class="style-input" placeholder="e.g. 12px" onchange="applyStyle('border-radius', this.value)">
+                    </div>
+                    <div>
+                        <label class="settings-label">Opacity</label>
+                        <input id="opacityInput" type="number" min="0" max="1" step="0.05" value="1" class="style-input" onchange="applyStyle('opacity', this.value)">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Layers ── -->
+        <div class="design-section border-t border-zinc-800/60">
+            <button onclick="toggleSection('layers')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-6 h-6 rounded-md bg-orange-500/15 flex items-center justify-center">
+                        <i class="fas fa-layer-group text-[9px] text-orange-400"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Layers</span>
+                </div>
+                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-layers"></i>
+            </button>
+            <div class="section-body px-5 pb-4" id="section-layers">
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" onclick="layerSelected('front')" class="add-el-btn"><i class="fas fa-arrow-up"></i>To front</button>
+                    <button type="button" onclick="layerSelected('back')" class="add-el-btn"><i class="fas fa-arrow-down"></i>To back</button>
+                    <button type="button" onclick="layerSelected('forward')" class="add-el-btn"><i class="fas fa-caret-up"></i>Forward</button>
+                    <button type="button" onclick="layerSelected('backward')" class="add-el-btn"><i class="fas fa-caret-down"></i>Backward</button>
                 </div>
             </div>
         </div>
@@ -203,8 +320,60 @@
             </div>
         </div>
 
+        <!-- ── Content ── -->
+        <div class="design-section border-t border-zinc-800/60">
+            <button onclick="toggleSection('content')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-6 h-6 rounded-md bg-emerald-500/15 flex items-center justify-center">
+                        <i class="fas fa-align-left text-[9px] text-emerald-400"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Content</span>
+                </div>
+                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-content"></i>
+            </button>
+            <div class="section-body px-5 pb-4 space-y-3" id="section-content">
+                <div>
+                    <label class="settings-label">Text / Label</label>
+                    <textarea id="elementText" rows="3" class="style-input resize-y min-h-[72px]" placeholder="Select text in the template, then edit here"
+                        oninput="applyTextContent(this.value)"></textarea>
+                    <p class="text-[10px] text-zinc-600 mt-1.5">Tip: double-click text in the template to type directly.</p>
+                </div>
+                <div>
+                    <label class="settings-label">Icon class (Font Awesome)</label>
+                    <input id="iconClass" type="text" class="style-input font-mono" placeholder="e.g. fas fa-hotel"
+                        onchange="applyIconClass(this.value)">
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Media ── -->
+        <div class="design-section border-t border-zinc-800/60">
+            <button onclick="toggleSection('media')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center">
+                        <i class="fas fa-image text-[9px] text-amber-400"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Logo &amp; Images</span>
+                </div>
+                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-media"></i>
+            </button>
+            <div class="section-body px-5 pb-4 space-y-3" id="section-media">
+                <p class="text-[10px] text-zinc-500">Select an image, logo area, or hero background in the template, then upload a new picture.</p>
+                <input type="file" id="designImageInput" accept="image/*" class="hidden" onchange="uploadSelectedImage(this)">
+                <button type="button" onclick="document.getElementById('designImageInput').click()"
+                    class="w-full h-10 rounded-xl bg-zinc-800 border border-zinc-700 text-xs font-semibold text-zinc-200 hover:border-cyan-500/50 hover:text-white transition flex items-center justify-center gap-2">
+                    <i class="fas fa-cloud-upload-alt text-cyan-400"></i>
+                    Upload / Replace Image
+                </button>
+                <input id="imageUrlInput" type="url" class="style-input" placeholder="Or paste image URL"
+                    onchange="applyImageUrl(this.value)">
+            </div>
+        </div>
+
         <!-- Bottom spacer -->
         <div class="h-4"></div>
+
+        @include('students.partials.hotel-builder-panels', ['builderRole' => $builderRole ?? 'front_desk'])
     </div>
 
 </aside>
@@ -339,40 +508,263 @@
         margin-bottom: 6px;
         display: block;
     }
+
+    .add-el-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 6px;
+        border-radius: 8px;
+        background: #18181b;
+        border: 1px solid #27272a;
+        color: #d4d4d8;
+        font-size: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .add-el-btn:hover {
+        border-color: rgba(6, 182, 212, 0.45);
+        color: #fff;
+        background: #1c1c1f;
+    }
+    .add-el-btn i { font-size: 10px; color: #22d3ee; }
 </style>
 
 <script>
-    function applyHeading(tag) {
-        if (!window.selectedBlock) return;
-        const el = window.selectedBlock;
+    window.selectedElementId = null;
+    window.templateCustomizations = {};
+    window.currentEditorMode = 'design';
 
-        // Find the closest heading/paragraph inside the block, or use the block itself
-        const headingTags = ['H1','H2','H3','H4','H5','H6','P'];
-        let target = null;
+    function postToTemplate(payload) {
+        const frame = document.getElementById('templateFrame');
+        if (!frame || !frame.contentWindow) return;
+        frame.contentWindow.postMessage(Object.assign({ source: 'hms-parent' }, payload), '*');
+    }
 
-        // Check if selected element is itself a heading/p
-        if (headingTags.includes(el.tagName)) {
-            target = el;
-        } else {
-            // Look for first heading/p child
-            target = el.querySelector('h1,h2,h3,h4,h5,h6,p');
+    function toggleSection(id) {
+        const body = document.getElementById('section-' + id);
+        const chevron = document.getElementById('chevron-' + id);
+        if (!body) return;
+        const hidden = body.classList.toggle('hidden');
+        if (chevron) chevron.style.transform = hidden ? 'rotate(-90deg)' : '';
+    }
+
+    function requireSelection() {
+        if (!window.selectedElementId) {
+            if (typeof toast === 'function') toast('Click an element in the template first');
+            return false;
         }
+        return true;
+    }
 
-        if (!target) return;
-
-        // Replace the element with the new tag, preserving content & attributes
-        const newEl = document.createElement(tag);
-        newEl.innerHTML = target.innerHTML;
-        // Copy class and style
-        newEl.className = target.className;
-        newEl.style.cssText = target.style.cssText;
-        target.replaceWith(newEl);
-
-        // Update active state on buttons
+    function applyHeading(tag) {
+        if (!requireSelection()) return;
+        postToTemplate({ type: 'apply-edit', id: window.selectedElementId, heading: tag });
         document.querySelectorAll('[data-group="heading"]').forEach(b => b.classList.remove('active'));
         const matched = [...document.querySelectorAll('[data-group="heading"]')].find(b =>
-            b.getAttribute('onclick') === `applyHeading('${tag}')`
+            b.getAttribute('onclick') === "applyHeading('" + tag + "')"
         );
         if (matched) matched.classList.add('active');
     }
+
+    function applyStyle(prop, value) {
+        if (!requireSelection()) return;
+        const style = {};
+        style[prop] = value;
+        postToTemplate({ type: 'apply-edit', id: window.selectedElementId, style: style });
+    }
+
+    function toggleInlineStyle(prop, value) {
+        if (!requireSelection()) return;
+        const btn = (typeof event !== 'undefined' && event) ? event.currentTarget : null;
+        const active = btn ? btn.classList.toggle('active') : true;
+        const style = {};
+        style[prop] = active ? value : (prop === 'font-style' ? 'normal' : 'none');
+        postToTemplate({ type: 'apply-edit', id: window.selectedElementId, style: style });
+    }
+
+    function setColor(kind, value) {
+        if (kind === 'text') {
+            const picker = document.getElementById('textColor');
+            const hex = document.getElementById('textColorHex');
+            if (picker && value !== 'transparent') picker.value = value;
+            if (hex) hex.value = value;
+            applyStyle('color', value);
+        } else {
+            const picker = document.getElementById('bgColor');
+            const hex = document.getElementById('bgColorHex');
+            if (picker && value !== 'transparent') picker.value = value;
+            if (hex) hex.value = value;
+            applyStyle('background-color', value);
+        }
+    }
+
+    function syncColorPicker(pickerId, hex) {
+        if (!/^#([0-9A-Fa-f]{3}){1,2}$/.test(hex)) return;
+        const picker = document.getElementById(pickerId);
+        if (picker) picker.value = hex;
+        if (pickerId === 'textColor') applyStyle('color', hex);
+        if (pickerId === 'bgColor') applyStyle('background-color', hex);
+    }
+
+    function updateColorHex(hexId, value) {
+        const el = document.getElementById(hexId);
+        if (el) el.value = value;
+    }
+
+    function applyTextContent(value) {
+        if (!requireSelection()) return;
+        postToTemplate({ type: 'apply-edit', id: window.selectedElementId, text: value });
+    }
+
+    function applyIconClass(value) {
+        if (!requireSelection()) return;
+        postToTemplate({ type: 'apply-edit', id: window.selectedElementId, iconClass: value });
+    }
+
+    function applyImageUrl(url) {
+        if (!requireSelection() || !url) return;
+        postToTemplate({ type: 'apply-edit', id: window.selectedElementId, src: url });
+    }
+
+    async function uploadSelectedImage(input) {
+        if (!requireSelection()) { input.value = ''; return; }
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const form = new FormData();
+        form.append('image', file);
+        const token = document.querySelector('meta[name="csrf-token"]');
+        form.append('_token', token ? token.content : '');
+        try {
+            const res = await fetch(@json(route('students.frontdesk.template.media')), {
+                method: 'POST',
+                body: form,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            if (!res.ok || !data.url) throw new Error('Upload failed');
+            postToTemplate({ type: 'image-uploaded', url: data.url });
+            const urlInput = document.getElementById('imageUrlInput');
+            if (urlInput) urlInput.value = data.url;
+            if (typeof toast === 'function') toast('Image updated');
+        } catch (err) {
+            console.error(err);
+            if (typeof toast === 'function') toast('Image upload failed');
+        } finally {
+            input.value = '';
+        }
+    }
+
+    function resetSelectedStyles() {
+        if (!requireSelection()) return;
+        postToTemplate({ type: 'reset-styles' });
+        if (typeof toast === 'function') toast('Styles reset for selection');
+    }
+
+    function addCanvasElement(type) {
+        if (!window.HMS_CAN_EDIT_TEMPLATE) {
+            if (typeof toast === 'function') toast('View only — you cannot edit this role page');
+            return;
+        }
+        postToTemplate({ type: 'add-element', elementType: type });
+        if (typeof toast === 'function') toast('Added ' + type + ' — drag to position');
+    }
+
+    function deleteSelectedElement() {
+        if (!requireSelection()) return;
+        postToTemplate({ type: 'delete-element' });
+        window.selectedElementId = null;
+        const label = document.getElementById('selectedElement');
+        if (label) label.textContent = 'Select an element to style';
+    }
+
+    function duplicateSelectedElement() {
+        if (!requireSelection()) return;
+        postToTemplate({ type: 'duplicate-element' });
+    }
+
+    function layerSelected(direction) {
+        if (!requireSelection()) return;
+        postToTemplate({ type: 'layer-element', direction: direction });
+    }
+
+    function onTemplateMessage(event) {
+        const data = event.data || {};
+        if (!data || data.source !== 'hms-template') return;
+
+        if (data.type === 'editor-ready') {
+            window.templateCustomizations = data.customizations || window.templateCustomizations || {};
+            postToTemplate({ type: 'set-mode', mode: window.currentEditorMode });
+            postToTemplate({ type: 'load-customizations', customizations: window.templateCustomizations });
+        }
+
+        if (data.type === 'element-selected') {
+            window.selectedElementId = data.id;
+            const label = document.getElementById('selectedElement');
+            if (label) label.textContent = data.label || 'Selected element';
+            const textArea = document.getElementById('elementText');
+            if (textArea) textArea.value = data.text || '';
+            const iconInput = document.getElementById('iconClass');
+            if (iconInput) iconInput.value = data.iconClass || '';
+            const urlInput = document.getElementById('imageUrlInput');
+            if (urlInput) urlInput.value = data.src || '';
+            if (data.styles) {
+                if (data.styles.color && data.styles.color !== 'transparent' && /^#/.test(data.styles.color)) {
+                    updateColorHex('textColorHex', data.styles.color);
+                    const tc = document.getElementById('textColor');
+                    if (tc) tc.value = data.styles.color;
+                }
+                if (data.styles['background-color'] && data.styles['background-color'] !== 'transparent' && /^#/.test(data.styles['background-color'])) {
+                    updateColorHex('bgColorHex', data.styles['background-color']);
+                    const bc = document.getElementById('bgColor');
+                    if (bc) bc.value = data.styles['background-color'];
+                }
+                const fw = document.getElementById('fontWeight');
+                if (fw && data.styles['font-weight']) fw.value = data.styles['font-weight'];
+                const fs = data.styles['font-size'];
+                if (fs) {
+                    const n = parseInt(fs, 10);
+                    if (!isNaN(n)) {
+                        const range = document.getElementById('fontSizeRange');
+                        const val = document.getElementById('fontSizeVal');
+                        if (range) range.value = n;
+                        if (val) val.value = n;
+                    }
+                }
+                const pad = document.getElementById('padInput');
+                if (pad && data.styles.padding) pad.value = data.styles.padding;
+                const margin = document.getElementById('marginInput');
+                if (margin && data.styles.margin) margin.value = data.styles.margin;
+                const width = document.getElementById('widthInput');
+                if (width && data.styles.width) width.value = data.styles.width;
+                const height = document.getElementById('heightInput');
+                if (height && data.styles.height) height.value = data.styles.height;
+                const radius = document.getElementById('radiusInput');
+                if (radius && data.styles['border-radius']) radius.value = data.styles['border-radius'];
+                const opacity = document.getElementById('opacityInput');
+                if (opacity && data.styles.opacity) opacity.value = data.styles.opacity;
+            }
+        }
+
+        if (data.type === 'element-deselected') {
+            window.selectedElementId = null;
+            const label = document.getElementById('selectedElement');
+            if (label) label.textContent = 'Select an element to style';
+        }
+
+        if (data.type === 'customizations-changed') {
+            window.templateCustomizations = data.customizations || {};
+            if (window.hmsBuilder) {
+                window.hmsBuilder.state.customizations = window.templateCustomizations;
+                window.hmsBuilder.markDirty();
+            }
+            const status = document.getElementById('autoSaveStatus');
+            if (status) status.textContent = 'Unsaved changes';
+        }
+    }
+
+    window.addEventListener('message', onTemplateMessage);
 </script>
