@@ -1,6 +1,6 @@
 @extends('dean.layouts.app')
 
-@section('page_title', 'Teams')
+@section('page_title', 'List of Teams Information')
 @section('faculties_active', 'active')
 
 @section('content')
@@ -62,8 +62,8 @@
                             $displayName = $displayName !== '' ? $displayName : ($faculty->user->name ?? 'Faculty');
                             $roleLabels = [
                                 'front_desk' => 'Front Desk',
-                                'restaurant_management' => 'Restaurant Mgmt',
-                                'room_management' => 'Room Mgmt',
+                                'restaurant_management' => 'Restaurant',
+                                'room_management' => 'Rooms',
                                 'maintenance' => 'Maintenance',
                                 'housekeeping' => 'Housekeeping',
                             ];
@@ -75,12 +75,20 @@
                             @php
                                 $createdAt = optional($groupMembers->first()->created_at)->format('M d, Y');
                                 $memberCount = $groupMembers->count();
-                                $membersJson = $groupMembers->map(function($m) use ($roleLabels) {
+                                $membersJson = $groupMembers->map(function ($m) use ($roleLabels) {
                                     $u = $m->student?->user;
-                                    $n = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name])));
-                                    $n = $n ?: ($u?->name ?? 'Student');
-                                    return ['name' => $n, 'role' => $roleLabels[$m->role] ?? $m->role];
+                                    $n = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name, $u?->middle_name])));
+                                    $n = $n !== '' ? $n : ($u?->name ?? 'Student');
+                                    $memberRoles = $m->roles->pluck('role')->filter()->values()->all();
+                                    if (empty($memberRoles) && !empty($m->role)) {
+                                        $memberRoles = [$m->role];
+                                    }
+                                    return [
+                                        'name' => $n,
+                                        'role_labels' => array_map(fn ($r) => $roleLabels[$r] ?? $r, $memberRoles),
+                                    ];
                                 })->values()->toJson();
+                                $activityLogs = $teamActivityByFacultyGroup[$faculty->id][$groupName] ?? [];
                             @endphp
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-3.5">
@@ -102,7 +110,7 @@
                                 </td>
                                 <td class="px-5 py-3.5 text-slate-500 text-sm">{{ $createdAt }}</td>
                                 <td class="px-5 py-3.5">
-                                    <button onclick='openTeamModal({{ json_encode($displayName) }}, {{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }})'
+                                    <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }})'
                                         class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold hover:bg-rose-100 transition">
                                         <span class="iconify" data-icon="mdi:eye-outline"></span> View
                                     </button>
@@ -219,52 +227,36 @@
 
 <!-- Team Info Modal -->
 <div id="teamInfoModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('teamInfoModal')"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg max-h-[85vh] flex flex-col">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTeamModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 52rem;">
         <!-- Modal Header -->
-        <div class="bg-rose-50 px-6 py-4 border-b border-rose-100 flex justify-between items-center rounded-t-2xl flex-shrink-0">
-            <h4 class="font-bold text-rose-700 text-base flex items-center gap-2">
-                <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
-                Team Details
+        <div class="bg-rose-50 px-4 py-3 border-b border-rose-100 flex justify-between items-center rounded-t-2xl flex-shrink-0">
+            <h4 class="font-bold text-rose-700 text-sm flex items-center gap-1.5 min-w-0">
+                <span class="iconify text-base shrink-0" data-icon="mdi:account-group-outline"></span>
+                <span class="truncate">Team Details<span id="modalTeamNameSuffix" class="font-semibold text-rose-500/80"></span></span>
             </h4>
-            <button onclick="closeModal('teamInfoModal')" class="text-slate-400 hover:text-rose-500 hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
-                <span class="iconify text-xl" data-icon="mdi:close"></span>
+            <button onclick="closeTeamModal()" class="text-slate-400 hover:text-rose-500 hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0">
+                <span class="iconify text-lg" data-icon="mdi:close"></span>
             </button>
         </div>
 
         <!-- Modal Body -->
-        <div class="overflow-y-auto flex-1 p-6 space-y-5">
-
-            <!-- Info Grid -->
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Faculty</p>
-                    <p id="modalFacultyName" class="text-sm font-bold text-slate-800">—</p>
-                </div>
-                <div class="bg-rose-50 rounded-xl p-4 border border-rose-100">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-rose-400 mb-1">Team</p>
-                    <p id="modalTeamName" class="text-sm font-bold text-rose-700">—</p>
-                </div>
-                <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Members</p>
-                    <p id="modalMemberCount" class="text-sm font-bold text-slate-800">—</p>
-                </div>
-                <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Created</p>
-                    <p id="modalCreatedAt" class="text-sm font-bold text-slate-800">—</p>
-                </div>
-            </div>
-
+        <div class="overflow-y-auto flex-1 p-4 space-y-4">
             <!-- Members Table -->
             <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Team Members & Roles</p>
-                <div class="border border-slate-200 rounded-xl overflow-hidden">
-                    <table class="w-full text-sm">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Team Members & Roles</p>
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                    <table class="w-full text-sm" style="table-layout: fixed;">
+                        <colgroup>
+                            <col style="width: 2.5rem;">
+                            <col>
+                            <col style="width: 10rem;">
+                        </colgroup>
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="text-left px-4 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">#</th>
-                                <th class="text-left px-4 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Member Name</th>
-                                <th class="text-left px-4 py-2.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Member</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
                             </tr>
                         </thead>
                         <tbody id="teamModalMembersBody" class="divide-y divide-slate-100">
@@ -273,11 +265,49 @@
                 </div>
             </div>
 
+            <!-- Activity Logs -->
+            <div>
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Activity Logs</p>
+                    <span id="teamModalActivityMeta" class="text-[10px] font-semibold text-slate-400"></span>
+                </div>
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                    <table class="w-full text-sm" style="table-layout: fixed;">
+                        <colgroup>
+                            <col>
+                            <col style="width: 7rem;">
+                            <col style="width: 6.5rem;">
+                            <col style="width: 6rem;">
+                        </colgroup>
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200">
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Task</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teamModalActivityBody" class="divide-y divide-slate-100">
+                        </tbody>
+                    </table>
+                    <div id="teamModalActivityPager" class="hidden px-3 py-2 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2">
+                        <button type="button" id="teamModalActivityPrev"
+                            class="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                            Previous
+                        </button>
+                        <span id="teamModalActivityPageLabel" class="text-[11px] font-semibold text-slate-500"></span>
+                        <button type="button" id="teamModalActivityNext"
+                            class="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Modal Footer -->
-        <div class="px-6 py-3 border-t border-slate-100 flex justify-end rounded-b-2xl flex-shrink-0 bg-slate-50/50">
-            <button onclick="closeModal('teamInfoModal')" class="px-4 py-2 rounded-xl bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition font-semibold text-sm">
+        <div class="px-4 py-2.5 border-t border-slate-100 flex justify-end rounded-b-2xl flex-shrink-0 bg-slate-50/50">
+            <button onclick="closeTeamModal()" class="px-3.5 py-1.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition font-semibold text-xs">
                 Close
             </button>
         </div>
@@ -375,35 +405,113 @@
 
 @push('scripts')
 <script>
-    function openTeamModal(facultyName, groupName, members, createdAt) {
-        document.getElementById('modalFacultyName').textContent = facultyName;
-        document.getElementById('modalTeamName').textContent = groupName;
-        document.getElementById('modalMemberCount').textContent = members.length + ' member' + (members.length !== 1 ? 's' : '');
-        document.getElementById('modalCreatedAt').textContent = createdAt || '—';
+    let teamModalActivityLogs = [];
+    let teamModalActivityPage = 1;
+    const TEAM_MODAL_ACTIVITY_PER_PAGE = 5;
 
-        const tbody = document.getElementById('teamModalMembersBody');
-        if (members.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-6 text-center text-sm text-slate-400">No members found.</td></tr>`;
-        } else {
-            tbody.innerHTML = members.map((m, i) => `
-                <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="px-4 py-3 text-xs text-slate-400 font-medium">${i + 1}</td>
-                    <td class="px-4 py-3">
-                        <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-[10px] font-bold flex-shrink-0">
-                                ${m.name.charAt(0).toUpperCase()}
-                            </div>
-                            <span class="text-sm font-semibold text-slate-700">${m.name}</span>
-                        </div>
-                    </td>
-                    <td class="px-4 py-3">
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">${m.role}</span>
-                    </td>
-                </tr>
-            `).join('');
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function renderTeamModalActivityPage() {
+        const activityBody = document.getElementById('teamModalActivityBody');
+        const pager = document.getElementById('teamModalActivityPager');
+        const meta = document.getElementById('teamModalActivityMeta');
+        const pageLabel = document.getElementById('teamModalActivityPageLabel');
+        const prevBtn = document.getElementById('teamModalActivityPrev');
+        const nextBtn = document.getElementById('teamModalActivityNext');
+        const logs = teamModalActivityLogs;
+        const total = logs.length;
+        const totalPages = Math.max(1, Math.ceil(total / TEAM_MODAL_ACTIVITY_PER_PAGE));
+
+        if (teamModalActivityPage > totalPages) teamModalActivityPage = totalPages;
+        if (teamModalActivityPage < 1) teamModalActivityPage = 1;
+
+        if (total === 0) {
+            activityBody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-slate-400">No activity logs for this team yet.</td></tr>';
+            if (pager) pager.classList.add('hidden');
+            if (meta) meta.textContent = '';
+            return;
         }
 
-        openModal('teamInfoModal');
+        const start = (teamModalActivityPage - 1) * TEAM_MODAL_ACTIVITY_PER_PAGE;
+        const pageLogs = logs.slice(start, start + TEAM_MODAL_ACTIVITY_PER_PAGE);
+        const end = start + pageLogs.length;
+
+        activityBody.innerHTML = pageLogs.map(function (log) {
+            const isDone = log.status === 'archived';
+            const statusBadge = isDone
+                ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Completed</span>'
+                : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Assigned</span>';
+
+            return '<tr class="hover:bg-slate-50 transition-colors">' +
+                '<td class="px-3 py-2">' +
+                    '<p class="text-xs font-semibold text-slate-800 truncate" title="' + escHtml(log.title) + '">' + escHtml(log.title) + '</p>' +
+                    (log.description
+                        ? '<p class="text-[10px] text-slate-400 truncate" title="' + escHtml(log.description) + '">' + escHtml(log.description) + '</p>'
+                        : '') +
+                '</td>' +
+                '<td class="px-3 py-2 text-[11px] font-semibold text-slate-600 whitespace-nowrap">' + escHtml(log.role_label || log.role || '—') + '</td>' +
+                '<td class="px-3 py-2">' + statusBadge + '</td>' +
+                '<td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">' + escHtml(log.updated_at || '—') + '</td>' +
+            '</tr>';
+        }).join('');
+
+        if (meta) meta.textContent = 'Showing ' + (start + 1) + '-' + end + ' of ' + total;
+        if (pageLabel) pageLabel.textContent = 'Page ' + teamModalActivityPage + ' of ' + totalPages;
+        if (pager) pager.classList.toggle('hidden', total <= TEAM_MODAL_ACTIVITY_PER_PAGE);
+        if (prevBtn) prevBtn.disabled = teamModalActivityPage <= 1;
+        if (nextBtn) nextBtn.disabled = teamModalActivityPage >= totalPages;
+    }
+
+    function openTeamModal(groupName, members, createdAt, activityLogs) {
+        const logs = Array.isArray(activityLogs) ? activityLogs : [];
+        const nameSuffix = document.getElementById('modalTeamNameSuffix');
+        if (nameSuffix) {
+            nameSuffix.textContent = groupName ? ' — ' + groupName : '';
+        }
+
+        const tbody = document.getElementById('teamModalMembersBody');
+        if (!members || members.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-6 text-center text-xs text-slate-400">No members found.</td></tr>';
+        } else {
+            tbody.innerHTML = members.map(function (m, i) {
+                const roleLabels = m.role_labels || [m.role_label || m.role || '—'];
+                const roleBadges = roleLabels.map(function (rl) {
+                    return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">' + escHtml(rl) + '</span>';
+                }).join(' ');
+                return '<tr class="hover:bg-slate-50 transition-colors">' +
+                    '<td class="px-3 py-2 text-[11px] text-slate-400 font-medium">' + (i + 1) + '</td>' +
+                    '<td class="px-3 py-2">' +
+                        '<div class="flex items-center gap-2 min-w-0">' +
+                            '<div class="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-[10px] font-bold flex-shrink-0">' +
+                                String(m.name || '?').charAt(0).toUpperCase() +
+                            '</div>' +
+                            '<span class="text-xs font-semibold text-slate-700 truncate" title="' + escHtml(m.name) + '">' + escHtml(m.name) + '</span>' +
+                        '</div>' +
+                    '</td>' +
+                    '<td class="px-3 py-2">' +
+                        '<div class="flex flex-wrap gap-1">' + roleBadges + '</div>' +
+                    '</td>' +
+                '</tr>';
+            }).join('');
+        }
+
+        teamModalActivityLogs = logs;
+        teamModalActivityPage = 1;
+        renderTeamModalActivityPage();
+
+        document.getElementById('teamInfoModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeTeamModal() {
+        document.getElementById('teamInfoModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
     }
 
     function switchFacultyTab(tab) {
@@ -432,6 +540,28 @@
             icon.setAttribute('data-icon', 'mdi:eye-off-outline');
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const prevBtn = document.getElementById('teamModalActivityPrev');
+        const nextBtn = document.getElementById('teamModalActivityNext');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function () {
+                if (teamModalActivityPage > 1) {
+                    teamModalActivityPage -= 1;
+                    renderTeamModalActivityPage();
+                }
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', function () {
+                const totalPages = Math.max(1, Math.ceil(teamModalActivityLogs.length / TEAM_MODAL_ACTIVITY_PER_PAGE));
+                if (teamModalActivityPage < totalPages) {
+                    teamModalActivityPage += 1;
+                    renderTeamModalActivityPage();
+                }
+            });
+        }
+    });
 </script>
 @endpush
 @endsection

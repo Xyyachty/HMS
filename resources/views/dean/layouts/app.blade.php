@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HMS-Learn | Dean Panel</title>
+    <title>HMS | Dean Panel</title>
     <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
@@ -76,9 +76,9 @@
             <!-- Logo -->
             <div class="h-20 flex items-center px-6 border-b border-white/10 shrink-0">
                 <a href="#" class="flex items-center gap-3 group">
-                    <img src="{{ asset('chtm-logoo.png') }}" alt="HMS-Learn logo" class="h-16 w-auto object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300" />
+                    <img src="{{ asset('chtm-logoo.png') }}" alt="HMS logo" class="h-16 w-auto object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300" />
                     <div>
-                        <span class="text-lg font-bold tracking-tight text-white block leading-tight">HMS<span class="text-brand-light">-Learn</span></span>
+                        <span class="text-lg font-bold tracking-tight text-white block leading-tight">HMS</span>
                         <span class="text-[10px] text-slate-400 uppercase tracking-widest">Dean Portal</span>
                     </div>
                 </a>
@@ -89,26 +89,22 @@
                 <p class="px-8 mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Main Menu</p>
                 <ul class="space-y-1 px-4">
                     <li>
-                        <a href="{{ route('dean.dashboard') }}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white @yield('dashboard_active')">
-                            <span class="iconify w-5 text-center text-lg" data-icon="mdi:view-dashboard-outline"></span>
+                        <a href="{{ route('dean.dashboard') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-slate-400 hover:text-white @yield('dashboard_active')">
                             <span class="font-medium text-sm">Dashboard</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('dean.users') }}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white @yield('users_active')">
-                            <span class="iconify w-5 text-center text-lg" data-icon="mdi:account-cog-outline"></span>
-                            <span class="font-medium text-sm">User</span>
+                        <a href="{{ route('dean.users') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-slate-400 hover:text-white @yield('users_active')">
+                            <span class="font-medium text-sm">Manage User</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('dean.faculties') }}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white @yield('faculties_active')">
-                            <span class="iconify w-5 text-center text-lg" data-icon="mdi:account-group-outline"></span>
-                            <span class="font-medium text-sm">Teams</span>
+                        <a href="{{ route('dean.faculties') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-slate-400 hover:text-white @yield('faculties_active')">
+                            <span class="font-medium text-sm">Manage Team</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('dean.reports') }}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white @yield('reports_active')">
-                            <span class="iconify w-5 text-center text-lg" data-icon="mdi:file-chart-outline"></span>
+                        <a href="{{ route('dean.reports') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-slate-400 hover:text-white @yield('reports_active')">
                             <span class="font-medium text-sm">Reports</span>
                         </a>
                     </li>
@@ -119,11 +115,20 @@
 
             <!-- Sidebar Footer -->
             <div class="p-4 border-t border-white/10 shrink-0">
+                @php
+                    $deanUser = auth()->user();
+                    $deanDisplayName = trim(implode(' ', array_filter([
+                        $deanUser?->first_name,
+                        $deanUser?->last_name,
+                    ]))) ?: ($deanUser?->name ?? 'Dean');
+                    $deanAvatarName = urlencode($deanDisplayName);
+                    $deanEmail = $deanUser?->email ?? 'dean@hms.edu';
+                @endphp
                 <div class="bg-white/5 rounded-2xl p-4">
                     <div class="flex items-center gap-3 mb-3">
-                        <img src="https://ui-avatars.com/api/?name=Dr+Dean&background=DB2777&color=fff&size=40&font-size=0.4" class="w-10 h-10 rounded-xl border-2 border-white/20">
+                        <img src="https://ui-avatars.com/api/?name={{ $deanAvatarName }}&background=DB2777&color=fff&size=40&font-size=0.4" class="w-10 h-10 rounded-xl border-2 border-white/20" alt="{{ $deanDisplayName }}">
                         <div class="min-w-0">
-                            <p class="text-sm font-bold text-white truncate">Dr. Dean</p>
+                            <p class="text-sm font-bold text-white truncate">{{ $deanDisplayName }}</p>
                             <p class="text-[10px] text-slate-400">Dean Admin</p>
                         </div>
                     </div>
@@ -150,21 +155,11 @@
                     </button>
                     <div>
                         <h2 class="text-xl font-bold text-slate-900 tracking-tight">@yield('page_title', 'Dashboard')</h2>
-                        <p class="text-xs text-slate-400 font-light">Welcome back, Dr. Dean</p>
+                        <p class="text-xs text-slate-400 font-light">Welcome back, {{ $deanDisplayName }}</p>
                     </div>
                 </div>
 
                 <div class="flex items-center gap-3 md:gap-5">
-                    <!-- Philippine Date/Time -->
-                    <div class="hidden md:flex items-center bg-slate-100 rounded-xl px-4 h-10 gap-2">
-                        <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Today</span>
-                        <span id="phDayName" class="text-sm font-semibold text-slate-700">--</span>
-                        <span class="text-slate-300">|</span>
-                        <span id="phDate" class="text-sm text-slate-500">--</span>
-                        <span class="text-slate-300">|</span>
-                        <span id="phTime" class="text-sm font-semibold text-slate-700 tabular-nums">--</span>
-                    </div>
-
                     <!-- Notification -->
                     <button class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
                         <span class="iconify text-xl text-slate-500" data-icon="mdi:bell-outline"></span>
@@ -174,9 +169,9 @@
                     <!-- Profile Dropdown -->
                     <div class="relative">
                         <button onclick="toggleProfileMenu()" class="flex items-center gap-2.5 hover:bg-slate-100 p-1.5 pr-3 rounded-xl transition cursor-pointer focus:outline-none">
-                            <img src="https://ui-avatars.com/api/?name=Dr+Dean&background=DB2777&color=fff&size=40&font-size=0.4" class="w-9 h-9 rounded-xl border-2 border-white shadow-sm">
+                            <img src="https://ui-avatars.com/api/?name={{ $deanAvatarName }}&background=DB2777&color=fff&size=40&font-size=0.4" class="w-9 h-9 rounded-xl border-2 border-white shadow-sm" alt="{{ $deanDisplayName }}">
                             <div class="text-right hidden sm:block">
-                                <p class="text-xs font-bold text-slate-700">Dr. Dean</p>
+                                <p class="text-xs font-bold text-slate-700">{{ $deanDisplayName }}</p>
                                 <p class="text-[10px] text-slate-400">Dean Admin</p>
                             </div>
                             <span class="iconify text-slate-400 text-sm" data-icon="mdi:chevron-down"></span>
@@ -184,10 +179,10 @@
 
                         <div id="profileMenu" class="dropdown-menu absolute right-0 mt-3 w-60 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
                             <div class="px-5 py-4 bg-brand-soft border-b border-brand/10 flex items-center gap-3">
-                                <img src="https://ui-avatars.com/api/?name=Dr+Dean&background=DB2777&color=fff&size=40&font-size=0.4" class="w-10 h-10 rounded-xl">
+                                <img src="https://ui-avatars.com/api/?name={{ $deanAvatarName }}&background=DB2777&color=fff&size=40&font-size=0.4" class="w-10 h-10 rounded-xl" alt="{{ $deanDisplayName }}">
                                 <div>
-                                    <p class="font-bold text-slate-800 text-sm">Dr. Dean</p>
-                                    <p class="text-[11px] text-slate-400">dean@hms.edu</p>
+                                    <p class="font-bold text-slate-800 text-sm">{{ $deanDisplayName }}</p>
+                                    <p class="text-[11px] text-slate-400">{{ $deanEmail }}</p>
                                 </div>
                             </div>
                             <div class="py-2">
@@ -231,19 +226,19 @@
     <aside id="sidebarMobile" class="sidebar-mobile fixed top-0 left-0 bottom-0 w-72 bg-gradient-to-b from-sidebar to-sidebar-light text-white flex flex-col z-40 lg:hidden shadow-2xl">
         <div class="h-20 flex items-center px-6 border-b border-white/10 shrink-0">
             <a href="#" class="flex items-center gap-3">
-                <img src="{{ asset('chtm-logoo.png') }}" alt="HMS-Learn logo" class="h-16 w-auto object-contain drop-shadow-sm" />
+                <img src="{{ asset('chtm-logoo.png') }}" alt="HMS logo" class="h-16 w-auto object-contain drop-shadow-sm" />
                 <div>
-                    <span class="text-lg font-bold tracking-tight text-white block leading-tight">HMS<span class="text-brand-light">-Learn</span></span>
+                    <span class="text-lg font-bold tracking-tight text-white block leading-tight">HMS</span>
                     <span class="text-[10px] text-slate-400 uppercase tracking-widest">Dean Portal</span>
                 </div>
             </a>
         </div>
         <nav class="flex-1 py-6 overflow-y-auto">
             <ul class="space-y-1 px-4">
-                <li><a href="{{ route('dean.dashboard') }}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white"><span class="iconify w-5 text-center text-lg" data-icon="mdi:view-dashboard-outline"></span><span class="font-medium text-sm">Dashboard</span></a></li>
-                <li><a href="{{ route('dean.users') }}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white"><span class="iconify w-5 text-center text-lg" data-icon="mdi:account-cog-outline"></span><span class="font-medium text-sm">User</span></a></li>
-                <li><a href="{{ route('dean.faculties') }}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white"><span class="iconify w-5 text-center text-lg" data-icon="mdi:account-group-outline"></span><span class="font-medium text-sm">Teams</span></a></li>
-                <li><a href="{{ route('dean.reports') }}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white"><span class="iconify w-5 text-center text-lg" data-icon="mdi:file-chart-outline"></span><span class="font-medium text-sm">Reports</span></a></li>
+                <li><a href="{{ route('dean.dashboard') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-slate-400 hover:text-white"><span class="font-medium text-sm">Dashboard</span></a></li>
+                <li><a href="{{ route('dean.users') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-slate-400 hover:text-white"><span class="font-medium text-sm">Manage User</span></a></li>
+                <li><a href="{{ route('dean.faculties') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-slate-400 hover:text-white"><span class="font-medium text-sm">Manage Team</span></a></li>
+                <li><a href="{{ route('dean.reports') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-slate-400 hover:text-white"><span class="font-medium text-sm">Reports</span></a></li>
             </ul>
         </nav>
     </aside>
@@ -276,35 +271,7 @@
             if (!btn && !menu.contains(e.target)) {
                 menu.classList.remove('active');
             }
-        });2
-
-        function updatePhilippineTime() {
-            const now = new Date();
-            const dayName = new Intl.DateTimeFormat('en-PH', {
-                timeZone: 'Asia/Manila',
-                weekday: 'long',
-            }).format(now);
-            const dateText = new Intl.DateTimeFormat('en-PH', {
-                timeZone: 'Asia/Manila',
-                month: 'long',
-                day: 'numeric',
-            }).format(now);
-            const timeText = new Intl.DateTimeFormat('en-PH', {
-                timeZone: 'Asia/Manila',
-                hour: 'numeric',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true,
-            }).format(now);
-
-            const dayEl = document.getElementById('phDayName');
-            const dateEl = document.getElementById('phDate');
-            const timeEl = document.getElementById('phTime');
-
-            if (dayEl) dayEl.textContent = dayName;
-            if (dateEl) dateEl.textContent = dateText;
-            if (timeEl) timeEl.textContent = timeText;
-        }
+        });
 
         function toggleSidebar() {
             const overlay = document.getElementById('sidebarOverlay');
@@ -312,9 +279,6 @@
             overlay.classList.toggle('hidden');
             sidebar.classList.toggle('open');
         }
-
-        updatePhilippineTime();
-        setInterval(updatePhilippineTime, 1000);
     </script>
     @stack('scripts')
 </body>

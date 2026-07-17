@@ -1,6 +1,6 @@
 @extends('dean.layouts.app')
 
-@section('page_title', 'User Management')
+@section('page_title', 'List of User Management')
 @section('users_active', 'active')
 
 @push('styles')
@@ -35,41 +35,47 @@
 @section('content')
 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
 
-    <!-- Header -->
-    <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
-        <div>
-            <h3 class="text-lg font-bold text-slate-800">All Users</h3>
-            <p class="text-sm text-slate-500 mt-1">Manage faculty & student accounts across the system.</p>
+    <!-- Toolbar: Faculty / Students + Search + Add Faculty -->
+    <div class="px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex flex-wrap gap-2 min-w-0">
+            <button type="button" onclick="switchTab('faculty')" id="tab-faculty"
+                class="tab-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 border-slate-200 bg-white text-brand -mb-px relative z-10 transition">
+                <span class="iconify" data-icon="mdi:school-outline"></span> Faculty
+            </button>
+            <button type="button" onclick="switchTab('student')" id="tab-student"
+                class="tab-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 border-transparent bg-slate-50 text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition">
+                <span class="iconify" data-icon="mdi:account-group-outline"></span> Students
+            </button>
         </div>
-        <div class="flex gap-3">
-            <button onclick="openModal('createUserModal')" class="bg-brand text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2">
-                <span class="iconify" data-icon="mdi:account-plus-outline"></span> Add User
+
+        <div class="flex items-center gap-2 pb-3 shrink-0 ml-auto">
+            <div class="flex items-center bg-slate-100 rounded-xl px-3.5 h-10 gap-2 w-full sm:w-52">
+                <span class="iconify text-slate-400 shrink-0" data-icon="mdi:magnify"></span>
+                <input
+                    id="userSearchInput"
+                    type="text"
+                    placeholder="Search users..."
+                    class="bg-transparent text-sm outline-none w-full placeholder-slate-400"
+                    oninput="filterUsersTable(this.value)"
+                >
+            </div>
+            <button type="button" onclick="openModal('createUserModal')"
+                class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap">
+                <span class="iconify text-base" data-icon="mdi:account-plus-outline"></span>
+                Add Faculty
             </button>
         </div>
     </div>
 
-    <!-- Tab Bar -->
-    <div class="px-6 pt-4 flex gap-2 border-b border-slate-100">
-        <button onclick="switchTab('all')" id="tab-all" class="tab-btn px-5 py-2.5 text-sm font-bold rounded-t-xl border-b-2 border-brand text-brand bg-brand-soft transition">
-            All Users
-        </button>
-        <button onclick="switchTab('faculty')" id="tab-faculty" class="tab-btn px-5 py-2.5 text-sm font-bold rounded-t-xl border-b-2 border-transparent text-slate-500 hover:text-brand transition">
-            <span class="iconify mr-1" data-icon="mdi:school-outline"></span> Faculty
-        </button>
-        <button onclick="switchTab('student')" id="tab-student" class="tab-btn px-5 py-2.5 text-sm font-bold rounded-t-xl border-b-2 border-transparent text-slate-500 hover:text-brand transition">
-            <span class="iconify mr-1" data-icon="mdi:account-group-outline"></span> Students
-        </button>
-    </div>
-
-        @if (session('success'))
+    @if (session('success'))
         <div id="successAlert" class="mx-6 mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {{ session('success') }}
         </div>
-        @endif
-
+    @endif
 
     <!-- DataTable -->
-    <div class="p-6">
+    <div class="p-4 md:p-6">
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table id="usersTable" class="display nowrap w-full text-sm text-slate-700">
             <thead>
                 <tr>
@@ -163,6 +169,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 
@@ -371,37 +378,75 @@
     });
 
     let usersTable;
-    const seenUserIds = new Set();
+    const seenUserIds = new Set(@json($users->pluck('id')->map(fn ($id) => (int) $id)->values()));
     const liveUsersUrl = "{{ route('dean.users.live') }}";
+
+    function syncSeenUserIds() {
+        if (!usersTable) return;
+        usersTable.rows({ page: 'all' }).nodes().to$().each(function () {
+            const id = this.getAttribute('data-user-id');
+            if (id) {
+                seenUserIds.add(Number(id));
+            }
+        });
+    }
+
     $(document).ready(function() {
         usersTable = $('#usersTable').DataTable({
             "responsive": true,
             "pageLength": 5,
             "lengthChange": false,
+            "dom": 'rtip',
             "language": {
-                "search": "",
-                "searchPlaceholder": "Search users...",
                 "info": "Showing <b>_START_</b> to <b>_END_</b> of <b>_TOTAL_</b>",
                 "paginate": {
                     "next": "<span class='iconify' data-icon='mdi:chevron-right'></span>",
                     "previous": "<span class='iconify' data-icon='mdi:chevron-left'></span>"
                 }
+            },
+            "createdRow": function (row, data, dataIndex) {
+                // Keep data-user-id when DataTables redraws
+                const existing = row.getAttribute('data-user-id');
+                if (!existing && data && data.DT_RowAttr && data.DT_RowAttr['data-user-id']) {
+                    row.setAttribute('data-user-id', data.DT_RowAttr['data-user-id']);
+                }
             }
         });
 
-        document.querySelectorAll('#usersTable tbody tr[data-user-id]').forEach(row => {
-            const id = row.getAttribute('data-user-id');
-            if (id) {
-                seenUserIds.add(Number(id));
-            }
-        });
+        syncSeenUserIds();
+        switchTab('faculty');
     });
+
+    function filterUsersTable(query) {
+        if (!usersTable) return;
+        usersTable.search(query || '').draw();
+    }
+
+    function switchTab(role) {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('border-slate-200', 'bg-white', 'text-brand', '-mb-px', 'z-10');
+            btn.classList.add('border-transparent', 'bg-slate-50', 'text-slate-500');
+        });
+        const active = document.getElementById('tab-' + role);
+        if (active) {
+            active.classList.remove('border-transparent', 'bg-slate-50', 'text-slate-500');
+            active.classList.add('border-slate-200', 'bg-white', 'text-brand', '-mb-px', 'z-10');
+        }
+
+        if (!usersTable) return;
+        usersTable.column(3).search(role === 'faculty' ? '^\\s*Faculty\\s*$' : '^\\s*Student\\s*$', true, false).draw();
+    }
 
     function buildUserRow(user) {
         const nameCell = `<span class="font-semibold text-slate-800">${user.name}</span>`;
-        const roleCell = user.role === 'faculty'
-            ? '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-accent border border-rose-accent/10">Faculty</span>'
-            : '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">Student</span>';
+        let roleCell;
+        if (user.role === 'dean') {
+            roleCell = '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">Dean</span>';
+        } else if (user.role === 'faculty') {
+            roleCell = '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-accent border border-rose-accent/10">Faculty</span>';
+        } else {
+            roleCell = '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">Student</span>';
+        }
         const statusCell = user.status === 'active'
             ? '<span class="flex items-center gap-1.5 text-xs font-semibold text-green-600"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Active</span>'
             : user.status === 'pending'
@@ -409,6 +454,17 @@
                 : '<span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Suspended</span>';
         const actionCell = user.role === 'student' && user.status === 'pending'
             ? `
+                <div class="flex justify-center w-full">
+                    <form method="POST" action="${approveBaseUrl}/${user.id}/approve">
+                        <input type="hidden" name="_token" value="${csrfToken}">
+                        <button type="submit" class="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center gap-2 w-24" aria-label="Approve student">
+                            <span class="iconify text-base" data-icon="mdi:check-circle-outline"></span>
+                            <span>Approve</span>
+                        </button>
+                    </form>
+                </div>
+            `
+            : `
                 <div class="flex justify-center w-full">
                     <button
                         onclick="openUpdateModal(this)"
@@ -425,17 +481,6 @@
                         class="text-brand bg-brand-soft hover:bg-brand/10 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center gap-2 w-24"
                         aria-label="Update user"
                     >
-                        <input type="hidden" name="_token" value="${csrfToken}">
-                        <button type="submit" class="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center gap-2 w-24" aria-label="Approve student">
-                            <span class="iconify text-base" data-icon="mdi:check-circle-outline"></span>
-                            <span>Approve</span>
-                        </button>
-                    </form>
-                </div>
-            `
-            : `
-                <div class="flex justify-center w-full">
-                    <button onclick="openModal('updateUserModal')" class="text-brand bg-brand-soft hover:bg-brand/10 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center gap-2 w-24" aria-label="Update user">
                         <span class="iconify text-base" data-icon="mdi:update"></span>
                         <span>Update</span>
                     </button>
@@ -454,17 +499,33 @@
     }
 
     function addUserRow(user) {
-        if (!usersTable || seenUserIds.has(Number(user.id))) {
+        if (!usersTable || !user || user.id == null) {
             return;
         }
 
-        const rowNode = usersTable.row.add(buildUserRow(user)).node();
-        if (rowNode) {
-            rowNode.setAttribute('data-user-id', user.id);
-            $(rowNode).prependTo($('#usersTable tbody'));
+        const id = Number(user.id);
+        if (seenUserIds.has(id)) {
+            return;
         }
-        usersTable.draw(false);
-        seenUserIds.add(Number(user.id));
+
+        // Extra guard: row may already exist in the table DOM
+        const alreadyInTable = usersTable
+            .rows({ page: 'all' })
+            .nodes()
+            .to$()
+            .filter(`[data-user-id="${id}"]`)
+            .length > 0;
+
+        if (alreadyInTable) {
+            seenUserIds.add(id);
+            return;
+        }
+
+        const rowNode = usersTable.row.add(buildUserRow(user)).draw(false).node();
+        if (rowNode) {
+            rowNode.setAttribute('data-user-id', String(id));
+        }
+        seenUserIds.add(id);
     }
 
     async function pollLiveUsers() {
@@ -631,24 +692,6 @@
         matchHelp.classList.toggle('hidden', !mismatch);
 
         return !(tooShort || mismatch);
-    }
-
-    function switchTab(role) {
-        // Update active tab styles
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('border-brand', 'text-brand', 'bg-brand-soft');
-            btn.classList.add('border-transparent', 'text-slate-500');
-        });
-        const active = document.getElementById('tab-' + role);
-        active.classList.remove('border-transparent', 'text-slate-500');
-        active.classList.add('border-brand', 'text-brand', 'bg-brand-soft');
-
-        // Filter DataTable by role column (index 3)
-        if (role === 'all') {
-            usersTable.column(3).search('').draw();
-        } else {
-            usersTable.column(3).search(role === 'faculty' ? 'Faculty' : 'Student', false, false).draw();
-        }
     }
 
     @if ($errors->any() && old('role'))
