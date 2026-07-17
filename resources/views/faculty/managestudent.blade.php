@@ -297,7 +297,7 @@
                         <code class="bg-blue-100 px-1 rounded">student_id, first_name, last_name, email</code>
                         <span class="mx-1 text-blue-400">+</span>
                         optional: <code class="bg-blue-100 px-1 rounded">middle_name, phone_number</code>
-                        <br><span class="text-blue-500 mt-1 block">Default password will be <strong>hms@{student_id}</strong> for each student.</span>
+                        <br><span class="text-blue-500 mt-1 block">Default password will be <strong>password</strong> for each student.</span>
                     </div>
                 </div>
 

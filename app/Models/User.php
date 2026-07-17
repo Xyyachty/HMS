@@ -30,7 +30,28 @@ class User extends Authenticatable
         'last_name',
         'phone_number',
         'status',
+        'email_verified_at',
     ];
+
+    /**
+     * Normalize optional text: empty / "None" / "null" become "" (avoid SQL NULL).
+     */
+    public static function cleanOptional(?string $value): string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '' || strcasecmp($value, 'none') === 0 || strcasecmp($value, 'null') === 0) {
+            return '';
+        }
+
+        return $value;
+    }
+
+    /** @deprecated Use cleanOptional() — kept so older calls still avoid NULL. */
+    public static function blankToNull(?string $value): string
+    {
+        return static::cleanOptional($value);
+    }
 
     /**
      * The attributes that should be hidden for serialization.

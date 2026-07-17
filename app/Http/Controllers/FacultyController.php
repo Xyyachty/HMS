@@ -182,13 +182,14 @@ class FacultyController extends Controller
             $user = User::create([
                 'name' => $fullName,
                 'first_name' => $validated['first_name'],
-                'middle_name' => $validated['middle_name'] ?? null,
+                'middle_name' => User::cleanOptional($validated['middle_name'] ?? null),
                 'last_name' => $validated['last_name'],
                 'email' => $email,
                 'password' => Hash::make($validated['password']),
                 'role' => 'student',
                 'status' => 'active',
-                'phone_number' => $validated['phone_number'] ?? null,
+                'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
+                'email_verified_at' => now(),
             ]);
 
             $student = Student::create([
@@ -219,7 +220,9 @@ class FacultyController extends Controller
         }
 
         $updateData = [
-            'phone_number' => $validated['phone_number'] ?? $user->phone_number,
+            'phone_number' => User::cleanOptional($validated['phone_number'] ?? null) !== ''
+                ? User::cleanOptional($validated['phone_number'] ?? null)
+                : ($user->phone_number ?? ''),
             'status' => $validated['status'],
         ];
 
@@ -279,12 +282,12 @@ class FacultyController extends Controller
             // Map values by header name
             $data = array_combine($rawHeader, array_map(fn($v) => trim((string) ($v ?? '')), $row));
 
-            $studentId  = $data['student_id']   ?? '';
-            $firstName  = $data['first_name']   ?? '';
-            $lastName   = $data['last_name']    ?? '';
-            $middleName = $data['middle_name']  ?? '';
-            $emailRaw   = $data['email']        ?? '';
-            $phone      = $data['phone_number'] ?? '';
+            $studentId  = User::cleanOptional($data['student_id']   ?? '');
+            $firstName  = User::cleanOptional($data['first_name']   ?? '');
+            $lastName   = User::cleanOptional($data['last_name']    ?? '');
+            $middleName = User::cleanOptional($data['middle_name']  ?? '');
+            $emailRaw   = User::cleanOptional($data['email']        ?? '');
+            $phone      = User::cleanOptional($data['phone_number'] ?? '');
 
             // Skip completely blank rows
             if ($studentId === '' && $firstName === '' && $lastName === '' && $emailRaw === '') {
@@ -325,7 +328,7 @@ class FacultyController extends Controller
             }
 
             $fullName        = trim(implode(' ', array_filter([$firstName, $middleName, $lastName])));
-            $defaultPassword = Hash::make('hms@' . $studentId);
+            $defaultPassword = Hash::make('password');
 
             try {
                 [$user, $student] = DB::transaction(function () use (
@@ -335,13 +338,14 @@ class FacultyController extends Controller
                     $user = User::create([
                         'name'         => $fullName,
                         'first_name'   => $firstName,
-                        'middle_name'  => $middleName !== '' ? $middleName : null,
+                        'middle_name'  => $middleName,
                         'last_name'    => $lastName,
                         'email'        => $email,
                         'password'     => $defaultPassword,
                         'role'         => 'student',
                         'status'       => 'active',
-                        'phone_number' => $phone !== '' ? $phone : null,
+                        'phone_number' => $phone,
+                        'email_verified_at' => now(),
                     ]);
 
                     $student = Student::create([
@@ -561,16 +565,33 @@ class FacultyController extends Controller
                     $priority = $validated['task_priorities'][$role][$index] ?? 'medium';
                     
                     if ($title) {
-                        Task::create([
-                            'faculty_id' => $facultyId,
-                            'role' => $role,
-                            'title' => $title,
-                            'description' => $description,
-                            'priority' => $priority,
-                            'due_date' => $validated['due_date'] ?? null,
-                            'status' => 'active',
-                        ]);
-                        $tasksCreated++;
+                        $members = StudentGroup::with('student')
+                            ->where('faculty_id', $facultyId)
+                            ->whereHas('roles', fn ($q) => $q->where('role', $role))
+                            ->get();
+
+                        $payload = [
+                            'faculty_id'  => $facultyId,
+                            'role'        => $role,
+                            'title'       => $title,
+                            'description' => User::cleanOptional($description),
+                            'priority'    => $priority,
+                            'due_date'    => $validated['due_date'] ?? null,
+                            'status'      => 'active',
+                        ];
+
+                        if ($members->isEmpty()) {
+                            Task::create($payload);
+                            $tasksCreated++;
+                        } else {
+                            foreach ($members as $member) {
+                                Task::create(array_merge($payload, [
+                                    'student_id'  => $member->student_id,
+                                    'assigned_to' => $member->student?->user_id,
+                                ]));
+                                $tasksCreated++;
+                            }
+                        }
                     }
                 }
             }

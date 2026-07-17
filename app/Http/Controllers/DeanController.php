@@ -97,16 +97,17 @@ class DeanController extends Controller
         $user = User::create([
             'name' => $fullName,
             'first_name' => $validated['first_name'],
-            'middle_name' => $validated['middle_name'] ?? null,
+            'middle_name' => User::cleanOptional($validated['middle_name'] ?? null),
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => 'faculty',
+            'email_verified_at' => now(),
         ]);
 
         Faculty::create([
             'user_id' => $user->id,
-            'phone_number' => $validated['phone_number'] ?? null,
+            'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
             'status' => $validated['status'],
         ]);
 
@@ -135,11 +136,12 @@ class DeanController extends Controller
         $userData = [
             'name' => $fullName,
             'first_name' => $validated['first_name'],
-            'middle_name' => $validated['middle_name'] ?? null,
+            'middle_name' => User::cleanOptional($validated['middle_name'] ?? null),
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
+            'email_verified_at' => now(),
         ];
 
         if (Schema::hasColumn('users', 'status')) {
@@ -147,7 +149,7 @@ class DeanController extends Controller
         }
 
         if (Schema::hasColumn('users', 'phone_number')) {
-            $userData['phone_number'] = $validated['phone_number'] ?? null;
+            $userData['phone_number'] = User::cleanOptional($validated['phone_number'] ?? null);
         }
 
         $user = User::create($userData);
@@ -155,7 +157,7 @@ class DeanController extends Controller
         if ($validated['role'] === 'faculty') {
             Faculty::create([
                 'user_id' => $user->id,
-                'phone_number' => $validated['phone_number'] ?? null,
+                'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
                 'status' => $validated['status'],
             ]);
         }
@@ -180,7 +182,7 @@ class DeanController extends Controller
         }
 
         if (Schema::hasColumn('users', 'phone_number')) {
-            $user->phone_number = $validated['phone_number'] ?? null;
+            $user->phone_number = User::cleanOptional($validated['phone_number'] ?? null);
         }
 
         if (!empty($validated['password'])) {
@@ -190,7 +192,7 @@ class DeanController extends Controller
         $user->save();
 
         if ($user->role === 'faculty' && $user->faculty) {
-            $user->faculty->phone_number = $validated['phone_number'] ?? null;
+            $user->faculty->phone_number = User::cleanOptional($validated['phone_number'] ?? null);
             $user->faculty->status = $validated['status'];
             $user->faculty->save();
         }
@@ -268,11 +270,12 @@ class DeanController extends Controller
             $userData = [
                 'name' => $fullName,
                 'first_name' => $validated['first_name'],
-                'middle_name' => $validated['middle_name'] ?? null,
+                'middle_name' => User::cleanOptional($validated['middle_name'] ?? null),
                 'last_name' => $validated['last_name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($password),
                 'role' => $validated['role'],
+                'email_verified_at' => now(),
             ];
 
             if (Schema::hasColumn('users', 'status')) {
@@ -280,7 +283,7 @@ class DeanController extends Controller
             }
 
             if (Schema::hasColumn('users', 'phone_number')) {
-                $userData['phone_number'] = $validated['phone_number'] ?? null;
+                $userData['phone_number'] = User::cleanOptional($validated['phone_number'] ?? null);
             }
 
             try {
@@ -289,7 +292,7 @@ class DeanController extends Controller
                 if ($validated['role'] === 'faculty') {
                     Faculty::create([
                         'user_id' => $user->id,
-                        'phone_number' => $validated['phone_number'] ?? null,
+                        'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
                         'status' => $validated['status'] ?? 'active',
                     ]);
                 }

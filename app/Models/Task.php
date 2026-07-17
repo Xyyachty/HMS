@@ -40,6 +40,20 @@ class Task extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (Task $task) {
+            // Keep student_id in sync with assigned_to (users.id → students.id)
+            if ($task->assigned_to && !$task->student_id) {
+                $task->student_id = Student::where('user_id', $task->assigned_to)->value('id');
+            }
+
+            if ($task->student_id && !$task->assigned_to) {
+                $task->assigned_to = Student::where('id', $task->student_id)->value('user_id');
+            }
+        });
+    }
+
     /**
      * Scope to only active tasks.
      */
