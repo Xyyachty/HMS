@@ -15,6 +15,7 @@ class StudentGroup extends Model
         'group_name',
         'faculty_id',
         'student_id',
+        'role',
     ];
 
     public function student()

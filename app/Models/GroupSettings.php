@@ -13,5 +13,12 @@ class GroupSettings extends Model
         'group_name',
         'faculty_id',
         'selected_template',
+        'customizations',
+        'is_published',
+    ];
+
+    protected $casts = [
+        'customizations' => 'array',
+        'is_published' => 'boolean',
     ];
 }

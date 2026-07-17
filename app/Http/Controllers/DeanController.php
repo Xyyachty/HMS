@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use App\Events\StudentApproved;
 use App\Models\Faculty;
+use App\Models\Student;
+use App\Models\StudentGroup;
+use App\Models\Task;
 use App\Models\User;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -15,7 +18,63 @@ class DeanController extends Controller
 {
     public function dashboard()
     {
-        return view('dean.dashboard');
+        $totalStudents = Student::count();
+        $totalFaculty = Faculty::count();
+        $pendingFaculty = User::where('role', 'faculty')
+            ->where('status', 'pending')
+            ->count();
+
+        $totalTeams = (int) StudentGroup::query()
+            ->selectRaw('COUNT(DISTINCT CONCAT(COALESCE(faculty_id, 0), "::", group_name)) as aggregate')
+            ->value('aggregate');
+
+        $studentsThisMonth = Student::where('created_at', '>=', now()->startOfMonth())->count();
+        $studentsLastMonth = Student::whereBetween('created_at', [
+            now()->subMonth()->startOfMonth(),
+            now()->subMonth()->endOfMonth(),
+        ])->count();
+
+        if ($studentsLastMonth > 0) {
+            $studentTrend = (int) round((($studentsThisMonth - $studentsLastMonth) / $studentsLastMonth) * 100);
+        } else {
+            $studentTrend = $studentsThisMonth > 0 ? 100 : 0;
+        }
+
+        $teamsThisMonth = (int) StudentGroup::query()
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->selectRaw('COUNT(DISTINCT CONCAT(COALESCE(faculty_id, 0), "::", group_name)) as aggregate')
+            ->value('aggregate');
+
+        $recentStudents = Student::with('user')
+            ->latest()
+            ->take(6)
+            ->get();
+
+        $recentActivity = Task::with('faculty.user')
+            ->where('status', 'archived')
+            ->orderByDesc('updated_at')
+            ->take(6)
+            ->get();
+
+        $roleLabels = [
+            'front_desk' => 'Front Desk',
+            'restaurant_management' => 'Restaurant',
+            'room_management' => 'Room Mgmt',
+            'maintenance' => 'Maintenance',
+            'housekeeping' => 'Housekeeping',
+        ];
+
+        return view('dean.dashboard', compact(
+            'totalStudents',
+            'totalFaculty',
+            'pendingFaculty',
+            'totalTeams',
+            'studentTrend',
+            'teamsThisMonth',
+            'recentStudents',
+            'recentActivity',
+            'roleLabels'
+        ));
     }
 
     public function users()
@@ -67,13 +126,78 @@ class DeanController extends Controller
 
     public function faculties()
     {
-        $faculties = Faculty::with(['user', 'studentGroups.student.user'])->latest()->get();
+        $faculties = Faculty::with(['user', 'studentGroups.student.user', 'studentGroups.roles'])
+            ->latest()
+            ->get();
+
         $completedTasks = \App\Models\Task::with('faculty.user')
             ->where('status', 'archived')
             ->orderByDesc('updated_at')
             ->get();
 
-        return view('dean.faculties', compact('faculties', 'completedTasks'));
+        $roleLabels = [
+            'front_desk' => 'Front Desk',
+            'restaurant_management' => 'Restaurant',
+            'room_management' => 'Rooms',
+            'maintenance' => 'Maintenance',
+            'housekeeping' => 'Housekeeping',
+        ];
+
+        $allTasks = \App\Models\Task::query()
+            ->orderByDesc('updated_at')
+            ->limit(1000)
+            ->get()
+            ->groupBy('faculty_id');
+
+        $teamActivityByFacultyGroup = [];
+        foreach ($faculties as $faculty) {
+            $facultyId = (int) $faculty->id;
+            $facultyTasks = $allTasks->get($facultyId, collect());
+            $groups = $faculty->studentGroups
+                ? $faculty->studentGroups->groupBy('group_name')
+                : collect();
+
+            foreach ($groups as $groupName => $members) {
+                $memberStudentIds = $members->pluck('student_id')->filter()->map(fn ($id) => (int) $id)->unique()->all();
+                $memberRoles = $members
+                    ->flatMap(function ($m) {
+                        $fromRelation = $m->roles->pluck('role');
+                        return $fromRelation->isNotEmpty()
+                            ? $fromRelation
+                            : collect([$m->role])->filter();
+                    })
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $teamActivityByFacultyGroup[$facultyId][$groupName] = $facultyTasks
+                    ->filter(function ($task) use ($memberStudentIds, $memberRoles) {
+                        if ($task->student_id && in_array((int) $task->student_id, $memberStudentIds, true)) {
+                            return true;
+                        }
+
+                        return in_array($task->role, $memberRoles, true);
+                    })
+                    ->take(100)
+                    ->values()
+                    ->map(function ($task) use ($roleLabels) {
+                        return [
+                            'title' => $task->title,
+                            'description' => $task->description,
+                            'role' => $task->role,
+                            'role_label' => $roleLabels[$task->role] ?? $task->role,
+                            'priority' => strtolower($task->priority ?? 'medium'),
+                            'status' => $task->status,
+                            'due_date' => optional($task->due_date)->format('M d, Y'),
+                            'updated_at' => optional($task->updated_at)->format('M d, Y'),
+                        ];
+                    })
+                    ->all();
+            }
+        }
+
+        return view('dean.faculties', compact('faculties', 'completedTasks', 'teamActivityByFacultyGroup', 'roleLabels'));
     }
 
     public function storeFaculty(Request $request)
@@ -202,7 +326,57 @@ class DeanController extends Controller
 
     public function reports()
     {
-        return view('dean.reports');
+        $completedQuery = Task::with(['faculty.user', 'student.user', 'assignedTo'])
+            ->where('status', 'archived');
+
+        $totalCompleted = (clone $completedQuery)->count();
+        $totalActive = Task::where('status', 'active')->count();
+        $totalTasks = $totalCompleted + $totalActive;
+        $completionRate = $totalTasks > 0 ? round(($totalCompleted / $totalTasks) * 100) : 0;
+
+        $byRole = Task::where('status', 'archived')
+            ->selectRaw('role, COUNT(*) as total')
+            ->groupBy('role')
+            ->pluck('total', 'role');
+
+        $byPriority = Task::where('status', 'archived')
+            ->selectRaw('priority, COUNT(*) as total')
+            ->groupBy('priority')
+            ->pluck('total', 'priority');
+
+        $byFaculty = Task::with('faculty.user')
+            ->where('status', 'archived')
+            ->get()
+            ->groupBy('faculty_id')
+            ->map(function ($tasks) {
+                $user = $tasks->first()->faculty?->user;
+                $name = trim(implode(' ', array_filter([
+                    $user?->first_name,
+                    $user?->last_name,
+                ]))) ?: ($user?->name ?? 'Faculty');
+
+                return [
+                    'name' => $name,
+                    'total' => $tasks->count(),
+                ];
+            })
+            ->sortByDesc('total')
+            ->values();
+
+        $completedTasks = Task::with(['faculty.user', 'student.user', 'assignedTo'])
+            ->where('status', 'archived')
+            ->orderByDesc('updated_at')
+            ->paginate(12);
+
+        return view('dean.reports', compact(
+            'totalCompleted',
+            'totalActive',
+            'completionRate',
+            'byRole',
+            'byPriority',
+            'byFaculty',
+            'completedTasks'
+        ));
     }
 
     public function bulkUpload(Request $request)
@@ -314,6 +488,16 @@ class DeanController extends Controller
         }
 
         return redirect()->route('dean.users')->with('success', $message);
+    }
+
+    public function activityLogs()
+    {
+        $logs = Task::with('faculty.user')
+            ->where('status', 'archived')
+            ->orderByDesc('updated_at')
+            ->paginate(15);
+
+        return view('dean.activitylogs', compact('logs'));
     }
 
     public function approveUser(User $user)

@@ -73,11 +73,6 @@ class AuthController extends Controller
         ])->onlyInput('email');
     }
 
-    public function signup()
-    {
-        return view('auth.signup');
-    }
-
     public function forgotPassword()
     {
         return view('auth.forgotpassword');

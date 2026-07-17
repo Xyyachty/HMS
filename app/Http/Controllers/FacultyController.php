@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use App\Events\StudentCreated;
+use App\Models\FacultyClass;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\StudentGroupRole;
@@ -19,12 +20,25 @@ class FacultyController extends Controller
     {
         $facultyId = auth()->user()?->faculty?->id;
 
-        $totalStudents   = Student::count();
-        $totalTeams      = $facultyId ? StudentGroup::where('faculty_id', $facultyId)->distinct('group_name')->count('group_name') : 0;
-        $assignedTasks   = $facultyId ? Task::where('faculty_id', $facultyId)->whereNotNull('assigned_to')->count() : 0;
-        $compliedTasks   = $facultyId ? Task::where('faculty_id', $facultyId)->where('status', 'archived')->count() : 0;
+        $totalStudents = $facultyId
+            ? Student::where('faculty_id', $facultyId)->count()
+            : 0;
 
-        return view('faculty.dashboard', compact('totalStudents', 'totalTeams', 'assignedTasks', 'compliedTasks'));
+        $totalTeams = $facultyId
+            ? (int) StudentGroup::where('faculty_id', $facultyId)
+                ->selectRaw('COUNT(DISTINCT group_name) as aggregate')
+                ->value('aggregate')
+            : 0;
+
+        $assignedTasks = $facultyId
+            ? Task::where('faculty_id', $facultyId)->where('status', 'active')->count()
+            : 0;
+
+        return view('faculty.dashboard', compact(
+            'totalStudents',
+            'totalTeams',
+            'assignedTasks'
+        ));
     }
 
     public function storeGroup(Request $request)
@@ -40,7 +54,7 @@ class FacultyController extends Controller
             'group_name' => ['required', 'string', 'max:255'],
             'members' => ['required', 'array', 'min:1'],
             'members.*' => ['integer', 'exists:students,id'],
-            'member_roles' => ['required', 'array'],
+            'member_roles' => ['nullable', 'array'],
         ]);
 
         // If inserting into existing team, validate that the team already exists
@@ -64,44 +78,27 @@ class FacultyController extends Controller
             }
         }
 
-        $allowedRoles = [
-            'front_desk',
-            'restaurant_management',
-            'room_management',
-            'maintenance',
-            'housekeeping',
-        ];
+        $allowedRoles = $this->teamRoleKeys();
+        $memberIds = array_values(array_unique($validated['members']));
+        $rolesByMember = $this->resolveMemberRoles(
+            $memberIds,
+            $validated['member_roles'] ?? [],
+            $allowedRoles
+        );
 
-        $memberIds = array_unique($validated['members']);
-
-        foreach ($memberIds as $studentId) {
-            $roles = $validated['member_roles'][$studentId] ?? [];
-            if (!is_array($roles)) {
-                $roles = [$roles];
-            }
-
-            if (empty($roles)) {
-                return back()->withErrors(['member_roles' => 'Please select at least one role for each selected member.'])->withInput();
-            }
-
-            foreach ($roles as $role) {
-                if (!in_array($role, $allowedRoles, true)) {
-                    return back()->withErrors(['member_roles' => 'Please select valid roles for each selected member.'])->withInput();
-                }
-            }
+        if ($rolesByMember === null) {
+            return back()->withErrors(['member_roles' => 'Please select valid roles for each selected member.'])->withInput();
         }
 
         foreach ($memberIds as $studentId) {
+            $roles = $rolesByMember[$studentId];
+
             $studentGroup = StudentGroup::create([
                 'group_name' => $validated['group_name'],
                 'faculty_id' => $facultyId,
                 'student_id' => $studentId,
+                'role' => $roles[0], // legacy column; real roles stored in student_group_roles
             ]);
-
-            $roles = $validated['member_roles'][$studentId] ?? [];
-            if (!is_array($roles)) {
-                $roles = [$roles];
-            }
 
             foreach ($roles as $role) {
                 StudentGroupRole::create([
@@ -111,19 +108,120 @@ class FacultyController extends Controller
             }
         }
 
-        return redirect()->route('faculty.role');
+        return redirect()->route('faculty.role', array_filter([
+            'tab' => 'teams',
+            'class' => $request->input('class_letter') ?: null,
+        ]));
+    }
+
+    /** @return list<string> */
+    private function teamRoleKeys(): array
+    {
+        return [
+            'front_desk',
+            'restaurant_management',
+            'room_management',
+            'maintenance',
+            'housekeeping',
+        ];
+    }
+
+    /**
+     * Build per-member roles. Missing selections get rotating default hotel roles.
+     *
+     * @param  list<int|string>  $memberIds
+     * @param  array<int|string, mixed>  $memberRoles
+     * @param  list<string>  $allowedRoles
+     * @return array<int, list<string>>|null  null when an explicit role is invalid
+     */
+    private function resolveMemberRoles(array $memberIds, array $memberRoles, array $allowedRoles): ?array
+    {
+        $resolved = [];
+        $index = 0;
+
+        foreach ($memberIds as $studentId) {
+            $roles = $memberRoles[$studentId] ?? [];
+            if (!is_array($roles)) {
+                $roles = [$roles];
+            }
+
+            $roles = array_values(array_unique(array_filter($roles, fn ($r) => $r !== null && $r !== '')));
+
+            if ($roles === []) {
+                $roles = [$allowedRoles[$index % count($allowedRoles)]];
+            }
+
+            foreach ($roles as $role) {
+                if (!in_array($role, $allowedRoles, true)) {
+                    return null;
+                }
+            }
+
+            $resolved[(int) $studentId] = $roles;
+            $index++;
+        }
+
+        return $resolved;
     }
 
     public function students()
     {
-        $students = Student::with('user')->latest()->paginate(5);
+        $facultyId = auth()->user()?->faculty?->id;
 
-        return view('faculty.managestudent', compact('students'));
+        if (!$facultyId) {
+            return view('faculty.managestudent', [
+                'students' => Student::whereRaw('1 = 0')->paginate(5),
+                'classes' => collect(),
+                'activeClass' => null,
+                'openClass' => null,
+                'classCapacity' => FacultyClass::CAPACITY,
+            ]);
+        }
+
+        $classes = FacultyClass::ensureForFaculty($facultyId)->map(function (FacultyClass $class) {
+            $class->seats_taken = $class->students()->count();
+            return $class;
+        });
+
+        $openClass = $classes->firstWhere('status', 'open') ?? $classes->last();
+
+        $requestedLetter = strtoupper((string) request('class', $openClass?->letter ?? 'A'));
+        $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $openClass;
+
+        $students = Student::with('user')
+            ->where('faculty_id', $facultyId)
+            ->when($activeClass, fn ($q) => $q->where('faculty_class_id', $activeClass->id))
+            ->latest()
+            ->paginate(5)
+            ->withQueryString();
+
+        $classCapacity = FacultyClass::CAPACITY;
+
+        return view('faculty.managestudent', compact(
+            'students',
+            'classes',
+            'activeClass',
+            'openClass',
+            'classCapacity'
+        ));
     }
 
     public function studentsLive()
     {
-        $students = Student::with('user')->latest()->get()->map(function ($student) {
+        $facultyId = auth()->user()?->faculty?->id;
+        $classLetter = strtoupper((string) request('class', ''));
+
+        $query = Student::with(['user', 'facultyClass'])
+            ->when($facultyId, fn ($q) => $q->where('faculty_id', $facultyId))
+            ->when($classLetter !== '', function ($q) use ($facultyId, $classLetter) {
+                $q->whereHas('facultyClass', function ($cq) use ($facultyId, $classLetter) {
+                    $cq->where('letter', $classLetter)
+                        ->when($facultyId, fn ($inner) => $inner->where('faculty_id', $facultyId));
+                });
+            })
+            ->latest();
+
+        $students = $query->get()->map(function ($student) {
             $user = $student->user;
             $displayName = trim(implode(' ', array_filter([
                 $user?->last_name ?? null,
@@ -141,6 +239,7 @@ class FacultyController extends Controller
                 'phone_number' => $user?->phone_number,
                 'status' => $user?->status ?? 'active',
                 'joined' => optional($user?->created_at)->format('M d, Y'),
+                'class' => $student->facultyClass?->letter,
             ];
         });
 
@@ -149,6 +248,11 @@ class FacultyController extends Controller
 
     public function storeStudent(Request $request)
     {
+        $facultyId = auth()->user()?->faculty?->id;
+        if (!$facultyId) {
+            return back()->withErrors(['error' => 'Faculty account not found.'])->withInput();
+        }
+
         $validated = $request->validate([
             'student_id' => ['required', 'string', 'max:50', 'unique:students,student_id'],
             'first_name' => ['required', 'string', 'max:255'],
@@ -178,7 +282,9 @@ class FacultyController extends Controller
             $validated['last_name'],
         ])));
 
-        [$user, $student] = DB::transaction(function () use ($validated, $email, $fullName) {
+        [$user, $student, $class] = DB::transaction(function () use ($validated, $email, $fullName, $facultyId) {
+            $class = FacultyClass::claimSeat($facultyId);
+
             $user = User::create([
                 'name' => $fullName,
                 'first_name' => $validated['first_name'],
@@ -194,15 +300,26 @@ class FacultyController extends Controller
 
             $student = Student::create([
                 'user_id' => $user->id,
+                'faculty_id' => $facultyId,
+                'faculty_class_id' => $class->id,
                 'student_id' => $validated['student_id'],
             ]);
-        
-            return [$user, $student];
+
+            $class->syncCapacity();
+
+            return [$user, $student, $class->fresh()];
         });
 
         event(new StudentCreated($user, $student));
 
-        return redirect()->route('faculty.students')->with('success', 'Student account created successfully.');
+        $message = 'Student account created successfully and added to ' . ($class->name ?? 'class') . '.';
+        if ($class->status === 'closed') {
+            $message .= ' ' . $class->name . ' is now full. A new class tab was opened.';
+        }
+
+        return redirect()
+            ->route('faculty.students', ['class' => $class->letter])
+            ->with('success', $message);
     }
 
     public function updateStudent(Request $request, $userId)
@@ -232,11 +349,16 @@ class FacultyController extends Controller
 
         $user->update($updateData);
 
-        return redirect()->route('faculty.students')->with('success', 'Student updated successfully.');
+        return redirect()->route('faculty.students', ['class' => request('class')])->with('success', 'Student updated successfully.');
     }
 
     public function bulkImportStudents(Request $request)
     {
+        $facultyId = auth()->user()?->faculty?->id;
+        if (!$facultyId) {
+            return response()->json(['message' => 'Faculty account not found.'], 403);
+        }
+
         $request->validate([
             'excel_file' => [
                 'required', 'file',
@@ -275,6 +397,8 @@ class FacultyController extends Controller
 
         $results   = [];
         $rowNumber = 1;
+        $classesOpened = [];
+        $lastClassLetter = null;
 
         foreach (array_slice($allRows, 1) as $row) {
             $rowNumber++;
@@ -331,10 +455,12 @@ class FacultyController extends Controller
             $defaultPassword = Hash::make('password');
 
             try {
-                [$user, $student] = DB::transaction(function () use (
+                [$user, $student, $classLetter] = DB::transaction(function () use (
                     $studentId, $firstName, $middleName, $lastName,
-                    $email, $phone, $fullName, $defaultPassword
+                    $email, $phone, $fullName, $defaultPassword, $facultyId
                 ) {
+                    $class = FacultyClass::claimSeat($facultyId);
+
                     $user = User::create([
                         'name'         => $fullName,
                         'first_name'   => $firstName,
@@ -349,14 +475,24 @@ class FacultyController extends Controller
                     ]);
 
                     $student = Student::create([
-                        'user_id'    => $user->id,
-                        'student_id' => $studentId,
+                        'user_id'          => $user->id,
+                        'faculty_id'       => $facultyId,
+                        'faculty_class_id' => $class->id,
+                        'student_id'       => $studentId,
                     ]);
 
-                    return [$user, $student];
+                    $class->syncCapacity();
+                    $class->refresh();
+
+                    return [$user, $student, $class->letter];
                 });
 
                 event(new StudentCreated($user, $student));
+
+                if ($lastClassLetter !== null && $classLetter !== $lastClassLetter) {
+                    $classesOpened[] = $classLetter;
+                }
+                $lastClassLetter = $classLetter;
 
                 $results[] = [
                     'row'        => $rowNumber,
@@ -364,6 +500,7 @@ class FacultyController extends Controller
                     'name'       => trim("{$lastName}, {$firstName}"),
                     'student_id' => $studentId,
                     'email'      => $email,
+                    'class'      => $classLetter,
                 ];
             } catch (\Exception $e) {
                 $results[] = [
@@ -377,12 +514,20 @@ class FacultyController extends Controller
 
         $created = collect($results)->where('status', 'success')->count();
         $failed  = collect($results)->where('status', 'failed')->count();
+        $openClass = FacultyClass::where('faculty_id', $facultyId)->where('status', 'open')->orderBy('sort_order')->first();
+
+        $message = "{$created} student(s) imported successfully. {$failed} failed.";
+        if (!empty($classesOpened)) {
+            $message .= ' New class tab(s) opened: Class ' . implode(', Class ', array_unique($classesOpened)) . '.';
+        }
 
         return response()->json([
-            'message' => "{$created} student(s) imported successfully. {$failed} failed.",
+            'message' => $message,
             'created' => $created,
             'failed'  => $failed,
             'results' => $results,
+            'open_class' => $openClass?->letter,
+            'classes_opened' => array_values(array_unique($classesOpened)),
         ]);
     }
 
@@ -391,34 +536,90 @@ class FacultyController extends Controller
         $facultyId = auth()->user()?->faculty?->id;
         if (!$facultyId) {
             return view('faculty.pagerole', [
-                'students'    => collect(),
-                'groups'      => collect(),
-                'allStudents' => collect(),
-                'tasksByRole' => collect(),
-                'taskCounts'  => [],
-                'roles'       => [],
+                'students'        => collect(),
+                'groups'          => collect(),
+                'allStudents'     => collect(),
+                'studentTeamMap'  => collect(),
+                'classes'         => collect(),
+                'activeClass'     => null,
+                'openClass'       => null,
+                'classCapacity'   => FacultyClass::CAPACITY,
+                'teamCountsByClass' => [],
+                'tasksByRole'     => collect(),
+                'taskCounts'      => [],
+                'roles'           => [],
+                'teamActivityByGroup' => [],
             ]);
         }
 
-        $assignedStudentIds = StudentGroup::pluck('student_id')->unique();
-        $students = Student::with('user')
+        $classes = FacultyClass::ensureForFaculty($facultyId)->map(function (FacultyClass $class) {
+            $class->seats_taken = $class->students()->count();
+            return $class;
+        });
+
+        $openClass = $classes->firstWhere('status', 'open') ?? $classes->first();
+        $requestedLetter = strtoupper((string) request('class', $openClass?->letter ?? 'A'));
+        $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $openClass;
+        $classCapacity = FacultyClass::CAPACITY;
+
+        $assignedStudentIds = StudentGroup::where('faculty_id', $facultyId)
+            ->pluck('student_id')
+            ->unique();
+
+        // Unassigned students for Add Team / Insert — scoped to the active class tab
+        $students = Student::with(['user', 'facultyClass'])
+            ->where('faculty_id', $facultyId)
             ->whereNotIn('id', $assignedStudentIds)
+            ->when($activeClass, fn ($q) => $q->where('faculty_class_id', $activeClass->id))
             ->latest()
             ->get();
 
-        // All students (for update tab — includes already-assigned ones)
-        $allStudents = Student::with('user')->latest()->get();
+        // Update Team modal still needs all faculty students (then filtered to members in JS)
+        $allStudents = Student::with(['user', 'facultyClass'])
+            ->where('faculty_id', $facultyId)
+            ->orderByDesc('id')
+            ->get();
 
-        $groups = StudentGroup::with('student.user', 'roles')
+        $studentTeamMap = StudentGroup::where('faculty_id', $facultyId)
+            ->get(['student_id', 'group_name'])
+            ->groupBy('student_id')
+            ->map(fn ($rows) => $rows->pluck('group_name')->unique()->values()->all());
+
+        $allGroups = StudentGroup::with(['student.user', 'student.facultyClass', 'roles'])
+            ->where('faculty_id', $facultyId)
             ->latest()
             ->get()
             ->groupBy('group_name');
 
-        // Debug: Log groups count
-        \Log::info('Faculty Role - Groups Count: ' . count($groups));
-        foreach ($groups as $name => $members) {
-            \Log::info('  Group: ' . $name . ' with ' . $members->count() . ' members');
+        // Attribute each team to the class shared by the majority of its members
+        $teamClassIdByName = [];
+        $teamCountsByClass = [];
+        foreach ($classes as $class) {
+            $teamCountsByClass[$class->id] = 0;
         }
+
+        foreach ($allGroups as $groupName => $members) {
+            $classIds = $members
+                ->map(fn ($m) => $m->student?->faculty_class_id)
+                ->filter()
+                ->countBy()
+                ->sortDesc();
+
+            $majorityClassId = $classIds->keys()->first();
+            $teamClassIdByName[$groupName] = $majorityClassId;
+
+            if ($majorityClassId && isset($teamCountsByClass[$majorityClassId])) {
+                $teamCountsByClass[$majorityClassId]++;
+            }
+        }
+
+        $groups = $allGroups->filter(function ($members, $groupName) use ($activeClass, $teamClassIdByName) {
+            if (!$activeClass) {
+                return true;
+            }
+
+            return ($teamClassIdByName[$groupName] ?? null) === $activeClass->id;
+        });
 
         // Role definitions + task counts for the Create Task tab
         $rolesMeta = [
@@ -441,7 +642,69 @@ class FacultyController extends Controller
             $taskCounts[$roleKey] = $tasksByRole->get($roleKey, collect())->count();
         }
 
-        return view('faculty.pagerole', compact('students', 'allStudents', 'groups', 'rolesMeta', 'tasksByRole', 'taskCounts'));
+        $roleLabels = [
+            'front_desk'            => 'Front Desk',
+            'restaurant_management' => 'Restaurant',
+            'room_management'       => 'Rooms',
+            'maintenance'           => 'Maintenance',
+            'housekeeping'          => 'Housekeeping',
+        ];
+
+        $allTasks = Task::where('faculty_id', $facultyId)
+            ->orderByDesc('updated_at')
+            ->limit(500)
+            ->get();
+
+        $teamActivityByGroup = [];
+        foreach ($allGroups as $groupName => $members) {
+            $memberStudentIds = $members->pluck('student_id')->filter()->map(fn ($id) => (int) $id)->unique()->all();
+            $memberRoles = $members
+                ->flatMap(fn ($m) => $m->roles->pluck('role'))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            $teamActivityByGroup[$groupName] = $allTasks
+                ->filter(function (Task $task) use ($memberStudentIds, $memberRoles) {
+                    if ($task->student_id && in_array((int) $task->student_id, $memberStudentIds, true)) {
+                        return true;
+                    }
+
+                    return in_array($task->role, $memberRoles, true);
+                })
+                ->take(100)
+                ->values()
+                ->map(function (Task $task) use ($roleLabels) {
+                    return [
+                        'title' => $task->title,
+                        'description' => $task->description,
+                        'role' => $task->role,
+                        'role_label' => $roleLabels[$task->role] ?? $task->role,
+                        'priority' => strtolower($task->priority ?? 'medium'),
+                        'status' => $task->status,
+                        'due_date' => optional($task->due_date)->format('M d, Y'),
+                        'updated_at' => optional($task->updated_at)->format('M d, Y'),
+                    ];
+                })
+                ->all();
+        }
+
+        return view('faculty.pagerole', compact(
+            'students',
+            'allStudents',
+            'studentTeamMap',
+            'groups',
+            'classes',
+            'activeClass',
+            'openClass',
+            'classCapacity',
+            'teamCountsByClass',
+            'rolesMeta',
+            'tasksByRole',
+            'taskCounts',
+            'teamActivityByGroup'
+        ));
     }
 
     public function updateGroup(Request $request, $groupName)
@@ -455,27 +718,19 @@ class FacultyController extends Controller
             'group_name'    => ['required', 'string', 'max:255'],
             'members'       => ['required', 'array', 'min:1'],
             'members.*'     => ['integer', 'exists:students,id'],
-            'member_roles'  => ['required', 'array'],
+            'member_roles'  => ['nullable', 'array'],
         ]);
 
-        $allowedRoles = ['front_desk', 'restaurant_management', 'room_management', 'maintenance', 'housekeeping'];
-        $memberIds    = array_unique($validated['members']);
+        $allowedRoles = $this->teamRoleKeys();
+        $memberIds    = array_values(array_unique($validated['members']));
+        $rolesByMember = $this->resolveMemberRoles(
+            $memberIds,
+            $validated['member_roles'] ?? [],
+            $allowedRoles
+        );
 
-        foreach ($memberIds as $studentId) {
-            $roles = $validated['member_roles'][$studentId] ?? [];
-            if (!is_array($roles)) {
-                $roles = [$roles];
-            }
-
-            if (empty($roles)) {
-                return back()->withErrors(['member_roles' => 'Please select at least one role for each selected member.'])->withInput();
-            }
-
-            foreach ($roles as $role) {
-                if (!in_array($role, $allowedRoles, true)) {
-                    return back()->withErrors(['member_roles' => 'Please select valid roles for each selected member.'])->withInput();
-                }
-            }
+        if ($rolesByMember === null) {
+            return back()->withErrors(['member_roles' => 'Please select valid roles for each selected member.'])->withInput();
         }
 
         // Delete old rows for this group/faculty then re-insert
@@ -488,17 +743,26 @@ class FacultyController extends Controller
             $oldGroup->delete();
         }
 
+        // If a student is moved onto this team, drop them from any other team first
+        $otherMemberships = StudentGroup::where('faculty_id', $facultyId)
+            ->whereIn('student_id', $memberIds)
+            ->where('group_name', '!=', $validated['group_name'])
+            ->get();
+
+        foreach ($otherMemberships as $other) {
+            StudentGroupRole::where('student_group_id', $other->id)->delete();
+            $other->delete();
+        }
+
         foreach ($memberIds as $studentId) {
+            $roles = $rolesByMember[$studentId];
+
             $studentGroup = StudentGroup::create([
                 'group_name' => $validated['group_name'],
                 'faculty_id' => $facultyId,
                 'student_id' => $studentId,
+                'role' => $roles[0], // legacy column; real roles stored in student_group_roles
             ]);
-
-            $roles = $validated['member_roles'][$studentId] ?? [];
-            if (!is_array($roles)) {
-                $roles = [$roles];
-            }
 
             foreach ($roles as $role) {
                 StudentGroupRole::create([
@@ -508,8 +772,10 @@ class FacultyController extends Controller
             }
         }
 
-        return redirect()->route('faculty.role', ['tab' => 'teams'])
-            ->with('success', 'Team updated successfully.');
+        return redirect()->route('faculty.role', array_filter([
+            'tab' => 'teams',
+            'class' => $request->input('class_letter') ?: null,
+        ]))->with('success', 'Team updated successfully.');
     }
 
     public function tasks()
@@ -621,11 +887,156 @@ class FacultyController extends Controller
 
     public function results()
     {
-        return view('faculty.results');
+        $facultyId = auth()->user()?->faculty?->id;
+        if (!$facultyId) {
+            abort(403, 'Faculty account not found.');
+        }
+
+        $roleLabels = [
+            'front_desk' => 'Front Desk',
+            'restaurant_management' => 'Restaurant',
+            'room_management' => 'Room Management',
+            'maintenance' => 'Maintenance',
+            'housekeeping' => 'Housekeeping',
+        ];
+
+        $outputs = Task::with(['student.user', 'assignedTo'])
+            ->where('faculty_id', $facultyId)
+            ->where('status', 'archived')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $countsByRole = $outputs->groupBy('role')->map->count();
+
+        return view('faculty.results', compact('outputs', 'roleLabels', 'countsByRole'));
     }
 
     public function reports()
     {
-        return view('faculty.reports');
+        $facultyId = auth()->user()?->faculty?->id;
+        if (!$facultyId) {
+            abort(403, 'Faculty account not found.');
+        }
+
+        $completedTasks = Task::with(['student.user', 'assignedTo'])
+            ->where('faculty_id', $facultyId)
+            ->where('status', 'archived')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $totalCompleted = $completedTasks->count();
+        $totalActive = Task::where('faculty_id', $facultyId)->where('status', 'active')->count();
+        $totalAssigned = $totalCompleted + $totalActive;
+        $completionRate = $totalAssigned > 0 ? round(($totalCompleted / $totalAssigned) * 100) : 0;
+
+        $byRole = $completedTasks->groupBy('role')->map->count()->sortDesc();
+        $byPriority = $completedTasks->groupBy(fn ($t) => strtolower($t->priority ?? 'medium'))->map->count();
+        $recentCompleted = $completedTasks->take(25);
+
+        return view('faculty.reports', compact(
+            'totalCompleted',
+            'totalActive',
+            'totalAssigned',
+            'completionRate',
+            'byRole',
+            'byPriority',
+            'recentCompleted'
+        ));
+    }
+
+    public function activityLogs(Request $request)
+    {
+        $facultyId = auth()->user()?->faculty?->id;
+        if (!$facultyId) {
+            abort(403, 'Faculty account not found.');
+        }
+
+        $filter = $request->query('filter', 'completed');
+        if (!in_array($filter, ['completed', 'active', 'all'], true)) {
+            $filter = 'completed';
+        }
+
+        $base = Task::where('faculty_id', $facultyId);
+        $completedCount = (clone $base)->where('status', 'archived')->count();
+        $activeCount = (clone $base)->where('status', 'active')->count();
+
+        $query = Task::where('faculty_id', $facultyId)->orderByDesc('updated_at');
+        if ($filter === 'completed') {
+            $query->where('status', 'archived');
+        } elseif ($filter === 'active') {
+            $query->where('status', 'active');
+        }
+
+        $logs = $query->paginate(15);
+
+        return view('faculty.activitylogs', compact('logs', 'completedCount', 'activeCount'));
+    }
+
+    public function profile()
+    {
+        $user = auth()->user();
+        $faculty = $user?->faculty;
+
+        if (!$faculty) {
+            abort(403, 'Faculty account not found.');
+        }
+
+        return view('faculty.profile', compact('user', 'faculty'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+        $faculty = $user?->faculty;
+
+        if (!$faculty) {
+            abort(403, 'Faculty account not found.');
+        }
+
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'phone_number' => ['nullable', 'string', 'max:30'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
+            'remove_avatar' => ['nullable', 'boolean'],
+        ]);
+
+        $fullName = trim(implode(' ', array_filter([
+            $validated['first_name'],
+            $validated['middle_name'] ?? null,
+            $validated['last_name'],
+        ])));
+
+        $userData = [
+            'name' => $fullName,
+            'first_name' => $validated['first_name'],
+            'middle_name' => $validated['middle_name'] ?? null,
+            'last_name' => $validated['last_name'],
+            'email' => $validated['email'],
+            'phone_number' => $validated['phone_number'] ?? null,
+        ];
+
+        if ($request->boolean('remove_avatar') && $user->avatar) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+            $userData['avatar'] = null;
+        }
+
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+            }
+            $userData['avatar'] = $request->file('avatar')->store('avatars/faculty', 'public');
+        }
+
+        $user->update($userData);
+
+        $faculty->update([
+            'phone_number' => $validated['phone_number'] ?? null,
+        ]);
+
+        return redirect()->route('faculty.profile')
+            ->with('success', 'Profile information updated successfully.');
     }
 }

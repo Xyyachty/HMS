@@ -863,5 +863,6 @@ root.render(<App />);
  </script>
 @endverbatim
 
+@include('students.template.partials.editor-bridge')
 </body>
 </html>
