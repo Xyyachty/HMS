@@ -146,11 +146,11 @@
                 <thead>
                     <tr class="bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
                         <th class="px-6 py-4">Task</th>
+                        <th class="px-6 py-4">Student Name</th>
                         <th class="px-6 py-4">Role</th>
                         <th class="px-6 py-4">Faculty</th>
-                        <th class="px-6 py-4">Priority</th>
                         <th class="px-6 py-4">Due Date</th>
-                        <th class="px-6 py-4">Completed</th>
+                        <th class="px-6 py-4">Date Completed</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50">
@@ -158,40 +158,43 @@
                         @php
                             $roleLabels = [
                                 'front_desk' => 'Front Desk',
-                                'restaurant_management' => 'Restaurant Mgmt',
-                                'room_management' => 'Room Mgmt',
+                                'restaurant_management' => 'Restaurant',
+                                'room_management' => 'Room',
                                 'maintenance' => 'Maintenance',
                                 'housekeeping' => 'Housekeeping',
                             ];
-                            $priorityClass = [
-                                'high'   => 'bg-red-50 text-red-700 border-red-100',
-                                'medium' => 'bg-amber-50 text-amber-700 border-amber-100',
-                                'low'    => 'bg-green-50 text-green-700 border-green-100',
-                            ][$task->priority] ?? 'bg-slate-50 text-slate-700 border-slate-100';
                             $facultyName = trim(implode(' ', array_filter([
-                                $task->faculty?->user?->first_name,
                                 $task->faculty?->user?->last_name,
+                                $task->faculty?->user?->first_name,
                             ])));
-                            $facultyName = $facultyName ?: ($task->faculty?->user?->name ?? '—');
+                            $facultyName = $facultyName !== ''
+                                ? $facultyName
+                                : ($task->faculty?->user?->name ?? '—');
+
+                            $studentUser = $task->student?->user ?? $task->assignedTo;
+                            $studentName = trim(implode(' ', array_filter([
+                                $studentUser?->last_name,
+                                $studentUser?->first_name,
+                                $studentUser?->middle_name,
+                            ])));
+                            if ($studentName === '') {
+                                $studentName = $studentUser?->name ?? '—';
+                            }
                         @endphp
                         <tr class="hover:bg-slate-50/50 transition-colors">
                             <td class="px-6 py-4">
-                                <p class="text-sm font-bold text-slate-700 line-through">{{ $task->title }}</p>
+                                <p class="text-sm font-bold text-slate-700">{{ $task->title }}</p>
                                 @if($task->description)
-                                    <p class="text-xs text-slate-400 mt-0.5">{{ $task->description }}</p>
+                                    <p class="text-xs text-slate-400 mt-0.5 line-clamp-2">{{ $task->description }}</p>
                                 @endif
                             </td>
+                            <td class="px-6 py-4 text-sm font-semibold text-slate-700">{{ $studentName }}</td>
                             <td class="px-6 py-4">
                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">
                                     {{ $roleLabels[$task->role] ?? $task->role }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-sm text-slate-600 font-medium">{{ $facultyName }}</td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border {{ $priorityClass }}">
-                                    {{ $task->priority }}
-                                </span>
-                            </td>
                             <td class="px-6 py-4 text-xs text-slate-500">
                                 @if($task->due_date)
                                     <span class="flex items-center gap-1">
@@ -202,9 +205,10 @@
                                     <span class="text-slate-300">—</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-100">
-                                    <span class="iconify" data-icon="mdi:check-circle-outline"></span> Complied
+                            <td class="px-6 py-4 text-xs text-slate-500">
+                                <span class="flex items-center gap-1">
+                                    <span class="iconify text-green-500" data-icon="mdi:check-circle-outline"></span>
+                                    {{ optional($task->updated_at)->format('M d, Y') ?? '—' }}
                                 </span>
                             </td>
                         </tr>
@@ -348,10 +352,21 @@
                     <input name="phone_number" type="text" value="{{ old('phone_number') }}" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
                 </div>
                 <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Block</label>
+                    <select name="block" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">
+                        <option value="">Select block</option>
+                        @forelse (($availableBlocks ?? []) as $letter)
+                            <option value="{{ $letter }}" {{ old('block') === $letter ? 'selected' : '' }}>Block {{ $letter }}</option>
+                        @empty
+                            <option value="" disabled>No blocks available</option>
+                        @endforelse
+                    </select>
+                </div>
+                <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
                     <select name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">
                         <option value="active" {{ old('status', 'active') === 'active' ? 'selected' : '' }}>Active</option>
-                        <option value="suspended" {{ old('status') === 'suspended' ? 'selected' : '' }}>Suspended</option>
+                        <option value="inactive" {{ old('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
                     </select>
                 </div>
                 <div>

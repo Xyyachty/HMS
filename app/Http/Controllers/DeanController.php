@@ -79,14 +79,16 @@ class DeanController extends Controller
 
     public function users()
     {
-        $users = User::with('faculty')->latest()->get();
+        $users = User::with(['faculty', 'student.facultyClass'])->latest()->get();
+        $availableBlocks = Faculty::availableBlocks();
+        $systemBlocks = Faculty::existingClassLetters();
 
-        return view('dean.usermanagement', compact('users'));
+        return view('dean.usermanagement', compact('users', 'availableBlocks', 'systemBlocks'));
     }
 
     public function usersLive()
     {
-        $users = User::with('faculty')->latest()->get()->map(function ($user) {
+        $users = User::with(['faculty', 'student.facultyClass'])->latest()->get()->map(function ($user) {
             $displayName = trim(implode(' ', array_filter([
                 $user->last_name ?? null,
                 $user->first_name ?? null,
@@ -105,6 +107,14 @@ class DeanController extends Controller
                 }
             }
 
+            $block = null;
+            if ($user->role === 'faculty') {
+                $block = $user->faculty->block ?? null;
+            } elseif ($user->role === 'student') {
+                // Student's block = their Manage Students class (Class B → Block B)
+                $block = $user->student?->facultyClass?->letter ?? null;
+            }
+
             return [
                 'id' => $user->id,
                 'name' => $displayName,
@@ -116,6 +126,8 @@ class DeanController extends Controller
                 'email' => $user->email,
                 'phone_number' => $phone,
                 'role' => $user->role,
+                'block' => $block ? strtoupper((string) $block) : null,
+                'block_label' => Faculty::blockLabel($block),
                 'status' => $user->status ?? ($user->faculty->status ?? 'active'),
                 'joined' => optional($user->created_at)->format('M d, Y'),
             ];
@@ -130,7 +142,9 @@ class DeanController extends Controller
             ->latest()
             ->get();
 
-        $completedTasks = \App\Models\Task::with('faculty.user')
+        $availableBlocks = Faculty::availableBlocks();
+
+        $completedTasks = \App\Models\Task::with(['faculty.user', 'student.user', 'assignedTo'])
             ->where('status', 'archived')
             ->orderByDesc('updated_at')
             ->get();
@@ -197,7 +211,7 @@ class DeanController extends Controller
             }
         }
 
-        return view('dean.faculties', compact('faculties', 'completedTasks', 'teamActivityByFacultyGroup', 'roleLabels'));
+        return view('dean.faculties', compact('faculties', 'completedTasks', 'teamActivityByFacultyGroup', 'roleLabels', 'availableBlocks'));
     }
 
     public function storeFaculty(Request $request)
@@ -208,7 +222,8 @@ class DeanController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:30'],
-            'status' => ['required', 'in:active,suspended'],
+            'block' => ['required', 'string', 'in:' . implode(',', Faculty::existingClassLetters() ?: ['A']), 'unique:faculties,block'],
+            'status' => ['required', 'in:active,inactive'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
@@ -233,6 +248,7 @@ class DeanController extends Controller
             'user_id' => $user->id,
             'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
             'status' => $validated['status'],
+            'block' => strtoupper($validated['block']),
         ]);
 
         return redirect()->route('dean.faculties')->with('success', 'Faculty account created successfully.');
@@ -247,7 +263,14 @@ class DeanController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:30'],
             'role' => ['required', 'in:faculty,student'],
-            'status' => ['required', 'in:active,suspended'],
+            'block' => [
+                'nullable',
+                'string',
+                'in:' . implode(',', Faculty::existingClassLetters() ?: ['A']),
+                'unique:faculties,block',
+                'required_if:role,faculty',
+            ],
+            'status' => ['required', 'in:active,inactive'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
@@ -283,6 +306,7 @@ class DeanController extends Controller
                 'user_id' => $user->id,
                 'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
                 'status' => $validated['status'],
+                'block' => strtoupper($validated['block']),
             ]);
         }
 
@@ -295,29 +319,37 @@ class DeanController extends Controller
 
     public function updateUser(Request $request, User $user)
     {
-        $validated = $request->validate([
-            'phone_number' => ['nullable', 'string', 'max:30'],
-            'status' => ['required', 'in:active,suspended'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-        ]);
+        $rules = [
+            'status' => ['required', 'in:active,inactive'],
+        ];
+
+        if ($user->role === 'faculty') {
+            $selectable = Faculty::selectableBlocksForFaculty(
+                $user->faculty?->id,
+                $user->faculty?->block
+            );
+            $rules['block'] = [
+                'required',
+                'string',
+                'in:' . implode(',', $selectable ?: ['__none__']),
+            ];
+        }
+
+        $validated = $request->validate($rules);
 
         if (Schema::hasColumn('users', 'status')) {
             $user->status = $validated['status'];
         }
 
-        if (Schema::hasColumn('users', 'phone_number')) {
-            $user->phone_number = User::cleanOptional($validated['phone_number'] ?? null);
-        }
-
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-        }
-
         $user->save();
 
         if ($user->role === 'faculty' && $user->faculty) {
-            $user->faculty->phone_number = User::cleanOptional($validated['phone_number'] ?? null);
             $user->faculty->status = $validated['status'];
+            $block = strtoupper($validated['block']);
+            if (!Faculty::isValidBlock($block)) {
+                return redirect()->route('dean.users')->withErrors(['block' => 'Invalid block selected.']);
+            }
+            $user->faculty->block = $block;
             $user->faculty->save();
         }
 
@@ -326,57 +358,137 @@ class DeanController extends Controller
 
     public function reports()
     {
-        $completedQuery = Task::with(['faculty.user', 'student.user', 'assignedTo'])
-            ->where('status', 'archived');
-
-        $totalCompleted = (clone $completedQuery)->count();
-        $totalActive = Task::where('status', 'active')->count();
-        $totalTasks = $totalCompleted + $totalActive;
-        $completionRate = $totalTasks > 0 ? round(($totalCompleted / $totalTasks) * 100) : 0;
-
-        $byRole = Task::where('status', 'archived')
-            ->selectRaw('role, COUNT(*) as total')
-            ->groupBy('role')
-            ->pluck('total', 'role');
-
-        $byPriority = Task::where('status', 'archived')
-            ->selectRaw('priority, COUNT(*) as total')
-            ->groupBy('priority')
-            ->pluck('total', 'priority');
-
-        $byFaculty = Task::with('faculty.user')
-            ->where('status', 'archived')
-            ->get()
-            ->groupBy('faculty_id')
-            ->map(function ($tasks) {
-                $user = $tasks->first()->faculty?->user;
-                $name = trim(implode(' ', array_filter([
-                    $user?->first_name,
-                    $user?->last_name,
-                ]))) ?: ($user?->name ?? 'Faculty');
-
-                return [
-                    'name' => $name,
-                    'total' => $tasks->count(),
-                ];
-            })
-            ->sortByDesc('total')
-            ->values();
+        $roleLabels = [
+            'front_desk' => 'Front Desk',
+            'restaurant_management' => 'Restaurant',
+            'room_management' => 'Room',
+            'maintenance' => 'Maintenance',
+            'housekeeping' => 'Housekeeping',
+        ];
 
         $completedTasks = Task::with(['faculty.user', 'student.user', 'assignedTo'])
             ->where('status', 'archived')
             ->orderByDesc('updated_at')
-            ->paginate(12);
+            ->get();
 
-        return view('dean.reports', compact(
-            'totalCompleted',
-            'totalActive',
-            'completionRate',
-            'byRole',
-            'byPriority',
-            'byFaculty',
-            'completedTasks'
-        ));
+        $membershipByStudentId = StudentGroup::with(['roles', 'student.user', 'faculty.user'])
+            ->get()
+            ->groupBy('student_id');
+
+        $teamMembersByKey = StudentGroup::with(['roles', 'student.user'])
+            ->get()
+            ->groupBy(fn ($m) => ((int) ($m->faculty_id ?? 0)) . '::' . ($m->group_name ?? 'Unassigned'));
+
+        $buckets = [];
+
+        foreach ($completedTasks as $task) {
+            $studentId = $task->student_id ? (int) $task->student_id : null;
+            if (!$studentId && $task->assigned_to) {
+                $studentId = Student::where('user_id', $task->assigned_to)->value('id');
+                $studentId = $studentId ? (int) $studentId : null;
+            }
+
+            $membership = $studentId
+                ? ($membershipByStudentId->get($studentId)?->first())
+                : null;
+
+            $facultyId = (int) ($task->faculty_id ?? $membership?->faculty_id ?? 0);
+            $teamName = $membership?->group_name ?: 'Unassigned';
+            $key = $facultyId . '::' . $teamName;
+
+            $fUser = $task->faculty?->user ?? $membership?->faculty?->user;
+            $facultyName = trim(implode(' ', array_filter([
+                $fUser?->last_name,
+                $fUser?->first_name,
+            ]))) ?: ($fUser?->name ?? '—');
+
+            $studentUser = $task->student?->user ?? $task->assignedTo;
+            $studentName = trim(implode(' ', array_filter([
+                $studentUser?->last_name,
+                $studentUser?->first_name,
+                $studentUser?->middle_name,
+            ]))) ?: ($studentUser?->name ?? '—');
+
+            if (!isset($buckets[$key])) {
+                $buckets[$key] = [
+                    'id' => $key,
+                    'team_name' => $teamName,
+                    'faculty_id' => $facultyId,
+                    'faculty_name' => $facultyName,
+                    'page_roles' => [],
+                    'assigned_at' => $task->created_at,
+                    'completed_at' => $task->updated_at,
+                    'tasks' => [],
+                    'members' => [],
+                ];
+            }
+
+            $roleKey = (string) ($task->role ?? '');
+            if ($roleKey !== '') {
+                $buckets[$key]['page_roles'][$roleKey] = $roleLabels[$roleKey] ?? $roleKey;
+            }
+
+            if ($task->created_at && (!$buckets[$key]['assigned_at'] || $task->created_at->lt($buckets[$key]['assigned_at']))) {
+                $buckets[$key]['assigned_at'] = $task->created_at;
+            }
+            if ($task->updated_at && (!$buckets[$key]['completed_at'] || $task->updated_at->gt($buckets[$key]['completed_at']))) {
+                $buckets[$key]['completed_at'] = $task->updated_at;
+            }
+
+            $buckets[$key]['tasks'][] = [
+                'title' => $task->title,
+                'description' => $task->description,
+                'student_name' => $studentName,
+                'role' => $roleKey,
+                'role_label' => $roleLabels[$roleKey] ?? $roleKey,
+                'due_date' => optional($task->due_date)->format('M d, Y'),
+                'completed_at' => optional($task->updated_at)->format('M d, Y'),
+                'priority' => strtolower($task->priority ?? 'medium'),
+            ];
+        }
+
+        foreach ($buckets as $key => &$bucket) {
+            $members = $teamMembersByKey->get($key, collect());
+            $bucket['members'] = $members->map(function ($m) use ($roleLabels) {
+                $user = $m->student?->user;
+                $name = trim(implode(' ', array_filter([
+                    $user?->last_name,
+                    $user?->first_name,
+                    $user?->middle_name,
+                ]))) ?: ($user?->name ?? 'Member');
+
+                $roles = $m->roles->pluck('role')->filter()->values();
+                if ($roles->isEmpty() && $m->role) {
+                    $roles = collect([$m->role]);
+                }
+
+                return [
+                    'name' => $name,
+                    'roles' => $roles->map(fn ($r) => $roleLabels[$r] ?? $r)->values()->all(),
+                ];
+            })->values()->all();
+
+            $bucket['page_name'] = !empty($bucket['page_roles'])
+                ? implode(', ', array_values($bucket['page_roles']))
+                : '—';
+            $bucket['assigned_date'] = optional($bucket['assigned_at'])->format('M d, Y') ?? '—';
+            $bucket['date_completed'] = optional($bucket['completed_at'])->format('M d, Y') ?? '—';
+            $bucket['completed_sort'] = optional($bucket['completed_at'])->timestamp ?? 0;
+            $bucket['task_count'] = count($bucket['tasks']);
+            $bucket['final_grade'] = 'TBA';
+            unset($bucket['page_roles'], $bucket['assigned_at'], $bucket['completed_at']);
+        }
+        unset($bucket);
+
+        $teamReports = collect($buckets)
+            ->sortByDesc('completed_sort')
+            ->map(function ($row) {
+                unset($row['completed_sort']);
+                return $row;
+            })
+            ->values();
+
+        return view('dean.reports', compact('teamReports', 'roleLabels'));
     }
 
     public function bulkUpload(Request $request)
@@ -422,7 +534,8 @@ class DeanController extends Controller
                 'email' => ['required', 'email', 'max:255', 'unique:users,email'],
                 'phone_number' => ['nullable', 'string', 'max:30'],
                 'role' => ['required', 'in:faculty,student'],
-                'status' => ['nullable', 'in:active,suspended'],
+                'block' => ['nullable', 'string', 'in:' . implode(',', Faculty::existingClassLetters() ?: ['A'])],
+                'status' => ['nullable', 'in:active,inactive'],
                 'password' => ['nullable', 'string'],
             ]);
 
@@ -461,6 +574,19 @@ class DeanController extends Controller
             }
 
             try {
+                if ($validated['role'] === 'faculty') {
+                    $block = strtoupper(trim((string) ($validated['block'] ?? '')));
+                    $available = Faculty::availableBlocks();
+                    if ($block === '' || !in_array($block, $available, true)) {
+                        if (empty($available)) {
+                            $errorCount++;
+                            $errors[] = "Row " . ($i + 1) . ": No available blocks left for faculty.";
+                            continue;
+                        }
+                        $block = $available[0];
+                    }
+                }
+
                 $user = User::create($userData);
 
                 if ($validated['role'] === 'faculty') {
@@ -468,6 +594,7 @@ class DeanController extends Controller
                         'user_id' => $user->id,
                         'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
                         'status' => $validated['status'] ?? 'active',
+                        'block' => $block,
                     ]);
                 }
 

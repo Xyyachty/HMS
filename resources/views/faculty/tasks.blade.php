@@ -116,13 +116,6 @@
         @forelse(($tasksByRole[$activeTab] ?? collect()) as $task)
         <div class="task-card flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-4 group">
 
-            {{-- Priority dot --}}
-            <div class="shrink-0 flex items-center gap-3">
-                <div class="w-2 h-2 rounded-full
-                    {{ $task->priority === 'high' ? 'bg-red-500' : ($task->priority === 'medium' ? 'bg-amber-400' : 'bg-green-400') }}">
-                </div>
-            </div>
-
             {{-- Main info --}}
             <div class="flex-1 min-w-0">
                 <p class="text-sm font-bold text-slate-800 truncate">{{ $task->title }}</p>
@@ -133,11 +126,6 @@
 
             {{-- Meta --}}
             <div class="flex items-center gap-3 shrink-0 flex-wrap">
-                {{-- Priority badge --}}
-                <span class="badge-{{ $task->priority }} px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">
-                    {{ ucfirst($task->priority) }}
-                </span>
-
                 {{-- Due date --}}
                 @if($task->due_date)
                 <div class="flex items-center gap-1 text-xs text-slate-400">
@@ -265,33 +253,16 @@
                            focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">{{ old('description') }}</textarea>
             </div>
 
-            {{-- Due date + Priority grid --}}
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                        Due Date
-                    </label>
-                    <input name="due_date" type="date" value="{{ old('due_date') }}"
-                        class="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm
-                               focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                        Priority <span class="text-red-400">*</span>
-                    </label>
-                    <div class="relative">
-                        <select name="priority"
-                            class="w-full h-12 pl-4 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700
-                                   focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
-                            <option value="low"    {{ old('priority','medium') === 'low'    ? 'selected' : '' }}>🟢 Low</option>
-                            <option value="medium" {{ old('priority','medium') === 'medium' ? 'selected' : '' }}>🟡 Medium</option>
-                            <option value="high"   {{ old('priority','medium') === 'high'   ? 'selected' : '' }}>🔴 High</option>
-                        </select>
-                        <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 iconify text-slate-400"
-                              data-icon="mdi:chevron-down"></span>
-                    </div>
-                </div>
+            {{-- Due date --}}
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Due Date
+                </label>
+                <input name="due_date" type="date" value="{{ old('due_date') }}"
+                    class="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm
+                           focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
             </div>
+            <input type="hidden" name="priority" value="medium">
 
         </div>
 

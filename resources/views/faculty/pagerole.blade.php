@@ -230,8 +230,8 @@
                                     <button
                                         type="button"
                                         onclick='openUpdateModal(@json($groupName), @json($memberData))'
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-soft text-brand border border-brand/10 rounded-lg text-[11px] font-bold hover:bg-brand/10 transition whitespace-nowrap">
-                                        <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span> Update
+                                        class="inline-flex items-center px-2.5 py-1 bg-brand-soft text-brand border border-brand/10 rounded-lg text-[11px] font-bold hover:bg-brand/10 transition whitespace-nowrap">
+                                        Update
                                     </button>
                                 </div>
                             </td>
@@ -251,7 +251,7 @@
                                 </p>
                                 <button onclick="openCreateTeamModal()"
                                     class="mt-3 px-4 py-2 bg-brand text-white text-xs font-bold rounded-xl hover:scale-105 transition shadow-md shadow-brand/20">
-                                    Add Team{{ $activeClass ? ' for ' . $activeClass->name : '' }}
+                                    Add Teams{{ $activeClass ? ' for ' . $activeClass->name : '' }}
                                 </button>
                             </td>
                         </tr>
@@ -321,7 +321,7 @@
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Task</th>
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Updated</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Assigned Date</th>
                             </tr>
                         </thead>
                         <tbody id="teamModalActivityBody" class="divide-y divide-slate-100">
@@ -360,7 +360,7 @@
         <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center rounded-t-2xl flex-shrink-0">
             <h4 class="font-bold text-brand text-base flex items-center gap-2">
                 <span class="iconify text-lg" data-icon="mdi:account-multiple-plus-outline"></span>
-                Add Team
+                Add Teams
             </h4>
             <button onclick="closeCreateTeamModal()" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
@@ -371,7 +371,7 @@
         <div class="flex border-b border-slate-200 bg-slate-50 flex-shrink-0">
             <button onclick="switchCreateModalTab('add_team')" id="modal-tab-add_team"
                 class="flex-1 py-3 text-sm font-bold text-center transition border-b-2 border-brand text-brand">
-                <span class="iconify inline-block mr-1.5" data-icon="mdi:account-plus-outline"></span> Add Team
+                <span class="iconify inline-block mr-1.5" data-icon="mdi:account-multiple-plus-outline"></span> Add Teams
             </button>
             <button onclick="switchCreateModalTab('insert')" id="modal-tab-insert"
                 class="flex-1 py-3 text-sm font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
@@ -389,14 +389,27 @@
             ];
         @endphp
 
-        <!-- Tab Panel: Add Team -->
+        <!-- Tab Panel: Add Team (single or multiple) -->
         <div id="modal-panel-add_team" class="flex-1 min-h-0 overflow-y-auto">
-            <form method="POST" id="createTeamForm" action="{{ route('faculty.role.groups.store') }}">
+            <div class="px-6 pt-5">
+                <div class="inline-flex w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1">
+                    <button type="button" id="createModeSingleBtn" onclick="switchCreateTeamMode('single')"
+                        class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-brand shadow-sm border border-brand/10">
+                        Single Team
+                    </button>
+                    <button type="button" id="createModeMultiBtn" onclick="switchCreateTeamMode('multiple')"
+                        class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition text-slate-500 hover:text-slate-700">
+                        Multiple Teams
+                    </button>
+                </div>
+            </div>
+
+            <form method="POST" id="createTeamFormSingle" action="{{ route('faculty.role.groups.store') }}">
                 @csrf
                 <input type="hidden" name="_form_source" value="create_team">
                 <input type="hidden" name="class_letter" value="{{ $activeClass->letter ?? '' }}">
 
-                @if($errors->any())
+                @if($errors->any() && old('_form_source') === 'create_team')
                     <div class="mx-6 mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
                         <span class="iconify flex-shrink-0" data-icon="mdi:alert-circle-outline"></span>
                         {{ $errors->first() }}
@@ -404,15 +417,17 @@
                 @endif
 
                 <div class="p-6 space-y-5">
-                    {{-- Step 1: Team name --}}
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                        Create one team. Maximum <strong>4 members</strong> per team.
+                    </div>
+
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Team Name <span class="text-red-400">*</span></label>
                         <input name="group_name" type="text" placeholder="e.g. Front Desk Team A"
-                            value="{{ old('group_name') }}"
+                            value="{{ old('_form_source') === 'create_team' ? old('group_name') : '' }}"
                             class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                     </div>
 
-                    {{-- Tools row --}}
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div class="relative flex-1">
                             <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
@@ -424,11 +439,10 @@
                             class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand/40 hover:text-brand transition inline-flex items-center justify-center gap-1.5 shrink-0">
                             <span class="iconify" data-icon="mdi:shuffle-variant"></span> Randomize 4
                         </button>
-                        <span id="createSelectedCount" class="text-xs font-bold text-slate-500 whitespace-nowrap sm:min-w-[7rem] text-right">0 selected</span>
+                        <span id="createSelectedCount" class="text-xs font-bold text-slate-500 whitespace-nowrap sm:min-w-[7rem] text-right">0 / 4 selected</span>
                     </div>
                     <p id="createRandomizeNote" class="text-[11px] text-slate-400 -mt-3"></p>
 
-                    {{-- Role legend --}}
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Roles</span>
                         @foreach($teamRoleOptions as $rk => $rl)
@@ -438,11 +452,10 @@
                         @endforeach
                     </div>
 
-                    {{-- Members --}}
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Members & Roles <span class="text-red-400">*</span></label>
-                            <span class="text-[11px] text-slate-400">Defaults apply if none selected · {{ ($students ?? collect())->count() }} available</span>
+                            <span class="text-[11px] text-slate-400">Max 4 · {{ ($students ?? collect())->count() }} available</span>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 max-h-[22rem] overflow-y-auto">
                             <div class="p-3 space-y-2" id="createStudentList">
@@ -452,8 +465,8 @@
                                         $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
                                         $sk = $student->id;
-                                        $selectedMembers = array_map('intval', old('members', []));
-                                        $selectedRoles = old('member_roles.' . $sk, []);
+                                        $selectedMembers = old('_form_source') === 'create_team' ? array_map('intval', old('members', [])) : [];
+                                        $selectedRoles = old('_form_source') === 'create_team' ? old('member_roles.' . $sk, []) : [];
                                         if (!is_array($selectedRoles)) $selectedRoles = [$selectedRoles];
                                         $searchBlob = strtolower($dn . ' ' . $student->student_id);
                                     @endphp
@@ -463,7 +476,7 @@
                                             <input type="checkbox" name="members[]" value="{{ $sk }}"
                                                 class="create-student-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 shrink-0"
                                                 {{ in_array($sk, $selectedMembers, true) ? 'checked' : '' }}
-                                                onchange="onTeamMemberToggle(this, 'create')">
+                                                onchange="onSingleTeamMemberToggle(this)">
                                             <div class="w-9 h-9 rounded-lg bg-brand-soft text-brand text-xs font-bold flex items-center justify-center shrink-0">
                                                 {{ strtoupper(mb_substr($dn, 0, 1)) }}
                                             </div>
@@ -501,6 +514,129 @@
                     </div>
                 </div>
             </form>
+
+            <form method="POST" id="createTeamForm" action="{{ route('faculty.role.groups.store') }}" class="hidden">
+                @csrf
+                <input type="hidden" name="_form_source" value="create_teams_bulk">
+                <input type="hidden" name="class_letter" value="{{ $activeClass->letter ?? '' }}">
+                <div id="bulkTeamsHiddenInputs"></div>
+
+                @if($errors->any() && old('_form_source') === 'create_teams_bulk')
+                    <div class="mx-6 mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+                        <span class="iconify flex-shrink-0" data-icon="mdi:alert-circle-outline"></span>
+                        {{ $errors->first() }}
+                    </div>
+                @endif
+
+                <div class="p-6 space-y-5">
+                    <div class="rounded-xl border border-brand/15 bg-brand-soft/40 px-4 py-3 text-xs text-slate-600 leading-relaxed">
+                        Create multiple teams in one save. Each team must have <strong>exactly 4 members</strong>.
+                    </div>
+
+                    @php $availableStudentCount = ($students ?? collect())->count(); @endphp
+                    <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Number of Teams</label>
+                            <input type="number" id="bulkTeamCount" min="0" max="40" readonly
+                                value="{{ (int) floor($availableStudentCount / 4) }}"
+                                class="w-full h-11 px-4 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none cursor-not-allowed">
+                        </div>
+                        <button type="button" onclick="autoGroupStudentsIntoTeamsOfFour()"
+                            class="h-11 px-4 rounded-xl bg-brand text-white text-xs font-bold hover:opacity-95 transition inline-flex items-center justify-center gap-1.5 shrink-0 shadow-md shadow-brand/20">
+                            <span class="iconify" data-icon="mdi:account-multiple-check-outline"></span> Auto-Group (4 each)
+                        </button>
+                    </div>
+                    <p id="bulkTeamHint" class="text-[11px] text-slate-400 -mt-2">
+                        {{ $availableStudentCount }} unassigned student{{ $availableStudentCount === 1 ? '' : 's' }} available
+                        @if($activeClass)
+                            in {{ $activeClass->name }}
+                        @endif
+                        . Each team = exactly 4 members
+                        @if($availableStudentCount > 0 && $availableStudentCount % 4 !== 0)
+                            · {{ $availableStudentCount % 4 }} student{{ ($availableStudentCount % 4) === 1 ? '' : 's' }} will remain unassigned
+                        @endif
+                        .
+                    </p>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Roles</span>
+                        @foreach($teamRoleOptions as $rk => $rl)
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600">
+                                <span class="w-2 h-2 rounded-full role-dot-{{ $rk }}"></span>{{ $rl }}
+                            </span>
+                        @endforeach
+                    </div>
+
+                    <div id="bulkTeamSlots" class="space-y-4"></div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Assign Students to Teams</label>
+                            <div class="relative w-full max-w-xs ml-auto">
+                                <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
+                                <input type="text" id="bulkStudentSearch" placeholder="Search students..."
+                                    class="w-full h-9 pl-9 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
+                                    oninput="filterBulkStudentList()">
+                            </div>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 max-h-[22rem] overflow-y-auto">
+                            <div class="p-3 space-y-2" id="bulkStudentAssignList">
+                                @forelse($students ?? [] as $student)
+                                    @php
+                                        $u = $student->user;
+                                        $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
+                                        $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
+                                        $sk = $student->id;
+                                        $searchBlob = strtolower($dn . ' ' . $student->student_id);
+                                    @endphp
+                                    <div class="bulk-student-row rounded-xl bg-white border border-slate-200 p-3"
+                                         data-student-id="{{ $sk }}"
+                                         data-student-name="{{ $dn }}"
+                                         data-search="{{ $searchBlob }}">
+                                        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                                <div class="w-9 h-9 rounded-lg bg-brand-soft text-brand text-xs font-bold flex items-center justify-center shrink-0">
+                                                    {{ strtoupper(mb_substr($dn, 0, 1)) }}
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
+                                                    <p class="text-[11px] text-slate-400 font-mono">
+                                                        #{{ $student->student_id }}
+                                                        @if($student->facultyClass)
+                                                            · {{ $student->facultyClass->name }}
+                                                        @endif
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <select class="bulk-team-select h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition sm:w-44"
+                                                onchange="onBulkStudentTeamChange(this)">
+                                                <option value="">Unassigned</option>
+                                            </select>
+                                        </div>
+                                        <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-5 gap-1.5 bulk-role-grid">
+                                            @foreach($teamRoleOptions as $rk => $rl)
+                                                <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
+                                                    <input type="checkbox" value="{{ $rk }}"
+                                                        class="bulk-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
+                                                        onchange="refreshBulkTeamPreviews()">
+                                                    <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
+                                                    <span class="truncate">{{ $rl }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="flex flex-col items-center gap-2 py-10 text-slate-400">
+                                        <span class="iconify text-3xl text-slate-200" data-icon="mdi:account-off-outline"></span>
+                                        <p class="text-sm font-semibold">No unassigned students</p>
+                                        <p class="text-xs text-slate-300">Add students first, or they may already be in a team.</p>
+                                    </div>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
         </div>
 
         <!-- Tab Panel: Insert -->
@@ -509,6 +645,13 @@
                 @csrf
                 <input type="hidden" name="_form_source" value="insert_student">
                 <input type="hidden" name="class_letter" value="{{ $activeClass->letter ?? '' }}">
+
+                @if($errors->any() && old('_form_source') === 'insert_student')
+                    <div class="mx-6 mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+                        <span class="iconify flex-shrink-0" data-icon="mdi:alert-circle-outline"></span>
+                        {{ $errors->first() }}
+                    </div>
+                @endif
 
                 <div class="p-6 space-y-5">
                     <div>
@@ -933,10 +1076,6 @@
                                             <div class="text-sm font-bold text-slate-800">{{ $task['title'] }}</div>
                                             <p class="text-xs text-slate-500 mt-0.5">{{ $task['description'] }}</p>
                                         </div>
-                                        <span class="shrink-0 mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase
-                                            {{ $task['priority'] === 'high' ? 'bg-red-100 text-red-600' : ($task->priority ?? $task['priority'] === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500') }}">
-                                            {{ $task['priority'] }}
-                                        </span>
                                         <input type="hidden" name="task_titles[{{ $rKey }}][{{ $index }}]" value="{{ $task['title'] }}">
                                         <input type="hidden" name="task_descriptions[{{ $rKey }}][{{ $index }}]" value="{{ $task['description'] }}">
                                         <input type="hidden" name="task_priorities[{{ $rKey }}][{{ $index }}]" value="{{ $task['priority'] }}">
@@ -1087,14 +1226,75 @@ function switchTab(tabId) {
 }
 
 // ── Create Team Modal ──────────────────────────
+const TEAM_MEMBER_MAX = 4;
+let currentCreateTeamMode = 'single';
+
+function setTeamsActionHighlight(activeKey) {
+    document.querySelectorAll('.teams-action-btn').forEach((btn) => {
+        const isActive = activeKey != null && btn.getAttribute('data-action-btn') === activeKey;
+        btn.classList.toggle('is-active', isActive);
+        btn.classList.toggle('bg-brand', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('shadow-md', isActive);
+        btn.classList.toggle('shadow-brand/20', isActive);
+        btn.classList.toggle('border-transparent', isActive);
+        btn.classList.toggle('bg-white', !isActive);
+        btn.classList.toggle('text-slate-600', !isActive);
+        btn.classList.toggle('border-slate-200', !isActive);
+        btn.classList.toggle('hover:border-brand/40', !isActive);
+        btn.classList.toggle('hover:text-brand', !isActive);
+        btn.classList.add('border');
+    });
+}
+
 function openCreateTeamModal() {
+    setTeamsActionHighlight('add_team');
     document.getElementById('createTeamModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    switchCreateTeamMode(currentCreateTeamMode);
+    if (currentCreateTeamMode === 'multiple') {
+        autoGroupStudentsIntoTeamsOfFour();
+    } else {
+        updateTeamSelectedCount('create');
+    }
 }
 
 function closeCreateTeamModal() {
     document.getElementById('createTeamModal').classList.add('hidden');
     document.body.style.overflow = 'auto';
+    // Restore highlight: Set Task stays active on create_task tab; otherwise clear Add Team highlight
+    const onSetTask = document.getElementById('panel-create_task')?.classList.contains('active');
+    setTeamsActionHighlight(onSetTask ? 'set_task' : null);
+}
+
+function switchCreateTeamMode(mode) {
+    currentCreateTeamMode = mode === 'multiple' ? 'multiple' : 'single';
+    const singleForm = document.getElementById('createTeamFormSingle');
+    const multiForm = document.getElementById('createTeamForm');
+    const singleBtn = document.getElementById('createModeSingleBtn');
+    const multiBtn = document.getElementById('createModeMultiBtn');
+
+    if (singleForm) singleForm.classList.toggle('hidden', currentCreateTeamMode !== 'single');
+    if (multiForm) multiForm.classList.toggle('hidden', currentCreateTeamMode !== 'multiple');
+
+    const activeCls = ['bg-white', 'text-brand', 'shadow-sm', 'border', 'border-brand/10'];
+    const idleCls = ['text-slate-500', 'hover:text-slate-700'];
+
+    function styleModeBtn(btn, active) {
+        if (!btn) return;
+        activeCls.forEach((c) => btn.classList.toggle(c, active));
+        idleCls.forEach((c) => btn.classList.toggle(c, !active));
+        if (!active) btn.classList.remove('border', 'border-brand/10');
+    }
+
+    styleModeBtn(singleBtn, currentCreateTeamMode === 'single');
+    styleModeBtn(multiBtn, currentCreateTeamMode === 'multiple');
+
+    if (currentCreateTeamMode === 'multiple') {
+        rebuildBulkTeamSlots(maxCompleteBulkTeams());
+    } else {
+        updateTeamSelectedCount('create');
+    }
 }
 
 // ── Modal Tab Switcher ────────────────────────
@@ -1126,13 +1326,28 @@ function switchCreateModalTab(tabId) {
 
 function submitActiveModalTab() {
     if (currentModalTab === 'add_team') {
-        document.getElementById('createTeamForm').submit();
+        if (currentCreateTeamMode === 'multiple') {
+            if (!buildBulkTeamsHiddenInputs()) {
+                return;
+            }
+            document.getElementById('createTeamForm').submit();
+            return;
+        }
+
+        const checked = document.querySelectorAll('.create-student-checkbox:checked').length;
+        if (checked < 1) {
+            alert('Select at least 1 member for the team.');
+            return;
+        }
+        if (checked > TEAM_MEMBER_MAX) {
+            alert('A team cannot have more than ' + TEAM_MEMBER_MAX + ' members.');
+            return;
+        }
+        document.getElementById('createTeamFormSingle').submit();
     } else {
         document.getElementById('insertStudentForm').submit();
     }
 }
-
-
 
 // ── Default hotel roles (rotate when assigning) ──
 const TEAM_DEFAULT_ROLES = [
@@ -1142,6 +1357,362 @@ const TEAM_DEFAULT_ROLES = [
     'maintenance',
     'housekeeping',
 ];
+
+// ── Bulk multi-team creation (exactly 4 members per team) ──
+const BULK_TEAM_SIZE = 4;
+
+function availableBulkStudentCount() {
+    return document.querySelectorAll('.bulk-student-row').length;
+}
+
+function maxCompleteBulkTeams() {
+    return Math.floor(availableBulkStudentCount() / BULK_TEAM_SIZE);
+}
+
+function rebuildBulkTeamSlots(forcedCount = null) {
+    const countInput = document.getElementById('bulkTeamCount');
+    const slots = document.getElementById('bulkTeamSlots');
+    if (!countInput || !slots) return;
+
+    const maxTeams = maxCompleteBulkTeams();
+    let count = forcedCount != null ? parseInt(forcedCount, 10) : parseInt(countInput.value, 10);
+    if (!Number.isFinite(count) || count < 0) count = 0;
+    count = Math.min(count, maxTeams, 40);
+    countInput.value = String(count);
+
+    const previousNames = Array.from(document.querySelectorAll('.bulk-team-name-input'))
+        .map((input) => input.value.trim());
+
+    const names = [];
+    for (let i = 0; i < count; i++) {
+        names.push(previousNames[i] || `Team ${i + 1}`);
+    }
+
+    if (count === 0) {
+        slots.innerHTML = `
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                Need at least ${BULK_TEAM_SIZE} unassigned students to create a team. Each team must have exactly ${BULK_TEAM_SIZE} members.
+            </div>
+        `;
+        syncBulkTeamSelectOptions();
+        refreshBulkTeamPreviews();
+        return;
+    }
+
+    slots.innerHTML = names.map((name, index) => `
+        <div class="rounded-xl border border-slate-200 bg-white p-4 bulk-team-slot" data-team-index="${index}">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div class="flex-1">
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Team ${index + 1} Name</label>
+                    <input type="text" value="${escapeBulkAttr(name)}"
+                        class="bulk-team-name-input w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
+                        oninput="syncBulkTeamSelectOptions()">
+                </div>
+                <div class="sm:w-40">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Members</p>
+                    <p class="bulk-team-count h-10 px-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-600 flex items-center">0 / ${BULK_TEAM_SIZE}</p>
+                </div>
+            </div>
+            <div class="bulk-team-preview mt-3 flex flex-wrap gap-1.5 text-[11px] text-slate-400">No students assigned yet.</div>
+        </div>
+    `).join('');
+
+    syncBulkTeamSelectOptions();
+    refreshBulkTeamPreviews();
+}
+
+function escapeBulkAttr(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function escapeBulkHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function getBulkTeamNames() {
+    return Array.from(document.querySelectorAll('.bulk-team-name-input'))
+        .map((input, index) => {
+            const value = input.value.trim();
+            return value !== '' ? value : `Team ${index + 1}`;
+        });
+}
+
+function syncBulkTeamSelectOptions() {
+    const names = getBulkTeamNames();
+    document.querySelectorAll('.bulk-team-select').forEach((select) => {
+        const current = select.value;
+        select.innerHTML = '<option value="">Unassigned</option>' + names.map((name, index) => {
+            const selected = String(current) === String(index) ? ' selected' : '';
+            return `<option value="${index}"${selected}>${escapeBulkHtml(name)}</option>`;
+        }).join('');
+        if (current !== '' && Number(current) >= names.length) {
+            select.value = '';
+        }
+    });
+    refreshBulkTeamPreviews();
+}
+
+function onBulkStudentTeamChange(selectEl) {
+    const row = selectEl?.closest?.('.bulk-student-row');
+    const teamIndex = selectEl?.value === '' ? -1 : parseInt(selectEl.value, 10);
+
+    if (teamIndex >= 0) {
+        const counts = getBulkTeamMemberCounts();
+        // Exclude this select's previous contribution by temporarily clearing then recounting isn't needed —
+        // value already changed. Count other rows assigned to this team.
+        let others = 0;
+        document.querySelectorAll('.bulk-student-row').forEach((r) => {
+            if (r === row) return;
+            const s = r.querySelector('.bulk-team-select');
+            if (s && parseInt(s.value, 10) === teamIndex) others++;
+        });
+        if (others >= BULK_TEAM_SIZE) {
+            alert(`Each team can only have ${BULK_TEAM_SIZE} members.`);
+            selectEl.value = '';
+        }
+    }
+
+    if (row) {
+        const hasRole = row.querySelector('.bulk-role-checkbox:checked');
+        if (!hasRole && selectEl.value !== '') {
+            const assignedCount = Array.from(document.querySelectorAll('.bulk-team-select'))
+                .filter((select) => select.value !== '').length;
+            const role = TEAM_DEFAULT_ROLES[(assignedCount - 1 + TEAM_DEFAULT_ROLES.length) % TEAM_DEFAULT_ROLES.length];
+            const roleCb = row.querySelector(`.bulk-role-checkbox[value="${role}"]`);
+            if (roleCb) roleCb.checked = true;
+        }
+        if (selectEl.value === '') {
+            row.querySelectorAll('.bulk-role-checkbox').forEach((cb) => { cb.checked = false; });
+        }
+    }
+    refreshBulkTeamPreviews();
+}
+
+function getBulkTeamMemberCounts() {
+    const names = getBulkTeamNames();
+    const counts = names.map(() => 0);
+    document.querySelectorAll('.bulk-team-select').forEach((select) => {
+        if (select.value === '') return;
+        const idx = parseInt(select.value, 10);
+        if (Number.isFinite(idx) && counts[idx] != null) counts[idx]++;
+    });
+    return counts;
+}
+
+function refreshBulkTeamPreviews() {
+    const names = getBulkTeamNames();
+    const buckets = names.map(() => []);
+
+    document.querySelectorAll('.bulk-student-row').forEach((row) => {
+        const select = row.querySelector('.bulk-team-select');
+        const teamIndex = select?.value === '' ? -1 : parseInt(select.value, 10);
+        if (teamIndex < 0 || !buckets[teamIndex]) return;
+
+        const roles = Array.from(row.querySelectorAll('.bulk-role-checkbox:checked')).map((cb) => cb.value);
+        buckets[teamIndex].push({
+            id: row.getAttribute('data-student-id'),
+            name: row.getAttribute('data-student-name') || 'Student',
+            roles,
+        });
+    });
+
+    document.querySelectorAll('.bulk-team-slot').forEach((slot, index) => {
+        const countEl = slot.querySelector('.bulk-team-count');
+        const previewEl = slot.querySelector('.bulk-team-preview');
+        const members = buckets[index] || [];
+        const count = members.length;
+        if (countEl) {
+            countEl.textContent = `${count} / ${BULK_TEAM_SIZE}`;
+            countEl.classList.toggle('text-green-700', count === BULK_TEAM_SIZE);
+            countEl.classList.toggle('border-green-200', count === BULK_TEAM_SIZE);
+            countEl.classList.toggle('bg-green-50', count === BULK_TEAM_SIZE);
+            countEl.classList.toggle('text-amber-700', count > 0 && count !== BULK_TEAM_SIZE);
+            countEl.classList.toggle('border-amber-200', count > 0 && count !== BULK_TEAM_SIZE);
+            countEl.classList.toggle('bg-amber-50', count > 0 && count !== BULK_TEAM_SIZE);
+        }
+        if (!previewEl) return;
+        if (!members.length) {
+            previewEl.innerHTML = '<span class="text-slate-400">No students assigned yet.</span>';
+            return;
+        }
+        previewEl.innerHTML = members.map((member) => `
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600">
+                <span class="font-semibold">${escapeBulkHtml(member.name)}</span>
+                ${member.roles.length ? `<span class="text-slate-400">· ${escapeBulkHtml(member.roles.length)} role${member.roles.length === 1 ? '' : 's'}</span>` : ''}
+            </span>
+        `).join('');
+    });
+
+    const hint = document.getElementById('bulkTeamHint');
+    if (hint) {
+        const totalStudents = availableBulkStudentCount();
+        const assigned = Array.from(document.querySelectorAll('.bulk-team-select')).filter((s) => s.value !== '').length;
+        const leftover = totalStudents - assigned;
+        const completeTeams = (getBulkTeamMemberCounts() || []).filter((c) => c === BULK_TEAM_SIZE).length;
+        hint.textContent = `${assigned} of ${totalStudents} students assigned · ${completeTeams} complete team${completeTeams === 1 ? '' : 's'} of ${BULK_TEAM_SIZE}`
+            + (leftover > 0 ? ` · ${leftover} unassigned` : '')
+            + '.';
+    }
+
+    // Disable full teams in dropdowns for unassigned students
+    document.querySelectorAll('.bulk-student-row').forEach((row) => {
+        const select = row.querySelector('.bulk-team-select');
+        if (!select) return;
+        const current = select.value;
+        const counts = getBulkTeamMemberCounts();
+        Array.from(select.options).forEach((opt) => {
+            if (opt.value === '') return;
+            const idx = parseInt(opt.value, 10);
+            const isCurrent = String(current) === String(idx);
+            const full = (counts[idx] || 0) >= BULK_TEAM_SIZE && !isCurrent;
+            opt.disabled = full;
+            const base = opt.textContent.replace(/\s*\(full\)$/, '');
+            opt.textContent = full ? `${base} (full)` : base;
+        });
+    });
+}
+
+function autoGroupStudentsIntoTeamsOfFour() {
+    const rows = Array.from(document.querySelectorAll('.bulk-student-row'));
+    const teamCount = maxCompleteBulkTeams();
+
+    if (teamCount < 1) {
+        alert(`You need at least ${BULK_TEAM_SIZE} unassigned students to create a team.`);
+        rebuildBulkTeamSlots(0);
+        return;
+    }
+
+    rebuildBulkTeamSlots(teamCount);
+
+    // Clear all assignments first
+    rows.forEach((row) => {
+        const select = row.querySelector('.bulk-team-select');
+        if (select) select.value = '';
+        row.querySelectorAll('.bulk-role-checkbox').forEach((cb) => { cb.checked = false; });
+    });
+
+    const shuffled = [...rows].sort(() => Math.random() - 0.5);
+    const toAssign = shuffled.slice(0, teamCount * BULK_TEAM_SIZE);
+
+    toAssign.forEach((row, index) => {
+        const select = row.querySelector('.bulk-team-select');
+        const teamIndex = Math.floor(index / BULK_TEAM_SIZE);
+        if (select) select.value = String(teamIndex);
+
+        const role = TEAM_DEFAULT_ROLES[index % TEAM_DEFAULT_ROLES.length];
+        const roleCb = row.querySelector(`.bulk-role-checkbox[value="${role}"]`);
+        if (roleCb) roleCb.checked = true;
+    });
+
+    refreshBulkTeamPreviews();
+
+    const leftover = rows.length - toAssign.length;
+    if (leftover > 0) {
+        const hint = document.getElementById('bulkTeamHint');
+        if (hint) {
+            hint.textContent = `Grouped ${toAssign.length} students into ${teamCount} team${teamCount === 1 ? '' : 's'} of ${BULK_TEAM_SIZE}. ${leftover} student${leftover === 1 ? '' : 's'} left unassigned (not enough for another full team).`;
+        }
+    }
+}
+
+function distributeAllStudentsToTeams() {
+    autoGroupStudentsIntoTeamsOfFour();
+}
+
+function filterBulkStudentList() {
+    const q = (document.getElementById('bulkStudentSearch')?.value || '').trim().toLowerCase();
+    document.querySelectorAll('.bulk-student-row').forEach((row) => {
+        const hay = row.getAttribute('data-search') || '';
+        row.classList.toggle('hidden', q !== '' && !hay.includes(q));
+    });
+}
+
+function buildBulkTeamsHiddenInputs() {
+    const container = document.getElementById('bulkTeamsHiddenInputs');
+    if (!container) return false;
+    container.innerHTML = '';
+
+    const names = getBulkTeamNames();
+    if (!names.length) {
+        alert(`You need at least ${BULK_TEAM_SIZE} unassigned students to create a team.`);
+        return false;
+    }
+
+    const uniqueNames = names.map((n) => n.trim().toLowerCase());
+    if (new Set(uniqueNames).size !== uniqueNames.length) {
+        alert('Each team needs a unique name.');
+        return false;
+    }
+
+    const buckets = names.map(() => ({ members: [], roles: {} }));
+    let assignedCount = 0;
+
+    document.querySelectorAll('.bulk-student-row').forEach((row) => {
+        const select = row.querySelector('.bulk-team-select');
+        const teamIndex = select?.value === '' ? -1 : parseInt(select.value, 10);
+        if (teamIndex < 0 || !buckets[teamIndex]) return;
+
+        const studentId = row.getAttribute('data-student-id');
+        if (!studentId) return;
+
+        let roles = Array.from(row.querySelectorAll('.bulk-role-checkbox:checked')).map((cb) => cb.value);
+        if (!roles.length) {
+            roles = [TEAM_DEFAULT_ROLES[assignedCount % TEAM_DEFAULT_ROLES.length]];
+        }
+
+        buckets[teamIndex].members.push(studentId);
+        buckets[teamIndex].roles[studentId] = roles;
+        assignedCount++;
+    });
+
+    for (let i = 0; i < buckets.length; i++) {
+        const count = buckets[i].members.length;
+        if (count !== BULK_TEAM_SIZE) {
+            alert(`"${names[i]}" must have exactly ${BULK_TEAM_SIZE} members (currently ${count}). Use Auto-Group (4 each).`);
+            return false;
+        }
+    }
+
+    if (assignedCount === 0) {
+        alert('Assign students before saving.');
+        return false;
+    }
+
+    names.forEach((name, index) => {
+        const bucket = buckets[index];
+        const nameInput = document.createElement('input');
+        nameInput.type = 'hidden';
+        nameInput.name = `teams[${index}][group_name]`;
+        nameInput.value = name;
+        container.appendChild(nameInput);
+
+        bucket.members.forEach((studentId) => {
+            const memberInput = document.createElement('input');
+            memberInput.type = 'hidden';
+            memberInput.name = `teams[${index}][members][]`;
+            memberInput.value = studentId;
+            container.appendChild(memberInput);
+
+            (bucket.roles[studentId] || []).forEach((role) => {
+                const roleInput = document.createElement('input');
+                roleInput.type = 'hidden';
+                roleInput.name = `teams[${index}][member_roles][${studentId}][]`;
+                roleInput.value = role;
+                container.appendChild(roleInput);
+            });
+        });
+    });
+
+    return true;
+}
 
 function clearStudentRoles(memberCheckbox) {
     const card = memberCheckbox.closest('.team-student-card');
@@ -1161,7 +1732,6 @@ function nextDefaultRoleIndex(mode) {
     const checked = document.querySelectorAll(
         (mode === 'insert' ? '.insert-student-checkbox' : '.create-student-checkbox') + ':checked'
     );
-    // Prefer unused roles among currently selected members, else rotate by count
     const used = new Set();
     checked.forEach(cb => {
         const card = cb.closest('.team-student-card');
@@ -1190,29 +1760,46 @@ function onTeamMemberToggle(checkbox, mode) {
     updateTeamSelectedCount(mode);
 }
 
-// ── Randomize (Create Team) ─────────────────────
-document.getElementById('createRandomizeBtn').addEventListener('click', function () {
+function onSingleTeamMemberToggle(checkbox) {
+    if (checkbox.checked) {
+        const checked = document.querySelectorAll('.create-student-checkbox:checked').length;
+        if (checked > TEAM_MEMBER_MAX) {
+            checkbox.checked = false;
+            alert('A team cannot have more than ' + TEAM_MEMBER_MAX + ' members.');
+            return;
+        }
+    }
+    onTeamMemberToggle(checkbox, 'create');
+}
+
+function randomizeSingleTeamMembers() {
     const checkboxes = Array.from(document.querySelectorAll('.create-student-checkbox'));
     const note = document.getElementById('createRandomizeNote');
-    if (!checkboxes.length) { if (note) note.textContent = 'No students available.'; return; }
+    if (checkboxes.length === 0) {
+        if (note) note.textContent = 'No unassigned students available.';
+        return;
+    }
 
-    checkboxes.forEach(c => {
-        c.checked = false;
-        clearStudentRoles(c);
+    checkboxes.forEach((cb) => {
+        cb.checked = false;
+        clearStudentRoles(cb);
     });
 
     const shuffled = [...checkboxes].sort(() => Math.random() - 0.5);
-    const picked = shuffled.slice(0, 4);
-    picked.forEach((c, i) => {
-        c.checked = true;
-        assignDefaultRoleToCard(c.closest('.team-student-card'), TEAM_DEFAULT_ROLES[i % TEAM_DEFAULT_ROLES.length]);
+    const pick = shuffled.slice(0, Math.min(TEAM_MEMBER_MAX, shuffled.length));
+    pick.forEach((cb, index) => {
+        cb.checked = true;
+        const card = cb.closest('.team-student-card');
+        assignDefaultRoleToCard(card, TEAM_DEFAULT_ROLES[index % TEAM_DEFAULT_ROLES.length]);
     });
 
-    if (note) {
-        note.textContent = `Selected ${picked.length} random member${picked.length === 1 ? '' : 's'} with default roles.`;
-    }
     updateTeamSelectedCount('create');
-});
+    if (note) {
+        note.textContent = pick.length < TEAM_MEMBER_MAX
+            ? `Selected ${pick.length} available student${pick.length === 1 ? '' : 's'} (need ${TEAM_MEMBER_MAX} for a full team).`
+            : `Randomly selected ${TEAM_MEMBER_MAX} members.`;
+    }
+}
 
 function filterTeamStudentList(mode) {
     const input = document.getElementById(mode === 'insert' ? 'insertStudentSearch' : 'createStudentSearch');
@@ -1228,12 +1815,18 @@ function updateTeamSelectedCount(mode) {
     const selector = mode === 'insert' ? '.insert-student-checkbox' : '.create-student-checkbox';
     const el = document.getElementById(mode === 'insert' ? 'insertSelectedCount' : 'createSelectedCount');
     const count = document.querySelectorAll(selector + ':checked').length;
-    if (el) el.textContent = count + ' selected';
+    if (!el) return;
+    el.textContent = mode === 'create'
+        ? (count + ' / ' + TEAM_MEMBER_MAX + ' selected')
+        : (count + ' selected');
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    updateTeamSelectedCount('create');
     updateTeamSelectedCount('insert');
+    updateTeamSelectedCount('create');
+    rebuildBulkTeamSlots(maxCompleteBulkTeams());
+    const randomizeBtn = document.getElementById('createRandomizeBtn');
+    if (randomizeBtn) randomizeBtn.addEventListener('click', randomizeSingleTeamMembers);
 });
 
 // ── Open Update Team modal (members of this team only) ──────────
@@ -1509,8 +2102,16 @@ document.addEventListener('change', function(e) {
         goToStep(1);
     }
     // Auto-open create team modal if there are validation errors from that form
-    @if($errors->has('group_name') || $errors->has('members') || $errors->has('member_roles'))
+    @if($errors->any() && in_array(old('_form_source'), ['create_teams_bulk', 'insert_student', 'create_team'], true))
+        @if(old('_form_source') === 'create_teams_bulk')
+            currentCreateTeamMode = 'multiple';
+        @elseif(old('_form_source') === 'create_team')
+            currentCreateTeamMode = 'single';
+        @endif
         openCreateTeamModal();
+        @if(old('_form_source') === 'insert_student')
+            switchCreateModalTab('insert');
+        @endif
     @endif
     // Open from Activity Logs "Add Team" (or ?create=1)
     @if(request()->boolean('create'))

@@ -18,8 +18,8 @@ module.exports = {
         'plum-accent': '#A855F7',
         'plum-soft': '#FAF5FF',
         'amber-soft': '#FFFBEB',
-        sidebar: '#0F172A',
-        'sidebar-light': '#1E293B',
+        sidebar: '#DB2777',
+        'sidebar-light': '#500724',
       },
       animation: {
         'fade-in-up': 'fadeInUp 0.8s ease-out forwards',

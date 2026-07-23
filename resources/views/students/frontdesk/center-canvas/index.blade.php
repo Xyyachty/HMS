@@ -67,11 +67,6 @@
     <div id="canvasFrame" class="flex-1 min-h-0 {{ ($canPickTemplate || $waitingForFrontDesk) ? 'hidden' : '' }}">
         <div class="canvas-frame h-full">
             <div class="browser-bar flex items-center justify-between">
-                <div class="browser-controls">
-                    <div class="browser-btn" aria-hidden="true"><i class="fas fa-chevron-left"></i></div>
-                    <div class="browser-btn" aria-hidden="true"><i class="fas fa-chevron-right"></i></div>
-                    <div class="browser-btn" aria-hidden="true"><i class="fas fa-rotate-right"></i></div>
-                </div>
                 <div id="urlPill" class="url-pill truncate max-w-[50%]">—</div>
                 <div class="flex items-center gap-2">
                     <button type="button" onclick="toggleFullscreenRedesign()" class="browser-btn" title="Fullscreen redesign" style="width:auto;padding:0 10px;gap:6px;font-size:11px;font-weight:600;cursor:pointer;">
@@ -123,6 +118,8 @@
         var TEMPLATE_LABELS = { '1': 'Template 1', '2': 'Template 2' };
         var serverTemplate = '{{ $selectedTemplate }}';
         var canEdit = @json((bool) ($canEditTemplate ?? false));
+        var editablePages = @json($editablePages ?? []);
+        var preferredPage = @json($preferredPage ?? 'home');
         if (serverTemplate && TEMPLATE_URLS[serverTemplate]) {
             var frame = document.getElementById('templateFrame');
             frame.src = TEMPLATE_URLS[serverTemplate];
@@ -131,8 +128,14 @@
             if (side) side.textContent = TEMPLATE_LABELS[serverTemplate];
             frame.addEventListener('load', function () {
                 if (typeof postToTemplate === 'function') {
-                    postToTemplate({ type: 'set-can-edit', canEdit: canEdit });
-                    postToTemplate({ type: 'set-mode', mode: canEdit ? (window.currentEditorMode || 'design') : 'preview' });
+                    // Redesign is gated by HMS role assignment (not hotel Staff login)
+                    var designOn = canEdit && (window.currentEditorMode !== 'preview');
+                    postToTemplate({ type: 'set-editable-pages', pages: editablePages });
+                    postToTemplate({ type: 'set-can-edit', canEdit: designOn });
+                    postToTemplate({ type: 'set-mode', mode: designOn ? 'design' : 'preview' });
+                    if (preferredPage) {
+                        postToTemplate({ type: 'navigate-page', page: preferredPage });
+                    }
                     if (window.templateCustomizations) {
                         postToTemplate({ type: 'load-customizations', customizations: window.templateCustomizations });
                     }

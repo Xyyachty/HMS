@@ -286,7 +286,7 @@
                             @else
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-bold text-red-700 whitespace-nowrap">
                                     <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                                    Suspended
+                                    Inactive
                                 </span>
                             @endif
                         </td>
@@ -307,9 +307,8 @@
                                     data-email="{{ $user->email ?? '' }}"
                                     data-phone-number="{{ $user->phone_number ?? '' }}"
                                     data-status="{{ $status }}"
-                                    class="inline-flex items-center gap-1.5 rounded-lg bg-pink-50 px-3 py-1.5 text-[11px] font-bold text-pink-700 border border-pink-200 hover:bg-pink-100 transition-all duration-200 whitespace-nowrap"
+                                    class="inline-flex items-center rounded-lg bg-pink-50 px-3 py-1.5 text-[11px] font-bold text-pink-700 border border-pink-200 hover:bg-pink-100 transition-all duration-200 whitespace-nowrap"
                                 >
-                                    <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span>
                                     Update
                                 </button>
                             </div>
@@ -669,7 +668,7 @@
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
                     <select id="updateStatus" name="status" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
                         <option value="active">Active</option>
-                        <option value="suspended">Suspended</option>
+                        <option value="inactive">Inactive</option>
                     </select>
                 </div>
             </div>

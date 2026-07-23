@@ -77,7 +77,7 @@
         $moduleLabel = $theme['label'];
         $roleLabelFull = \App\Support\HotelTemplateBuilder::ROLES[$builderRole] ?? $moduleLabel;
     @endphp
-    <title>HMS | {{ $moduleLabel }}</title>
+    <title>Hotel Management System | {{ $moduleLabel }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -180,11 +180,6 @@
             padding: 0 12px;
             height: 40px;
             min-height: 40px;
-        }
-        .browser-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
         .browser-btn {
             width: 24px;
@@ -372,11 +367,31 @@
             font-size: 12px; font-weight: 600; cursor: pointer;
             font-family: 'Inter', sans-serif; border: none;
             display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+            text-decoration: none;
         }
         .btn-secondary { background: #18181b; color: #d4d4d8; border: 1px solid #27272a; }
         .btn-secondary:hover { background: #27272a; color: #fff; }
         .btn-primary { background: {{ $theme['primary'] }}; color: #fff; }
         .btn-primary:hover { background: {{ $theme['primary_hover'] }}; box-shadow: 0 0 20px {{ $theme['primary_glow'] }}; }
+
+        /* Save Draft — unsaved changes highlight */
+        #saveDraftBtn.has-unsaved {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f1aeb5;
+            box-shadow: 0 0 0 1px rgba(114, 28, 36, 0.08);
+            animation: saveDraftPulse 1.6s ease-in-out infinite;
+        }
+        #saveDraftBtn.has-unsaved:hover {
+            background: #f1aeb5;
+            color: #58151c;
+            border-color: #ea868f;
+        }
+        #saveDraftBtn.has-unsaved i { color: #721c24; }
+        @keyframes saveDraftPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.18); }
+            50% { box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.12); }
+        }
 
         /* Toast */
         #toast {
@@ -391,6 +406,7 @@
 
         /* ── Fullscreen Redesign Mode ── */
         body.fs-redesign .topbar { height: 52px; }
+        body.fs-redesign .topbar-row { height: 52px; }
         body.fs-redesign #leftSidebar,
         body.fs-redesign .status-bar { display: none !important; }
         body.fs-redesign #mainLayout { position: relative; }
@@ -458,48 +474,132 @@
         .fs-float-btn:hover { transform: scale(1.04); }
         body.fs-redesign.fs-panel-collapsed .fs-float-btn { right: 16px; }
         body.fs-redesign:not(.fs-panel-collapsed) .fs-float-btn { right: 336px; }
-        .fs-exit-hint {
-            display: none;
-            font-size: 10px;
-            color: #71717a;
-            margin-left: 8px;
+        .topbar-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            height: 56px;
+            padding: 0 16px;
+            box-sizing: border-box;
         }
-        body.fs-redesign .fs-exit-hint { display: inline; }
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            min-width: 0;
+        }
+        .topbar-modes {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .topbar-mid {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 0 8px;
+        }
+        .topbar-mid .save-hint {
+            font-size: 11px;
+            color: #71717a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-shrink: 0;
+            flex-wrap: nowrap;
+        }
+        .topbar-actions .hdr-btn {
+            white-space: nowrap;
+            height: 34px;
+            padding: 0 12px;
+        }
+        .topbar-actions #profileWrapper {
+            margin-left: 2px;
+            flex-shrink: 0;
+        }
+        .topbar-actions .profile-trigger {
+            height: 34px;
+            padding: 0 10px 0 6px;
+            gap: 8px;
+        }
+        .topbar-actions .avatar {
+            width: 26px;
+            height: 26px;
+            font-size: 10px;
+        }
+        .template-chip {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.25);
+            border-radius: 6px;
+            padding: 3px 8px;
+            white-space: nowrap;
+        }
+        @media (max-width: 1100px) {
+            .topbar-mid .save-hint { display: none; }
+            .hms-logo-text { max-width: 140px; }
+        }
+        @media (max-width: 900px) {
+            .topbar-actions .profile-trigger .leading-none { display: none; }
+            #fsToggleLabel { display: none; }
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
     <!-- ═══════ TOP NAVIGATION BAR ═══════ -->
-    <header class="topbar h-16 flex items-center justify-between px-6 shrink-0 z-50">
-        
-        <div class="flex items-center gap-3">
-            <div class="logo-icon">
+    <header class="topbar topbar-row shrink-0 z-50">
+        <div class="topbar-brand">
+            <div class="logo-icon shrink-0">
                 <i class="fas {{ $theme['icon'] }} text-white text-sm"></i>
             </div>
-            <div class="flex flex-col leading-none">
-                <span class="hms-logo-text text-xl">HMS</span>
-            </div>
-            <div class="w-px h-5 bg-zinc-800 mx-2"></div>
-            <span class="module-badge">{{ $moduleLabel }}</span>
-            <span class="fs-exit-hint">Fullscreen redesign · Esc to exit · Ctrl+Shift+F</span>
-        </div>
-
-        <div class="flex items-center gap-1 bg-zinc-900/60 rounded-lg p-1 border border-zinc-800" id="editorModeTabs">
-            @if($canEditTemplate ?? false)
-                <button onclick="setMode(this,'design')" class="mode-tab active-tab px-4 py-2 rounded-md text-xs text-white transition-all bg-zinc-800 border border-zinc-700">Design</button>
-                <button onclick="setMode(this,'preview')" class="mode-tab px-4 py-2 rounded-md text-xs font-semibold text-zinc-500 transition-all">Preview</button>
-            @else
-                <span class="px-4 py-2 rounded-md text-xs font-semibold text-amber-300/90 bg-amber-500/10 border border-amber-500/20">View only — {{ $roleLabelFull }} role required to edit</span>
+            <span class="hms-logo-text text-sm truncate">Hotel Management System</span>
+            <div class="w-px h-5 bg-zinc-800 shrink-0"></div>
+            <span class="module-badge shrink-0">{{ $moduleLabel }}</span>
+            @if(!empty($selectedTemplate))
+                <span class="template-chip shrink-0">Template {{ $selectedTemplate }}</span>
             @endif
         </div>
 
-        <div class="flex items-center gap-3">
-            <button id="fsToggleBtn" class="hdr-btn btn-secondary" onclick="toggleFullscreenRedesign()" title="Fullscreen redesign">
+        <div class="topbar-modes">
+            <div class="flex items-center gap-1 bg-zinc-900/60 rounded-lg p-1 border border-zinc-800" id="editorModeTabs">
+                @if($canEditTemplate ?? false)
+                    <button onclick="setMode(this,'design')" class="mode-tab active-tab px-4 py-2 rounded-md text-xs text-white transition-all bg-zinc-800 border border-zinc-700">Design</button>
+                    <button onclick="setMode(this,'preview')" class="mode-tab px-4 py-2 rounded-md text-xs font-semibold text-zinc-500 transition-all border border-transparent">Preview</button>
+                @else
+                    <span class="px-3 py-2 rounded-md text-xs font-semibold text-amber-300/90 bg-amber-500/10 border border-amber-500/20">View only</span>
+                @endif
+            </div>
+        </div>
+
+        <div class="topbar-mid">
+            <span class="save-hint" id="autoSaveStatus">Ready · Ctrl+S to save</span>
+        </div>
+
+        <div class="topbar-actions">
+            <button id="fsToggleBtn" class="hdr-btn btn-secondary" onclick="toggleFullscreenRedesign()" title="Fullscreen">
                 <i class="fas fa-expand" id="fsToggleIcon"></i>
                 <span id="fsToggleLabel">Fullscreen</span>
             </button>
             @if($canEditTemplate ?? false)
-                <button class="hdr-btn btn-secondary" onclick="saveTemplateDraft(false)"><i class="fas fa-save"></i> Save Draft</button>
+                <button id="saveDraftBtn" type="button" class="hdr-btn btn-secondary" onclick="saveTemplateDraft(false)" title="Save draft">
+                    <i class="fas fa-save"></i> Save Draft
+                </button>
                 <button class="hdr-btn btn-primary" onclick="saveTemplateDraft(true)"><i class="fas fa-paper-plane"></i> Publish</button>
             @endif
 
@@ -549,10 +649,9 @@
 
     <!-- ═══════ STATUS BAR ═══════ -->
     <div class="status-bar h-8 flex items-center px-6 gap-4 shrink-0 text-[10px] text-zinc-600">
-        <div class="flex items-center gap-2 text-green-500"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> <span id="autoSaveStatus">Ready</span></div>
+        <div class="flex items-center gap-2 text-green-500"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> <span>Editor online</span></div>
         <span class="text-zinc-800">|</span>
         <span id="blockCount">0 blocks on canvas</span>
-        <span class="fs-exit-hint">Press Esc to exit fullscreen</span>
     </div>
 
     <button type="button" id="fsPanelToggle" class="fs-float-btn {{ ($canEditTemplate ?? false) ? '' : 'hidden' }}" onclick="toggleDesignPanel()" title="Toggle design panel">
@@ -589,6 +688,9 @@
             },
             onToast: function (msg) { if (typeof toast === 'function') toast(msg); },
             onChange: function (evt) {
+                if (evt.type === 'dirty') {
+                    setSaveDraftUnsaved(!!evt.dirty);
+                }
                 if (evt.type === 'mode') {
                     const designMode = evt.mode === 'build';
                     window.currentEditorMode = designMode ? 'design' : 'preview';
@@ -889,6 +991,12 @@
                 e.preventDefault();
                 toggleFullscreenRedesign(false);
             }
+            // Ctrl/Cmd + S — manual save draft
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
+                e.preventDefault();
+                if (typeof saveTemplateDraft === 'function') saveTemplateDraft(false);
+                return;
+            }
             // Ctrl/Cmd + Shift + F for fullscreen redesign
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
                 e.preventDefault();
@@ -903,7 +1011,7 @@
             }
             document.querySelectorAll('.mode-tab').forEach(t => {
                 t.style.background = 'transparent';
-                t.style.border = 'none';
+                t.style.border = '1px solid transparent';
                 t.style.color = '#71717a';
                 t.classList.remove('active-tab');
             });
@@ -931,6 +1039,9 @@
                 try {
                     await window.hmsBuilder.save(!!publish);
                     if (typeof renderHbVersions === 'function') renderHbVersions();
+                    const status = document.getElementById('autoSaveStatus');
+                    if (status) status.textContent = publish ? 'Published' : 'Draft saved';
+                    setSaveDraftUnsaved(false);
                 } catch (e) { /* toast already shown */ }
                 return;
             }
@@ -960,10 +1071,31 @@
                 toast(publish ? 'Page published — teammates will see updates' : 'Draft saved — teammates will see updates');
                 const status = document.getElementById('autoSaveStatus');
                 if (status) status.textContent = publish ? 'Published' : 'Draft saved';
+                setSaveDraftUnsaved(false);
             } catch (err) {
                 console.error(err);
                 toast(err.message || 'Could not save template');
             }
+        }
+
+        function setSaveDraftUnsaved(dirty) {
+            const btn = document.getElementById('saveDraftBtn');
+            if (!btn) return;
+            btn.classList.toggle('has-unsaved', !!dirty);
+            btn.title = dirty ? 'Unsaved changes — click to save draft' : 'Save draft';
+            const status = document.getElementById('autoSaveStatus');
+            if (status && dirty) {
+                status.textContent = 'Unsaved changes — Ctrl+S to save';
+            }
+        }
+
+        function confirmLeaveBuilder(event) {
+            const dirty = !!(window.hmsBuilder && window.hmsBuilder.isDirty && window.hmsBuilder.isDirty())
+                || !!(document.getElementById('saveDraftBtn')?.classList.contains('has-unsaved'));
+            if (!dirty) return true;
+            const ok = window.confirm('You have unsaved changes. Leave without saving?');
+            if (!ok && event) event.preventDefault();
+            return ok;
         }
 
         async function syncGroupPresence() {
@@ -992,6 +1124,10 @@
         }
 
         async function syncTemplateFromServer() {
+            // Never replace a student's unsaved design buffer with a polling update.
+            if (window.hmsBuilder && window.hmsBuilder._dirty && window.currentEditorMode === 'design') {
+                return;
+            }
             try {
                 const res = await fetch(@json(route('students.templates.sync', ['role' => $builderRole])), {
                     credentials: 'same-origin',

@@ -11,9 +11,17 @@
                     <p class="text-[10px] text-zinc-500 mt-0.5">Style &amp; customize elements</p>
                 </div>
             </div>
-            <button class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-all" title="Reset selected element styles" onclick="resetSelectedStyles()">
-                <i class="fas fa-rotate-left text-[10px]"></i>
-            </button>
+            <div class="flex items-center gap-1">
+                <button id="undoEditorBtn" class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Undo (Ctrl+Z)" onclick="undoEditorChange()" disabled>
+                    <i class="fas fa-rotate-left text-[10px]"></i>
+                </button>
+                <button id="redoEditorBtn" class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Redo (Ctrl+Y)" onclick="redoEditorChange()" disabled>
+                    <i class="fas fa-rotate-right text-[10px]"></i>
+                </button>
+                <button class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-all" title="Reset selected element styles" onclick="resetSelectedStyles()">
+                    <i class="fas fa-eraser text-[10px]"></i>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -27,6 +35,29 @@
                     <i class="fas fa-mouse-pointer text-[9px] text-cyan-400"></i>
                 </div>
                 <span class="text-xs text-zinc-400" id="selectedElement">Select an element to style</span>
+            </div>
+            <p id="selectionHint" class="text-[9px] text-zinc-600 mt-2 leading-relaxed">
+                Click text, a button, image, or icon. Alt+click selects its layout container.
+            </p>
+            <button id="selectParentBtn" type="button" onclick="selectParentElement()" class="hidden w-full mt-2 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-semibold text-cyan-300 hover:bg-cyan-500/15 transition">
+                <i class="fas fa-arrow-up mr-1"></i><span id="selectParentLabel">Select parent container</span>
+            </button>
+            <div id="movementControls" class="hidden mt-2 rounded-lg border border-zinc-700/70 bg-zinc-800/50 p-2.5">
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-up-down-left-right text-[9px] text-cyan-400 mt-0.5" id="movementIcon"></i>
+                    <div class="min-w-0 flex-1">
+                        <p id="movementStatus" class="text-[10px] font-semibold text-zinc-300">Position &amp; align</p>
+                        <p id="movementHelp" class="text-[9px] leading-relaxed text-zinc-500 mt-0.5">Drag the cyan Move handle to reposition. Pink guides snap it into alignment. Arrow keys nudge (Shift = 10px).</p>
+                    </div>
+                </div>
+                <div id="movementAlignButtons" class="grid grid-cols-3 gap-1 mt-2">
+                    <button type="button" onclick="alignSelectedElement('left')" class="add-el-btn" title="Align left"><i class="fas fa-align-left"></i>Left</button>
+                    <button type="button" onclick="alignSelectedElement('center')" class="add-el-btn" title="Center horizontally"><i class="fas fa-align-center"></i>Center</button>
+                    <button type="button" onclick="alignSelectedElement('right')" class="add-el-btn" title="Align right"><i class="fas fa-align-right"></i>Right</button>
+                    <button type="button" onclick="alignSelectedElement('top')" class="add-el-btn" title="Align top"><i class="fas fa-arrow-up"></i>Top</button>
+                    <button type="button" onclick="alignSelectedElement('middle')" class="add-el-btn" title="Center vertically"><i class="fas fa-arrows-up-down"></i>Middle</button>
+                    <button type="button" onclick="alignSelectedElement('bottom')" class="add-el-btn" title="Align bottom"><i class="fas fa-arrow-down"></i>Bottom</button>
+                </div>
             </div>
             <div class="grid grid-cols-2 gap-1.5 mt-2.5">
                 <button type="button" onclick="duplicateSelectedElement()" class="py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-300 hover:border-cyan-500/40 hover:text-white transition">
@@ -50,7 +81,7 @@
                 <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-add"></i>
             </button>
             <div class="section-body px-5 pb-4" id="section-add">
-                <p class="text-[10px] text-zinc-500 mb-2">Adds objects onto the live template. Move and resize them on the page.</p>
+                <p class="text-[10px] text-zinc-500 mb-2">Adds objects onto the live template. Select one, then use its cyan Move handle and resize points.</p>
                 <div class="grid grid-cols-2 gap-1.5">
                     <button type="button" onclick="addCanvasElement('text')" class="add-el-btn"><i class="fas fa-font"></i>Text</button>
                     <button type="button" onclick="addCanvasElement('button')" class="add-el-btn"><i class="fas fa-square"></i>Button</button>
@@ -372,8 +403,6 @@
 
         <!-- Bottom spacer -->
         <div class="h-4"></div>
-
-        @include('students.partials.hotel-builder-panels', ['builderRole' => $builderRole ?? 'front_desk'])
     </div>
 
 </aside>
@@ -664,13 +693,28 @@
         if (typeof toast === 'function') toast('Styles reset for selection');
     }
 
+    function undoEditorChange() {
+        postToTemplate({ type: 'undo' });
+    }
+
+    function redoEditorChange() {
+        postToTemplate({ type: 'redo' });
+    }
+
+    function updateHistoryButtons(canUndo, canRedo) {
+        const undoBtn = document.getElementById('undoEditorBtn');
+        const redoBtn = document.getElementById('redoEditorBtn');
+        if (undoBtn) undoBtn.disabled = !canUndo;
+        if (redoBtn) redoBtn.disabled = !canRedo;
+    }
+
     function addCanvasElement(type) {
         if (!window.HMS_CAN_EDIT_TEMPLATE) {
             if (typeof toast === 'function') toast('View only — you cannot edit this role page');
             return;
         }
         postToTemplate({ type: 'add-element', elementType: type });
-        if (typeof toast === 'function') toast('Added ' + type + ' — drag to position');
+        if (typeof toast === 'function') toast('Added ' + type + ' — use the cyan Move handle');
     }
 
     function deleteSelectedElement() {
@@ -684,6 +728,22 @@
     function duplicateSelectedElement() {
         if (!requireSelection()) return;
         postToTemplate({ type: 'duplicate-element' });
+    }
+
+    function selectParentElement() {
+        if (!requireSelection()) return;
+        postToTemplate({ type: 'select-parent' });
+    }
+
+    function alignSelectedElement(direction) {
+        if (!requireSelection()) return;
+        postToTemplate({ type: 'align-element', direction: direction });
+    }
+
+    function updateMovementControls() {
+        const controls = document.getElementById('movementControls');
+        if (!controls) return;
+        controls.classList.remove('hidden');
     }
 
     function layerSelected(direction) {
@@ -701,10 +761,21 @@
             postToTemplate({ type: 'load-customizations', customizations: window.templateCustomizations });
         }
 
+        if (data.type === 'history-state') {
+            updateHistoryButtons(!!data.canUndo, !!data.canRedo);
+        }
+
         if (data.type === 'element-selected') {
             window.selectedElementId = data.id;
             const label = document.getElementById('selectedElement');
-            if (label) label.textContent = data.label || 'Selected element';
+            if (label) label.textContent = (data.label || 'Selected element') + (data.tag ? ' · <' + data.tag + '>' : '');
+            const parentBtn = document.getElementById('selectParentBtn');
+            const parentLabel = document.getElementById('selectParentLabel');
+            if (parentBtn) parentBtn.classList.toggle('hidden', !data.canSelectParent);
+            if (parentLabel) parentLabel.textContent = data.parentLabel
+                ? 'Select parent: ' + data.parentLabel
+                : 'Select parent container';
+            updateMovementControls();
             const textArea = document.getElementById('elementText');
             if (textArea) textArea.value = data.text || '';
             const iconInput = document.getElementById('iconClass');
@@ -753,6 +824,10 @@
             window.selectedElementId = null;
             const label = document.getElementById('selectedElement');
             if (label) label.textContent = 'Select an element to style';
+            const parentBtn = document.getElementById('selectParentBtn');
+            if (parentBtn) parentBtn.classList.add('hidden');
+            const movement = document.getElementById('movementControls');
+            if (movement) movement.classList.add('hidden');
         }
 
         if (data.type === 'customizations-changed') {
@@ -761,8 +836,19 @@
                 window.hmsBuilder.state.customizations = window.templateCustomizations;
                 window.hmsBuilder.markDirty();
             }
+            if (typeof setSaveDraftUnsaved === 'function') {
+                setSaveDraftUnsaved(true);
+            }
             const status = document.getElementById('autoSaveStatus');
-            if (status) status.textContent = 'Unsaved changes';
+            if (status) status.textContent = 'Unsaved changes — Ctrl+S to save';
+        }
+
+        if (data.type === 'request-save-draft') {
+            if (typeof saveTemplateDraft === 'function') {
+                saveTemplateDraft(false);
+            } else if (window.hmsBuilder) {
+                window.hmsBuilder.save(false);
+            }
         }
     }
 

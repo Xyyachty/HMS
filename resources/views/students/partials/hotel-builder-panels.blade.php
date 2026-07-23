@@ -39,5 +39,5 @@
             class="flex-1 py-2 rounded-lg text-[11px] font-bold bg-cyan-600 text-white {{ $builderCanEdit ? '' : 'opacity-40 cursor-not-allowed' }}"
             {{ $builderCanEdit ? '' : 'disabled' }}>Publish</button>
     </div>
-    <p id="hbStatus" class="text-[10px] text-zinc-500">Autosave is on while you edit</p>
+    <p id="hbStatus" class="text-[10px] text-zinc-500">Save with Ctrl+S or Save Draft — changes are not auto-saved</p>
 </div>

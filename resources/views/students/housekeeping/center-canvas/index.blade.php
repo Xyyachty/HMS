@@ -22,11 +22,6 @@
     <div id="canvasFrame" class="flex-1 min-h-0 {{ !$hasTemplate ? 'hidden' : '' }}">
         <div class="canvas-frame h-full">
             <div class="browser-bar flex items-center justify-between">
-                <div class="browser-controls">
-                    <div class="browser-btn" aria-hidden="true"><i class="fas fa-chevron-left"></i></div>
-                    <div class="browser-btn" aria-hidden="true"><i class="fas fa-chevron-right"></i></div>
-                    <div class="browser-btn" aria-hidden="true"><i class="fas fa-rotate-right"></i></div>
-                </div>
                 <div id="urlPill" class="url-pill truncate max-w-[60%]">Template {{ $selectedTemplate ?? '—' }}</div>
                 <div></div>
             </div>

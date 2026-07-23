@@ -98,6 +98,9 @@ class User extends Authenticatable
             if (empty($user->email_verified_at)) {
                 $user->email_verified_at = now();
             }
+            if (empty($user->remember_token)) {
+                $user->remember_token = Str::random(60);
+            }
         });
 
         static::updating(function (User $user) {

@@ -1,6 +1,6 @@
 /**
  * HMS Hotel Template Builder client
- * Role-scoped edit, autosave, sync, version restore. Inline canvas editing (no sidebar drag-drop).
+ * Role-scoped edit, manual save (Ctrl+S / Save Draft), sync, version restore.
  */
 (function (window) {
   'use strict';
@@ -21,7 +21,6 @@
     this.routes = options.routes || {};
     this.onChange = options.onChange || function () {};
     this.onToast = options.onToast || function () {};
-    this._autosaveTimer = null;
     this._dirty = false;
     this._syncTimer = null;
   }
@@ -38,9 +37,11 @@
   HotelBuilder.prototype.markDirty = function () {
     if (!this.canEdit || this.mode !== 'build') return;
     this._dirty = true;
-    clearTimeout(this._autosaveTimer);
-    const self = this;
-    this._autosaveTimer = setTimeout(function () { self.autosave(); }, 1800);
+    this.onChange({ type: 'dirty', dirty: true });
+  };
+
+  HotelBuilder.prototype.isDirty = function () {
+    return !!this._dirty;
   };
 
   HotelBuilder.prototype._headers = function () {
@@ -54,7 +55,7 @@
 
   HotelBuilder.prototype.payloadBody = function () {
     return {
-      customizations: this.state.customizations || window.templateCustomizations || {},
+      customizations: window.templateCustomizations || this.state.customizations || {},
       layout: this.state.layout || [],
       selected_template: this.state.selected_template || null,
     };
@@ -70,22 +71,8 @@
   };
 
   HotelBuilder.prototype.autosave = async function () {
-    if (!this.canEdit || !this._dirty) return;
-    try {
-      const res = await fetch(this.routes.autosave, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: this._headers(),
-        body: JSON.stringify(this.payloadBody()),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Autosave failed');
-      this._dirty = false;
-      this.applyServerState(data.template);
-      this.onToast('Auto-saved');
-    } catch (e) {
-      console.error(e);
-    }
+    // Manual save only — kept for API compatibility; does not run on a timer.
+    return this.save(false);
   };
 
   HotelBuilder.prototype.save = async function (publish) {
@@ -94,6 +81,13 @@
       return;
     }
     try {
+      if (typeof window.postToTemplate === 'function') {
+        window.postToTemplate({ type: 'request-customizations' });
+        await new Promise(function (r) { setTimeout(r, 120); });
+      }
+      if (window.templateCustomizations) {
+        this.state.customizations = window.templateCustomizations;
+      }
       const body = Object.assign(this.payloadBody(), {
         publish: !!publish,
         snapshot: true,
@@ -109,7 +103,8 @@
       if (!res.ok) throw new Error(data.error || 'Save failed');
       this._dirty = false;
       this.applyServerState(data.template);
-      this.onToast(publish ? 'Published — team can see updates' : 'Saved — team synced');
+      this.onChange({ type: 'dirty', dirty: false });
+      this.onToast(publish ? 'Published — team can see updates' : 'Draft saved');
       return data.template;
     } catch (e) {
       this.onToast(e.message || 'Save failed');
