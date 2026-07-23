@@ -68,13 +68,19 @@ class DepartmentTemplatePage
         $templatePayload = null;
         $canEditTemplate = false;
 
+        $editablePages = HotelTemplateBuilder::editablePagesForRole($role);
+        $preferredPage = HotelTemplateBuilder::preferredPageForRole($role);
+
         if ($groupMembership) {
             $roleTemplate = HotelTemplateBuilder::ensureTemplate($groupMembership, $role);
             $canEditTemplate = HotelTemplateBuilder::canEdit($authUser, $groupMembership, $role);
             $templatePayload = HotelTemplateBuilder::payload($roleTemplate, $canEditTemplate);
-            $templateCustomizations = $roleTemplate->customizations ?? [];
+            // Always hydrate the iframe with the merged team site so everyone sees synced work
+            $templateCustomizations = $templatePayload['customizations'] ?? [];
             $templateLayout = $roleTemplate->layout ?? $templateLayout;
-            $templateVersion = optional($roleTemplate->updated_at)->timestamp;
+            $templateVersion = $templatePayload['sync_version'] ?? optional($roleTemplate->updated_at)->timestamp;
+            $editablePages = $templatePayload['editable_pages'] ?? $editablePages;
+            $preferredPage = $templatePayload['preferred_page'] ?? $preferredPage;
 
             // Group template is locked by Front Desk only — teammates see nothing until chosen
             $frontDeskTemplate = $role === 'front_desk'
@@ -103,7 +109,9 @@ class DepartmentTemplatePage
             'templateVersion',
             'templateLayout',
             'templatePayload',
-            'canEditTemplate'
+            'canEditTemplate',
+            'editablePages',
+            'preferredPage'
         ) + ['builderRole' => $role];
     }
 }

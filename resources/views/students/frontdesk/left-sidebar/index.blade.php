@@ -1,28 +1,4 @@
 <aside class="h-full flex flex-col text-zinc-200">
-    <div class="px-5 py-5 border-b border-zinc-800/80">
-        <div class="flex items-start justify-between gap-3 mb-4">
-            <div>
-                <h2 class="text-sm font-bold text-white tracking-wide uppercase">Team Members</h2>
-                <p class="text-[11px] text-zinc-500 mt-1">Live presence synced across the group</p>
-            </div>
-            <div class="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-400/20 flex items-center justify-center text-cyan-300">
-                <i class="fas fa-users text-sm"></i>
-            </div>
-        </div>
-
-        <div class="settings-card mb-0">
-            <span class="settings-label">Group</span>
-            <p class="text-lg font-bold text-white">{{ $groupName ?? ($group->name ?? 'Team') }}</p>
-            <p class="text-[11px] text-zinc-500 mt-1">
-                @if($canEditTemplate ?? false)
-                    You can edit the hotel template
-                @else
-                    View-only — {{ $roleLabelFull ?? 'assigned' }} role required to edit
-                @endif
-            </p>
-        </div>
-    </div>
-
     <div class="px-5 py-5 flex-1 overflow-y-auto">
         <div class="space-y-4">
             @foreach($groupMembers as $member)
@@ -48,5 +24,16 @@
                 </div>
             @endforeach
         </div>
+    </div>
+
+    <div class="px-5 py-4 border-t border-zinc-800 shrink-0 bg-zinc-950/80">
+        <a id="backToTasksBtn" href="{{ route('students.dashboard', ['section' => 'tasks']) }}"
+           onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+           class="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-xs font-bold
+                  bg-zinc-900 text-zinc-200 border border-zinc-700 hover:border-cyan-500/40 hover:text-white hover:bg-zinc-800 transition"
+           title="Back to Tasks">
+            <i class="fas fa-arrow-left text-[11px]"></i>
+            Back to Tasks
+        </a>
     </div>
 </aside>

@@ -64,12 +64,11 @@
             <table class="w-full text-sm" style="table-layout:fixed">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200">
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:32%">Task</th>
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:16%">Role</th>
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:12%">Priority</th>
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Status</th>
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Due</th>
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:12%">Updated</th>
+                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:36%">Task</th>
+                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Role</th>
+                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:16%">Status</th>
+                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:16%">Due</th>
+                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Updated</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -83,13 +82,6 @@
                             </td>
                             <td class="px-4 py-3 text-xs font-semibold text-slate-600 whitespace-nowrap">
                                 {{ $roleLabels[$task->role] ?? $task->role }}
-                            </td>
-                            <td class="px-4 py-3">
-                                @php $p = strtolower($task->priority ?? 'medium'); @endphp
-                                <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold
-                                    {{ $p === 'high' ? 'bg-red-50 text-red-700 border border-red-100' : ($p === 'low' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100') }}">
-                                    {{ ucfirst($p) }}
-                                </span>
                             </td>
                             <td class="px-4 py-3">
                                 @if($task->status === 'archived')
@@ -113,7 +105,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-14 text-center">
+                            <td colspan="5" class="px-4 py-14 text-center">
                                 <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                                     <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
                                 </div>

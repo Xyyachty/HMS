@@ -107,10 +107,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     $displayName = $displayName !== '' ? $displayName : ($user?->name ?? 'Student');
 
                     return (object) [
-                        'id'    => $user?->id,
-                        'name'  => $displayName,
-                        'email' => $user?->email,
-                        'roles' => $member->roles->pluck('role')->toArray(),
+                        'id'         => $user?->id,
+                        'student_id' => $member->student_id,
+                        'name'       => $displayName,
+                        'email'      => $user?->email,
+                        'roles'      => $member->roles->pluck('role')->toArray(),
                     ];
                 });
 
@@ -196,14 +197,29 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->values()
             : collect();
 
-        $selfActivityLogs = $facultyId && !empty($studentRoles)
+        $selfActivityLogs = $facultyId && $student
             ? Task::where('faculty_id', $facultyId)
-                ->whereIn('role', $studentRoles)
+                ->where(function ($q) use ($student, $authUser, $studentRoles) {
+                    // Only this user's own history
+                    $q->where('student_id', $student->id)
+                        ->orWhere('assigned_to', $authUser->id);
+
+                    // Still show active tasks for their roles so they can complete them
+                    if (!empty($studentRoles)) {
+                        $q->orWhere(function ($active) use ($studentRoles) {
+                            $active->where('status', 'active')
+                                ->whereIn('role', $studentRoles);
+                        });
+                    }
+                })
                 ->orderByDesc('updated_at')
                 ->take(50)
                 ->get()
+                ->unique('id')
+                ->values()
             : collect();
 
+        // Used for teammate Activity modal + reports (not shown in Activity Logs nav)
         $teamActivityLogs = $facultyId
             ? Task::with(['student.user', 'assignedTo'])
                 ->where('faculty_id', $facultyId)
@@ -315,6 +331,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ]);
     })->name('group.presence');
 
+    // Hotel website simulation auth (Staff redesign vs Customer book)
+    Route::get('/hotel-auth/me', [\App\Http\Controllers\HotelSimulationAuthController::class, 'me'])->name('hotel-auth.me');
+    Route::post('/hotel-auth/staff/login', [\App\Http\Controllers\HotelSimulationAuthController::class, 'staffLogin'])->name('hotel-auth.staff.login');
+    Route::post('/hotel-auth/customer/signup', [\App\Http\Controllers\HotelSimulationAuthController::class, 'customerSignup'])->name('hotel-auth.customer.signup');
+    Route::post('/hotel-auth/customer/login', [\App\Http\Controllers\HotelSimulationAuthController::class, 'customerLogin'])->name('hotel-auth.customer.login');
+    Route::post('/hotel-auth/logout', [\App\Http\Controllers\HotelSimulationAuthController::class, 'logout'])->name('hotel-auth.logout');
+
     // Hotel website template builder (per role, team-synced)
     Route::get('/templates/{role}', [HotelTemplateController::class, 'show'])->name('templates.show');
     Route::get('/templates/{role}/sync', [HotelTemplateController::class, 'sync'])->name('templates.sync');
@@ -372,7 +395,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
         }
 
-        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate'));
+        $editablePages = $canEditTemplate
+            ? \App\Support\HotelTemplateBuilder::editablePagesForRole('front_desk')
+            : [];
+
+        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages'));
     })->name('frontdesk.template.1');
 
     Route::get('/frontdesk/template/2', function (Request $request) {
@@ -400,7 +427,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
         }
 
-        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate'));
+        $editablePages = $canEditTemplate
+            ? \App\Support\HotelTemplateBuilder::editablePagesForRole('front_desk')
+            : [];
+
+        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages'));
     })->name('frontdesk.template.2');
 
     Route::post('/frontdesk/template/select', function (Request $request) {

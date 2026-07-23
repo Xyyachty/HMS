@@ -36,13 +36,21 @@ class StudentCreated implements ShouldBroadcast
             $this->user->middle_name ?? null,
         ])));
 
+        $this->student->loadMissing('facultyClass');
+        $block = $this->student->facultyClass?->letter;
+
         return [
             'user_id' => $this->user->id,
             'student_id' => $this->student->student_id,
             'name' => $displayName !== '' ? $displayName : ($this->user->name ?? 'Student'),
+            'first_name' => $this->user->first_name,
+            'middle_name' => $this->user->middle_name,
+            'last_name' => $this->user->last_name,
             'email' => $this->user->email,
             'phone_number' => $this->user->phone_number,
             'status' => $this->user->status ?? 'pending',
+            'block' => $block ? strtoupper((string) $block) : null,
+            'block_label' => $block ? ('Block ' . strtoupper((string) $block)) : '—',
             'joined' => optional($this->user->created_at)->format('M d, Y'),
         ];
     }

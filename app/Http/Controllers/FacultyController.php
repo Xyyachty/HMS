@@ -50,12 +50,21 @@ class FacultyController extends Controller
 
         $formSource = $request->input('_form_source', 'create_team');
 
+        if ($formSource === 'create_teams_bulk') {
+            return $this->storeBulkGroups($request, $facultyId);
+        }
+
         $validated = $request->validate([
             'group_name' => ['required', 'string', 'max:255'],
-            'members' => ['required', 'array', 'min:1'],
+            'members' => ['required', 'array', 'min:1', 'max:4'],
             'members.*' => ['integer', 'exists:students,id'],
             'member_roles' => ['nullable', 'array'],
         ]);
+
+        $memberIds = array_values(array_unique(array_map('intval', $validated['members'])));
+        if (count($memberIds) > 4) {
+            return back()->withErrors(['members' => 'A team cannot have more than 4 members.'])->withInput();
+        }
 
         // If inserting into existing team, validate that the team already exists
         if ($formSource === 'insert_student') {
@@ -69,17 +78,33 @@ class FacultyController extends Controller
 
             // Check that selected students are not already in this team
             $existingMembers = StudentGroup::where('group_name', $validated['group_name'])
-                ->whereIn('student_id', $validated['members'])
+                ->where('faculty_id', $facultyId)
                 ->pluck('student_id')
-                ->toArray();
+                ->map(fn ($id) => (int) $id)
+                ->all();
 
-            if (!empty($existingMembers)) {
+            $overlap = array_intersect($memberIds, $existingMembers);
+            if (!empty($overlap)) {
                 return back()->withErrors(['members' => 'Some selected students are already in this team.'])->withInput();
+            }
+
+            if (count($existingMembers) + count($memberIds) > 4) {
+                $slotsLeft = max(0, 4 - count($existingMembers));
+                return back()->withErrors([
+                    'members' => "This team already has " . count($existingMembers) . " member(s). You can add at most {$slotsLeft} more (max 4 per team).",
+                ])->withInput();
+            }
+        } elseif ($formSource === 'create_team') {
+            // Single team create: max 4 members
+            $nameTaken = StudentGroup::where('group_name', $validated['group_name'])
+                ->where('faculty_id', $facultyId)
+                ->exists();
+            if ($nameTaken) {
+                return back()->withErrors(['group_name' => 'A team with this name already exists.'])->withInput();
             }
         }
 
         $allowedRoles = $this->teamRoleKeys();
-        $memberIds = array_values(array_unique($validated['members']));
         $rolesByMember = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
@@ -111,7 +136,127 @@ class FacultyController extends Controller
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'teams',
             'class' => $request->input('class_letter') ?: null,
-        ]));
+        ]))->with('success', $formSource === 'insert_student'
+            ? 'Students added to the team.'
+            : 'Team created successfully.');
+    }
+
+    /**
+     * Create multiple teams and assign students in one request.
+     */
+    private function storeBulkGroups(Request $request, int $facultyId)
+    {
+        $validated = $request->validate([
+            'teams' => ['required', 'array', 'min:1'],
+            'teams.*.group_name' => ['required', 'string', 'max:255'],
+            'teams.*.members' => ['required', 'array', 'size:4'],
+            'teams.*.members.*' => ['integer', 'exists:students,id'],
+            'teams.*.member_roles' => ['nullable', 'array'],
+        ]);
+
+        $allowedRoles = $this->teamRoleKeys();
+        $existingNames = StudentGroup::where('faculty_id', $facultyId)
+            ->pluck('group_name')
+            ->map(fn ($n) => strtolower(trim((string) $n)))
+            ->unique()
+            ->all();
+
+        $assignedStudentIds = StudentGroup::where('faculty_id', $facultyId)
+            ->pluck('student_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->all();
+
+        $ownedStudentIds = Student::where('faculty_id', $facultyId)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $seenNames = [];
+        $seenMembers = [];
+        $normalizedTeams = [];
+
+        foreach ($validated['teams'] as $index => $team) {
+            $name = trim((string) $team['group_name']);
+            $nameKey = strtolower($name);
+            $row = $index + 1;
+
+            if ($name === '') {
+                return back()->withErrors(["teams.{$index}.group_name" => "Team #{$row} needs a name."])->withInput();
+            }
+
+            if (in_array($nameKey, $seenNames, true) || in_array($nameKey, $existingNames, true)) {
+                return back()->withErrors(["teams.{$index}.group_name" => "Team name \"{$name}\" is already used."])->withInput();
+            }
+
+            $memberIds = array_values(array_unique(array_map('intval', $team['members'] ?? [])));
+            if (count($memberIds) !== 4) {
+                return back()->withErrors([
+                    "teams.{$index}.members" => "Team \"{$name}\" must have exactly 4 members (got " . count($memberIds) . ").",
+                ])->withInput();
+            }
+
+            foreach ($memberIds as $studentId) {
+                if (!in_array($studentId, $ownedStudentIds, true)) {
+                    return back()->withErrors(["teams.{$index}.members" => "Team \"{$name}\" includes a student that is not yours."])->withInput();
+                }
+                if (in_array($studentId, $assignedStudentIds, true)) {
+                    return back()->withErrors(["teams.{$index}.members" => "Team \"{$name}\" includes a student already on a team."])->withInput();
+                }
+                if (in_array($studentId, $seenMembers, true)) {
+                    return back()->withErrors(["teams.{$index}.members" => "A student was assigned to more than one team."])->withInput();
+                }
+                $seenMembers[] = $studentId;
+            }
+
+            $rolesByMember = $this->resolveMemberRoles(
+                $memberIds,
+                $team['member_roles'] ?? [],
+                $allowedRoles
+            );
+
+            if ($rolesByMember === null) {
+                return back()->withErrors(["teams.{$index}.member_roles" => "Invalid roles for team \"{$name}\"."])->withInput();
+            }
+
+            $seenNames[] = $nameKey;
+            $normalizedTeams[] = [
+                'group_name' => $name,
+                'members' => $memberIds,
+                'roles_by_member' => $rolesByMember,
+            ];
+        }
+
+        DB::transaction(function () use ($normalizedTeams, $facultyId) {
+            foreach ($normalizedTeams as $team) {
+                foreach ($team['members'] as $studentId) {
+                    $roles = $team['roles_by_member'][$studentId];
+
+                    $studentGroup = StudentGroup::create([
+                        'group_name' => $team['group_name'],
+                        'faculty_id' => $facultyId,
+                        'student_id' => $studentId,
+                        'role' => $roles[0],
+                    ]);
+
+                    foreach ($roles as $role) {
+                        StudentGroupRole::create([
+                            'student_group_id' => $studentGroup->id,
+                            'role' => $role,
+                        ]);
+                    }
+                }
+            }
+        });
+
+        $count = count($normalizedTeams);
+
+        return redirect()->route('faculty.role', array_filter([
+            'tab' => 'teams',
+            'class' => $request->input('class_letter') ?: null,
+        ]))->with('success', $count === 1
+            ? 'Team created successfully.'
+            : "{$count} teams created successfully.");
     }
 
     /** @return list<string> */
@@ -327,7 +472,7 @@ class FacultyController extends Controller
         $validated = $request->validate([
             'phone_number' => ['nullable', 'string', 'max:30'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'status' => ['required', 'in:active,suspended'],
+            'status' => ['required', 'in:active,inactive'],
         ]);
 
         $user = User::findOrFail($userId);
@@ -716,13 +861,16 @@ class FacultyController extends Controller
 
         $validated = $request->validate([
             'group_name'    => ['required', 'string', 'max:255'],
-            'members'       => ['required', 'array', 'min:1'],
+            'members'       => ['required', 'array', 'min:1', 'max:4'],
             'members.*'     => ['integer', 'exists:students,id'],
             'member_roles'  => ['nullable', 'array'],
         ]);
 
         $allowedRoles = $this->teamRoleKeys();
         $memberIds    = array_values(array_unique($validated['members']));
+        if (count($memberIds) > 4) {
+            return back()->withErrors(['members' => 'A team cannot have more than 4 members.'])->withInput();
+        }
         $rolesByMember = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
@@ -918,30 +1066,132 @@ class FacultyController extends Controller
             abort(403, 'Faculty account not found.');
         }
 
+        $roleLabels = [
+            'front_desk' => 'Front Desk',
+            'restaurant_management' => 'Restaurant',
+            'room_management' => 'Room',
+            'maintenance' => 'Maintenance',
+            'housekeeping' => 'Housekeeping',
+        ];
+
+        // Finalized/completed tasks (archived) — reflected here as soon as status becomes archived
         $completedTasks = Task::with(['student.user', 'assignedTo'])
             ->where('faculty_id', $facultyId)
             ->where('status', 'archived')
             ->orderByDesc('updated_at')
             ->get();
 
-        $totalCompleted = $completedTasks->count();
-        $totalActive = Task::where('faculty_id', $facultyId)->where('status', 'active')->count();
-        $totalAssigned = $totalCompleted + $totalActive;
-        $completionRate = $totalAssigned > 0 ? round(($totalCompleted / $totalAssigned) * 100) : 0;
+        $membershipByStudentId = StudentGroup::with(['roles', 'student.user'])
+            ->where('faculty_id', $facultyId)
+            ->get()
+            ->groupBy('student_id');
 
-        $byRole = $completedTasks->groupBy('role')->map->count()->sortDesc();
-        $byPriority = $completedTasks->groupBy(fn ($t) => strtolower($t->priority ?? 'medium'))->map->count();
-        $recentCompleted = $completedTasks->take(25);
+        $teamMembersByName = StudentGroup::with(['roles', 'student.user'])
+            ->where('faculty_id', $facultyId)
+            ->get()
+            ->groupBy(fn ($m) => $m->group_name ?? 'Unassigned');
 
-        return view('faculty.reports', compact(
-            'totalCompleted',
-            'totalActive',
-            'totalAssigned',
-            'completionRate',
-            'byRole',
-            'byPriority',
-            'recentCompleted'
-        ));
+        $buckets = [];
+
+        foreach ($completedTasks as $task) {
+            $studentId = $task->student_id ? (int) $task->student_id : null;
+            if (!$studentId && $task->assigned_to) {
+                $studentId = Student::where('user_id', $task->assigned_to)->value('id');
+                $studentId = $studentId ? (int) $studentId : null;
+            }
+
+            $membership = $studentId
+                ? ($membershipByStudentId->get($studentId)?->first())
+                : null;
+
+            $teamName = $membership?->group_name ?: 'Unassigned';
+            $key = $teamName;
+
+            $studentUser = $task->student?->user ?? $task->assignedTo;
+            $studentName = trim(implode(' ', array_filter([
+                $studentUser?->last_name,
+                $studentUser?->first_name,
+                $studentUser?->middle_name,
+            ]))) ?: ($studentUser?->name ?? '—');
+
+            if (!isset($buckets[$key])) {
+                $buckets[$key] = [
+                    'id' => $key,
+                    'team_name' => $teamName,
+                    'page_roles' => [],
+                    'assigned_at' => $task->created_at,
+                    'completed_at' => $task->updated_at,
+                    'tasks' => [],
+                    'members' => [],
+                ];
+            }
+
+            $roleKey = (string) ($task->role ?? '');
+            if ($roleKey !== '') {
+                $buckets[$key]['page_roles'][$roleKey] = $roleLabels[$roleKey] ?? $roleKey;
+            }
+
+            if ($task->created_at && (!$buckets[$key]['assigned_at'] || $task->created_at->lt($buckets[$key]['assigned_at']))) {
+                $buckets[$key]['assigned_at'] = $task->created_at;
+            }
+            if ($task->updated_at && (!$buckets[$key]['completed_at'] || $task->updated_at->gt($buckets[$key]['completed_at']))) {
+                $buckets[$key]['completed_at'] = $task->updated_at;
+            }
+
+            $buckets[$key]['tasks'][] = [
+                'title' => $task->title,
+                'description' => $task->description,
+                'student_name' => $studentName,
+                'role' => $roleKey,
+                'role_label' => $roleLabels[$roleKey] ?? $roleKey,
+                'due_date' => optional($task->due_date)->format('M d, Y'),
+                'completed_at' => optional($task->updated_at)->format('M d, Y'),
+                'priority' => strtolower($task->priority ?? 'medium'),
+            ];
+        }
+
+        foreach ($buckets as $key => &$bucket) {
+            $members = $teamMembersByName->get($key, collect());
+            $bucket['members'] = $members->map(function ($m) use ($roleLabels) {
+                $user = $m->student?->user;
+                $name = trim(implode(' ', array_filter([
+                    $user?->last_name,
+                    $user?->first_name,
+                    $user?->middle_name,
+                ]))) ?: ($user?->name ?? 'Member');
+
+                $roles = $m->roles->pluck('role')->filter()->values();
+                if ($roles->isEmpty() && $m->role) {
+                    $roles = collect([$m->role]);
+                }
+
+                return [
+                    'name' => $name,
+                    'roles' => $roles->map(fn ($r) => $roleLabels[$r] ?? $r)->values()->all(),
+                ];
+            })->values()->all();
+
+            $bucket['page_name'] = !empty($bucket['page_roles'])
+                ? implode(', ', array_values($bucket['page_roles']))
+                : '—';
+            $bucket['assigned_date'] = optional($bucket['assigned_at'])->format('M d, Y') ?? '—';
+            $bucket['date_completed'] = optional($bucket['completed_at'])->format('M d, Y') ?? '—';
+            $bucket['completed_sort'] = optional($bucket['completed_at'])->timestamp ?? 0;
+            $bucket['task_count'] = count($bucket['tasks']);
+            $bucket['final_grade'] = 'TBA';
+            unset($bucket['page_roles'], $bucket['assigned_at'], $bucket['completed_at']);
+        }
+        unset($bucket);
+
+        $teamReports = collect($buckets)
+            ->sortByDesc('completed_sort')
+            ->map(function ($row) {
+                unset($row['completed_sort']);
+                return $row;
+            })
+            ->values();
+
+        return view('faculty.reports', compact('teamReports', 'roleLabels'));
     }
 
     public function activityLogs(Request $request)

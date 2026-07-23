@@ -59,7 +59,7 @@
                     oninput="filterUsersTable(this.value)"
                 >
             </div>
-            <button type="button" onclick="openModal('createUserModal')"
+            <button type="button" id="addFacultyBtn" onclick="openModal('createUserModal')"
                 class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap">
                 <span class="iconify text-base" data-icon="mdi:account-plus-outline"></span>
                 Add Faculty
@@ -82,7 +82,7 @@
                     <th>Name</th>
                     <th>Email</th>
                     <th>Phone Number</th>
-                    <th>Role</th>
+                    <th>Block</th>
                     <th>Status</th>
                     <th>Joined</th>
                     <th class="text-center" style="text-align: center !important;">Action</th>
@@ -103,20 +103,26 @@
                         $emailDomain = $user->email && str_contains($user->email, '@')
                             ? explode('@', $user->email, 2)[1]
                             : 'hms.edu';
+                        $block = null;
+                        if ($user->role === 'faculty') {
+                            $block = $user->faculty->block ?? null;
+                        } elseif ($user->role === 'student') {
+                            // Student's block = their class tab (Class B → Block B), not faculty's assigned block
+                            $block = $user->student?->facultyClass?->letter ?? null;
+                        }
+                        $blockLabel = \App\Models\Faculty::blockLabel($block);
                     @endphp
-                    <tr data-user-id="{{ $user->id }}">
+                    <tr data-user-id="{{ $user->id }}" data-role="{{ $user->role }}">
                         <td>
                             <span class="font-semibold text-slate-800">{{ $displayName }}</span>
                         </td>
                         <td class="text-slate-400">{{ $user->email }}</td>
                         <td class="text-slate-600 font-medium">{{ $phone ?? '—' }}</td>
                         <td>
-                            @if ($user->role === 'dean')
-                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">Dean</span>
-                            @elseif ($user->role === 'faculty')
-                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-accent border border-rose-accent/10">Faculty</span>
+                            @if ($block)
+                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">{{ $blockLabel }}</span>
                             @else
-                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">Student</span>
+                                <span class="text-slate-400 text-xs">—</span>
                             @endif
                         </td>
                         <td>
@@ -125,7 +131,7 @@
                             @elseif ($status === 'pending')
                                 <span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Pending</span>
                             @else
-                                <span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Suspended</span>
+                                <span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Inactive</span>
                             @endif
                         </td>
                         <td class="text-slate-500 text-sm">{{ optional($user->created_at)->format('M d, Y') }}</td>
@@ -152,10 +158,10 @@
                                         data-phone-number="{{ $phone }}"
                                         data-status="{{ $status }}"
                                         data-role="{{ $user->role }}"
-                                        class="text-brand bg-brand-soft hover:bg-brand/10 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center gap-2 w-24"
+                                        data-block="{{ $block ?? '' }}"
+                                        class="text-brand bg-brand-soft hover:bg-brand/10 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center w-24"
                                         aria-label="Update user"
                                     >
-                                        <span class="iconify text-base" data-icon="mdi:update"></span>
                                         <span>Update</span>
                                     </button>
                                 @endif
@@ -178,7 +184,7 @@
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('createUserModal')"></div>
     <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
         <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
-            <h4 class="font-bold text-brand text-lg">Add New User</h4>
+            <h4 class="font-bold text-brand text-lg">Add Faculty Details</h4>
             <button onclick="closeModal('createUserModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
@@ -216,16 +222,27 @@
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Role</label>
-                <select name="role" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
+                <select name="role" id="createUserRole" onchange="toggleCreateBlockField()" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
                     <option value="faculty">Faculty</option>
                     <option value="student">Student</option>
+                </select>
+            </div>
+            <div id="createBlockField">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Block</label>
+                <select name="block" id="createUserBlock" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
+                    <option value="">Select block</option>
+                    @forelse ($availableBlocks as $letter)
+                        <option value="{{ $letter }}">Block {{ $letter }}</option>
+                    @empty
+                        <option value="" disabled>No blocks available</option>
+                    @endforelse
                 </select>
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
                 <select name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
                     <option value="active">Active</option>
-                    <option value="suspended">Suspended</option>
+                    <option value="inactive">Inactive</option>
                 </select>
             </div>
             <div>
@@ -267,7 +284,7 @@
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <form id="updateUserForm" method="POST" action="" onsubmit="return validateUpdatePasswords()">
+        <form id="updateUserForm" method="POST" action="">
             @csrf
             @method('PUT')
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -294,7 +311,7 @@
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs font-medium">+63</span>
-                        <input id="updatePhone" name="phone_number" type="text" placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                        <input id="updatePhone" type="text" placeholder="912 345 6789" readonly class="w-full h-10 pl-12 pr-3 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-500 focus:outline-none">
                     </div>
                 </div>
                 <div>
@@ -304,31 +321,20 @@
                     </div>
                 </div>
                 <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Block</label>
+                    <select id="updateBlock" name="block" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
+                        <option value="">Select block</option>
+                    </select>
+                    <div id="updateBlockReadonly" class="hidden w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm items-center text-slate-500 font-semibold">
+                        —
+                    </div>
+                </div>
+                <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
                     <select id="updateStatus" name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
                         <option value="active">Active</option>
-                        <option value="suspended">Suspended</option>
+                        <option value="inactive">Inactive</option>
                     </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
-                    <div class="relative">
-                        <input id="updatePassword" name="password" type="password" placeholder="New Password" oninput="validateUpdatePasswords()" class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                        <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                        </button>
-                    </div>
-                    <p id="updatePasswordHelp" class="mt-1 text-[11px] text-red-500 hidden">Password must be at least 8 characters.</p>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm Password</label>
-                    <div class="relative">
-                        <input id="updatePasswordConfirm" name="password_confirmation" type="password" placeholder="Re-enter password" oninput="validateUpdatePasswords()" class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                        <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                        </button>
-                    </div>
-                    <p id="updatePasswordMatch" class="mt-1 text-[11px] text-red-500 hidden">Passwords do not match.</p>
                 </div>
             </div>
             <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0">
@@ -380,6 +386,22 @@
     let usersTable;
     const seenUserIds = new Set(@json($users->pluck('id')->map(fn ($id) => (int) $id)->values()));
     const liveUsersUrl = "{{ route('dean.users.live') }}";
+    const availableBlocks = @json($availableBlocks);
+    const systemBlocks = @json($systemBlocks);
+    let currentTab = 'faculty';
+
+    function toggleCreateBlockField() {
+        const role = document.getElementById('createUserRole')?.value;
+        const field = document.getElementById('createBlockField');
+        const select = document.getElementById('createUserBlock');
+        if (!field || !select) return;
+        const isFaculty = role === 'faculty';
+        field.classList.toggle('hidden', !isFaculty);
+        select.required = isFaculty;
+        if (!isFaculty) {
+            select.value = '';
+        }
+    }
 
     function syncSeenUserIds() {
         if (!usersTable) return;
@@ -405,7 +427,6 @@
                 }
             },
             "createdRow": function (row, data, dataIndex) {
-                // Keep data-user-id when DataTables redraws
                 const existing = row.getAttribute('data-user-id');
                 if (!existing && data && data.DT_RowAttr && data.DT_RowAttr['data-user-id']) {
                     row.setAttribute('data-user-id', data.DT_RowAttr['data-user-id']);
@@ -413,7 +434,19 @@
             }
         });
 
+        // Custom filter by data-role (Role column was replaced by Block)
+        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+            if (!usersTable || settings.nTable !== usersTable.table().node()) {
+                return true;
+            }
+            const row = usersTable.row(dataIndex).node();
+            if (!row) return true;
+            const role = (row.getAttribute('data-role') || '').toLowerCase();
+            return role === currentTab;
+        });
+
         syncSeenUserIds();
+        toggleCreateBlockField();
         switchTab('faculty');
     });
 
@@ -423,6 +456,7 @@
     }
 
     function switchTab(role) {
+        currentTab = role;
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.remove('border-slate-200', 'bg-white', 'text-brand', '-mb-px', 'z-10');
             btn.classList.add('border-transparent', 'bg-slate-50', 'text-slate-500');
@@ -433,25 +467,31 @@
             active.classList.add('border-slate-200', 'bg-white', 'text-brand', '-mb-px', 'z-10');
         }
 
+        const addFacultyBtn = document.getElementById('addFacultyBtn');
+        if (addFacultyBtn) {
+            addFacultyBtn.classList.toggle('hidden', role !== 'faculty');
+        }
+
         if (!usersTable) return;
-        usersTable.column(3).search(role === 'faculty' ? '^\\s*Faculty\\s*$' : '^\\s*Student\\s*$', true, false).draw();
+        usersTable.draw();
+    }
+
+    function blockBadge(block, blockLabel) {
+        if (block) {
+            const label = blockLabel || (`Block ${block}`);
+            return `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">${label}</span>`;
+        }
+        return '<span class="text-slate-400 text-xs">—</span>';
     }
 
     function buildUserRow(user) {
         const nameCell = `<span class="font-semibold text-slate-800">${user.name}</span>`;
-        let roleCell;
-        if (user.role === 'dean') {
-            roleCell = '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">Dean</span>';
-        } else if (user.role === 'faculty') {
-            roleCell = '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-accent border border-rose-accent/10">Faculty</span>';
-        } else {
-            roleCell = '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">Student</span>';
-        }
+        const blockCell = blockBadge(user.block, user.block_label);
         const statusCell = user.status === 'active'
             ? '<span class="flex items-center gap-1.5 text-xs font-semibold text-green-600"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Active</span>'
             : user.status === 'pending'
                 ? '<span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Pending</span>'
-                : '<span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Suspended</span>';
+                : '<span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Inactive</span>';
         const actionCell = user.role === 'student' && user.status === 'pending'
             ? `
                 <div class="flex justify-center w-full">
@@ -478,10 +518,10 @@
                         data-phone-number="${user.phone_number ?? ''}"
                         data-status="${user.status ?? 'active'}"
                         data-role="${user.role ?? ''}"
-                        class="text-brand bg-brand-soft hover:bg-brand/10 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center gap-2 w-24"
+                        data-block="${user.block ?? ''}"
+                        class="text-brand bg-brand-soft hover:bg-brand/10 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center w-24"
                         aria-label="Update user"
                     >
-                        <span class="iconify text-base" data-icon="mdi:update"></span>
                         <span>Update</span>
                     </button>
                 </div>
@@ -491,7 +531,7 @@
             nameCell,
             user.email ?? '—',
             user.phone_number ?? '—',
-            roleCell,
+            blockCell,
             statusCell,
             user.joined ?? '—',
             actionCell,
@@ -508,7 +548,6 @@
             return;
         }
 
-        // Extra guard: row may already exist in the table DOM
         const alreadyInTable = usersTable
             .rows({ page: 'all' })
             .nodes()
@@ -524,6 +563,7 @@
         const rowNode = usersTable.row.add(buildUserRow(user)).draw(false).node();
         if (rowNode) {
             rowNode.setAttribute('data-user-id', String(id));
+            rowNode.setAttribute('data-role', user.role || '');
         }
         seenUserIds.add(id);
     }
@@ -577,6 +617,8 @@
                     email: payload.email,
                     phone_number: payload.phone_number,
                     role: 'student',
+                    block: payload.block ?? null,
+                    block_label: payload.block_label ?? null,
                     status: payload.status ?? 'active',
                     joined: payload.joined,
                 });
@@ -618,6 +660,7 @@
         const phoneNumber = button.getAttribute('data-phone-number') || '';
         const status = button.getAttribute('data-status') || 'active';
         const role = button.getAttribute('data-role') || 'user';
+        const block = (button.getAttribute('data-block') || '').toUpperCase();
 
         if (!firstName && !middleName && !lastName && fullName) {
             const parsed = parseNameParts(fullName);
@@ -635,11 +678,52 @@
         document.getElementById('updatePhone').value = phoneNumber;
         document.getElementById('updateStatus').value = status;
         document.getElementById('updateRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
-        document.getElementById('updatePassword').value = '';
-        document.getElementById('updatePasswordConfirm').value = '';
 
-        document.getElementById('updatePasswordHelp').classList.add('hidden');
-        document.getElementById('updatePasswordMatch').classList.add('hidden');
+        const blockSelect = document.getElementById('updateBlock');
+        const blockReadonly = document.getElementById('updateBlockReadonly');
+        const isFaculty = role === 'faculty';
+
+        if (isFaculty) {
+            blockSelect.classList.remove('hidden');
+            blockReadonly.classList.add('hidden');
+            blockReadonly.classList.remove('flex');
+            blockSelect.disabled = false;
+            blockSelect.required = true;
+            blockSelect.name = 'block';
+
+            // Only system-defined blocks that are available (+ current if valid)
+            const options = availableBlocks.filter((letter) => systemBlocks.includes(letter));
+            if (block && systemBlocks.includes(block) && !options.includes(block)) {
+                options.push(block);
+            }
+            options.sort();
+
+            blockSelect.innerHTML = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = options.length ? 'Select block' : 'No blocks available';
+            placeholder.disabled = options.length === 0;
+            blockSelect.appendChild(placeholder);
+
+            options.forEach((letter) => {
+                const opt = document.createElement('option');
+                opt.value = letter;
+                opt.textContent = `Block ${letter}`;
+                if (letter === block) opt.selected = true;
+                blockSelect.appendChild(opt);
+            });
+            if (block && systemBlocks.includes(block)) {
+                blockSelect.value = block;
+            }
+        } else {
+            blockSelect.classList.add('hidden');
+            blockSelect.disabled = true;
+            blockSelect.required = false;
+            blockSelect.removeAttribute('name');
+            blockReadonly.classList.remove('hidden');
+            blockReadonly.classList.add('flex');
+            blockReadonly.textContent = (block && systemBlocks.includes(block)) ? `Block ${block}` : '—';
+        }
 
         openModal('updateUserModal');
     }
@@ -661,25 +745,6 @@
         const confirm = document.getElementById('createUserPasswordConfirm');
         const lengthHelp = document.getElementById('createUserPasswordHelp');
         const matchHelp = document.getElementById('createUserPasswordMatch');
-
-        if (!password || !confirm) {
-            return true;
-        }
-
-        const tooShort = password.value.length > 0 && password.value.length < 8;
-        const mismatch = confirm.value.length > 0 && password.value !== confirm.value;
-
-        lengthHelp.classList.toggle('hidden', !tooShort);
-        matchHelp.classList.toggle('hidden', !mismatch);
-
-        return !(tooShort || mismatch);
-    }
-
-    function validateUpdatePasswords() {
-        const password = document.getElementById('updatePassword');
-        const confirm = document.getElementById('updatePasswordConfirm');
-        const lengthHelp = document.getElementById('updatePasswordHelp');
-        const matchHelp = document.getElementById('updatePasswordMatch');
 
         if (!password || !confirm) {
             return true;

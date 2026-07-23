@@ -13,7 +13,8 @@ class AuthController extends Controller
 {
     public function login()
     {
-        return view('auth.login');
+        // Login UI lives on the landing page drawer — keep /login for auth redirects.
+        return redirect()->to('/?login=1');
     }
 
     public function authenticate(Request $request)

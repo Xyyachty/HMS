@@ -51,15 +51,17 @@
 
     <div class="flex items-center gap-2 pb-3 shrink-0 ml-auto">
         <a href="{{ $setTaskHref }}"
-           class="h-10 px-4 rounded-xl text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap
+           data-action-btn="set_task"
+           onclick="setTeamsActionHighlight('set_task')"
+           class="teams-action-btn h-10 px-4 rounded-xl text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap
            {{ $isSetTask
-                ? 'bg-brand text-white shadow-md shadow-brand/20'
+                ? 'is-active bg-brand text-white shadow-md shadow-brand/20 border border-transparent'
                 : 'bg-white text-slate-600 border border-slate-200 hover:border-brand/40 hover:text-brand' }}">
             <span class="iconify text-base" data-icon="mdi:clipboard-plus-outline"></span>
             Set Task
         </a>
-        <button type="button" onclick="openCreateTeamModal()"
-            class="h-10 px-4 rounded-xl text-sm font-bold bg-brand text-white hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap">
+        <button type="button" data-action-btn="add_team" onclick="openCreateTeamModal()"
+            class="teams-action-btn h-10 px-4 rounded-xl text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:border-brand/40 hover:text-brand">
             <span class="iconify text-base" data-icon="mdi:plus"></span>
             Add Team
         </button>

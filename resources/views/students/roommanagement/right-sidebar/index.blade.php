@@ -44,12 +44,8 @@
                     <p class="text-xs font-bold text-white mb-1">{{ $task->title }}</p>
                     <p class="text-[10px] text-zinc-500">{{ $task->description ?? 'No description' }}</p>
                     <div class="flex items-center justify-between mt-2">
-                        <span class="text-[10px] px-2 py-0.5 rounded-full
-                            {{ $task->priority === 'high' ? 'bg-red-500/10 text-red-400' : ($task->priority === 'medium' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-zinc-500/10 text-zinc-400') }}">
-                            {{ ucfirst($task->priority) }}
-                        </span>
                         @if($task->due_date)
-                        <span class="text-[10px] text-zinc-600">
+                        <span class="text-[10px] text-zinc-600 ml-auto">
                             <i class="far fa-clock mr-1"></i>{{ \Carbon\Carbon::parse($task->due_date)->format('M d') }}
                         </span>
                         @endif

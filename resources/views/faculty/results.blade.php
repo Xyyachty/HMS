@@ -48,7 +48,6 @@
                     $displayName = trim(implode(' ', array_filter([$user?->first_name, $user?->last_name])))
                         ?: ($user?->name ?? 'Student');
                 }
-                $priority = strtolower($task->priority ?? 'medium');
             @endphp
             <div class="p-6 hover:bg-brand-soft/20 transition flex flex-col md:flex-row gap-6 items-start md:items-center">
                 <div class="flex items-center gap-4 w-full md:w-1/4">
@@ -74,11 +73,7 @@
 
                 <div class="w-full md:w-1/4 flex flex-col items-end gap-3">
                     <div class="text-right">
-                        <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold
-                            {{ $priority === 'high' ? 'bg-red-50 text-red-700 border border-red-100' : ($priority === 'low' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100') }}">
-                            {{ ucfirst($priority) }} priority
-                        </span>
-                        <span class="block text-[10px] text-emerald-600 uppercase font-bold mt-2">Completed</span>
+                        <span class="block text-[10px] text-emerald-600 uppercase font-bold">Completed</span>
                     </div>
                     <a href="{{ route('faculty.activity', ['filter' => 'completed']) }}"
                        class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-brand transition flex items-center gap-1.5">
