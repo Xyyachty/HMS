@@ -3,14 +3,17 @@
     $hmsCustomizations = $customizations ?? [];
     $hmsCanEdit = (bool) ($canEditTemplate ?? false);
     $hmsEditablePages = $editablePages ?? [];
+    $hmsBuilderRole = $builderRole ?? null;
 @endphp
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <script>
     window.__HMS_CUSTOMIZATIONS__ = @json($hmsCustomizations);
     window.__HMS_CAN_EDIT__ = @json($hmsCanEdit);
     window.__HMS_EDITABLE_PAGES__ = @json($hmsEditablePages);
+    window.__HMS_BUILDER_ROLE__ = @json($hmsBuilderRole);
     window.__HMS_CURRENT_PAGE__ = 'home';
     window.__HMS_CSRF__ = @json(csrf_token());
+    window.__HMS_MEDIA_UPLOAD_URL__ = @json(route('students.frontdesk.template.media'));
     window.__HMS_HOTEL_AUTH_ROUTES__ = {
         me: @json(route('students.hotel-auth.me')),
         staffLogin: @json(route('students.hotel-auth.staff.login')),

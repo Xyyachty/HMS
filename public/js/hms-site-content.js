@@ -19,12 +19,18 @@
   ];
 
   const DEFAULT_MENUS = [
-    { id: 'menu-1', name: 'Hokkaido Scallop Tartare', sub: 'yuzu, sea urchin, micro herbs', price: '$32', category: 'Dining' },
-    { id: 'menu-2', name: 'Wagyu A5 Carpaccio', sub: 'truffle jus, parmesan crisp, rocket', price: '$48', category: 'Dining' },
-    { id: 'menu-3', name: 'Pan-Seared Dover Sole', sub: 'brown butter, capers, lemon beurre blanc', price: '$54', category: 'Dining' },
-    { id: 'menu-4', name: 'Roasted Rhubarb Souffle', sub: 'vanilla bean creme anglaise, pistachio', price: '$22', category: 'Dining' },
-    { id: 'menu-5', name: 'The SPC Old Fashioned', sub: '25yr bourbon, demerara, aromatic bitters', price: '$26', category: 'Bar' },
-    { id: 'menu-6', name: 'Gold Leaf Negroni', sub: 'gin, Campari, sweet vermouth, 24k gold leaf', price: '$28', category: 'Bar' },
+    { id: 'menu-1', name: 'Hokkaido Scallop Tartare', sub: 'yuzu, sea urchin, micro herbs', price: '\u20B11,800', category: 'Appetizers', img: 'https://picsum.photos/seed/scalloptartare/800/600.jpg' },
+    { id: 'menu-2', name: 'Wagyu A5 Carpaccio', sub: 'truffle jus, parmesan crisp, rocket', price: '\u20B12,700', category: 'Appetizers', img: 'https://picsum.photos/seed/wagyucarpaccio/800/600.jpg' },
+    { id: 'menu-3', name: 'Roasted Tomato Bisque', sub: 'basil oil, grilled sourdough croutons', price: '\u20B1680', category: 'Soups', img: 'https://picsum.photos/seed/tomatobisque/800/600.jpg' },
+    { id: 'menu-4', name: 'Seafood Chowder', sub: 'prawns, mussels, cream, chives', price: '\u20B1950', category: 'Soups', img: 'https://picsum.photos/seed/seafoodchowder/800/600.jpg' },
+    { id: 'menu-5', name: 'Pan-Seared Dover Sole', sub: 'brown butter, capers, lemon beurre blanc', price: '\u20B13,000', category: 'Main Dishes', img: 'https://picsum.photos/seed/doversole/800/600.jpg' },
+    { id: 'menu-6', name: 'Grilled Angus Ribeye', sub: 'garlic butter, roasted vegetables, jus', price: '\u20B13,800', category: 'Main Dishes', img: 'https://picsum.photos/seed/angusribeye/800/600.jpg' },
+    { id: 'menu-7', name: 'Herb-Crusted Lamb Rack', sub: 'mint reduction, potato puree', price: '\u20B14,200', category: 'Main Dishes', img: 'https://picsum.photos/seed/lambrack/800/600.jpg' },
+    { id: 'menu-8', name: 'Roasted Rhubarb Souffle', sub: 'vanilla bean creme anglaise, pistachio', price: '\u20B11,200', category: 'Desserts', img: 'https://picsum.photos/seed/rhubarbsouffle/800/600.jpg' },
+    { id: 'menu-9', name: 'Dark Chocolate Fondant', sub: 'salted caramel ice cream', price: '\u20B11,100', category: 'Desserts', img: 'https://picsum.photos/seed/chocfondant/800/600.jpg' },
+    { id: 'menu-10', name: 'The SPC Old Fashioned', sub: '25yr bourbon, demerara, aromatic bitters', price: '\u20B11,450', category: 'Beverages', img: 'https://picsum.photos/seed/oldfashioned/800/600.jpg' },
+    { id: 'menu-11', name: 'Gold Leaf Negroni', sub: 'gin, Campari, sweet vermouth, 24k gold leaf', price: '\u20B11,550', category: 'Beverages', img: 'https://picsum.photos/seed/goldnegroni/800/600.jpg' },
+    { id: 'menu-12', name: 'Fresh Calamansi Iced Tea', sub: 'house-brewed, lightly sweetened', price: '\u20B1280', category: 'Beverages', img: 'https://picsum.photos/seed/calamansitea/800/600.jpg' },
   ];
 
   const listeners = [];
@@ -75,6 +81,50 @@
 
   function canEdit() {
     return window.__HMS_CAN_EDIT__ === true;
+  }
+
+  /**
+   * Feature → allowed role keys (extend here for future UI permissions).
+   * room_management_ui: Room Manager / System Administrator only.
+   * front_desk must never see room_management_ui.
+   */
+  const FEATURE_ROLES = {
+    room_management_ui: ['room_management', 'administrator'],
+  };
+
+  function getBuilderRole() {
+    return window.__HMS_BUILDER_ROLE__ || null;
+  }
+
+  function getAuthRoles() {
+    const auth = window.__HMS_HOTEL_AUTH__;
+    if (auth && Array.isArray(auth.roles)) return auth.roles.slice();
+    return [];
+  }
+
+  /**
+   * In the department builder, the active module role is authoritative
+   * (so Front Desk never sees Room Management UI even if staff has multiple roles).
+   * Outside the builder, fall back to hotel staff auth roles.
+   */
+  function currentRoles() {
+    const builderRole = getBuilderRole();
+    if (builderRole) return [builderRole];
+    return getAuthRoles();
+  }
+
+  function canAccess(feature) {
+    const allowed = FEATURE_ROLES[feature];
+    if (!allowed || !allowed.length) return false;
+    const roles = currentRoles();
+    for (let i = 0; i < allowed.length; i += 1) {
+      if (roles.indexOf(allowed[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  function canUseRoomManagementUi() {
+    return canAccess('room_management_ui');
   }
 
   function canEditNav() {
@@ -199,6 +249,7 @@
       name: 'New Room ' + n,
       label: 'Standard',
       category: 'Classic',
+      status: 'Available',
       price: 200,
       img: 'https://picsum.photos/seed/newroom' + n + '/800/600.jpg',
       desc: 'Add a short description for this room.',
@@ -230,8 +281,9 @@
       id: uid('menu'),
       name: 'New Menu Item ' + n,
       sub: 'Add a short description',
-      price: '$24',
-      category: 'Dining',
+      price: '\u20B11,350',
+      category: 'Main Dishes',
+      img: 'https://picsum.photos/seed/menuitem' + Date.now() + '/800/600.jpg',
     }, partial || {});
     list.push(item);
     setMenus(list);
@@ -375,6 +427,11 @@
     canEditRooms,
     canEditMenus,
     canEditExperiences,
+    canAccess,
+    canUseRoomManagementUi,
+    getBuilderRole,
+    currentRoles,
+    FEATURE_ROLES,
     getSnapshot,
     subscribe,
     safePrompt,
@@ -393,6 +450,11 @@
   window.addEventListener('message', function (event) {
     const data = event.data || {};
     if (!data || data.source !== 'hms-parent') return;
+    if (data.type === 'set-builder-role') {
+      window.__HMS_BUILDER_ROLE__ = data.role || null;
+      setTimeout(function () { window.HMSSiteContent.refreshFromEditor(); }, 50);
+      return;
+    }
     if (data.type === 'load-customizations' || data.type === 'set-can-edit' || data.type === 'set-editable-pages') {
       setTimeout(function () { window.HMSSiteContent.refreshFromEditor(); }, 50);
     }

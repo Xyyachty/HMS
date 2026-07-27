@@ -34,10 +34,28 @@ class FacultyController extends Controller
             ? Task::where('faculty_id', $facultyId)->where('status', 'active')->count()
             : 0;
 
+        $roleLabels = [
+            'front_desk' => 'Front Desk',
+            'restaurant_management' => 'Restaurant',
+            'room_management' => 'Room Mgmt',
+            'maintenance' => 'Maintenance',
+            'housekeeping' => 'Housekeeping',
+        ];
+
+        $recentActivity = $facultyId
+            ? Task::with(['student.user', 'assignedTo'])
+                ->where('faculty_id', $facultyId)
+                ->orderByDesc('updated_at')
+                ->take(8)
+                ->get()
+            : collect();
+
         return view('faculty.dashboard', compact(
             'totalStudents',
             'totalTeams',
-            'assignedTasks'
+            'assignedTasks',
+            'recentActivity',
+            'roleLabels'
         ));
     }
 

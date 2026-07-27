@@ -1605,17 +1605,41 @@
     fileInput.addEventListener('change', function () {
       const file = fileInput.files && fileInput.files[0];
       if (!file || !selectedEl) return;
-      const reader = new FileReader();
-      reader.onload = function () {
-        applyImageToSelected(reader.result);
-      };
-      reader.readAsDataURL(file);
-      postToParent({
-        type: 'upload-image-needed',
-        editId: selectedEl.getAttribute('data-edit-id') || getSelector(selectedEl),
-        name: file.name,
-        mime: file.type,
-      });
+      const uploadUrl = window.__HMS_MEDIA_UPLOAD_URL__;
+      const csrf = window.__HMS_CSRF__ || (document.querySelector('meta[name="csrf-token"]') || {}).content;
+      if (!uploadUrl) {
+        postToParent({
+          type: 'upload-image-needed',
+          editId: selectedEl.getAttribute('data-edit-id') || getSelector(selectedEl),
+          name: file.name,
+          mime: file.type,
+        });
+        return;
+      }
+      const form = new FormData();
+      form.append('image', file);
+      if (csrf) form.append('_token', csrf);
+      fetch(uploadUrl, {
+        method: 'POST',
+        body: form,
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      })
+        .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+        .then(function (result) {
+          if (!result.ok || !result.data || !result.data.url) {
+            throw new Error((result.data && result.data.error) || 'Upload failed');
+          }
+          applyImageToSelected(result.data.url);
+          postToParent({ type: 'image-uploaded', url: result.data.url });
+        })
+        .catch(function (err) {
+          console.error(err);
+          postToParent({ type: 'toast', message: 'Image upload failed' });
+        })
+        .finally(function () {
+          fileInput.value = '';
+        });
     });
     return fileInput;
   }

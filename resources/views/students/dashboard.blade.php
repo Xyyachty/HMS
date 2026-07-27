@@ -369,6 +369,50 @@
                     </div>
                 </div>
 
+                <!-- Recent Activities -->
+                @php
+                    $homeRoleLabels = [
+                        'front_desk' => 'Front Desk',
+                        'restaurant_management' => 'Restaurant',
+                        'room_management' => 'Room Mgmt',
+                        'maintenance' => 'Maintenance',
+                        'housekeeping' => 'Housekeeping',
+                    ];
+                    $homeRecentActivities = ($selfActivityLogs ?? collect())->take(6);
+                @endphp
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
+                        <span class="iconify text-brand text-lg" data-icon="mdi:history"></span>
+                        <p class="text-sm font-bold text-slate-800">Recent Activities</p>
+                    </div>
+                    <div class="divide-y divide-slate-50">
+                        @forelse($homeRecentActivities as $task)
+                            <div class="px-5 py-3.5 flex items-start gap-3">
+                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $task->status === 'archived' ? 'bg-emerald-50 text-emerald-500' : 'bg-blue-50 text-blue-500' }}">
+                                    <span class="iconify text-lg" data-icon="{{ $task->status === 'archived' ? 'mdi:check-circle-outline' : 'mdi:clipboard-plus-outline' }}"></span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-bold text-slate-800 truncate">
+                                        {{ $task->status === 'archived' ? 'Completed' : 'Assigned' }}: {{ $task->title }}
+                                    </p>
+                                    <p class="text-xs text-slate-400 mt-0.5">
+                                        {{ $homeRoleLabels[$task->role] ?? $task->role }}
+                                        · {{ optional($task->updated_at)->diffForHumans() }}
+                                    </p>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="px-5 py-12 text-center">
+                                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                    <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
+                                </div>
+                                <p class="text-sm font-semibold text-slate-400">No recent activity</p>
+                                <p class="text-xs text-slate-300 mt-1">Your assigned and completed tasks will appear here.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+
             </div>
 
 
