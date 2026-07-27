@@ -26,7 +26,7 @@
                 <div></div>
             </div>
             <div class="flex-1 min-h-0 bg-white">
-                <iframe id="templateFrame" src="{{ $selectedTemplate ? route('students.frontdesk.template.' . $selectedTemplate) : '' }}" title="Maintenance Template" class="w-full h-full border-0"></iframe>
+                <iframe id="templateFrame" src="{{ $selectedTemplate ? route('students.frontdesk.template.' . $selectedTemplate, ['role' => $builderRole ?? 'maintenance']) : '' }}" title="Maintenance Template" class="w-full h-full border-0"></iframe>
             </div>
         </div>
     </div>

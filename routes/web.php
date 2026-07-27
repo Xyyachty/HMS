@@ -375,6 +375,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $canEditTemplate = false;
         $authUser = auth()->user();
         $student = $authUser?->student;
+        $roleKeys = array_keys(\App\Support\HotelTemplateBuilder::ROLES);
+        $builderRole = $request->query('role', 'front_desk');
+        if (!in_array($builderRole, $roleKeys, true)) {
+            $builderRole = 'front_desk';
+        }
         if ($student) {
             $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
             if ($groupMembership) {
@@ -387,19 +392,19 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                         ['selected_template' => '1']
                     );
                 }
-                $settings = GroupSettings::where('group_name', $groupMembership->group_name)
-                    ->where('faculty_id', $groupMembership->faculty_id)
-                    ->first();
-                $customizations = $settings?->customizations ?? [];
-                $canEditTemplate = \App\Support\StudentGroupSync::canEditTemplate($groupMembership);
+                $customizations = \App\Support\HotelTemplateBuilder::mergeTeamCustomizations(
+                    (string) $groupMembership->group_name,
+                    (int) $groupMembership->faculty_id
+                );
+                $canEditTemplate = \App\Support\HotelTemplateBuilder::canEdit($authUser, $groupMembership, $builderRole);
             }
         }
 
         $editablePages = $canEditTemplate
-            ? \App\Support\HotelTemplateBuilder::editablePagesForRole('front_desk')
+            ? \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole)
             : [];
 
-        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages'));
+        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole'));
     })->name('frontdesk.template.1');
 
     Route::get('/frontdesk/template/2', function (Request $request) {
@@ -407,6 +412,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $canEditTemplate = false;
         $authUser = auth()->user();
         $student = $authUser?->student;
+        $roleKeys = array_keys(\App\Support\HotelTemplateBuilder::ROLES);
+        $builderRole = $request->query('role', 'front_desk');
+        if (!in_array($builderRole, $roleKeys, true)) {
+            $builderRole = 'front_desk';
+        }
         if ($student) {
             $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
             if ($groupMembership) {
@@ -419,19 +429,19 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                         ['selected_template' => '2']
                     );
                 }
-                $settings = GroupSettings::where('group_name', $groupMembership->group_name)
-                    ->where('faculty_id', $groupMembership->faculty_id)
-                    ->first();
-                $customizations = $settings?->customizations ?? [];
-                $canEditTemplate = \App\Support\StudentGroupSync::canEditTemplate($groupMembership);
+                $customizations = \App\Support\HotelTemplateBuilder::mergeTeamCustomizations(
+                    (string) $groupMembership->group_name,
+                    (int) $groupMembership->faculty_id
+                );
+                $canEditTemplate = \App\Support\HotelTemplateBuilder::canEdit($authUser, $groupMembership, $builderRole);
             }
         }
 
         $editablePages = $canEditTemplate
-            ? \App\Support\HotelTemplateBuilder::editablePagesForRole('front_desk')
+            ? \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole)
             : [];
 
-        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages'));
+        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole'));
     })->name('frontdesk.template.2');
 
     Route::post('/frontdesk/template/select', function (Request $request) {
@@ -506,23 +516,17 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ], 403);
         }
 
-        $payload = [
-            'customizations' => $request->input('customizations', []),
-        ];
-        if ($request->boolean('publish')) {
-            $payload['is_published'] = true;
-        }
-
-        $settings = GroupSettings::updateOrCreate(
+        $template = \App\Support\HotelTemplateBuilder::ensureTemplate($groupMembership, 'front_desk');
+        $saved = \App\Support\HotelTemplateBuilder::save(
+            $template,
             [
-                'group_name' => $groupMembership->group_name,
-                'faculty_id' => $groupMembership->faculty_id,
+                'customizations' => $request->input('customizations', []),
             ],
-            $payload
+            $authUser,
+            $request->boolean('publish'),
+            true,
+            $request->boolean('publish') ? 'Published' : 'Front desk save'
         );
-
-        // Force updated_at bump even if JSON content is identical length-wise
-        $settings->touch();
 
         if ($authUser) {
             \App\Support\StudentGroupSync::heartbeat($authUser, $groupMembership);
@@ -530,8 +534,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json([
             'success' => true,
-            'published' => (bool) $settings->is_published,
-            'version' => optional($settings->fresh()->updated_at)->timestamp,
+            'published' => (bool) $saved->is_published,
+            'version' => optional($saved->fresh()->updated_at)->timestamp,
         ]);
     })->name('frontdesk.template.customizations');
 
@@ -551,17 +555,27 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Group not found'], 404);
         }
 
-        if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
+        $canUpload = \App\Support\StudentGroupSync::canEditTemplate($groupMembership);
+        if (!$canUpload) {
+            foreach (array_keys(\App\Support\HotelTemplateBuilder::ROLES) as $role) {
+                if (\App\Support\HotelTemplateBuilder::canEdit($authUser, $groupMembership, $role)) {
+                    $canUpload = true;
+                    break;
+                }
+            }
+        }
+        if (!$canUpload) {
             return response()->json([
-                'error' => 'Only students with the Front Desk role can upload template media.',
+                'error' => 'You do not have permission to upload template media.',
             ], 403);
         }
 
-        $folder = 'hotel-media/' . ($groupMembership->id ?? $student->id);
+        $folder = 'hotel-media/' . $groupMembership->faculty_id . '/' . $groupMembership->group_name;
         $path = $request->file('image')->store($folder, 'public');
 
         return response()->json([
             'success' => true,
+            'path' => $path,
             'url' => asset('storage/' . $path),
         ]);
     })->name('frontdesk.template.media');

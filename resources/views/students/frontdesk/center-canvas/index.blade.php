@@ -29,7 +29,7 @@
             <button type="button" onclick="selectHotelTemplate('1')"
                 class="group w-56 bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden {{ $accentBorder }} transition-all duration-200 text-left">
                 <div class="h-32 bg-zinc-800 overflow-hidden relative">
-                    <iframe src="{{ route('students.frontdesk.template.1') }}" class="w-full h-full border-0 pointer-events-none scale-[0.5] origin-top-left" style="width:200%;height:200%;" tabindex="-1" aria-hidden="true"></iframe>
+                    <iframe src="{{ route('students.frontdesk.template.1', ['role' => $builderRole ?? 'front_desk']) }}" class="w-full h-full border-0 pointer-events-none scale-[0.5] origin-top-left" style="width:200%;height:200%;" tabindex="-1" aria-hidden="true"></iframe>
                     <div class="absolute inset-0 bg-zinc-900/20 group-hover:bg-transparent transition-colors"></div>
                 </div>
                 <div class="p-3">
@@ -41,7 +41,7 @@
             <button type="button" onclick="selectHotelTemplate('2')"
                 class="group w-56 bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden {{ $accentBorder }} transition-all duration-200 text-left">
                 <div class="h-32 bg-zinc-800 overflow-hidden relative">
-                    <iframe src="{{ route('students.frontdesk.template.2') }}" class="w-full h-full border-0 pointer-events-none scale-[0.5] origin-top-left" style="width:200%;height:200%;" tabindex="-1" aria-hidden="true"></iframe>
+                    <iframe src="{{ route('students.frontdesk.template.2', ['role' => $builderRole ?? 'front_desk']) }}" class="w-full h-full border-0 pointer-events-none scale-[0.5] origin-top-left" style="width:200%;height:200%;" tabindex="-1" aria-hidden="true"></iframe>
                     <div class="absolute inset-0 bg-zinc-900/20 group-hover:bg-transparent transition-colors"></div>
                 </div>
                 <div class="p-3">
@@ -112,8 +112,8 @@
 <script>
     (function () {
         var TEMPLATE_URLS = {
-            '1': '{{ route("students.frontdesk.template.1") }}',
-            '2': '{{ route("students.frontdesk.template.2") }}'
+            '1': '{{ route("students.frontdesk.template.1", ["role" => $builderRole ?? "front_desk"]) }}',
+            '2': '{{ route("students.frontdesk.template.2", ["role" => $builderRole ?? "front_desk"]) }}'
         };
         var TEMPLATE_LABELS = { '1': 'Template 1', '2': 'Template 2' };
         var serverTemplate = '{{ $selectedTemplate }}';

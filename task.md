@@ -1,0 +1,1 @@
+Just to clarify, are you going to create separate views for Front Desk, Room Management, Restaurant Management, Housekeeping, and Maintenance? If so, these views should only integrate and use the client-approved functions defined in PROCEDURES.md. Do not change or redesign the approved logic—only build the UI/views and connect them to the existing procedures.

@@ -21,6 +21,9 @@ class HotelTemplateBuilder
         'maintenance' => 'Maintenance',
     ];
 
+    /** How many version snapshots to keep per role template (reduces DB redundancy). */
+    public const MAX_VERSION_SNAPSHOTS = 5;
+
     /**
      * Hotel website pages each role may redesign.
      * Teammates still see the full merged site; edit is page-scoped.
@@ -136,7 +139,7 @@ class HotelTemplateBuilder
 
     public static function ensureTemplate(StudentGroup $membership, string $role): TeamRoleTemplate
     {
-        return TeamRoleTemplate::firstOrCreate(
+        $template = TeamRoleTemplate::firstOrCreate(
             [
                 'group_name' => $membership->group_name,
                 'faculty_id' => $membership->faculty_id,
@@ -144,12 +147,18 @@ class HotelTemplateBuilder
             ],
             [
                 'selected_template' => null, // Front Desk must choose Template 1 or 2
-                'customizations' => [],
-                'layout' => self::defaultLayout(),
                 'is_published' => false,
                 'version' => 1,
             ]
         );
+
+        if ($template->wasRecentlyCreated) {
+            $template->customizations = [];
+            $template->layout = self::defaultLayout();
+            $template->save();
+        }
+
+        return $template;
     }
 
     /** Max updated_at across the team's role templates — drives live sync for everyone. */
@@ -441,16 +450,19 @@ class HotelTemplateBuilder
             self::syncGroupSettings($template);
 
             if ($snapshot) {
-                TeamRoleTemplateVersion::create([
+                $versionRow = TeamRoleTemplateVersion::create([
                     'team_role_template_id' => $template->id,
                     'version' => $template->version,
                     'selected_template' => $template->selected_template,
-                    'customizations' => $template->customizations,
-                    'layout' => $template->layout,
                     'is_published' => $template->is_published,
                     'label' => $label ?: ($publish ? 'Published' : 'Auto-save'),
                     'created_by' => $user->id,
                 ]);
+                TemplateCustomizationStore::snapshotToVersion($template, (int) $versionRow->id);
+                TemplateCustomizationStore::pruneOldVersions(
+                    (int) $template->id,
+                    self::MAX_VERSION_SNAPSHOTS
+                );
             }
 
             return $template->fresh();
@@ -498,7 +510,6 @@ class HotelTemplateBuilder
 
         $selected = $frontDesk?->selected_template ?: $template->selected_template;
         $payload = [
-            'customizations' => self::mergeTeamCustomizations($groupName, $facultyId),
             'is_published' => (bool) ($frontDesk?->is_published ?? $template->is_published),
         ];
 

@@ -50,10 +50,9 @@ class DeanController extends Controller
             ->take(6)
             ->get();
 
-        $recentActivity = Task::with('faculty.user')
-            ->where('status', 'archived')
+        $recentActivity = Task::with(['faculty.user', 'student.user', 'assignedTo'])
             ->orderByDesc('updated_at')
-            ->take(6)
+            ->take(8)
             ->get();
 
         $roleLabels = [
