@@ -4,7 +4,6 @@ use App\Models\TemplateContentField;
 use App\Models\TemplateContentItem;
 use App\Models\TemplateImage;
 use App\Models\TemplateLayout;
-use App\Models\TemplateStyle;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -28,7 +27,7 @@ return new class extends Migration
 
         TemplateContentItem::query()->whereNotNull('version_id')->whereNotNull('parent_id')->delete();
         TemplateContentItem::query()->whereNotNull('version_id')->delete();
-        TemplateStyle::query()->whereNotNull('version_id')->delete();
+        DB::table('template_styles')->whereNotNull('version_id')->delete();
         TemplateImage::query()->whereNotNull('version_id')->delete();
         TemplateLayout::query()->whereNotNull('version_id')->delete();
 

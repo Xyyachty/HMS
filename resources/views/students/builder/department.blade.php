@@ -125,6 +125,44 @@
             text-transform: uppercase;
         }
 
+        /* ── MODULE SWITCHER (only when a member holds more than one role) ── */
+        .module-switcher { position: relative; flex-shrink: 0; }
+        .module-switcher .module-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            cursor: pointer; transition: filter 0.15s;
+        }
+        .module-switcher .module-badge:hover { filter: brightness(1.25); }
+        .module-menu {
+            position: absolute; top: calc(100% + 10px); left: 0; width: 230px;
+            background: #18181b; border: 1px solid #27272a; border-radius: 12px;
+            padding: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
+            display: none; animation: dropIn 0.2s ease-out;
+        }
+        .module-menu.show { display: block; }
+        .module-menu-label {
+            padding: 4px 12px 8px; font-size: 10px; letter-spacing: 0.12em;
+            text-transform: uppercase; color: #52525b; font-weight: 700;
+        }
+        .module-menu a {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px; border-radius: 6px;
+            color: #a1a1aa; font-size: 13px; text-decoration: none;
+            transition: all 0.15s;
+        }
+        .module-menu a:hover { background: #27272a; color: #fafafa; }
+        .module-menu a.is-active {
+            background: {{ $theme['badge_bg'] }};
+            color: {{ $theme['badge_color'] }};
+        }
+        .module-menu a i { width: 16px; font-size: 13px; }
+        .module-menu .view-only-chip {
+            margin-left: auto; font-size: 9px; letter-spacing: 0.06em;
+            text-transform: uppercase; font-weight: 700;
+            color: #fbbf24; background: rgba(245,158,11,0.12);
+            border: 1px solid rgba(245,158,11,0.25);
+            padding: 2px 6px; border-radius: 4px;
+        }
+
         /* ── SIDEBARS ── */
         .sidebar-base {
             background: #09090b;
@@ -325,14 +363,7 @@
         .color-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px #06b6d4; }
 
         /* ── PROFILE DROPDOWN ── */
-        .profile-trigger {
-            display: flex; align-items: center; gap: 10px;
-            padding: 6px 12px 6px 8px; border-radius: 8px;
-            border: 1px solid #27272a; background: #0a0a0c;
-            cursor: pointer; transition: all 0.2s;
-        }
-        .profile-trigger:hover { border-color: #3f3f46; background: #18181b; }
-        
+
         .avatar {
             width: 32px; height: 32px; border-radius: 6px;
             background: linear-gradient(135deg, #06b6d4, #0891b2);
@@ -529,11 +560,6 @@
             margin-left: 2px;
             flex-shrink: 0;
         }
-        .topbar-actions .profile-trigger {
-            height: 34px;
-            padding: 0 10px 0 6px;
-            gap: 8px;
-        }
         .topbar-actions .avatar {
             width: 26px;
             height: 26px;
@@ -555,7 +581,6 @@
             .hms-logo-text { max-width: 140px; }
         }
         @media (max-width: 900px) {
-            .topbar-actions .profile-trigger .leading-none { display: none; }
             #fsToggleLabel { display: none; }
         }
     </style>
@@ -570,7 +595,34 @@
             </div>
             <span class="hms-logo-text text-sm truncate">Hotel Management System</span>
             <div class="w-px h-5 bg-zinc-800 shrink-0"></div>
-            <span class="module-badge shrink-0">{{ $moduleLabel }}</span>
+            @php
+                // A member may hold several roles; give them a way to move between modules.
+                $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
+            @endphp
+            @if(count($myModules) > 1)
+                <div class="module-switcher" id="moduleSwitcher">
+                    <span class="module-badge" onclick="toggleModuleMenu()" title="Switch module">
+                        {{ $moduleLabel }}
+                        <i class="fas fa-chevron-down text-[8px]" id="moduleChevron"></i>
+                    </span>
+                    <div class="module-menu" id="moduleMenu">
+                        <p class="module-menu-label">My Modules</p>
+                        @foreach($myModules as $module)
+                            <a href="{{ route($module['route']) }}"
+                               class="{{ $module['role'] === $builderRole ? 'is-active' : '' }}"
+                               @if($module['role'] !== $builderRole) onclick="return confirmLeaveBuilder(event)" @endif>
+                                <i class="fas {{ $roleThemes[$module['role']]['icon'] ?? 'fa-layer-group' }}"></i>
+                                {{ $module['label'] }}
+                                @if(!$module['editable'])
+                                    <span class="view-only-chip">View only</span>
+                                @endif
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @else
+                <span class="module-badge shrink-0">{{ $moduleLabel }}</span>
+            @endif
             @if(!empty($selectedTemplate))
                 <span class="template-chip shrink-0">Template {{ $selectedTemplate }}</span>
             @endif
@@ -597,9 +649,15 @@
                 <span id="fsToggleLabel">Fullscreen</span>
             </button>
             @if($canEditTemplate ?? false)
-                <button id="saveDraftBtn" type="button" class="hdr-btn btn-secondary" onclick="saveTemplateDraft(false)" title="Save draft">
-                    <i class="fas fa-save"></i> Save Draft
-                </button>
+                @if(!empty($selectedTemplate))
+                    <a href="{{ route('students.frontdesk.template.' . $selectedTemplate, ['role' => $builderRole]) }}" target="_blank" rel="noopener" class="hdr-btn btn-secondary" title="View live site">
+                        <i class="fas fa-up-right-from-square"></i> View Live
+                    </a>
+                @else
+                    <button type="button" class="hdr-btn btn-secondary" disabled title="Select a template first" style="opacity:.4;cursor:not-allowed;">
+                        <i class="fas fa-up-right-from-square"></i> View Live
+                    </button>
+                @endif
                 <button class="hdr-btn btn-primary" onclick="saveTemplateDraft(true)"><i class="fas fa-paper-plane"></i> Publish</button>
             @endif
 
@@ -610,14 +668,6 @@
                     $nameParts = preg_split('/\s+/', trim($profileName));
                     $initials = strtoupper(($nameParts[0][0] ?? 'S') . (count($nameParts) > 1 ? substr(end($nameParts), 0, 1) : ''));
                 ?>
-                <div class="profile-trigger" onclick="toggleDropdown()">
-                    <div class="avatar"><?= $initials ?></div>
-                    <div class="leading-none">
-                        <p class="text-xs font-semibold text-white"><?= e($profileName) ?></p>
-                        <p class="text-[10px] text-zinc-500 mt-0.5">{{ $roleLabelFull }}</p>
-                    </div>
-                    <i class="fas fa-chevron-down text-zinc-600 text-[9px] ml-1" id="chevron"></i>
-                </div>
                 <div class="profile-dropdown" id="profileDropdown">
                     <div class="dd-item" onclick="toast('Opening profile...')"><i class="fas fa-user-circle"></i> My Profile</div>
                     <div class="dd-item" onclick="toast('Opening settings...')"><i class="fas fa-cog"></i> Settings</div>
@@ -661,7 +711,7 @@
 
     <div id="toast"></div>
 
-    <script src="{{ asset('js/hms-hotel-builder.js') }}"></script>
+    <script src="{{ asset('js/hms-hotel-builder.js') }}?v={{ filemtime(public_path('js/hms-hotel-builder.js')) }}"></script>
     <script>
         window.HMS_CAN_EDIT_TEMPLATE = @json((bool) ($canEditTemplate ?? false));
         window.currentEditorMode = window.HMS_CAN_EDIT_TEMPLATE ? 'design' : 'preview';
@@ -690,6 +740,10 @@
             onChange: function (evt) {
                 if (evt.type === 'dirty') {
                     setSaveDraftUnsaved(!!evt.dirty);
+                }
+                if (evt.type === 'autosaved') {
+                    const status = document.getElementById('autoSaveStatus');
+                    if (status) status.textContent = 'Auto-saved · ' + new Date().toLocaleTimeString();
                 }
                 if (evt.type === 'mode') {
                     const designMode = evt.mode === 'build';
@@ -786,7 +840,11 @@
 
         renderHbLayout();
         renderHbVersions();
-        window.hmsBuilder.startPolling(4000);
+        // 12s rather than 4s: the database is now remote, and with a class of ~44
+        // students a 4s poll is roughly 11 sync queries a second against shared
+        // free-tier compute, all day, for updates that are rarely that urgent.
+        window.hmsBuilder.startPolling(12000);
+        window.hmsBuilder.startAutoSave(7000);
     </script>
     <script>
         const dropzone = document.getElementById('dropzone');
@@ -940,8 +998,24 @@
         function moveDown(id) { const el = document.getElementById(id); const next = el?.nextElementSibling; if(next) { el.parentNode.insertBefore(next, el); toast('Moved down'); } }
         function updateCount() { const n = dropzone.querySelectorAll('.dropped-block').length; document.getElementById('blockCount').textContent = n + ' block' + (n===1?'':'s') + ' on canvas'; }
 
-        function toggleDropdown() { const dd = document.getElementById('profileDropdown'); const ch = document.getElementById('chevron'); dd.classList.toggle('show'); ch.style.transform = dd.classList.contains('show') ? 'rotate(180deg)' : ''; }
-        document.addEventListener('click', function(e) { if(!document.getElementById('profileWrapper').contains(e.target)) { document.getElementById('profileDropdown').classList.remove('show'); document.getElementById('chevron').style.transform = ''; } });
+        function toggleDropdown() { const dd = document.getElementById('profileDropdown'); const ch = document.getElementById('chevron'); if (!dd) return; dd.classList.toggle('show'); if (ch) ch.style.transform = dd.classList.contains('show') ? 'rotate(180deg)' : ''; }
+        document.addEventListener('click', function(e) { const w = document.getElementById('profileWrapper'); if (w && !w.contains(e.target)) { document.getElementById('profileDropdown')?.classList.remove('show'); const ch = document.getElementById('chevron'); if (ch) ch.style.transform = ''; } });
+
+        // Module switcher — only present when the member holds more than one role.
+        function toggleModuleMenu() {
+            const menu = document.getElementById('moduleMenu');
+            const chevron = document.getElementById('moduleChevron');
+            if (!menu) return;
+            menu.classList.toggle('show');
+            if (chevron) chevron.style.transform = menu.classList.contains('show') ? 'rotate(180deg)' : '';
+        }
+        document.addEventListener('click', function (e) {
+            const wrapper = document.getElementById('moduleSwitcher');
+            if (!wrapper || wrapper.contains(e.target)) return;
+            document.getElementById('moduleMenu')?.classList.remove('show');
+            const chevron = document.getElementById('moduleChevron');
+            if (chevron) chevron.style.transform = '';
+        });
         function handleLogout() { document.getElementById('profileDropdown').classList.remove('show'); toast('Logging out…'); }
 
         function syncFullscreenUi(on) {
@@ -1023,6 +1097,7 @@
             }
             const isBuild = mode === 'design' || mode === 'build';
             window.currentEditorMode = isBuild ? 'design' : 'preview';
+            document.getElementById('rightSidebar')?.classList.toggle('hidden', !isBuild);
             if (window.hmsBuilder) {
                 window.hmsBuilder.setMode(isBuild ? 'build' : 'preview');
             }

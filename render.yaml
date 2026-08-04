@@ -1,0 +1,74 @@
+# Render blueprint for HMS.
+#
+# Region is Singapore on purpose: the Supabase project lives in ap-southeast-1, and
+# co-locating them is the entire reason for deploying. Running the app elsewhere would
+# reintroduce the ~144 ms per-query latency this is meant to remove.
+#
+# Secrets are deliberately NOT in this file. Set them in the Render dashboard
+# (Environment -> Environment Variables) so they never enter git.
+
+services:
+  - type: web
+    name: hms
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      # Generate once with `php artisan key:generate --show` and paste it in.
+      - key: APP_KEY
+        sync: false
+      # Set to the Render URL once known, e.g. https://hms.onrender.com
+      - key: APP_URL
+        sync: false
+
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_PG_HOST
+        value: aws-0-ap-southeast-1.pooler.supabase.com
+      - key: DB_PG_PORT
+        value: "5432"
+      - key: DB_PG_DATABASE
+        value: postgres
+      - key: DB_PG_USERNAME
+        sync: false
+      - key: DB_PG_PASSWORD
+        sync: false
+      # citext lives in the extensions schema; without this the type will not resolve.
+      - key: DB_SEARCH_PATH
+        value: public,extensions
+      - key: DB_SSLMODE
+        value: require
+
+      # The filesystem is wiped on every deploy, so neither sessions nor uploads
+      # may live on it.
+      - key: SESSION_DRIVER
+        value: database
+      - key: MEDIA_DISK
+        value: supabase
+      - key: FILESYSTEM_DISK
+        value: supabase
+      - key: CACHE_DRIVER
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: LOG_CHANNEL
+        value: stderr
+
+      - key: SUPABASE_S3_KEY
+        sync: false
+      - key: SUPABASE_S3_SECRET
+        sync: false
+      - key: SUPABASE_S3_REGION
+        value: ap-southeast-1
+      - key: SUPABASE_S3_BUCKET
+        value: hms-media
+      - key: SUPABASE_S3_ENDPOINT
+        sync: false
+      - key: SUPABASE_S3_PUBLIC_URL
+        sync: false

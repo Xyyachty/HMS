@@ -8,6 +8,7 @@ use App\Models\StudentGroup;
 use App\Models\TeamRoleTemplate;
 use App\Models\TeamRoleTemplateVersion;
 use App\Models\TeamTemplateEditGrant;
+use App\Models\TemplateContentItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -36,12 +37,35 @@ class HotelTemplateBuilder
         'maintenance' => [],
     ];
 
+    /** Department builder page each role opens. */
+    public const ROLE_ROUTES = [
+        'front_desk' => 'students.frontdesk',
+        'room_management' => 'students.roommanagement',
+        'restaurant_management' => 'students.restaurant',
+        'housekeeping' => 'students.housekeeping',
+        'maintenance' => 'students.maintenance',
+    ];
+
     public const USER_ELEMENTS_KEY = '__userElements';
     public const DELETED_KEY = '__deleted';
     public const NAV_LINKS_KEY = '__navLinks';
     public const ROOMS_KEY = '__rooms';
     public const MENUS_KEY = '__menus';
     public const CARD_IMAGES_KEY = '__cardImages';
+
+    /**
+     * Site-content keys more than one role may write. Unlike element entries
+     * these are not page-scoped, so if several rows keep a copy the merge below
+     * resolves them by role order and the later role silently wins — losing the
+     * change whoever edited most recently actually made. Each of these is kept
+     * in exactly one row; writing one claims it and clears the siblings.
+     */
+    public const SHARED_CONTENT_KEYS = [
+        self::NAV_LINKS_KEY,
+        self::ROOMS_KEY,
+        self::MENUS_KEY,
+        self::CARD_IMAGES_KEY,
+    ];
 
     /** Default section library per role (no drag-and-drop — add/remove/reorder via buttons). */
     public const COMPONENT_LIBRARY = [
@@ -81,6 +105,43 @@ class HotelTemplateBuilder
         $pages = self::editablePagesForRole($role);
 
         return $pages[0] ?? 'home';
+    }
+
+    public static function routeNameForRole(string $role): ?string
+    {
+        return self::ROLE_ROUTES[$role] ?? null;
+    }
+
+    /**
+     * Builder modules a student can open, one per role they hold.
+     * Ordered by ROLES so the list stays stable instead of following the
+     * order faculty happened to tick the role checkboxes.
+     *
+     * @param  string[]  $roles
+     * @return array<int, array{role: string, label: string, route: string, editable: bool}>
+     */
+    public static function modulesForRoles(array $roles): array
+    {
+        $modules = [];
+
+        foreach (self::ROLES as $role => $label) {
+            if (!in_array($role, $roles, true)) {
+                continue;
+            }
+            $route = self::routeNameForRole($role);
+            if (!$route) {
+                continue;
+            }
+
+            $modules[] = [
+                'role' => $role,
+                'label' => $label,
+                'route' => $route,
+                'editable' => self::editablePagesForRole($role) !== [],
+            ];
+        }
+
+        return $modules;
     }
 
     public static function membershipFor(User $user): ?StudentGroup
@@ -390,10 +451,11 @@ class HotelTemplateBuilder
     ): TeamRoleTemplate {
         return DB::transaction(function () use ($template, $data, $user, $publish, $snapshot, $label) {
             if (array_key_exists('customizations', $data)) {
-                $template->customizations = self::filterCustomizationsForRole(
+                $ownCustomizations = self::filterCustomizationsForRole(
                     is_array($data['customizations']) ? $data['customizations'] : [],
                     $template->role
                 );
+                $template->customizations = $ownCustomizations;
             }
             if (array_key_exists('layout', $data)) {
                 $template->layout = $data['layout'];
@@ -446,6 +508,9 @@ class HotelTemplateBuilder
                     ->update(['selected_template' => $template->selected_template]);
             }
 
+            // This row is the newest writer of any shared key it holds.
+            self::claimSharedContentKeys($template, $ownCustomizations ?? null);
+
             // Keep legacy group_settings in sync (merged team site)
             self::syncGroupSettings($template);
 
@@ -474,10 +539,11 @@ class HotelTemplateBuilder
     {
         return DB::transaction(function () use ($template, $data, $user) {
             if (array_key_exists('customizations', $data)) {
-                $template->customizations = self::filterCustomizationsForRole(
+                $ownCustomizations = self::filterCustomizationsForRole(
                     is_array($data['customizations']) ? $data['customizations'] : [],
                     $template->role
                 );
+                $template->customizations = $ownCustomizations;
             }
             if (array_key_exists('layout', $data)) {
                 $template->layout = $data['layout'];
@@ -489,10 +555,59 @@ class HotelTemplateBuilder
             $template->save();
             $template->touch();
 
+            self::claimSharedContentKeys($template, $ownCustomizations ?? null);
             self::syncGroupSettings($template);
 
             return $template->fresh();
         });
+    }
+
+    /**
+     * Give this row sole ownership of every shared content key it carries by
+     * dropping stale copies from its teammates' rows. Without this the merge
+     * picks a winner by role order, so a role that never touched the key can
+     * overwrite the value a teammate just saved.
+     */
+    public static function claimSharedContentKeys(TeamRoleTemplate $template, ?array $customizations = null): void
+    {
+        // The caller normally already holds these. Falling back to the accessor would
+        // re-read the whole tree from the database — the saved-hook clears the pending
+        // value first, so it cannot be served from memory — costing ~6 extra queries.
+        $mine = $customizations ?? (is_array($template->customizations) ? $template->customizations : []);
+        $claimed = array_values(array_intersect(self::SHARED_CONTENT_KEYS, array_keys($mine)));
+
+        if ($claimed === []) {
+            return;
+        }
+
+        // Shared keys are stored as content-item collections, so the stale copies can be
+        // deleted directly. The previous version read each sibling's entire customization
+        // tree through the accessor and then re-saved it, which fired the saved-hook and
+        // rewrote that sibling's every row — around 40 statements per save, all of it to
+        // remove a handful of rows. Fields and nested items cascade on delete.
+        $collections = array_values(array_filter(array_map(
+            fn (string $key) => TemplateCustomizationStore::SPECIAL_KEYS[$key] ?? null,
+            $claimed
+        )));
+
+        if ($collections === []) {
+            return;
+        }
+
+        $siblingIds = TeamRoleTemplate::where('group_name', $template->group_name)
+            ->where('faculty_id', $template->faculty_id)
+            ->where('id', '!=', $template->id)
+            ->pluck('id');
+
+        if ($siblingIds->isEmpty()) {
+            return;
+        }
+
+        TemplateContentItem::query()
+            ->whereIn('team_role_template_id', $siblingIds)
+            ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
+            ->whereIn('collection', $collections)
+            ->delete();
     }
 
     /**
@@ -517,13 +632,21 @@ class HotelTemplateBuilder
             $payload['selected_template'] = $selected;
         }
 
-        GroupSettings::updateOrCreate(
-            [
-                'group_name' => $groupName,
-                'faculty_id' => $facultyId,
-            ],
-            $payload
-        );
+        // Called from inside save()/autosave()'s transaction. Two teammates saving the
+        // same team at once can collide on the (group_name, faculty_id) unique index,
+        // and on PostgreSQL a duplicate-key error aborts the WHOLE transaction — every
+        // later statement then fails with "current transaction is aborted", losing the
+        // save. MySQL simply let the retry through. Nesting the write gives it its own
+        // savepoint, so a collision rolls back this unit only and the retry succeeds.
+        DB::transaction(function () use ($groupName, $facultyId, $payload) {
+            GroupSettings::updateOrCreate(
+                [
+                    'group_name' => $groupName,
+                    'faculty_id' => $facultyId,
+                ],
+                $payload
+            );
+        });
     }
 
     public static function restoreVersion(TeamRoleTemplate $template, int $versionNumber, User $user): TeamRoleTemplate

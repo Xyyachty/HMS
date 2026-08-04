@@ -82,11 +82,14 @@
   }
   body.hms-design-mode .nav-add-btn { display: inline-flex; }
   .nav-bar {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    position: fixed !important; top: 0 !important; left: 0; right: 0; z-index: 1000;
     padding: 0 2rem; height: 64px;
     background: var(--card);
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center;
+  }
+  .hero-split {
+    margin-top: 64px !important;
   }
   .nav-link {
     color: var(--fg-muted); font-size: 0.82rem; font-weight: 500;

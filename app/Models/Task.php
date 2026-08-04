@@ -19,11 +19,31 @@ class Task extends Model
         'due_date',
         'priority',
         'status',
+        'feedback',
+        'feedback_at',
+        'feedback_by',
+        'revision_count',
     ];
 
     protected $casts = [
         'due_date' => 'date',
+        'feedback_at' => 'datetime',
+        'revision_count' => 'integer',
     ];
+
+    public function feedbackBy()
+    {
+        return $this->belongsTo(User::class, 'feedback_by');
+    }
+
+    /**
+     * Sent back by faculty: the row is active again but carries feedback, so the
+     * student sees what to fix. Avoids widening the status enum.
+     */
+    public function getNeedsRevisionAttribute(): bool
+    {
+        return $this->status === 'active' && filled($this->feedback);
+    }
 
     public function faculty()
     {
@@ -60,6 +80,17 @@ class Task extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    /**
+     * Highest priority first. Written as a CASE rather than MySQL's FIELD(),
+     * which does not exist in PostgreSQL.
+     */
+    public function scopeOrderByPriority($query)
+    {
+        return $query->orderByRaw(
+            "CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END"
+        );
     }
 
     /**

@@ -33,6 +33,9 @@
   let fileInput = null;
   let dragState = null;
   let resizeState = null;
+  // Element currently open for inline text editing — re-apply must not stomp
+  // the caret while the user is still typing into it.
+  let textEditEl = null;
   let suppressNextClick = false;
   let handlesEl = null;
   let guideXEl = null;
@@ -823,6 +826,20 @@
     });
   }
 
+  /* Nav links, the logo, room cards and menu items live in the same customizations
+     object under the __navLinks / __rooms / __menus / __cardImages keys, but they are
+     rendered by React from hms-site-content.js, not from the DOM the editor restores.
+     Replacing customizations alone left all of them on screen, so tell that layer to
+     re-read — its getters fall back to the built-in defaults once the keys are gone. */
+  function syncSiteContent() {
+    window.__HMS_CUSTOMIZATIONS__ = customizations;
+    const siteContent = window.HMSSiteContent;
+    if (!siteContent || typeof siteContent.refreshFromEditor !== 'function') return;
+    try {
+      siteContent.refreshFromEditor();
+    } catch (e) { /* ignore */ }
+  }
+
   function restoreHistorySnapshot(snapshot) {
     clearSelection();
     applying = true;
@@ -830,6 +847,7 @@
     customizations = cloneCustomizations(snapshot);
     applying = false;
     applyAllCustomizations();
+    syncSiteContent();
     notifyChanged();
     postToParent({ type: 'element-deselected' });
     publishHistoryState();
@@ -845,6 +863,44 @@
     if (!redoStack.length) return;
     undoStack.push(cloneCustomizations(customizations));
     restoreHistorySnapshot(redoStack.pop());
+  }
+
+  /**
+   * First meaningful text node inside an element, preferring the first
+   * non-whitespace one. Reader and writer must agree on this choice or a
+   * synced edit lands in a different slot than it was taken from.
+   */
+  function firstTextNode(el) {
+    if (!el) return null;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    let node = walker.nextNode();
+    const first = node;
+    while (node) {
+      if (String(node.nodeValue || '').trim() !== '') return node;
+      node = walker.nextNode();
+    }
+    return first;
+  }
+
+  function textIsWholeElement(el) {
+    return el.childElementCount === 0 || el.getAttribute('data-hms-text') === '1';
+  }
+
+  /** Read the editable text of an element, including multi-child ones. */
+  function readEditableText(el) {
+    if (textIsWholeElement(el)) return el.innerText;
+    const node = firstTextNode(el);
+    return node ? node.nodeValue : null;
+  }
+
+  /** Write text back into the same slot readEditableText took it from. */
+  function writeEditableText(el, text) {
+    if (textIsWholeElement(el)) {
+      el.textContent = text;
+      return;
+    }
+    const node = firstTextNode(el);
+    if (node) node.nodeValue = text;
   }
 
   function saveElementState(el) {
@@ -887,7 +943,10 @@
       entry.freePosition = true;
     }
 
-    if (el.tagName === 'IMG' && el.getAttribute('src')) {
+    // Images owned by the shared site-content store (e.g. the brand logo) keep
+    // their src there so one change updates every place that renders it.
+    // Styling and moving them still records normally.
+    if (el.tagName === 'IMG' && el.getAttribute('src') && !el.hasAttribute('data-hms-dynamic-src')) {
       entry.src = el.getAttribute('src');
     } else if (cs.backgroundImage && cs.backgroundImage !== 'none') {
       entry['background-image'] = cs.backgroundImage;
@@ -897,10 +956,11 @@
       entry.iconClass = el.className.replace(/\bhms-edit-selected\b/g, '').trim();
     }
 
+    // Multi-child elements (headings with styled spans, brand marks) must record
+    // text too, or the edit is never sent and teammates keep the original.
     if (!['IMG', 'I', 'SVG'].includes(el.tagName)) {
-      if (el.childElementCount === 0 || el.getAttribute('data-hms-text') === '1') {
-        entry.text = el.innerText;
-      }
+      const text = readEditableText(el);
+      if (text != null) entry.text = text;
     }
 
     entry.page = getCurrentPage();
@@ -941,20 +1001,16 @@
       el.removeAttribute('data-hms-free-position');
       el.removeAttribute('data-hms-move-mode');
     }
-    if (entry.src && el.tagName === 'IMG') el.setAttribute('src', entry.src);
+    if (entry.src && el.tagName === 'IMG' && !el.hasAttribute('data-hms-dynamic-src')) {
+      el.setAttribute('src', entry.src);
+    }
     if (entry.iconClass && el.tagName === 'I') {
       const selected = el.classList.contains('hms-edit-selected');
       el.className = entry.iconClass;
       if (selected) el.classList.add('hms-edit-selected');
     }
     if (entry.text != null && !['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA'].includes(el.tagName)) {
-      if (el.childElementCount === 0 || el.getAttribute('data-hms-text') === '1') {
-        el.textContent = entry.text;
-      } else {
-        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
-        const textNode = walker.nextNode();
-        if (textNode) textNode.nodeValue = entry.text;
-      }
+      writeEditableText(el, entry.text);
     }
   }
 
@@ -969,8 +1025,8 @@
     for (let i = 0; i < nodes.length; i++) {
       const el = nodes[i];
       if (isEditorChrome(el) || el.hasAttribute('data-hms-user')) continue;
-      if (el.childElementCount > 0 && el.getAttribute('data-hms-text') !== '1') continue;
-      if ((el.innerText || '').trim() === needle) return el;
+      // Match the same slot readEditableText would have recorded from.
+      if (String(readEditableText(el) || '').trim() === needle) return el;
     }
     return null;
   }
@@ -1135,10 +1191,10 @@
   }
 
   function scheduleReapply() {
-    if (applying) return;
+    if (applying || textEditEl) return;
     clearTimeout(reapplyTimer);
     reapplyTimer = setTimeout(function () {
-      if (dragState || resizeState) return;
+      if (dragState || resizeState || textEditEl) return;
       applyAllCustomizations();
       if (designMode) syncSectionMode();
     }, 150);
@@ -1585,12 +1641,22 @@
     beginHistoryStep();
     el.contentEditable = 'true';
     el.focus();
+    textEditEl = el;
+    let liveSaveTimer = null;
+    const onInput = () => {
+      clearTimeout(liveSaveTimer);
+      liveSaveTimer = setTimeout(() => saveElementState(el), 500);
+    };
     const finish = () => {
+      clearTimeout(liveSaveTimer);
+      textEditEl = null;
       el.contentEditable = 'false';
       el.removeEventListener('blur', finish);
+      el.removeEventListener('input', onInput);
       saveElementState(el);
       selectElement(el);
     };
+    el.addEventListener('input', onInput);
     el.addEventListener('blur', finish);
   }
 
@@ -1647,6 +1713,19 @@
   function applyImageToSelected(url, recordHistory) {
     if (!selectedEl || !url) return;
     if (recordHistory !== false) beginHistoryStep();
+
+    // Shared-content images (brand logo) persist through the site-content store
+    // so every navigation that renders them updates together.
+    if (selectedEl.hasAttribute('data-hms-dynamic-src')) {
+      const kind = selectedEl.getAttribute('data-hms-content-kind') || 'card';
+      const contentId = selectedEl.getAttribute('data-hms-content-id') || '';
+      if (contentId && window.HMSSiteContent && typeof window.HMSSiteContent.setCardImage === 'function') {
+        selectedEl.setAttribute('src', url);
+        window.HMSSiteContent.setCardImage(kind, contentId, url);
+        return;
+      }
+    }
+
     if (selectedEl.tagName === 'IMG') {
       selectedEl.setAttribute('src', url);
     } else {
@@ -1683,6 +1762,7 @@
       clearSelection();
       hideSmartGuides();
       clearSectionFocus();
+      textEditEl = null;
       document.querySelectorAll('[contenteditable="true"]').forEach((n) => {
         n.contentEditable = 'false';
       });
@@ -1732,12 +1812,8 @@
     if (data.text != null && !['IMG', 'I', 'SVG'].includes(selectedEl.tagName)) {
       if (selectedEl.tagName === 'INPUT' || selectedEl.tagName === 'TEXTAREA') {
         selectedEl.placeholder = data.text;
-      } else if (selectedEl.childElementCount === 0 || selectedEl.getAttribute('data-hms-text') === '1') {
-        selectedEl.textContent = data.text;
       } else {
-        const walker = document.createTreeWalker(selectedEl, NodeFilter.SHOW_TEXT, null);
-        const textNode = walker.nextNode();
-        if (textNode) textNode.nodeValue = data.text;
+        writeEditableText(selectedEl, data.text);
       }
     }
     if (data.src) applyImageToSelected(data.src, false);
@@ -2317,6 +2393,20 @@
       case 'image-uploaded':
         if (data.url) applyImageToSelected(data.url);
         break;
+      case 'reset-all':
+        clearSelection();
+        applying = true;
+        restoreOriginalStates();
+        customizations = normalizeCustomizations({});
+        applying = false;
+        applyAllCustomizations();
+        syncSiteContent();
+        notifyChanged();
+        undoStack.length = 0;
+        redoStack.length = 0;
+        publishHistoryState();
+        postToParent({ type: 'element-deselected' });
+        break;
       case 'reset-styles':
         if (!canEditCurrentPage()) {
           blockEditToast();
@@ -2383,10 +2473,13 @@
 
   const root = document.getElementById('root') || document.body;
   const mo = new MutationObserver(function () {
-    if (applying || dragState || resizeState) return;
+    if (applying || dragState || resizeState || textEditEl) return;
     if (designMode || Object.keys(customizations).length) scheduleReapply();
   });
-  mo.observe(root, { childList: true, subtree: true });
+  // characterData matters: React updates text in place (node.nodeValue = …),
+  // which fires no childList mutation. Without it a re-render silently reverts
+  // synced text edits while moves survive via the free-position stylesheet.
+  mo.observe(root, { childList: true, subtree: true, characterData: true });
 
   function boot() {
     ensureUserCanvas();

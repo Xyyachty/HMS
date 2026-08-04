@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\TeamRoleTemplateVersion;
@@ -82,6 +83,14 @@ class HotelTemplateController extends Controller
             $data['label'] ?? null
         );
 
+        // Explicit saves are important work; autosave is deliberately not logged.
+        ActivityLog::record(
+            $user,
+            ActivityLog::WEBSITE_CUSTOMIZED,
+            'Saved website customizations for the ' . $role . ' module'
+                . (($data['publish'] ?? false) ? ' and published them to the team.' : '.')
+        );
+
         return response()->json([
             'success' => true,
             'template' => HotelTemplateBuilder::payload($saved, true),
@@ -159,6 +168,12 @@ class HotelTemplateController extends Controller
 
         $template = HotelTemplateBuilder::ensureTemplate($membership, $role);
         $restored = HotelTemplateBuilder::restoreVersion($template, $version, $user);
+
+        ActivityLog::record(
+            $user,
+            ActivityLog::TEMPLATE_RESTORED,
+            'Restored version ' . $version . ' of the ' . $role . ' website template.'
+        );
 
         return response()->json([
             'success' => true,
@@ -248,6 +263,13 @@ class HotelTemplateController extends Controller
         } else {
             HotelTemplateBuilder::revokeEdit($ctx, $student, $data['role']);
         }
+
+        ActivityLog::record(
+            $request->user(),
+            ActivityLog::PERMISSION_GRANTED,
+            ($data['grant'] ? 'Granted' : 'Revoked') . ' ' . $data['role']
+                . ' edit access for a member of team "' . $data['group_name'] . '".'
+        );
 
         return response()->json(['success' => true]);
     }

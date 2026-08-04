@@ -9,7 +9,9 @@
   const ROOMS_KEY = '__rooms';
   const MENUS_KEY = '__menus';
   const CARD_IMAGES_KEY = '__cardImages';
-  const CONTENT_KEYS = [NAV_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY];
+  const RESERVATION_NOTIFICATIONS_KEY = '__reservationNotifications';
+  const ROOM_RESERVATIONS_KEY = '__roomReservations';
+  const CONTENT_KEYS = [NAV_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   const DEFAULT_NAV = [
     { id: 'nav-home', key: 'home', label: 'Home' },
@@ -87,9 +89,12 @@
    * Feature → allowed role keys (extend here for future UI permissions).
    * room_management_ui: Room Manager / System Administrator only.
    * front_desk must never see room_management_ui.
+   * order_ui: taking a food order is a Front Desk / Restaurant workflow.
    */
   const FEATURE_ROLES = {
     room_management_ui: ['room_management', 'administrator'],
+    restaurant_ui: ['restaurant_management', 'administrator'],
+    order_ui: ['front_desk', 'restaurant_management', 'administrator'],
   };
 
   function getBuilderRole() {
@@ -125,6 +130,34 @@
 
   function canUseRoomManagementUi() {
     return canAccess('room_management_ui');
+  }
+
+  /**
+   * Restaurant staff tools belong to the Restaurant module. Inside the builder the
+   * active module wins, so a member who also holds another role does not carry the
+   * Restaurant tools into that module. Outside the builder there is no active
+   * module, so the server's can_manage answer decides on its own.
+   */
+  function canUseRestaurantUi() {
+    if (!getBuilderRole()) return true;
+    return canAccess('restaurant_ui');
+  }
+
+  /**
+   * Reserve Now is a Front Desk workflow. Hide it whenever the user is in the
+   * Room Management module so reservations stay exclusive to Front Desk.
+   */
+  function canReserveRooms() {
+    return !canUseRoomManagementUi();
+  }
+
+  /**
+   * Order Now on a menu item is only taken by Front Desk or Restaurant staff.
+   * Inside the builder the active module role decides; outside the builder the
+   * staff member's own roles do. Guests and other modules only browse the menu.
+   */
+  function canOrderMenu() {
+    return canAccess('order_ui');
   }
 
   function canEditNav() {
@@ -268,10 +301,317 @@
       item.id === id ? Object.assign({}, item, patchData) : item
     ));
     setRooms(list);
+    // Persist status + reservation to DB so Room Management sees it via polling
+    if (patchData && (patchData.status !== undefined || patchData.reservation !== undefined)) {
+      var dbId = String(id).replace(/^db-/, '');
+      var body = {};
+      if (patchData.status !== undefined)      body.status      = patchData.status;
+      if (patchData.reservation !== undefined) body.reservation = patchData.reservation;
+      fetch('/students/hotel/rooms/' + dbId, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: buildHeaders(),
+        body: JSON.stringify(body),
+      }).catch(function () { /* ignore — in-memory state already updated */ });
+    }
   }
 
   function removeRoom(id, fallbackDefaults) {
     setRooms(getRooms(fallbackDefaults).filter((item) => item.id !== id));
+  }
+
+  /**
+ * Cross-module notifications: when Front Desk completes a reservation, Room
+   * Management receives a record that surfaces in their Rooms page banner.
+   * Stored inside template customizations so it survives in the same backing
+   * store as rooms/nav/menus and propagates via the existing change events.
+   *
+   * Persistence layers (in order):
+   *   1. In-memory `__HMS_CUSTOMIZATIONS__` (already in customizations via patch())
+   *   2. Server: POST /students/frontdesk/template/reservations (group-scoped)
+   *   3. localStorage fallback (cross-tab broadcast via `storage` event)
+   */
+  function getReservationNotifications() {
+    const c = getCustomizations();
+    const memory = Array.isArray(c[RESERVATION_NOTIFICATIONS_KEY]) ? c[RESERVATION_NOTIFICATIONS_KEY].slice() : [];
+    const fallback = readFallbackNotifications();
+    const byId = new Map();
+    for (const entry of memory) {
+      if (entry && entry.id) byId.set(String(entry.id), entry);
+    }
+    for (const entry of fallback) {
+      if (entry && entry.id && !byId.has(String(entry.id))) byId.set(String(entry.id), entry);
+    }
+    return Array.from(byId.values());
+  }
+
+  function storageFallbackKey() {
+    const auth = window.__HMS_HOTEL_AUTH__ || {};
+    const parts = [];
+    if (auth.group_name) parts.push('g=' + String(auth.group_name));
+    if (auth.faculty_id) parts.push('f=' + String(auth.faculty_id));
+    if (!parts.length) parts.push('g=default', 'f=0');
+    return 'hms.reservationNotifications.fallback.' + parts.join('&');
+  }
+
+  function readFallbackNotifications() {
+    try {
+      const raw = window.localStorage && window.localStorage.getItem(storageFallbackKey());
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function writeFallbackNotifications(list) {
+    try {
+      if (!window.localStorage) return;
+      window.localStorage.setItem(storageFallbackKey(), JSON.stringify(list));
+    } catch (e) {
+      /* quota / private mode — ignore */
+    }
+  }
+
+  function syncFallbackFromMemory() {
+    const c = getCustomizations();
+    const memory = Array.isArray(c[RESERVATION_NOTIFICATIONS_KEY]) ? c[RESERVATION_NOTIFICATIONS_KEY] : [];
+    if (memory.length) writeFallbackNotifications(memory);
+  }
+
+  /**
+   * Room-keyed reservation map (one reservation per room). The Room Management
+   * page reads this so it can render a "Reserved" badge + guest details when
+   * the room card is opened. Persisted to template customizations AND to a
+   * dedicated localStorage key so it survives the post-reservation redirect.
+   */
+  function roomReservationsFallbackKey() {
+    const auth = window.__HMS_HOTEL_AUTH__ || {};
+    const parts = [];
+    if (auth.group_name) parts.push('g=' + String(auth.group_name));
+    if (auth.faculty_id) parts.push('f=' + String(auth.faculty_id));
+    if (!parts.length) parts.push('g=default', 'f=0');
+    return 'hms.roomReservations.fallback.' + parts.join('&');
+  }
+
+  function readRoomReservationsFallback() {
+    try {
+      const raw = window.localStorage && window.localStorage.getItem(roomReservationsFallbackKey());
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function writeRoomReservationsFallback(map) {
+    try {
+      if (!window.localStorage) return;
+      window.localStorage.setItem(roomReservationsFallbackKey(), JSON.stringify(map || {}));
+    } catch (e) {
+      /* quota / private mode — ignore */
+    }
+  }
+
+  function getRoomReservations() {
+    const c = getCustomizations();
+    const memory = (c[ROOM_RESERVATIONS_KEY] && typeof c[ROOM_RESERVATIONS_KEY] === 'object' && !Array.isArray(c[ROOM_RESERVATIONS_KEY]))
+      ? Object.assign({}, c[ROOM_RESERVATIONS_KEY])
+      : {};
+    const fallback = readRoomReservationsFallback();
+    const merged = Object.assign({}, fallback, memory);
+    return merged;
+  }
+
+  function getRoomReservation(roomId) {
+    if (!roomId) return null;
+    const map = getRoomReservations();
+    return map[String(roomId)] || null;
+  }
+
+  function setRoomReservation(roomId, payload) {
+    if (!roomId || !payload) return null;
+    const map = getRoomReservations();
+    map[String(roomId)] = payload;
+    patch(ROOM_RESERVATIONS_KEY, map);
+    writeRoomReservationsFallback(map);
+    return payload;
+  }
+
+  function clearRoomReservation(roomId) {
+    if (!roomId) return;
+    const map = getRoomReservations();
+    if (!map[String(roomId)]) return;
+    delete map[String(roomId)];
+    patch(ROOM_RESERVATIONS_KEY, map);
+    writeRoomReservationsFallback(map);
+  }
+
+  function syncRoomReservationsFromMemory() {
+    const c = getCustomizations();
+    const memory = (c[ROOM_RESERVATIONS_KEY] && typeof c[ROOM_RESERVATIONS_KEY] === 'object' && !Array.isArray(c[ROOM_RESERVATIONS_KEY]))
+      ? c[ROOM_RESERVATIONS_KEY]
+      : {};
+    writeRoomReservationsFallback(memory);
+  }
+
+  function serverUrl() {
+    if (typeof window.route === 'function') {
+      try { return window.route('students.frontdesk.template.reservations'); } catch (e) { /* ignore */ }
+    }
+    const el = document.querySelector('meta[name="hms-reservation-url"]');
+    if (el && el.content) return el.content;
+    return '/students/frontdesk/template/reservations';
+  }
+
+  function serverIndexUrl() {
+    if (typeof window.route === 'function') {
+      try { return window.route('students.frontdesk.template.reservations'); } catch (e) { /* ignore */ }
+    }
+    return '/students/frontdesk/template/reservations';
+  }
+
+  function csrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content) return meta.content;
+    try {
+      const m = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+      if (m) return decodeURIComponent(m[1]);
+    } catch (e) { /* ignore */ }
+    return '';
+  }
+
+  function xsrfCookieValue() {
+    try {
+      const m = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+      return m ? decodeURIComponent(m[1]) : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function buildHeaders(extra) {
+    const headers = Object.assign({
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-TOKEN': csrfToken(),
+      'X-XSRF-TOKEN': xsrfCookieValue(),
+    }, extra || {});
+    return headers;
+  }
+
+  function postReservation(payload) {
+    try {
+      return fetch(serverUrl(), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: buildHeaders(),
+        body: JSON.stringify(payload || {}),
+      }).then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }).then(function (data) {
+        if (data && Array.isArray(data.notifications)) {
+          patch(RESERVATION_NOTIFICATIONS_KEY, data.notifications);
+        }
+        return data;
+      });
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  }
+
+  let pendingSyncTimer = null;
+  function scheduleServerSync(payload) {
+    if (pendingSyncTimer) clearTimeout(pendingSyncTimer);
+    pendingSyncTimer = setTimeout(function () {
+      pendingSyncTimer = null;
+      postReservation(payload).catch(function () {
+        // Server unreachable — keep the localStorage fallback so other tabs
+        // (and the next page load in this tab) still see the notification.
+        syncFallbackFromMemory();
+      });
+    }, 220);
+  }
+
+  function recordReservationNotification(payload) {
+    if (!payload || !payload.roomId) return null;
+    const list = getReservationNotifications();
+    const fullReservation = payload.fullReservation || null;
+    const entry = {
+      id: uid('notif'),
+      roomId: payload.roomId,
+      roomName: payload.roomName || '',
+      guestName: payload.guestName || '',
+      checkIn: payload.checkIn || null,
+      checkOut: payload.checkOut || null,
+      contactNo: (fullReservation && fullReservation.contactNo) || payload.contactNo || '',
+      email: (fullReservation && fullReservation.email) || payload.email || '',
+      idNumber: (fullReservation && fullReservation.idNumber) || payload.idNumber || '',
+      fullReservation: fullReservation,
+      createdAt: new Date().toISOString(),
+      acknowledged: false,
+    };
+    list.push(entry);
+    patch(RESERVATION_NOTIFICATIONS_KEY, list);
+    writeFallbackNotifications(list);
+    if (fullReservation) {
+      setRoomReservation(payload.roomId, Object.assign({}, fullReservation, {
+        roomId: payload.roomId,
+        roomName: payload.roomName || fullReservation.roomName || '',
+        notificationId: entry.id,
+      }));
+    }
+    scheduleServerSync({ action: 'record', entry: entry });
+    return entry;
+  }
+
+  function acknowledgeReservationNotification(id) {
+    if (!id) return;
+    const list = getReservationNotifications().map(function (n) {
+      return (n && n.id === id) ? Object.assign({}, n, { acknowledged: true, acknowledgedAt: new Date().toISOString() }) : n;
+    });
+    patch(RESERVATION_NOTIFICATIONS_KEY, list);
+    writeFallbackNotifications(list);
+    scheduleServerSync({ action: 'acknowledge', id: id });
+  }
+
+  function dismissReservationNotification(id) {
+    if (!id) return;
+    const dismissed = getReservationNotifications().find(function (n) { return n && n.id === id; });
+    const list = getReservationNotifications().filter(function (n) { return !(n && n.id === id); });
+    patch(RESERVATION_NOTIFICATIONS_KEY, list);
+    writeFallbackNotifications(list);
+    if (dismissed && dismissed.roomId) {
+      clearRoomReservation(dismissed.roomId);
+    }
+    scheduleServerSync({ action: 'dismiss', id: id });
+  }
+
+  function refreshFromServerNotifications() {
+    try {
+      const headers = buildHeaders();
+      delete headers['Content-Type'];
+      return fetch(serverIndexUrl(), {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: headers,
+      }).then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }).then(function (data) {
+        if (data && Array.isArray(data.notifications)) {
+          patch(RESERVATION_NOTIFICATIONS_KEY, data.notifications);
+          writeFallbackNotifications(data.notifications);
+        }
+        return data;
+      });
+    } catch (e) {
+      return Promise.reject(e);
+    }
   }
 
   function addMenu(partial, fallbackDefaults) {
@@ -400,6 +740,7 @@
     ROOMS_KEY,
     MENUS_KEY,
     CARD_IMAGES_KEY,
+    RESERVATION_NOTIFICATIONS_KEY,
     CONTENT_KEYS,
     DEFAULT_NAV,
     DEFAULT_MENUS,
@@ -414,6 +755,15 @@
     addRoom,
     updateRoom,
     removeRoom,
+    getReservationNotifications,
+    recordReservationNotification,
+    acknowledgeReservationNotification,
+    dismissReservationNotification,
+    refreshFromServerNotifications,
+    getRoomReservations,
+    getRoomReservation,
+    setRoomReservation,
+    clearRoomReservation,
     getMenus,
     setMenus,
     addMenu,
@@ -429,6 +779,9 @@
     canEditExperiences,
     canAccess,
     canUseRoomManagementUi,
+    canUseRestaurantUi,
+    canReserveRooms,
+    canOrderMenu,
     getBuilderRole,
     currentRoles,
     FEATURE_ROLES,
@@ -443,6 +796,36 @@
     },
   };
 
+  // Cross-tab broadcast: another open tab (Room Management / Front Desk)
+  // wrote new notifications to the localStorage fallback. Merge them in.
+  window.addEventListener('storage', function (event) {
+    if (!event || !event.key) return;
+    if (event.key === storageFallbackKey()) {
+      const c = getCustomizations();
+      const fallback = readFallbackNotifications();
+      const memory = Array.isArray(c[RESERVATION_NOTIFICATIONS_KEY]) ? c[RESERVATION_NOTIFICATIONS_KEY] : [];
+      const byId = new Map();
+      for (const entry of memory) {
+        if (entry && entry.id) byId.set(String(entry.id), entry);
+      }
+      for (const entry of fallback) {
+        if (entry && entry.id && !byId.has(String(entry.id))) byId.set(String(entry.id), entry);
+      }
+      const merged = Array.from(byId.values());
+      patch(RESERVATION_NOTIFICATIONS_KEY, merged);
+      return;
+    }
+    if (event.key === roomReservationsFallbackKey()) {
+      const c = getCustomizations();
+      const memory = (c[ROOM_RESERVATIONS_KEY] && typeof c[ROOM_RESERVATIONS_KEY] === 'object' && !Array.isArray(c[ROOM_RESERVATIONS_KEY]))
+        ? c[ROOM_RESERVATIONS_KEY]
+        : {};
+      const fallback = readRoomReservationsFallback();
+      const merged = Object.assign({}, fallback, memory);
+      patch(ROOM_RESERVATIONS_KEY, merged);
+    }
+  });
+
   window.addEventListener('hms-hotel-auth', function () {
     window.HMSSiteContent.refreshFromEditor();
   });
@@ -455,7 +838,14 @@
       setTimeout(function () { window.HMSSiteContent.refreshFromEditor(); }, 50);
       return;
     }
-    if (data.type === 'load-customizations' || data.type === 'set-can-edit' || data.type === 'set-editable-pages') {
+    if (data.type === 'load-customizations') {
+      if (data.customizations && typeof data.customizations === 'object') {
+        window.__HMS_CUSTOMIZATIONS__ = data.customizations;
+      }
+      setTimeout(function () { window.HMSSiteContent.refreshFromEditor(); }, 50);
+      return;
+    }
+    if (data.type === 'set-can-edit' || data.type === 'set-editable-pages') {
       setTimeout(function () { window.HMSSiteContent.refreshFromEditor(); }, 50);
     }
   });

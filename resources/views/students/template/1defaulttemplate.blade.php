@@ -3,11 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>SPC HOTEL</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -37,12 +39,15 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
   .nav-bar {
-    position: fixed;
-    top: 0; left: 0; right: 0;
+    position: fixed !important;
+    top: 0 !important; left: 0; right: 0;
     z-index: 1000;
     padding: 0.9rem 2rem;
     background: var(--bg);
     border-bottom: 1px solid var(--border);
+  }
+  .hero {
+    margin-top: 64px !important;
   }
   .nav-item {
     position: relative;
@@ -52,43 +57,62 @@
   .nav-links-desktop {
     position: relative;
   }
+  /* Edit tools sit inline inside their own nav item, so they can never overlap
+     the neighbouring link the way an absolutely positioned overlay did. */
   .nav-edit-tools {
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    margin-left: 2px;
     display: none;
     align-items: center;
-    gap: 1px;
-    z-index: 3;
+    gap: 2px;
+    margin-left: 4px;
     white-space: nowrap;
   }
-  body.hms-design-mode .nav-item:hover .nav-edit-tools,
-  body.hms-design-mode .nav-item:focus-within .nav-edit-tools {
-    display: inline-flex;
-  }
-  .nav-add-btn {
-    position: absolute;
-    right: calc(100% + 6px);
-    top: 50%;
-    transform: translateY(-50%);
-    width: 22px;
-    height: 22px;
+  body.hms-design-mode .nav-edit-tools { display: inline-flex; }
+  body.hms-design-mode .nav-item {
+    gap: 2px;
+    padding: 3px 6px;
     border-radius: 6px;
-    border: 1px dashed #f43f5e;
-    background: rgba(244,63,94,0.12);
-    color: #fb7185;
+    border: 1px dashed rgba(34,211,238,0.45);
+  }
+  body.hms-design-mode .nav-item:hover,
+  body.hms-design-mode .nav-item:focus-within {
+    border-color: #22d3ee;
+    background: rgba(34,211,238,0.10);
+  }
+  .nav-edit-tools button {
+    border: none;
+    background: transparent;
     cursor: pointer;
+    padding: 2px 3px;
+    line-height: 1;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .nav-edit-tools button:hover { background: rgba(148,163,184,0.22); }
+  .nav-edit-btn { color: #22d3ee; }
+  .nav-remove-btn { color: #f87171; }
+  /* Inline chip at the end of the row — reads as "add a link here" instead of
+     floating in the blank space beside the brand. */
+  .nav-add-btn {
     display: none;
     align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    line-height: 1;
-    padding: 0;
-    z-index: 3;
+    gap: 4px;
+    height: 26px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px dashed #22d3ee;
+    background: rgba(34,211,238,0.12);
+    color: #67e8f9;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
   }
   body.hms-design-mode .nav-add-btn { display: inline-flex; }
+  .nav-add-btn:hover { background: rgba(34,211,238,0.22); color: #a5f3fc; }
   .nav-link {
     color: var(--fg-muted);
     text-decoration: none;
@@ -202,6 +226,9 @@
   .room-status-badge.status-available {
     background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35);
   }
+  .room-status-badge.status-reserved {
+    background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35);
+  }
   .room-status-badge.status-occupied {
     background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35);
   }
@@ -265,8 +292,8 @@
     background: var(--accent); border-color: var(--accent); color: #0c0b09;
   }
 
-  .rm-shell {
-    display: flex; min-height: 420px; max-height: min(78vh, 640px);
+  .rm-row {
+    display: flex; align-items: stretch; width: 100%;
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
     overflow: hidden;
   }
@@ -294,8 +321,8 @@
     color: var(--bg); background: var(--accent); border-color: var(--accent);
   }
   .rm-content {
-    flex: 1; min-width: 0; padding: 1.5rem 1.6rem 1.75rem;
-    overflow: auto; position: relative;
+    flex: 1; min-width: 0; padding: 1.25rem 1.6rem;
+    position: relative;
   }
   .rm-panel {
     max-width: 520px;
@@ -314,7 +341,7 @@
     display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;
   }
   @media (max-width: 640px) {
-    .rm-shell { flex-direction: column; max-height: min(85vh, 720px); }
+    .rm-row { flex-direction: column; }
     .rm-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
     .rm-form-row { grid-template-columns: 1fr; }
   }
@@ -488,13 +515,18 @@
 <div id="root"></div>
 
 <script src="{{ asset('js/hms-site-content.js') }}"></script>
+<script>
+  window.HMS_ROOM_MANAGEMENT_URL = @json(route('students.roommanagement.manage'));
+  // Resolved out here: the block below is @verbatim, so Blade never runs inside it.
+  window.HMS_DEFAULT_LOGO = @json(asset('images/hotel-logo-default.svg'));
+</script>
 @verbatim
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• DATA â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
-const ROOM_STATUSES = ['Available', 'Occupied', 'Cleaning', 'Maintenance'];
+const ROOM_STATUSES = ['Available', 'Reserved', 'Occupied', 'Cleaning', 'Maintenance'];
 const ROOM_TABS = ROOM_CATEGORIES;
 const MENU_CATEGORIES = ['Main Dishes', 'Appetizers', 'Soups', 'Desserts', 'Beverages'];
 const MENU_TABS = MENU_CATEGORIES;
@@ -526,6 +558,26 @@ function normalizeRoomStatus(value) {
 
 function roomStatusClass(status) {
   return 'status-' + normalizeRoomStatus(status).toLowerCase();
+}
+
+/* Arrival lifecycle of a reservation: Reserved -> Arrived.
+   Stored inside the reservation JSON so no schema change is needed. */
+function reservationArrivalStatus(reservation) {
+  const raw = String((reservation && reservation.arrivalStatus) || 'Reserved').trim().toLowerCase();
+  return raw === 'arrived' ? 'Arrived' : 'Reserved';
+}
+
+function todayIsoDate() {
+  return new Date().toISOString().split('T')[0];
+}
+
+/* Front Desk may only mark arrival on or after the reserved check-in date. */
+function canMarkArrived(reservation) {
+  if (!reservation) return false;
+  if (reservationArrivalStatus(reservation) === 'Arrived') return false;
+  const checkIn = String(reservation.checkIn || '').trim();
+  if (!checkIn) return true;
+  return todayIsoDate() >= checkIn;
 }
 
 function formatPeso(amount) {
@@ -658,6 +710,11 @@ function isSiteInteractive() {
   return !document.body.classList.contains('hms-design-mode');
 }
 
+function hmsCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? meta.getAttribute('content') : '';
+}
+
 function hmsPrompt(message, defaultValue) {
   if (window.HMSSiteContent && typeof window.HMSSiteContent.safePrompt === 'function') {
     return window.HMSSiteContent.safePrompt(message, defaultValue);
@@ -682,10 +739,52 @@ function hmsConfirm(message) {
   }
 }
 
+/* Room images are stored as base64 in the DB. A raw camera/screenshot upload blows past
+   MySQL's max_allowed_packet and the insert dies with "MySQL server has gone away", so
+   every picked image is downscaled and re-encoded before it leaves the browser. */
+const IMAGE_MAX_DIMENSION = 1280;
+const IMAGE_MAX_BYTES = 600 * 1024;
+
+function compressImageDataUrl(dataUrl, done) {
+  const src = String(dataUrl || '');
+  if (!src.startsWith('data:image/')) { done(src); return; }
+
+  const img = new Image();
+  img.onload = function () {
+    try {
+      const scale = Math.min(1, IMAGE_MAX_DIMENSION / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      // Flatten onto the card background so transparent PNGs don't turn black as JPEG.
+      ctx.fillStyle = '#181714';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      let quality = 0.82;
+      let out = canvas.toDataURL('image/jpeg', quality);
+      while (out.length > IMAGE_MAX_BYTES && quality > 0.4) {
+        quality -= 0.12;
+        out = canvas.toDataURL('image/jpeg', quality);
+      }
+      done(out.length < src.length ? out : src);
+    } catch (e) {
+      done(src);
+    }
+  };
+  img.onerror = function () { done(src); };
+  img.src = src;
+}
+
 /** Open a file picker and return an image data-URL (works inside the builder iframe). */
 function pickImageFile(onPicked) {
+  const handle = (url) => {
+    if (typeof onPicked !== 'function') return;
+    compressImageDataUrl(url, onPicked);
+  };
   if (window.HMSSiteContent && typeof window.HMSSiteContent.pickImageFile === 'function') {
-    window.HMSSiteContent.pickImageFile(onPicked);
+    window.HMSSiteContent.pickImageFile(handle);
     return;
   }
   const input = document.createElement('input');
@@ -702,7 +801,7 @@ function pickImageFile(onPicked) {
     }
     const reader = new FileReader();
     reader.onload = function () {
-      if (typeof onPicked === 'function') onPicked(String(reader.result || ''));
+      handle(String(reader.result || ''));
       if (input.parentNode) input.parentNode.removeChild(input);
     };
     reader.onerror = function () {
@@ -711,6 +810,48 @@ function pickImageFile(onPicked) {
     reader.readAsDataURL(file);
   });
   input.click();
+}
+
+/* Brand logo lives in the shared card-image store, so changing it once updates
+   every navigation that renders it instead of each copy drifting apart. */
+const DEFAULT_LOGO = window.HMS_DEFAULT_LOGO || '/images/hotel-logo-default.svg';
+
+function resolveLogo() {
+  return resolveCardImg('brand', 'logo', DEFAULT_LOGO);
+}
+
+function BrandLogo({ size }) {
+  const px = size || 34;
+  return (
+    <img
+      src={resolveLogo()}
+      alt="Hotel logo"
+      data-hms-move-root="1"
+      data-hms-dynamic-src="1"
+      data-hms-content-kind="brand"
+      data-hms-content-id="logo"
+      style={{ width: px, height: px, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+      onError={(e) => {
+        // Attribute guard, not a src comparison: the browser reports src as a
+        // resolved absolute URL, so comparing it to the constant would loop.
+        if (e.target.getAttribute('data-logo-fallback') === '1') return;
+        e.target.setAttribute('data-logo-fallback', '1');
+        e.target.src = DEFAULT_LOGO;
+      }}
+    />
+  );
+}
+
+function ChangeLogoButton({ onToast }) {
+  return (
+    <button
+      type="button"
+      title="Change logo"
+      data-hms-no-edit="1"
+      onClick={() => changeCardImg('brand', 'logo', () => { if (onToast) onToast('Logo updated — synced to your team'); })}
+      style={Object.assign({}, toolBtnStyle('image'), { width: 22, height: 22 })}
+    ><i className="fa-solid fa-image" style={{ fontSize: 10 }}></i></button>
+  );
 }
 
 function resolveCardImg(kind, id, fallback) {
@@ -750,10 +891,13 @@ function Toast({ message, visible }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MOBILE MENU â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function MobileMenu({ open, onClose, onNavigate, links }) {
+function MobileMenu({ open, onClose, onNavigate, links, cardImages }) {
   const items = [...(links || [])];
+  // Passed only so the menu re-renders when the shared logo changes.
+  void cardImages;
   return (
     <div className={`mobile-menu${open ? ' open' : ''}`}>
+      <BrandLogo size={54} />
       {items.map(item => (
         <button key={item.id || item.key} onClick={() => { onNavigate(item.key); onClose(); }}>
           {item.label}
@@ -765,7 +909,9 @@ function MobileMenu({ open, onClose, onNavigate, links }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• NAVBAR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav }) {
+function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav, cardImages, onToast }) {
+  // Passed only so the navigation re-renders when the shared logo changes.
+  void cardImages;
   const PAGE_OPTIONS = [
     { key: 'home', label: 'Home' },
     { key: 'rooms', label: 'Rooms' },
@@ -774,51 +920,63 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, ca
     { key: 'booking', label: 'Book Now' },
   ];
 
+  /* Asks which page the link opens as a numbered menu. Typing a raw key by hand
+     used to be accepted unvalidated, so a typo produced a link that went nowhere.
+     Returns null when the student cancels or picks something that isn't a page. */
+  const askPageKey = (currentKey) => {
+    const menu = PAGE_OPTIONS.map((p, i) => (i + 1) + ') ' + p.label).join('\n');
+    const currentIndex = PAGE_OPTIONS.findIndex(p => p.key === currentKey);
+    const fallback = String(currentIndex >= 0 ? currentIndex + 1 : 1);
+    const answer = hmsPrompt('Which page should this link open?\n\n' + menu + '\n\nType a number:', fallback);
+    if (answer == null) return null;
+    const typed = String(answer).trim().toLowerCase();
+    if (!typed) return null;
+    const byNumber = PAGE_OPTIONS[parseInt(typed, 10) - 1];
+    if (byNumber) return byNumber.key;
+    const byName = PAGE_OPTIONS.find(p => p.key === typed || p.label.toLowerCase() === typed);
+    if (byName) return byName.key;
+    if (onToast) onToast('"' + answer + '" is not a page — pick a number from the list');
+    return null;
+  };
+
   const handleAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const label = hmsPrompt('New navigation label', 'New Page');
-    if (!label) return;
-    const keys = PAGE_OPTIONS.map(p => p.key).join(', ');
-    const key = hmsPrompt('Link to page (' + keys + ')', 'home');
+    const label = hmsPrompt('Name for the new navigation link', 'New Page');
+    if (label == null || !label.trim()) return;
+    const key = askPageKey('home');
     if (!key) return;
-    onAddNav({ label: label.trim(), key: key.trim() });
+    onAddNav({ label: label.trim(), key });
+    if (onToast) onToast('Navigation link added');
   };
 
   const handleEdit = (e, link) => {
     e.preventDefault();
     e.stopPropagation();
-    const label = hmsPrompt('Navigation label', link.label);
+    const label = hmsPrompt('Name for this navigation link', link.label);
     if (label == null || !label.trim()) return;
-    const key = hmsPrompt('Link to page', link.key);
-    if (key == null || !key.trim()) return;
-    onEditNav(link.id, { label: label.trim(), key: key.trim() });
+    const key = askPageKey(link.key);
+    if (!key) return;
+    onEditNav(link.id, { label: label.trim(), key });
   };
 
-  const handleRemove = (e, id) => {
+  const handleRemove = (e, link) => {
     e.preventDefault();
     e.stopPropagation();
-    if (hmsConfirm('Remove this navigation link?')) onRemoveNav(id);
+    if (hmsConfirm('Remove "' + link.label + '" from the navigation menu?')) onRemoveNav(link.id);
   };
 
   return (
     <nav className="nav-bar" role="navigation" aria-label="Main navigation">
       <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <button onClick={() => onNavigate('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <button onClick={() => onNavigate('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <BrandLogo size={34} />
             <span style={{ color: 'var(--fg)', fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
           </button>
+          {canEditNav && <ChangeLogoButton onToast={onToast} />}
         </div>
         <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: '1.1rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {canEditNav && (
-            <button
-              type="button"
-              className="nav-add-btn"
-              title="Add navigation link"
-              onClick={handleAdd}
-              data-hms-no-edit="1"
-            >+</button>
-          )}
           {(links || []).map(link => (
             <div key={link.id || link.key} className="nav-item">
               <button
@@ -829,14 +987,23 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, ca
               </button>
               {canEditNav && (
                 <span className="nav-edit-tools" data-hms-no-edit="1">
-                  <button type="button" title="Edit link" onClick={(e) => handleEdit(e, link)}
-                    style={{ border: 'none', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, padding: '0 2px', lineHeight: 1 }}><i className="fa-solid fa-pen" style={{fontSize:10}}></i></button>
-                  <button type="button" title="Remove link" onClick={(e) => handleRemove(e, link.id)}
-                    style={{ border: 'none', background: 'transparent', color: '#f87171', cursor: 'pointer', fontSize: 12, padding: '0 2px', fontWeight: 700, lineHeight: 1 }}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
+                  <button type="button" className="nav-edit-btn" title={'Rename "' + link.label + '" or change the page it opens'}
+                    onClick={(e) => handleEdit(e, link)}><i className="fa-solid fa-pen" style={{fontSize:10}}></i></button>
+                  <button type="button" className="nav-remove-btn" title={'Remove "' + link.label + '" from the menu'}
+                    onClick={(e) => handleRemove(e, link)}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
                 </span>
               )}
             </div>
           ))}
+          {canEditNav && (
+            <button
+              type="button"
+              className="nav-add-btn"
+              title="Add a new link to this menu"
+              onClick={handleAdd}
+              data-hms-no-edit="1"
+            ><i className="fa-solid fa-plus" style={{ fontSize: 10 }}></i> Add link</button>
+          )}
         </div>
         <button className={`hamburger${mobileOpen ? ' active' : ''}`} onClick={onToggleMobile} aria-label="Toggle menu" data-hms-no-edit="1">
           <span></span><span></span><span></span>
@@ -849,8 +1016,8 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, ca
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• HOME PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom }) {
-  const roomList = (rooms && rooms.length) ? rooms : ROOMS;
-  const menuList = (menus && menus.length) ? menus : (window.HMSSiteContent ? window.HMSSiteContent.DEFAULT_MENUS : []);
+  const roomList = rooms && rooms.length ? rooms : [];
+  const menuList = menus || [];
 
   const handleAddRoom = (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
@@ -875,7 +1042,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
   const handleEditRoom = (room) => {
     const name = hmsPrompt('Room name', room.name);
     if (name == null || !String(name).trim()) return;
-    const priceRaw = hmsPrompt('Price per night', String(room.price || 200));
+    const priceRaw = hmsPrompt('Price per 12 hrs', String(room.price || 200));
     if (priceRaw == null) return;
     const price = Math.max(1, parseInt(priceRaw || String(room.price || 200), 10) || room.price || 200);
     const desc = hmsPrompt('Description', room.desc || '');
@@ -985,7 +1152,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
                 <p style={{ margin: '0.35rem 0 0', color: 'var(--fg-muted)', fontSize: '0.78rem', lineHeight: 1.45 }}>{item.sub}</p>
                 {item.category ? <p style={{ margin: '0.45rem 0 0', color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{item.category}</p> : null}
               </div>
-              <span style={{ fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' }}>{item.price || 'â€”'}</span>
+              <span style={{ fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' }}>{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}</span>
             </div>
           ))}
         </div>
@@ -1026,13 +1193,39 @@ function RoomTabBar({ tabs, active, onChange, items, getKey }) {
   );
 }
 
-function nightsBetween(checkIn, checkOut) {
+/* Rooms are billed in 12-hour blocks. Check-out has no time field, so it is
+   assumed to fall at the same clock time as check-in. */
+const BLOCK_HOURS = 12;
+
+function stayBlocks(checkIn, checkOut, checkInTime) {
   if (!checkIn || !checkOut) return 1;
-  const days = Math.ceil((new Date(checkOut) - new Date(checkIn)) / 86400000);
-  return Math.max(1, days);
+  const clock = /^\d{1,2}:\d{2}/.test(String(checkInTime || '')) ? checkInTime : '00:00';
+  const start = new Date(`${checkIn}T${clock}`);
+  const end = new Date(`${checkOut}T${clock}`);
+  const hours = (end - start) / 3600000;
+  if (!Number.isFinite(hours) || hours <= 0) return 1;
+  return Math.max(1, Math.ceil(hours / BLOCK_HOURS));
 }
 
-function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReserve, onToast }) {
+function formatClockTime(value) {
+  const raw = String(value || '').trim();
+  const match = /^(\d{1,2}):(\d{2})/.exec(raw);
+  if (!match) return '';
+  const hours = Number(match[1]);
+  if (!Number.isFinite(hours)) return '';
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const display = hours % 12 === 0 ? 12 : hours % 12;
+  return `${display}:${match[2]} ${suffix}`;
+}
+
+function formatCheckIn(date, time) {
+  const day = String(date || '').trim();
+  const clock = formatClockTime(time);
+  if (!day) return clock || '—';
+  return clock ? `${day} · ${clock}` : day;
+}
+
+function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -1043,6 +1236,7 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReser
     email: '',
     idNumber: '',
     checkIn: '',
+    checkInTime: '',
     checkOut: '',
   });
   const [paymentForm, setPaymentForm] = useState({
@@ -1056,7 +1250,7 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReser
 
   useEffect(() => {
     setStep('details');
-    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', checkIn: '', checkOut: '' });
+    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', checkIn: '', checkInTime: '', checkOut: '' });
     setPaymentForm({ type: 'full', amount: '', method: 'Cash', reference: '', payerName: '', notes: '' });
   }, [room.id]);
 
@@ -1066,8 +1260,8 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReser
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const nights = nightsBetween(guestForm.checkIn, guestForm.checkOut);
-  const totalDue = nights * (Number(room.price) || 0);
+  const blocks = stayBlocks(guestForm.checkIn, guestForm.checkOut, guestForm.checkInTime);
+  const totalDue = blocks * (Number(room.price) || 0);
 
   const updateGuest = (field, value) => {
     setGuestForm(prev => {
@@ -1086,6 +1280,10 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReser
     if (!isSiteInteractive()) return;
     if (guestForm.checkOut && guestForm.checkIn && guestForm.checkOut <= guestForm.checkIn) {
       if (onToast) onToast('Check-Out must be after Check-In.');
+      return;
+    }
+    if (!String(guestForm.checkInTime || '').trim()) {
+      if (onToast) onToast('Check-In Time is required.');
       return;
     }
     setPaymentForm(prev => Object.assign({}, prev, {
@@ -1123,7 +1321,6 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReser
       payerName: paymentForm.payerName.trim() || guestForm.fullName,
       notes: paymentForm.notes.trim(),
       paidAt: new Date().toISOString(),
-      nights,
     };
 
     if (typeof onReserve === 'function') {
@@ -1134,7 +1331,7 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReser
     onClose();
   };
 
-  const canReserve = status === 'Available';
+  const isAvailable = status === 'Available';
   const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
 
   return (
@@ -1175,31 +1372,39 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReser
                 <div style={{ marginTop: '1.35rem' }}>
                   <p style={{ fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.65rem' }}>Update Status</p>
                   <div className="room-status-picker">
-                    {ROOM_STATUSES.map(s => (
-                      <button
-                        key={s}
-                        type="button"
-                        className={`room-status-option${status === s ? ' active' : ''}`}
-                        onClick={() => onChangeStatus(s)}
-                      >
-                        {s}
-                      </button>
-                    ))}
+                    {ROOM_STATUSES.map(s => {
+                      // Occupied stays locked until Front Desk marks the reserved guest as Arrived.
+                      const locked = s === 'Occupied' && room.reservation
+                        && reservationArrivalStatus(room.reservation) !== 'Arrived';
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          className={`room-status-option${status === s ? ' active' : ''}`}
+                          disabled={locked}
+                          title={locked ? 'Guest has not been marked as Arrived yet' : undefined}
+                          style={locked ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                          onClick={() => { if (!locked) onChangeStatus(s); }}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               <div style={{ marginTop: '1.5rem' }}>
-                {canReserve ? (
+                {canReserve !== false && isAvailable ? (
                   <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
                     onClick={() => setStep('register')}>
                     Reserve Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
                   </button>
-                ) : (
+                ) : !isAvailable ? (
                   <p style={{ textAlign: 'center', color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>
                     This room is {status.toLowerCase()} and cannot be reserved right now.
                   </p>
-                )}
+                ) : null}
               </div>
             </>
           )}
@@ -1247,10 +1452,15 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReser
                         onChange={e => updateGuest('checkIn', e.target.value)} required style={{ colorScheme: 'dark' }} />
                     </div>
                     <div>
-                      <label style={fieldLabel}>Check-Out</label>
-                      <input type="date" className="booking-input" value={guestForm.checkOut} min={guestForm.checkIn || today}
-                        onChange={e => updateGuest('checkOut', e.target.value)} required style={{ colorScheme: 'dark' }} />
+                      <label style={fieldLabel}>Check-In Time</label>
+                      <input type="time" className="booking-input" value={guestForm.checkInTime}
+                        onChange={e => updateGuest('checkInTime', e.target.value)} required style={{ colorScheme: 'dark' }} />
                     </div>
+                  </div>
+                  <div>
+                    <label style={fieldLabel}>Check-Out</label>
+                    <input type="date" className="booking-input" value={guestForm.checkOut} min={guestForm.checkIn || today}
+                      onChange={e => updateGuest('checkOut', e.target.value)} required style={{ colorScheme: 'dark' }} />
                   </div>
                 </div>
                 <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }}>
@@ -1276,11 +1486,13 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReser
 
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', marginBottom: '1.15rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem' }}>
-                  <span style={{ color: 'var(--fg-muted)', fontSize: '0.8rem' }}>{nights} night{nights > 1 ? 's' : ''} × {formatPeso(room.price)}</span>
+                  <span style={{ color: 'var(--fg-muted)', fontSize: '0.8rem' }}>
+                    {blocks} × {BLOCK_HOURS} hrs × {formatPeso(room.price)}
+                  </span>
                   <strong style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.15rem' }}>{formatPeso(totalDue)}</strong>
                 </div>
                 <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                  {guestForm.checkIn} → {guestForm.checkOut}
+                  {formatCheckIn(guestForm.checkIn, guestForm.checkInTime)} — {guestForm.checkOut}
                 </p>
               </div>
 
@@ -1366,433 +1578,10 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, onReser
   );
 }
 
-function normalizeLookup(value) {
-  return String(value || '').trim().toLowerCase();
-}
-
-function findGuestBookings(rooms, query) {
-  const nameQ = normalizeLookup(query.fullName);
-  const idQ = normalizeLookup(query.idNumber);
-  const emailQ = normalizeLookup(query.email);
-  const contactQ = normalizeLookup(query.contactNo).replace(/\s+/g, '');
-
-  if (!nameQ && !idQ && !emailQ && !contactQ) return [];
-
-  return (rooms || []).reduce((matches, room) => {
-    const res = room && room.reservation;
-    if (!res) return matches;
-
-    const resName = normalizeLookup(res.fullName);
-    const resId = normalizeLookup(res.idNumber);
-    const resEmail = normalizeLookup(res.email);
-    const resContact = normalizeLookup(res.contactNo).replace(/\s+/g, '');
-
-    if (nameQ && !resName.includes(nameQ)) return matches;
-    if (idQ && resId !== idQ) return matches;
-    if (emailQ && resEmail !== emailQ) return matches;
-    if (contactQ && resContact !== contactQ) return matches;
-
-    // At least one provided field must actually match something meaningful
-    const anyHit =
-      (nameQ && resName.includes(nameQ)) ||
-      (idQ && resId === idQ) ||
-      (emailQ && resEmail === emailQ) ||
-      (contactQ && resContact === contactQ);
-
-    if (!anyHit) return matches;
-    matches.push({ room, reservation: res });
-    return matches;
-  }, []);
-}
-
-function VerifyGuestModal({ open, rooms, onClose }) {
-  const [form, setForm] = useState({ fullName: '', idNumber: '', email: '', contactNo: '' });
-  const [searched, setSearched] = useState(false);
-  const [matches, setMatches] = useState([]);
-  const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
-
-  useEffect(() => {
-    if (!open) return;
-    setForm({ fullName: '', idNumber: '', email: '', contactNo: '' });
-    setSearched(false);
-    setMatches([]);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  const update = (field, value) => setForm(prev => Object.assign({}, prev, { [field]: value }));
-
-  const handleVerify = (e) => {
-    e.preventDefault();
-    if (!isSiteInteractive()) return;
-    const found = findGuestBookings(rooms, form);
-    setMatches(found);
-    setSearched(true);
-  };
-
-  return (
-    <div className="room-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="room-modal" onClick={e => e.stopPropagation()}>
-        <div style={{ padding: '1.5rem 1.5rem 1.75rem', position: 'relative' }}>
-          <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-
-          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-            Front Desk
-          </p>
-          <h2 className="font-display" style={{ fontSize: '1.55rem', marginBottom: '0.35rem', paddingRight: '2.5rem' }}>Verify Guest</h2>
-          <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', marginBottom: '1.25rem' }}>
-            Enter guest details to check if they have an existing reservation.
-          </p>
-
-          <form onSubmit={handleVerify}>
-            <div style={{ display: 'grid', gap: '0.85rem' }}>
-              <div>
-                <label style={fieldLabel}>Full Name</label>
-                <input type="text" className="booking-input" placeholder="e.g. James Whitfield" value={form.fullName}
-                  onChange={e => update('fullName', e.target.value)} />
-              </div>
-              <div>
-                <label style={fieldLabel}>ID</label>
-                <input type="text" className="booking-input" placeholder="Government / passport ID" value={form.idNumber}
-                  onChange={e => update('idNumber', e.target.value)} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
-                <div>
-                  <label style={fieldLabel}>Email</label>
-                  <input type="email" className="booking-input" placeholder="Optional" value={form.email}
-                    onChange={e => update('email', e.target.value)} />
-                </div>
-                <div>
-                  <label style={fieldLabel}>Contact No.</label>
-                  <input type="tel" className="booking-input" placeholder="Optional" value={form.contactNo}
-                    onChange={e => update('contactNo', e.target.value)} />
-                </div>
-              </div>
-            </div>
-            <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.25rem' }}
-              disabled={!form.fullName.trim() && !form.idNumber.trim() && !form.email.trim() && !form.contactNo.trim()}>
-              <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '0.75rem' }}></i> Search Booking
-            </button>
-          </form>
-
-          {searched && (
-            <div style={{ marginTop: '1.35rem' }}>
-              {matches.length === 0 ? (
-                <div style={{ border: '1px solid rgba(244,63,94,0.35)', background: 'rgba(244,63,94,0.08)', borderRadius: 10, padding: '1rem 1.1rem' }}>
-                  <p style={{ margin: 0, color: '#fb7185', fontWeight: 600, fontSize: '0.9rem' }}>
-                    <i className="fa-solid fa-circle-xmark" style={{ marginRight: 8 }}></i>
-                    No booking found
-                  </p>
-                  <p style={{ margin: '0.45rem 0 0', color: 'var(--fg-muted)', fontSize: '0.8rem' }}>
-                    This guest does not have a registered reservation.
-                  </p>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gap: '0.85rem' }}>
-                  <p style={{ margin: 0, color: '#4ade80', fontWeight: 600, fontSize: '0.9rem' }}>
-                    <i className="fa-solid fa-circle-check" style={{ marginRight: 8 }}></i>
-                    {matches.length} booking{matches.length > 1 ? 's' : ''} found
-                  </p>
-                  {matches.map(({ room, reservation }) => {
-                    const payment = reservation.payment || null;
-                    return (
-                      <div key={room.id} style={{ border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '1rem 1.1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'start', marginBottom: '0.65rem' }}>
-                          <div>
-                            <p style={{ margin: 0, color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                              {room.label || room.category || 'Room'}
-                            </p>
-                            <h3 className="font-display" style={{ margin: '0.2rem 0 0', fontSize: '1.15rem' }}>{room.name}</h3>
-                          </div>
-                          <span className={`room-status-badge ${roomStatusClass(room.status)}`} style={{ position: 'static' }}>
-                            {normalizeRoomStatus(room.status)}
-                          </span>
-                        </div>
-                        <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.82rem', color: 'var(--fg-muted)' }}>
-                          <p style={{ margin: 0 }}><strong style={{ color: 'var(--fg)' }}>Guest:</strong> {reservation.fullName}</p>
-                          <p style={{ margin: 0 }}><strong style={{ color: 'var(--fg)' }}>ID:</strong> {reservation.idNumber || '—'}</p>
-                          <p style={{ margin: 0 }}><strong style={{ color: 'var(--fg)' }}>Contact:</strong> {reservation.contactNo || '—'}</p>
-                          <p style={{ margin: 0 }}><strong style={{ color: 'var(--fg)' }}>Email:</strong> {reservation.email || '—'}</p>
-                          <p style={{ margin: 0 }}><strong style={{ color: 'var(--fg)' }}>Stay:</strong> {reservation.checkIn} → {reservation.checkOut}</p>
-                          {payment && (
-                            <p style={{ margin: 0 }}>
-                              <strong style={{ color: 'var(--fg)' }}>Payment:</strong>{' '}
-                              {payment.type} {formatPeso(payment.amountPaid)} via {payment.method}
-                              {payment.balance > 0 ? ` · Balance ${formatPeso(payment.balance)}` : ''}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function createEmptyRoomForm() {
-  return {
-    name: '',
-    category: '',
-    status: 'Available',
-    price: '',
-    floor: '',
-    desc: '',
-  };
-}
-
-function validateRoomForm(form) {
-  const errors = {};
-  if (!String(form.name || '').trim()) errors.name = 'Room name is required.';
-  if (!String(form.category || '').trim()) errors.category = 'Room type is required.';
-  const price = parseFloat(String(form.price || '').replace(/,/g, ''));
-  if (!String(form.price || '').trim() || !Number.isFinite(price) || price <= 0) {
-    errors.price = 'Enter a valid price.';
-  }
-  return errors;
-}
-
-function buildRoomPayload(form) {
-  const category = normalizeRoomCategory(form.category);
-  const status = normalizeRoomStatus(form.status || 'Available');
-  const price = Math.max(1, Math.round(parseFloat(String(form.price || '0').replace(/,/g, '')) || 0));
-  const floor = String(form.floor || '').trim();
-  const desc = String(form.desc || '').trim() || 'Add a short description for this room.';
-  return {
-    name: String(form.name || '').trim(),
-    label: category,
-    category,
-    status,
-    price,
-    floor: floor || null,
-    desc,
-    img: 'https://picsum.photos/seed/room' + Date.now() + '/800/600.jpg',
-    amenities: [
-      { icon: 'fa-bed', text: 'Bed' },
-      { icon: 'fa-wifi', text: 'WiFi' },
-    ],
-  };
-}
-
-function ManageRoomPanel({ onSubmit, onCancel }) {
-  const [form, setForm] = useState(createEmptyRoomForm);
-  const [errors, setErrors] = useState({});
-
-  const fieldLabel = {
-    fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-    color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem',
-  };
-
-  const update = (field, value) => {
-    setForm(prev => Object.assign({}, prev, { [field]: value }));
-    if (errors[field]) setErrors(prev => Object.assign({}, prev, { [field]: null }));
-  };
-
-  const resetForm = () => {
-    setForm(createEmptyRoomForm());
-    setErrors({});
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!isSiteInteractive()) return;
-    const nextErrors = validateRoomForm(form);
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length) {
-      return;
-    }
-    const payload = buildRoomPayload(form);
-    if (typeof onSubmit === 'function') onSubmit(payload);
-    resetForm();
-  };
-
-  const handleCancel = () => {
-    resetForm();
-    if (typeof onCancel === 'function') onCancel();
-  };
-
-  const errorText = (key) => (
-    errors[key]
-      ? <p style={{ margin: '0.35rem 0 0', color: '#fb7185', fontSize: '0.72rem' }}>{errors[key]}</p>
-      : null
-  );
-
-  return (
-    <div className="rm-panel">
-      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>
-        Inventory
-      </p>
-      <h3>Manage Room</h3>
-      <p className="rm-panel-desc">
-        Add a new room to the hotel inventory. It will appear in the Rooms section right away.
-      </p>
-
-      <form onSubmit={handleSubmit} className="rm-form-grid" noValidate>
-        <div>
-          <label style={fieldLabel}>Room Name *</label>
-          <input
-            type="text"
-            className="booking-input"
-            placeholder="e.g. Deluxe King Room"
-            value={form.name}
-            onChange={e => update('name', e.target.value)}
-            style={errors.name ? { borderColor: '#f43f5e' } : undefined}
-          />
-          {errorText('name')}
-        </div>
-
-        <div className="rm-form-row">
-          <div>
-            <label style={fieldLabel}>Room Type *</label>
-            <select
-              className="booking-input"
-              value={form.category}
-              onChange={e => update('category', e.target.value)}
-              style={errors.category ? { borderColor: '#f43f5e' } : undefined}
-            >
-              <option value="">Select type</option>
-              {ROOM_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            {errorText('category')}
-          </div>
-          <div>
-            <label style={fieldLabel}>Status</label>
-            <select className="booking-input" value={form.status} onChange={e => update('status', e.target.value)}>
-              {ROOM_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="rm-form-row">
-          <div>
-            <label style={fieldLabel}>Price / Night *</label>
-            <input
-              type="number"
-              min="1"
-              step="1"
-              className="booking-input"
-              placeholder="e.g. 4500"
-              value={form.price}
-              onChange={e => update('price', e.target.value)}
-              style={errors.price ? { borderColor: '#f43f5e' } : undefined}
-            />
-            {errorText('price')}
-          </div>
-          <div>
-            <label style={fieldLabel}>Floor</label>
-            <input
-              type="text"
-              className="booking-input"
-              placeholder="e.g. 3"
-              value={form.floor}
-              onChange={e => update('floor', e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label style={fieldLabel}>Description</label>
-          <textarea
-            className="booking-input"
-            rows={3}
-            placeholder="Short description of the room..."
-            value={form.desc}
-            onChange={e => update('desc', e.target.value)}
-            style={{ resize: 'vertical', minHeight: 88 }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-          <button type="submit" className="btn-primary">
-            <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem' }}></i> Add Room
-          </button>
-          <button type="button" className="btn-outline" onClick={handleCancel} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-function RoomManagementModal({ open, rooms, onClose, onAddRoom, onEditRoom, onRemoveRoom, onToast }) {
-  const [activeNav, setActiveNav] = useState('manage-room');
-
-  useEffect(() => {
-    if (!open) return;
-    setActiveNav('manage-room');
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  void rooms;
-  void onEditRoom;
-  void onRemoveRoom;
-
-  const handleAddRoom = (payload) => {
-    if (typeof onAddRoom === 'function') onAddRoom(payload);
-    if (onToast) onToast(`${payload.name} added to Rooms.`);
-  };
-
-  return (
-    <div className="room-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="rm-shell" style={{ width: 'min(920px, 100%)' }} onClick={e => e.stopPropagation()}>
-        <aside className="rm-sidebar">
-          <p className="rm-sidebar-title">Room Management</p>
-          <button
-            type="button"
-            className={`rm-nav-item${activeNav === 'manage-room' ? ' active' : ''}`}
-            onClick={() => setActiveNav('manage-room')}
-          >
-            <i className="fa-solid fa-bed" style={{ fontSize: '0.78rem', width: 14 }}></i>
-            Manage Room
-          </button>
-        </aside>
-
-        <div className="rm-content">
-          <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-
-          {activeNav === 'manage-room' && (
-            <ManageRoomPanel
-              onSubmit={handleAddRoom}
-              onCancel={onClose}
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, onAddRoom, onEditRoom, onRemoveRoom }) {
-  const list = rooms && rooms.length ? rooms : ROOMS;
+function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onEditRoom, onRemoveRoom, onOpenRoomManagement }) {
+  const list = rooms && rooms.length ? rooms : [];
   const [tab, setTab] = useState('Classic');
   const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const [verifyOpen, setVerifyOpen] = useState(false);
-  const [roomMgmtOpen, setRoomMgmtOpen] = useState(false);
   const filtered = list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
   const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
   const showRoomManagement = !!canManageRooms;
@@ -1815,15 +1604,10 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, o
     onToast('Room card added — click the pencil to edit');
   };
 
-  const handleManageAddRoom = (payload) => {
-    if (typeof onAddRoom === 'function') onAddRoom(payload);
-    setTab(normalizeRoomCategory(payload.category || payload.label));
-  };
-
   const handleEdit = (room) => {
     const name = hmsPrompt('Room name', room.name);
     if (name == null || !String(name).trim()) return;
-    const priceRaw = hmsPrompt('Price per night', String(room.price || 200));
+    const priceRaw = hmsPrompt('Price per 12 hrs', String(room.price || 200));
     if (priceRaw == null) return;
     const price = Math.max(1, parseInt(priceRaw || String(room.price || 200), 10) || room.price || 200);
     const categoryHint = ROOM_CATEGORIES.join(' / ');
@@ -1854,49 +1638,53 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, o
   const handleReserve = (room, guest, payment) => {
     if (onEditRoom) {
       onEditRoom(room.id, {
-        status: 'Occupied',
+        status: 'Reserved',
         reservation: {
           fullName: guest.fullName,
           contactNo: guest.contactNo,
           email: guest.email,
           idNumber: guest.idNumber,
           checkIn: guest.checkIn,
+          checkInTime: guest.checkInTime || '',
           checkOut: guest.checkOut,
           reservedAt: new Date().toISOString(),
+          arrivalStatus: 'Reserved',
+          arrivedAt: null,
           payment: payment || null,
         },
       });
     }
     if (onToast) {
       const paid = payment ? ` · ${payment.type} ${formatPeso(payment.amountPaid)} via ${payment.method}` : '';
-      onToast(`${guest.fullName} registered for ${room.name}${paid}.`);
+      onToast(`${guest.fullName} reserved ${room.name}${paid}. Mark as Arrived on check-in day.`);
+    }
+    // Notify Room Management via cross-module notification so it auto-opens Guest Details
+    if (window.HMSSiteContent && typeof window.HMSSiteContent.recordReservationNotification === 'function') {
+      window.HMSSiteContent.recordReservationNotification({
+        roomId: room.id,
+        roomName: room.name,
+        guestName: guest.fullName,
+        checkIn: guest.checkIn,
+        checkOut: guest.checkOut,
+        fullReservation: Object.assign({}, guest, {
+          payment: payment || null,
+          reservedAt: new Date().toISOString(),
+          arrivalStatus: 'Reserved',
+          arrivedAt: null,
+        }),
+      });
+    }
+    if (showRoomManagement && typeof onOpenRoomManagement === 'function') {
+      onOpenRoomManagement('guest-details');
     }
   };
 
   return (
     <>
-      {showRoomManagement && (
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '7.25rem 1.5rem 0', display: 'flex', justifyContent: 'flex-start' }}>
-          <button
-            type="button"
-            className="btn-outline"
-            data-hms-no-edit="1"
-            onClick={() => setRoomMgmtOpen(true)}
-            style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}
-          >
-            <i className="fa-solid fa-screwdriver-wrench" style={{ fontSize: '0.75rem' }}></i> Room Management
-          </button>
-        </div>
-      )}
-      <div className="page-header" style={{ paddingTop: showRoomManagement ? '1.75rem' : undefined }}>
+      <div className="page-header">
         <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Accommodations</p>
         <h1 className="font-display">Our Rooms & Suites</h1>
         <p>Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.</p>
-        <div style={{ marginTop: '1.5rem' }}>
-          <button type="button" className="btn-outline" data-hms-no-edit="1" onClick={() => setVerifyOpen(true)}>
-            <i className="fa-solid fa-user-check" style={{ fontSize: '0.75rem' }}></i> Verify Guest
-          </button>
-        </div>
       </div>
       <RoomTabBar tabs={ROOM_TABS} active={tab} onChange={setTab} items={list} />
       <section style={{ padding: '0 1.5rem 6rem', maxWidth: 1200, margin: '0 auto' }}>
@@ -1964,80 +1752,147 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, o
         onClose={() => setSelectedRoomId(null)}
         onChangeStatus={handleStatusChange}
         canEditStatus={!!canEditRooms}
+        canReserve={canReserveRooms !== false}
         onReserve={handleReserve}
         onToast={onToast}
       />
-      <VerifyGuestModal
-        open={verifyOpen}
-        rooms={list}
-        onClose={() => setVerifyOpen(false)}
-      />
-      {showRoomManagement && (
-        <RoomManagementModal
-          open={roomMgmtOpen}
-          rooms={list}
-          onClose={() => setRoomMgmtOpen(false)}
-          onAddRoom={handleManageAddRoom}
-          onEditRoom={onEditRoom}
-          onRemoveRoom={onRemoveRoom}
-          onToast={onToast}
-        />
-      )}
     </>
   );
 }
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• RESTAURANT PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function RestaurantPage({ onNavigate, onToast, menus, canEditMenus, cardImages }) {
-  const menuList = (menus && menus.length) ? menus : (window.HMSSiteContent ? window.HMSSiteContent.DEFAULT_MENUS : []);
+
+function MenuDetailModal({ item, onClose, canOrder, onOrder, onToast }) {
+  if (!item) return null;
+  const [step, setStep] = useState('details');
+  const [form, setForm] = useState({ guestName: '', roomNumber: '', qty: 1 });
+
+  useEffect(() => {
+    setStep('details');
+    setForm({ guestName: '', roomNumber: '', qty: 1 });
+  }, [item.id]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const inStock = item.stock == null || item.stock > 0;
+  const update = (field, value) => setForm(prev => Object.assign({}, prev, { [field]: value }));
+  const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!isSiteInteractive()) return;
+    if (!String(form.guestName).trim() || !String(form.roomNumber).trim()) {
+      if (onToast) onToast('Guest name and room number are required.');
+      return;
+    }
+    const qty = Math.max(1, parseInt(form.qty, 10) || 1);
+    if (typeof onOrder !== 'function') { onClose(); return; }
+    Promise.resolve(onOrder(item, { guestName: form.guestName.trim(), roomNumber: form.roomNumber.trim(), qty }))
+      .then(() => onClose())
+      .catch(() => { /* toast already shown by caller; keep form open to retry */ });
+  };
+
+  return (
+    <div className="room-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="room-modal" onClick={e => e.stopPropagation()}>
+        <div className="room-modal-img">
+          <img src={menuFoodImg(item)} alt={item.name} />
+          <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div style={{ padding: '1.5rem 1.5rem 1.75rem' }}>
+          {step === 'details' && (
+            <>
+              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                {normalizeMenuCategory(item.category)}
+              </p>
+              <h2 className="font-display" style={{ fontSize: '1.65rem', marginBottom: '1.25rem' }}>{item.name}</h2>
+
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Price</p>
+                  <p style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.25rem', margin: 0 }}>
+                    {typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Description</p>
+                  <p style={{ color: 'var(--fg-muted)', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>{item.sub || 'No description yet.'}</p>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '1.5rem' }}>
+                {canOrder && inStock ? (
+                  <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
+                    onClick={() => setStep('order')}>
+                    Order Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+                  </button>
+                ) : !inStock ? (
+                  <p style={{ textAlign: 'center', color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>
+                    Currently out of stock.
+                  </p>
+                ) : null}
+              </div>
+            </>
+          )}
+
+          {step === 'order' && (
+            <>
+              <button type="button" onClick={() => setStep('details')}
+                style={{ background: 'none', border: 'none', color: 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', padding: 0, marginBottom: '0.85rem', fontFamily: 'Outfit, sans-serif' }}>
+                <i className="fa-solid fa-arrow-left" style={{ marginRight: 6, fontSize: '0.7rem' }}></i> Back
+              </button>
+              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                Room Service
+              </p>
+              <h2 className="font-display" style={{ fontSize: '1.55rem', marginBottom: '0.35rem' }}>Place Order</h2>
+              <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', marginBottom: '1.25rem' }}>
+                Ordering <strong style={{ color: 'var(--fg)' }}>{item.name}</strong>
+              </p>
+
+              <form onSubmit={handleSubmit}>
+                <div style={{ display: 'grid', gap: '0.85rem' }}>
+                  <div>
+                    <label style={fieldLabel}>Guest Name</label>
+                    <input type="text" className="booking-input" placeholder="e.g. James Whitfield" value={form.guestName}
+                      onChange={e => update('guestName', e.target.value)} required />
+                  </div>
+                  <div>
+                    <label style={fieldLabel}>Room Number</label>
+                    <input type="text" className="booking-input" placeholder="e.g. 204" value={form.roomNumber}
+                      onChange={e => update('roomNumber', e.target.value)} required />
+                  </div>
+                  <div>
+                    <label style={fieldLabel}>Quantity</label>
+                    <input type="number" className="booking-input" min="1" max={item.stock != null ? item.stock : 99} value={form.qty}
+                      onChange={e => update('qty', e.target.value)} required />
+                  </div>
+                </div>
+                <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }}>
+                  Place Order <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canOrderMenu, onOrderMenu, cardImages, isDesignMode }) {
+  const menuList = menus || [];
+  const [selectedMenuId, setSelectedMenuId] = useState(null);
+  const selectedMenu = menuList.find(m => m.id === selectedMenuId) || null;
   const [menuTab, setMenuTab] = useState('Main Dishes');
   const filteredMenus = menuList.filter(item => normalizeMenuCategory(item.category) === menuTab);
   void cardImages;
-
-  const handleAdd = () => {
-    const name = hmsPrompt('Menu item name', 'New Dish');
-    if (!name) return;
-    const sub = hmsPrompt('Short description', 'Add a short description') || 'Add a short description';
-    const price = hmsPrompt('Price', '\u20B11,350') || '\u20B11,350';
-    const categoryHint = MENU_CATEGORIES.join(' / ');
-    const categoryRaw = hmsPrompt('Category (' + categoryHint + ')', menuTab) || menuTab;
-    const category = normalizeMenuCategory(categoryRaw);
-    if (window.HMSSiteContent) {
-      window.HMSSiteContent.addMenu({
-        name: name.trim(),
-        sub: sub.trim(),
-        price: price.trim(),
-        category,
-        img: 'https://picsum.photos/seed/menu' + Date.now() + '/800/600.jpg',
-      });
-    }
-    onToast('Menu item added — click the image icon to change the photo');
-  };
-
-  const handleEdit = (item) => {
-    const name = hmsPrompt('Menu item name', item.name);
-    if (name == null || !name.trim()) return;
-    const sub = hmsPrompt('Short description', item.sub || '');
-    if (sub == null) return;
-    const price = hmsPrompt('Price', item.price || '\u20B11,350');
-    if (price == null) return;
-    const categoryHint = MENU_CATEGORIES.join(' / ');
-    const categoryRaw = hmsPrompt('Category (' + categoryHint + ')', normalizeMenuCategory(item.category));
-    if (categoryRaw == null) return;
-    const category = normalizeMenuCategory(categoryRaw);
-    if (window.HMSSiteContent) window.HMSSiteContent.updateMenu(item.id, {
-      name: name.trim(), sub: sub.trim(), price: price.trim(), category,
-    });
-  };
-
-  const handleMenuImage = (item) => {
-    pickImageFile((url) => {
-      if (!url || !window.HMSSiteContent) return;
-      window.HMSSiteContent.updateMenu(item.id, { img: url });
-      onToast('Food image updated');
-    });
-  };
 
   return (
     <>
@@ -2045,13 +1900,6 @@ function RestaurantPage({ onNavigate, onToast, menus, canEditMenus, cardImages }
         <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Culinary Arts</p>
         <h1 className="font-display">Restaurant Menu</h1>
         <p>Browse our courses — Main Dishes, Appetizers, Soups, Desserts, and Beverages.</p>
-        {canEditMenus && (
-          <div style={{ marginTop: '1.35rem' }}>
-            <button type="button" className="btn-outline" data-hms-no-edit="1" onClick={handleAdd} style={{ fontSize: '0.72rem', padding: '0.5rem 0.9rem' }}>
-              + Add menu item
-            </button>
-          </div>
-        )}
       </div>
 
       <RoomTabBar
@@ -2063,21 +1911,15 @@ function RestaurantPage({ onNavigate, onToast, menus, canEditMenus, cardImages }
       />
 
       <section style={{ padding: '0 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
-        {filteredMenus.length === 0 && !canEditMenus ? (
+        {filteredMenus.length === 0 ? (
           <p style={{ textAlign: 'center', color: 'var(--fg-muted)', padding: '2rem 1rem' }}>
             No items in {menuTab} yet.
           </p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}>
             {filteredMenus.map(item => (
-              <div key={item.id || item.name} className="menu-food-card" style={{ position: 'relative' }}>
-                {canEditMenus && (
-                  <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }} data-hms-no-edit="1">
-                    <button type="button" title="Change food image" onClick={() => handleMenuImage(item)} style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
-                    <button type="button" title="Edit item" onClick={() => handleEdit(item)} style={toolBtnStyle('edit')}><i className="fa-solid fa-pen" style={{fontSize:10}}></i></button>
-                    <button type="button" title="Remove item" onClick={() => window.HMSSiteContent && window.HMSSiteContent.removeMenu(item.id)} style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
-                  </div>
-                )}
+              <div key={item.id || item.name} className="menu-food-card" style={{ position: 'relative', cursor: 'pointer' }}
+                onClick={() => setSelectedMenuId(item.id)}>
                 <div className="menu-food-img">
                   <img
                     src={menuFoodImg(item)}
@@ -2092,7 +1934,7 @@ function RestaurantPage({ onNavigate, onToast, menus, canEditMenus, cardImages }
                   <div className="menu-food-img-fallback" style={{ display: 'none' }}>
                     <i className="fa-solid fa-utensils" style={{ fontSize: '1.6rem', color: 'var(--accent)' }}></i>
                   </div>
-                  <div className="menu-food-price">{item.price || 'â€”'}</div>
+                  <div className="menu-food-price">{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}</div>
                 </div>
                 <div className="menu-food-body">
                   <p style={{ margin: '0 0 0.35rem', color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
@@ -2103,25 +1945,16 @@ function RestaurantPage({ onNavigate, onToast, menus, canEditMenus, cardImages }
                 </div>
               </div>
             ))}
-            {canEditMenus && (
-              <button
-                type="button"
-                onClick={handleAdd}
-                data-hms-no-edit="1"
-                style={{
-                  minHeight: 280, borderRadius: 12, border: '2px dashed #f43f5e',
-                  background: 'rgba(244,63,94,0.06)', color: '#fb7185', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  fontFamily: 'Outfit, sans-serif',
-                }}
-              >
-                <span style={{ width: 48, height: 48, borderRadius: 12, border: '1.5px solid #f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>+</span>
-                <span style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 12 }}>Add to {menuTab}</span>
-              </button>
-            )}
           </div>
         )}
       </section>
+      <MenuDetailModal
+        item={selectedMenu}
+        onClose={() => setSelectedMenuId(null)}
+        canOrder={!!canOrderMenu}
+        onOrder={onOrderMenu}
+        onToast={onToast}
+      />
     </>
   );
 }
@@ -2185,7 +2018,7 @@ function ExperiencePage({ onNavigate }) {
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• BOOKING PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function BookingPage({ onToast, rooms }) {
-  const roomList = rooms && rooms.length ? rooms : ROOMS;
+  const roomList = rooms && rooms.length ? rooms : [];
   const [form, setForm] = useState({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
   const today = new Date().toISOString().split('T')[0];
 
@@ -2201,11 +2034,10 @@ function BookingPage({ onToast, rooms }) {
 
   const getEstimate = () => {
     if (!form.checkIn || !form.checkOut || !form.roomType) return null;
-    const days = Math.max(1, Math.ceil((new Date(form.checkOut) - new Date(form.checkIn)) / 86400000));
-    if (days <= 0) return null;
+    const blocks = stayBlocks(form.checkIn, form.checkOut, '');
     const room = roomList.find(r => r.id === form.roomType);
     if (!room) return null;
-    return { days, price: room.price, total: days * room.price };
+    return { blocks, price: room.price, total: blocks * room.price };
   };
 
   const estimate = getEstimate();
@@ -2250,7 +2082,7 @@ function BookingPage({ onToast, rooms }) {
                 <label style={{ fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.45rem' }}>Room Type</label>
                 <select className="booking-input" value={form.roomType} onChange={e => update('roomType', e.target.value)} required>
                   <option value="">Select</option>
-                  {roomList.map(r => <option key={r.id} value={r.id}>{r.name} â€” {formatPeso(r.price)}/night</option>)}
+                  {roomList.map(r => <option key={r.id} value={r.id}>{r.name} â€” {formatPeso(r.price)} / {BLOCK_HOURS} hrs</option>)}
                 </select>
               </div>
             </div>
@@ -2271,7 +2103,7 @@ function BookingPage({ onToast, rooms }) {
                     <i className="fa-solid fa-calculator" style={{ color: 'var(--accent)', marginRight: '0.35rem' }}></i>
                     Estimated total:{' '}
                     <strong style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.15rem' }}>{formatPeso(estimate.total)}</strong>
-                    <span style={{ opacity: 0.55 }}> ({estimate.days} night{estimate.days > 1 ? 's' : ''} x {formatPeso(estimate.price)}/night)</span>
+                    <span style={{ opacity: 0.55 }}> ({estimate.blocks} x {BLOCK_HOURS} hrs x {formatPeso(estimate.price)})</span>
                   </>
                 ) : (
                   <>
@@ -2294,13 +2126,18 @@ function BookingPage({ onToast, rooms }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FOOTER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function Footer({ onNavigate }) {
+function Footer({ onNavigate, cardImages }) {
+  // Passed only so the footer re-renders when the shared logo changes.
+  void cardImages;
   return (
     <footer data-hms-section="footer" data-hms-bg-target="1" style={{ padding: '3.5rem 1.5rem 1.75rem', borderTop: '1px solid var(--border)' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '2.5rem', marginBottom: '2.5rem' }}>
           <div>
-            <span style={{ fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', display: 'block', marginBottom: '0.85rem' }}>SPC HOTEL</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.85rem' }}>
+              <BrandLogo size={38} />
+              <span style={{ fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
+            </div>
             <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', fontWeight: 300, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem' }}>A sanctuary of refined hospitality. Where every guest becomes part of our story.</p>
             <div style={{ display: 'flex', gap: '0.65rem' }}>
               {['fa-instagram', 'fa-facebook-f', 'fa-x-twitter'].map((icon, i) => (
@@ -2354,7 +2191,7 @@ function Footer({ onNavigate }) {
 }
 
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• APP â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• APP â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */ 
 function App() {
   const [page, setPage] = useState('home');
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -2368,33 +2205,92 @@ function App() {
       { id: 'nav-experience', key: 'experience', label: 'Experience' },
     ]
   ));
-  const [rooms, setRooms] = useState(() => (
-    window.HMSSiteContent ? window.HMSSiteContent.getRooms(ROOMS) : ROOMS
-  ));
-  const [menus, setMenus] = useState(() => (
-    window.HMSSiteContent ? window.HMSSiteContent.getMenus() : []
-  ));
+  const [rooms, setRooms] = useState([]);
+  // Restaurant menu lives in the DB and is shared by the whole team.
+  const [menus, setMenus] = useState([]);
+  const [canManageMenus, setCanManageMenus] = useState(false);
+  const [inRestaurantModule, setInRestaurantModule] = useState(true);
+  // Restaurant menu CRUD only lives on the dedicated management page, and that
+  // page is only reachable from Preview — Design mode is layout-editing only.
+  const [isDesignMode, setIsDesignMode] = useState(() => window.__HMS_DESIGN_MODE__ === true);
   const [canEditNav, setCanEditNav] = useState(false);
   const [canEditRooms, setCanEditRooms] = useState(false);
-  const [canEditMenus, setCanEditMenus] = useState(false);
   const [canManageRooms, setCanManageRooms] = useState(false);
+  const [canReserveRooms, setCanReserveRooms] = useState(true);
+  const [canOrderMenu, setCanOrderMenu] = useState(false);
   const [cardImages, setCardImages] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getCardImages ? window.HMSSiteContent.getCardImages() : {}
   ));
+
+  // In-flight room writes — a poll that lands mid-write would show stale data.
+  const pendingWrites = useRef(0);
+
+  // Fetch rooms from the database (shared between Room Management & Front Desk)
+  const roomsHydrated = useRef(false);
+  const fetchRooms = useCallback(() => {
+    if (pendingWrites.current > 0) return;
+    fetch('/students/hotel/rooms', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => {
+        if (pendingWrites.current > 0) return;
+        if (Array.isArray(data.rooms)) setRooms(data.rooms);
+        roomsHydrated.current = true;
+      })
+      .catch(() => {});
+  }, []);
+
+  // The server decides who may edit the menu — the client only mirrors that answer.
+  const fetchMenus = useCallback(() => {
+    if (pendingWrites.current > 0) return;
+    fetch('/students/hotel/menus', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => {
+        if (pendingWrites.current > 0) return;
+        if (Array.isArray(data.items)) setMenus(data.items);
+        setCanManageMenus(data.can_manage === true);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Poll so Front Desk arrivals, room status changes and menu edits cross over between sessions.
+  useEffect(() => {
+    const refresh = () => { fetchRooms(); fetchMenus(); };
+    refresh();
+    const id = setInterval(refresh, 8000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [fetchRooms, fetchMenus]);
 
   const syncSiteContent = useCallback(() => {
     if (!window.HMSSiteContent) return;
     // Must sync even in Design mode so Add Room / menu / nav tools update the UI.
     setNavLinks(window.HMSSiteContent.getNav());
-    setRooms(window.HMSSiteContent.getRooms(ROOMS));
-    setMenus(window.HMSSiteContent.getMenus());
+    // Rooms and menus come from the DB API — do NOT overwrite with customizations
     if (window.HMSSiteContent.getCardImages) setCardImages(window.HMSSiteContent.getCardImages());
     setCanEditNav(window.HMSSiteContent.canEditNav());
     setCanEditRooms(window.HMSSiteContent.canEditRooms());
-    setCanEditMenus(window.HMSSiteContent.canEditMenus());
     setCanManageRooms(
       typeof window.HMSSiteContent.canUseRoomManagementUi === 'function'
         ? window.HMSSiteContent.canUseRoomManagementUi()
+        : false
+    );
+    setCanReserveRooms(
+      typeof window.HMSSiteContent.canReserveRooms === 'function'
+        ? window.HMSSiteContent.canReserveRooms()
+        : true
+    );
+    // Restaurant staff tools stay inside the Restaurant module.
+    setInRestaurantModule(
+      typeof window.HMSSiteContent.canUseRestaurantUi === 'function'
+        ? window.HMSSiteContent.canUseRestaurantUi()
+        : true
+    );
+    setCanOrderMenu(
+      typeof window.HMSSiteContent.canOrderMenu === 'function'
+        ? window.HMSSiteContent.canOrderMenu()
         : false
     );
   }, []);
@@ -2412,6 +2308,13 @@ function App() {
       clearTimeout(t);
     };
   }, [syncSiteContent]);
+
+  useEffect(() => {
+    const onModeChange = (e) => setIsDesignMode(!!(e && e.detail && e.detail.designMode));
+    window.addEventListener('hms-mode-change', onModeChange);
+    setIsDesignMode(window.__HMS_DESIGN_MODE__ === true);
+    return () => window.removeEventListener('hms-mode-change', onModeChange);
+  }, []);
 
   const navigateTo = useCallback((target, opts) => {
     if (!(opts && opts.force) && !isSiteInteractive()) return;
@@ -2440,51 +2343,116 @@ function App() {
   }, []);
 
   const editRoom = useCallback((id, patch) => {
-    setRooms(prev => {
-      const list = (prev && prev.length) ? prev : ROOMS;
-      return list.map(r => (r.id === id ? Object.assign({}, r, patch) : r));
-    });
-    if (window.HMSSiteContent) window.HMSSiteContent.updateRoom(id, patch, ROOMS);
+    setRooms(prev => prev.map(r => (r.id === id ? Object.assign({}, r, patch) : r)));
+
+    // status / reservation are the shared workflow fields — write them straight to the
+    // DB and reconcile from the response so Front Desk and Room Management never drift.
+    const writesToDb = patch && (patch.status !== undefined || patch.reservation !== undefined);
+    if (!writesToDb) {
+      if (window.HMSSiteContent) window.HMSSiteContent.updateRoom(id, patch, []);
+      return;
+    }
+
+    const body = {};
+    if (patch.status !== undefined) body.status = patch.status;
+    if (patch.reservation !== undefined) body.reservation = patch.reservation;
+
+    pendingWrites.current += 1;
+    fetch('/students/hotel/rooms/' + String(id).replace(/^db-/, ''), {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data && data.room) {
+          setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r)));
+        }
+      })
+      .catch(() => { /* keep optimistic state; the next poll reconciles */ })
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 
-  const addRoom = useCallback((partial) => {
-    const id = 'room-' + Math.random().toString(36).slice(2, 9);
-    const item = Object.assign({
-      id,
-      name: 'New Room',
-      label: 'Classic',
-      category: 'Classic',
-      status: 'Available',
-      price: 200,
-      img: 'https://picsum.photos/seed/room' + Date.now() + '/800/600.jpg',
-      desc: 'Add a short description for this room.',
-      amenities: [
-        { icon: 'fa-bed', text: 'Bed' },
-        { icon: 'fa-wifi', text: 'WiFi' },
-      ],
-    }, partial || {});
-    if (!item.id) item.id = id;
-
-    setRooms(prev => {
-      const list = (prev && prev.length) ? prev.slice() : ROOMS.map(r => Object.assign({}, r));
-      list.push(item);
-      if (window.HMSSiteContent && window.HMSSiteContent.canEditRooms()) {
-        window.HMSSiteContent.setRooms(list);
-      }
-      return list;
-    });
-    return item;
+  const addRoom = useCallback((roomFromDb) => {
+    // roomFromDb is already the shaped object returned by the API
+    setRooms(prev => [...prev, roomFromDb]);
+    return roomFromDb;
   }, []);
 
   const removeRoom = useCallback((id) => {
-    setRooms(prev => {
-      const list = ((prev && prev.length) ? prev : ROOMS).filter(r => r.id !== id);
-      if (window.HMSSiteContent && window.HMSSiteContent.canEditRooms()) {
-        window.HMSSiteContent.setRooms(list);
-      }
-      return list;
-    });
+    setRooms(prev => prev.filter(r => r.id !== id));
   }, []);
+
+  /* ── Restaurant menu (DB-backed, Restaurant role only) ───────────────── */
+
+  const menuRequest = useCallback((url, method, body) => {
+    pendingWrites.current += 1;
+    return fetch(url, {
+      method,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
+  // Room-service food order — Front Desk / Restaurant staff only (server enforces this too).
+  const placeOrder = useCallback((item, details) => (
+    menuRequest('/students/hotel/orders', 'POST', {
+      room_number: details.roomNumber,
+      guest_name: details.guestName,
+      // menu_item_id lets the server reconcile stock by row rather than by name,
+      // so renaming a dish no longer breaks the order or its stock return.
+      items: [{ menu_item_id: item.dbId || null, name: item.name, price: item.price, qty: details.qty }],
+    })
+      .then(data => {
+        showToast(`Order placed for Room ${details.roomNumber} — ${item.name} x${details.qty}.`);
+        fetchMenus(); // stock changed
+        return data && data.order;
+      })
+      .catch(err => {
+        showToast((err && err.message) || 'Could not place order.');
+        return Promise.reject(err);
+      })
+  ), [menuRequest, showToast, fetchMenus]);
+
+  // Room Management now lives on its own dedicated page — break out of the iframe.
+  const openRoomManagement = useCallback((nav) => {
+    window.top.location.assign(window.HMS_ROOM_MANAGEMENT_URL + '?nav=' + (nav || 'manage-room'));
+  }, []);
+
+  // Room Management: auto-open Guest Details only when a brand-new reservation arrives
+  const seenReservationIds = useRef(new Set());
+  const initialSeedDone = useRef(false);
+  useEffect(() => {
+    if (!canManageRooms) return;
+    if (!roomsHydrated.current) return; // wait for the first real snapshot before seeding
+    const occupied = (rooms || []).filter(r => {
+      const status = normalizeRoomStatus(r.status);
+      return (status === 'Occupied' || status === 'Reserved') && r.reservation;
+    });
+    // On first run, just seed the set — don't auto-navigate
+    if (!initialSeedDone.current) {
+      occupied.forEach(r => {
+        seenReservationIds.current.add(r.id + '|' + (r.reservation.reservedAt || r.reservation.checkIn || ''));
+      });
+      initialSeedDone.current = true;
+      return;
+    }
+    let hasNew = false;
+    occupied.forEach(r => {
+      const key = r.id + '|' + (r.reservation.reservedAt || r.reservation.checkIn || '');
+      if (!seenReservationIds.current.has(key)) {
+        seenReservationIds.current.add(key);
+        hasNew = true;
+      }
+    });
+    if (hasNew && page === 'rooms') {
+      openRoomManagement('guest-details');
+    }
+  }, [rooms, canManageRooms, page, openRoomManagement]);
 
   const pages = {
     home: (
@@ -2506,12 +2474,25 @@ function App() {
         rooms={rooms}
         canEditRooms={canEditRooms}
         canManageRooms={canManageRooms}
+        canReserveRooms={canReserveRooms}
         onAddRoom={addRoom}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
+        onOpenRoomManagement={openRoomManagement}
       />
     ),
-    restaurant: <RestaurantPage onNavigate={navigateTo} onToast={showToast} menus={menus} canEditMenus={canEditMenus} cardImages={cardImages} />,
+    restaurant: (
+      <RestaurantPage
+        onNavigate={navigateTo}
+        onToast={showToast}
+        menus={menus}
+        canManageMenus={canManageMenus && inRestaurantModule}
+        canOrderMenu={canOrderMenu}
+        onOrderMenu={placeOrder}
+        cardImages={cardImages}
+        isDesignMode={isDesignMode}
+      />
+    ),
     experience: <ExperiencePage onNavigate={navigateTo} />,
     booking: <BookingPage onToast={showToast} rooms={rooms} />,
   };
@@ -2528,15 +2509,18 @@ function App() {
         onAddNav={(partial) => window.HMSSiteContent && window.HMSSiteContent.addNavLink(partial)}
         onEditNav={(id, patch) => window.HMSSiteContent && window.HMSSiteContent.updateNavLink(id, patch)}
         onRemoveNav={(id) => window.HMSSiteContent && window.HMSSiteContent.removeNavLink(id)}
+        cardImages={cardImages}
+        onToast={showToast}
       />
       <MobileMenu
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
         onNavigate={navigateTo}
         links={navLinks}
+        cardImages={cardImages}
       />
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
-      <Footer onNavigate={navigateTo} />
+      <Footer onNavigate={navigateTo} cardImages={cardImages} />
       <Toast message={toast.message} visible={toast.visible} />
     </>
   );
