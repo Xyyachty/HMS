@@ -67,5 +67,40 @@ fi
 # Storage, so nothing is served from the local filesystem.
 php artisan storage:link >/dev/null 2>&1 || true
 
+# ---------------------------------------------------------------------------
+# Diagnostics
+#
+# Printed because the platform only reports "health check timed out", which says
+# nothing about why. These three answer the three things that actually go wrong:
+# is Apache's config valid, can PHP reach the database, and does the app render.
+# ---------------------------------------------------------------------------
+echo "[entrypoint] apache configtest:"
+apache2ctl configtest 2>&1 | sed 's/^/[entrypoint]   /'
+
+echo "[entrypoint] database check:"
+php -r '
+require "/var/www/html/vendor/autoload.php";
+$app = require "/var/www/html/bootstrap/app.php";
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+try {
+    $n = Illuminate\Support\Facades\DB::connection()->table("users")->count();
+    echo "  connected, users=$n\n";
+} catch (\Throwable $e) {
+    echo "  FAILED: " . trim(explode("\n", $e->getMessage())[0]) . "\n";
+}' 2>&1 | sed 's/^/[entrypoint] /'
+
 echo "[entrypoint] handing over to: $*"
+
+# Once Apache is up, fetch the landing page from inside the container. A non-200
+# here is the app failing, not the platform, and the body carries the reason.
+(
+    sleep 8
+    code=$(curl -s -o /tmp/probe.html -w '%{http_code}' "http://127.0.0.1:${PORT}/" || echo "000")
+    echo "[entrypoint] self-probe GET / -> HTTP ${code}"
+    if [ "$code" != "200" ]; then
+        echo "[entrypoint] response body (first 40 lines):"
+        head -40 /tmp/probe.html 2>/dev/null | sed 's/^/[entrypoint]   /'
+    fi
+) &
+
 exec "$@"

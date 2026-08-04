@@ -14,7 +14,11 @@ services:
     region: singapore
     plan: free
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /
+    # A static file, served by Apache without touching PHP. Pointing the health
+    # check at "/" ties "is the container up?" to "is Laravel and the database
+    # working?", so a bad credential reads as a health-check timeout and the
+    # deploy is rolled back before anyone can look at it.
+    healthCheckPath: /health.txt
     envVars:
       - key: APP_ENV
         value: production
@@ -23,9 +27,8 @@ services:
       # Generate once with `php artisan key:generate --show` and paste it in.
       - key: APP_KEY
         sync: false
-      # Set to the Render URL once known, e.g. https://hms.onrender.com
       - key: APP_URL
-        sync: false
+        value: https://hms-9ojw.onrender.com
 
       - key: DB_CONNECTION
         value: pgsql
