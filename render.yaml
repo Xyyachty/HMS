@@ -38,8 +38,13 @@ services:
         value: "5432"
       - key: DB_PG_DATABASE
         value: postgres
+      # Not a secret, and set here rather than by hand on purpose. Supabase's pooler
+      # works out which project to route to from the ".<project-ref>" suffix on this
+      # username. Leave it off and the connection is refused with
+      #   FATAL: (ENOIDENTIFIER) no tenant identifier provided
+      # which reads like a network fault rather than a missing username.
       - key: DB_PG_USERNAME
-        sync: false
+        value: postgres.dbbwcgcfrjobdoskzvtg
       - key: DB_PG_PASSWORD
         sync: false
       # citext lives in the extensions schema; without this the type will not resolve.
@@ -71,7 +76,9 @@ services:
         value: ap-southeast-1
       - key: SUPABASE_S3_BUCKET
         value: hms-media
+      # Public URLs, not credentials — set here so there are fewer values to type
+      # by hand and fewer ways to get them wrong.
       - key: SUPABASE_S3_ENDPOINT
-        sync: false
+        value: https://dbbwcgcfrjobdoskzvtg.storage.supabase.co/storage/v1/s3
       - key: SUPABASE_S3_PUBLIC_URL
-        sync: false
+        value: https://dbbwcgcfrjobdoskzvtg.supabase.co/storage/v1/object/public/hms-media

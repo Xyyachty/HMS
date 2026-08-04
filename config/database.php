@@ -78,7 +78,11 @@ return [
             'host' => env('DB_PG_HOST', env('DB_HOST', '127.0.0.1')),
             'port' => env('DB_PG_PORT', env('DB_PORT', '5432')),
             'database' => env('DB_PG_DATABASE', env('DB_DATABASE', 'postgres')),
-            'username' => env('DB_PG_USERNAME', env('DB_USERNAME', 'postgres')),
+            // No 'postgres' default on purpose. Supabase's pooler identifies the
+            // project from the ".<project-ref>" suffix here, so a bare "postgres"
+            // is rejected with "no tenant identifier provided" — an error that
+            // points at the network rather than at the missing username.
+            'username' => env('DB_PG_USERNAME', env('DB_USERNAME')),
             'password' => env('DB_PG_PASSWORD', env('DB_PASSWORD', '')),
             'charset' => 'utf8',
             'prefix' => '',
