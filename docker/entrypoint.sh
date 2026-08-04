@@ -89,6 +89,42 @@ try {
     echo "  FAILED: " . trim(explode("\n", $e->getMessage())[0]) . "\n";
 }' 2>&1 | sed 's/^/[entrypoint] /'
 
+# Render the landing page in-process and report the exception behind any 500.
+# Laravel's handler swallows exceptions and renders a generic "Server Error" page
+# when APP_DEBUG is off, so the cause only reaches the log as one line buried in a
+# 40-frame stack trace. Substituting a handler that prints the class and message
+# puts the actual fault on its own line, and does it without exposing anything
+# publicly the way APP_DEBUG=true would.
+echo "[entrypoint] rendering / in-process:"
+php -r '
+require "/var/www/html/vendor/autoload.php";
+$app = require "/var/www/html/bootstrap/app.php";
+
+$app->singleton(Illuminate\Contracts\Debug\ExceptionHandler::class, function () {
+    return new class implements Illuminate\Contracts\Debug\ExceptionHandler {
+        public function report(Throwable $e): void {
+            echo "  " . get_class($e) . ": " . $e->getMessage() . "\n";
+            echo "  thrown at " . $e->getFile() . ":" . $e->getLine() . "\n";
+            if ($p = $e->getPrevious()) {
+                echo "  caused by " . get_class($p) . ": " . $p->getMessage() . "\n";
+            }
+        }
+        public function shouldReport(Throwable $e): bool { return true; }
+        public function render($request, Throwable $e) {
+            return new Illuminate\Http\Response("", 500);
+        }
+        public function renderForConsole($output, Throwable $e): void {}
+    };
+});
+
+try {
+    $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+    $response = $kernel->handle(Illuminate\Http\Request::create("/", "GET"));
+    echo "  status " . $response->getStatusCode() . "\n";
+} catch (\Throwable $e) {
+    echo "  FATAL " . get_class($e) . ": " . $e->getMessage() . "\n";
+}' 2>&1 | sed 's/^/[entrypoint] /'
+
 echo "[entrypoint] handing over to: $*"
 
 # Once Apache is up, fetch the landing page from inside the container. A non-200
