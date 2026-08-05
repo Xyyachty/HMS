@@ -95,7 +95,7 @@ return [
             'url' => env('SUPABASE_S3_PUBLIC_URL'),
             'use_path_style_endpoint' => true,
             'visibility' => 'public',
-            'throw' => false,
+            'throw' => true,
         ],
 
     ],

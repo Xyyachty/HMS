@@ -1528,9 +1528,15 @@ class FacultyController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            $storedPath = $request->file('avatar')->store('avatars/faculty', \App\Support\HotelImageStore::disk());
+            try {
+                $storedPath = $request->file('avatar')->store('avatars/faculty', \App\Support\HotelImageStore::disk());
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Faculty avatar upload failed', [
+                    'user_id' => $user->id,
+                    'disk' => \App\Support\HotelImageStore::disk(),
+                    'error' => $e->getMessage(),
+                ]);
 
-            if ($storedPath === false) {
                 return back()->withErrors(['avatar' => 'Could not upload the photo to storage. Please try again.']);
             }
 
