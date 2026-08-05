@@ -101,7 +101,7 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): string
     {
         if (!empty($this->avatar)) {
-            return asset('storage/' . ltrim($this->avatar, '/'));
+            return \App\Support\HotelImageStore::url($this->avatar);
         }
 
         $label = trim(implode(' ', array_filter([

@@ -1528,10 +1528,17 @@ class FacultyController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
+            $storedPath = $request->file('avatar')->store('avatars/faculty', \App\Support\HotelImageStore::disk());
+
+            if ($storedPath === false) {
+                return back()->withErrors(['avatar' => 'Could not upload the photo to storage. Please try again.']);
+            }
+
             if ($user->avatar) {
                 \Illuminate\Support\Facades\Storage::disk(\App\Support\HotelImageStore::disk())->delete($user->avatar);
             }
-            $userData['avatar'] = $request->file('avatar')->store('avatars/faculty', \App\Support\HotelImageStore::disk());
+
+            $userData['avatar'] = $storedPath;
         }
 
         $user->update($userData);
