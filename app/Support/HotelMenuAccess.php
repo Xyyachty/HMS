@@ -59,6 +59,7 @@ class HotelMenuAccess
         $rows = array_map(fn ($item) => array_merge($item, [
             'group_name' => $membership->group_name,
             'faculty_id' => $membership->faculty_id,
+            'group_id'   => $membership->group_id,
             'stock'      => 20,
             'created_at' => $now,
             'updated_at' => $now,

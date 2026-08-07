@@ -14,6 +14,7 @@ class StudentGroup extends Model
     protected $fillable = [
         'group_name',
         'faculty_id',
+        'group_id',
         'student_id',
         'role',
     ];
@@ -26,6 +27,11 @@ class StudentGroup extends Model
     public function faculty()
     {
         return $this->belongsTo(Faculty::class);
+    }
+
+    public function group()
+    {
+        return $this->belongsTo(Group::class);
     }
 
     public function roles()

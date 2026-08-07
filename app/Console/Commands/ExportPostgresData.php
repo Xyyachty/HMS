@@ -54,8 +54,6 @@ class ExportPostgresData extends Command
         'hotel_menu_items',
         'hotel_food_orders',
         'hotel_customers',
-        'front_desk_canvases',
-        'front_desk_activities',
         'reservation_notifications',
         'activity_logs',
     ];

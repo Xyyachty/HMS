@@ -12,6 +12,7 @@ use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Notifier;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class DeanController extends Controller
@@ -262,6 +263,8 @@ class DeanController extends Controller
             'Created faculty account for ' . $fullName . ' (block ' . strtoupper($validated['block']) . ').'
         );
 
+        Notifier::accountCreated(auth()->user(), $user, 'faculty');
+
         return redirect()->route('dean.faculties')->with('success', 'Faculty account created successfully.');
     }
 
@@ -324,6 +327,8 @@ class DeanController extends Controller
             ActivityLog::ACCOUNT_CREATED,
             'Created ' . $validated['role'] . ' account for ' . $fullName . ' (' . $validated['email'] . ').'
         );
+
+        Notifier::accountCreated(auth()->user(), $user, $validated['role']);
 
         return redirect()->route('dean.users')->with('success', $message);
     }

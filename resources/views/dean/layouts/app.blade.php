@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Hotel Management System | Dean Panel</title>
     <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -164,11 +165,7 @@
                 </div>
 
                 <div class="flex items-center gap-3 md:gap-5">
-                    <!-- Notification -->
-                    <button class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
-                        <span class="iconify text-xl text-slate-500" data-icon="mdi:bell-outline"></span>
-                        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-brand rounded-full"></span>
-                    </button>
+                    @include('partials.notification-bell')
                 </div>
             </header>
 

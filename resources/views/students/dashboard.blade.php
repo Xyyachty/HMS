@@ -253,13 +253,7 @@
 
                 <!-- Right side actions -->
                 <div class="flex items-center gap-2">
-                    <!-- Notification -->
-                    <button class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
-                        <span class="iconify text-xl text-slate-400" data-icon="mdi:bell-outline"></span>
-                        @if(!empty($studentRoles) && $myRoleTasks->count() > 0)
-                            <span class="absolute top-2 right-2 w-2 h-2 bg-brand rounded-full pulse-dot"></span>
-                        @endif
-                    </button>
+                    @include('partials.notification-bell')
 
                     <!-- Date -->
                     <div class="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
@@ -418,7 +412,7 @@
 
             <!-- ==================== GROUP SECTION ==================== -->
             <div id="group-section" class="section-content hidden fade-in space-y-3">
-                <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">My Group</h2>
+                <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">My Team</h2>
 
                 <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                     <div class="brand-gradient px-4 sm:px-5 py-4">

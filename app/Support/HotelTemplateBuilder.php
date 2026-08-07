@@ -219,6 +219,13 @@ class HotelTemplateBuilder
             $template->save();
         }
 
+        // Self-heal group_id on every access, not just at creation, so any row that
+        // predates the backfill (or a deploy-ordering gap) fixes itself.
+        if ($template->group_id !== $membership->group_id) {
+            $template->group_id = $membership->group_id;
+            $template->save();
+        }
+
         return $template;
     }
 
@@ -638,13 +645,13 @@ class HotelTemplateBuilder
         // later statement then fails with "current transaction is aborted", losing the
         // save. MySQL simply let the retry through. Nesting the write gives it its own
         // savepoint, so a collision rolls back this unit only and the retry succeeds.
-        DB::transaction(function () use ($groupName, $facultyId, $payload) {
+        DB::transaction(function () use ($groupName, $facultyId, $payload, $template) {
             GroupSettings::updateOrCreate(
                 [
                     'group_name' => $groupName,
                     'faculty_id' => $facultyId,
                 ],
-                $payload
+                $payload + ['group_id' => $template->group_id]
             );
         });
     }
@@ -671,7 +678,7 @@ class HotelTemplateBuilder
                 'student_id' => $student->id,
                 'role' => $role,
             ],
-            ['granted_by' => $facultyUser->id]
+            ['granted_by' => $facultyUser->id, 'group_id' => $membership->group_id]
         );
     }
 

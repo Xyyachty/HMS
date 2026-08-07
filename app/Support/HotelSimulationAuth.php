@@ -27,6 +27,7 @@ class HotelSimulationAuth
         return [
             'group_name' => (string) $membership->group_name,
             'faculty_id' => (int) $membership->faculty_id,
+            'group_id' => $membership->group_id,
             'membership' => $membership,
         ];
     }
@@ -170,6 +171,7 @@ class HotelSimulationAuth
         $customer = HotelCustomer::create([
             'group_name' => $ctx['group_name'],
             'faculty_id' => $ctx['faculty_id'],
+            'group_id' => $ctx['group_id'],
             'name' => trim($name),
             'email' => $email,
             'password' => Hash::make($password),

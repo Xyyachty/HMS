@@ -416,38 +416,9 @@ return new class extends Migration
 
     private function createFrontDeskTables(): void
     {
-        // These three lost their migration files at some point but still exist in the
-        // live database (all empty). Rebuilt here from its DDL so a fresh install is
-        // not silently missing them.
-        if (!Schema::hasTable('front_desk_canvases')) {
-            Schema::create('front_desk_canvases', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-                $table->foreignId('faculty_id')->nullable()->constrained('faculties')->nullOnDelete();
-                $table->foreignId('student_group_id')->nullable()->constrained('student_groups')->nullOnDelete();
-                $table->string('canvas_mode', 16)->default('custom');  // custom | default
-                $table->json('widgets')->nullable();
-                $table->longText('default_html')->nullable();
-                $table->string('status', 16)->default('draft');        // draft | published
-                $table->timestamps();
-                $table->index(['user_id', 'faculty_id']);
-            });
-        }
-
-        if (!Schema::hasTable('front_desk_activities')) {
-            Schema::create('front_desk_activities', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('canvas_id')->constrained('front_desk_canvases')->cascadeOnDelete();
-                $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-                $table->string('action');
-                $table->text('description')->nullable();
-                $table->json('metadata')->nullable();
-                $table->timestamps();
-                $table->index(['user_id', 'action']);
-                $table->index('canvas_id');
-            });
-        }
-
+        // front_desk_canvases / front_desk_activities used to be rebuilt here too, but
+        // they had no code referencing them anywhere and were empty on the live database.
+        // Dropped by the 2026_08_05_000004 migration; not recreated on fresh installs.
         if (!Schema::hasTable('reservation_notifications')) {
             Schema::create('reservation_notifications', function (Blueprint $table) {
                 $table->id();
@@ -512,8 +483,6 @@ return new class extends Migration
     {
         // Children before parents.
         foreach ([
-            'front_desk_activities',
-            'front_desk_canvases',
             'reservation_notifications',
             'hotel_food_orders',
             'hotel_menu_items',

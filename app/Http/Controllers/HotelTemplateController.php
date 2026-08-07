@@ -251,11 +251,12 @@ class HotelTemplateController extends Controller
             return response()->json(['error' => 'Student is not on that team'], 422);
         }
 
-        // Dummy membership object for grant helpers (needs faculty_id + group_name)
+        // Dummy membership object for grant helpers (needs faculty_id + group_name + group_id)
         $ctx = new StudentGroup([
             'faculty_id' => $faculty->id,
             'group_name' => $data['group_name'],
             'student_id' => $student->id,
+            'group_id' => $membership->group_id,
         ]);
 
         if ($data['grant']) {

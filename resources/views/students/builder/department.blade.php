@@ -1192,8 +1192,13 @@
                     if (!el) return;
                     el.classList.toggle('bg-emerald-400', !!m.online);
                     el.classList.toggle('bg-zinc-600', !m.online);
-                    const label = el.parentElement && el.parentElement.querySelector('[data-member-online-label]');
-                    if (label) label.textContent = m.online ? 'Online' : 'Offline';
+                    const row = el.closest('.items-start');
+                    const label = row && row.querySelector('[data-member-online-label]');
+                    if (label) {
+                        label.textContent = m.online ? 'Online' : 'Offline';
+                        label.classList.toggle('text-emerald-400', !!m.online);
+                        label.classList.toggle('text-zinc-600', !m.online);
+                    }
                 });
             } catch (e) { /* ignore */ }
         }

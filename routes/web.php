@@ -6,6 +6,7 @@ use App\Http\Controllers\FacultyController;
 use App\Http\Controllers\DeanController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HotelTemplateController;
+use App\Http\Controllers\NotificationController;
 use App\Models\ActivityLog;
 use App\Models\HotelFoodOrder;
 use App\Models\HotelMenuItem;
@@ -40,6 +41,15 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPasswordSubmit'])
 Route::get('/forgot-password/check-email', [AuthController::class, 'checkForgotPasswordEmail'])
     ->middleware('guest')
     ->name('forgot-password.check-email');
+
+// Notification bell — same feed endpoints for dean, faculty and students.
+// Every query is scoped to auth()->id() inside the controller.
+Route::prefix('notifications')->middleware('auth')->name('notifications.')->group(function () {
+    Route::get('/', [NotificationController::class, 'index'])->name('index');
+    Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
+    Route::post('/{id}/read', [NotificationController::class, 'markRead'])->name('read');
+    Route::post('/read-all', [NotificationController::class, 'markAllRead'])->name('read-all');
+});
 
 // Dean Routes
 Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
@@ -312,6 +322,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ActivityLog::TASK_SUBMITTED,
             'Submitted task "' . $task->title . '" for the ' . $task->role . ' role.'
         );
+
+        \App\Support\Notifier::taskSubmitted($authUser, $task, $authUser->name);
 
         return back()->with('success', 'Task marked as completed.');
     })->name('tasks.complete');
@@ -737,6 +749,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $room = HotelRoom::create([
             'group_name'  => $membership->group_name,
             'faculty_id'  => $membership->faculty_id,
+            'group_id'    => $membership->group_id,
             'name'        => $data['name'],
             'category'    => $data['category'],
             'status'      => 'Available',
@@ -968,6 +981,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 return HotelFoodOrder::create([
                     'group_name'  => $membership->group_name,
                     'faculty_id'  => $membership->faculty_id,
+                    'group_id'    => $membership->group_id,
                     'room_number' => trim($data['room_number']),
                     'guest_name'  => trim($data['guest_name']),
                     'items'       => $items,
