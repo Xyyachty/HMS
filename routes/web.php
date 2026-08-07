@@ -120,6 +120,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $groupName  = $groupMembership->group_name;
             $groupMembers = StudentGroup::with('student.user', 'roles')
                 ->where('group_name', $groupName)
+                ->where('faculty_id', $facultyId)
                 ->get()
                 ->map(function ($member) {
                     $user = $member->student?->user;
@@ -156,6 +157,37 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
         $membersByRole = $membersByRole->map(fn($members) => $members->unique()->values());
 
+        /*
+         * A task row carries no team column of its own — it is tied to one student,
+         * and the student's membership is what puts it on a team. Faculty assign the
+         * same role task to every team they own, so filtering by faculty + role alone
+         * showed one team every other team's rows, including the feedback and approval
+         * faculty left on them. Resolve the team once here and scope every task query
+         * below to it, so a team only ever reads its own submissions and their verdict.
+         */
+        $teamStudentIds = $groupMembership
+            ? StudentGroup::where('group_name', $groupMembership->group_name)
+                ->where('faculty_id', $groupMembership->faculty_id)
+                ->pluck('student_id')
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all()
+            : [];
+
+        // Rows with no student belong to no team: faculty creates one when nobody in
+        // the faculty holds that role yet. They carry no submission and so no feedback,
+        // so they stay visible to the role rather than vanishing from every dashboard.
+        $scopeToTeam = function ($query) use ($teamStudentIds) {
+            $query->where(function ($q) use ($teamStudentIds) {
+                $q->whereNull('student_id');
+                if ($teamStudentIds !== []) {
+                    $q->orWhereIn('student_id', $teamStudentIds);
+                }
+            });
+        };
+
         // ── Real tasks from faculty ──────────────────────────────────────
         $tasksByRole = collect();
         $taskCounts  = [
@@ -172,6 +204,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         if ($facultyId) {
             $allTasks = Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
                 ->where('status', 'active')
                 ->orderBy('due_date')
                 ->orderByPriority()
@@ -184,10 +217,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
 
             $completedTasksCount = Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
                 ->where('status', 'archived')
                 ->count();
 
             $pendingTasksCount = Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
                 ->where('status', 'active')
                 ->count();
 
@@ -196,6 +231,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
             $recentTasks = Task::with(['student.user', 'assignedTo'])
                 ->where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
                 ->latest('updated_at')
                 ->take(12)
                 ->get();
@@ -207,6 +243,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $myCompletedTasks = $facultyId && $student
             ? Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
                 ->where('status', 'archived')
                 ->where(function ($q) use ($student, $authUser, $studentRoles) {
                     $q->where('student_id', $student->id)
@@ -228,6 +265,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $selfActivityLogs = $facultyId && $student
             ? Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
                 ->where(function ($q) use ($student, $authUser, $studentRoles) {
                     // Only this user's own history
                     $q->where('student_id', $student->id)
@@ -252,6 +290,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $teamActivityLogs = $facultyId
             ? Task::with(['student.user', 'assignedTo'])
                 ->where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
                 ->orderByDesc('updated_at')
                 ->take(50)
                 ->get()
