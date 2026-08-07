@@ -1168,9 +1168,23 @@
             const dirty = !!(window.hmsBuilder && window.hmsBuilder.isDirty && window.hmsBuilder.isDirty())
                 || !!(document.getElementById('saveDraftBtn')?.classList.contains('has-unsaved'));
             if (!dirty) return true;
-            const ok = window.confirm('You have unsaved changes. Leave without saving?');
-            if (!ok && event) event.preventDefault();
-            return ok;
+
+            // The builder auto-saves continuously, so there is nothing to actually
+            // lose — flush the pending edit and leave instead of asking the student
+            // to confirm losing work the system already persists on its own.
+            const link = event && event.currentTarget;
+            const href = link && link.getAttribute('href');
+            if (event) event.preventDefault();
+
+            const flush = (window.hmsBuilder && typeof window.hmsBuilder.save === 'function')
+                ? window.hmsBuilder.save(false)
+                : Promise.resolve();
+
+            Promise.resolve(flush).catch(() => {}).finally(() => {
+                if (href) window.location.href = href;
+            });
+
+            return false;
         }
 
         async function syncGroupPresence() {

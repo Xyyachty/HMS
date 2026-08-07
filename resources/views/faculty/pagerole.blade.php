@@ -1538,7 +1538,19 @@ function submitTaskFeedback(decision) {
         body: JSON.stringify({ decision: decision, feedback: feedback })
     })
         .then((res) => res.json().then((d) => { if (!res.ok) throw new Error(d.error || d.message || 'Could not save feedback.'); return d; }))
-        .then(() => { window.location.reload(); })
+        .then((d) => {
+            closeTaskReview();
+            Swal.fire({
+                icon: 'success',
+                title: decision === 'revise' ? 'Sent back for revision' : 'Task approved',
+                html: `<p class="text-sm text-slate-500">${d.message || 'The student has been notified.'}</p>`,
+                timer: 2200,
+                showConfirmButton: false,
+                iconColor: decision === 'revise' ? '#D97706' : '#059669',
+                customClass: { popup: 'rounded-2xl p-6 bg-white shadow-2xl', title: 'text-lg font-bold text-slate-800' },
+                buttonsStyling: false,
+            }).then(() => window.location.reload());
+        })
         .catch((err) => {
             approve.disabled = false; revise.disabled = false;
             showReviewError(err.message || 'Could not save feedback.');
