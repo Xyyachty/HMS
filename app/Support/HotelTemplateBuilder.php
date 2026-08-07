@@ -59,12 +59,15 @@ class HotelTemplateBuilder
      * resolves them by role order and the later role silently wins — losing the
      * change whoever edited most recently actually made. Each of these is kept
      * in exactly one row; writing one claims it and clears the siblings.
+     *
+     * __cardImages is NOT here: it holds one entry per section (home/rooms/
+     * restaurant logo), each owned by a different role, so it is merged by key
+     * instead — see mergeTeamCustomizations() and filterCustomizationsForRole().
      */
     public const SHARED_CONTENT_KEYS = [
         self::NAV_LINKS_KEY,
         self::ROOMS_KEY,
         self::MENUS_KEY,
-        self::CARD_IMAGES_KEY,
     ];
 
     /** Default section library per role (no drag-and-drop — add/remove/reorder via buttons). */
@@ -271,11 +274,23 @@ class HotelTemplateBuilder
                 }
                 if ($key === self::DELETED_KEY) {
                     if (is_array($value)) {
-                        $merged[self::DELETED_KEY] = array_values(array_unique(array_merge(
+                        // Entries are page-scoped arrays (['id' => …, 'page' => …]),
+                        // not plain ids, so array_unique's string comparison would
+                        // stringify them and blow up with "Array to string conversion".
+                        $merged[self::DELETED_KEY] = self::uniqueDeletedEntries(array_merge(
                             $merged[self::DELETED_KEY],
                             $value
-                        )));
+                        ));
                     }
+                    continue;
+                }
+                // Each role's row only ever carries its own section's logo entry
+                // (see filterCustomizationsForRole), so union the maps instead of
+                // letting the last row in ROLES order replace the whole thing.
+                if ($key === self::CARD_IMAGES_KEY) {
+                    $incomingMap = (is_array($value) && isset($value['map']) && is_array($value['map'])) ? $value['map'] : [];
+                    $existingMap = (isset($merged[$key]['map']) && is_array($merged[$key]['map'])) ? $merged[$key]['map'] : [];
+                    $merged[$key] = ['map' => array_merge($existingMap, $incomingMap)];
                     continue;
                 }
                 $merged[$key] = $value;
@@ -283,6 +298,28 @@ class HotelTemplateBuilder
         }
 
         return $merged;
+    }
+
+    /**
+     * De-duplicate __deleted entries across roles. Entries may be a bare id
+     * string (legacy) or a page-scoped array, so identity is the serialized
+     * value rather than a string cast.
+     */
+    private static function uniqueDeletedEntries(array $entries): array
+    {
+        $seen = [];
+        $out = [];
+
+        foreach ($entries as $entry) {
+            $fingerprint = is_array($entry) ? json_encode($entry) : (string) $entry;
+            if (isset($seen[$fingerprint])) {
+                continue;
+            }
+            $seen[$fingerprint] = true;
+            $out[] = $entry;
+        }
+
+        return $out;
     }
 
     /**
@@ -393,9 +430,36 @@ class HotelTemplateBuilder
                 continue;
             }
 
-            if ($key === self::CARD_IMAGES_KEY && is_array($value)
-                && in_array($role, ['front_desk', 'restaurant_management', 'housekeeping', 'room_management'], true)) {
-                $out[$key] = $value;
+            // The logo is stored per section (brand:logo-home / -rooms / -restaurant).
+            // Keep only the entry this role's own page(s) own, so its saved row can
+            // never carry — and later overwrite — another role's logo.
+            if ($key === self::CARD_IMAGES_KEY && is_array($value)) {
+                $incomingMap = (isset($value['map']) && is_array($value['map'])) ? $value['map'] : [];
+                $ownMap = [];
+                foreach ($incomingMap as $mapKey => $url) {
+                    [$kind, $id] = array_pad(explode(':', (string) $mapKey, 2), 2, '');
+                    if ($kind !== 'brand') {
+                        // Not a per-section logo entry — keep it for roles that already owned this key.
+                        if (in_array($role, ['front_desk', 'restaurant_management', 'housekeeping', 'room_management'], true)) {
+                            $ownMap[$mapKey] = $url;
+                        }
+                        continue;
+                    }
+                    if (str_starts_with($id, 'logo-')) {
+                        $section = substr($id, 5);
+                        if (in_array($section, $pages, true)) {
+                            $ownMap[$mapKey] = $url;
+                        }
+                        continue;
+                    }
+                    // Legacy untagged logo, from before per-section logos existed.
+                    if ($id === 'logo' && $role === 'front_desk') {
+                        $ownMap[$mapKey] = $url;
+                    }
+                }
+                if ($ownMap !== []) {
+                    $out[$key] = ['map' => $ownMap];
+                }
                 continue;
             }
 

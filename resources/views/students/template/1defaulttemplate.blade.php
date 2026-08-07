@@ -812,24 +812,35 @@ function pickImageFile(onPicked) {
   input.click();
 }
 
-/* Brand logo lives in the shared card-image store, so changing it once updates
-   every navigation that renders it instead of each copy drifting apart. */
+/* Each role/section (Home, Rooms, Restaurant) owns its own logo, stored under
+   its own card-image key so one role's change never overwrites another's.
+   Header and Footer share this logic — whichever section is on screen decides
+   which logo they show. */
 const DEFAULT_LOGO = window.HMS_DEFAULT_LOGO || '/images/hotel-logo-default.svg';
 
-function resolveLogo() {
+function logoSectionForPage(page) {
+  if (page === 'rooms') return 'rooms';
+  if (page === 'restaurant') return 'restaurant';
+  return 'home';
+}
+
+function resolveLogo(section) {
+  const sectioned = resolveCardImg('brand', 'logo-' + (section || 'home'), '');
+  if (sectioned) return sectioned;
+  // Legacy sites saved before per-section logos existed used one shared key.
   return resolveCardImg('brand', 'logo', DEFAULT_LOGO);
 }
 
-function BrandLogo({ size }) {
+function BrandLogo({ size, section }) {
   const px = size || 34;
   return (
     <img
-      src={resolveLogo()}
+      src={resolveLogo(section)}
       alt="Hotel logo"
       data-hms-move-root="1"
       data-hms-dynamic-src="1"
       data-hms-content-kind="brand"
-      data-hms-content-id="logo"
+      data-hms-content-id={'logo-' + (section || 'home')}
       style={{ width: px, height: px, objectFit: 'contain', display: 'block', flexShrink: 0 }}
       onError={(e) => {
         // Attribute guard, not a src comparison: the browser reports src as a
@@ -842,13 +853,13 @@ function BrandLogo({ size }) {
   );
 }
 
-function ChangeLogoButton({ onToast }) {
+function ChangeLogoButton({ onToast, section }) {
   return (
     <button
       type="button"
       title="Change logo"
       data-hms-no-edit="1"
-      onClick={() => changeCardImg('brand', 'logo', () => { if (onToast) onToast('Logo updated — synced to your team'); })}
+      onClick={() => changeCardImg('brand', 'logo-' + (section || 'home'), () => { if (onToast) onToast('Logo updated — synced to your team'); })}
       style={Object.assign({}, toolBtnStyle('image'), { width: 22, height: 22 })}
     ><i className="fa-solid fa-image" style={{ fontSize: 10 }}></i></button>
   );
@@ -891,13 +902,13 @@ function Toast({ message, visible }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MOBILE MENU â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function MobileMenu({ open, onClose, onNavigate, links, cardImages }) {
+function MobileMenu({ open, onClose, onNavigate, links, cardImages, page }) {
   const items = [...(links || [])];
   // Passed only so the menu re-renders when the shared logo changes.
   void cardImages;
   return (
     <div className={`mobile-menu${open ? ' open' : ''}`}>
-      <BrandLogo size={54} />
+      <BrandLogo size={54} section={logoSectionForPage(page)} />
       {items.map(item => (
         <button key={item.id || item.key} onClick={() => { onNavigate(item.key); onClose(); }}>
           {item.label}
@@ -912,6 +923,8 @@ function MobileMenu({ open, onClose, onNavigate, links, cardImages }) {
 function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav, cardImages, onToast }) {
   // Passed only so the navigation re-renders when the shared logo changes.
   void cardImages;
+  const logoSection = logoSectionForPage(currentPage);
+  const canEditThisLogo = !!(window.HMSSiteContent && window.HMSSiteContent.canEditLogo && window.HMSSiteContent.canEditLogo(logoSection));
   const PAGE_OPTIONS = [
     { key: 'home', label: 'Home' },
     { key: 'rooms', label: 'Rooms' },
@@ -971,10 +984,10 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, ca
       <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <button onClick={() => onNavigate('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <BrandLogo size={34} />
+            <BrandLogo size={34} section={logoSection} />
             <span style={{ color: 'var(--fg)', fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
           </button>
-          {canEditNav && <ChangeLogoButton onToast={onToast} />}
+          {canEditThisLogo && <ChangeLogoButton onToast={onToast} section={logoSection} />}
         </div>
         <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: '1.1rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {(links || []).map(link => (
@@ -2126,16 +2139,17 @@ function BookingPage({ onToast, rooms }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FOOTER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function Footer({ onNavigate, cardImages }) {
+function Footer({ onNavigate, cardImages, page }) {
   // Passed only so the footer re-renders when the shared logo changes.
   void cardImages;
+  const logoSection = logoSectionForPage(page);
   return (
     <footer data-hms-section="footer" data-hms-bg-target="1" style={{ padding: '3.5rem 1.5rem 1.75rem', borderTop: '1px solid var(--border)' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '2.5rem', marginBottom: '2.5rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.85rem' }}>
-              <BrandLogo size={38} />
+              <BrandLogo size={38} section={logoSection} />
               <span style={{ fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
             </div>
             <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', fontWeight: 300, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem' }}>A sanctuary of refined hospitality. Where every guest becomes part of our story.</p>
@@ -2518,9 +2532,10 @@ function App() {
         onNavigate={navigateTo}
         links={navLinks}
         cardImages={cardImages}
+        page={page}
       />
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
-      <Footer onNavigate={navigateTo} cardImages={cardImages} />
+      <Footer onNavigate={navigateTo} cardImages={cardImages} page={page} />
       <Toast message={toast.message} visible={toast.visible} />
     </>
   );

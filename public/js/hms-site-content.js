@@ -179,6 +179,15 @@
     return canEdit() && editablePages().indexOf('experience') !== -1;
   }
 
+  /**
+   * The brand logo is stored per section (home/rooms/restaurant) so each role
+   * owns its own copy — see cardImageKey('brand', 'logo-' + section). A role
+   * may only change the logo shown on the page(s) it is allowed to edit.
+   */
+  function canEditLogo(section) {
+    return canEdit() && editablePages().indexOf(section || 'home') !== -1;
+  }
+
   function getNav() {
     const c = getCustomizations();
     const entry = c[NAV_KEY];
@@ -777,6 +786,7 @@
     canEditRooms,
     canEditMenus,
     canEditExperiences,
+    canEditLogo,
     canAccess,
     canUseRoomManagementUi,
     canUseRestaurantUi,
