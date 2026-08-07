@@ -1074,48 +1074,28 @@
 
             <div class="p-6 space-y-6">
                 @php
+                    /*
+                     * The assignable checklist. Only the three roles that own a page of
+                     * the hotel site carry tasks for now — each gets the same two, aimed
+                     * at the part of the site that role is allowed to edit. Maintenance
+                     * and Housekeeping are deliberately empty rather than removed, so the
+                     * departments still appear and can be given tasks later.
+                     */
                     $tasksByRole = [
                         'front_desk' => [
-                            ['title' => 'Review check-in procedures', 'description' => 'Review and practice standard check-in procedures for guests', 'priority' => 'high'],
-                            ['title' => 'Update guest records system', 'description' => 'Update and maintain accurate guest information in the system', 'priority' => 'medium'],
-                            ['title' => 'Handle guest complaints', 'description' => 'Learn proper procedures for handling guest complaints professionally', 'priority' => 'high'],
-                            ['title' => 'Manage room reservations', 'description' => 'Process and confirm room reservations accurately', 'priority' => 'medium'],
-                            ['title' => 'Process check-out procedures', 'description' => 'Complete guest check-out and billing procedures', 'priority' => 'medium'],
-                            ['title' => 'Phone etiquette training', 'description' => 'Practice professional phone communication with guests', 'priority' => 'low'],
-                            ['title' => 'Change the hotel logo', 'description' => 'Replace the default hotel logo in the website navigation with your own design', 'priority' => 'medium'],
-                        ],
-                        'restaurant_management' => [
-                            ['title' => 'Menu planning and review', 'description' => 'Review current menu items and suggest improvements', 'priority' => 'medium'],
-                            ['title' => 'Kitchen inventory audit', 'description' => 'Conduct thorough inventory check of kitchen supplies', 'priority' => 'high'],
-                            ['title' => 'Food safety compliance', 'description' => 'Ensure all food safety protocols are being followed', 'priority' => 'high'],
-                            ['title' => 'Staff scheduling coordination', 'description' => 'Coordinate and manage restaurant staff schedules', 'priority' => 'medium'],
-                            ['title' => 'Customer service training', 'description' => 'Train staff on excellent customer service practices', 'priority' => 'medium'],
-                            ['title' => 'Table arrangement planning', 'description' => 'Optimize table arrangements for better service flow', 'priority' => 'low'],
+                            ['title' => 'Change Logo', 'description' => 'Replace the default logo on the Home page header and footer with your own', 'priority' => 'medium'],
+                            ['title' => 'Name Your Hotel', 'description' => 'Replace the placeholder hotel name on the Home page with your team\'s hotel name', 'priority' => 'medium'],
                         ],
                         'room_management' => [
-                            ['title' => 'Room inspection checklist', 'description' => 'Perform detailed room inspection using standard checklist', 'priority' => 'high'],
-                            ['title' => 'Housekeeping schedule review', 'description' => 'Review and optimize housekeeping schedules', 'priority' => 'medium'],
-                            ['title' => 'Linen inventory management', 'description' => 'Track and manage linen inventory levels', 'priority' => 'medium'],
-                            ['title' => 'Room maintenance reporting', 'description' => 'Report and track room maintenance issues', 'priority' => 'high'],
-                            ['title' => 'Cleaning supply inventory', 'description' => 'Monitor and reorder cleaning supplies as needed', 'priority' => 'medium'],
-                            ['title' => 'Quality standards audit', 'description' => 'Audit rooms against quality standards checklist', 'priority' => 'low'],
+                            ['title' => 'Change Logo', 'description' => 'Replace the default logo on the Rooms page header and footer with your own', 'priority' => 'medium'],
+                            ['title' => 'Name Your Hotel', 'description' => 'Replace the placeholder hotel name on the Rooms page with your team\'s hotel name', 'priority' => 'medium'],
                         ],
-                        'maintenance' => [
-                            ['title' => 'Facility maintenance inspection', 'description' => 'Conduct comprehensive facility inspection for maintenance needs', 'priority' => 'high'],
-                            ['title' => 'Equipment safety check', 'description' => 'Perform safety checks on all hotel equipment', 'priority' => 'high'],
-                            ['title' => 'HVAC system maintenance', 'description' => 'Inspect and maintain heating/cooling systems', 'priority' => 'medium'],
-                            ['title' => 'Plumbing system inspection', 'description' => 'Check all plumbing fixtures and systems', 'priority' => 'medium'],
-                            ['title' => 'Electrical system check', 'description' => 'Inspect electrical systems and fix issues', 'priority' => 'high'],
-                            ['title' => 'Preventive maintenance log', 'description' => 'Update and maintain preventive maintenance records', 'priority' => 'low'],
+                        'restaurant_management' => [
+                            ['title' => 'Change Logo', 'description' => 'Replace the default logo on the Restaurant page header and footer with your own', 'priority' => 'medium'],
+                            ['title' => 'Name Your Hotel', 'description' => 'Replace the placeholder hotel name on the Restaurant page with your team\'s hotel name', 'priority' => 'medium'],
                         ],
-                        'housekeeping' => [
-                            ['title' => 'Room deep cleaning', 'description' => 'Perform thorough deep cleaning of assigned guest rooms', 'priority' => 'high'],
-                            ['title' => 'Linen and towel replacement', 'description' => 'Replace soiled linens and towels with fresh supplies', 'priority' => 'medium'],
-                            ['title' => 'Bathroom sanitization', 'description' => 'Sanitize all bathroom fixtures, surfaces, and amenities', 'priority' => 'high'],
-                            ['title' => 'Minibar restocking', 'description' => 'Restock minibar items and verify inventory counts', 'priority' => 'medium'],
-                            ['title' => 'Carpet and upholstery care', 'description' => 'Vacuum carpets and clean upholstery in guest rooms', 'priority' => 'medium'],
-                            ['title' => 'Amenity inventory check', 'description' => 'Verify and replenish guest room amenities and supplies', 'priority' => 'low'],
-                        ],
+                        'maintenance' => [],
+                        'housekeeping' => [],
                     ];
                 @endphp
 
@@ -1173,13 +1153,20 @@
                                 <p class="text-xs text-slate-400">Check the tasks you want to assign</p>
                             </div>
                         </div>
-                        <button type="button" onclick="selectAllVisibleTasks()" class="text-xs font-semibold text-brand hover:underline">
+                        <button type="button" id="selectAllTasksBtn" onclick="selectAllVisibleTasks()" class="text-xs font-semibold text-brand hover:underline">
                             Select All
                         </button>
                     </div>
 
                     @foreach($rolesMeta ?? [] as $rKey => $rMeta)
                         <div id="taskPanel-{{ $rKey }}" class="task-checklist-panel hidden">
+                            @if(empty($tasksByRole[$rKey]))
+                                <div class="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+                                    <span class="iconify text-3xl text-slate-300" data-icon="mdi:clipboard-off-outline"></span>
+                                    <p class="text-sm font-bold text-slate-500 mt-2">No tasks for {{ $rMeta['label'] }} yet</p>
+                                    <p class="text-xs text-slate-400 mt-1">Pick another department to assign tasks.</p>
+                                </div>
+                            @endif
                             <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1">
                                 @foreach($tasksByRole[$rKey] ?? [] as $index => $task)
                                     <label class="task-checkbox-card flex items-start gap-3 p-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl hover:bg-{{ $rMeta['color'] }}-50/50 hover:border-{{ $rMeta['color'] }}-200 transition cursor-pointer has-[:checked]:border-{{ $rMeta['color'] }}-400 has-[:checked]:bg-{{ $rMeta['color'] }}-50">
@@ -2312,6 +2299,10 @@ function selectDepartment(deptId) {
     // Update step 2 title
     const meta = DEPT_META[deptId];
     document.getElementById('selectedDeptTitle').textContent = meta ? meta.label + ' Tasks' : 'Select Tasks';
+
+    // Departments with no tasks show an empty state, so Select All has nothing to act on.
+    const hasTasks = !!(panel && panel.querySelector('.task-check'));
+    document.getElementById('selectAllTasksBtn')?.classList.toggle('hidden', !hasTasks);
 
     // Go to step 2
     goToStep(2);
