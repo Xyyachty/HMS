@@ -608,7 +608,7 @@
                                                 <div class="flex items-center gap-3 mt-3">
                                                     <span class="flex items-center gap-1 text-[11px] {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400' }}">
                                                         <span class="iconify text-xs" data-icon="mdi:calendar-outline"></span>
-                                                        {{ $task->due_date->format('M d, Y') }}
+                                                        {{ $task->due_date->format('M d, Y g:i A') }}
                                                     </span>
                                                 </div>
                                             @endif
@@ -658,7 +658,7 @@
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-semibold text-slate-500 line-through">{{ $task->title }}</p>
                                             @if($task->due_date)
-                                                <p class="text-[11px] text-slate-300 mt-1">{{ $task->due_date->format('M d, Y') }}</p>
+                                                <p class="text-[11px] text-slate-300 mt-1">{{ $task->due_date->format('M d, Y g:i A') }}</p>
                                             @endif
                                         </div>
                                         <span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Done</span>

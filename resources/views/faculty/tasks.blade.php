@@ -131,7 +131,7 @@
                 <div class="flex items-center gap-1 text-xs text-slate-400">
                     <span class="iconify" data-icon="mdi:calendar-outline"></span>
                     <span class="{{ $task->due_date->isPast() ? 'text-red-500 font-semibold' : '' }}">
-                        {{ $task->due_date->format('M d, Y') }}
+                        {{ $task->due_date->format('M d, Y g:i A') }}
                     </span>
                 </div>
                 @endif
@@ -256,9 +256,9 @@
             {{-- Due date --}}
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Due Date
+                    Due Date & Time
                 </label>
-                <input name="due_date" type="date" value="{{ old('due_date') }}"
+                <input name="due_date" type="datetime-local" value="{{ old('due_date') }}"
                     class="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm
                            focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
             </div>

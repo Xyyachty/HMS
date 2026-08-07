@@ -1200,17 +1200,18 @@
                             <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
                         </button>
                         <div>
-                            <h4 class="text-sm font-bold text-slate-700">Set a due date?</h4>
-                            <p class="text-xs text-slate-400">Optional — leave blank for no deadline</p>
+                            <h4 class="text-sm font-bold text-slate-700">Set a due date and time?</h4>
+                            <p class="text-xs text-slate-400">Optional - leave blank for no deadline</p>
                         </div>
                     </div>
 
                     <div class="max-w-md">
                         <div class="relative">
-                            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 iconify text-slate-400" data-icon="mdi:calendar-outline"></span>
-                            <input name="due_date" type="date" value="{{ old('due_date') }}"
+                            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 iconify text-slate-400" data-icon="mdi:calendar-clock"></span>
+                            <input name="due_date" type="datetime-local" value="{{ old('due_date') }}"
                                 class="w-full h-12 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                         </div>
+                        <p class="text-[11px] text-slate-400 mt-1.5">Students see this deadline in their own task list.</p>
                     </div>
 
                     <div class="mt-6 flex justify-end">
@@ -2339,10 +2340,14 @@ function updateReview() {
     const checked = selectedDept ? document.querySelectorAll('.task-checkbox-' + selectedDept + ':checked').length : 0;
     document.getElementById('reviewTaskCount').textContent = checked + ' task' + (checked !== 1 ? 's' : '');
 
-    // Due date
+    // Due date. datetime-local already carries the time, so parse it as-is
+    // rather than pinning midnight the way the date-only input needed.
     const dueDate = document.querySelector('input[name="due_date"]').value;
     document.getElementById('reviewDueDate').textContent = dueDate
-        ? new Date(dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        ? new Date(dueDate).toLocaleString('en-US', {
+              month: 'short', day: 'numeric', year: 'numeric',
+              hour: 'numeric', minute: '2-digit',
+          })
         : 'No deadline';
 }
 

@@ -210,7 +210,7 @@ class DeanController extends Controller
                             'role_label' => $roleLabels[$task->role] ?? $task->role,
                             'priority' => strtolower($task->priority ?? 'medium'),
                             'status' => $task->status,
-                            'due_date' => optional($task->due_date)->format('M d, Y'),
+                            'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
                             'updated_at' => optional($task->updated_at)->format('M d, Y'),
                         ];
                     })
@@ -463,7 +463,7 @@ class DeanController extends Controller
                 'student_name' => $studentName,
                 'role' => $roleKey,
                 'role_label' => $roleLabels[$roleKey] ?? $roleKey,
-                'due_date' => optional($task->due_date)->format('M d, Y'),
+                'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
                 'completed_at' => optional($task->updated_at)->format('M d, Y'),
                 'priority' => strtolower($task->priority ?? 'medium'),
             ];

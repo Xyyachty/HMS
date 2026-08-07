@@ -200,7 +200,7 @@
                                 @if($task->due_date)
                                     <span class="flex items-center gap-1">
                                         <span class="iconify" data-icon="mdi:calendar-outline"></span>
-                                        {{ $task->due_date->format('M d, Y') }}
+                                        {{ $task->due_date->format('M d, Y g:i A') }}
                                     </span>
                                 @else
                                     <span class="text-slate-300">—</span>

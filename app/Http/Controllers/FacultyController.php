@@ -986,7 +986,7 @@ class FacultyController extends Controller
                         'submitted_at' => $task->status === 'archived'
                             ? optional($task->updated_at)->format('M d, Y')
                             : null,
-                        'due_date' => optional($task->due_date)->format('M d, Y'),
+                        'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
                         'updated_at' => optional($task->updated_at)->format('M d, Y'),
                     ];
                 })
@@ -1247,7 +1247,7 @@ class FacultyController extends Controller
             'needs_revision' => $task->needs_revision,
             'student_name' => $name !== '' ? $name : ($u?->name ?? null),
             'group_name' => $membership?->group_name,
-            'due_date' => optional($task->due_date)->format('M d, Y'),
+            'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
             'submitted_at' => $task->status === 'archived'
                 ? optional($task->updated_at)->format('M d, Y g:i A')
                 : null,
@@ -1498,7 +1498,7 @@ class FacultyController extends Controller
                 'student_name' => $studentName,
                 'role' => $roleKey,
                 'role_label' => $roleLabels[$roleKey] ?? $roleKey,
-                'due_date' => optional($task->due_date)->format('M d, Y'),
+                'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
                 'completed_at' => optional($task->updated_at)->format('M d, Y'),
                 'priority' => strtolower($task->priority ?? 'medium'),
             ];

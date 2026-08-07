@@ -26,7 +26,9 @@ class Task extends Model
     ];
 
     protected $casts = [
-        'due_date' => 'date',
+        // Timestamp, not date: faculty set the hour a task is due, and isPast()
+        // has to respect it rather than treating everything as midnight.
+        'due_date' => 'datetime',
         'feedback_at' => 'datetime',
         'revision_count' => 'integer',
     ];
