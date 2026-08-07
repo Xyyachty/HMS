@@ -164,7 +164,12 @@ class FacultyClass extends Model
                 $open = static::where('id', $open->id)->lockForUpdate()->first();
             }
 
-            if ($open->students()->lockForUpdate()->count() >= ($open->capacity ?: self::CAPACITY)) {
+            // Counted without a row lock on purpose. PostgreSQL rejects
+            // "SELECT count(*) ... FOR UPDATE" outright ("FOR UPDATE is not allowed
+            // with aggregate functions") where MySQL simply allowed it. The lock is
+            // not needed anyway: the class row itself is already locked above, and
+            // that is what serialises two students claiming the last seat at once.
+            if ($open->students()->count() >= ($open->capacity ?: self::CAPACITY)) {
                 $open->update(['status' => 'closed']);
                 $open = static::openNextClass($facultyId, $open);
                 $open = static::where('id', $open->id)->lockForUpdate()->first();

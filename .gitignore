@@ -16,3 +16,17 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Working screenshots kept in the project root during development.
+/bucket.png
+/notworking.png
+/PG.png
+/render.png
+/saysunod.png
+/sync analyze.png
+
+# Pre-migration database backups. Large, point-in-time, and kept outside the repo
+# at C:\Users\Xyron\hms_backups. The generated Postgres import (hms_pgsql.sql) IS
+# tracked, since it is a build artefact of the migration rather than a backup.
+/database/hms_pre_supabase_*.sql
+/database/hms_recovered_*.sql

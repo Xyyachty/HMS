@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Hotel logo">
+  <defs>
+    <linearGradient id="hmsLogoGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e8c887"/>
+      <stop offset="100%" stop-color="#b9954f"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="url(#hmsLogoGold)" stroke-width="2.5"/>
+  <path d="M20 44V20h5v9.5h14V20h5v24h-5v-9.5H25V44z" fill="url(#hmsLogoGold)"/>
+</svg>

@@ -7,12 +7,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use App\Events\StudentCreated;
+use App\Models\ActivityLog;
 use App\Models\FacultyClass;
+use App\Models\Group;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\StudentGroupRole;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Notifier;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 class FacultyController extends Controller
 {
@@ -133,12 +136,18 @@ class FacultyController extends Controller
             return back()->withErrors(['member_roles' => 'Please select valid roles for each selected member.'])->withInput();
         }
 
+        $group = Group::firstOrCreate([
+            'group_name' => $validated['group_name'],
+            'faculty_id' => $facultyId,
+        ]);
+
         foreach ($memberIds as $studentId) {
             $roles = $rolesByMember[$studentId];
 
             $studentGroup = StudentGroup::create([
                 'group_name' => $validated['group_name'],
                 'faculty_id' => $facultyId,
+                'group_id' => $group->id,
                 'student_id' => $studentId,
                 'role' => $roles[0], // legacy column; real roles stored in student_group_roles
             ]);
@@ -150,6 +159,40 @@ class FacultyController extends Controller
                 ]);
             }
         }
+
+        $memberCount = count($memberIds);
+        $assignedRoles = collect($rolesByMember)->flatten()->unique()->values()->all();
+
+        if ($formSource === 'insert_student') {
+            ActivityLog::recordFor(
+                ActivityLog::STUDENT_ASSIGNED,
+                'Assigned ' . $memberCount . ' student(s) to team "' . $validated['group_name'] . '".'
+            );
+
+            Notifier::teamMembersAdded(
+                auth()->user(),
+                $validated['group_name'],
+                $facultyId,
+                $memberIds
+            );
+        } else {
+            ActivityLog::recordFor(
+                ActivityLog::TEAM_CREATED,
+                'Created team "' . $validated['group_name'] . '" with ' . $memberCount . ' member(s).'
+            );
+
+            Notifier::teamCreated(
+                auth()->user(),
+                $validated['group_name'],
+                $facultyId,
+                $memberIds
+            );
+        }
+
+        ActivityLog::recordFor(
+            ActivityLog::ROLE_ASSIGNED,
+            'Assigned role(s) ' . implode(', ', $assignedRoles) . ' in team "' . $validated['group_name'] . '".'
+        );
 
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'teams',
@@ -247,12 +290,18 @@ class FacultyController extends Controller
 
         DB::transaction(function () use ($normalizedTeams, $facultyId) {
             foreach ($normalizedTeams as $team) {
+                $group = Group::firstOrCreate([
+                    'group_name' => $team['group_name'],
+                    'faculty_id' => $facultyId,
+                ]);
+
                 foreach ($team['members'] as $studentId) {
                     $roles = $team['roles_by_member'][$studentId];
 
                     $studentGroup = StudentGroup::create([
                         'group_name' => $team['group_name'],
                         'faculty_id' => $facultyId,
+                        'group_id' => $group->id,
                         'student_id' => $studentId,
                         'role' => $roles[0],
                     ]);
@@ -268,6 +317,16 @@ class FacultyController extends Controller
         });
 
         $count = count($normalizedTeams);
+
+        ActivityLog::recordFor(
+            ActivityLog::TEAM_CREATED,
+            'Created ' . $count . ' team(s): '
+                . implode(', ', array_column($normalizedTeams, 'group_name')) . '.'
+        );
+
+        foreach ($normalizedTeams as $team) {
+            Notifier::teamCreated(auth()->user(), $team['group_name'], $facultyId, $team['members']);
+        }
 
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'teams',
@@ -435,7 +494,7 @@ class FacultyController extends Controller
             return back()->withErrors(['email' => 'Please enter a valid email address.'])->withInput();
         }
 
-        if (User::where('email', $email)->exists()) {
+        if (User::whereEmail($email)->exists()) {
             return back()->withErrors(['email' => 'Email already exists.'])->withInput();
         }
 
@@ -444,6 +503,13 @@ class FacultyController extends Controller
             $validated['middle_name'] ?? null,
             $validated['last_name'],
         ])));
+
+        // Which class was accepting enrollments before this student took a seat —
+        // if it differs afterwards, seating them is what opened the next one.
+        $openClassIdBefore = FacultyClass::where('faculty_id', $facultyId)
+            ->where('status', 'open')
+            ->orderBy('sort_order')
+            ->value('id');
 
         [$user, $student, $class] = DB::transaction(function () use ($validated, $email, $fullName, $facultyId) {
             $class = FacultyClass::claimSeat($facultyId);
@@ -475,6 +541,14 @@ class FacultyController extends Controller
 
         event(new StudentCreated($user, $student));
 
+        ActivityLog::recordFor(
+            ActivityLog::ACCOUNT_CREATED,
+            'Created student account ' . $fullName . ' (' . $validated['student_id'] . ') in ' . ($class->name ?? 'class') . '.'
+        );
+
+        Notifier::studentAdded(auth()->user(), $user, $fullName, $class, $facultyId);
+        $this->notifyIfClassOpened($facultyId, $openClassIdBefore);
+
         $message = 'Student account created successfully and added to ' . ($class->name ?? 'class') . '.';
         if ($class->status === 'closed') {
             $message .= ' ' . $class->name . ' is now full. A new class tab was opened.';
@@ -483,6 +557,27 @@ class FacultyController extends Controller
         return redirect()
             ->route('faculty.students', ['class' => $class->letter])
             ->with('success', $message);
+    }
+
+    /**
+     * Announce a newly opened class tab.
+     *
+     * Enrollment is the only thing that fills a class, so this is called right
+     * after a seat is claimed: if the faculty's open class is no longer the one
+     * that was open beforehand, capacity rolled over into the next letter.
+     */
+    private function notifyIfClassOpened(int $facultyId, $openClassIdBefore): void
+    {
+        $openNow = FacultyClass::where('faculty_id', $facultyId)
+            ->where('status', 'open')
+            ->orderBy('sort_order')
+            ->first();
+
+        if (!$openNow || (int) $openNow->id === (int) $openClassIdBefore) {
+            return;
+        }
+
+        Notifier::classOpened(auth()->user(), $facultyId, $openNow);
     }
 
     public function updateStudent(Request $request, $userId)
@@ -511,6 +606,11 @@ class FacultyController extends Controller
         }
 
         $user->update($updateData);
+
+        ActivityLog::recordFor(
+            ActivityLog::ACCOUNT_UPDATED,
+            'Updated student account ' . ($user->name ?? $user->email) . ' — status set to ' . $validated['status'] . '.'
+        );
 
         return redirect()->route('faculty.students', ['class' => request('class')])->with('success', 'Student updated successfully.');
     }
@@ -600,7 +700,7 @@ class FacultyController extends Controller
                 $errors[] = "student_id '{$studentId}' already exists";
             }
 
-            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) && User::where('email', $email)->exists()) {
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) && User::whereEmail($email)->exists()) {
                 $errors[] = "email '{$email}' already exists";
             }
 
@@ -652,6 +752,10 @@ class FacultyController extends Controller
 
                 event(new StudentCreated($user, $student));
 
+                // Only the student's own welcome here — faculty and dean get one
+                // summary after the loop instead of a row per imported student.
+                Notifier::studentWelcomed(auth()->user(), $user, 'Class ' . $classLetter);
+
                 if ($lastClassLetter !== null && $classLetter !== $lastClassLetter) {
                     $classesOpened[] = $classLetter;
                 }
@@ -682,6 +786,25 @@ class FacultyController extends Controller
         $message = "{$created} student(s) imported successfully. {$failed} failed.";
         if (!empty($classesOpened)) {
             $message .= ' New class tab(s) opened: Class ' . implode(', Class ', array_unique($classesOpened)) . '.';
+        }
+
+        if ($created > 0) {
+            ActivityLog::recordFor(
+                ActivityLog::ACCOUNT_CREATED,
+                'Bulk imported ' . $created . ' student account(s)'
+                    . ($failed > 0 ? ', ' . $failed . ' row(s) failed' : '') . '.'
+            );
+
+            Notifier::studentsImported(auth()->user(), $facultyId, $created);
+
+            foreach (array_unique($classesOpened) as $letter) {
+                $opened = FacultyClass::where('faculty_id', $facultyId)
+                    ->where('letter', $letter)
+                    ->first();
+                if ($opened) {
+                    Notifier::classOpened(auth()->user(), $facultyId, $opened);
+                }
+            }
         }
 
         return response()->json([
@@ -796,7 +919,7 @@ class FacultyController extends Controller
         $tasksByRole = Task::where('faculty_id', $facultyId)
             ->where('status', 'active')
             ->orderBy('due_date')
-            ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')")
+            ->orderByPriority()
             ->get()
             ->groupBy('role');
 
@@ -813,7 +936,8 @@ class FacultyController extends Controller
             'housekeeping'          => 'Housekeeping',
         ];
 
-        $allTasks = Task::where('faculty_id', $facultyId)
+        $allTasks = Task::with('assignedTo')
+            ->where('faculty_id', $facultyId)
             ->orderByDesc('updated_at')
             ->limit(500)
             ->get();
@@ -830,23 +954,39 @@ class FacultyController extends Controller
 
             $teamActivityByGroup[$groupName] = $allTasks
                 ->filter(function (Task $task) use ($memberStudentIds, $memberRoles) {
-                    if ($task->student_id && in_array((int) $task->student_id, $memberStudentIds, true)) {
-                        return true;
+                    // A claimed row belongs to exactly one student, so show it only to
+                    // that student's team. Falling through to the role match here listed
+                    // every team's rows under every team holding the same role.
+                    if ($task->student_id) {
+                        return in_array((int) $task->student_id, $memberStudentIds, true);
                     }
 
+                    // Unclaimed pool rows still show for any team holding the role.
                     return in_array($task->role, $memberRoles, true);
                 })
                 ->take(100)
                 ->values()
                 ->map(function (Task $task) use ($roleLabels) {
+                    // Tasks fan out one row per member, so name the student the row
+                    // belongs to — otherwise identical titles are indistinguishable.
+                    $u = $task->assignedTo;
+                    $studentName = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name])));
+                    $studentName = $studentName !== '' ? $studentName : ($u?->name ?? null);
+
                     return [
+                        'id' => $task->id,
                         'title' => $task->title,
                         'description' => $task->description,
                         'role' => $task->role,
                         'role_label' => $roleLabels[$task->role] ?? $task->role,
                         'priority' => strtolower($task->priority ?? 'medium'),
                         'status' => $task->status,
-                        'due_date' => optional($task->due_date)->format('M d, Y'),
+                        'has_feedback' => filled($task->feedback),
+                        'student_name' => $studentName,
+                        'submitted_at' => $task->status === 'archived'
+                            ? optional($task->updated_at)->format('M d, Y')
+                            : null,
+                        'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
                         'updated_at' => optional($task->updated_at)->format('M d, Y'),
                     ];
                 })
@@ -899,6 +1039,14 @@ class FacultyController extends Controller
             return back()->withErrors(['member_roles' => 'Please select valid roles for each selected member.'])->withInput();
         }
 
+        // Rename the canonical group in place (id-stable) — the delete+recreate below
+        // only handles student_groups membership rows, so without this the other 8
+        // group_name-bearing tables would keep the stale old name forever.
+        $group = Group::updateOrCreate(
+            ['faculty_id' => $facultyId, 'group_name' => $groupName],
+            ['group_name' => $validated['group_name']]
+        );
+
         // Delete old rows for this group/faculty then re-insert
         $oldGroups = StudentGroup::where('faculty_id', $facultyId)
             ->where('group_name', $groupName)
@@ -926,6 +1074,7 @@ class FacultyController extends Controller
             $studentGroup = StudentGroup::create([
                 'group_name' => $validated['group_name'],
                 'faculty_id' => $facultyId,
+                'group_id' => $group->id,
                 'student_id' => $studentId,
                 'role' => $roles[0], // legacy column; real roles stored in student_group_roles
             ]);
@@ -937,6 +1086,13 @@ class FacultyController extends Controller
                 ]);
             }
         }
+
+        ActivityLog::recordFor(
+            ActivityLog::TEAM_UPDATED,
+            'Updated team "' . $groupName . '"'
+                . ($groupName !== $validated['group_name'] ? ' (renamed to "' . $validated['group_name'] . '")' : '')
+                . ' — ' . count($memberIds) . ' member(s) and their roles reassigned.'
+        );
 
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'teams',
@@ -956,7 +1112,7 @@ class FacultyController extends Controller
         $tasksByRole = Task::where('faculty_id', $facultyId)
             ->where('status', 'active')
             ->orderBy('due_date')
-            ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')")
+            ->orderByPriority()
             ->get()
             ->groupBy('role');
 
@@ -986,7 +1142,10 @@ class FacultyController extends Controller
 
         // Check if any tasks were selected
         $tasksCreated = 0;
-        
+        // users.id => how many task rows landed on them, so each student gets one
+        // "3 new tasks" notification rather than one per row.
+        $assignedCounts = [];
+
         if (!empty($validated['tasks']) && is_array($validated['tasks'])) {
             foreach ($validated['tasks'] as $role => $taskIndices) {
                 if (!is_array($taskIndices)) continue;
@@ -1017,11 +1176,17 @@ class FacultyController extends Controller
                             $tasksCreated++;
                         } else {
                             foreach ($members as $member) {
+                                $assigneeUserId = $member->student?->user_id;
+
                                 Task::create(array_merge($payload, [
                                     'student_id'  => $member->student_id,
-                                    'assigned_to' => $member->student?->user_id,
+                                    'assigned_to' => $assigneeUserId,
                                 ]));
                                 $tasksCreated++;
+
+                                if ($assigneeUserId) {
+                                    $assignedCounts[$assigneeUserId] = ($assignedCounts[$assigneeUserId] ?? 0) + 1;
+                                }
                             }
                         }
                     }
@@ -1033,8 +1198,169 @@ class FacultyController extends Controller
             return back()->withErrors(['tasks' => 'Please select at least one task from the checklist.'])->withInput();
         }
 
+        ActivityLog::recordFor(
+            ActivityLog::TASK_CREATED,
+            'Created ' . $tasksCreated . ' task assignment(s) for team roles.'
+        );
+
+        Notifier::tasksAssigned(auth()->user(), $assignedCounts);
+
         return redirect()->route('faculty.role', ['tab' => 'create_task'])
             ->with('success', $tasksCreated . ' task(s) created successfully.');
+    }
+
+    /** The task plus who did it and where their work can be seen. */
+    public function reviewTask(Task $task)
+    {
+        $facultyId = auth()->user()?->faculty?->id;
+        if (!$facultyId || (int) $task->faculty_id !== (int) $facultyId) {
+            return response()->json(['error' => 'Not your task.'], 403);
+        }
+
+        $task->loadMissing(['assignedTo', 'feedbackBy', 'student']);
+        $u = $task->assignedTo;
+        $name = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name, $u?->middle_name])));
+
+        // The work lives on the team's site, so resolve the student's group.
+        $membership = $task->student_id
+            ? StudentGroup::where('student_id', $task->student_id)
+                ->where('faculty_id', $facultyId)
+                ->first()
+            : null;
+
+        $previewUrl = null;
+        if ($membership) {
+            $previewUrl = route('faculty.teams.preview', [
+                'group' => $membership->group_name,
+                'role' => $task->role,
+            ]);
+        }
+
+        return response()->json([
+            'id' => $task->id,
+            'title' => $task->title,
+            'description' => $task->description,
+            'role' => $task->role,
+            'role_label' => $task->role_label,
+            'priority' => $task->priority,
+            'status' => $task->status,
+            'needs_revision' => $task->needs_revision,
+            'student_name' => $name !== '' ? $name : ($u?->name ?? null),
+            'group_name' => $membership?->group_name,
+            'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
+            'submitted_at' => $task->status === 'archived'
+                ? optional($task->updated_at)->format('M d, Y g:i A')
+                : null,
+            'feedback' => $task->feedback,
+            'feedback_at' => optional($task->feedback_at)->format('M d, Y g:i A'),
+            'feedback_by' => $task->feedbackBy?->name,
+            'revision_count' => (int) $task->revision_count,
+            'preview_url' => $previewUrl,
+        ]);
+    }
+
+    /**
+     * Approve the submission, or send it back with feedback. "Send back" reuses
+     * status 'active' so the row reappears in the student's list — see the
+     * add_feedback_to_tasks migration for why the enum is left alone.
+     */
+    public function storeTaskFeedback(Request $request, Task $task)
+    {
+        $facultyUser = auth()->user();
+        $facultyId = $facultyUser?->faculty?->id;
+        if (!$facultyId || (int) $task->faculty_id !== (int) $facultyId) {
+            return response()->json(['error' => 'Not your task.'], 403);
+        }
+
+        $data = $request->validate([
+            'decision' => ['required', 'in:approve,revise'],
+            'feedback' => ['nullable', 'string', 'max:2000', 'required_if:decision,revise'],
+        ], [
+            'feedback.required_if' => 'Tell the student what to change before sending it back.',
+        ]);
+
+        if ($task->status !== 'archived') {
+            return response()->json([
+                'error' => 'This task has not been submitted yet, so there is nothing to review.',
+            ], 422);
+        }
+
+        $revise = $data['decision'] === 'revise';
+
+        $task->fill([
+            'feedback' => $data['feedback'] ?: null,
+            'feedback_at' => now(),
+            'feedback_by' => $facultyUser->id,
+        ]);
+
+        if ($revise) {
+            $task->status = 'active';
+            $task->revision_count = (int) $task->revision_count + 1;
+        }
+
+        $task->save();
+
+        ActivityLog::record(
+            $facultyUser,
+            ActivityLog::EVALUATION_RECORDED,
+            ($revise ? 'Requested changes on' : 'Approved') . ' task "' . $task->title . '"'
+                . ($task->assignedTo ? ' by ' . $task->assignedTo->name : '') . '.'
+        );
+
+        Notifier::taskFeedback($facultyUser, $task, $revise);
+
+        return response()->json([
+            'success' => true,
+            'status' => $task->status,
+            'revision_count' => (int) $task->revision_count,
+            'message' => $revise
+                ? 'Sent back to the student with your feedback.'
+                : 'Task approved.',
+        ]);
+    }
+
+    /**
+     * Render a team's site read-only so faculty can see the work itself.
+     * Mirrors the student template route, but resolves the team from the
+     * requested group instead of the viewer's own student profile.
+     */
+    public function previewTeamSite(Request $request)
+    {
+        $facultyId = auth()->user()?->faculty?->id;
+        if (!$facultyId) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'group' => ['required', 'string', 'max:255'],
+            'role' => ['nullable', 'string'],
+        ]);
+
+        $membership = StudentGroup::where('faculty_id', $facultyId)
+            ->where('group_name', $data['group'])
+            ->first();
+        if (!$membership) {
+            abort(404, 'That team does not belong to you.');
+        }
+
+        $customizations = \App\Support\HotelTemplateBuilder::mergeTeamCustomizations(
+            (string) $membership->group_name,
+            (int) $membership->faculty_id
+        );
+
+        $selected = \App\Models\GroupSettings::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->value('selected_template');
+
+        $selected = in_array((string) $selected, ['1', '2'], true) ? (string) $selected : '1';
+
+        // Read-only: no edit permission, no editable pages.
+        return view('students.template.' . $selected . 'defaulttemplate', [
+            'customizations' => $customizations,
+            'canEditTemplate' => false,
+            'editablePages' => [],
+            'builderRole' => $data['role'] ?? 'front_desk',
+        ]);
     }
 
     public function destroyTask(Task $task)
@@ -1045,7 +1371,13 @@ class FacultyController extends Controller
         }
 
         $role = $task->role;
+        $title = $task->title;
         $task->delete();
+
+        ActivityLog::recordFor(
+            ActivityLog::TASK_DELETED,
+            'Deleted task "' . $title . '" from the ' . $role . ' role.'
+        );
 
         return redirect()->route('faculty.tasks', ['tab' => $role])
             ->with('success', 'Task deleted.');
@@ -1057,6 +1389,8 @@ class FacultyController extends Controller
         if (!$facultyId) {
             abort(403, 'Faculty account not found.');
         }
+
+        ActivityLog::recordFor(ActivityLog::EVALUATION_RECORDED, 'Reviewed team task results and evaluation.');
 
         $roleLabels = [
             'front_desk' => 'Front Desk',
@@ -1083,6 +1417,8 @@ class FacultyController extends Controller
         if (!$facultyId) {
             abort(403, 'Faculty account not found.');
         }
+
+        ActivityLog::recordFor(ActivityLog::REPORT_GENERATED, 'Generated the faculty performance report.');
 
         $roleLabels = [
             'front_desk' => 'Front Desk',
@@ -1162,7 +1498,7 @@ class FacultyController extends Controller
                 'student_name' => $studentName,
                 'role' => $roleKey,
                 'role_label' => $roleLabels[$roleKey] ?? $roleKey,
-                'due_date' => optional($task->due_date)->format('M d, Y'),
+                'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
                 'completed_at' => optional($task->updated_at)->format('M d, Y'),
                 'priority' => strtolower($task->priority ?? 'medium'),
             ];
@@ -1287,15 +1623,28 @@ class FacultyController extends Controller
         ];
 
         if ($request->boolean('remove_avatar') && $user->avatar) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+            \Illuminate\Support\Facades\Storage::disk(\App\Support\HotelImageStore::disk())->delete($user->avatar);
             $userData['avatar'] = null;
         }
 
         if ($request->hasFile('avatar')) {
-            if ($user->avatar) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+            try {
+                $storedPath = $request->file('avatar')->store('avatars/faculty', \App\Support\HotelImageStore::disk());
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Faculty avatar upload failed', [
+                    'user_id' => $user->id,
+                    'disk' => \App\Support\HotelImageStore::disk(),
+                    'error' => $e->getMessage(),
+                ]);
+
+                return back()->withErrors(['avatar' => 'Could not upload the photo to storage. Please try again.']);
             }
-            $userData['avatar'] = $request->file('avatar')->store('avatars/faculty', 'public');
+
+            if ($user->avatar) {
+                \Illuminate\Support\Facades\Storage::disk(\App\Support\HotelImageStore::disk())->delete($user->avatar);
+            }
+
+            $userData['avatar'] = $storedPath;
         }
 
         $user->update($userData);
@@ -1303,6 +1652,8 @@ class FacultyController extends Controller
         $faculty->update([
             'phone_number' => $validated['phone_number'] ?? null,
         ]);
+
+        ActivityLog::recordFor(ActivityLog::ACCOUNT_UPDATED, 'Updated their own faculty profile.');
 
         return redirect()->route('faculty.profile')
             ->with('success', 'Profile information updated successfully.');

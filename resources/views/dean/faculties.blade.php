@@ -85,6 +85,7 @@
                                     }
                                     return [
                                         'name' => $n,
+                                        'user_id' => $u?->id,
                                         'role_labels' => array_map(fn ($r) => $roleLabels[$r] ?? $r, $memberRoles),
                                     ];
                                 })->values()->toJson();
@@ -199,7 +200,7 @@
                                 @if($task->due_date)
                                     <span class="flex items-center gap-1">
                                         <span class="iconify" data-icon="mdi:calendar-outline"></span>
-                                        {{ $task->due_date->format('M d, Y') }}
+                                        {{ $task->due_date->format('M d, Y g:i A') }}
                                     </span>
                                 @else
                                     <span class="text-slate-300">—</span>
@@ -255,12 +256,14 @@
                             <col style="width: 2.5rem;">
                             <col>
                             <col style="width: 10rem;">
+                            <col style="width: 6.5rem;">
                         </colgroup>
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#</th>
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Member</th>
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                                <th class="text-center px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Activity</th>
                             </tr>
                         </thead>
                         <tbody id="teamModalMembersBody" class="divide-y divide-slate-100">
@@ -269,10 +272,22 @@
                 </div>
             </div>
 
-            <!-- Activity Logs -->
+            <!-- Selected member's centralized activity log (expandable section) -->
+            <div id="memberActivityPanel" class="hidden">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-rose-600" id="memberActivityPanelTitle">Member Activity</p>
+                    <button type="button" onclick="closeMemberActivityPanel()"
+                        class="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition">Hide</button>
+                </div>
+                <div class="border border-rose-200 rounded-lg overflow-hidden">
+                    <div id="memberActivityPanelBody" class="max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white"></div>
+                </div>
+            </div>
+
+            <!-- Team task activity (assignment history) -->
             <div>
                 <div class="flex items-center justify-between gap-2 mb-1.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Activity Logs</p>
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Team Task Activity</p>
                     <span id="teamModalActivityMeta" class="text-[10px] font-semibold text-slate-400"></span>
                 </div>
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
@@ -492,13 +507,21 @@
 
         const tbody = document.getElementById('teamModalMembersBody');
         if (!members || members.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-6 text-center text-xs text-slate-400">No members found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-slate-400">No members found.</td></tr>';
         } else {
             tbody.innerHTML = members.map(function (m, i) {
                 const roleLabels = m.role_labels || [m.role_label || m.role || '—'];
                 const roleBadges = roleLabels.map(function (rl) {
                     return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">' + escHtml(rl) + '</span>';
                 }).join(' ');
+                const activityBtn = m.user_id
+                    ? '<button type="button" data-activity-user="' + Number(m.user_id) + '"' +
+                        ' data-activity-name="' + escHtml(m.name) + '"' +
+                        ' class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition"' +
+                        ' title="View this member\'s activity logs">' +
+                        '<span class="iconify text-xs" data-icon="mdi:clipboard-text-clock-outline"></span> Activity' +
+                      '</button>'
+                    : '<span class="text-[10px] text-slate-300">—</span>';
                 return '<tr class="hover:bg-slate-50 transition-colors">' +
                     '<td class="px-3 py-2 text-[11px] text-slate-400 font-medium">' + (i + 1) + '</td>' +
                     '<td class="px-3 py-2">' +
@@ -512,9 +535,12 @@
                     '<td class="px-3 py-2">' +
                         '<div class="flex flex-wrap gap-1">' + roleBadges + '</div>' +
                     '</td>' +
+                    '<td class="px-3 py-2 text-center">' + activityBtn + '</td>' +
                 '</tr>';
             }).join('');
         }
+
+        closeMemberActivityPanel();
 
         teamModalActivityLogs = logs;
         teamModalActivityPage = 1;
@@ -522,6 +548,70 @@
 
         document.getElementById('teamInfoModal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+    }
+
+    /* Centralized activity log — same table and endpoint the faculty portal reads. */
+    const MEMBER_ACTIVITY_URL = @json(route('dean.activity.user', ['user' => '__ID__']));
+
+    function closeMemberActivityPanel() {
+        const panel = document.getElementById('memberActivityPanel');
+        if (panel) panel.classList.add('hidden');
+    }
+
+    /* Delegated: the buttons are rebuilt whenever the team modal opens, and an
+       inline onclick cannot carry a name containing quotes without breaking the
+       attribute it lives in. */
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest ? e.target.closest('[data-activity-user]') : null;
+        if (!btn) return;
+        viewMemberActivity(btn.getAttribute('data-activity-user'), btn.getAttribute('data-activity-name'));
+    });
+
+    function viewMemberActivity(userId, memberName) {
+        const panel = document.getElementById('memberActivityPanel');
+        const title = document.getElementById('memberActivityPanelTitle');
+        const body = document.getElementById('memberActivityPanelBody');
+        if (!panel || !body) return;
+
+        panel.classList.remove('hidden');
+        if (title) title.textContent = (memberName || 'Member') + ' — Activity Logs';
+        body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading activity…</div>';
+
+        fetch(MEMBER_ACTIVITY_URL.replace('__ID__', String(userId)), {
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function (res) {
+                return res.json().then(function (data) {
+                    if (!res.ok) throw new Error(data.error || 'Could not load activity logs.');
+                    return data;
+                });
+            })
+            .then(function (data) {
+                body.innerHTML = renderActivityRows(data.logs || []);
+            })
+            .catch(function (err) {
+                body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
+                    + escHtml(err.message || 'Could not load activity logs.') + '</div>';
+            });
+    }
+
+    function renderActivityRows(logs) {
+        if (!logs.length) {
+            return '<div class="px-3 py-6 text-center text-xs text-slate-400">No recorded activity for this member yet.</div>';
+        }
+        return logs.map(function (log) {
+            return '<div class="px-3 py-2.5 flex items-start gap-2.5 hover:bg-slate-50/70 transition">' +
+                '<span class="mt-0.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100 whitespace-nowrap">' +
+                    escHtml(log.activity_label || log.activity || '—') +
+                '</span>' +
+                '<div class="min-w-0 flex-1">' +
+                    '<p class="text-xs text-slate-700">' + escHtml(log.description || '—') + '</p>' +
+                    '<p class="text-[10px] text-slate-400 mt-0.5">' + escHtml(log.created_at || '') +
+                        (log.created_at_human ? ' · ' + escHtml(log.created_at_human) : '') + '</p>' +
+                '</div>' +
+            '</div>';
+        }).join('');
     }
 
     function closeTeamModal() {

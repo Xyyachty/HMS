@@ -177,6 +177,7 @@
                                 $memberData[] = [
                                     'student_id' => $m->student_id,
                                     'name'       => $dn,
+                                    'user_id'    => $u?->id,
                                     'roles'      => $memberRoles,
                                     'role_labels' => array_map(fn($r) => $roleLabels[$r] ?? $r, $memberRoles),
                                 ];
@@ -277,51 +278,80 @@
             </button>
         </div>
 
+        <!-- Modal Tabs -->
+        <div class="flex border-b border-slate-200 bg-slate-50 flex-shrink-0">
+            <button type="button" onclick="switchTeamModalTab('members')" id="team-tab-members"
+                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-rose-500 text-rose-600">
+                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:account-group-outline"></span>Team Members &amp; Roles
+            </button>
+            <button type="button" onclick="switchTeamModalTab('tasks')" id="team-tab-tasks"
+                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
+                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:clipboard-text-clock-outline"></span>Team Task Activity
+            </button>
+        </div>
+
         <!-- Modal Body -->
         <div class="overflow-y-auto flex-1 p-4 space-y-4">
             <!-- Members Table -->
-            <div>
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Team Members & Roles</p>
+            <div id="team-panel-members">
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
                     <table class="w-full text-sm" style="table-layout: fixed;">
                         <colgroup>
                             <col style="width: 2.5rem;">
                             <col>
                             <col style="width: 10rem;">
+                            <col style="width: 6.5rem;">
                         </colgroup>
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#</th>
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Member</th>
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                                <th class="text-center px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Activity</th>
                             </tr>
                         </thead>
                         <tbody id="teamModalMembersBody" class="divide-y divide-slate-100">
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Selected member's centralized activity log (expandable section) -->
+                <div id="memberActivityPanel" class="hidden mt-4">
+                    <div class="flex items-center justify-between gap-2 mb-1.5">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-brand" id="memberActivityPanelTitle">Member Activity</p>
+                        <button type="button" onclick="closeMemberActivityPanel()"
+                            class="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition">Hide</button>
+                    </div>
+                    <div class="border border-brand/20 bg-brand-soft/30 rounded-lg overflow-hidden">
+                        <div id="memberActivityPanelBody" class="max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white"></div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Activity Logs -->
-            <div>
+            <!-- Team task activity (assignment history) -->
+            <div id="team-panel-tasks" class="hidden">
                 <div class="flex items-center justify-between gap-2 mb-1.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Activity Logs</p>
+                    <span class="text-[10px] font-semibold text-slate-400">Use the Review button to open a submitted task and leave feedback.</span>
                     <span id="teamModalActivityMeta" class="text-[10px] font-semibold text-slate-400"></span>
                 </div>
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
                     <table class="w-full text-sm" style="table-layout: fixed;">
                         <colgroup>
                             <col>
-                            <col style="width: 7rem;">
+                            <col style="width: 8.5rem;">
+                            <col style="width: 6rem;">
                             <col style="width: 6.5rem;">
                             <col style="width: 6rem;">
+                            <col style="width: 6.5rem;">
                         </colgroup>
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Task</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Student</th>
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Assigned Date</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Submitted</th>
+                                <th class="text-center px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Review</th>
                             </tr>
                         </thead>
                         <tbody id="teamModalActivityBody" class="divide-y divide-slate-100">
@@ -347,6 +377,79 @@
             <button onclick="closeTeamModal()" class="px-3.5 py-1.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition font-semibold text-xs">
                 Close
             </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════ REVIEW SUBMISSION MODAL — the student's actual work + feedback ═══════ -->
+<div id="taskReviewModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTaskReview()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+
+        <div class="bg-rose-50 px-4 py-3 border-b border-rose-100 flex justify-between items-center flex-shrink-0">
+            <div class="min-w-0">
+                <h4 id="reviewTaskTitle" class="font-bold text-rose-700 text-sm truncate">Review Submission</h4>
+                <p id="reviewTaskMeta" class="text-[11px] text-slate-500 truncate"></p>
+            </div>
+            <button type="button" onclick="closeTaskReview()"
+                class="text-slate-400 hover:text-rose-500 hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0">
+                <span class="iconify text-lg" data-icon="mdi:close"></span>
+            </button>
+        </div>
+
+        <div class="flex-1 min-h-0 flex flex-col lg:flex-row">
+            <!-- The work itself -->
+            <div class="flex-1 min-h-0 bg-slate-100 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200">
+                <div class="px-3 py-2 flex items-center justify-between gap-2 bg-white border-b border-slate-100 flex-shrink-0">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">The team's live site</span>
+                    <a id="reviewOpenTab" href="#" target="_blank" rel="noopener"
+                       class="text-[10px] font-bold text-brand hover:underline hidden">Open in new tab ↗</a>
+                </div>
+                <div class="flex-1 min-h-0 relative">
+                    <div id="reviewPreviewEmpty" class="absolute inset-0 flex items-center justify-center text-center px-6">
+                        <p class="text-xs text-slate-400">No site to preview for this submission.</p>
+                    </div>
+                    <iframe id="reviewPreviewFrame" src="" title="Team site preview"
+                            class="w-full h-full border-0 bg-white hidden" style="min-height: 22rem;"></iframe>
+                </div>
+            </div>
+
+            <!-- Feedback -->
+            <div class="w-full lg:w-80 shrink-0 flex flex-col min-h-0 overflow-y-auto">
+                <div class="p-4 space-y-3">
+                    <div id="reviewStatusRow" class="flex flex-wrap items-center gap-1.5"></div>
+
+                    <div id="reviewPrevFeedbackWrap" class="hidden rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">Previous feedback</p>
+                        <p id="reviewPrevFeedback" class="text-xs text-amber-800 whitespace-pre-line"></p>
+                        <p id="reviewPrevFeedbackMeta" class="text-[10px] text-amber-600 mt-1"></p>
+                    </div>
+
+                    <div>
+                        <label for="reviewFeedback" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                            Feedback to the student
+                        </label>
+                        <textarea id="reviewFeedback" rows="6" maxlength="2000"
+                            placeholder="What did they do well? What should change?"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
+                        <p class="text-[10px] text-slate-400 mt-1">Required when sending back for revision.</p>
+                    </div>
+
+                    <p id="reviewError" class="hidden text-[11px] font-semibold text-rose-600"></p>
+
+                    <div class="flex flex-col gap-2 pt-1">
+                        <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')"
+                            class="w-full px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">
+                            <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve
+                        </button>
+                        <button type="button" id="reviewReviseBtn" onclick="submitTaskFeedback('revise')"
+                            class="w-full px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">
+                            <span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back for revision
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -391,7 +494,16 @@
 
         <!-- Tab Panel: Add Team (single or multiple) -->
         <div id="modal-panel-add_team" class="flex-1 min-h-0 overflow-y-auto">
+            @php $unassignedStudentCount = ($students ?? collect())->count(); @endphp
             <div class="px-6 pt-5">
+                <div class="rounded-xl border {{ $unassignedStudentCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700' }} px-4 py-2.5 flex items-center gap-2 text-xs font-bold mb-4">
+                    <span class="iconify text-base shrink-0" data-icon="{{ $unassignedStudentCount > 0 ? 'mdi:account-alert-outline' : 'mdi:check-circle-outline' }}"></span>
+                    @if($unassignedStudentCount > 0)
+                        {{ $unassignedStudentCount }} student{{ $unassignedStudentCount === 1 ? '' : 's' }} not yet assigned to a team{{ $activeClass ? ' in ' . $activeClass->name : '' }}
+                    @else
+                        All students{{ $activeClass ? ' in ' . $activeClass->name : '' }} are already assigned to a team
+                    @endif
+                </div>
                 <div class="inline-flex w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1">
                     <button type="button" id="createModeSingleBtn" onclick="switchCreateTeamMode('single')"
                         class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-brand shadow-sm border border-brand/10">
@@ -962,47 +1074,28 @@
 
             <div class="p-6 space-y-6">
                 @php
+                    /*
+                     * The assignable checklist. Only the three roles that own a page of
+                     * the hotel site carry tasks for now — each gets the same two, aimed
+                     * at the part of the site that role is allowed to edit. Maintenance
+                     * and Housekeeping are deliberately empty rather than removed, so the
+                     * departments still appear and can be given tasks later.
+                     */
                     $tasksByRole = [
                         'front_desk' => [
-                            ['title' => 'Review check-in procedures', 'description' => 'Review and practice standard check-in procedures for guests', 'priority' => 'high'],
-                            ['title' => 'Update guest records system', 'description' => 'Update and maintain accurate guest information in the system', 'priority' => 'medium'],
-                            ['title' => 'Handle guest complaints', 'description' => 'Learn proper procedures for handling guest complaints professionally', 'priority' => 'high'],
-                            ['title' => 'Manage room reservations', 'description' => 'Process and confirm room reservations accurately', 'priority' => 'medium'],
-                            ['title' => 'Process check-out procedures', 'description' => 'Complete guest check-out and billing procedures', 'priority' => 'medium'],
-                            ['title' => 'Phone etiquette training', 'description' => 'Practice professional phone communication with guests', 'priority' => 'low'],
-                        ],
-                        'restaurant_management' => [
-                            ['title' => 'Menu planning and review', 'description' => 'Review current menu items and suggest improvements', 'priority' => 'medium'],
-                            ['title' => 'Kitchen inventory audit', 'description' => 'Conduct thorough inventory check of kitchen supplies', 'priority' => 'high'],
-                            ['title' => 'Food safety compliance', 'description' => 'Ensure all food safety protocols are being followed', 'priority' => 'high'],
-                            ['title' => 'Staff scheduling coordination', 'description' => 'Coordinate and manage restaurant staff schedules', 'priority' => 'medium'],
-                            ['title' => 'Customer service training', 'description' => 'Train staff on excellent customer service practices', 'priority' => 'medium'],
-                            ['title' => 'Table arrangement planning', 'description' => 'Optimize table arrangements for better service flow', 'priority' => 'low'],
+                            ['title' => 'Change Logo', 'description' => 'Replace the default logo on the Home page header and footer with your own', 'priority' => 'medium'],
+                            ['title' => 'Name Your Hotel', 'description' => 'Replace the placeholder hotel name on the Home page with your team\'s hotel name', 'priority' => 'medium'],
                         ],
                         'room_management' => [
-                            ['title' => 'Room inspection checklist', 'description' => 'Perform detailed room inspection using standard checklist', 'priority' => 'high'],
-                            ['title' => 'Housekeeping schedule review', 'description' => 'Review and optimize housekeeping schedules', 'priority' => 'medium'],
-                            ['title' => 'Linen inventory management', 'description' => 'Track and manage linen inventory levels', 'priority' => 'medium'],
-                            ['title' => 'Room maintenance reporting', 'description' => 'Report and track room maintenance issues', 'priority' => 'high'],
-                            ['title' => 'Cleaning supply inventory', 'description' => 'Monitor and reorder cleaning supplies as needed', 'priority' => 'medium'],
-                            ['title' => 'Quality standards audit', 'description' => 'Audit rooms against quality standards checklist', 'priority' => 'low'],
+                            ['title' => 'Change Logo', 'description' => 'Replace the default logo on the Rooms page header and footer with your own', 'priority' => 'medium'],
+                            ['title' => 'Name Your Hotel', 'description' => 'Replace the placeholder hotel name on the Rooms page with your team\'s hotel name', 'priority' => 'medium'],
                         ],
-                        'maintenance' => [
-                            ['title' => 'Facility maintenance inspection', 'description' => 'Conduct comprehensive facility inspection for maintenance needs', 'priority' => 'high'],
-                            ['title' => 'Equipment safety check', 'description' => 'Perform safety checks on all hotel equipment', 'priority' => 'high'],
-                            ['title' => 'HVAC system maintenance', 'description' => 'Inspect and maintain heating/cooling systems', 'priority' => 'medium'],
-                            ['title' => 'Plumbing system inspection', 'description' => 'Check all plumbing fixtures and systems', 'priority' => 'medium'],
-                            ['title' => 'Electrical system check', 'description' => 'Inspect electrical systems and fix issues', 'priority' => 'high'],
-                            ['title' => 'Preventive maintenance log', 'description' => 'Update and maintain preventive maintenance records', 'priority' => 'low'],
+                        'restaurant_management' => [
+                            ['title' => 'Change Logo', 'description' => 'Replace the default logo on the Restaurant page header and footer with your own', 'priority' => 'medium'],
+                            ['title' => 'Name Your Hotel', 'description' => 'Replace the placeholder hotel name on the Restaurant page with your team\'s hotel name', 'priority' => 'medium'],
                         ],
-                        'housekeeping' => [
-                            ['title' => 'Room deep cleaning', 'description' => 'Perform thorough deep cleaning of assigned guest rooms', 'priority' => 'high'],
-                            ['title' => 'Linen and towel replacement', 'description' => 'Replace soiled linens and towels with fresh supplies', 'priority' => 'medium'],
-                            ['title' => 'Bathroom sanitization', 'description' => 'Sanitize all bathroom fixtures, surfaces, and amenities', 'priority' => 'high'],
-                            ['title' => 'Minibar restocking', 'description' => 'Restock minibar items and verify inventory counts', 'priority' => 'medium'],
-                            ['title' => 'Carpet and upholstery care', 'description' => 'Vacuum carpets and clean upholstery in guest rooms', 'priority' => 'medium'],
-                            ['title' => 'Amenity inventory check', 'description' => 'Verify and replenish guest room amenities and supplies', 'priority' => 'low'],
-                        ],
+                        'maintenance' => [],
+                        'housekeeping' => [],
                     ];
                 @endphp
 
@@ -1060,13 +1153,20 @@
                                 <p class="text-xs text-slate-400">Check the tasks you want to assign</p>
                             </div>
                         </div>
-                        <button type="button" onclick="selectAllVisibleTasks()" class="text-xs font-semibold text-brand hover:underline">
+                        <button type="button" id="selectAllTasksBtn" onclick="selectAllVisibleTasks()" class="text-xs font-semibold text-brand hover:underline">
                             Select All
                         </button>
                     </div>
 
                     @foreach($rolesMeta ?? [] as $rKey => $rMeta)
                         <div id="taskPanel-{{ $rKey }}" class="task-checklist-panel hidden">
+                            @if(empty($tasksByRole[$rKey]))
+                                <div class="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+                                    <span class="iconify text-3xl text-slate-300" data-icon="mdi:clipboard-off-outline"></span>
+                                    <p class="text-sm font-bold text-slate-500 mt-2">No tasks for {{ $rMeta['label'] }} yet</p>
+                                    <p class="text-xs text-slate-400 mt-1">Pick another department to assign tasks.</p>
+                                </div>
+                            @endif
                             <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1">
                                 @foreach($tasksByRole[$rKey] ?? [] as $index => $task)
                                     <label class="task-checkbox-card flex items-start gap-3 p-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl hover:bg-{{ $rMeta['color'] }}-50/50 hover:border-{{ $rMeta['color'] }}-200 transition cursor-pointer has-[:checked]:border-{{ $rMeta['color'] }}-400 has-[:checked]:bg-{{ $rMeta['color'] }}-50">
@@ -1100,17 +1200,18 @@
                             <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
                         </button>
                         <div>
-                            <h4 class="text-sm font-bold text-slate-700">Set a due date?</h4>
-                            <p class="text-xs text-slate-400">Optional — leave blank for no deadline</p>
+                            <h4 class="text-sm font-bold text-slate-700">Set a due date and time?</h4>
+                            <p class="text-xs text-slate-400">Optional - leave blank for no deadline</p>
                         </div>
                     </div>
 
                     <div class="max-w-md">
                         <div class="relative">
-                            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 iconify text-slate-400" data-icon="mdi:calendar-outline"></span>
-                            <input name="due_date" type="date" value="{{ old('due_date') }}"
+                            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 iconify text-slate-400" data-icon="mdi:calendar-clock"></span>
+                            <input name="due_date" type="datetime-local" value="{{ old('due_date') }}"
                                 class="w-full h-12 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                         </div>
+                        <p class="text-[11px] text-slate-400 mt-1.5">Students see this deadline in their own task list.</p>
                     </div>
 
                     <div class="mt-6 flex justify-end">
@@ -1299,6 +1400,172 @@ function switchCreateTeamMode(mode) {
 
 // ── Modal Tab Switcher ────────────────────────
 let currentModalTab = 'add_team';
+
+/* ── Review a submission: see the work, then give feedback ───────────────── */
+const TASK_REVIEW_URL = @json(route('faculty.tasks.review', ['task' => '__ID__']));
+const TASK_FEEDBACK_URL = @json(route('faculty.tasks.feedback', ['task' => '__ID__']));
+let reviewTaskId = null;
+
+// Rows are rebuilt every time the modal opens, so delegate.
+document.addEventListener('click', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-review-task]') : null;
+    if (!row) return;
+    openTaskReview(row.getAttribute('data-review-task'));
+});
+
+function openTaskReview(taskId) {
+    reviewTaskId = taskId;
+    const modal = document.getElementById('taskReviewModal');
+    if (!modal) return;
+
+    document.getElementById('reviewTaskTitle').textContent = 'Loading…';
+    document.getElementById('reviewTaskMeta').textContent = '';
+    document.getElementById('reviewStatusRow').innerHTML = '';
+    document.getElementById('reviewFeedback').value = '';
+    document.getElementById('reviewError').classList.add('hidden');
+    document.getElementById('reviewPrevFeedbackWrap').classList.add('hidden');
+
+    const frame = document.getElementById('reviewPreviewFrame');
+    const empty = document.getElementById('reviewPreviewEmpty');
+    const openTab = document.getElementById('reviewOpenTab');
+    frame.classList.add('hidden');
+    frame.src = '';
+    empty.classList.remove('hidden');
+    openTab.classList.add('hidden');
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    fetch(TASK_REVIEW_URL.replace('__ID__', encodeURIComponent(taskId)), {
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
+        .then((res) => res.json().then((d) => { if (!res.ok) throw new Error(d.error || 'Could not load this submission.'); return d; }))
+        .then((d) => {
+            document.getElementById('reviewTaskTitle').textContent = d.title || 'Submission';
+            document.getElementById('reviewTaskMeta').textContent = [
+                d.student_name, d.group_name, d.role_label
+            ].filter(Boolean).join(' · ');
+
+            const badges = [];
+            if (d.status === 'archived') {
+                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold">Submitted' + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
+            } else {
+                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold">Not submitted</span>');
+            }
+            if (d.revision_count > 0) {
+                badges.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold">Revision ' + d.revision_count + '</span>');
+            }
+            document.getElementById('reviewStatusRow').innerHTML = badges.join(' ');
+
+            if (d.feedback) {
+                document.getElementById('reviewPrevFeedback').textContent = d.feedback;
+                document.getElementById('reviewPrevFeedbackMeta').textContent =
+                    [d.feedback_by, d.feedback_at].filter(Boolean).join(' · ');
+                document.getElementById('reviewPrevFeedbackWrap').classList.remove('hidden');
+            }
+
+            if (d.preview_url) {
+                frame.src = d.preview_url;
+                frame.classList.remove('hidden');
+                empty.classList.add('hidden');
+                openTab.href = d.preview_url;
+                openTab.classList.remove('hidden');
+            }
+
+            // Only a submitted task can be acted on.
+            const canAct = d.status === 'archived';
+            document.getElementById('reviewApproveBtn').disabled = !canAct;
+            document.getElementById('reviewReviseBtn').disabled = !canAct;
+            [document.getElementById('reviewApproveBtn'), document.getElementById('reviewReviseBtn')]
+                .forEach((b) => b.classList.toggle('opacity-40', !canAct));
+        })
+        .catch((err) => {
+            document.getElementById('reviewTaskTitle').textContent = 'Could not load';
+            showReviewError(err.message || 'Could not load this submission.');
+        });
+}
+
+function closeTaskReview() {
+    const modal = document.getElementById('taskReviewModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    document.getElementById('reviewPreviewFrame').src = '';
+    reviewTaskId = null;
+    document.body.style.overflow = 'hidden'; // the team modal underneath is still open
+}
+
+function showReviewError(msg) {
+    const el = document.getElementById('reviewError');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+function submitTaskFeedback(decision) {
+    if (!reviewTaskId) return;
+    const feedback = document.getElementById('reviewFeedback').value.trim();
+    if (decision === 'revise' && !feedback) {
+        showReviewError('Tell the student what to change before sending it back.');
+        return;
+    }
+    document.getElementById('reviewError').classList.add('hidden');
+
+    const approve = document.getElementById('reviewApproveBtn');
+    const revise = document.getElementById('reviewReviseBtn');
+    approve.disabled = true; revise.disabled = true;
+
+    fetch(TASK_FEEDBACK_URL.replace('__ID__', encodeURIComponent(reviewTaskId)), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
+        },
+        body: JSON.stringify({ decision: decision, feedback: feedback })
+    })
+        .then((res) => res.json().then((d) => { if (!res.ok) throw new Error(d.error || d.message || 'Could not save feedback.'); return d; }))
+        .then((d) => {
+            closeTaskReview();
+            Swal.fire({
+                icon: 'success',
+                title: decision === 'revise' ? 'Sent back for revision' : 'Task approved',
+                html: `<p class="text-sm text-slate-500">${d.message || 'The student has been notified.'}</p>`,
+                timer: 2200,
+                showConfirmButton: false,
+                iconColor: decision === 'revise' ? '#D97706' : '#059669',
+                customClass: { popup: 'rounded-2xl p-6 bg-white shadow-2xl', title: 'text-lg font-bold text-slate-800' },
+                buttonsStyling: false,
+            }).then(() => window.location.reload());
+        })
+        .catch((err) => {
+            approve.disabled = false; revise.disabled = false;
+            showReviewError(err.message || 'Could not save feedback.');
+        });
+}
+
+/* Team Details modal: Members & Roles / Team Task Activity */
+function switchTeamModalTab(tabId) {
+    const onMembers = tabId !== 'tasks';
+
+    document.getElementById('team-panel-members')?.classList.toggle('hidden', !onMembers);
+    document.getElementById('team-panel-tasks')?.classList.toggle('hidden', onMembers);
+
+    const membersBtn = document.getElementById('team-tab-members');
+    const tasksBtn = document.getElementById('team-tab-tasks');
+    const active = ['border-rose-500', 'text-rose-600'];
+    const idle = ['border-transparent', 'text-slate-400'];
+
+    if (membersBtn && tasksBtn) {
+        const on = onMembers ? membersBtn : tasksBtn;
+        const off = onMembers ? tasksBtn : membersBtn;
+        on.classList.add(...active);
+        on.classList.remove(...idle);
+        off.classList.add(...idle);
+        off.classList.remove(...active);
+    }
+}
 
 function switchCreateModalTab(tabId) {
     currentModalTab = tabId;
@@ -2034,6 +2301,10 @@ function selectDepartment(deptId) {
     const meta = DEPT_META[deptId];
     document.getElementById('selectedDeptTitle').textContent = meta ? meta.label + ' Tasks' : 'Select Tasks';
 
+    // Departments with no tasks show an empty state, so Select All has nothing to act on.
+    const hasTasks = !!(panel && panel.querySelector('.task-check'));
+    document.getElementById('selectAllTasksBtn')?.classList.toggle('hidden', !hasTasks);
+
     // Go to step 2
     goToStep(2);
     updateContinueBtn();
@@ -2069,10 +2340,14 @@ function updateReview() {
     const checked = selectedDept ? document.querySelectorAll('.task-checkbox-' + selectedDept + ':checked').length : 0;
     document.getElementById('reviewTaskCount').textContent = checked + ' task' + (checked !== 1 ? 's' : '');
 
-    // Due date
+    // Due date. datetime-local already carries the time, so parse it as-is
+    // rather than pinning midnight the way the date-only input needed.
     const dueDate = document.querySelector('input[name="due_date"]').value;
     document.getElementById('reviewDueDate').textContent = dueDate
-        ? new Date(dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        ? new Date(dueDate).toLocaleString('en-US', {
+              month: 'short', day: 'numeric', year: 'numeric',
+              hour: 'numeric', minute: '2-digit',
+          })
         : 'No deadline';
 }
 
@@ -2150,7 +2425,7 @@ function renderTeamModalActivityPage() {
     if (teamModalActivityPage < 1) teamModalActivityPage = 1;
 
     if (total === 0) {
-        activityBody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-slate-400">No activity logs for this team yet.</td></tr>';
+        activityBody.innerHTML = '<tr><td colspan="6" class="px-3 py-6 text-center text-xs text-slate-400">No activity logs for this team yet.</td></tr>';
         if (pager) pager.classList.add('hidden');
         if (meta) meta.textContent = '';
         return;
@@ -2166,14 +2441,46 @@ function renderTeamModalActivityPage() {
             ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Completed</span>'
             : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Assigned</span>';
 
+        // A task fans out one row per member, so the student tells identical titles apart.
+        const student = log.student_name
+            ? '<div class="flex items-center gap-1.5 min-w-0">' +
+                '<span class="w-5 h-5 rounded-full bg-rose-100 text-rose-600 text-[9px] font-bold flex items-center justify-center shrink-0">' +
+                    escHtml(String(log.student_name).charAt(0).toUpperCase()) +
+                '</span>' +
+                '<span class="text-[11px] font-semibold text-slate-700 truncate" title="' + escHtml(log.student_name) + '">' + escHtml(log.student_name) + '</span>' +
+              '</div>'
+            : '<span class="text-[10px] text-slate-300">Unassigned</span>';
+
+        // Only submitted work can be reviewed; nothing to look at before that.
+        // The action lives in its own button rather than on the row or the date,
+        // so it is obvious what is clickable and what is just information.
+        const reviewable = isDone && log.id;
+        const reviewCell = reviewable
+            ? '<button type="button" data-review-task="' + Number(log.id) + '"'
+                + ' title="Open this submission and leave feedback"'
+                + ' class="w-full inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition '
+                + (log.has_feedback
+                    ? 'bg-white text-brand border border-brand/30 hover:bg-brand-soft'
+                    : 'bg-brand text-white hover:opacity-90 shadow-sm shadow-brand/20') + '">'
+                + '<span class="iconify text-xs shrink-0" data-icon="mdi:file-document-edit-outline"></span>'
+                + (log.has_feedback ? 'Reviewed' : 'Review')
+              + '</button>'
+            : '<span class="block text-center text-[10px] font-semibold text-slate-300">Not submitted</span>';
+
         return '<tr class="hover:bg-slate-50 transition-colors">' +
             '<td class="px-3 py-2">' +
-                '<p class="text-xs font-semibold text-slate-800 truncate" title="' + escHtml(log.title) + '">' + escHtml(log.title || '—') + '</p>' +
+                '<p class="text-xs font-semibold text-slate-800 truncate" title="' + escHtml(log.title) + '">' +
+                    escHtml(log.title || '—') +
+                '</p>' +
                 (log.description ? '<p class="text-[10px] text-slate-400 truncate">' + escHtml(log.description) + '</p>' : '') +
             '</td>' +
+            '<td class="px-3 py-2">' + student + '</td>' +
             '<td class="px-3 py-2 text-[11px] font-semibold text-slate-600 whitespace-nowrap">' + escHtml(log.role_label || log.role || '—') + '</td>' +
             '<td class="px-3 py-2">' + statusBadge + '</td>' +
-            '<td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">' + escHtml(log.updated_at || '—') + '</td>' +
+            '<td class="px-3 py-2 text-[11px] whitespace-nowrap ' + (isDone ? 'text-slate-500' : 'text-slate-300') + '">' +
+                escHtml(isDone ? (log.submitted_at || log.updated_at || '—') : 'Not yet') +
+            '</td>' +
+            '<td class="px-3 py-2">' + reviewCell + '</td>' +
         '</tr>';
     }).join('');
 
@@ -2202,13 +2509,21 @@ function openTeamModal(groupName, members, createdAt, activityLogs) {
 
     const tbody = document.getElementById('teamModalMembersBody');
     if (members.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-6 text-center text-xs text-slate-400">No members found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-slate-400">No members found.</td></tr>';
     } else {
         tbody.innerHTML = members.map(function(m, i) {
             const roleLabels = m.role_labels || [m.role_label || m.role];
             const roleBadges = roleLabels.map(function(rl) {
                 return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">' + rl + '</span>';
             }).join(' ');
+            const activityBtn = m.user_id
+                ? '<button type="button" data-activity-user="' + Number(m.user_id) + '"' +
+                    ' data-activity-name="' + escHtml(m.name) + '"' +
+                    ' class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition"' +
+                    ' title="View this member\'s activity logs">' +
+                    '<span class="iconify text-xs" data-icon="mdi:clipboard-text-clock-outline"></span> Activity' +
+                  '</button>'
+                : '<span class="text-[10px] text-slate-300">—</span>';
             return '<tr class="hover:bg-slate-50 transition-colors">' +
                 '<td class="px-3 py-2 text-[11px] text-slate-400 font-medium">' + (i + 1) + '</td>' +
                 '<td class="px-3 py-2">' +
@@ -2222,16 +2537,86 @@ function openTeamModal(groupName, members, createdAt, activityLogs) {
                 '<td class="px-3 py-2">' +
                     '<div class="flex flex-wrap gap-1">' + roleBadges + '</div>' +
                 '</td>' +
+                '<td class="px-3 py-2 text-center">' + activityBtn + '</td>' +
             '</tr>';
         }).join('');
     }
+
+    closeMemberActivityPanel();
 
     teamModalActivityLogs = logs;
     teamModalActivityPage = 1;
     renderTeamModalActivityPage();
 
+    // Always open on Members so the modal never reappears on the other tab.
+    switchTeamModalTab('members');
+
     document.getElementById('teamInfoModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+}
+
+/* Centralized activity log — the server decides whether this faculty may read it. */
+const MEMBER_ACTIVITY_URL = @json(route('faculty.activity.user', ['user' => '__ID__']));
+
+function closeMemberActivityPanel() {
+    const panel = document.getElementById('memberActivityPanel');
+    if (panel) panel.classList.add('hidden');
+}
+
+/* Delegated: the buttons are rebuilt whenever the team modal opens, and an
+   inline onclick cannot carry a name containing quotes without breaking the
+   attribute it lives in. */
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest ? e.target.closest('[data-activity-user]') : null;
+    if (!btn) return;
+    viewMemberActivity(btn.getAttribute('data-activity-user'), btn.getAttribute('data-activity-name'));
+});
+
+function viewMemberActivity(userId, memberName) {
+    const panel = document.getElementById('memberActivityPanel');
+    const title = document.getElementById('memberActivityPanelTitle');
+    const body = document.getElementById('memberActivityPanelBody');
+    if (!panel || !body) return;
+
+    panel.classList.remove('hidden');
+    if (title) title.textContent = (memberName || 'Member') + ' — Activity Logs';
+    body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading activity…</div>';
+
+    fetch(MEMBER_ACTIVITY_URL.replace('__ID__', String(userId)), {
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
+        .then(function (res) {
+            return res.json().then(function (data) {
+                if (!res.ok) throw new Error(data.error || 'Could not load activity logs.');
+                return data;
+            });
+        })
+        .then(function (data) {
+            body.innerHTML = renderActivityRows(data.logs || []);
+        })
+        .catch(function (err) {
+            body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
+                + escHtml(err.message || 'Could not load activity logs.') + '</div>';
+        });
+}
+
+function renderActivityRows(logs) {
+    if (!logs.length) {
+        return '<div class="px-3 py-6 text-center text-xs text-slate-400">No recorded activity for this member yet.</div>';
+    }
+    return logs.map(function (log) {
+        return '<div class="px-3 py-2.5 flex items-start gap-2.5 hover:bg-slate-50/70 transition">' +
+            '<span class="mt-0.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10 whitespace-nowrap">' +
+                escHtml(log.activity_label || log.activity || '—') +
+            '</span>' +
+            '<div class="min-w-0 flex-1">' +
+                '<p class="text-xs text-slate-700">' + escHtml(log.description || '—') + '</p>' +
+                '<p class="text-[10px] text-slate-400 mt-0.5">' + escHtml(log.created_at || '') +
+                    (log.created_at_human ? ' · ' + escHtml(log.created_at_human) : '') + '</p>' +
+            '</div>' +
+        '</div>';
+    }).join('');
 }
 
 function closeTeamModal() {

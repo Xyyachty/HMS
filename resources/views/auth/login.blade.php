@@ -119,7 +119,7 @@
       color: #94A3B8;
       font-size: 14px;
     }
-
+      
     /* Decorative floating shapes */
     @keyframes floatA {
       0%, 100% { transform: translate(0, 0) rotate(0deg); }

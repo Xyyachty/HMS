@@ -1,0 +1,34 @@
+# Never bake secrets into the image — Render supplies these as environment variables.
+.env
+.env.*
+!.env.example
+
+# Rebuilt inside the container.
+vendor
+node_modules
+bootstrap/cache/*.php
+
+# Local state that must not ship.
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/app/public
+
+# Repository and tooling noise.
+.git
+.github
+.claude
+.agents
+.cursor-vid
+.cursor-vid2
+*.md
+tests
+
+# Migration artefacts: large SQL dumps and the archived pre-baseline migrations.
+database/*.sql
+database/migrations_legacy
+
+# Screenshots and scratch files.
+*.png
+*.jpg

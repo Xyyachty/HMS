@@ -63,19 +63,36 @@ return [
             ]) : [],
         ],
 
+        /*
+         * Supabase (PostgreSQL).
+         *
+         * Deliberately reads its own DB_PG_* keys rather than the shared DB_* ones,
+         * so this connection and the MySQL one can be configured at the same time.
+         * That is what lets the data export read the live MySQL while migrations run
+         * against Postgres via --database=pgsql. Falls back to DB_* if the specific
+         * keys are absent, so a plain Postgres setup still works unchanged.
+         */
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DATABASE_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'forge'),
-            'username' => env('DB_USERNAME', 'forge'),
-            'password' => env('DB_PASSWORD', ''),
+            'host' => env('DB_PG_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('DB_PG_PORT', env('DB_PORT', '5432')),
+            'database' => env('DB_PG_DATABASE', env('DB_DATABASE', 'postgres')),
+            // No 'postgres' default on purpose. Supabase's pooler identifies the
+            // project from the ".<project-ref>" suffix here, so a bare "postgres"
+            // is rejected with "no tenant identifier provided" — an error that
+            // points at the network rather than at the missing username.
+            'username' => env('DB_PG_USERNAME', env('DB_USERNAME')),
+            'password' => env('DB_PG_PASSWORD', env('DB_PASSWORD', '')),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'search_path' => 'public',
-            'sslmode' => 'prefer',
+            // Supabase installs extensions into the `extensions` schema; citext will
+            // not resolve at runtime unless the search path includes it.
+            'search_path' => env('DB_SEARCH_PATH', 'public'),
+            // 'prefer' silently accepts an unencrypted connection if offered.
+            'sslmode' => env('DB_SSLMODE', 'require'),
+            'sslrootcert' => env('DB_SSLROOTCERT'),
         ],
 
         'sqlsrv' => [

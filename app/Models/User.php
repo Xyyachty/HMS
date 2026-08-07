@@ -56,6 +56,27 @@ class User extends Authenticatable
     }
 
     /**
+     * Store emails lowercased. MySQL's utf8mb4_unicode_ci matched them
+     * case-insensitively for free; PostgreSQL does not, so "A@x.com" and
+     * "a@x.com" would otherwise become two accounts that both pass the unique
+     * index. hotel_customers already normalizes this way — see HotelSimulationAuth.
+     */
+    public function setEmailAttribute(?string $value): void
+    {
+        $this->attributes['email'] = strtolower(trim((string) $value));
+    }
+
+    /**
+     * Look a user up by email. Normalizes the needle the same way the mutator
+     * normalizes the stored value, so lookups keep working regardless of how the
+     * address was typed.
+     */
+    public function scopeWhereEmail($query, ?string $email)
+    {
+        return $query->where('email', strtolower(trim((string) $email)));
+    }
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var array<int, string>
@@ -80,7 +101,7 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): string
     {
         if (!empty($this->avatar)) {
-            return asset('storage/' . ltrim($this->avatar, '/'));
+            return \App\Support\HotelImageStore::url($this->avatar);
         }
 
         $label = trim(implode(' ', array_filter([

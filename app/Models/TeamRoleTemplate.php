@@ -10,6 +10,7 @@ class TeamRoleTemplate extends Model
     protected $fillable = [
         'group_name',
         'faculty_id',
+        'group_id',
         'role',
         'selected_template',
         'is_published',

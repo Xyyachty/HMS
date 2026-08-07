@@ -9,6 +9,7 @@ class HotelCustomer extends Model
     protected $fillable = [
         'group_name',
         'faculty_id',
+        'group_id',
         'name',
         'email',
         'password',

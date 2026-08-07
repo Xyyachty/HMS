@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\TeamRoleTemplateVersion;
 use App\Support\HotelTemplateBuilder;
+use App\Support\Notifier;
 use App\Support\StudentGroupSync;
 use Illuminate\Http\Request;
 
@@ -81,6 +83,25 @@ class HotelTemplateController extends Controller
             array_key_exists('snapshot', $data) ? (bool) $data['snapshot'] : true,
             $data['label'] ?? null
         );
+
+        // Explicit saves are important work; autosave is deliberately not logged.
+        ActivityLog::record(
+            $user,
+            ActivityLog::WEBSITE_CUSTOMIZED,
+            'Saved website customizations for the ' . $role . ' module'
+                . (($data['publish'] ?? false) ? ' and published them to the team.' : '.')
+        );
+
+        // Only publishing is worth telling faculty about — autosave and draft saves
+        // fire constantly and would bury the feed.
+        if ($data['publish'] ?? false) {
+            Notifier::sitePublished(
+                $user,
+                (string) $membership->group_name,
+                (int) $membership->faculty_id,
+                HotelTemplateBuilder::ROLES[$role] ?? $role
+            );
+        }
 
         return response()->json([
             'success' => true,
@@ -160,6 +181,12 @@ class HotelTemplateController extends Controller
         $template = HotelTemplateBuilder::ensureTemplate($membership, $role);
         $restored = HotelTemplateBuilder::restoreVersion($template, $version, $user);
 
+        ActivityLog::record(
+            $user,
+            ActivityLog::TEMPLATE_RESTORED,
+            'Restored version ' . $version . ' of the ' . $role . ' website template.'
+        );
+
         return response()->json([
             'success' => true,
             'template' => HotelTemplateBuilder::payload($restored, true),
@@ -236,11 +263,12 @@ class HotelTemplateController extends Controller
             return response()->json(['error' => 'Student is not on that team'], 422);
         }
 
-        // Dummy membership object for grant helpers (needs faculty_id + group_name)
+        // Dummy membership object for grant helpers (needs faculty_id + group_name + group_id)
         $ctx = new StudentGroup([
             'faculty_id' => $faculty->id,
             'group_name' => $data['group_name'],
             'student_id' => $student->id,
+            'group_id' => $membership->group_id,
         ]);
 
         if ($data['grant']) {
@@ -248,6 +276,13 @@ class HotelTemplateController extends Controller
         } else {
             HotelTemplateBuilder::revokeEdit($ctx, $student, $data['role']);
         }
+
+        ActivityLog::record(
+            $request->user(),
+            ActivityLog::PERMISSION_GRANTED,
+            ($data['grant'] ? 'Granted' : 'Revoked') . ' ' . $data['role']
+                . ' edit access for a member of team "' . $data['group_name'] . '".'
+        );
 
         return response()->json(['success' => true]);
     }

@@ -253,25 +253,14 @@
 
                 <!-- Right side actions -->
                 <div class="flex items-center gap-2">
-                    <!-- Notification -->
-                    <button class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
-                        <span class="iconify text-xl text-slate-400" data-icon="mdi:bell-outline"></span>
-                        @if(!empty($studentRoles) && $myRoleTasks->count() > 0)
-                            <span class="absolute top-2 right-2 w-2 h-2 bg-brand rounded-full pulse-dot"></span>
-                        @endif
-                    </button>
-
-                    <!-- Date -->
-                    <div class="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
-                        <span class="iconify text-sm text-slate-400" data-icon="mdi:calendar-today"></span>
-                        <span class="text-xs font-semibold text-slate-500">{{ now()->format('M d, Y') }}</span>
-                    </div>
+                    @include('partials.datetime-clock')
+                    @include('partials.notification-bell')
                 </div>
             </div>
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto">
+        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#F5F5F5">
             @php
                 $getMemberValue = function ($member, $field, $fallback = '') {
                     if (is_array($member)) return $member[$field] ?? $fallback;
@@ -418,7 +407,7 @@
 
             <!-- ==================== GROUP SECTION ==================== -->
             <div id="group-section" class="section-content hidden fade-in space-y-3">
-                <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">My Group</h2>
+                <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">My Team</h2>
 
                 <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                     <div class="brand-gradient px-4 sm:px-5 py-4">
@@ -505,15 +494,13 @@
                                         <div class="w-2 h-2 rounded-full member-online-dot {{ $isCurrentUser ? 'bg-emerald-400 pulse-dot' : 'bg-slate-200' }}"></div>
                                         <span class="text-[11px] member-online-label {{ $isCurrentUser ? 'text-emerald-600 font-semibold' : 'text-slate-400' }}">{{ $isCurrentUser ? 'Online' : 'Offline' }}</span>
                                     </div>
-                                    @if(!$isCurrentUser)
+                                    {{-- Teammates only; own history lives in the Activity Logs nav section. --}}
+                                    @php $memberUserId = $getMemberValue($member, 'id'); @endphp
+                                    @if(!$isCurrentUser && $memberUserId)
                                         <button type="button"
-                                            data-user-id="{{ $getMemberValue($member, 'id') }}"
-                                            data-student-id="{{ $getMemberValue($member, 'student_id') }}"
-                                            data-name="{{ e($memberName) }}"
-                                            data-roles="{{ e(json_encode(array_values($mRoles))) }}"
-                                            onclick="viewMemberActivityFromBtn(this)"
-                                            class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition"
-                                            title="View activity logs">
+                                            onclick="openMemberActivityModal({{ (int) $memberUserId }}, {{ json_encode($memberName) }})"
+                                            class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-brand transition"
+                                            title="View {{ $memberName }}'s activity logs">
                                             <span class="iconify text-sm" data-icon="mdi:clipboard-text-clock-outline"></span>
                                             <span class="hidden md:inline">Activity</span>
                                         </button>
@@ -536,17 +523,8 @@
             <!-- ==================== TASKS SECTION ==================== -->
             <div id="tasks-section" class="section-content hidden fade-in space-y-4">
                 @php
-                    $templateRouteByRole = [
-                        'front_desk' => 'students.frontdesk',
-                        'room_management' => 'students.roommanagement',
-                        'restaurant_management' => 'students.restaurant',
-                        'maintenance' => 'students.maintenance',
-                        'housekeeping' => 'students.housekeeping',
-                    ];
-                    $templateRole = collect($studentRoles ?? [])->first(
-                        fn ($role) => isset($templateRouteByRole[$role])
-                    );
-                    $templateRoute = $templateRole ? $templateRouteByRole[$templateRole] : null;
+                    // One entry per assigned role — a member may hold more than one.
+                    $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
                 @endphp
                 <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                     <div>
@@ -555,13 +533,13 @@
                     </div>
                     @if(!empty($studentRoles))
                         <div class="flex flex-wrap items-center gap-3">
-                            @if($templateRoute)
-                                <a href="{{ route($templateRoute) }}"
+                            @foreach($myModules as $module)
+                                <a href="{{ route($module['route']) }}"
                                    class="inline-flex items-center gap-2 px-4 py-2 brand-gradient text-white text-xs font-bold rounded-xl shadow-lg shadow-brand/20 hover:opacity-90 transition-opacity">
                                     <span class="iconify text-base" data-icon="mdi:palette-outline"></span>
-                                    Customize
+                                    {{ count($myModules) > 1 ? 'Customize ' . $module['label'] : 'Customize' }}
                                 </a>
-                            @endif
+                            @endforeach
                             <div class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-lg">
                                 <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
                                 <span class="text-xs font-bold text-emerald-700">{{ $myCompletedTasks->count() }} completed</span>
@@ -584,9 +562,23 @@
                                 @foreach($myRoleTasks as $task)
                                     @php
                                         $isOverdue = $task->due_date && $task->due_date->isPast();
+                                        // Rows are per member; only offer submit on this student's own
+                                        // row (or an unclaimed one). Task::booted() keeps assigned_to
+                                        // in sync with student_id, so the user id is enough here.
+                                        $isMine = !$task->assigned_to || (int) $task->assigned_to === (int) auth()->id();
                                     @endphp
                                     <div class="task-row px-4 py-3 flex items-start gap-3">
-                                        <div class="mt-1.5 w-3 h-3 rounded-full border-2 border-slate-200 shrink-0 hover:border-brand hover:bg-brand-soft cursor-pointer transition-colors"></div>
+                                        @if($isMine)
+                                            <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0 mt-1.5 leading-none">
+                                                @csrf
+                                                <button type="submit"
+                                                    class="w-3 h-3 rounded-full border-2 border-slate-200 hover:border-brand hover:bg-brand-soft cursor-pointer transition-colors"
+                                                    title="Mark &quot;{{ $task->title }}&quot; as done"
+                                                    aria-label="Mark {{ $task->title }} as done"></button>
+                                            </form>
+                                        @else
+                                            <div class="mt-1.5 w-3 h-3 rounded-full border-2 border-slate-100 shrink-0" title="Assigned to a teammate"></div>
+                                        @endif
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center gap-2 flex-wrap">
                                                 <p class="text-sm font-bold text-slate-800">{{ $task->title }}</p>
@@ -594,15 +586,44 @@
                                             @if($task->description)
                                                 <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">{{ $task->description }}</p>
                                             @endif
+                                            @if($task->needs_revision)
+                                                {{-- Sent back by faculty: active again, but carrying feedback. --}}
+                                                <div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                                    <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
+                                                        <span class="iconify text-xs" data-icon="mdi:message-alert-outline"></span>
+                                                        Faculty feedback{{ $task->revision_count > 1 ? ' · revision ' . $task->revision_count : '' }}
+                                                    </p>
+                                                    <p class="text-xs text-amber-800 mt-1 whitespace-pre-line">{{ $task->feedback }}</p>
+                                                    @if($task->feedback_at)
+                                                        <p class="text-[10px] text-amber-600 mt-1">{{ $task->feedback_at->diffForHumans() }}</p>
+                                                    @endif
+                                                </div>
+                                            @endif
                                             @if($task->due_date)
                                                 <div class="flex items-center gap-3 mt-3">
                                                     <span class="flex items-center gap-1 text-[11px] {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400' }}">
                                                         <span class="iconify text-xs" data-icon="mdi:calendar-outline"></span>
-                                                        {{ $task->due_date->format('M d, Y') }}
+                                                        {{ $task->due_date->format('M d, Y g:i A') }}
                                                     </span>
                                                 </div>
                                             @endif
                                         </div>
+                                        @if($isMine)
+                                            {{-- The real affordance; the circle above is too small to be the only target. --}}
+                                            <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0">
+                                                @csrf
+                                                <button type="submit"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition
+                                                        {{ $task->needs_revision
+                                                            ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100'
+                                                            : 'text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10' }}">
+                                                    <span class="iconify text-sm" data-icon="{{ $task->needs_revision ? 'mdi:send-outline' : 'mdi:check-circle-outline' }}"></span>
+                                                    {{ $task->needs_revision ? 'Resubmit' : 'Mark as done' }}
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="shrink-0 text-[10px] font-semibold text-slate-300 whitespace-nowrap">Teammate's task</span>
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>
@@ -632,7 +653,7 @@
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-semibold text-slate-500 line-through">{{ $task->title }}</p>
                                             @if($task->due_date)
-                                                <p class="text-[11px] text-slate-300 mt-1">{{ $task->due_date->format('M d, Y') }}</p>
+                                                <p class="text-[11px] text-slate-300 mt-1">{{ $task->due_date->format('M d, Y g:i A') }}</p>
                                             @endif
                                         </div>
                                         <span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Done</span>
@@ -666,12 +687,41 @@
 
                 <div>
                     <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Activity Logs</h2>
-                    <p class="text-sm text-slate-400">Your personal task activity history only.</p>
+                    <p class="text-sm text-slate-400">Your own recorded activity only — teammates' logs are not shown here.</p>
+                </div>
+
+                {{-- Centralized activity_logs: the same table the faculty and dean portals read. --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">My Activity</p>
+                        <span class="text-[11px] font-semibold text-slate-400">{{ ($myActivityLogs ?? collect())->count() }} entries</span>
+                    </div>
+                    <div class="divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
+                        @forelse(($myActivityLogs ?? collect()) as $log)
+                            <div class="px-5 py-3.5 flex items-start gap-3 hover:bg-slate-50/70 transition">
+                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-brand-soft text-brand">
+                                    <span class="iconify text-lg" data-icon="mdi:clipboard-text-clock-outline"></span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-bold text-slate-800">{{ $log['activity_label'] ?? $log['activity'] ?? '—' }}</p>
+                                    <p class="text-xs text-slate-500 mt-0.5">{{ $log['description'] ?: '—' }}</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">
+                                        {{ $log['created_at'] }}{{ $log['created_at_human'] ? ' · ' . $log['created_at_human'] : '' }}
+                                    </p>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="px-5 py-12 text-center">
+                                <p class="text-sm font-semibold text-slate-400">No activity recorded yet</p>
+                                <p class="text-xs text-slate-300 mt-1">Logins, task submissions and saved work will appear here.</p>
+                            </div>
+                        @endforelse
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                     <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
-                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">My Activity</p>
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">My Tasks</p>
                         <span class="text-[11px] font-semibold text-slate-400">{{ ($selfActivityLogs ?? collect())->count() }} entries</span>
                     </div>
                     <div class="divide-y divide-slate-50 max-h-[560px] overflow-y-auto">
@@ -893,30 +943,7 @@
         </div>
     </div>
 
-    @php
-        $teamActivityLogsPayload = ($teamActivityLogs ?? collect())->map(function ($task) {
-            return [
-                'title' => $task->title,
-                'status' => $task->status,
-                'role' => (string) ($task->role ?? ''),
-                'assigned_to' => $task->assigned_to ? (string) $task->assigned_to : '',
-                'student_user_id' => $task->student?->user_id ? (string) $task->student->user_id : '',
-                'updated_at' => optional($task->updated_at)->diffForHumans(),
-            ];
-        })->values();
-    @endphp
-
     <script>
-        const memberActivityRoleLabels = {
-            front_desk: 'Front Desk',
-            restaurant_management: 'Restaurant',
-            room_management: 'Room Mgmt',
-            maintenance: 'Maintenance',
-            housekeeping: 'Housekeeping',
-        };
-
-        const teamActivityLogsData = @json($teamActivityLogsPayload);
-
         // ── Section switching ──
         function showSection(section) {
             document.querySelectorAll('.section-content').forEach(el => el.classList.add('hidden'));
@@ -951,70 +978,70 @@
             } catch (e) { /* ignore */ }
         }
 
-        function viewMemberActivityFromBtn(btn) {
-            if (!btn) return;
-            let roles = [];
-            try {
-                roles = JSON.parse(btn.getAttribute('data-roles') || '[]');
-            } catch (e) {
-                roles = [];
-            }
-            openMemberActivityModal({
-                user_id: btn.getAttribute('data-user-id') || '',
-                student_id: btn.getAttribute('data-student-id') || '',
-                name: btn.getAttribute('data-name') || 'Team member',
-                roles: Array.isArray(roles) ? roles : [],
-            });
+        /* Teammate activity — reads the centralized activity_logs table. The endpoint
+           is gated server-side by ActivityLogAccess, which only allows members of the
+           same group. The student's own history is rendered in the Activity Logs section. */
+        const MEMBER_ACTIVITY_URL = @json(route('students.activity.user', ['user' => '__USER_ID__']));
+
+        function openMemberActivityModal(userId, memberName) {
+            loadActivityModal(
+                MEMBER_ACTIVITY_URL.replace('__USER_ID__', encodeURIComponent(userId)),
+                (memberName || 'Member') + ' — Activity Logs',
+                'Recorded system activity for this group member'
+            );
         }
 
-        function openMemberActivityModal(member) {
-            if (!member) return;
-
-            const roles = Array.isArray(member.roles) ? member.roles.map(String) : [];
-            const userId = member.user_id != null ? String(member.user_id) : '';
-            const roleLabels = roles.map((r) => memberActivityRoleLabels[r] || r).filter(Boolean);
-
-            document.getElementById('memberActivityModalTitle').textContent = (member.name || 'Team member') + ' · Activity Logs';
-            document.getElementById('memberActivityModalSubtitle').textContent = roleLabels.length
-                ? roleLabels.join(', ')
-                : 'Team member activity';
-
-            const filtered = (teamActivityLogsData || []).filter((task) => {
-                const role = String(task.role || '');
-                const assignedTo = String(task.assigned_to || '');
-                const studentUserId = String(task.student_user_id || '');
-                return (userId !== '' && (assignedTo === userId || studentUserId === userId))
-                    || (roles.length > 0 && roles.includes(role));
-            });
-
+        function loadActivityModal(url, title, subtitle) {
             const body = document.getElementById('memberActivityModalBody');
-            body.innerHTML = filtered.length
-                ? filtered.map((task) => {
-                    const done = task.status === 'archived';
-                    const roleLabel = memberActivityRoleLabels[task.role] || task.role || '—';
-                    return `
-                        <div class="px-5 py-3.5 flex items-start gap-3">
-                            <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${done ? 'bg-emerald-50 text-emerald-500' : 'bg-blue-50 text-blue-500'}">
-                                <span class="iconify text-lg" data-icon="${done ? 'mdi:check-circle-outline' : 'mdi:clipboard-plus-outline'}"></span>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-sm font-bold text-slate-800 truncate">${escapeMemberHtml((done ? 'Completed' : 'Assigned') + ': ' + (task.title || '—'))}</p>
-                                <p class="text-xs text-slate-400 mt-0.5">${escapeMemberHtml(roleLabel)} · ${escapeMemberHtml(task.updated_at || '—')}</p>
-                            </div>
-                        </div>
-                    `;
-                }).join('')
-                : `<div class="px-5 py-12 text-center">
-                        <p class="text-sm font-semibold text-slate-400">No activity for this member</p>
-                        <p class="text-xs text-slate-300 mt-1">Assigned or completed tasks for their role will show here.</p>
-                   </div>`;
+            if (!body) return;
 
-            if (window.Iconify && typeof window.Iconify.scan === 'function') {
-                window.Iconify.scan(body);
-            }
+            document.getElementById('memberActivityModalTitle').textContent = title;
+            document.getElementById('memberActivityModalSubtitle').textContent = subtitle;
+            body.innerHTML = '<div class="px-5 py-12 text-center"><p class="text-sm font-semibold text-slate-400">Loading activity…</p></div>';
 
             document.getElementById('memberActivityModal').classList.remove('hidden');
             document.body.style.overflow = 'hidden';
+
+            fetch(url, {
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then((res) => res.json().then((data) => {
+                    if (!res.ok) throw new Error(data.error || 'Could not load this activity.');
+                    return data;
+                }))
+                .then((data) => {
+                    body.innerHTML = renderMyActivityRows(data.logs || []);
+                    if (window.Iconify && typeof window.Iconify.scan === 'function') {
+                        window.Iconify.scan(body);
+                    }
+                })
+                .catch((err) => {
+                    body.innerHTML = `<div class="px-5 py-12 text-center">
+                            <p class="text-sm font-semibold text-rose-500">${escapeMemberHtml(err.message || 'Could not load this activity.')}</p>
+                       </div>`;
+                });
+        }
+
+        function renderMyActivityRows(logs) {
+            if (!logs.length) {
+                return `<div class="px-5 py-12 text-center">
+                            <p class="text-sm font-semibold text-slate-400">No activity recorded yet</p>
+                            <p class="text-xs text-slate-300 mt-1">Logins, task submissions and saved work will show here.</p>
+                       </div>`;
+            }
+            return logs.map((log) => `
+                <div class="px-5 py-3.5 flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-brand-soft text-brand">
+                        <span class="iconify text-lg" data-icon="mdi:clipboard-text-clock-outline"></span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-bold text-slate-800">${escapeMemberHtml(log.activity_label || log.activity || '—')}</p>
+                        <p class="text-xs text-slate-500 mt-0.5">${escapeMemberHtml(log.description || '—')}</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">${escapeMemberHtml(log.created_at || '')}${log.created_at_human ? ' · ' + escapeMemberHtml(log.created_at_human) : ''}</p>
+                    </div>
+                </div>
+            `).join('');
         }
 
         function closeMemberActivityModal() {

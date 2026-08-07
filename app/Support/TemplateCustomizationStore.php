@@ -135,16 +135,71 @@ class TemplateCustomizationStore
         ])->values()->all();
     }
 
+    /**
+     * Rows waiting to be inserted, keyed by model class. Filled by queue() and sent as
+     * multi-row INSERTs by flushQueued(). Every statement here is a network round-trip
+     * to Supabase, so one INSERT of 200 rows beats 200 INSERTs by two orders of
+     * magnitude — inserting row by row is what made a save take seconds.
+     *
+     * Only rows nothing else refers to are queued. TemplateContentItem is still written
+     * one at a time because its id is needed immediately for child rows.
+     *
+     * @var array<class-string, list<array<string, mixed>>>
+     */
+    private static array $queued = [];
+
     public static function write(TeamRoleTemplate $template, array $customizations, array $layout, ?int $versionId = null): void
     {
         $templateId = (int) $template->id;
         $versionId = self::normalizeVersionId($versionId);
 
-        DB::transaction(function () use ($templateId, $customizations, $layout, $versionId) {
-            self::clear($templateId, $versionId);
-            self::writeLayout($templateId, $layout, $versionId);
-            self::writeCustomizations($templateId, $customizations, $versionId);
-        });
+        try {
+            DB::transaction(function () use ($templateId, $customizations, $layout, $versionId) {
+                self::clear($templateId, $versionId);
+                self::writeLayout($templateId, $layout, $versionId);
+                self::writeCustomizations($templateId, $customizations, $versionId);
+                self::flushQueued();
+            });
+        } finally {
+            // A failed transaction must not leak rows into the next write.
+            self::$queued = [];
+        }
+    }
+
+    /** Hold a row back for a batched insert. */
+    private static function queue(string $modelClass, array $row): void
+    {
+        self::$queued[$modelClass][] = $row;
+    }
+
+    private static function flushQueued(): void
+    {
+        $now = now();
+
+        foreach (self::$queued as $modelClass => $rows) {
+            $usesTimestamps = (new $modelClass)->usesTimestamps();
+
+            // Element rows are built from whatever properties the student actually set,
+            // so their column sets differ. Grouping by column signature keeps each
+            // INSERT well-formed and lets omitted columns take their schema default —
+            // padding with NULL instead would violate the NOT NULL boolean columns.
+            $groups = [];
+            foreach ($rows as $row) {
+                if ($usesTimestamps) {
+                    $row['created_at'] ??= $now;
+                    $row['updated_at'] ??= $now;
+                }
+                $groups[implode('|', array_keys($row))][] = $row;
+            }
+
+            foreach ($groups as $group) {
+                foreach (array_chunk($group, 200) as $chunk) {
+                    $modelClass::insert($chunk);
+                }
+            }
+        }
+
+        self::$queued = [];
     }
 
     public static function snapshotToVersion(TeamRoleTemplate $template, int $versionId): void
@@ -200,17 +255,15 @@ class TemplateCustomizationStore
     {
         $versionId = self::normalizeVersionId($versionId);
 
-        $itemQuery = TemplateContentItem::query()
+        // Deleting the content items is enough: template_content_fields.content_item_id
+        // and template_content_items.parent_id are both ON DELETE CASCADE, so the
+        // database removes the fields and the nested children itself. Doing it by hand
+        // cost three extra round-trips (a SELECT for the ids, a fields DELETE and a
+        // children DELETE) on every single save.
+        TemplateContentItem::query()
             ->where('team_role_template_id', $templateId)
-            ->where('version_id', $versionId);
-
-        $itemIds = (clone $itemQuery)->pluck('id');
-        if ($itemIds->isNotEmpty()) {
-            TemplateContentField::whereIn('content_item_id', $itemIds)->delete();
-        }
-        // children first
-        (clone $itemQuery)->whereNotNull('parent_id')->delete();
-        $itemQuery->delete();
+            ->where('version_id', $versionId)
+            ->delete();
 
         TemplateElement::query()
             ->where('team_role_template_id', $templateId)
@@ -245,7 +298,7 @@ class TemplateCustomizationStore
             if (!is_array($section)) {
                 continue;
             }
-            TemplateLayout::create([
+            self::queue(TemplateLayout::class, [
                 'team_role_template_id' => $templateId,
                 'version_id' => $versionId,
                 'sort_order' => $index,
@@ -265,7 +318,7 @@ class TemplateCustomizationStore
             }
 
             if (!is_array($value)) {
-                TemplateElement::create([
+                self::queue(TemplateElement::class, [
                     'team_role_template_id' => $templateId,
                     'version_id' => $versionId,
                     'element_key' => (string) $key,
@@ -301,7 +354,7 @@ class TemplateCustomizationStore
                 $row[$col] = self::scalarize($propValue);
             }
 
-            TemplateElement::create($row);
+            self::queue(TemplateElement::class, $row);
         }
     }
 
@@ -356,14 +409,14 @@ class TemplateCustomizationStore
                         if (is_array($fieldValue)) {
                             continue;
                         }
-                        TemplateContentField::create([
+                        self::queue(TemplateContentField::class, [
                             'content_item_id' => $item->id,
                             'field_name' => (string) $field,
                             'field_value' => self::scalarize($fieldValue),
                         ]);
                     }
                 } elseif (is_string($deleted)) {
-                    TemplateContentField::create([
+                    self::queue(TemplateContentField::class, [
                         'content_item_id' => $item->id,
                         'field_name' => 'id',
                         'field_value' => $deleted,
@@ -396,7 +449,7 @@ class TemplateCustomizationStore
                         if ($path) {
                             $fieldValue = $path;
                             if ($field !== 'img') {
-                                TemplateImage::create([
+                                self::queue(TemplateImage::class, [
                                     'team_role_template_id' => $templateId,
                                     'version_id' => $versionId,
                                     'element_key' => 'userElement:' . ($el['id'] ?? $i),
@@ -406,7 +459,7 @@ class TemplateCustomizationStore
                             }
                         }
                     }
-                    TemplateContentField::create([
+                    self::queue(TemplateContentField::class, [
                         'content_item_id' => $item->id,
                         'field_name' => (string) $field,
                         'field_value' => self::scalarize($fieldValue),
@@ -459,7 +512,7 @@ class TemplateCustomizationStore
                                     if (is_array($av)) {
                                         continue;
                                     }
-                                    TemplateContentField::create([
+                                    self::queue(TemplateContentField::class, [
                                         'content_item_id' => $amenityItem->id,
                                         'field_name' => (string) $af,
                                         'field_value' => self::scalarize($av),
@@ -476,7 +529,7 @@ class TemplateCustomizationStore
                             $path = self::persistImageValue($scalar, $templateId);
                             if ($path) {
                                 $scalar = $path;
-                                TemplateImage::create([
+                                self::queue(TemplateImage::class, [
                                     'team_role_template_id' => $templateId,
                                     'version_id' => $versionId,
                                     'element_key' => $collection . ':' . ($itemData['id'] ?? $i),
@@ -485,7 +538,7 @@ class TemplateCustomizationStore
                                 ]);
                             }
                         }
-                        TemplateContentField::create([
+                        self::queue(TemplateContentField::class, [
                             'content_item_id' => $item->id,
                             'field_name' => (string) $itemField,
                             'field_value' => $scalar,
@@ -495,11 +548,43 @@ class TemplateCustomizationStore
                 continue;
             }
 
+            // Keyed maps (e.g. __cardImages: {map: {"brand:logo": url}}) are a
+            // flat key => url dictionary rather than an ordered items list.
+            // Without this they were dropped here and never persisted at all.
+            if ($field === 'map' && is_array($fieldValue)) {
+                $index = 0;
+                foreach ($fieldValue as $mapKey => $mapValue) {
+                    if (is_array($mapValue)) {
+                        continue;
+                    }
+                    $scalar = self::scalarize($mapValue);
+                    if ($scalar !== '') {
+                        $stored = self::persistImageValue($scalar, $templateId);
+                        if ($stored) {
+                            $scalar = $stored;
+                        }
+                    }
+                    $mapItem = TemplateContentItem::create([
+                        'team_role_template_id' => $templateId,
+                        'version_id' => $versionId,
+                        'collection' => $collection . '_map',
+                        'sort_order' => $index++,
+                        'item_ref' => (string) $mapKey,
+                    ]);
+                    self::queue(TemplateContentField::class, [
+                        'content_item_id' => $mapItem->id,
+                        'field_name' => 'value',
+                        'field_value' => $scalar,
+                    ]);
+                }
+                continue;
+            }
+
             if (is_array($fieldValue)) {
                 continue;
             }
 
-            TemplateContentField::create([
+            self::queue(TemplateContentField::class, [
                 'content_item_id' => $meta->id,
                 'field_name' => (string) $field,
                 'field_value' => self::scalarize($fieldValue),
@@ -571,8 +656,25 @@ class TemplateCustomizationStore
                 }
                 $list[] = $row;
             }
-            if ($list !== [] || $payload !== []) {
+            // Rebuild keyed maps written by the 'map' branch above.
+            $map = [];
+            foreach ($byCollection->get($collection . '_map', collect()) as $mapItem) {
+                $ref = $mapItem->item_ref;
+                if ($ref === null || $ref === '') {
+                    continue;
+                }
+                $fields = self::fieldsMap($mapItem);
+                $value = (string) ($fields['value'] ?? '');
+                if ($value !== '') {
+                    $map[(string) $ref] = self::publicUrlIfNeeded($value);
+                }
+            }
+
+            if ($list !== [] || $payload !== [] || $map !== []) {
                 $payload['items'] = $list;
+                if ($map !== []) {
+                    $payload['map'] = $map;
+                }
                 $out[$jsonKey] = $payload;
             }
         }
@@ -620,7 +722,7 @@ class TemplateCustomizationStore
                 return null;
             }
             $path = 'hotel-media/templates/' . $templateId . '/' . Str::uuid() . '.' . $ext;
-            Storage::disk('public')->put($path, $binary);
+            Storage::disk(HotelImageStore::disk())->put($path, $binary);
 
             return $path;
         }
@@ -646,7 +748,7 @@ class TemplateCustomizationStore
         }
         // Relative storage path
         if (!str_contains($path, '://')) {
-            return asset('storage/' . ltrim($path, '/'));
+            return Storage::disk(HotelImageStore::disk())->url(ltrim($path, '/'));
         }
 
         return $path;

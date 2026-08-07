@@ -24,6 +24,38 @@
                 </div>
             @endforeach
         </div>
+
+        @if(in_array($builderRole ?? null, ['front_desk', 'room_management', 'restaurant_management'], true))
+        <div class="mt-5 pt-4 border-t border-zinc-800">
+            <p class="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2.5">Staff Tools</p>
+            <div class="space-y-1.5">
+                @if(($builderRole ?? null) === 'front_desk')
+                <a href="{{ route('students.frontdesk.verify-guest') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border border-zinc-700 hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5">
+                    <i class="fas fa-user-check text-[13px] text-emerald-400"></i> Verify Guest
+                </a>
+                @elseif(($builderRole ?? null) === 'room_management')
+                <a href="{{ route('students.roommanagement.manage', ['nav' => 'manage-room']) }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.manage') && request()->query('nav', 'manage-room') === 'manage-room' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-bed text-[13px] text-emerald-400"></i> Manage Room
+                </a>
+                <a href="{{ route('students.roommanagement.manage', ['nav' => 'guest-details']) }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.manage') && request()->query('nav') === 'guest-details' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-user text-[13px] text-emerald-400"></i> Guest Details
+                </a>
+                @elseif(($builderRole ?? null) === 'restaurant_management')
+                <a href="{{ route('students.restaurant.manage') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border border-zinc-700 hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5">
+                    <i class="fas fa-screwdriver-wrench text-[13px] text-emerald-400"></i> Restaurant Management
+                </a>
+                @endif
+            </div>
+        </div>
+        @endif
     </div>
 
     <div class="px-5 py-4 border-t border-zinc-800 shrink-0 bg-zinc-950/80">

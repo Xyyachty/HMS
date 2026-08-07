@@ -9,6 +9,7 @@ class TeamTemplateEditGrant extends Model
     protected $fillable = [
         'faculty_id',
         'group_name',
+        'group_id',
         'student_id',
         'role',
         'granted_by',
