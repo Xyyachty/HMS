@@ -187,13 +187,14 @@
                 </div>
 
                 <div class="flex items-center gap-3 md:gap-5">
+                    @include('partials.datetime-clock')
                     @include('partials.notification-bell')
                 </div>
             </header>
 
 
             <!-- ==================== PAGE CONTENT ==================== -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-6">
+            <main class="flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#F5F5F5">
                 @yield('content')
             </main>
         </div>

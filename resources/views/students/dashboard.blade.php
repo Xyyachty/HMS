@@ -253,19 +253,14 @@
 
                 <!-- Right side actions -->
                 <div class="flex items-center gap-2">
+                    @include('partials.datetime-clock')
                     @include('partials.notification-bell')
-
-                    <!-- Date -->
-                    <div class="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
-                        <span class="iconify text-sm text-slate-400" data-icon="mdi:calendar-today"></span>
-                        <span class="text-xs font-semibold text-slate-500">{{ now()->format('M d, Y') }}</span>
-                    </div>
                 </div>
             </div>
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto">
+        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#F5F5F5">
             @php
                 $getMemberValue = function ($member, $field, $fallback = '') {
                     if (is_array($member)) return $member[$field] ?? $fallback;
