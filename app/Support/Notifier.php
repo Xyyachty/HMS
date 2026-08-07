@@ -314,14 +314,44 @@ class Notifier
     /** Faculty approved a submission or sent it back with feedback. */
     public static function taskFeedback(?User $actor, Task $task, bool $revise): void
     {
+        // Submitting fills assigned_to, but rows created before that still carry
+        // only student_id. Falling back keeps the verdict from going nowhere.
+        $recipient = $task->assigned_to
+            ?: ($task->student_id ? Student::whereKey($task->student_id)->value('user_id') : null);
+
         static::push(
-            array_filter([$task->assigned_to]),
+            array_filter([$recipient]),
             UserNotification::TASK_FEEDBACK,
             $revise ? 'Changes requested on your task' : 'Your task was approved',
             $revise
                 ? 'Feedback on "' . $task->title . '": ' . (string) $task->feedback
                 : '"' . $task->title . '" was approved by your faculty.',
             route('students.dashboard'),
+            $actor
+        );
+    }
+
+    /**
+     * A team published their hotel site. Faculty owns the review, so they are the
+     * audience — and unlike everything else in their feed this is student-initiated,
+     * which is the point: a faculty member is dropped from their own actions, so
+     * without inbound events like this and taskSubmitted their bell stays empty.
+     */
+    public static function sitePublished(
+        ?User $actor,
+        string $groupName,
+        int $facultyId,
+        ?string $roleLabel = null
+    ): void {
+        $who = $actor?->name ?: 'A student';
+        $where = $roleLabel ? ' (' . $roleLabel . ')' : '';
+
+        static::push(
+            array_filter([static::facultyUserId($facultyId)]),
+            UserNotification::SITE_PUBLISHED,
+            'Team ' . $groupName . ' published their site',
+            $who . ' published team "' . $groupName . '" hotel website' . $where . '.',
+            route('faculty.role'),
             $actor
         );
     }

@@ -7,6 +7,7 @@ use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\TeamRoleTemplateVersion;
 use App\Support\HotelTemplateBuilder;
+use App\Support\Notifier;
 use App\Support\StudentGroupSync;
 use Illuminate\Http\Request;
 
@@ -90,6 +91,17 @@ class HotelTemplateController extends Controller
             'Saved website customizations for the ' . $role . ' module'
                 . (($data['publish'] ?? false) ? ' and published them to the team.' : '.')
         );
+
+        // Only publishing is worth telling faculty about — autosave and draft saves
+        // fire constantly and would bury the feed.
+        if ($data['publish'] ?? false) {
+            Notifier::sitePublished(
+                $user,
+                (string) $membership->group_name,
+                (int) $membership->faculty_id,
+                HotelTemplateBuilder::ROLES[$role] ?? $role
+            );
+        }
 
         return response()->json([
             'success' => true,

@@ -21,6 +21,7 @@ class UserNotification extends Model
     public const TASK_ASSIGNED = 'task_assigned';
     public const TASK_SUBMITTED = 'task_submitted';
     public const TASK_FEEDBACK = 'task_feedback';
+    public const SITE_PUBLISHED = 'site_published';
 
     /** Icon + accent per type, consumed by the dropdown partial. */
     public const STYLES = [
@@ -31,6 +32,7 @@ class UserNotification extends Model
         self::TASK_ASSIGNED => ['icon' => 'mdi:clipboard-text', 'accent' => 'amber'],
         self::TASK_SUBMITTED => ['icon' => 'mdi:clipboard-check', 'accent' => 'emerald'],
         self::TASK_FEEDBACK => ['icon' => 'mdi:comment-quote', 'accent' => 'rose'],
+        self::SITE_PUBLISHED => ['icon' => 'mdi:web-check', 'accent' => 'emerald'],
     ];
 
     protected $fillable = [
