@@ -136,6 +136,64 @@ function hmsCsrfToken() {
   return meta ? meta.getAttribute('content') : '';
 }
 
+/* End of a paid stay: the booked check-in datetime plus the 12-hour blocks
+   booked. Built with the same local-time parsing stayBlocks() uses, so the
+   countdown and the Total on the same row can never disagree. */
+function stayEndsAt(reservation) {
+  if (!reservation || !reservation.checkIn) return null;
+  const clock = /^\d{1,2}:\d{2}/.test(String(reservation.checkInTime || '')) ? reservation.checkInTime : '00:00';
+  const start = new Date(`${reservation.checkIn}T${clock}`);
+  if (Number.isNaN(start.getTime())) return null;
+  const blocks = stayBlocks(reservation.checkIn, reservation.checkOut, reservation.checkInTime);
+  return new Date(start.getTime() + blocks * BLOCK_HOURS * 3600000);
+}
+
+/* How much of the stay is left, as a label plus a tone that drives colour only.
+   Only a guest Front Desk has marked Arrived gets a running clock — a booking
+   nobody has turned up for has no stay to count down. */
+function remainingStay(reservation, now) {
+  if (reservationArrivalStatus(reservation) !== 'Arrived') {
+    return { text: 'Not checked in', tone: 'idle' };
+  }
+  const endsAt = stayEndsAt(reservation);
+  if (!endsAt) return { text: '—', tone: 'idle' };
+
+  const ms = endsAt.getTime() - now;
+  const totalSeconds = Math.floor(Math.abs(ms) / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (ms <= 0) return { text: `Overdue ${hours}h ${minutes}m`, tone: 'over' };
+  // Inside the last hour the minutes alone barely move; seconds make it read as live.
+  if (hours < 1) return { text: `${minutes}m ${seconds}s`, tone: 'soon' };
+  return { text: `${hours}h ${minutes}m`, tone: hours < 2 ? 'soon' : 'ok' };
+}
+
+const STAY_TONE_COLORS = { ok: 'var(--fg)', soon: '#fbbf24', over: '#fb7185', idle: 'var(--fg-muted)' };
+
+/* A one-second tick. Aligned to the next whole second so every row flips
+   together, and repainted on visibilitychange because a backgrounded tab
+   throttles timers — the same handling the header clock partial uses. */
+function useNow(intervalMs) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    let timer = null;
+    const align = setTimeout(() => {
+      setNow(Date.now());
+      timer = setInterval(() => setNow(Date.now()), intervalMs);
+    }, intervalMs - (Date.now() % intervalMs));
+    const onVisible = () => { if (!document.hidden) setNow(Date.now()); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearTimeout(align);
+      if (timer) clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [intervalMs]);
+  return now;
+}
+
 function compressImageDataUrl(dataUrl, done) {
   const src = String(dataUrl || '');
   if (!src.startsWith('data:image/')) { done(src); return; }
@@ -394,6 +452,7 @@ function ManageRoomPanel({ onSubmit, onCancel, onCloseModal }) {
 }
 
 function GuestDetailsPanel({ rooms, onEditRoom, onToast }) {
+  const now = useNow(1000);
   const occupied = (rooms || []).filter(r => {
     const status = normalizeRoomStatus(r.status);
     return (status === 'Occupied' || status === 'Reserved') && r.reservation;
@@ -453,6 +512,7 @@ function GuestDetailsPanel({ rooms, onEditRoom, onToast }) {
               <th style={thStyle}>Contact</th>
               <th style={thStyle}>Check-In</th>
               <th style={thStyle}>Check-Out</th>
+              <th style={thStyle}>Time Remaining</th>
               <th style={thStyle}>Total</th>
               <th style={thStyle}>Payment</th>
               <th style={thStyle}>Status</th>
@@ -468,6 +528,7 @@ function GuestDetailsPanel({ rooms, onEditRoom, onToast }) {
               const status = normalizeRoomStatus(room.status);
               const arrival = reservationArrivalStatus(res);
               const canCheckIn = status !== 'Occupied' && arrival === 'Arrived';
+              const remaining = remainingStay(res, now);
               return (
                 <tr key={room.id} style={{ background: rowBg }}>
                   <td style={{ ...tdStyle, color: 'var(--fg)', fontWeight: 600 }}>
@@ -484,6 +545,15 @@ function GuestDetailsPanel({ rooms, onEditRoom, onToast }) {
                   </td>
                   <td style={tdStyle}>{formatCheckIn(res.checkIn, res.checkInTime)}</td>
                   <td style={tdStyle}>{res.checkOut || '—'}</td>
+                  <td style={{
+                    ...tdStyle,
+                    color: STAY_TONE_COLORS[remaining.tone],
+                    fontWeight: remaining.tone === 'idle' ? 400 : 600,
+                    opacity: remaining.tone === 'idle' ? 0.6 : 1,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {remaining.text}
+                  </td>
                   <td style={{ ...tdStyle, color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontWeight: 700 }}>{formatPeso(total)}</td>
                   <td style={tdStyle}>
                     {payment ? (
