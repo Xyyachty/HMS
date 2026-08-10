@@ -417,6 +417,10 @@
   }
   .booking-input:focus { border-color: var(--accent); }
   .booking-input::placeholder { color: var(--fg-muted); opacity: 0.5; }
+  /* Browsers ignore the surrounding dark theme on a <select>'s dropdown list unless
+     its <option>s are styled directly — colorScheme alone leaves it white. */
+  select.booking-input { color-scheme: dark; }
+  select.booking-input option { background: var(--card); color: var(--fg); }
 
   .btn-primary {
     display: inline-flex; align-items: center; gap: 0.5rem;
