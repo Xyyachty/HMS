@@ -22,6 +22,8 @@ class UserNotification extends Model
     public const TASK_SUBMITTED = 'task_submitted';
     public const TASK_FEEDBACK = 'task_feedback';
     public const SITE_PUBLISHED = 'site_published';
+    public const COMPLAINT_FILED = 'complaint_filed';
+    public const COMPLAINT_UPDATED = 'complaint_updated';
 
     /** Icon + accent per type, consumed by the dropdown partial. */
     public const STYLES = [
@@ -33,6 +35,8 @@ class UserNotification extends Model
         self::TASK_SUBMITTED => ['icon' => 'mdi:clipboard-check', 'accent' => 'emerald'],
         self::TASK_FEEDBACK => ['icon' => 'mdi:comment-quote', 'accent' => 'rose'],
         self::SITE_PUBLISHED => ['icon' => 'mdi:web-check', 'accent' => 'emerald'],
+        self::COMPLAINT_FILED => ['icon' => 'mdi:alert-octagon', 'accent' => 'rose'],
+        self::COMPLAINT_UPDATED => ['icon' => 'mdi:clipboard-check-outline', 'accent' => 'emerald'],
     ];
 
     protected $primaryKey = 'user_notification_id';

@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HotelTemplateController;
 use App\Http\Controllers\NotificationController;
 use App\Models\ActivityLog;
+use App\Models\HotelComplaint;
 use App\Models\HotelFoodOrder;
 use App\Models\HotelMenuItem;
 use App\Models\HotelRoom;
@@ -1087,6 +1088,194 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json(['order' => $order->toTemplateArray()]);
     })->name('hotel.orders.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Guest complaints (Front Desk records, Maintenance / Housekeeping resolve)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/hotel/complaints', function (Request $request) {
+        $membership = \App\Support\HotelComplaintAccess::membership();
+        if (!$membership) {
+            return response()->json([
+                'complaints' => [],
+                'can_file' => false,
+                'handled_departments' => [],
+                'categories' => HotelComplaint::CATEGORY_DEPARTMENTS,
+            ]);
+        }
+
+        $complaints = HotelComplaint::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderByDesc('hotel_complaint_id')
+            ->limit(200)
+            ->get()
+            ->map(fn ($complaint) => $complaint->toTemplateArray());
+
+        return response()->json([
+            'complaints'          => $complaints,
+            'can_file'            => \App\Support\HotelComplaintAccess::canFile($membership),
+            'handled_departments' => \App\Support\HotelComplaintAccess::handledDepartments($membership),
+            'categories'          => HotelComplaint::CATEGORY_DEPARTMENTS,
+        ]);
+    })->name('hotel.complaints.index');
+
+    Route::post('/hotel/complaints', function (Request $request) {
+        $membership = \App\Support\HotelComplaintAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelComplaintAccess::canFile($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can record a guest complaint.'], 403);
+        }
+
+        $data = $request->validate([
+            'room_number' => 'required|string|max:100',
+            'guest_name'  => 'nullable|string|max:255',
+            'category'    => 'required|string|max:100',
+            'department'  => 'nullable|string|max:50',
+            'priority'    => 'nullable|string|max:20',
+            'details'     => 'required|string|max:2000',
+        ]);
+
+        $category = HotelComplaint::normalizeCategory($data['category']);
+
+        $complaint = HotelComplaint::create([
+            'group_name'  => $membership->group_name,
+            'faculty_id'  => $membership->faculty_id,
+            'group_id'    => $membership->group_id,
+            'room_number' => trim($data['room_number']),
+            'guest_name'  => isset($data['guest_name']) ? trim($data['guest_name']) : null,
+            'category'    => $category,
+            // No explicit department means take the category's default.
+            'department'  => empty($data['department'])
+                ? HotelComplaint::departmentForCategory($category)
+                : HotelComplaint::normalizeDepartment($data['department']),
+            'priority'    => HotelComplaint::normalizePriority($data['priority'] ?? null),
+            'details'     => trim($data['details']),
+            'status'      => 'Open',
+            'filed_by'    => auth()->user()?->name,
+        ]);
+
+        \App\Support\Notifier::complaintFiled(auth()->user(), $complaint);
+
+        ActivityLog::record(
+            auth()->user(),
+            ActivityLog::COMPLAINT_FILED,
+            'Recorded a ' . $complaint->departmentLabel() . ' complaint for room '
+                . $complaint->room_number . ' (' . $complaint->category . ').'
+        );
+
+        return response()->json(['complaint' => $complaint->toTemplateArray()], 201);
+    })->name('hotel.complaints.store');
+
+    Route::patch('/hotel/complaints/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelComplaintAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+
+        $complaint = HotelComplaint::where('hotel_complaint_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'status'          => 'sometimes|string|max:50',
+            'department'      => 'sometimes|string|max:50',
+            'resolution_note' => 'sometimes|nullable|string|max:2000',
+        ]);
+
+        // Authorised against the department the complaint sits in *now* — that is
+        // also what lets Housekeeping hand a mis-routed one to Maintenance.
+        $handles = \App\Support\HotelComplaintAccess::canHandle($membership, $complaint->department);
+        $isFrontDesk = \App\Support\HotelComplaintAccess::canFile($membership);
+
+        $reassignedFrom = null;
+        if (array_key_exists('department', $data)) {
+            if (!$handles) {
+                return response()->json([
+                    'message' => 'Only ' . $complaint->departmentLabel() . ' staff can reassign this complaint.',
+                ], 403);
+            }
+            $next = HotelComplaint::normalizeDepartment($data['department']);
+            if ($next !== $complaint->department) {
+                $reassignedFrom = $complaint->department;
+                $complaint->department = $next;
+                // A handed-over complaint goes back on the new department's queue
+                // rather than arriving half-worked by someone else. Any note the
+                // first department left stays — it is what they found.
+                $complaint->status = 'Open';
+                $complaint->resolved_at = null;
+                $complaint->handled_by = null;
+            }
+        }
+
+        if (array_key_exists('status', $data)) {
+            $next = HotelComplaint::normalizeStatus($data['status']);
+            // Front Desk took the complaint from the guest, so they may withdraw it —
+            // but working it is the department's job.
+            $maySet = $handles || ($isFrontDesk && $next === 'Cancelled');
+            if (!$maySet) {
+                return response()->json([
+                    'message' => 'Only ' . $complaint->departmentLabel() . ' staff can update this complaint.',
+                ], 403);
+            }
+
+            $complaint->status = $next;
+            $complaint->resolved_at = in_array($next, ['Resolved', 'Cancelled'], true) ? now() : null;
+            if ($handles) {
+                $complaint->handled_by = auth()->user()?->name;
+            }
+        }
+
+        if (array_key_exists('resolution_note', $data)) {
+            if (!$handles) {
+                return response()->json([
+                    'message' => 'Only ' . $complaint->departmentLabel() . ' staff can leave a resolution note.',
+                ], 403);
+            }
+            $note = $data['resolution_note'];
+            $complaint->resolution_note = $note === null ? null : trim($note);
+        }
+
+        $closed = $complaint->isDirty('status')
+            && in_array($complaint->status, ['Resolved', 'Cancelled'], true);
+
+        $complaint->save();
+
+        if ($reassignedFrom) {
+            \App\Support\Notifier::complaintReassigned(auth()->user(), $complaint, $reassignedFrom);
+        }
+        if ($closed) {
+            \App\Support\Notifier::complaintResolved(auth()->user(), $complaint);
+
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::COMPLAINT_RESOLVED,
+                'Marked the room ' . $complaint->room_number . ' complaint ('
+                    . $complaint->category . ') as ' . $complaint->status . '.'
+            );
+        }
+
+        return response()->json(['complaint' => $complaint->toTemplateArray()]);
+    })->name('hotel.complaints.update');
+
+    // One page, three doors: each role opens it from its own module so the shell
+    // keeps that role's theme, sidebar and Back target.
+    Route::get('/frontdesk/complaints', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.complaints.manage', $data);
+    })->name('frontdesk.complaints');
+    Route::get('/maintenance/complaints', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'maintenance');
+        return view('students.complaints.manage', $data);
+    })->name('maintenance.complaints');
+    Route::get('/housekeeping/complaints', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
+        return view('students.complaints.manage', $data);
+    })->name('housekeeping.complaints');
 
     Route::get('/restaurant', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');

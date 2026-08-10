@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\FacultyClass;
+use App\Models\HotelComplaint;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\Task;
@@ -108,6 +109,28 @@ class Notifier
                 ->where('faculty_id', $facultyId)
                 ->pluck('student_id')
         )
+            ->pluck('user_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /**
+     * Student user ids for the members of one team who hold any of the given roles.
+     * Used to address a department rather than the whole team.
+     */
+    public static function teamRoleUserIds(string $groupName, int $facultyId, array $roles): array
+    {
+        if ($roles === []) {
+            return [];
+        }
+
+        $studentIds = StudentGroup::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->whereHas('roles', fn ($query) => $query->whereIn('role', $roles))
+            ->pluck('student_id');
+
+        return Student::whereIn('student_id', $studentIds)
             ->pluck('user_id')
             ->filter()
             ->map(fn ($id) => (int) $id)
@@ -352,6 +375,72 @@ class Notifier
             'Team ' . $groupName . ' published their site',
             $who . ' published team "' . $groupName . '" hotel website' . $where . '.',
             route('faculty.role'),
+            $actor
+        );
+    }
+
+    /**
+     * The Front Desk recorded a guest complaint. Only the department it was routed
+     * to hears about it — the whole team can already see the list, and a complaint
+     * about one room is not news to the other four roles.
+     */
+    public static function complaintFiled(?User $actor, HotelComplaint $complaint): void
+    {
+        $role = HotelComplaintAccess::DEPARTMENT_ROLES[$complaint->department] ?? null;
+        if (!$role) {
+            return;
+        }
+
+        static::push(
+            static::teamRoleUserIds($complaint->group_name, (int) $complaint->faculty_id, [$role]),
+            UserNotification::COMPLAINT_FILED,
+            ($complaint->priority === 'Urgent' ? 'Urgent complaint · ' : 'New complaint · ')
+                . 'Room ' . $complaint->room_number,
+            $complaint->category . ' — ' . $complaint->details,
+            route('students.' . $complaint->department . '.complaints'),
+            $actor
+        );
+    }
+
+    /**
+     * A department closed a complaint out. The Front Desk took it from the guest, so
+     * they are the ones who need to know the answer to give back.
+     */
+    public static function complaintResolved(?User $actor, HotelComplaint $complaint): void
+    {
+        $resolved = $complaint->status === 'Resolved';
+
+        static::push(
+            static::teamRoleUserIds($complaint->group_name, (int) $complaint->faculty_id, ['front_desk']),
+            UserNotification::COMPLAINT_UPDATED,
+            ($resolved ? 'Complaint resolved · ' : 'Complaint cancelled · ') . 'Room ' . $complaint->room_number,
+            $complaint->departmentLabel() . ' marked "' . $complaint->category . '" as '
+                . $complaint->status . '.'
+                . ($complaint->resolution_note ? ' Note: ' . $complaint->resolution_note : ''),
+            route('students.frontdesk.complaints'),
+            $actor
+        );
+    }
+
+    /**
+     * A mis-routed complaint was handed to the other department. Told to the new
+     * owners only; the ones who passed it on already know.
+     */
+    public static function complaintReassigned(?User $actor, HotelComplaint $complaint, string $from): void
+    {
+        $role = HotelComplaintAccess::DEPARTMENT_ROLES[$complaint->department] ?? null;
+        if (!$role) {
+            return;
+        }
+
+        $fromLabel = HotelComplaint::DEPARTMENTS[$from] ?? ucfirst($from);
+
+        static::push(
+            static::teamRoleUserIds($complaint->group_name, (int) $complaint->faculty_id, [$role]),
+            UserNotification::COMPLAINT_FILED,
+            'Complaint reassigned · Room ' . $complaint->room_number,
+            $fromLabel . ' passed "' . $complaint->category . '" to your department.',
+            route('students.' . $complaint->department . '.complaints'),
             $actor
         );
     }

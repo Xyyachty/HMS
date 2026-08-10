@@ -53,6 +53,8 @@ class ActivityLog extends Model
     public const EVALUATION_RECORDED = 'evaluation_recorded';
     public const REPORT_GENERATED = 'report_generated';
     public const PERMISSION_GRANTED = 'permission_granted';
+    public const COMPLAINT_FILED = 'complaint_filed';
+    public const COMPLAINT_RESOLVED = 'complaint_resolved';
 
     /** Human labels for the portals' activity tables. */
     public const LABELS = [
@@ -76,6 +78,8 @@ class ActivityLog extends Model
         self::EVALUATION_RECORDED => 'Evaluation Recorded',
         self::REPORT_GENERATED => 'Report Generated',
         self::PERMISSION_GRANTED => 'Permission Granted',
+        self::COMPLAINT_FILED => 'Complaint Filed',
+        self::COMPLAINT_RESOLVED => 'Complaint Resolved',
     ];
 
     public function user()
