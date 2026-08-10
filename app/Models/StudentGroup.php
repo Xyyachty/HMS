@@ -11,6 +11,8 @@ class StudentGroup extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'student_group_id';
+
     protected $fillable = [
         'group_name',
         'faculty_id',
@@ -21,22 +23,22 @@ class StudentGroup extends Model
 
     public function student()
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(Student::class, 'student_id', 'student_id');
     }
 
     public function faculty()
     {
-        return $this->belongsTo(Faculty::class);
+        return $this->belongsTo(Faculty::class, 'faculty_id', 'faculty_id');
     }
 
     public function group()
     {
-        return $this->belongsTo(Group::class);
+        return $this->belongsTo(Group::class, 'group_id', 'group_id');
     }
 
     public function roles()
     {
-        return $this->hasMany(StudentGroupRole::class);
+        return $this->hasMany(StudentGroupRole::class, 'student_group_id', 'student_group_id');
     }
 
     /**

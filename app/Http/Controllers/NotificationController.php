@@ -23,7 +23,7 @@ class NotificationController extends Controller
 
         $notifications = UserNotification::forUser($userId)
             ->orderByDesc('created_at')
-            ->orderByDesc('id')
+            ->orderByDesc('user_notification_id')
             ->limit(self::FEED_LIMIT)
             ->get()
             ->map(fn (UserNotification $n) => $n->toFeedArray())

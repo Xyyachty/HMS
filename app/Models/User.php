@@ -16,6 +16,15 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * Every table names its key after what it identifies, so Eloquent's "id" default
+     * does not apply. Authenticatable picks this up on its own —
+     * getAuthIdentifierName() returns the key name — but relationships do not:
+     * getForeignKey() would build "user_user_id", so every relation below spells its
+     * keys out.
+     */
+    protected $primaryKey = 'user_id';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
@@ -132,17 +141,17 @@ class User extends Authenticatable
 
     public function faculty()
     {
-        return $this->hasOne(Faculty::class);
+        return $this->hasOne(Faculty::class, 'user_id', 'user_id');
     }
 
     public function student()
     {
-        return $this->hasOne(Student::class);
+        return $this->hasOne(Student::class, 'user_id', 'user_id');
     }
 
     public function tasks()
     {
-        return $this->hasMany(Task::class, 'assigned_to');
+        return $this->hasMany(Task::class, 'assigned_to', 'user_id');
     }
 
 }

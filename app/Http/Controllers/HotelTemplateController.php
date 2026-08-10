@@ -147,7 +147,7 @@ class HotelTemplateController extends Controller
         }
 
         $template = HotelTemplateBuilder::ensureTemplate($membership, $role);
-        $versions = TeamRoleTemplateVersion::where('team_role_template_id', $template->id)
+        $versions = TeamRoleTemplateVersion::where('team_role_template_id', $template->team_role_template_id)
             ->orderByDesc('version')
             ->limit(30)
             ->get()
@@ -203,25 +203,25 @@ class HotelTemplateController extends Controller
 
         $data = $request->validate([
             'group_name' => ['required', 'string', 'max:255'],
-            'student_id' => ['required', 'integer', 'exists:students,id'],
+            'student_id' => ['required', 'integer', 'exists:students,student_id'],
         ]);
 
-        $student = Student::where('id', $data['student_id'])
-            ->where('faculty_id', $faculty->id)
+        $student = Student::where('student_id', $data['student_id'])
+            ->where('faculty_id', $faculty->faculty_id)
             ->firstOrFail();
 
-        $membership = StudentGroup::where('faculty_id', $faculty->id)
+        $membership = StudentGroup::where('faculty_id', $faculty->faculty_id)
             ->where('group_name', $data['group_name'])
-            ->where('student_id', $student->id)
+            ->where('student_id', $student->student_id)
             ->first();
 
         if (!$membership) {
             return response()->json(['error' => 'Student is not on that team'], 422);
         }
 
-        $grants = \App\Models\TeamTemplateEditGrant::where('faculty_id', $faculty->id)
+        $grants = \App\Models\TeamTemplateEditGrant::where('faculty_id', $faculty->faculty_id)
             ->where('group_name', $data['group_name'])
-            ->where('student_id', $student->id)
+            ->where('student_id', $student->student_id)
             ->pluck('role')
             ->all();
 
@@ -241,7 +241,7 @@ class HotelTemplateController extends Controller
 
         $data = $request->validate([
             'group_name' => ['required', 'string', 'max:255'],
-            'student_id' => ['required', 'integer', 'exists:students,id'],
+            'student_id' => ['required', 'integer', 'exists:students,student_id'],
             'role' => ['required', 'string'],
             'grant' => ['required', 'boolean'],
         ]);
@@ -250,13 +250,13 @@ class HotelTemplateController extends Controller
             return response()->json(['error' => 'Invalid role'], 422);
         }
 
-        $student = Student::where('id', $data['student_id'])
-            ->where('faculty_id', $faculty->id)
+        $student = Student::where('student_id', $data['student_id'])
+            ->where('faculty_id', $faculty->faculty_id)
             ->firstOrFail();
 
-        $membership = StudentGroup::where('faculty_id', $faculty->id)
+        $membership = StudentGroup::where('faculty_id', $faculty->faculty_id)
             ->where('group_name', $data['group_name'])
-            ->where('student_id', $student->id)
+            ->where('student_id', $student->student_id)
             ->first();
 
         if (!$membership) {
@@ -265,9 +265,9 @@ class HotelTemplateController extends Controller
 
         // Dummy membership object for grant helpers (needs faculty_id + group_name + group_id)
         $ctx = new StudentGroup([
-            'faculty_id' => $faculty->id,
+            'faculty_id' => $faculty->faculty_id,
             'group_name' => $data['group_name'],
-            'student_id' => $student->id,
+            'student_id' => $student->student_id,
             'group_id' => $membership->group_id,
         ]);
 

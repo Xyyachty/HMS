@@ -35,6 +35,8 @@ class UserNotification extends Model
         self::SITE_PUBLISHED => ['icon' => 'mdi:web-check', 'accent' => 'emerald'],
     ];
 
+    protected $primaryKey = 'user_notification_id';
+
     protected $fillable = [
         'user_id',
         'actor_id',
@@ -52,12 +54,12 @@ class UserNotification extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
     public function actor()
     {
-        return $this->belongsTo(User::class, 'actor_id');
+        return $this->belongsTo(User::class, 'actor_id', 'user_id');
     }
 
     public function scopeUnread(Builder $query): Builder
@@ -80,8 +82,9 @@ class UserNotification extends Model
     {
         $style = self::STYLES[$this->type] ?? ['icon' => 'mdi:bell-outline', 'accent' => 'slate'];
 
+        // "id" is the dropdown's key for a notification, not the column name.
         return [
-            'id' => $this->id,
+            'id' => $this->user_notification_id,
             'type' => $this->type,
             'title' => $this->title,
             'body' => $this->body,

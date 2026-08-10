@@ -15,6 +15,8 @@ class ActivityLog extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'activity_log_id';
+
     /** Only created_at is tracked — a log entry is never updated. */
     public const UPDATED_AT = null;
 
@@ -78,7 +80,7 @@ class ActivityLog extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
     /**
@@ -93,7 +95,7 @@ class ActivityLog extends Model
 
         try {
             return static::create([
-                'user_id' => $user->id,
+                'user_id' => $user->user_id,
                 'role' => static::resolveRole($user),
                 'activity' => $activity,
                 'description' => mb_substr(trim($description), 0, 500),
@@ -137,8 +139,10 @@ class ActivityLog extends Model
     /** Shape used by every portal's activity table / modal. */
     public function toPortalArray(): array
     {
+        // The JSON key stays "id": this is the portal's wire format, read by the
+        // activity tables' JavaScript, and it does not follow the column naming.
         return [
-            'id' => $this->id,
+            'id' => $this->activity_log_id,
             'activity' => $this->activity,
             'activity_label' => $this->activity_label,
             'description' => $this->description,

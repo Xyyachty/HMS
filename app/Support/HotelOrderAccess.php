@@ -25,7 +25,7 @@ class HotelOrderAccess
     {
         $student = auth()->user()?->student;
 
-        return StudentGroupSync::membershipForStudent($student?->id);
+        return StudentGroupSync::membershipForStudent($student?->student_id);
     }
 
     /**
@@ -43,7 +43,7 @@ class HotelOrderAccess
             ->where('faculty_id', $membership->faculty_id)
             ->where(function ($query) use ($ids, $names) {
                 if ($ids) {
-                    $query->whereIn('id', $ids);
+                    $query->whereIn('hotel_menu_item_id', $ids);
                 }
                 if ($names) {
                     $query->orWhereIn('name', $names);
@@ -61,7 +61,7 @@ class HotelOrderAccess
     public static function matchMenuItem(\Illuminate\Support\Collection $menuItems, array $line): ?\App\Models\HotelMenuItem
     {
         if (!empty($line['menu_item_id'])) {
-            $byId = $menuItems->firstWhere('id', (int) $line['menu_item_id']);
+            $byId = $menuItems->firstWhere('hotel_menu_item_id', (int) $line['menu_item_id']);
             if ($byId) {
                 return $byId;
             }

@@ -123,7 +123,7 @@ class DeanController extends Controller
             }
 
             return [
-                'id' => $user->id,
+                'id' => $user->user_id,
                 'name' => $displayName,
                 'first_name' => $user->first_name,
                 'middle_name' => $user->middle_name,
@@ -172,7 +172,7 @@ class DeanController extends Controller
 
         $teamActivityByFacultyGroup = [];
         foreach ($faculties as $faculty) {
-            $facultyId = (int) $faculty->id;
+            $facultyId = (int) $faculty->faculty_id;
             $facultyTasks = $allTasks->get($facultyId, collect());
             $groups = $faculty->studentGroups
                 ? $faculty->studentGroups->groupBy('group_name')
@@ -252,7 +252,7 @@ class DeanController extends Controller
         ]);
 
         Faculty::create([
-            'user_id' => $user->id,
+            'user_id' => $user->user_id,
             'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
             'status' => $validated['status'],
             'block' => strtoupper($validated['block']),
@@ -312,7 +312,7 @@ class DeanController extends Controller
 
         if ($validated['role'] === 'faculty') {
             Faculty::create([
-                'user_id' => $user->id,
+                'user_id' => $user->user_id,
                 'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
                 'status' => $validated['status'],
                 'block' => strtoupper($validated['block']),
@@ -341,7 +341,7 @@ class DeanController extends Controller
 
         if ($user->role === 'faculty') {
             $selectable = Faculty::selectableBlocksForFaculty(
-                $user->faculty?->id,
+                $user->faculty?->faculty_id,
                 $user->faculty?->block
             );
             $rules['block'] = [
@@ -406,7 +406,7 @@ class DeanController extends Controller
         foreach ($completedTasks as $task) {
             $studentId = $task->student_id ? (int) $task->student_id : null;
             if (!$studentId && $task->assigned_to) {
-                $studentId = Student::where('user_id', $task->assigned_to)->value('id');
+                $studentId = Student::where('user_id', $task->assigned_to)->value('student_id');
                 $studentId = $studentId ? (int) $studentId : null;
             }
 
@@ -608,7 +608,7 @@ class DeanController extends Controller
 
                 if ($validated['role'] === 'faculty') {
                     Faculty::create([
-                        'user_id' => $user->id,
+                        'user_id' => $user->user_id,
                         'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
                         'status' => $validated['status'] ?? 'active',
                         'block' => $block,

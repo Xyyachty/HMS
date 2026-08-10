@@ -22,7 +22,7 @@ class HotelMenuAccess
     {
         $student = auth()->user()?->student;
 
-        return StudentGroupSync::membershipForStudent($student?->id);
+        return StudentGroupSync::membershipForStudent($student?->student_id);
     }
 
     /**

@@ -26,7 +26,7 @@ class ActivityLogController extends Controller
 
         return response()->json([
             'user' => [
-                'id' => $user->id,
+                'id' => $user->user_id,
                 'name' => ActivityLogAccess::displayName($user),
                 'role' => \App\Models\ActivityLog::resolveRole($user),
             ],
@@ -45,7 +45,7 @@ class ActivityLogController extends Controller
 
         return response()->json([
             'user' => [
-                'id' => $viewer->id,
+                'id' => $viewer->user_id,
                 'name' => ActivityLogAccess::displayName($viewer),
                 'role' => \App\Models\ActivityLog::resolveRole($viewer),
             ],

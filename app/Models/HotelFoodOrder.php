@@ -14,6 +14,8 @@ class HotelFoodOrder extends Model
         'Cancelled',
     ];
 
+    protected $primaryKey = 'hotel_food_order_id';
+
     protected $fillable = [
         'group_name',
         'faculty_id',
@@ -94,8 +96,9 @@ class HotelFoodOrder extends Model
     /** Shape sent to the hotel template front-end. */
     public function toTemplateArray(): array
     {
+        // "id" here is the front-end's key for an order, not the column name.
         return [
-            'id'         => $this->id,
+            'id'         => $this->hotel_food_order_id,
             'roomNumber' => $this->room_number,
             'guestName'  => $this->guest_name,
             'items'      => $this->items ?? [],

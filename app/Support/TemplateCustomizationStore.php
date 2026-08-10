@@ -86,8 +86,8 @@ class TemplateCustomizationStore
         $versionId = self::normalizeVersionId($versionId);
 
         return [
-            'customizations' => self::readCustomizations((int) $template->id, $versionId),
-            'layout' => self::readLayout((int) $template->id, $versionId),
+            'customizations' => self::readCustomizations((int) $template->team_role_template_id, $versionId),
+            'layout' => self::readLayout((int) $template->team_role_template_id, $versionId),
         ];
     }
 
@@ -150,7 +150,7 @@ class TemplateCustomizationStore
 
     public static function write(TeamRoleTemplate $template, array $customizations, array $layout, ?int $versionId = null): void
     {
-        $templateId = (int) $template->id;
+        $templateId = (int) $template->team_role_template_id;
         $versionId = self::normalizeVersionId($versionId);
 
         try {
@@ -211,9 +211,9 @@ class TemplateCustomizationStore
     /** Delete historical flat copies (version_id > 0). Live rows (0) stay. */
     public static function purgeAllVersionedCopies(): void
     {
-        $itemIds = TemplateContentItem::query()->where('version_id', '>', 0)->pluck('id');
+        $itemIds = TemplateContentItem::query()->where('version_id', '>', 0)->pluck('template_content_item_id');
         if ($itemIds->isNotEmpty()) {
-            TemplateContentField::whereIn('content_item_id', $itemIds)->delete();
+            TemplateContentField::whereIn('template_content_item_id', $itemIds)->delete();
         }
         TemplateContentItem::query()->where('version_id', '>', 0)->whereNotNull('parent_id')->delete();
         TemplateContentItem::query()->where('version_id', '>', 0)->delete();
@@ -238,15 +238,15 @@ class TemplateCustomizationStore
             ->where('team_role_template_id', $templateId)
             ->orderByDesc('version')
             ->limit($keep)
-            ->pluck('id');
+            ->pluck('team_role_template_version_id');
 
         $old = \App\Models\TeamRoleTemplateVersion::query()
             ->where('team_role_template_id', $templateId)
-            ->when($keepIds->isNotEmpty(), fn ($q) => $q->whereNotIn('id', $keepIds))
+            ->when($keepIds->isNotEmpty(), fn ($q) => $q->whereNotIn('team_role_template_version_id', $keepIds))
             ->get();
 
         foreach ($old as $version) {
-            self::clearVersion($templateId, (int) $version->id);
+            self::clearVersion($templateId, (int) $version->team_role_template_version_id);
             $version->delete();
         }
     }
@@ -255,7 +255,7 @@ class TemplateCustomizationStore
     {
         $versionId = self::normalizeVersionId($versionId);
 
-        // Deleting the content items is enough: template_content_fields.content_item_id
+        // Deleting the content items is enough: template_content_fields.template_content_item_id
         // and template_content_items.parent_id are both ON DELETE CASCADE, so the
         // database removes the fields and the nested children itself. Doing it by hand
         // cost three extra round-trips (a SELECT for the ids, a fields DELETE and a
@@ -410,14 +410,14 @@ class TemplateCustomizationStore
                             continue;
                         }
                         self::queue(TemplateContentField::class, [
-                            'content_item_id' => $item->id,
+                            'template_content_item_id' => $item->template_content_item_id,
                             'field_name' => (string) $field,
                             'field_value' => self::scalarize($fieldValue),
                         ]);
                     }
                 } elseif (is_string($deleted)) {
                     self::queue(TemplateContentField::class, [
-                        'content_item_id' => $item->id,
+                        'template_content_item_id' => $item->template_content_item_id,
                         'field_name' => 'id',
                         'field_value' => $deleted,
                     ]);
@@ -460,7 +460,7 @@ class TemplateCustomizationStore
                         }
                     }
                     self::queue(TemplateContentField::class, [
-                        'content_item_id' => $item->id,
+                        'template_content_item_id' => $item->template_content_item_id,
                         'field_name' => (string) $field,
                         'field_value' => self::scalarize($fieldValue),
                     ]);
@@ -506,14 +506,14 @@ class TemplateCustomizationStore
                                     'version_id' => $versionId,
                                     'collection' => $collection . '_amenity',
                                     'sort_order' => $ai,
-                                    'parent_id' => $item->id,
+                                    'parent_id' => $item->template_content_item_id,
                                 ]);
                                 foreach ($amenity as $af => $av) {
                                     if (is_array($av)) {
                                         continue;
                                     }
                                     self::queue(TemplateContentField::class, [
-                                        'content_item_id' => $amenityItem->id,
+                                        'template_content_item_id' => $amenityItem->template_content_item_id,
                                         'field_name' => (string) $af,
                                         'field_value' => self::scalarize($av),
                                     ]);
@@ -539,7 +539,7 @@ class TemplateCustomizationStore
                             }
                         }
                         self::queue(TemplateContentField::class, [
-                            'content_item_id' => $item->id,
+                            'template_content_item_id' => $item->template_content_item_id,
                             'field_name' => (string) $itemField,
                             'field_value' => $scalar,
                         ]);
@@ -572,7 +572,7 @@ class TemplateCustomizationStore
                         'item_ref' => (string) $mapKey,
                     ]);
                     self::queue(TemplateContentField::class, [
-                        'content_item_id' => $mapItem->id,
+                        'template_content_item_id' => $mapItem->template_content_item_id,
                         'field_name' => 'value',
                         'field_value' => $scalar,
                     ]);
@@ -585,7 +585,7 @@ class TemplateCustomizationStore
             }
 
             self::queue(TemplateContentField::class, [
-                'content_item_id' => $meta->id,
+                'template_content_item_id' => $meta->template_content_item_id,
                 'field_name' => (string) $field,
                 'field_value' => self::scalarize($fieldValue),
             ]);
@@ -638,7 +638,7 @@ class TemplateCustomizationStore
                 }
                 $row = self::fieldsMap($item);
                 $amenities = [];
-                foreach ($items->where('parent_id', $item->id)->where('collection', $collection . '_amenity') as $amenity) {
+                foreach ($items->where('parent_id', $item->template_content_item_id)->where('collection', $collection . '_amenity') as $amenity) {
                     $amenities[] = self::fieldsMap($amenity);
                 }
                 if ($amenities !== []) {

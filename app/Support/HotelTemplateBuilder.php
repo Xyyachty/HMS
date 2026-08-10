@@ -154,7 +154,7 @@ class HotelTemplateBuilder
             return null;
         }
 
-        return StudentGroup::with('roles')->where('student_id', $student->id)->first();
+        return StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
     }
 
     public static function studentRoleKeys(StudentGroup $membership): array
@@ -176,7 +176,7 @@ class HotelTemplateBuilder
             return true;
         }
 
-        $studentId = $user->student?->id;
+        $studentId = $user->student?->student_id;
         if (!$studentId) {
             return false;
         }
@@ -196,7 +196,7 @@ class HotelTemplateBuilder
         }
 
         // Any authenticated teammate (same faculty + group membership) can view
-        return (int) ($user->student?->id) > 0
+        return (int) ($user->student?->student_id) > 0
             && (int) $membership->faculty_id > 0
             && $membership->group_name !== '';
     }
@@ -493,8 +493,9 @@ class HotelTemplateBuilder
         $facultyId = (int) $template->faculty_id;
         $editablePages = self::editablePagesForRole($template->role);
 
+        // "id" is the key the builder front-end reads, not the column name.
         return [
-            'id' => $template->id,
+            'id' => $template->team_role_template_id,
             'role' => $template->role,
             'role_label' => self::ROLES[$template->role] ?? $template->role,
             'selected_template' => $template->selected_template,
@@ -545,7 +546,7 @@ class HotelTemplateBuilder
 
                     TeamRoleTemplate::where('group_name', $template->group_name)
                         ->where('faculty_id', $template->faculty_id)
-                        ->where('id', '!=', $template->id)
+                        ->where('team_role_template_id', '!=', $template->team_role_template_id)
                         ->get()
                         ->each(function (TeamRoleTemplate $row) use ($nextTemplate) {
                             $row->selected_template = $nextTemplate;
@@ -563,7 +564,7 @@ class HotelTemplateBuilder
                 $template->is_published = true;
             }
 
-            $template->updated_by = $user->id;
+            $template->updated_by = $user->user_id;
             $template->version = ((int) $template->version) + ($snapshot ? 1 : 0);
             if ($template->version < 1) {
                 $template->version = 1;
@@ -587,16 +588,16 @@ class HotelTemplateBuilder
 
             if ($snapshot) {
                 $versionRow = TeamRoleTemplateVersion::create([
-                    'team_role_template_id' => $template->id,
+                    'team_role_template_id' => $template->team_role_template_id,
                     'version' => $template->version,
                     'selected_template' => $template->selected_template,
                     'is_published' => $template->is_published,
                     'label' => $label ?: ($publish ? 'Published' : 'Auto-save'),
-                    'created_by' => $user->id,
+                    'created_by' => $user->user_id,
                 ]);
-                TemplateCustomizationStore::snapshotToVersion($template, (int) $versionRow->id);
+                TemplateCustomizationStore::snapshotToVersion($template, (int) $versionRow->team_role_template_version_id);
                 TemplateCustomizationStore::pruneOldVersions(
-                    (int) $template->id,
+                    (int) $template->team_role_template_id,
                     self::MAX_VERSION_SNAPSHOTS
                 );
             }
@@ -622,7 +623,7 @@ class HotelTemplateBuilder
             if (array_key_exists('selected_template', $data) && $data['selected_template'] !== null) {
                 $template->selected_template = (string) $data['selected_template'];
             }
-            $template->updated_by = $user->id;
+            $template->updated_by = $user->user_id;
             $template->save();
             $template->touch();
 
@@ -667,8 +668,8 @@ class HotelTemplateBuilder
 
         $siblingIds = TeamRoleTemplate::where('group_name', $template->group_name)
             ->where('faculty_id', $template->faculty_id)
-            ->where('id', '!=', $template->id)
-            ->pluck('id');
+            ->where('team_role_template_id', '!=', $template->team_role_template_id)
+            ->pluck('team_role_template_id');
 
         if ($siblingIds->isEmpty()) {
             return;
@@ -722,7 +723,7 @@ class HotelTemplateBuilder
 
     public static function restoreVersion(TeamRoleTemplate $template, int $versionNumber, User $user): TeamRoleTemplate
     {
-        $version = TeamRoleTemplateVersion::where('team_role_template_id', $template->id)
+        $version = TeamRoleTemplateVersion::where('team_role_template_id', $template->team_role_template_id)
             ->where('version', $versionNumber)
             ->firstOrFail();
 
@@ -739,10 +740,10 @@ class HotelTemplateBuilder
             [
                 'faculty_id' => $membership->faculty_id,
                 'group_name' => $membership->group_name,
-                'student_id' => $student->id,
+                'student_id' => $student->student_id,
                 'role' => $role,
             ],
-            ['granted_by' => $facultyUser->id, 'group_id' => $membership->group_id]
+            ['granted_by' => $facultyUser->user_id, 'group_id' => $membership->group_id]
         );
     }
 
@@ -750,7 +751,7 @@ class HotelTemplateBuilder
     {
         TeamTemplateEditGrant::where('faculty_id', $membership->faculty_id)
             ->where('group_name', $membership->group_name)
-            ->where('student_id', $student->id)
+            ->where('student_id', $student->student_id)
             ->where('role', $role)
             ->delete();
     }

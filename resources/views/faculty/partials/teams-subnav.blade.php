@@ -23,9 +23,9 @@
             @php
                 $taken = $classTab->seats_taken ?? 0;
                 $cap = $classTab->capacity ?? $classCapacity;
-                $isActiveClass = $activeClass && $activeClass->id === $classTab->id;
+                $isActiveClass = $activeClass && $activeClass->faculty_class_id === $classTab->faculty_class_id;
                 $isClosed = $classTab->status === 'closed';
-                $teamCount = $teamCountsByClass[$classTab->id] ?? 0;
+                $teamCount = $teamCountsByClass[$classTab->faculty_class_id] ?? 0;
             @endphp
             <a href="{{ route('faculty.role', ['class' => $classTab->letter, 'tab' => 'teams']) }}"
                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 transition

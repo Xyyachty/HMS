@@ -25,7 +25,7 @@ class ActivityLogAccess
             return false;
         }
 
-        if ((int) $viewer->id === (int) $target->id) {
+        if ((int) $viewer->user_id === (int) $target->user_id) {
             return true;
         }
 
@@ -53,21 +53,21 @@ class ActivityLogAccess
             return false;
         }
 
-        $membership = StudentGroup::where('student_id', $viewerStudent->id)->first();
+        $membership = StudentGroup::where('student_id', $viewerStudent->student_id)->first();
         if (!$membership) {
             return false;
         }
 
         return StudentGroup::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
-            ->where('student_id', $targetStudent->id)
+            ->where('student_id', $targetStudent->student_id)
             ->exists();
     }
 
     /** True when $target is a student enrolled under $viewer's faculty. */
     public static function facultyManages(User $viewer, User $target): bool
     {
-        $facultyId = $viewer->faculty?->id;
+        $facultyId = $viewer->faculty?->faculty_id;
         if (!$facultyId) {
             return false;
         }
@@ -83,16 +83,16 @@ class ActivityLogAccess
 
         // Also honour group membership, which is the faculty's real unit of work.
         return StudentGroup::where('faculty_id', $facultyId)
-            ->where('student_id', $student->id)
+            ->where('student_id', $student->student_id)
             ->exists();
     }
 
     /** Logs for one user, newest first, already shaped for the portals. */
     public static function logsFor(User $target, int $limit = self::DEFAULT_LIMIT): Collection
     {
-        return ActivityLog::where('user_id', $target->id)
+        return ActivityLog::where('user_id', $target->user_id)
             ->orderByDesc('created_at')
-            ->orderByDesc('id')
+            ->orderByDesc('activity_log_id')
             ->limit(max(1, $limit))
             ->get()
             ->map(fn (ActivityLog $log) => $log->toPortalArray())
@@ -117,7 +117,7 @@ class ActivityLogAccess
      */
     public static function studentUserIdsForFaculty(User $viewer): array
     {
-        $facultyId = $viewer->faculty?->id;
+        $facultyId = $viewer->faculty?->faculty_id;
         if (!$facultyId) {
             return [];
         }

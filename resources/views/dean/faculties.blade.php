@@ -85,11 +85,11 @@
                                     }
                                     return [
                                         'name' => $n,
-                                        'user_id' => $u?->id,
+                                        'user_id' => $u?->user_id,
                                         'role_labels' => array_map(fn ($r) => $roleLabels[$r] ?? $r, $memberRoles),
                                     ];
                                 })->values()->toJson();
-                                $activityLogs = $teamActivityByFacultyGroup[$faculty->id][$groupName] ?? [];
+                                $activityLogs = $teamActivityByFacultyGroup[$faculty->faculty_id][$groupName] ?? [];
                             @endphp
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-3.5">

@@ -15,6 +15,13 @@ use Illuminate\Support\Facades\DB;
  *
  * This is NOT a mysqldump. A MySQL dump cannot be fed to PostgreSQL — backticks alone
  * make every CREATE TABLE fail — which is the whole reason this command exists.
+ *
+ * Reads and writes the pre-rename schema, where every primary key is called `id`. Both
+ * sides of that are still true for the MySQL source, which is now a cold backup and was
+ * never renamed; the PostgreSQL side is not, so the script this produces no longer
+ * matches the live database. Kept as-is because the one migration it existed for is
+ * done — it would need the column map from
+ * 2026_08_10_000000_rename_primary_keys_to_entity_ids before it could run again.
  */
 class ExportPostgresData extends Command
 {

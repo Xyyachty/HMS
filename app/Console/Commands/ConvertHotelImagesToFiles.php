@@ -54,9 +54,10 @@ class ConvertHotelImagesToFiles extends Command
         $rows = 0;
         $bytes = 0;
 
+        // No explicit orderBy: chunkById sorts by the model's own key, and that key is
+        // named per table now (hotel_room_id, hotel_menu_item_id), not "id".
         $modelClass::query()
             ->where('image', 'like', 'data:image%')
-            ->orderBy('id')
             ->chunkById(20, function ($items) use (&$rows, &$bytes, $dryRun, $table) {
                 /** @var Model $item */
                 foreach ($items as $item) {
@@ -64,7 +65,7 @@ class ConvertHotelImagesToFiles extends Command
                     $size = strlen($original);
 
                     if ($dryRun) {
-                        $this->line(sprintf('  %s #%d — %s', $table, $item->id, $this->humanBytes($size)));
+                        $this->line(sprintf('  %s #%d — %s', $table, $item->getKey(), $this->humanBytes($size)));
                         $rows++;
                         $bytes += $size;
                         continue;
@@ -73,14 +74,14 @@ class ConvertHotelImagesToFiles extends Command
                     $path = HotelImageStore::persist($original, $item->faculty_id, $item->group_name);
 
                     if ($path === null || $path === $original) {
-                        $this->warn(sprintf('  %s #%d — could not decode, left as-is', $table, $item->id));
+                        $this->warn(sprintf('  %s #%d — could not decode, left as-is', $table, $item->getKey()));
                         continue;
                     }
 
                     $item->image = $path;
                     $item->save();
 
-                    $this->line(sprintf('  %s #%d — %s -> %s', $table, $item->id, $this->humanBytes($size), $path));
+                    $this->line(sprintf('  %s #%d — %s -> %s', $table, $item->getKey(), $this->humanBytes($size), $path));
                     $rows++;
                     $bytes += $size - strlen($path);
                 }

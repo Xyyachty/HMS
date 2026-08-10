@@ -35,7 +35,7 @@ class BulkImportStudentsTest extends TestCase
             'status' => 'active',
         ]);
         Faculty::create([
-            'user_id' => $user->id,
+            'user_id' => $user->user_id,
             'status' => 'active',
         ]);
 
@@ -95,12 +95,14 @@ class BulkImportStudentsTest extends TestCase
             'role' => 'student',
         ]);
 
+        // The spreadsheet header stays "student_id" — that is what faculty upload — but
+        // the school number now lands in the students.student_number column.
         $this->assertDatabaseHas('students', [
-            'student_id' => '2024-009',
+            'student_number' => '2024-009',
         ]);
 
         $this->assertDatabaseHas('students', [
-            'student_id' => '2024-010',
+            'student_number' => '2024-010',
         ]);
 
         Event::assertDispatched(StudentCreated::class, 2);

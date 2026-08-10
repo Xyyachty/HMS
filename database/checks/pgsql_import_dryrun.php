@@ -51,10 +51,15 @@ try {
 
     // Sequences must be past the highest imported id or the first insert collides.
     $seqBad = 0;
-    foreach (['users', 'tasks', 'hotel_menu_items', 'template_content_fields'] as $table) {
-        $max = (int) $pg->select("select coalesce(max(id),0) m from \"$table\"")[0]->m;
+    foreach ([
+        'users' => 'user_id',
+        'tasks' => 'task_id',
+        'hotel_menu_items' => 'hotel_menu_item_id',
+        'template_content_fields' => 'template_content_field_id',
+    ] as $table => $key) {
+        $max = (int) $pg->select("select coalesce(max(\"$key\"),0) m from \"$table\"")[0]->m;
         // pg_get_serial_sequence returns the sequence's NAME; select from that name.
-        $seq = $pg->select("select pg_get_serial_sequence('public.$table','id') s")[0]->s;
+        $seq = $pg->select("select pg_get_serial_sequence('public.$table','$key') s")[0]->s;
         $next = (int) $pg->select("select last_value l from $seq")[0]->l;
         $ok = $next >= $max;
         if (!$ok) { $seqBad++; }

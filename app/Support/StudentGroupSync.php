@@ -32,7 +32,7 @@ class StudentGroupSync
             if (!is_array($map)) {
                 $map = [];
             }
-            $map[(string) $user->id] = now()->timestamp;
+            $map[(string) $user->user_id] = now()->timestamp;
             // Drop stale entries
             $cutoff = now()->timestamp - self::PRESENCE_WINDOW_SECONDS;
             $map = array_filter($map, fn ($ts) => (int) $ts >= $cutoff);
@@ -84,9 +84,9 @@ class StudentGroupSync
         // 2) Database last_seen_at (source of truth across sessions)
         $cutoffAt = Carbon::now()->subSeconds(self::PRESENCE_WINDOW_SECONDS);
         $seen = User::query()
-            ->whereIn('id', $ids)
+            ->whereIn('user_id', $ids)
             ->where('last_seen_at', '>=', $cutoffAt)
-            ->pluck('id')
+            ->pluck('user_id')
             ->all();
 
         foreach ($seen as $id) {

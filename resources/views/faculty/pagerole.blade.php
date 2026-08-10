@@ -177,7 +177,7 @@
                                 $memberData[] = [
                                     'student_id' => $m->student_id,
                                     'name'       => $dn,
-                                    'user_id'    => $u?->id,
+                                    'user_id'    => $u?->user_id,
                                     'roles'      => $memberRoles,
                                     'role_labels' => array_map(fn($r) => $roleLabels[$r] ?? $r, $memberRoles),
                                 ];
@@ -576,11 +576,11 @@
                                         $u = $student->user;
                                         $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
-                                        $sk = $student->id;
+                                        $sk = $student->student_id;
                                         $selectedMembers = old('_form_source') === 'create_team' ? array_map('intval', old('members', [])) : [];
                                         $selectedRoles = old('_form_source') === 'create_team' ? old('member_roles.' . $sk, []) : [];
                                         if (!is_array($selectedRoles)) $selectedRoles = [$selectedRoles];
-                                        $searchBlob = strtolower($dn . ' ' . $student->student_id);
+                                        $searchBlob = strtolower($dn . ' ' . $student->student_number);
                                     @endphp
                                     <div class="team-student-card create-student-card rounded-xl bg-white border border-slate-200 p-3"
                                          data-search="{{ $searchBlob }}">
@@ -595,7 +595,7 @@
                                             <div class="min-w-0 flex-1">
                                                 <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
                                                 <p class="text-[11px] text-slate-400 font-mono">
-                                                    #{{ $student->student_id }}
+                                                    #{{ $student->student_number }}
                                                     @if($student->facultyClass)
                                                         · {{ $student->facultyClass->name }}
                                                     @endif
@@ -698,8 +698,8 @@
                                         $u = $student->user;
                                         $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
-                                        $sk = $student->id;
-                                        $searchBlob = strtolower($dn . ' ' . $student->student_id);
+                                        $sk = $student->student_id;
+                                        $searchBlob = strtolower($dn . ' ' . $student->student_number);
                                     @endphp
                                     <div class="bulk-student-row rounded-xl bg-white border border-slate-200 p-3"
                                          data-student-id="{{ $sk }}"
@@ -713,7 +713,7 @@
                                                 <div class="min-w-0 flex-1">
                                                     <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
                                                     <p class="text-[11px] text-slate-400 font-mono">
-                                                        #{{ $student->student_id }}
+                                                        #{{ $student->student_number }}
                                                         @if($student->facultyClass)
                                                             · {{ $student->facultyClass->name }}
                                                         @endif
@@ -809,11 +809,11 @@
                                         $u = $student->user;
                                         $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
-                                        $sk = $student->id;
+                                        $sk = $student->student_id;
                                         $selectedMembers = array_map('intval', old('members', []));
                                         $selectedRoles = old('member_roles.' . $sk, []);
                                         if (!is_array($selectedRoles)) $selectedRoles = [$selectedRoles];
-                                        $searchBlob = strtolower($dn . ' ' . $student->student_id);
+                                        $searchBlob = strtolower($dn . ' ' . $student->student_number);
                                     @endphp
                                     <div class="team-student-card insert-student-card rounded-xl bg-white border border-slate-200 p-3"
                                          data-search="{{ $searchBlob }}">
@@ -828,7 +828,7 @@
                                             <div class="min-w-0 flex-1">
                                                 <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
                                                 <p class="text-[11px] text-slate-400 font-mono">
-                                                    #{{ $student->student_id }}
+                                                    #{{ $student->student_number }}
                                                     @if($student->facultyClass)
                                                         · {{ $student->facultyClass->name }}
                                                     @endif
@@ -972,8 +972,8 @@
                                         $u = $student->user;
                                         $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
-                                        $sk = $student->id;
-                                        $searchBlob = strtolower($dn . ' ' . $student->student_id);
+                                        $sk = $student->student_id;
+                                        $searchBlob = strtolower($dn . ' ' . $student->student_number);
                                         $teamNames = collect($studentTeamMap[$sk] ?? [])->values()->all();
                                     @endphp
                                     <div class="student-row update-student-row team-student-card hidden rounded-xl bg-white px-3 py-3 border border-slate-200"
@@ -991,7 +991,7 @@
                                                     <span class="update-on-team-badge hidden text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">On this team</span>
                                                 </div>
                                                 <div class="text-[11px] text-slate-400 font-mono">
-                                                    #{{ $student->student_id }}
+                                                    #{{ $student->student_number }}
                                                     @if($student->facultyClass)
                                                         · {{ $student->facultyClass->name }}
                                                     @endif

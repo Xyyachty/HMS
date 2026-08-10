@@ -14,6 +14,8 @@ class HotelMenuItem extends Model
         'Beverages',
     ];
 
+    protected $primaryKey = 'hotel_menu_item_id';
+
     protected $fillable = [
         'group_name',
         'faculty_id',
@@ -46,9 +48,10 @@ class HotelMenuItem extends Model
     /** Shape sent to the hotel template front-end. */
     public function toTemplateArray(): array
     {
+        // "id"/"dbId" are the front-end's keys for a menu row, not column names.
         return [
-            'id'       => 'db-' . $this->id,
-            'dbId'     => $this->id,
+            'id'       => 'db-' . $this->hotel_menu_item_id,
+            'dbId'     => $this->hotel_menu_item_id,
             'name'     => $this->name,
             'category' => $this->category,
             'price'    => (int) $this->price,

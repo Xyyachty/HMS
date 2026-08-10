@@ -112,7 +112,7 @@
                         }
                         $blockLabel = \App\Models\Faculty::blockLabel($block);
                     @endphp
-                    <tr data-user-id="{{ $user->id }}" data-role="{{ $user->role }}">
+                    <tr data-user-id="{{ $user->user_id }}" data-role="{{ $user->role }}">
                         <td>
                             <span class="font-semibold text-slate-800">{{ $displayName }}</span>
                         </td>
@@ -148,7 +148,7 @@
                                 @else
                                     <button
                                         onclick="openUpdateModal(this)"
-                                        data-user-id="{{ $user->id }}"
+                                        data-user-id="{{ $user->user_id }}"
                                         data-first-name="{{ $user->first_name }}"
                                         data-middle-name="{{ $user->middle_name }}"
                                         data-last-name="{{ $user->last_name }}"
@@ -384,7 +384,7 @@
     });
 
     let usersTable;
-    const seenUserIds = new Set(@json($users->pluck('id')->map(fn ($id) => (int) $id)->values()));
+    const seenUserIds = new Set(@json($users->pluck('user_id')->map(fn ($id) => (int) $id)->values()));
     const liveUsersUrl = "{{ route('dean.users.live') }}";
     const availableBlocks = @json($availableBlocks);
     const systemBlocks = @json($systemBlocks);

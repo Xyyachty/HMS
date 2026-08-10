@@ -41,7 +41,7 @@ class Notifier
         ?User $actor = null
     ): void {
         try {
-            $actorId = $actor?->id;
+            $actorId = $actor?->user_id;
 
             $userIds = collect($userIds)
                 ->filter()
@@ -82,19 +82,19 @@ class Notifier
     public static function deanUserIds(): array
     {
         return User::where('role', 'dean')
-            ->pluck('id')
+            ->pluck('user_id')
             ->map(fn ($id) => (int) $id)
             ->all();
     }
 
-    /** The user account behind a faculties.id, or null when unlinked. */
+    /** The user account behind a faculties.faculty_id, or null when unlinked. */
     public static function facultyUserId(?int $facultyId): ?int
     {
         if (!$facultyId) {
             return null;
         }
 
-        $userId = DB::table('faculties')->where('id', $facultyId)->value('user_id');
+        $userId = DB::table('faculties')->where('faculty_id', $facultyId)->value('user_id');
 
         return $userId ? (int) $userId : null;
     }
@@ -103,7 +103,7 @@ class Notifier
     public static function teamUserIds(string $groupName, int $facultyId): array
     {
         return Student::whereIn(
-            'id',
+            'student_id',
             StudentGroup::where('group_name', $groupName)
                 ->where('faculty_id', $facultyId)
                 ->pluck('student_id')
@@ -114,14 +114,14 @@ class Notifier
             ->all();
     }
 
-    /** Student user ids from students.id values. */
+    /** Student user ids from students.student_id values. */
     public static function userIdsForStudents(array $studentIds): array
     {
         if ($studentIds === []) {
             return [];
         }
 
-        return Student::whereIn('id', $studentIds)
+        return Student::whereIn('student_id', $studentIds)
             ->pluck('user_id')
             ->filter()
             ->map(fn ($id) => (int) $id)
@@ -136,7 +136,7 @@ class Notifier
         $className = $className ?: 'a class';
 
         static::push(
-            [$studentUser->id],
+            [$studentUser->user_id],
             UserNotification::STUDENT_ADDED,
             'Welcome to ' . $className,
             'Your student account is ready. You have been enrolled in ' . $className . '.',
@@ -156,7 +156,7 @@ class Notifier
             : route('students.dashboard');
 
         static::push(
-            [$newUser->id],
+            [$newUser->user_id],
             UserNotification::STUDENT_ADDED,
             'Your account is ready',
             'A ' . $role . ' account was created for you. Sign in to get started.',

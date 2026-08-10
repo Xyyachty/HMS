@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class TeamTemplateEditGrant extends Model
 {
+    protected $primaryKey = 'team_template_edit_grant_id';
+
     protected $fillable = [
         'faculty_id',
         'group_name',
@@ -17,11 +19,11 @@ class TeamTemplateEditGrant extends Model
 
     public function student()
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(Student::class, 'student_id', 'student_id');
     }
 
     public function granter()
     {
-        return $this->belongsTo(User::class, 'granted_by');
+        return $this->belongsTo(User::class, 'granted_by', 'user_id');
     }
 }

@@ -9,6 +9,8 @@ class FacultyClass extends Model
 {
     public const CAPACITY = 40;
 
+    protected $primaryKey = 'faculty_class_id';
+
     protected $fillable = [
         'faculty_id',
         'name',
@@ -20,12 +22,12 @@ class FacultyClass extends Model
 
     public function faculty()
     {
-        return $this->belongsTo(Faculty::class);
+        return $this->belongsTo(Faculty::class, 'faculty_id', 'faculty_id');
     }
 
     public function students()
     {
-        return $this->hasMany(Student::class, 'faculty_class_id');
+        return $this->hasMany(Student::class, 'faculty_class_id', 'faculty_class_id');
     }
 
     public function isOpen(): bool
@@ -161,7 +163,7 @@ class FacultyClass extends Model
             if (!$open) {
                 $last = static::where('faculty_id', $facultyId)->orderByDesc('sort_order')->first();
                 $open = static::openNextClass($facultyId, $last);
-                $open = static::where('id', $open->id)->lockForUpdate()->first();
+                $open = static::where('faculty_class_id', $open->faculty_class_id)->lockForUpdate()->first();
             }
 
             // Counted without a row lock on purpose. PostgreSQL rejects
@@ -172,7 +174,7 @@ class FacultyClass extends Model
             if ($open->students()->count() >= ($open->capacity ?: self::CAPACITY)) {
                 $open->update(['status' => 'closed']);
                 $open = static::openNextClass($facultyId, $open);
-                $open = static::where('id', $open->id)->lockForUpdate()->first();
+                $open = static::where('faculty_class_id', $open->faculty_class_id)->lockForUpdate()->first();
             }
 
             return $open;

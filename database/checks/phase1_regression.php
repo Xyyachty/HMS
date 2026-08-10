@@ -86,16 +86,16 @@ $item = HotelMenuItem::first();
 $membership = StudentGroup::where('group_name', $item->group_name)
     ->where('faculty_id', $item->faculty_id)->first();
 $lines = App\Models\HotelFoodOrder::sanitizeItems([
-    ['menu_item_id' => $item->id, 'name' => $item->name, 'price' => $item->price, 'qty' => 1],
+    ['menu_item_id' => $item->hotel_menu_item_id, 'name' => $item->name, 'price' => $item->price, 'qty' => 1],
 ]);
-$check('sanitizeItems keeps menu_item_id', ($lines[0]['menu_item_id'] ?? null) === $item->id);
+$check('sanitizeItems keeps menu_item_id', ($lines[0]['menu_item_id'] ?? null) === $item->hotel_menu_item_id);
 $locked = App\Support\HotelOrderAccess::lockMenuItemsFor($membership, $lines);
 $check('matchMenuItem resolves by id',
-    optional(App\Support\HotelOrderAccess::matchMenuItem($locked, $lines[0]))->id === $item->id);
+    optional(App\Support\HotelOrderAccess::matchMenuItem($locked, $lines[0]))->hotel_menu_item_id === $item->hotel_menu_item_id);
 $legacy = ['menu_item_id' => null, 'name' => mb_strtoupper($item->name), 'qty' => 1];
 $locked2 = App\Support\HotelOrderAccess::lockMenuItemsFor($membership, [$legacy]);
 $check('matchMenuItem falls back to name, any case',
-    optional(App\Support\HotelOrderAccess::matchMenuItem($locked2, $legacy))->id === $item->id);
+    optional(App\Support\HotelOrderAccess::matchMenuItem($locked2, $legacy))->hotel_menu_item_id === $item->hotel_menu_item_id);
 
 echo "\nUser data (must never drift)\n";
 $baseline = [

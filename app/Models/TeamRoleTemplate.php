@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class TeamRoleTemplate extends Model
 {
+    protected $primaryKey = 'team_role_template_id';
+
     protected $fillable = [
         'group_name',
         'faculty_id',
@@ -30,36 +32,37 @@ class TeamRoleTemplate extends Model
 
     public function versions()
     {
-        return $this->hasMany(TeamRoleTemplateVersion::class)->orderByDesc('version');
+        return $this->hasMany(TeamRoleTemplateVersion::class, 'team_role_template_id', 'team_role_template_id')
+            ->orderByDesc('version');
     }
 
     public function updater()
     {
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->belongsTo(User::class, 'updated_by', 'user_id');
     }
 
     public function layouts()
     {
-        return $this->hasMany(TemplateLayout::class)
+        return $this->hasMany(TemplateLayout::class, 'team_role_template_id', 'team_role_template_id')
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
             ->orderBy('sort_order');
     }
 
     public function elements()
     {
-        return $this->hasMany(TemplateElement::class)
+        return $this->hasMany(TemplateElement::class, 'team_role_template_id', 'team_role_template_id')
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID);
     }
 
     public function images()
     {
-        return $this->hasMany(TemplateImage::class)
+        return $this->hasMany(TemplateImage::class, 'team_role_template_id', 'team_role_template_id')
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID);
     }
 
     public function contentItems()
     {
-        return $this->hasMany(TemplateContentItem::class)
+        return $this->hasMany(TemplateContentItem::class, 'team_role_template_id', 'team_role_template_id')
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID);
     }
 
@@ -68,11 +71,11 @@ class TeamRoleTemplate extends Model
         if ($this->pendingCustomizations !== null) {
             return $this->pendingCustomizations;
         }
-        if (!$this->id) {
+        if (!$this->team_role_template_id) {
             return [];
         }
 
-        return TemplateCustomizationStore::readCustomizations((int) $this->id, null);
+        return TemplateCustomizationStore::readCustomizations((int) $this->team_role_template_id, null);
     }
 
     public function setCustomizationsAttribute($value): void
@@ -85,11 +88,11 @@ class TeamRoleTemplate extends Model
         if ($this->pendingLayout !== null) {
             return $this->pendingLayout;
         }
-        if (!$this->id) {
+        if (!$this->team_role_template_id) {
             return \App\Support\HotelTemplateBuilder::defaultLayout();
         }
 
-        return TemplateCustomizationStore::readLayout((int) $this->id, null);
+        return TemplateCustomizationStore::readLayout((int) $this->team_role_template_id, null);
     }
 
     public function setLayoutAttribute($value): void
@@ -104,8 +107,8 @@ class TeamRoleTemplate extends Model
                 return;
             }
 
-            $customizations = $template->pendingCustomizations ?? TemplateCustomizationStore::readCustomizations((int) $template->id, null);
-            $layout = $template->pendingLayout ?? TemplateCustomizationStore::readLayout((int) $template->id, null);
+            $customizations = $template->pendingCustomizations ?? TemplateCustomizationStore::readCustomizations((int) $template->team_role_template_id, null);
+            $layout = $template->pendingLayout ?? TemplateCustomizationStore::readLayout((int) $template->team_role_template_id, null);
 
             TemplateCustomizationStore::write($template, $customizations, $layout, null);
 

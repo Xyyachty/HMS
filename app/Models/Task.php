@@ -9,6 +9,8 @@ class Task extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'task_id';
+
     protected $fillable = [
         'faculty_id',
         'student_id',
@@ -35,7 +37,7 @@ class Task extends Model
 
     public function feedbackBy()
     {
-        return $this->belongsTo(User::class, 'feedback_by');
+        return $this->belongsTo(User::class, 'feedback_by', 'user_id');
     }
 
     /**
@@ -49,29 +51,29 @@ class Task extends Model
 
     public function faculty()
     {
-        return $this->belongsTo(Faculty::class);
+        return $this->belongsTo(Faculty::class, 'faculty_id', 'faculty_id');
     }
 
     public function student()
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(Student::class, 'student_id', 'student_id');
     }
 
     public function assignedTo()
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsTo(User::class, 'assigned_to', 'user_id');
     }
 
     protected static function booted(): void
     {
         static::saving(function (Task $task) {
-            // Keep student_id in sync with assigned_to (users.id → students.id)
+            // Keep student_id in sync with assigned_to (users.user_id → students.student_id)
             if ($task->assigned_to && !$task->student_id) {
-                $task->student_id = Student::where('user_id', $task->assigned_to)->value('id');
+                $task->student_id = Student::where('user_id', $task->assigned_to)->value('student_id');
             }
 
             if ($task->student_id && !$task->assigned_to) {
-                $task->assigned_to = Student::where('id', $task->student_id)->value('user_id');
+                $task->assigned_to = Student::where('student_id', $task->student_id)->value('user_id');
             }
         });
     }

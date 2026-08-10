@@ -108,7 +108,7 @@
                 @php
                     $taken = $classTab->seats_taken ?? $classTab->students()->count();
                     $cap = $classTab->capacity ?? $classCapacity;
-                    $isActive = $activeClass && $activeClass->id === $classTab->id;
+                    $isActive = $activeClass && $activeClass->faculty_class_id === $classTab->faculty_class_id;
                     $isClosed = $classTab->status === 'closed';
                 @endphp
                 <a href="{{ route('faculty.students', ['class' => $classTab->letter]) }}"
@@ -233,13 +233,13 @@
                     @endphp
 
                     <tr
-                        data-student-id="{{ $student->student_id }}"
-                        data-user-id="{{ $user->id ?? '' }}"
+                        data-student-id="{{ $student->student_number }}"
+                        data-user-id="{{ $user->user_id ?? '' }}"
                         class="hover:bg-pink-50/60 transition-all duration-200"
                     >
                         <td class="px-3 py-2.5">
-                            <span class="font-mono text-xs text-slate-600 font-semibold cell-truncate" title="{{ $student->student_id }}">
-                                {{ $student->student_id }}
+                            <span class="font-mono text-xs text-slate-600 font-semibold cell-truncate" title="{{ $student->student_number }}">
+                                {{ $student->student_number }}
                             </span>
                         </td>
 
@@ -299,8 +299,8 @@
                             <div class="flex justify-center">
                                 <button
                                     onclick="openUpdateModal(this)"
-                                    data-user-id="{{ $user->id ?? '' }}"
-                                    data-student-id="{{ $student->student_id }}"
+                                    data-user-id="{{ $user->user_id ?? '' }}"
+                                    data-student-id="{{ $student->student_number }}"
                                     data-first-name="{{ $user->first_name ?? '' }}"
                                     data-middle-name="{{ $user->middle_name ?? '' }}"
                                     data-last-name="{{ $user->last_name ?? '' }}"

@@ -39,9 +39,12 @@ class StudentCreated implements ShouldBroadcast
         $this->student->loadMissing('facultyClass');
         $block = $this->student->facultyClass?->letter;
 
+        // Broadcast keys are the roster JavaScript's contract, so they keep their old
+        // names. "student_id" here has always meant the school number, which the column
+        // rename moved to student_number.
         return [
-            'user_id' => $this->user->id,
-            'student_id' => $this->student->student_id,
+            'user_id' => $this->user->user_id,
+            'student_id' => $this->student->student_number,
             'name' => $displayName !== '' ? $displayName : ($this->user->name ?? 'Student'),
             'first_name' => $this->user->first_name,
             'middle_name' => $this->user->middle_name,

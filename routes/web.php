@@ -107,7 +107,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $groupMembership = $student
             ? StudentGroup::with('student.user')
-                ->where('student_id', $student->id)
+                ->where('student_id', $student->student_id)
                 ->first()
             : null;
 
@@ -131,8 +131,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     ])));
                     $displayName = $displayName !== '' ? $displayName : ($user?->name ?? 'Student');
 
+                    // "id" is the member shape the dashboard Blade reads.
                     return (object) [
-                        'id'         => $user?->id,
+                        'id'         => $user?->user_id,
                         'student_id' => $member->student_id,
                         'name'       => $displayName,
                         'email'      => $user?->email,
@@ -246,15 +247,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->where($scopeToTeam)
                 ->where('status', 'archived')
                 ->where(function ($q) use ($student, $authUser, $studentRoles) {
-                    $q->where('student_id', $student->id)
-                        ->orWhere('assigned_to', $authUser->id);
+                    $q->where('student_id', $student->student_id)
+                        ->orWhere('assigned_to', $authUser->user_id);
                     if (!empty($studentRoles)) {
                         $q->orWhereIn('role', $studentRoles);
                     }
                 })
                 ->orderByDesc('updated_at')
                 ->get()
-                ->unique('id')
+                ->unique('task_id')
                 ->values()
             : collect();
 
@@ -268,8 +269,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->where($scopeToTeam)
                 ->where(function ($q) use ($student, $authUser, $studentRoles) {
                     // Only this user's own history
-                    $q->where('student_id', $student->id)
-                        ->orWhere('assigned_to', $authUser->id);
+                    $q->where('student_id', $student->student_id)
+                        ->orWhere('assigned_to', $authUser->user_id);
 
                     // Still show active tasks for their roles so they can complete them
                     if (!empty($studentRoles)) {
@@ -282,7 +283,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->orderByDesc('updated_at')
                 ->take(50)
                 ->get()
-                ->unique('id')
+                ->unique('task_id')
                 ->values()
             : collect();
 
@@ -327,7 +328,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             abort(403);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
         if (!$groupMembership || (int) $task->faculty_id !== (int) $groupMembership->faculty_id) {
             abort(403);
         }
@@ -340,8 +341,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // Tasks fan out one row per member, so a role match alone is not enough —
         // without this a student could submit a teammate's row. Unclaimed rows
         // (no member held the role at assign time) stay open to the first submitter.
-        $claimedByOther = ($task->assigned_to && (int) $task->assigned_to !== (int) $authUser->id)
-            || ($task->student_id && (int) $task->student_id !== (int) $student->id);
+        $claimedByOther = ($task->assigned_to && (int) $task->assigned_to !== (int) $authUser->user_id)
+            || ($task->student_id && (int) $task->student_id !== (int) $student->student_id);
         if ($claimedByOther) {
             return back()->withErrors(['task' => 'This task belongs to a teammate.']);
         }
@@ -352,8 +353,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $task->update([
             'status' => 'archived',
-            'student_id' => $student->id,
-            'assigned_to' => $authUser->id,
+            'student_id' => $student->student_id,
+            'assigned_to' => $authUser->user_id,
         ]);
 
         ActivityLog::record(
@@ -390,13 +391,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
 
         $student = $authUser->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
 
         \App\Support\StudentGroupSync::heartbeat($authUser, $membership);
 
         if (!$membership) {
             return response()->json([
-                'online' => [(string) $authUser->id => true],
+                'online' => [(string) $authUser->user_id => true],
                 'members' => [],
             ]);
         }
@@ -406,13 +407,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ->when($membership->faculty_id, fn ($q) => $q->where('faculty_id', $membership->faculty_id))
             ->get();
 
-        $userIds = $members->map(fn ($m) => $m->student?->user?->id)->filter()->values()->all();
+        $userIds = $members->map(fn ($m) => $m->student?->user?->user_id)->filter()->values()->all();
         $online = \App\Support\StudentGroupSync::onlineMap($userIds, $membership);
-        $online[(string) $authUser->id] = true;
+        $online[(string) $authUser->user_id] = true;
 
         $payload = $members->map(function ($m) use ($online) {
             $user = $m->student?->user;
-            $uid = (int) ($user?->id ?? 0);
+            $uid = (int) ($user?->user_id ?? 0);
             $key = (string) $uid;
             $displayName = trim(implode(' ', array_filter([
                 $user?->last_name,
@@ -453,7 +454,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::get('/frontdesk/template/sync', function () {
         $authUser = auth()->user();
         $student = $authUser?->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
         if (!$membership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -485,7 +486,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $builderRole = 'front_desk';
         }
         if ($student) {
-            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
             if ($groupMembership) {
                 if ($request->query('save') === '1') {
                     if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
@@ -522,7 +523,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $builderRole = 'front_desk';
         }
         if ($student) {
-            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
             if ($groupMembership) {
                 if ($request->query('save') === '1') {
                     if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
@@ -565,9 +566,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Student not found'], 404);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
         if (!$groupMembership) {
-            \Log::warning('Template select: group not found', ['student_id' => $student->id]);
+            \Log::warning('Template select: group not found', ['student_id' => $student->student_id]);
             return response()->json(['error' => 'Group not found'], 404);
         }
 
@@ -615,7 +616,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Student not found'], 404);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
         if (!$groupMembership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -668,7 +669,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Student not found'], 404);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
         if (!$groupMembership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -712,17 +713,18 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::get('/hotel/rooms', function (Request $request) {
         $authUser = auth()->user();
         $student  = $authUser?->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
         if (!$membership) {
             return response()->json(['rooms' => []]);
         }
         $rooms = HotelRoom::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
-            ->orderBy('id')
+            ->orderBy('hotel_room_id')
             ->get()
+            // "id"/"dbId" are the room-grid front-end's keys, not column names.
             ->map(fn ($r) => [
-                'id'          => 'db-' . $r->id,
-                'dbId'        => $r->id,
+                'id'          => 'db-' . $r->hotel_room_id,
+                'dbId'        => $r->hotel_room_id,
                 'name'        => $r->name,
                 'label'       => $r->category,
                 'category'    => $r->category,
@@ -739,11 +741,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::patch('/hotel/rooms/{id}', function (Request $request, $id) {
         $authUser   = auth()->user();
         $student    = $authUser?->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
         if (!$membership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
-        $room = HotelRoom::where('id', $id)
+        $room = HotelRoom::where('hotel_room_id', $id)
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->firstOrFail();
@@ -752,8 +754,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $room->save();
         return response()->json([
             'room' => [
-                'id'          => 'db-' . $room->id,
-                'dbId'        => $room->id,
+                'id'          => 'db-' . $room->hotel_room_id,
+                'dbId'        => $room->hotel_room_id,
                 'name'        => $room->name,
                 'label'       => $room->category,
                 'category'    => $room->category,
@@ -770,7 +772,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::post('/hotel/rooms', function (Request $request) {
         $authUser = auth()->user();
         $student  = $authUser?->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
         if (!$membership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -802,8 +804,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ]);
         return response()->json([
             'room' => [
-                'id'       => 'db-' . $room->id,
-                'dbId'     => $room->id,
+                'id'       => 'db-' . $room->hotel_room_id,
+                'dbId'     => $room->hotel_room_id,
                 'name'     => $room->name,
                 'label'    => $room->category,
                 'category' => $room->category,
@@ -890,7 +892,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'Only Restaurant Services staff can edit menu items.'], 403);
         }
 
-        $item = HotelMenuItem::where('id', $id)
+        $item = HotelMenuItem::where('hotel_menu_item_id', $id)
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->firstOrFail();
@@ -930,7 +932,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'Only Restaurant Services staff can delete menu items.'], 403);
         }
 
-        HotelMenuItem::where('id', $id)
+        HotelMenuItem::where('hotel_menu_item_id', $id)
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->firstOrFail()
@@ -953,7 +955,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $orders = HotelFoodOrder::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
-            ->orderByDesc('id')
+            ->orderByDesc('hotel_food_order_id')
             ->limit(200)
             ->get()
             ->map(fn ($order) => $order->toTemplateArray());
@@ -1001,18 +1003,18 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     if (!$menuItem) {
                         throw new \RuntimeException("\"{$line['name']}\" is no longer on the menu.");
                     }
-                    $wanted[$menuItem->id] = ($wanted[$menuItem->id] ?? 0) + $line['qty'];
+                    $wanted[$menuItem->hotel_menu_item_id] = ($wanted[$menuItem->hotel_menu_item_id] ?? 0) + $line['qty'];
                 }
 
                 foreach ($wanted as $menuItemId => $qty) {
-                    $menuItem = $menuItems->firstWhere('id', $menuItemId);
+                    $menuItem = $menuItems->firstWhere('hotel_menu_item_id', $menuItemId);
                     if ($menuItem->stock < $qty) {
                         throw new \RuntimeException("Only {$menuItem->stock} left of \"{$menuItem->name}\".");
                     }
                 }
 
                 foreach ($wanted as $menuItemId => $qty) {
-                    $menuItem = $menuItems->firstWhere('id', $menuItemId);
+                    $menuItem = $menuItems->firstWhere('hotel_menu_item_id', $menuItemId);
                     $menuItem->stock -= $qty;
                     $menuItem->save();
                 }
@@ -1045,7 +1047,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'Only Restaurant Services staff can update an order.'], 403);
         }
 
-        $order = HotelFoodOrder::where('id', $id)
+        $order = HotelFoodOrder::where('hotel_food_order_id', $id)
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->firstOrFail();

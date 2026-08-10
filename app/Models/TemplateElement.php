@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class TemplateElement extends Model
 {
+    protected $primaryKey = 'template_element_id';
+
     protected $fillable = [
         'team_role_template_id',
         'version_id',
