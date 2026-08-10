@@ -27,9 +27,6 @@
   .cx-cancelled   { background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3); }
   .cx-maintenance { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .cx-housekeeping{ background: rgba(16,185,129,0.18); color: #34d399; border-color: rgba(16,185,129,0.35); }
-  .cx-urgent      { background: rgba(244,63,94,0.18);  color: #fb7185; border-color: rgba(244,63,94,0.35); }
-  .cx-normal      { background: rgba(201,168,76,0.15); color: var(--accent-light); border-color: rgba(201,168,76,0.3); }
-  .cx-low         { background: rgba(148,163,184,0.12); color: #94a3b8; border-color: rgba(148,163,184,0.25); }
   .btn-outline {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: transparent; color: var(--accent);
@@ -76,7 +73,6 @@
     background: var(--card); border: 1px solid var(--border);
     border-radius: 12px; padding: 1.1rem 1.2rem;
   }
-  .cx-card.is-urgent { border-left: 3px solid #fb7185; }
 </style>
 @endsection
 
@@ -94,7 +90,6 @@
     roomsUrl: @json(route('students.hotel.rooms.index')),
     departments: @json(\App\Models\HotelComplaint::DEPARTMENTS),
     statuses: @json(\App\Models\HotelComplaint::STATUSES),
-    priorities: @json(\App\Models\HotelComplaint::PRIORITIES),
   };
 </script>
 @verbatim
@@ -104,7 +99,6 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 const CFG = window.HMS_COMPLAINTS;
 const DEPARTMENT_LABELS = CFG.departments;
 const STATUSES = CFG.statuses;
-const PRIORITIES = CFG.priorities;
 const OPEN_STATUSES = ['Open', 'In Progress'];
 
 function slug(value) {
@@ -142,7 +136,6 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
   // changing the category must stop moving the department under them.
   const [departmentTouched, setDepartmentTouched] = useState(false);
   const [department, setDepartment] = useState(categories[categoryNames[0]] || 'maintenance');
-  const [priority, setPriority] = useState('Normal');
   const [details, setDetails] = useState('');
   const [error, setError] = useState('');
 
@@ -168,11 +161,9 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
       guest_name: guestName.trim(),
       category,
       department,
-      priority,
       details: details.trim(),
     }, () => {
       setDetails('');
-      setPriority('Normal');
       setDepartmentTouched(false);
     });
   };
@@ -240,12 +231,6 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
           </select>
         </div>
 
-        <div>
-          <label className="cx-field-label">Priority</label>
-          <select className="booking-select" value={priority} onChange={e => setPriority(e.target.value)}>
-            {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
       </div>
 
       <div style={{ marginTop: '0.9rem' }}>
@@ -278,12 +263,11 @@ function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
   const [note, setNote] = useState(complaint.resolutionNote || '');
   const [noteOpen, setNoteOpen] = useState(false);
   const otherDepartment = complaint.department === 'maintenance' ? 'housekeeping' : 'maintenance';
-  const closed = complaint.status === 'Resolved' || complaint.status === 'Cancelled';
 
   useEffect(() => { setNote(complaint.resolutionNote || ''); }, [complaint.resolutionNote]);
 
   return (
-    <div className={`cx-card ${complaint.priority === 'Urgent' && !closed ? 'is-urgent' : ''}`}>
+    <div className="cx-card">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
@@ -295,7 +279,6 @@ function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             <Badge className={`cx-${slug(complaint.status)}`}>{complaint.status}</Badge>
             <Badge className={`cx-${complaint.department}`}>{complaint.departmentLabel}</Badge>
-            <Badge className={`cx-${slug(complaint.priority)}`}>{complaint.priority}</Badge>
           </div>
         </div>
         <div style={{ textAlign: 'right', fontSize: '0.72rem', color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>

@@ -1135,7 +1135,6 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'guest_name'  => 'nullable|string|max:255',
             'category'    => 'required|string|max:100',
             'department'  => 'nullable|string|max:50',
-            'priority'    => 'nullable|string|max:20',
             'details'     => 'required|string|max:2000',
         ]);
 
@@ -1152,7 +1151,6 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'department'  => empty($data['department'])
                 ? HotelComplaint::departmentForCategory($category)
                 : HotelComplaint::normalizeDepartment($data['department']),
-            'priority'    => HotelComplaint::normalizePriority($data['priority'] ?? null),
             'details'     => trim($data['details']),
             'status'      => 'Open',
             'filed_by'    => auth()->user()?->name,

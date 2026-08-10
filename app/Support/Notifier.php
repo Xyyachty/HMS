@@ -394,8 +394,7 @@ class Notifier
         static::push(
             static::teamRoleUserIds($complaint->group_name, (int) $complaint->faculty_id, [$role]),
             UserNotification::COMPLAINT_FILED,
-            ($complaint->priority === 'Urgent' ? 'Urgent complaint · ' : 'New complaint · ')
-                . 'Room ' . $complaint->room_number,
+            'New complaint · Room ' . $complaint->room_number,
             $complaint->category . ' — ' . $complaint->details,
             route('students.' . $complaint->department . '.complaints'),
             $actor

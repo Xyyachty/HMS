@@ -40,7 +40,6 @@ return new class extends Migration
             $table->string('category');
             // 'maintenance' or 'housekeeping' — who is expected to act on it.
             $table->string('department');
-            $table->string('priority')->default('Normal');
             $table->text('details');
             $table->string('status')->default('Open');
             $table->text('resolution_note')->nullable();

@@ -42,12 +42,6 @@ class HotelComplaint extends Model
         'Cancelled',
     ];
 
-    public const PRIORITIES = [
-        'Low',
-        'Normal',
-        'Urgent',
-    ];
-
     protected $primaryKey = 'hotel_complaint_id';
 
     protected $fillable = [
@@ -58,7 +52,6 @@ class HotelComplaint extends Model
         'guest_name',
         'category',
         'department',
-        'priority',
         'details',
         'status',
         'resolution_note',
@@ -104,19 +97,6 @@ class HotelComplaint extends Model
         return 'Open';
     }
 
-    public static function normalizePriority(?string $value): string
-    {
-        $raw = mb_strtolower(trim((string) $value));
-
-        foreach (self::PRIORITIES as $priority) {
-            if (mb_strtolower($priority) === $raw) {
-                return $priority;
-            }
-        }
-
-        return 'Normal';
-    }
-
     /** The department a category routes to before anyone overrides it. */
     public static function departmentForCategory(?string $category): string
     {
@@ -139,7 +119,6 @@ class HotelComplaint extends Model
             'category'        => $this->category,
             'department'      => $this->department,
             'departmentLabel' => $this->departmentLabel(),
-            'priority'        => $this->priority,
             'details'         => $this->details,
             'status'          => $this->status,
             'resolutionNote'  => $this->resolution_note ?? '',
