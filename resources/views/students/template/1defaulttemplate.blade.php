@@ -1776,14 +1776,32 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• RESTAURANT PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-function MenuDetailModal({ item, onClose, canOrder, onOrder, onToast }) {
+/*
+ * Guests eligible for a room-service order: reservation is Arrived (Front Desk
+ * confirmed them at the desk via Verify Guest) and the room hasn't since been reset
+ * to Available. Room Management resetting a room's status back to Available never
+ * clears its old reservation JSON, so without that second check a checked-out guest's
+ * stale reservation would still show up as orderable.
+ */
+function checkedInRoomsFor(rooms) {
+  return (rooms || []).filter(r => (
+    r.reservation
+    && reservationArrivalStatus(r.reservation) === 'Arrived'
+    && normalizeRoomStatus(r.status) !== 'Available'
+  ));
+}
+
+function MenuDetailModal({ item, onClose, canOrder, onOrder, onToast, rooms }) {
   if (!item) return null;
   const [step, setStep] = useState('details');
-  const [form, setForm] = useState({ guestName: '', roomNumber: '', qty: 1 });
+  const [form, setForm] = useState({ roomId: '', qty: 1 });
+
+  const checkedInRooms = checkedInRoomsFor(rooms);
+  const selectedRoom = checkedInRooms.find(r => r.id === form.roomId) || null;
 
   useEffect(() => {
     setStep('details');
-    setForm({ guestName: '', roomNumber: '', qty: 1 });
+    setForm({ roomId: '', qty: 1 });
   }, [item.id]);
 
   useEffect(() => {
@@ -1799,13 +1817,17 @@ function MenuDetailModal({ item, onClose, canOrder, onOrder, onToast }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!isSiteInteractive()) return;
-    if (!String(form.guestName).trim() || !String(form.roomNumber).trim()) {
-      if (onToast) onToast('Guest name and room number are required.');
+    if (!selectedRoom) {
+      if (onToast) onToast('Select which checked-in guest this order is for.');
       return;
     }
     const qty = Math.max(1, parseInt(form.qty, 10) || 1);
     if (typeof onOrder !== 'function') { onClose(); return; }
-    Promise.resolve(onOrder(item, { guestName: form.guestName.trim(), roomNumber: form.roomNumber.trim(), qty }))
+    Promise.resolve(onOrder(item, {
+      guestName: selectedRoom.reservation.fullName || 'Guest',
+      roomNumber: selectedRoom.name,
+      qty,
+    }))
       .then(() => onClose())
       .catch(() => { /* toast already shown by caller; keep form open to retry */ });
   };
@@ -1869,28 +1891,40 @@ function MenuDetailModal({ item, onClose, canOrder, onOrder, onToast }) {
                 Ordering <strong style={{ color: 'var(--fg)' }}>{item.name}</strong>
               </p>
 
-              <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gap: '0.85rem' }}>
-                  <div>
-                    <label style={fieldLabel}>Guest Name</label>
-                    <input type="text" className="booking-input" placeholder="e.g. James Whitfield" value={form.guestName}
-                      onChange={e => update('guestName', e.target.value)} required />
+              {checkedInRooms.length === 0 ? (
+                <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', lineHeight: 1.6 }}>
+                  No guests are checked in right now. Mark a guest as Arrived from Verify Guest before placing a room-service order.
+                </p>
+              ) : (
+                <form onSubmit={handleSubmit}>
+                  <div style={{ display: 'grid', gap: '0.85rem' }}>
+                    <div>
+                      <label style={fieldLabel}>Guest</label>
+                      <select className="booking-input" value={form.roomId}
+                        onChange={e => update('roomId', e.target.value)} required style={{ colorScheme: 'dark' }}>
+                        <option value="">Select a checked-in guest…</option>
+                        {checkedInRooms.map(r => (
+                          <option key={r.id} value={r.id}>{r.reservation.fullName || 'Guest'} — {r.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={fieldLabel}>Room</label>
+                      <div className="booking-input" style={{ opacity: 0.75, cursor: 'default' }}>
+                        {selectedRoom ? selectedRoom.name : '—'}
+                      </div>
+                    </div>
+                    <div>
+                      <label style={fieldLabel}>Quantity</label>
+                      <input type="number" className="booking-input" min="1" max={item.stock != null ? item.stock : 99} value={form.qty}
+                        onChange={e => update('qty', e.target.value)} required />
+                    </div>
                   </div>
-                  <div>
-                    <label style={fieldLabel}>Room Number</label>
-                    <input type="text" className="booking-input" placeholder="e.g. 204" value={form.roomNumber}
-                      onChange={e => update('roomNumber', e.target.value)} required />
-                  </div>
-                  <div>
-                    <label style={fieldLabel}>Quantity</label>
-                    <input type="number" className="booking-input" min="1" max={item.stock != null ? item.stock : 99} value={form.qty}
-                      onChange={e => update('qty', e.target.value)} required />
-                  </div>
-                </div>
-                <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }}>
-                  Place Order <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
-                </button>
-              </form>
+                  <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }} disabled={!selectedRoom}>
+                    Place Order <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+                  </button>
+                </form>
+              )}
             </>
           )}
         </div>
@@ -1899,7 +1933,7 @@ function MenuDetailModal({ item, onClose, canOrder, onOrder, onToast }) {
   );
 }
 
-function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canOrderMenu, onOrderMenu, cardImages, isDesignMode }) {
+function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canOrderMenu, onOrderMenu, cardImages, isDesignMode, rooms }) {
   const menuList = menus || [];
   const [selectedMenuId, setSelectedMenuId] = useState(null);
   const selectedMenu = menuList.find(m => m.id === selectedMenuId) || null;
@@ -1967,6 +2001,7 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canOrderMe
         canOrder={!!canOrderMenu}
         onOrder={onOrderMenu}
         onToast={onToast}
+        rooms={rooms}
       />
     </>
   );
@@ -2505,6 +2540,7 @@ function App() {
         onOrderMenu={placeOrder}
         cardImages={cardImages}
         isDesignMode={isDesignMode}
+        rooms={rooms}
       />
     ),
     experience: <ExperiencePage onNavigate={navigateTo} />,
