@@ -1795,18 +1795,17 @@ function checkedInRoomsFor(rooms) {
   ));
 }
 
-function MenuDetailModal({ item, onClose, canOrder, onOrder, onToast, rooms }) {
+/*
+ * A menu item's detail view only ever adds it to the order being built — it never
+ * places an order itself. Guest and room are picked once in CartReviewModal, at
+ * checkout, not per item; that is what lets an order carry several different dishes
+ * instead of forcing one order per item.
+ */
+function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
   if (!item) return null;
-  const [step, setStep] = useState('details');
-  const [form, setForm] = useState({ roomId: '', qty: 1 });
+  const [qty, setQty] = useState(1);
 
-  const checkedInRooms = checkedInRoomsFor(rooms);
-  const selectedRoom = checkedInRooms.find(r => r.id === form.roomId) || null;
-
-  useEffect(() => {
-    setStep('details');
-    setForm({ roomId: '', qty: 1 });
-  }, [item.id]);
+  useEffect(() => { setQty(1); }, [item.id]);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -1815,25 +1814,14 @@ function MenuDetailModal({ item, onClose, canOrder, onOrder, onToast, rooms }) {
   }, [onClose]);
 
   const inStock = item.stock == null || item.stock > 0;
-  const update = (field, value) => setForm(prev => Object.assign({}, prev, { [field]: value }));
+  const maxQty = item.stock != null ? item.stock : 99;
   const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!isSiteInteractive()) return;
-    if (!selectedRoom) {
-      if (onToast) onToast('Select which checked-in guest this order is for.');
-      return;
-    }
-    const qty = Math.max(1, parseInt(form.qty, 10) || 1);
-    if (typeof onOrder !== 'function') { onClose(); return; }
-    Promise.resolve(onOrder(item, {
-      guestName: selectedRoom.reservation.fullName || 'Guest',
-      roomNumber: selectedRoom.name,
-      qty,
-    }))
-      .then(() => onClose())
-      .catch(() => { /* toast already shown by caller; keep form open to retry */ });
+  const handleAdd = () => {
+    const clean = Math.max(1, Math.min(maxQty, parseInt(qty, 10) || 1));
+    if (typeof onAddToCart === 'function') onAddToCart(item, clean);
+    if (onToast) onToast(`${item.name} added to the order.`);
+    onClose();
   };
 
   return (
@@ -1846,66 +1834,152 @@ function MenuDetailModal({ item, onClose, canOrder, onOrder, onToast, rooms }) {
           </button>
         </div>
         <div style={{ padding: '1.5rem 1.5rem 1.75rem' }}>
-          {step === 'details' && (
-            <>
-              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-                {normalizeMenuCategory(item.category)}
-              </p>
-              <h2 className="font-display" style={{ fontSize: '1.65rem', marginBottom: '1.25rem' }}>{item.name}</h2>
+          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+            {normalizeMenuCategory(item.category)}
+          </p>
+          <h2 className="font-display" style={{ fontSize: '1.65rem', marginBottom: '1.25rem' }}>{item.name}</h2>
 
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <div>
-                  <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Price</p>
-                  <p style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.25rem', margin: 0 }}>
-                    {typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}
-                  </p>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <div>
+              <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Price</p>
+              <p style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.25rem', margin: 0 }}>
+                {typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}
+              </p>
+            </div>
+            <div>
+              <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Description</p>
+              <p style={{ color: 'var(--fg-muted)', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>{item.sub || 'No description yet.'}</p>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '1.5rem' }}>
+            {canOrder && inStock ? (
+              <>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={fieldLabel}>Quantity</label>
+                  <input type="number" className="booking-input" min="1" max={maxQty} value={qty}
+                    onChange={e => setQty(e.target.value)} style={{ width: 110 }} />
                 </div>
-                <div>
-                  <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Description</p>
-                  <p style={{ color: 'var(--fg-muted)', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>{item.sub || 'No description yet.'}</p>
-                </div>
+                <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleAdd}>
+                  Add to Order <i className="fa-solid fa-cart-plus" style={{ fontSize: '0.7rem' }}></i>
+                </button>
+              </>
+            ) : !inStock ? (
+              <p style={{ textAlign: 'center', color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>
+                Currently out of stock.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/*
+ * Everything added from the menu lands here first. One guest and one room are
+ * chosen for the whole cart, then the entire cart goes out as a single order with
+ * one line per dish — the server (HotelFoodOrder) already accepts a multi-line
+ * items array; this is what actually gives Front Desk a way to fill it with more
+ * than one line before placing the order was the missing piece.
+ */
+function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, onPlaceOrder, onToast }) {
+  const [roomId, setRoomId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const checkedInRooms = checkedInRoomsFor(rooms);
+  const selectedRoom = checkedInRooms.find(r => r.id === roomId) || null;
+
+  useEffect(() => { if (open) setRoomId(''); }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const total = cart.reduce((sum, line) => sum + line.price * line.qty, 0);
+  const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
+  const stepBtn = {
+    width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)',
+    background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem',
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!isSiteInteractive()) return;
+    if (!cart.length) { if (onToast) onToast('Add at least one item to the order.'); return; }
+    if (!selectedRoom) { if (onToast) onToast('Select which checked-in guest this order is for.'); return; }
+    setSubmitting(true);
+    Promise.resolve(onPlaceOrder(cart, {
+      guestName: selectedRoom.reservation.fullName || 'Guest',
+      roomNumber: selectedRoom.name,
+    }))
+      .then(() => onClose())
+      .catch(() => { /* toast already shown by caller; keep the review open to retry */ })
+      .finally(() => setSubmitting(false));
+  };
+
+  return (
+    <div className="room-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="room-modal" onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '1.5rem 1.5rem 1.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.1rem' }}>
+            <div>
+              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Room Service</p>
+              <h2 className="font-display" style={{ fontSize: '1.55rem', margin: 0 }}>Review Order</h2>
+            </div>
+            <button type="button" onClick={onClose} aria-label="Close"
+              style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          {cart.length === 0 ? (
+            <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>No items yet — add dishes from the menu first.</p>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gap: '0.6rem', marginBottom: '1.1rem', maxHeight: 260, overflowY: 'auto' }}>
+                {cart.map(line => (
+                  <div key={line.dbId} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.55rem 0.7rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, color: 'var(--fg)', fontWeight: 600, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line.name}</p>
+                      <p style={{ margin: 0, color: 'var(--accent-light)', fontSize: '0.76rem' }}>{formatPeso(line.price)}</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <button type="button" onClick={() => onUpdateQty(line.dbId, line.qty - 1)} style={stepBtn}>−</button>
+                      <span style={{ color: 'var(--fg)', minWidth: 18, textAlign: 'center', fontSize: '0.85rem' }}>{line.qty}</span>
+                      <button type="button" onClick={() => onUpdateQty(line.dbId, line.qty + 1)}
+                        disabled={line.stock != null && line.qty >= line.stock} style={stepBtn}>+</button>
+                    </div>
+                    <button type="button" onClick={() => onRemove(line.dbId)} title="Remove"
+                      style={{ background: 'none', border: 'none', color: '#fb7185', cursor: 'pointer', fontSize: '0.95rem', padding: '0.2rem' }}>
+                      <i className="fa-solid fa-trash-can"></i>
+                    </button>
+                  </div>
+                ))}
               </div>
 
-              <div style={{ marginTop: '1.5rem' }}>
-                {canOrder && inStock ? (
-                  <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
-                    onClick={() => setStep('order')}>
-                    Order Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
-                  </button>
-                ) : !inStock ? (
-                  <p style={{ textAlign: 'center', color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>
-                    Currently out of stock.
-                  </p>
-                ) : null}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1.1rem' }}>
+                <span style={{ color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Total</span>
+                <span style={{ color: 'var(--accent-light)', fontWeight: 700, fontSize: '1.1rem', fontFamily: 'Playfair Display, serif' }}>{formatPeso(total)}</span>
               </div>
-            </>
-          )}
-
-          {step === 'order' && (
-            <>
-              <button type="button" onClick={() => setStep('details')}
-                style={{ background: 'none', border: 'none', color: 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', padding: 0, marginBottom: '0.85rem', fontFamily: 'Outfit, sans-serif' }}>
-                <i className="fa-solid fa-arrow-left" style={{ marginRight: 6, fontSize: '0.7rem' }}></i> Back
-              </button>
-              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-                Room Service
-              </p>
-              <h2 className="font-display" style={{ fontSize: '1.55rem', marginBottom: '0.35rem' }}>Place Order</h2>
-              <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', marginBottom: '1.25rem' }}>
-                Ordering <strong style={{ color: 'var(--fg)' }}>{item.name}</strong>
-              </p>
 
               {checkedInRooms.length === 0 ? (
                 <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', lineHeight: 1.6 }}>
                   No guests are checked in right now. Mark a guest as Arrived from Verify Guest before placing a room-service order.
                 </p>
               ) : (
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={submit}>
                   <div style={{ display: 'grid', gap: '0.85rem' }}>
                     <div>
                       <label style={fieldLabel}>Guest</label>
-                      <select className="booking-input" value={form.roomId}
-                        onChange={e => update('roomId', e.target.value)} required style={{ colorScheme: 'dark' }}>
+                      <select className="booking-input" value={roomId}
+                        onChange={e => setRoomId(e.target.value)} required>
                         <option value="">Select a checked-in guest…</option>
                         {checkedInRooms.map(r => (
                           <option key={r.id} value={r.id}>{r.reservation.fullName || 'Guest'} — {r.name}</option>
@@ -1918,14 +1992,9 @@ function MenuDetailModal({ item, onClose, canOrder, onOrder, onToast, rooms }) {
                         {selectedRoom ? selectedRoom.name : '—'}
                       </div>
                     </div>
-                    <div>
-                      <label style={fieldLabel}>Quantity</label>
-                      <input type="number" className="booking-input" min="1" max={item.stock != null ? item.stock : 99} value={form.qty}
-                        onChange={e => update('qty', e.target.value)} required />
-                    </div>
                   </div>
-                  <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }} disabled={!selectedRoom}>
-                    Place Order <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+                  <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }} disabled={!selectedRoom || submitting}>
+                    {submitting ? 'Placing…' : 'Place Order'} <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
                   </button>
                 </form>
               )}
@@ -1942,8 +2011,42 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canOrderMe
   const [selectedMenuId, setSelectedMenuId] = useState(null);
   const selectedMenu = menuList.find(m => m.id === selectedMenuId) || null;
   const [menuTab, setMenuTab] = useState('Main Dishes');
+  const [cart, setCart] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
   const filteredMenus = menuList.filter(item => normalizeMenuCategory(item.category) === menuTab);
   void cardImages;
+
+  // Keyed by dbId: adding the same dish twice bumps its quantity rather than
+  // creating a second line the kitchen would read as two separate requests.
+  const addToCart = (item, qty) => {
+    setCart(prev => {
+      const existing = prev.find(l => l.dbId === item.dbId);
+      if (existing) {
+        const ceiling = item.stock != null ? item.stock : 99;
+        return prev.map(l => (l.dbId === item.dbId ? Object.assign({}, l, { qty: Math.min(ceiling, l.qty + qty) }) : l));
+      }
+      return [...prev, { dbId: item.dbId, name: item.name, price: item.price, qty, stock: item.stock }];
+    });
+  };
+
+  const updateCartQty = (dbId, qty) => {
+    setCart(prev => prev.reduce((acc, l) => {
+      if (l.dbId !== dbId) { acc.push(l); return acc; }
+      const ceiling = l.stock != null ? l.stock : 99;
+      const next = Math.min(ceiling, qty);
+      if (next >= 1) acc.push(Object.assign({}, l, { qty: next }));
+      return acc;
+    }, []));
+  };
+
+  const removeFromCart = (dbId) => setCart(prev => prev.filter(l => l.dbId !== dbId));
+
+  const placeCartOrder = (lines, details) => (
+    Promise.resolve(onOrderMenu(lines, details)).then(result => { setCart([]); return result; })
+  );
+
+  const cartCount = cart.reduce((sum, l) => sum + l.qty, 0);
+  const cartTotal = cart.reduce((sum, l) => sum + l.price * l.qty, 0);
 
   return (
     <>
@@ -1999,13 +2102,42 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canOrderMe
           </div>
         )}
       </section>
+      {canOrderMenu && cartCount > 0 && (
+        <div data-hms-no-edit="1" style={{
+          position: 'fixed', left: '50%', bottom: '1.25rem', transform: 'translateX(-50%)',
+          zIndex: 1500, display: 'flex', alignItems: 'center', gap: '1rem',
+          background: 'var(--card)', border: '1px solid var(--accent)', borderRadius: 999,
+          padding: '0.6rem 0.7rem 0.6rem 1.2rem', boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          maxWidth: 'calc(100vw - 2rem)',
+        }}>
+          <span style={{ color: 'var(--fg)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+            {cartCount} item{cartCount === 1 ? '' : 's'}
+            <span style={{ color: 'var(--fg-muted)' }}> · </span>
+            <span style={{ color: 'var(--accent-light)', fontWeight: 700 }}>{formatPeso(cartTotal)}</span>
+          </span>
+          <button type="button" className="btn-primary" style={{ padding: '0.55rem 1.2rem', borderRadius: 999 }}
+            onClick={() => setCartOpen(true)}>
+            Review Order <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+          </button>
+        </div>
+      )}
+
       <MenuDetailModal
         item={selectedMenu}
         onClose={() => setSelectedMenuId(null)}
         canOrder={!!canOrderMenu}
-        onOrder={onOrderMenu}
+        onAddToCart={addToCart}
         onToast={onToast}
+      />
+      <CartReviewModal
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        cart={cart}
+        onUpdateQty={updateCartQty}
+        onRemove={removeFromCart}
         rooms={rooms}
+        onPlaceOrder={placeCartOrder}
+        onToast={onToast}
       />
     </>
   );
@@ -2452,16 +2584,18 @@ function App() {
   }, []);
 
   // Room-service food order — Front Desk / Restaurant staff only (server enforces this too).
-  const placeOrder = useCallback((item, details) => (
+  // One order, one or many dishes. `lines` is the reviewed cart.
+  const placeOrder = useCallback((lines, details) => (
     menuRequest('/students/hotel/orders', 'POST', {
       room_number: details.roomNumber,
       guest_name: details.guestName,
       // menu_item_id lets the server reconcile stock by row rather than by name,
       // so renaming a dish no longer breaks the order or its stock return.
-      items: [{ menu_item_id: item.dbId || null, name: item.name, price: item.price, qty: details.qty }],
+      items: lines.map(l => ({ menu_item_id: l.dbId || null, name: l.name, price: l.price, qty: l.qty })),
     })
       .then(data => {
-        showToast(`Order placed for Room ${details.roomNumber} — ${item.name} x${details.qty}.`);
+        const count = lines.reduce((sum, l) => sum + l.qty, 0);
+        showToast(`Order placed for Room ${details.roomNumber} — ${count} item${count === 1 ? '' : 's'}.`);
         fetchMenus(); // stock changed
         return data && data.order;
       })
