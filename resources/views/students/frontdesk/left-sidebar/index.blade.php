@@ -40,6 +40,11 @@
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.frontdesk.complaints') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-comment-dots text-[13px] text-emerald-400"></i> Complaints
                 </a>
+                <a href="{{ route('students.frontdesk.dine-in') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.frontdesk.dine-in') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-utensils text-[13px] text-emerald-400"></i> Dine-in Tables
+                </a>
                 @elseif(($builderRole ?? null) === 'maintenance')
                 <a href="{{ route('students.maintenance.complaints') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
@@ -64,10 +69,15 @@
                     <i class="fas fa-user text-[13px] text-emerald-400"></i> Guest Details
                 </a>
                 @elseif(($builderRole ?? null) === 'restaurant_management')
-                <a href="{{ route('students.restaurant.manage') }}"
+                <a href="{{ route('students.restaurant.manage', ['nav' => 'manage-menu']) }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
-                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border border-zinc-700 hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5">
-                    <i class="fas fa-screwdriver-wrench text-[13px] text-emerald-400"></i> Restaurant Management
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.restaurant.manage') && request()->query('nav', 'manage-menu') === 'manage-menu' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-utensils text-[13px] text-emerald-400"></i> Manage Menu
+                </a>
+                <a href="{{ route('students.restaurant.manage', ['nav' => 'manage-tables']) }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.restaurant.manage') && request()->query('nav') === 'manage-tables' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-chair text-[13px] text-emerald-400"></i> Manage Tables
                 </a>
                 @endif
             </div>

@@ -96,6 +96,17 @@ class HotelOrderAccess
         return count(array_intersect(self::roles($membership), self::PLACE_ROLES)) > 0;
     }
 
+    /**
+     * A dine-in order is taken tableside by Restaurant Management, not handed off by
+     * Front Desk the way a room-service order is — Front Desk's part ends at seating
+     * the guest. Same role set as canFulfill(), kept as its own method because the
+     * two checks answer different questions and may yet diverge.
+     */
+    public static function canPlaceDineIn(StudentGroup $membership): bool
+    {
+        return self::canFulfill($membership);
+    }
+
     public static function canFulfill(StudentGroup $membership): bool
     {
         return count(array_intersect(self::roles($membership), self::FULFILL_ROLES)) > 0;

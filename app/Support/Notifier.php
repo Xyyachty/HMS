@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\FacultyClass;
 use App\Models\HotelComplaint;
+use App\Models\HotelDineInTable;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\Task;
@@ -440,6 +441,23 @@ class Notifier
             'Complaint reassigned · Room ' . $complaint->room_number,
             $fromLabel . ' passed "' . $complaint->category . '" to your department.',
             route('students.' . $complaint->department . '.complaints'),
+            $actor
+        );
+    }
+
+    /**
+     * The Front Desk seated a guest at a table. Restaurant Management is the only
+     * audience — they are the ones about to take the order.
+     */
+    public static function tableAssigned(?User $actor, HotelDineInTable $table): void
+    {
+        static::push(
+            static::teamRoleUserIds($table->group_name, (int) $table->faculty_id, ['restaurant_management']),
+            UserNotification::TABLE_ASSIGNED,
+            'Guest seated · ' . $table->name,
+            ($table->guest_name ? $table->guest_name . ' ' : 'A guest ')
+                . '(party of ' . $table->party_size . ') is waiting to order.',
+            route('students.restaurant.manage', ['nav' => 'manage-tables']),
             $actor
         );
     }

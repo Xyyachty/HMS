@@ -24,6 +24,7 @@ class UserNotification extends Model
     public const SITE_PUBLISHED = 'site_published';
     public const COMPLAINT_FILED = 'complaint_filed';
     public const COMPLAINT_UPDATED = 'complaint_updated';
+    public const TABLE_ASSIGNED = 'table_assigned';
 
     /** Icon + accent per type, consumed by the dropdown partial. */
     public const STYLES = [
@@ -37,6 +38,7 @@ class UserNotification extends Model
         self::SITE_PUBLISHED => ['icon' => 'mdi:web-check', 'accent' => 'emerald'],
         self::COMPLAINT_FILED => ['icon' => 'mdi:alert-octagon', 'accent' => 'rose'],
         self::COMPLAINT_UPDATED => ['icon' => 'mdi:clipboard-check-outline', 'accent' => 'emerald'],
+        self::TABLE_ASSIGNED => ['icon' => 'mdi:table-chair', 'accent' => 'amber'],
     ];
 
     protected $primaryKey = 'user_notification_id';

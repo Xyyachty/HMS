@@ -54,6 +54,26 @@
     .rm-row { flex-direction: column; }
     .rm-form-row { grid-template-columns: 1fr; }
   }
+  .tb-badge {
+    padding: 0.22rem 0.6rem; border-radius: 4px;
+    font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+    font-weight: 600; border: 1px solid transparent; display: inline-block;
+  }
+  .tb-available { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .tb-occupied  { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
+  .tb-pending   { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
+  .tb-preparing { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
+  .tb-delivered { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .tb-cancelled { background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3); }
+  .tb-tab {
+    padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px solid var(--border);
+    background: transparent; color: var(--fg-muted); cursor: pointer;
+    font-family: 'Outfit', sans-serif; font-size: 0.68rem; font-weight: 600;
+    letter-spacing: 0.06em; transition: all 0.15s;
+  }
+  .tb-tab:hover { color: var(--fg); }
+  .tb-tab.is-active { border-color: var(--accent); background: var(--accent); color: var(--bg); }
+  .tb-tab:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
 @endsection
 
@@ -64,6 +84,7 @@
 @section('scripts')
 <script>
   window.HMS_RESTAURANT_URL = @json(route('students.restaurant'));
+  window.HMS_RESTAURANT_INITIAL_NAV = @json(request()->query('nav', 'manage-menu'));
 </script>
 @verbatim
 <script type="text/babel">
@@ -428,7 +449,318 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
   );
 }
 
-function RestaurantManagementPage({ menus, onBack, onAddMenu, onEditMenu, onRemoveMenu, onToast }) {
+const ORDER_STATUSES = ['Pending', 'Preparing', 'Delivered', 'Cancelled'];
+const OPEN_ORDER_STATUSES = ['Pending', 'Preparing'];
+
+function createEmptyTableForm() {
+  return { name: '', capacity: '2' };
+}
+
+function TableOrderPanel({ table, menus, orders, onPlaceOrder, onUpdateOrderStatus, onToast }) {
+  const [cart, setCart] = useState({});
+  const [category, setCategory] = useState('All');
+  const [placing, setPlacing] = useState(false);
+
+  const tableOrders = (orders || [])
+    .filter(o => o.tableId === table.id)
+    .sort((a, b) => (a.id < b.id ? 1 : -1));
+
+  const menuList = (menus || []).filter(m => category === 'All' || normalizeMenuCategory(m.category) === category);
+
+  const addToCart = (item) => {
+    setCart(prev => {
+      const qty = (prev[item.id] && prev[item.id].qty) || 0;
+      return Object.assign({}, prev, { [item.id]: { item, qty: qty + 1 } });
+    });
+  };
+  const removeFromCart = (id) => {
+    setCart(prev => {
+      const next = Object.assign({}, prev);
+      const line = next[id];
+      if (!line) return prev;
+      if (line.qty <= 1) { delete next[id]; return next; }
+      next[id] = Object.assign({}, line, { qty: line.qty - 1 });
+      return next;
+    });
+  };
+
+  const cartLines = Object.values(cart);
+  const cartTotal = cartLines.reduce((sum, l) => sum + (Number(l.item.price) || 0) * l.qty, 0);
+
+  const placeOrder = () => {
+    if (!cartLines.length) { if (onToast) onToast('Add at least one item to the order.'); return; }
+    setPlacing(true);
+    const items = cartLines.map(l => ({ menu_item_id: l.item.id, name: l.item.name, price: l.item.price, qty: l.qty }));
+    Promise.resolve(onPlaceOrder(table.id, items))
+      .then(() => { setCart({}); if (onToast) onToast(`Order sent to the kitchen for ${table.name}.`); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not place this order.'); })
+      .finally(() => setPlacing(false));
+  };
+
+  return (
+    <div style={{ marginTop: '0.9rem', paddingTop: '0.9rem', borderTop: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+        <button type="button" className={`tb-tab ${category === 'All' ? 'is-active' : ''}`} onClick={() => setCategory('All')}>All</button>
+        {MENU_CATEGORIES.map(c => (
+          <button key={c} type="button" className={`tb-tab ${category === c ? 'is-active' : ''}`} onClick={() => setCategory(c)}>{c}</button>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gap: '0.4rem', maxHeight: 220, overflowY: 'auto', marginBottom: '0.85rem' }}>
+        {menuList.length === 0 && (
+          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem' }}>No menu items in this category.</p>
+        )}
+        {menuList.map(item => (
+          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem' }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p style={{ margin: 0, color: 'var(--fg)', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
+              <p style={{ margin: 0, color: 'var(--accent-light)', fontSize: '0.74rem' }}>{formatPeso(item.price)}</p>
+            </div>
+            {item.stock <= 0 ? (
+              <span style={{ fontSize: '0.68rem', color: '#fb7185' }}>Out of stock</span>
+            ) : cart[item.id] ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <button type="button" onClick={() => removeFromCart(item.id)} style={toolBtnStyle('edit')}>−</button>
+                <span style={{ color: 'var(--fg)', fontSize: '0.82rem', minWidth: 16, textAlign: 'center' }}>{cart[item.id].qty}</span>
+                <button type="button" onClick={() => addToCart(item)} style={toolBtnStyle('edit')}>+</button>
+              </div>
+            ) : (
+              <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.4rem 0.7rem' }} onClick={() => addToCart(item)}>
+                Add
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {cartLines.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+          <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>{cartLines.length} item(s) · {formatPeso(cartTotal)}</span>
+          <button type="button" className="btn-primary" disabled={placing} onClick={placeOrder} style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}>
+            {placing ? 'Sending…' : 'Send to Kitchen'}
+          </button>
+        </div>
+      )}
+
+      {tableOrders.length > 0 && (
+        <div style={{ display: 'grid', gap: '0.5rem' }}>
+          {tableOrders.map(order => (
+            <div key={order.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                <span className={`tb-badge tb-${order.status.toLowerCase()}`}>{order.status}</span>
+                <span style={{ color: 'var(--accent-light)', fontSize: '0.78rem', fontWeight: 700 }}>{formatPeso(order.total)}</span>
+              </div>
+              <p style={{ margin: '0 0 0.5rem', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
+                {(order.items || []).map(i => `${i.qty}× ${i.name}`).join(', ')}
+              </p>
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                {ORDER_STATUSES.map(status => (
+                  <button
+                    key={status}
+                    type="button"
+                    className={`tb-tab ${order.status === status ? 'is-active' : ''}`}
+                    disabled={order.status === status}
+                    onClick={() => Promise.resolve(onUpdateOrderStatus(order.id, status)).catch(err => { if (onToast) onToast((err && err.message) || 'Could not update this order.'); })}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ManageTablesPanel({ tables, orders, menus, canManage, onAddTable, onEditTable, onCloseTable, onRemoveTable, onPlaceOrder, onUpdateOrderStatus, onToast }) {
+  const [form, setForm] = useState(createEmptyTableForm);
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+
+  const fieldLabel = {
+    fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
+    color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem',
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const next = {};
+    if (!String(form.name).trim()) next.name = 'Table name is required.';
+    const capacity = parseInt(form.capacity, 10);
+    if (!Number.isFinite(capacity) || capacity < 1) next.capacity = 'Enter how many seats this table has.';
+    setErrors(next);
+    if (Object.keys(next).length) return;
+
+    setSaving(true);
+    Promise.resolve(onAddTable({ name: String(form.name).trim(), capacity }))
+      .then(() => { if (onToast) onToast(`${form.name} added.`); setForm(createEmptyTableForm()); })
+      .catch(err => setErrors({ form: (err && err.message) || 'Could not add this table.' }))
+      .finally(() => setSaving(false));
+  };
+
+  const saveEdit = (table) => {
+    const capacity = parseInt(editForm.capacity, 10);
+    if (!String(editForm.name).trim() || !Number.isFinite(capacity) || capacity < 1) {
+      if (onToast) onToast('Enter a valid name and capacity.');
+      return;
+    }
+    Promise.resolve(onEditTable(table.id, { name: String(editForm.name).trim(), capacity }))
+      .then(() => { setEditingId(null); if (onToast) onToast(`${editForm.name} updated.`); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not update this table.'); });
+  };
+
+  const closeTable = (table) => {
+    if (!hmsConfirm(`Close ${table.name} and free it up?`)) return;
+    Promise.resolve(onCloseTable(table.id))
+      .then(() => { if (onToast) onToast(`${table.name} is now available.`); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not close this table.'); });
+  };
+
+  const removeTable = (table) => {
+    if (!hmsConfirm(`Remove ${table.name}?`)) return;
+    Promise.resolve(onRemoveTable(table.id))
+      .then(() => { if (onToast) onToast(`${table.name} removed.`); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not remove this table.'); });
+  };
+
+  const list = tables || [];
+  const hasOpenOrder = (table) => (orders || []).some(o => o.tableId === table.id && OPEN_ORDER_STATUSES.includes(o.status));
+
+  return (
+    <div className="rm-panel" style={{ maxWidth: '100%' }}>
+      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Dine-in</p>
+      <h3>Manage Tables</h3>
+      <p className="rm-panel-desc">
+        Add tables for Front Desk to seat guests at. Once a guest is seated, take their order here.
+      </p>
+
+      {canManage && (
+        <form onSubmit={handleSubmit} className="rm-form-row" noValidate style={{ maxWidth: 520, marginBottom: '1.5rem' }}>
+          <div>
+            <label style={fieldLabel}>Table Name *</label>
+            <input
+              type="text" className="booking-input" placeholder="e.g. Table 5"
+              value={form.name} onChange={e => setForm(p => Object.assign({}, p, { name: e.target.value }))}
+              style={errors.name ? { borderColor: '#f43f5e' } : undefined}
+            />
+            {errors.name && <p style={{ margin: '0.35rem 0 0', color: '#fb7185', fontSize: '0.72rem' }}>{errors.name}</p>}
+          </div>
+          <div>
+            <label style={fieldLabel}>Seats *</label>
+            <input
+              type="number" min="1" step="1" className="booking-input" placeholder="e.g. 4"
+              value={form.capacity} onChange={e => setForm(p => Object.assign({}, p, { capacity: e.target.value }))}
+              style={errors.capacity ? { borderColor: '#f43f5e' } : undefined}
+            />
+            {errors.capacity && <p style={{ margin: '0.35rem 0 0', color: '#fb7185', fontSize: '0.72rem' }}>{errors.capacity}</p>}
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            {errors.form && <p style={{ margin: '0 0 0.6rem', color: '#fb7185', fontSize: '0.78rem' }}>{errors.form}</p>}
+            <button type="submit" className="btn-primary" disabled={saving}>
+              <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem' }}></i> {saving ? 'Adding…' : 'Add Table'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {list.length === 0 ? (
+        <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>No tables yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: '0.6rem' }}>
+          {list.map(table => {
+            const isEditing = editingId === table.id;
+            const isExpanded = expandedId === table.id;
+            const occupied = table.status === 'Occupied';
+
+            return (
+              <div key={table.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem 0.9rem' }}>
+                {isEditing ? (
+                  <div className="rm-form-row" style={{ alignItems: 'end' }}>
+                    <input
+                      type="text" className="booking-input" value={editForm.name}
+                      onChange={e => setEditForm(p => Object.assign({}, p, { name: e.target.value }))}
+                    />
+                    <input
+                      type="number" min="1" className="booking-input" value={editForm.capacity}
+                      onChange={e => setEditForm(p => Object.assign({}, p, { capacity: e.target.value }))}
+                    />
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.5rem' }}>
+                      <button type="button" className="btn-primary" style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }} onClick={() => saveEdit(table)}>Save</button>
+                      <button type="button" className="btn-outline" style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }} onClick={() => setEditingId(null)}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
+                        <span style={{ color: 'var(--fg)', fontWeight: 700 }}>{table.name}</span>
+                        <span className={`tb-badge tb-${table.status.toLowerCase()}`}>{table.status}</span>
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.76rem' }}>
+                        Seats {table.capacity}
+                        {occupied && ` · ${table.guestName || 'Guest'} (party of ${table.partySize || '—'})`}
+                      </p>
+                    </div>
+                    {canManage && (
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        {occupied && (
+                          <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.4rem 0.75rem' }}
+                            onClick={() => setExpandedId(isExpanded ? null : table.id)}>
+                            {isExpanded ? 'Hide Order' : 'Take Order'}
+                          </button>
+                        )}
+                        {occupied ? (
+                          <button type="button" title="Close table" disabled={hasOpenOrder(table)}
+                            onClick={() => closeTable(table)} style={toolBtnStyle('danger')}>
+                            <i className="fa-solid fa-door-closed" style={{ fontSize: 11 }}></i>
+                          </button>
+                        ) : (
+                          <>
+                            <button type="button" title="Edit table" onClick={() => { setEditingId(table.id); setEditForm({ name: table.name, capacity: String(table.capacity) }); }} style={toolBtnStyle('edit')}>
+                              <i className="fa-solid fa-pen" style={{ fontSize: 10 }}></i>
+                            </button>
+                            <button type="button" title="Remove table" onClick={() => removeTable(table)} style={toolBtnStyle('danger')}>
+                              <i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {occupied && isExpanded && (
+                  <TableOrderPanel
+                    table={table}
+                    menus={menus}
+                    orders={orders}
+                    onPlaceOrder={onPlaceOrder}
+                    onUpdateOrderStatus={onUpdateOrderStatus}
+                    onToast={onToast}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RestaurantManagementPage({
+  initialNav, menus, tables, orders, canManageTables,
+  onBack, onAddMenu, onEditMenu, onRemoveMenu,
+  onAddTable, onEditTable, onCloseTable, onRemoveTable, onPlaceOrder, onUpdateOrderStatus,
+  onToast,
+}) {
+  const activeNav = initialNav || 'manage-menu';
+
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.1rem' }}>
@@ -443,14 +775,31 @@ function RestaurantManagementPage({ menus, onBack, onAddMenu, onEditMenu, onRemo
 
       <div className="rm-row">
         <div className="rm-content">
-          <ManageMenuPanel
-            menus={menus}
-            onAddMenu={onAddMenu}
-            onEditMenu={onEditMenu}
-            onRemoveMenu={onRemoveMenu}
-            onToast={onToast}
-            onCancel={onBack}
-          />
+          {activeNav === 'manage-menu' && (
+            <ManageMenuPanel
+              menus={menus}
+              onAddMenu={onAddMenu}
+              onEditMenu={onEditMenu}
+              onRemoveMenu={onRemoveMenu}
+              onToast={onToast}
+              onCancel={onBack}
+            />
+          )}
+          {activeNav === 'manage-tables' && (
+            <ManageTablesPanel
+              tables={tables}
+              orders={orders}
+              menus={menus}
+              canManage={canManageTables}
+              onAddTable={onAddTable}
+              onEditTable={onEditTable}
+              onCloseTable={onCloseTable}
+              onRemoveTable={onRemoveTable}
+              onPlaceOrder={onPlaceOrder}
+              onUpdateOrderStatus={onUpdateOrderStatus}
+              onToast={onToast}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -459,6 +808,9 @@ function RestaurantManagementPage({ menus, onBack, onAddMenu, onEditMenu, onRemo
 
 function App() {
   const [menus, setMenus] = useState([]);
+  const [tables, setTables] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [canManageTables, setCanManageTables] = useState(false);
   const pendingWrites = useRef(0);
 
   const fetchMenus = useCallback(() => {
@@ -469,12 +821,35 @@ function App() {
       .catch(() => {});
   }, []);
 
+  const fetchTables = useCallback(() => {
+    if (pendingWrites.current > 0) return;
+    fetch('/students/hotel/tables', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => {
+        if (pendingWrites.current > 0) return;
+        if (Array.isArray(data.tables)) setTables(data.tables);
+        setCanManageTables(!!data.can_manage);
+      })
+      .catch(() => {});
+  }, []);
+
+  const fetchOrders = useCallback(() => {
+    if (pendingWrites.current > 0) return;
+    fetch('/students/hotel/orders', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => { if (pendingWrites.current > 0) return; if (Array.isArray(data.orders)) setOrders(data.orders); })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetchMenus();
-    const id = setInterval(fetchMenus, 8000);
-    window.addEventListener('focus', fetchMenus);
-    return () => { clearInterval(id); window.removeEventListener('focus', fetchMenus); };
-  }, [fetchMenus]);
+    fetchTables();
+    fetchOrders();
+    const id = setInterval(() => { fetchMenus(); fetchTables(); fetchOrders(); }, 8000);
+    const onFocus = () => { fetchMenus(); fetchTables(); fetchOrders(); };
+    window.addEventListener('focus', onFocus);
+    return () => { clearInterval(id); window.removeEventListener('focus', onFocus); };
+  }, [fetchMenus, fetchTables, fetchOrders]);
 
   const menuRequest = useCallback((url, method, body) => {
     pendingWrites.current += 1;
@@ -509,13 +884,68 @@ function App() {
     })
   ), [menuRequest]);
 
+  const addTable = useCallback((payload) => (
+    menuRequest('/students/hotel/tables', 'POST', payload).then(data => {
+      if (data && data.table) setTables(prev => [...prev, data.table]);
+      return data && data.table;
+    })
+  ), [menuRequest]);
+
+  const editTable = useCallback((id, patch) => (
+    menuRequest('/students/hotel/tables/' + id, 'PATCH', patch).then(data => {
+      if (data && data.table) setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
+      return data && data.table;
+    })
+  ), [menuRequest]);
+
+  const closeTable = useCallback((id) => (
+    menuRequest('/students/hotel/tables/' + id, 'PATCH', { close: true }).then(data => {
+      if (data && data.table) setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
+      return data && data.table;
+    })
+  ), [menuRequest]);
+
+  const removeTable = useCallback((id) => (
+    menuRequest('/students/hotel/tables/' + id, 'DELETE').then(data => {
+      setTables(prev => prev.filter(t => t.id !== id));
+      return data;
+    })
+  ), [menuRequest]);
+
+  const placeDineInOrder = useCallback((tableId, items) => (
+    menuRequest('/students/hotel/orders', 'POST', { order_type: 'dine_in', dine_in_table_id: tableId, items }).then(data => {
+      if (data && data.order) setOrders(prev => [data.order, ...prev]);
+      // Stock changed underneath the menu list this order was built from.
+      fetchMenus();
+      return data && data.order;
+    })
+  ), [menuRequest, fetchMenus]);
+
+  const updateOrderStatus = useCallback((id, status) => (
+    menuRequest('/students/hotel/orders/' + id, 'PATCH', { status }).then(data => {
+      if (data && data.order) setOrders(prev => prev.map(o => (o.id === data.order.id ? data.order : o)));
+      if (status === 'Cancelled') fetchMenus();
+      return data && data.order;
+    })
+  ), [menuRequest, fetchMenus]);
+
   return (
     <RestaurantManagementPage
+      initialNav={window.HMS_RESTAURANT_INITIAL_NAV}
       menus={menus}
+      tables={tables}
+      orders={orders}
+      canManageTables={canManageTables}
       onBack={() => { window.location.href = window.HMS_RESTAURANT_URL; }}
       onAddMenu={addMenuItem}
       onEditMenu={editMenuItem}
       onRemoveMenu={removeMenuItem}
+      onAddTable={addTable}
+      onEditTable={editTable}
+      onCloseTable={closeTable}
+      onRemoveTable={removeTable}
+      onPlaceOrder={placeDineInOrder}
+      onUpdateOrderStatus={updateOrderStatus}
       onToast={(msg) => window.toast && window.toast(msg)}
     />
   );

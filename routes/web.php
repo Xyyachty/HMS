@@ -9,6 +9,7 @@ use App\Http\Controllers\HotelTemplateController;
 use App\Http\Controllers\NotificationController;
 use App\Models\ActivityLog;
 use App\Models\HotelComplaint;
+use App\Models\HotelDineInTable;
 use App\Models\HotelFoodOrder;
 use App\Models\HotelMenuItem;
 use App\Models\HotelRoom;
@@ -973,20 +974,45 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!$membership) {
             return response()->json(['message' => 'Join a hotel team first.'], 404);
         }
-        if (!\App\Support\HotelOrderAccess::canPlace($membership)) {
+
+        // Absent order_type means room-service — the only kind that existed before
+        // dine-in, and the guest-facing booking flow never sends the field at all.
+        $orderType = HotelFoodOrder::normalizeOrderType($request->input('order_type'));
+        $isDineIn = $orderType === 'dine_in';
+
+        if ($isDineIn) {
+            if (!\App\Support\HotelOrderAccess::canPlaceDineIn($membership)) {
+                return response()->json(['message' => 'Only Restaurant Services staff can take a dine-in order.'], 403);
+            }
+        } elseif (!\App\Support\HotelOrderAccess::canPlace($membership)) {
             return response()->json(['message' => 'Only Front Desk staff can place room-service orders.'], 403);
         }
 
         $data = $request->validate([
-            'room_number'         => 'required|string|max:100',
-            'guest_name'          => 'required|string|max:255',
-            'items'               => 'required|array|min:1|max:50',
-            'items.*.name'        => 'required|string|max:255',
+            'room_number'          => ($isDineIn ? 'nullable' : 'required') . '|string|max:100',
+            'guest_name'           => ($isDineIn ? 'nullable' : 'required') . '|string|max:255',
+            'dine_in_table_id'     => ($isDineIn ? 'required' : 'nullable') . '|integer',
+            'items'                => 'required|array|min:1|max:50',
+            'items.*.name'         => 'required|string|max:255',
             'items.*.menu_item_id' => 'nullable|integer',
-            'items.*.dbId'        => 'nullable|integer',
-            'items.*.price'       => 'nullable|integer|min:0',
-            'items.*.qty'         => 'required|integer|min:1|max:99',
+            'items.*.dbId'         => 'nullable|integer',
+            'items.*.price'        => 'nullable|integer|min:0',
+            'items.*.qty'          => 'required|integer|min:1|max:99',
         ]);
+
+        $table = null;
+        if ($isDineIn) {
+            $table = HotelDineInTable::where('hotel_dine_in_table_id', $data['dine_in_table_id'])
+                ->where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->first();
+            if (!$table) {
+                return response()->json(['message' => 'That table was not found.'], 404);
+            }
+            if ($table->status !== 'Occupied') {
+                return response()->json(['message' => 'Seat a guest at this table before ordering.'], 422);
+            }
+        }
 
         $items = HotelFoodOrder::sanitizeItems($data['items']);
         if (!$items) {
@@ -994,7 +1020,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
 
         try {
-            $order = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $data, $items) {
+            $order = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $data, $items, $orderType, $table) {
                 $menuItems = \App\Support\HotelOrderAccess::lockMenuItemsFor($membership, $items);
 
                 // Same dish can appear on more than one line; charge stock for the sum.
@@ -1021,15 +1047,17 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 }
 
                 return HotelFoodOrder::create([
-                    'group_name'  => $membership->group_name,
-                    'faculty_id'  => $membership->faculty_id,
-                    'group_id'    => $membership->group_id,
-                    'room_number' => trim($data['room_number']),
-                    'guest_name'  => trim($data['guest_name']),
-                    'items'       => $items,
-                    'total'       => HotelFoodOrder::totalFor($items),
-                    'status'      => 'Pending',
-                    'placed_by'   => auth()->user()?->name,
+                    'group_name'       => $membership->group_name,
+                    'faculty_id'       => $membership->faculty_id,
+                    'group_id'         => $membership->group_id,
+                    'order_type'       => $orderType,
+                    'dine_in_table_id' => $table?->hotel_dine_in_table_id,
+                    'room_number'      => isset($data['room_number']) ? trim($data['room_number']) : null,
+                    'guest_name'       => trim($data['guest_name'] ?? $table?->guest_name ?? ''),
+                    'items'            => $items,
+                    'total'            => HotelFoodOrder::totalFor($items),
+                    'status'           => 'Pending',
+                    'placed_by'        => auth()->user()?->name,
                 ]);
             });
         } catch (\RuntimeException $e) {
@@ -1274,6 +1302,188 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.complaints.manage', $data);
     })->name('housekeeping.complaints');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dine-in tables (Restaurant Management manages, Front Desk seats guests)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/hotel/tables', function (Request $request) {
+        $membership = \App\Support\HotelTableAccess::membership();
+        if (!$membership) {
+            return response()->json(['tables' => [], 'can_manage' => false, 'can_assign' => false]);
+        }
+
+        $tables = HotelDineInTable::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($table) => $table->toTemplateArray());
+
+        return response()->json([
+            'tables'      => $tables,
+            'can_manage'  => \App\Support\HotelTableAccess::canManage($membership),
+            'can_assign'  => \App\Support\HotelTableAccess::canAssign($membership),
+        ]);
+    })->name('hotel.tables.index');
+
+    Route::post('/hotel/tables', function (Request $request) {
+        $membership = \App\Support\HotelTableAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant Management staff can add tables.'], 403);
+        }
+
+        $data = $request->validate([
+            'name'     => 'required|string|max:100',
+            'capacity' => 'required|integer|min:1|max:50',
+        ]);
+
+        $table = HotelDineInTable::create([
+            'group_name' => $membership->group_name,
+            'faculty_id' => $membership->faculty_id,
+            'group_id'   => $membership->group_id,
+            'name'       => trim($data['name']),
+            'capacity'   => (int) $data['capacity'],
+            'status'     => 'Available',
+        ]);
+
+        return response()->json(['table' => $table->toTemplateArray()], 201);
+    })->name('hotel.tables.store');
+
+    Route::patch('/hotel/tables/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelTableAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+
+        $table = HotelDineInTable::where('hotel_dine_in_table_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $manages = \App\Support\HotelTableAccess::canManage($membership);
+        $assigns = \App\Support\HotelTableAccess::canAssign($membership);
+
+        $data = $request->validate([
+            'name'        => 'sometimes|string|max:100',
+            'capacity'    => 'sometimes|integer|min:1|max:50',
+            'close'       => 'sometimes|boolean',
+            'guest_name'  => 'sometimes|nullable|string|max:255',
+            'party_size'  => 'sometimes|integer|min:1|max:50',
+        ]);
+
+        $assignedNow = false;
+        $closedNow = false;
+
+        if ($request->boolean('close')) {
+            if (!$manages) {
+                return response()->json(['message' => 'Only Restaurant Management staff can close a table.'], 403);
+            }
+
+            $openOrder = HotelFoodOrder::where('dine_in_table_id', $table->hotel_dine_in_table_id)
+                ->whereIn('status', ['Pending', 'Preparing'])
+                ->exists();
+            if ($openOrder) {
+                return response()->json([
+                    'message' => 'This table still has an order in progress — mark it Delivered or Cancelled first.',
+                ], 422);
+            }
+
+            $table->status = 'Available';
+            $table->guest_name = null;
+            $table->party_size = null;
+            $table->assigned_by = null;
+            $table->assigned_at = null;
+            $closedNow = true;
+        } elseif (array_key_exists('guest_name', $data) || array_key_exists('party_size', $data)) {
+            if (!$assigns) {
+                return response()->json(['message' => 'Only Front Desk staff can seat a guest.'], 403);
+            }
+            if ($table->status !== 'Available') {
+                return response()->json(['message' => 'This table is already occupied.'], 422);
+            }
+            $partySize = (int) ($data['party_size'] ?? 0);
+            if ($partySize < 1) {
+                return response()->json(['message' => 'Enter how many guests are in the party.'], 422);
+            }
+            if ($partySize > $table->capacity) {
+                return response()->json([
+                    'message' => "This table seats {$table->capacity} — the party is too large for it.",
+                ], 422);
+            }
+
+            $table->status = 'Occupied';
+            $table->guest_name = isset($data['guest_name']) ? trim($data['guest_name']) : null;
+            $table->party_size = $partySize;
+            $table->assigned_by = auth()->user()?->name;
+            $table->assigned_at = now();
+            $assignedNow = true;
+        } else {
+            if (!$manages) {
+                return response()->json(['message' => 'Only Restaurant Management staff can edit a table.'], 403);
+            }
+            if (array_key_exists('name', $data)) {
+                $table->name = trim($data['name']);
+            }
+            if (array_key_exists('capacity', $data)) {
+                $table->capacity = (int) $data['capacity'];
+            }
+        }
+
+        $table->save();
+
+        if ($assignedNow) {
+            \App\Support\Notifier::tableAssigned(auth()->user(), $table);
+
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::TABLE_ASSIGNED,
+                'Seated ' . ($table->guest_name ?: 'a guest') . ' (party of ' . $table->party_size
+                    . ') at ' . $table->name . '.'
+            );
+        }
+        if ($closedNow) {
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::TABLE_CLOSED,
+                'Closed out ' . $table->name . '.'
+            );
+        }
+
+        return response()->json(['table' => $table->toTemplateArray()]);
+    })->name('hotel.tables.update');
+
+    Route::delete('/hotel/tables/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelTableAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant Management staff can remove tables.'], 403);
+        }
+
+        $table = HotelDineInTable::where('hotel_dine_in_table_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        if ($table->status !== 'Available') {
+            return response()->json(['message' => 'Close the table before removing it.'], 422);
+        }
+
+        $table->delete();
+
+        return response()->json(['deleted' => true]);
+    })->name('hotel.tables.destroy');
+
+    Route::get('/frontdesk/dine-in', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.frontdesk.dine-in', $data);
+    })->name('frontdesk.dine-in');
 
     Route::get('/restaurant', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');

@@ -55,6 +55,8 @@ class ActivityLog extends Model
     public const PERMISSION_GRANTED = 'permission_granted';
     public const COMPLAINT_FILED = 'complaint_filed';
     public const COMPLAINT_RESOLVED = 'complaint_resolved';
+    public const TABLE_ASSIGNED = 'table_assigned';
+    public const TABLE_CLOSED = 'table_closed';
 
     /** Human labels for the portals' activity tables. */
     public const LABELS = [
@@ -80,6 +82,8 @@ class ActivityLog extends Model
         self::PERMISSION_GRANTED => 'Permission Granted',
         self::COMPLAINT_FILED => 'Complaint Filed',
         self::COMPLAINT_RESOLVED => 'Complaint Resolved',
+        self::TABLE_ASSIGNED => 'Table Assigned',
+        self::TABLE_CLOSED => 'Table Closed',
     ];
 
     public function user()

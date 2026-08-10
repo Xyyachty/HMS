@@ -16,10 +16,18 @@ class HotelFoodOrder extends Model
 
     protected $primaryKey = 'hotel_food_order_id';
 
+    /** Front Desk places a room-service order; Restaurant Management places one dine-in. */
+    public const ORDER_TYPES = [
+        'room_service',
+        'dine_in',
+    ];
+
     protected $fillable = [
         'group_name',
         'faculty_id',
         'group_id',
+        'order_type',
+        'dine_in_table_id',
         'room_number',
         'guest_name',
         'items',
@@ -43,6 +51,13 @@ class HotelFoodOrder extends Model
         }
 
         return 'Pending';
+    }
+
+    public static function normalizeOrderType(?string $value): string
+    {
+        $raw = strtolower(trim((string) $value));
+
+        return in_array($raw, self::ORDER_TYPES, true) ? $raw : 'room_service';
     }
 
     /**
@@ -99,6 +114,8 @@ class HotelFoodOrder extends Model
         // "id" here is the front-end's key for an order, not the column name.
         return [
             'id'         => $this->hotel_food_order_id,
+            'orderType'  => $this->order_type,
+            'tableId'    => $this->dine_in_table_id,
             'roomNumber' => $this->room_number,
             'guestName'  => $this->guest_name,
             'items'      => $this->items ?? [],
