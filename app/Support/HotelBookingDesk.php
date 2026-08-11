@@ -89,7 +89,13 @@ class HotelBookingDesk
                 self::addPayment($booking, $payment);
             }
 
-            self::setRoomStatus($room, self::ROOM_STATUS_ON['reserve']);
+            // Only an idle room moves to Reserved. A room that is already Occupied or
+            // holds an earlier Reserved/Arrived stay must not be dragged backwards by a
+            // booking taken for a later date — the guest in front of the desk today
+            // stays the one the room's status describes.
+            if ($room->status === 'Available') {
+                self::setRoomStatus($room, self::ROOM_STATUS_ON['reserve']);
+            }
 
             return $booking->fresh(['guest', 'payments']);
         });

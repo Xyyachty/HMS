@@ -729,7 +729,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!$membership) {
             return response()->json(['rooms' => []]);
         }
-        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments'])
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'openBookings'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
@@ -871,10 +871,16 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'That room is not on your team\'s floor.'], 404);
         }
 
-        // One room, one live stay. Without this two people polling the same grid can
-        // both book the last suite.
-        if ($room->activeBooking()->exists()) {
-            return response()->json(['message' => 'That room already has a guest booked.'], 409);
+        // A room may carry several open stays now — one in-house, the rest booked for
+        // later — so the guard is against overlapping dates, not against any open
+        // booking at all. Without this two people polling the same grid could both
+        // book the same week.
+        $overlaps = $room->openBookings()
+            ->where('check_in', '<', $data['check_out'])
+            ->where('check_out', '>', $data['check_in'])
+            ->exists();
+        if ($overlaps) {
+            return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
         }
 
         $booking = \App\Support\HotelBookingDesk::reserve(

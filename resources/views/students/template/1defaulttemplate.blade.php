@@ -292,6 +292,64 @@
     background: var(--accent); border-color: var(--accent); color: #0c0b09;
   }
 
+  .room-cal {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.9rem 1rem 1rem;
+  }
+  .room-cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .room-cal-title {
+    font-family: 'Outfit', sans-serif; font-size: 0.82rem; font-weight: 600;
+    color: var(--fg);
+  }
+  .room-cal-nav {
+    width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--fg-muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .room-cal-nav:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .room-cal-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+  .room-cal-weekdays, .room-cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.25rem;
+  }
+  .room-cal-weekdays {
+    margin-bottom: 0.35rem;
+  }
+  .room-cal-weekdays span {
+    font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--fg-muted); text-align: center;
+  }
+  .room-cal-day {
+    aspect-ratio: 1; border-radius: 8px; border: 1px solid transparent;
+    background: rgba(255,255,255,0.02); color: var(--fg);
+    font-family: 'Outfit', sans-serif; font-size: 0.74rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .room-cal-day:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .room-cal-day.is-blank { visibility: hidden; cursor: default; }
+  .room-cal-day.is-past { color: var(--fg-muted); opacity: 0.35; cursor: not-allowed; }
+  .room-cal-day.is-booked { background: rgba(244,63,94,0.14); color: #fb7185; cursor: not-allowed; }
+  .room-cal-day.is-in-range { background: rgba(212,175,55,0.14); }
+  .room-cal-day.is-selected {
+    background: var(--accent); border-color: var(--accent); color: #0c0b09; font-weight: 700;
+  }
+  .room-cal-legend {
+    display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.75rem;
+  }
+  .room-cal-legend span {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.68rem; color: var(--fg-muted);
+  }
+  .room-cal-swatch {
+    width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+    background: rgba(255,255,255,0.08);
+  }
+  .room-cal-swatch.is-available { background: rgba(255,255,255,0.08); }
+  .room-cal-swatch.is-booked { background: #fb7185; }
+  .room-cal-swatch.is-past { background: var(--fg-muted); opacity: 0.5; }
+
   .rm-row {
     display: flex; align-items: stretch; width: 100%;
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
@@ -522,7 +580,7 @@
 <script>
   window.HMS_ROOM_MANAGEMENT_URL = @json(route('students.roommanagement.manage'));
   window.HMS_VERIFY_GUEST_URL = @json(route('students.frontdesk.verify-guest'));
-  // Resolved out here: the block below is @verbatim, so Blade never runs inside it.
+  // Resolved out here: the raw block below is not compiled, so Blade never runs inside it.
   window.HMS_DEFAULT_LOGO = @json(asset('images/hotel-logo-default.svg'));
 </script>
 @verbatim
@@ -533,6 +591,9 @@ const { useState, useEffect, useCallback, useRef, useMemo } = React;
 const ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
 const ROOM_STATUSES = ['Available', 'Reserved', 'Occupied', 'Cleaning', 'Maintenance'];
 const ROOM_TABS = ROOM_CATEGORIES;
+// The Rooms page also gets an "All" tab in front of the categories so Front Desk can
+// see every room Room Management created without switching tabs.
+const ROOM_PAGE_TABS = ['All', ...ROOM_CATEGORIES];
 const MENU_CATEGORIES = ['Main Dishes', 'Appetizers', 'Soups', 'Desserts', 'Beverages'];
 const MENU_TABS = MENU_CATEGORIES;
 
@@ -718,6 +779,23 @@ function isSiteInteractive() {
 function hmsCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
   return meta ? meta.getAttribute('content') : '';
+}
+
+/*
+ * Leaves the template for a staff page. The template renders inside the builder's
+ * iframe, so the whole top window has to move or the staff page would open inside
+ * the canvas. Touching window.top can throw, and if it does the iframe still has to
+ * go somewhere — a stuck page is worse than a page that lost its shell.
+ */
+function hmsNavigateTop(url) {
+  if (!url) return;
+  try {
+    if (window.top && window.top !== window) {
+      window.top.location.assign(url);
+      return;
+    }
+  } catch (e) { /* top is out of reach — fall through to this frame */ }
+  window.location.assign(url);
 }
 
 function hmsPrompt(message, defaultValue) {
@@ -1183,15 +1261,17 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ROOMS PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function RoomTabBar({ tabs, active, onChange, items, getKey }) {
+function RoomTabBar({ tabs, active, onChange, items, getKey, allKey }) {
   const keyFn = getKey || ((it) => normalizeRoomCategory(it.category || it.label));
   const counts = useMemo(() => {
     const map = {};
     tabs.forEach(t => {
-      map[t] = items.filter(it => keyFn(it) === t).length;
+      // The "All" tab isn't a category any item's key ever equals, so it is counted
+      // separately rather than falling through the per-category filter to zero.
+      map[t] = (allKey && t === allKey) ? items.length : items.filter(it => keyFn(it) === t).length;
     });
     return map;
-  }, [tabs, items, keyFn]);
+  }, [tabs, items, keyFn, allKey]);
 
   return (
     <div className="tab-bar" role="tablist">
@@ -1254,6 +1334,137 @@ function formatCheckIn(date, time) {
   return clock ? `${day} · ${clock}` : day;
 }
 
+/* ── Room availability calendar helpers ──────────────────────────────────
+   A room can hold several open bookings at once now (one in-house guest, plus
+   stays booked for later), so availability is a set of blocked dates rather
+   than a single status. */
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* Expands each [from, to) range into a Set of 'YYYY-MM-DD' strings. `to` is the
+   checkout date and is exclusive — the guest is gone by morning, so that day is
+   free for the next booking. */
+function bookedDateSet(ranges) {
+  const set = new Set();
+  (ranges || []).forEach(r => {
+    if (!r || !r.from || !r.to) return;
+    let cursor = r.from;
+    let guard = 0; // a stay can't run forever; caps a bad range at ~2 years of days
+    while (cursor < r.to && guard < 800) {
+      set.add(cursor);
+      cursor = addDays(cursor, 1);
+      guard += 1;
+    }
+  });
+  return set;
+}
+
+/* True if any night in [checkIn, checkOut) falls on a blocked date. */
+function rangeHitsBooked(checkIn, checkOut, bookedSet) {
+  if (!checkIn || !checkOut) return false;
+  let cursor = checkIn;
+  let guard = 0;
+  while (cursor < checkOut && guard < 800) {
+    if (bookedSet.has(cursor)) return true;
+    cursor = addDays(cursor, 1);
+    guard += 1;
+  }
+  return false;
+}
+
+/* Calendar cells for one month: null for the leading blanks before day 1, then
+   'YYYY-MM-DD' for each day. */
+function monthCells(year, month) {
+  const first = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < first.getDay(); i++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) {
+    cells.push(year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0'));
+  }
+  return cells;
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+function RoomAvailabilityCalendar({ ranges, checkIn, checkOut, onPick }) {
+  const today = todayStr();
+  const bookedSet = useMemo(() => bookedDateSet(ranges), [ranges]);
+  const [cursor, setCursor] = useState(() => {
+    const [y, m] = today.split('-').map(Number);
+    return { year: y, month: m - 1 };
+  });
+
+  const isCurrentMonth = (() => {
+    const [y, m] = today.split('-').map(Number);
+    return cursor.year === y && cursor.month === m - 1;
+  })();
+
+  const cells = useMemo(() => monthCells(cursor.year, cursor.month), [cursor]);
+
+  const goPrev = () => setCursor(prev => {
+    const month = prev.month === 0 ? 11 : prev.month - 1;
+    const year = prev.month === 0 ? prev.year - 1 : prev.year;
+    return { year, month };
+  });
+  const goNext = () => setCursor(prev => {
+    const month = prev.month === 11 ? 0 : prev.month + 1;
+    const year = prev.month === 11 ? prev.year + 1 : prev.year;
+    return { year, month };
+  });
+
+  return (
+    <div className="room-cal" data-hms-no-edit="1">
+      <div className="room-cal-header">
+        <button type="button" className="room-cal-nav" onClick={goPrev} disabled={isCurrentMonth} aria-label="Previous month">
+          <i className="fa-solid fa-chevron-left" style={{ fontSize: 11 }}></i>
+        </button>
+        <span className="room-cal-title">{MONTH_NAMES[cursor.month]} {cursor.year}</span>
+        <button type="button" className="room-cal-nav" onClick={goNext} aria-label="Next month">
+          <i className="fa-solid fa-chevron-right" style={{ fontSize: 11 }}></i>
+        </button>
+      </div>
+      <div className="room-cal-weekdays">
+        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <span key={d}>{d}</span>)}
+      </div>
+      <div className="room-cal-grid">
+        {cells.map((day, i) => {
+          if (!day) return <span key={'blank' + i} className="room-cal-day is-blank"></span>;
+          const isPast = day < today;
+          const isBooked = bookedSet.has(day);
+          const isSelected = day === checkIn || day === checkOut;
+          const isInRange = checkIn && checkOut && day > checkIn && day < checkOut;
+          const disabled = isPast || (isBooked && day !== checkIn);
+          const cls = ['room-cal-day'];
+          if (isPast) cls.push('is-past');
+          if (isBooked) cls.push('is-booked');
+          if (isSelected) cls.push('is-selected');
+          if (isInRange) cls.push('is-in-range');
+          return (
+            <button
+              key={day}
+              type="button"
+              className={cls.join(' ')}
+              disabled={disabled}
+              onClick={() => onPick(day)}
+            >
+              {Number(day.slice(8, 10))}
+            </button>
+          );
+        })}
+      </div>
+      <div className="room-cal-legend">
+        <span><i className="room-cal-swatch is-available"></i> Available</span>
+        <span><i className="room-cal-swatch is-booked"></i> Booked</span>
+        <span><i className="room-cal-swatch is-past"></i> Past</span>
+      </div>
+    </div>
+  );
+}
+
 function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
@@ -1294,6 +1505,7 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
   // Check-out must be a later date than check-in — a same-day stay isn't a valid
   // booking here, so the day of check-in itself is not selectable on the calendar.
   const minCheckOut = addDays(guestForm.checkIn || today, 1);
+  const bookedSet = useMemo(() => bookedDateSet(room.bookedRanges), [room.bookedRanges]);
 
   const updateGuest = (field, value) => {
     setGuestForm(prev => {
@@ -1301,6 +1513,20 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
       if (field === 'checkIn') next.checkOut = '';
       return next;
     });
+  };
+
+  // Clicking the calendar fills the same Check-In / Check-Out fields the form uses,
+  // so either one can drive the other and the form stays the source of truth.
+  const pickDate = (day) => {
+    if (!guestForm.checkIn || guestForm.checkOut || day <= guestForm.checkIn) {
+      updateGuest('checkIn', day);
+      return;
+    }
+    if (rangeHitsBooked(guestForm.checkIn, day, bookedSet)) {
+      if (onToast) onToast('That range crosses a booked date.');
+      return;
+    }
+    updateGuest('checkOut', day);
   };
 
   const updatePayment = (field, value) => {
@@ -1316,6 +1542,10 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
     }
     if (!String(guestForm.checkInTime || '').trim()) {
       if (onToast) onToast('Check-In Time is required.');
+      return;
+    }
+    if (rangeHitsBooked(guestForm.checkIn, guestForm.checkOut, bookedSet)) {
+      if (onToast) onToast('That range crosses a booked date.');
       return;
     }
     setPaymentForm(prev => Object.assign({}, prev, {
@@ -1364,6 +1594,9 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
   };
 
   const isAvailable = status === 'Available';
+  // A room out for maintenance can't be sold at all; anything else is just today's
+  // status and does not stop a stay being booked for a later, free date.
+  const canBookRoom = canReserve !== false && status !== 'Maintenance';
   const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
 
   return (
@@ -1398,6 +1631,15 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
                   <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Description</p>
                   <p style={{ color: 'var(--fg-muted)', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>{room.desc}</p>
                 </div>
+                <div>
+                  <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.5rem' }}>Availability</p>
+                  <RoomAvailabilityCalendar
+                    ranges={room.bookedRanges}
+                    checkIn={guestForm.checkIn}
+                    checkOut={guestForm.checkOut}
+                    onPick={pickDate}
+                  />
+                </div>
               </div>
 
               {canEditStatus && (
@@ -1427,16 +1669,23 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
               )}
 
               <div style={{ marginTop: '1.5rem' }}>
-                {canReserve !== false && isAvailable ? (
-                  <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
-                    onClick={() => setStep('register')}>
-                    Reserve Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
-                  </button>
-                ) : !isAvailable ? (
+                {canBookRoom ? (
+                  <>
+                    <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
+                      onClick={() => setStep('register')}>
+                      Reserve Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+                    </button>
+                    {!isAvailable && (
+                      <p style={{ textAlign: 'center', color: 'var(--fg-muted)', fontSize: '0.78rem', margin: '0.6rem 0 0' }}>
+                        Currently {status.toLowerCase()} — you can still book a later, open date.
+                      </p>
+                    )}
+                  </>
+                ) : (
                   <p style={{ textAlign: 'center', color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>
                     This room is {status.toLowerCase()} and cannot be reserved right now.
                   </p>
-                ) : null}
+                )}
               </div>
             </>
           )}
@@ -1454,6 +1703,15 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
               <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', marginBottom: '1.25rem' }}>
                 Completing reservation for <strong style={{ color: 'var(--fg)' }}>{room.name}</strong>
               </p>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <RoomAvailabilityCalendar
+                  ranges={room.bookedRanges}
+                  checkIn={guestForm.checkIn}
+                  checkOut={guestForm.checkOut}
+                  onPick={pickDate}
+                />
+              </div>
 
               <form onSubmit={handleRegisterSubmit}>
                 <div style={{ display: 'grid', gap: '0.85rem' }}>
@@ -1612,18 +1870,22 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
 
 function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onEditRoom, onRemoveRoom, onCreateBooking, onOpenRoomManagement }) {
   const list = rooms && rooms.length ? rooms : [];
-  const [tab, setTab] = useState('Classic');
+  // Front Desk lands on "All" so every room Room Management created is visible on
+  // one screen; the category tabs stay for narrowing it down.
+  const [tab, setTab] = useState('All');
   const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const filtered = list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
+  const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
   const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
   const showRoomManagement = !!canManageRooms;
 
   const handleAdd = (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
+    // "All" isn't a real category — a card added while on that tab still needs one.
+    const category = tab === 'All' ? 'Classic' : tab;
     onAddRoom({
       name: 'New Suite',
-      label: tab,
-      category: tab,
+      label: category,
+      category,
       status: 'Available',
       price: 250,
       desc: 'Add a short description for this room.',
@@ -1675,33 +1937,40 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
   const handleReserve = (room, guest, payment) => {
     if (!onCreateBooking) return;
     onCreateBooking(room, guest, payment).then(() => {
-      if (onToast) {
-        const paid = payment ? ` · ${payment.type} ${formatPeso(payment.amountPaid)} via ${payment.method}` : '';
-        onToast(`${guest.fullName} reserved ${room.name}${paid}. Mark as Arrived on check-in day.`);
-      }
-      // Notify Room Management via cross-module notification so it auto-opens Guest Details
-      if (window.HMSSiteContent && typeof window.HMSSiteContent.recordReservationNotification === 'function') {
-        window.HMSSiteContent.recordReservationNotification({
-          roomId: room.id,
-          roomName: room.name,
-          guestName: guest.fullName,
-          checkIn: guest.checkIn,
-          checkOut: guest.checkOut,
-          fullReservation: Object.assign({}, guest, {
-            payment: payment || null,
-            reservedAt: new Date().toISOString(),
-            arrivalStatus: 'Reserved',
-            arrivedAt: null,
-          }),
-        });
-      }
+      // The toast and the cross-module notification are both advisory, and the
+      // notification writes customizations + localStorage. The booking is already saved
+      // by the time either runs, so they are fenced off together: a failure in here must
+      // not fall through to the catch below and eat the redirect that follows.
+      try {
+        if (onToast) {
+          const paid = payment ? ` · ${payment.type} ${formatPeso(payment.amountPaid)} via ${payment.method}` : '';
+          onToast(`${guest.fullName} reserved ${room.name}${paid}. Mark as Arrived on check-in day.`);
+        }
+        // Lets Room Management auto-open Guest Details when the reservation lands.
+        if (window.HMSSiteContent && typeof window.HMSSiteContent.recordReservationNotification === 'function') {
+          window.HMSSiteContent.recordReservationNotification({
+            roomId: room.id,
+            roomName: room.name,
+            guestName: guest.fullName,
+            checkIn: guest.checkIn,
+            checkOut: guest.checkOut,
+            fullReservation: Object.assign({}, guest, {
+              payment: payment || null,
+              reservedAt: new Date().toISOString(),
+              arrivalStatus: 'Reserved',
+              arrivedAt: null,
+            }),
+          });
+        }
+      } catch (e) { /* the guest list is read from the database, not from this */ }
+
       // Send the registering staff straight to whichever screen they'd use next: Room
       // Management owns Guest Details, everyone else (Front Desk included) works the
       // booking from Verify Guest.
       if (showRoomManagement && typeof onOpenRoomManagement === 'function') {
         onOpenRoomManagement('guest-details');
-      } else if (window.HMS_VERIFY_GUEST_URL) {
-        window.top.location.assign(window.HMS_VERIFY_GUEST_URL);
+      } else {
+        hmsNavigateTop(window.HMS_VERIFY_GUEST_URL);
       }
     }).catch(() => { /* onCreateBooking already toasted the failure */ });
   };
@@ -1713,7 +1982,7 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
         <h1 className="font-display">Our Rooms & Suites</h1>
         <p>Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.</p>
       </div>
-      <RoomTabBar tabs={ROOM_TABS} active={tab} onChange={setTab} items={list} />
+      <RoomTabBar tabs={ROOM_PAGE_TABS} active={tab} onChange={setTab} items={list} allKey="All" />
       <section style={{ padding: '0 1.5rem 6rem', maxWidth: 1200, margin: '0 auto' }}>
         {filtered.length === 0 && !canEditRooms ? (
           <p style={{ textAlign: 'center', color: 'var(--fg-muted)', padding: '3rem 1rem' }}>No rooms found in this category.</p>
@@ -1768,7 +2037,7 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
             >
               <span style={{ width: 52, height: 52, borderRadius: 14, border: '1.5px solid #f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, lineHeight: 1 }}>+</span>
               <span style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 12 }}>Add Room Card</span>
-              <span style={{ fontSize: 11, opacity: 0.75, maxWidth: 180, textAlign: 'center' }}>Added under {tab}</span>
+              <span style={{ fontSize: 11, opacity: 0.75, maxWidth: 180, textAlign: 'center' }}>Added under {tab === 'All' ? 'Classic' : tab}</span>
             </button>
           )}
         </div>
@@ -2657,7 +2926,7 @@ function App() {
 
   // Room Management now lives on its own dedicated page — break out of the iframe.
   const openRoomManagement = useCallback((nav) => {
-    window.top.location.assign(window.HMS_ROOM_MANAGEMENT_URL + '?nav=' + (nav || 'manage-room'));
+    hmsNavigateTop(window.HMS_ROOM_MANAGEMENT_URL + '?nav=' + (nav || 'manage-room'));
   }, []);
 
   // Room Management: auto-open Guest Details only when a brand-new reservation arrives

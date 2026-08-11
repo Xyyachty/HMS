@@ -60,14 +60,30 @@ class HotelTemplateBuilder
      * change whoever edited most recently actually made. Each of these is kept
      * in exactly one row; writing one claims it and clears the siblings.
      *
-     * __cardImages is NOT here: it holds one entry per section (home/rooms/
-     * restaurant logo), each owned by a different role, so it is merged by key
-     * instead — see mergeTeamCustomizations() and filterCustomizationsForRole().
+     * __cardImages is NOT here: most of it is per-card artwork owned by whichever
+     * role owns that card, so it is merged key by key instead — see
+     * mergeTeamCustomizations() and filterCustomizationsForRole(). The one entry
+     * inside it that IS shared, the site logo, is claimed on its own by
+     * claimSharedLogo() so clearing it cannot take the rest of the map with it.
      */
     public const SHARED_CONTENT_KEYS = [
         self::NAV_LINKS_KEY,
         self::ROOMS_KEY,
         self::MENUS_KEY,
+    ];
+
+    /**
+     * The site's single logo, stored as one card image rather than one per
+     * section. Any of these roles may change it and the change applies to the
+     * whole site — header, footer and every page read this one key.
+     */
+    public const LOGO_IMAGE_ID = 'logo';
+    public const LOGO_IMAGE_MAP_KEY = 'brand:' . self::LOGO_IMAGE_ID;
+    public const SITE_OWNING_ROLES = [
+        'front_desk',
+        'restaurant_management',
+        'housekeeping',
+        'room_management',
     ];
 
     /** Default section library per role (no drag-and-drop — add/remove/reorder via buttons). */
@@ -430,17 +446,29 @@ class HotelTemplateBuilder
                 continue;
             }
 
-            // The logo is stored per section (brand:logo-home / -rooms / -restaurant).
-            // Keep only the entry this role's own page(s) own, so its saved row can
-            // never carry — and later overwrite — another role's logo.
+            // The site has one shared logo under brand:logo, which any site-owning
+            // role may change. It has to survive this filter for whichever role
+            // saved it, or that role's change would be stripped before it is
+            // written and the new logo would vanish on the next read.
+            //
+            // The per-section brand:logo-* entries are what the logo used to be.
+            // They are kept for the role whose page owns them so no existing site
+            // loses its picture, but nothing writes them any more: the template
+            // reads them only as a fallback when brand:logo is unset.
             if ($key === self::CARD_IMAGES_KEY && is_array($value)) {
                 $incomingMap = (isset($value['map']) && is_array($value['map'])) ? $value['map'] : [];
                 $ownMap = [];
                 foreach ($incomingMap as $mapKey => $url) {
                     [$kind, $id] = array_pad(explode(':', (string) $mapKey, 2), 2, '');
                     if ($kind !== 'brand') {
-                        // Not a per-section logo entry — keep it for roles that already owned this key.
-                        if (in_array($role, ['front_desk', 'restaurant_management', 'housekeeping', 'room_management'], true)) {
+                        // Not a logo entry — keep it for roles that already owned this key.
+                        if (in_array($role, self::SITE_OWNING_ROLES, true)) {
+                            $ownMap[$mapKey] = $url;
+                        }
+                        continue;
+                    }
+                    if ($id === self::LOGO_IMAGE_ID) {
+                        if (in_array($role, self::SITE_OWNING_ROLES, true)) {
                             $ownMap[$mapKey] = $url;
                         }
                         continue;
@@ -450,11 +478,6 @@ class HotelTemplateBuilder
                         if (in_array($section, $pages, true)) {
                             $ownMap[$mapKey] = $url;
                         }
-                        continue;
-                    }
-                    // Legacy untagged logo, from before per-section logos existed.
-                    if ($id === 'logo' && $role === 'front_desk') {
-                        $ownMap[$mapKey] = $url;
                     }
                 }
                 if ($ownMap !== []) {
@@ -582,6 +605,7 @@ class HotelTemplateBuilder
 
             // This row is the newest writer of any shared key it holds.
             self::claimSharedContentKeys($template, $ownCustomizations ?? null);
+            self::claimSharedLogo($template, $ownCustomizations ?? null);
 
             // Keep legacy group_settings in sync (merged team site)
             self::syncGroupSettings($template);
@@ -628,6 +652,7 @@ class HotelTemplateBuilder
             $template->touch();
 
             self::claimSharedContentKeys($template, $ownCustomizations ?? null);
+            self::claimSharedLogo($template, $ownCustomizations ?? null);
             self::syncGroupSettings($template);
 
             return $template->fresh();
@@ -679,6 +704,48 @@ class HotelTemplateBuilder
             ->whereIn('team_role_template_id', $siblingIds)
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
             ->whereIn('collection', $collections)
+            ->delete();
+    }
+
+    /**
+     * Give this row sole ownership of the site logo.
+     *
+     * The logo is one entry inside __cardImages, and that key cannot be claimed
+     * wholesale the way __rooms or __menus are: the rest of the map is per-card
+     * artwork belonging to other roles, and deleting the whole collection would
+     * take their room and menu pictures with it. So only the logo's own row is
+     * dropped from the teammates' copies.
+     *
+     * Without this the merge in mergeTeamCustomizations() unions the maps in
+     * ROLES order, so a teammate holding an older logo further down that order
+     * would silently reinstate it over the change just saved.
+     */
+    public static function claimSharedLogo(TeamRoleTemplate $template, ?array $customizations = null): void
+    {
+        $mine = $customizations ?? (is_array($template->customizations) ? $template->customizations : []);
+        $map = $mine[self::CARD_IMAGES_KEY]['map'] ?? null;
+
+        if (!is_array($map) || !array_key_exists(self::LOGO_IMAGE_MAP_KEY, $map)) {
+            return;
+        }
+
+        $siblingIds = TeamRoleTemplate::where('group_name', $template->group_name)
+            ->where('faculty_id', $template->faculty_id)
+            ->where('team_role_template_id', '!=', $template->team_role_template_id)
+            ->pluck('team_role_template_id');
+
+        if ($siblingIds->isEmpty()) {
+            return;
+        }
+
+        // Card images are written as one content item per map entry, keyed by
+        // item_ref — see TemplateCustomizationStore::writeCollection()'s 'map'
+        // branch. Deleting just this ref leaves every other card image intact.
+        TemplateContentItem::query()
+            ->whereIn('team_role_template_id', $siblingIds)
+            ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
+            ->where('collection', TemplateCustomizationStore::SPECIAL_KEYS[self::CARD_IMAGES_KEY] . '_map')
+            ->where('item_ref', self::LOGO_IMAGE_MAP_KEY)
             ->delete();
     }
 
