@@ -518,7 +518,7 @@
 <body>
 <div id="root"></div>
 
-<script src="{{ asset('js/hms-site-content.js') }}"></script>
+<script src="{{ asset('js/hms-site-content.js') }}?v={{ filemtime(public_path('js/hms-site-content.js')) }}"></script>
 <script>
   window.HMS_ROOM_MANAGEMENT_URL = @json(route('students.roommanagement.manage'));
   window.HMS_VERIFY_GUEST_URL = @json(route('students.frontdesk.verify-guest'));

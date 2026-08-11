@@ -430,7 +430,7 @@
 <body>
 <div id="root"></div>
 
-<script src="{{ asset('js/hms-site-content.js') }}"></script>
+<script src="{{ asset('js/hms-site-content.js') }}?v={{ filemtime(public_path('js/hms-site-content.js')) }}"></script>
 @verbatim
 <script type="text/babel">
 const { useState, useCallback, useRef, useMemo, useEffect } = React;
