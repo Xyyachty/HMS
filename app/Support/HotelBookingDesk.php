@@ -20,10 +20,13 @@ use Illuminate\Support\Facades\DB;
  */
 class HotelBookingDesk
 {
-    /** Room status each booking transition leaves behind. */
+    /**
+     * Room status each booking transition leaves behind. Reserving and checking in are
+     * deliberately absent — occupancy is the booking's own status now (see
+     * HotelBooking::status / HotelRoom::activeBooking()), not hotel_rooms.status, so
+     * neither of those touches the room at all.
+     */
     private const ROOM_STATUS_ON = [
-        'reserve'   => 'Reserved',
-        'check_in'  => 'Occupied',
         // Housekeeping takes the room from here; it is not sellable until they clear it.
         'check_out' => 'Cleaning',
         'cancel'    => 'Available',
@@ -89,13 +92,9 @@ class HotelBookingDesk
                 self::addPayment($booking, $payment);
             }
 
-            // Only an idle room moves to Reserved. A room that is already Occupied or
-            // holds an earlier Reserved/Arrived stay must not be dragged backwards by a
-            // booking taken for a later date — the guest in front of the desk today
-            // stays the one the room's status describes.
-            if ($room->status === 'Available') {
-                self::setRoomStatus($room, self::ROOM_STATUS_ON['reserve']);
-            }
+            // The room's own status is housekeeping only — reserving one never touches
+            // it. Whether the room is booked, and for which dates, is the calendar's
+            // job (HotelRoom::toTemplateArray()'s bookedRanges), not hotel_rooms.status.
 
             return $booking->fresh(['guest', 'payments']);
         });
@@ -157,7 +156,9 @@ class HotelBookingDesk
             $booking->status = 'Checked In';
             $booking->save();
 
-            self::setRoomStatus($booking->room, self::ROOM_STATUS_ON['check_in']);
+            // The room's status does not move here — it is housekeeping-only now.
+            // A guest being in the room is read off this booking's own status, not off
+            // hotel_rooms.status (see HotelRoom::activeBooking()).
 
             return $booking;
         });

@@ -55,7 +55,9 @@
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef } = React;
 
-const ROOM_STATUSES = ['Available', 'Reserved', 'Occupied', 'Cleaning', 'Maintenance'];
+// Housekeeping condition only — occupancy lives on the booking (reservation.status),
+// not on the room's own status. See bookingStatusClass() below for that badge.
+const ROOM_STATUSES = ['Available', 'Cleaning', 'Maintenance'];
 const BLOCK_HOURS = 12;
 
 function normalizeRoomStatus(value) {
@@ -68,24 +70,11 @@ function roomStatusClass(status) {
   return 'status-' + normalizeRoomStatus(status).toLowerCase();
 }
 
-/* Arrival lifecycle of a booking: Reserved -> Arrived. The server derives it from
-   hotel_bookings.arrived_at and sends it down on the room's `reservation`. */
-function reservationArrivalStatus(reservation) {
-  const raw = String((reservation && reservation.arrivalStatus) || 'Reserved').trim().toLowerCase();
-  return raw === 'arrived' ? 'Arrived' : 'Reserved';
-}
-
-function todayIsoDate() {
-  return new Date().toISOString().split('T')[0];
-}
-
-/* Front Desk may only mark arrival on or after the reserved check-in date. */
-function canMarkArrived(reservation) {
-  if (!reservation) return false;
-  if (reservationArrivalStatus(reservation) === 'Arrived') return false;
-  const checkIn = String(reservation.checkIn || '').trim();
-  if (!checkIn) return true;
-  return todayIsoDate() >= checkIn;
+/* Booking-lifecycle badge (Reserved / Checked In) — reuses the room-status-badge
+   colours (purple/blue) for a different meaning now that hotel_rooms.status no
+   longer tracks occupancy. */
+function bookingStatusClass(status) {
+  return String(status || '').trim() === 'Checked In' ? 'status-occupied' : 'status-reserved';
 }
 
 function formatPeso(amount) {
@@ -140,10 +129,10 @@ function stayEndsAt(reservation) {
 }
 
 /* How much of the stay is left, as a label plus a tone that drives colour only.
-   Only a guest Front Desk has marked Arrived gets a running clock — a booking
-   nobody has turned up for has no stay to count down. */
+   Only a guest Room Management has actually checked in gets a running clock — a
+   reservation nobody has moved into yet has no stay to count down. */
 function remainingStay(reservation, now) {
-  if (reservationArrivalStatus(reservation) !== 'Arrived') {
+  if ((reservation && reservation.status) !== 'Checked In') {
     return { text: 'Not checked in', tone: 'idle' };
   }
   const endsAt = stayEndsAt(reservation);
@@ -191,10 +180,12 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
   const now = useNow(1000);
   const PER_PAGE = 8;
 
-  const markArrived = (room, reservation) => {
-    if (!canMarkArrived(reservation)) return;
-    if (typeof onBookingAction === 'function') onBookingAction(reservation.bookingId, 'arrive');
-    if (onToast) onToast(`${reservation.fullName || 'Guest'} marked as Arrived — Room Management can now set ${room.name} to Occupied.`);
+  // Ends the stay: the booking closes and the room drops to Cleaning so housekeeping
+  // has to clear it before it's sellable again (App\Support\HotelBookingDesk::checkOut()).
+  const checkOutGuest = (room, reservation) => {
+    if (typeof onBookingAction !== 'function' || !reservation) return;
+    onBookingAction(reservation.bookingId, 'check_out');
+    if (onToast) onToast(`${reservation.fullName || 'Guest'} checked out of ${room.name}.`);
   };
 
   const allReservations = (rooms || []).reduce((acc, room) => {
@@ -293,8 +284,7 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
                       const payment = reservation.payment || null;
                       const total = stayBlocks(reservation.checkIn, reservation.checkOut, reservation.checkInTime) * (Number(room.price) || 0);
                       const rowBg = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)';
-                      const arrival = reservationArrivalStatus(reservation);
-                      const arrivable = canMarkArrived(reservation);
+                      const checkedIn = reservation.status === 'Checked In';
                       const remaining = remainingStay(reservation, now);
                       return (
                         <tr key={room.id} style={{ background: rowBg }}>
@@ -326,35 +316,29 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
                             ) : <span style={{ opacity: 0.4 }}>—</span>}
                           </td>
                           <td style={tdStyle}>
-                            <span className={`room-status-badge ${roomStatusClass(room.status)}`} style={{ position: 'static' }}>
-                              {normalizeRoomStatus(room.status)}
+                            <span className={`room-status-badge ${bookingStatusClass(reservation.status)}`} style={{ position: 'static' }}>
+                              {reservation.status}
                             </span>
                           </td>
                           <td style={tdStyle}>
-                            {arrival === 'Arrived' ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#4ade80', fontSize: '0.78rem', fontWeight: 600 }}>
-                                <i className="fa-solid fa-circle-check" style={{ fontSize: '0.8rem' }}></i> Arrived
-                              </span>
-                            ) : (
+                            {checkedIn ? (
                               <button
                                 type="button"
-                                onClick={() => markArrived(room, reservation)}
-                                disabled={!arrivable}
-                                title={arrivable ? 'Mark this guest as arrived' : `Available on check-in date (${reservation.checkIn || 'n/a'})`}
+                                onClick={() => checkOutGuest(room, reservation)}
+                                title="Check the guest out"
                                 style={{
                                   display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
                                   padding: '0.4rem 0.8rem', borderRadius: 6,
-                                  border: '1px solid ' + (arrivable ? 'var(--accent)' : 'var(--border)'),
-                                  background: arrivable ? 'var(--accent)' : 'transparent',
-                                  color: arrivable ? 'var(--bg)' : 'var(--fg-muted)',
-                                  cursor: arrivable ? 'pointer' : 'not-allowed',
-                                  opacity: arrivable ? 1 : 0.5,
+                                  border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)',
+                                  cursor: 'pointer',
                                   fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', fontWeight: 600,
                                   letterSpacing: '0.06em', textTransform: 'uppercase',
                                 }}
                               >
-                                <i className="fa-solid fa-user-check" style={{ fontSize: '0.7rem' }}></i> Mark Arrived
+                                <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '0.7rem' }}></i> Check Out
                               </button>
+                            ) : (
+                              <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>Awaiting check-in</span>
                             )}
                           </td>
                         </tr>

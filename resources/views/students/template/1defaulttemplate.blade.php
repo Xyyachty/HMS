@@ -589,7 +589,9 @@ const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• DATA â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
-const ROOM_STATUSES = ['Available', 'Reserved', 'Occupied', 'Cleaning', 'Maintenance'];
+// Housekeeping condition only — occupancy lives on the booking (see room.reservation
+// and the Rooms page calendar), not on the room's own status.
+const ROOM_STATUSES = ['Available', 'Cleaning', 'Maintenance'];
 const ROOM_TABS = ROOM_CATEGORIES;
 // The Rooms page also gets an "All" tab in front of the categories so Front Desk can
 // see every room Room Management created without switching tabs.
@@ -672,7 +674,7 @@ const ROOMS = [
     ]
   },
   {
-    id: 'superior', label: 'Superior', category: 'Superior', status: 'Occupied', name: 'Superior Twin Room', price: 240,
+    id: 'superior', label: 'Superior', category: 'Superior', status: 'Available', name: 'Superior Twin Room', price: 240,
     img: 'https://picsum.photos/seed/twinroom/800/600.jpg',
     desc: '38m\u00B2 room with two single beds, a work desk, and views of the courtyard garden.',
     badgeStyle: {},
@@ -1618,10 +1620,6 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
 
               <div style={{ display: 'grid', gap: '1rem' }}>
                 <div>
-                  <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Status</p>
-                  <span className={`room-status-badge ${roomStatusClass(status)}`} style={{ position: 'static' }}>{status}</span>
-                </div>
-                <div>
                   <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Price</p>
                   <p style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.25rem', margin: 0 }}>
                     {formatPeso(room.price)}
@@ -1646,24 +1644,16 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
                 <div style={{ marginTop: '1.35rem' }}>
                   <p style={{ fontSize: '0.7rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.65rem' }}>Update Status</p>
                   <div className="room-status-picker">
-                    {ROOM_STATUSES.map(s => {
-                      // Occupied stays locked until Front Desk marks the reserved guest as Arrived.
-                      const locked = s === 'Occupied' && room.reservation
-                        && reservationArrivalStatus(room.reservation) !== 'Arrived';
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          className={`room-status-option${status === s ? ' active' : ''}`}
-                          disabled={locked}
-                          title={locked ? 'Guest has not been marked as Arrived yet' : undefined}
-                          style={locked ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
-                          onClick={() => { if (!locked) onChangeStatus(s); }}
-                        >
-                          {s}
-                        </button>
-                      );
-                    })}
+                    {ROOM_STATUSES.map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        className={`room-status-option${status === s ? ' active' : ''}`}
+                        onClick={() => onChangeStatus(s)}
+                      >
+                        {s}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -1944,7 +1934,7 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
       try {
         if (onToast) {
           const paid = payment ? ` · ${payment.type} ${formatPeso(payment.amountPaid)} via ${payment.method}` : '';
-          onToast(`${guest.fullName} reserved ${room.name}${paid}. Mark as Arrived on check-in day.`);
+          onToast(`${guest.fullName} reserved ${room.name}${paid}. Room Management checks the guest in on arrival.`);
         }
         // Lets Room Management auto-open Guest Details when the reservation lands.
         if (window.HMSSiteContent && typeof window.HMSSiteContent.recordReservationNotification === 'function') {
@@ -1989,7 +1979,6 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
         ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
           {filtered.map(room => {
-            const status = normalizeRoomStatus(room.status);
             return (
             <div key={room.id} className="room-card" style={{ position: 'relative' }}
               onClick={() => setSelectedRoomId(room.id)}>
@@ -2007,7 +1996,6 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
               )}
               <div className="room-card-img">
                 <img src={room.img} alt={room.name} loading="lazy" />
-                <div className={`room-status-badge ${roomStatusClass(status)}`}>{status}</div>
               </div>
               <div style={{ padding: '1.15rem 1.25rem 1.25rem' }}>
                 <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
@@ -2067,7 +2055,7 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
  */
 function checkedInRoomsFor(rooms) {
   return (rooms || []).filter(r => (
-    r.reservation && reservationArrivalStatus(r.reservation) === 'Arrived'
+    r.reservation && r.reservation.status === 'Checked In'
   ));
 }
 
@@ -2247,7 +2235,7 @@ function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, on
 
               {checkedInRooms.length === 0 ? (
                 <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', lineHeight: 1.6 }}>
-                  No guests are checked in right now. Mark a guest as Arrived from Verify Guest before placing a room-service order.
+                  No guests are checked in right now. Room Management can check a guest in from Guest Details before a room-service order can be placed.
                 </p>
               ) : (
                 <form onSubmit={submit}>
@@ -2935,10 +2923,9 @@ function App() {
   useEffect(() => {
     if (!canManageRooms) return;
     if (!roomsHydrated.current) return; // wait for the first real snapshot before seeding
-    const occupied = (rooms || []).filter(r => {
-      const status = normalizeRoomStatus(r.status);
-      return (status === 'Occupied' || status === 'Reserved') && r.reservation;
-    });
+    // `reservation` is only ever projected from an open booking (see
+    // HotelRoom::activeBooking()), so its presence alone means the room has a live guest.
+    const occupied = (rooms || []).filter(r => r.reservation);
     // On first run, just seed the set — don't auto-navigate
     if (!initialSeedDone.current) {
       occupied.forEach(r => {

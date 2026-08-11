@@ -160,7 +160,9 @@
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
-const ROOM_STATUSES = ['Available', 'Reserved', 'Occupied', 'Cleaning', 'Maintenance'];
+// Housekeeping condition only — occupancy lives on the booking (reservation.status),
+// not on the room's own status. See bookingStatusClass() below for that badge.
+const ROOM_STATUSES = ['Available', 'Cleaning', 'Maintenance'];
 const ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
 const BLOCK_HOURS = 12;
 const IMAGE_MAX_DIMENSION = 1280;
@@ -172,6 +174,13 @@ function normalizeRoomStatus(value) {
   return match || 'Available';
 }
 function roomStatusClass(status) { return 'status-' + normalizeRoomStatus(status).toLowerCase(); }
+
+/* Booking-lifecycle badge (Reserved / Checked In) — reuses the room-status-badge
+   colours (purple/blue) for a different meaning now that hotel_rooms.status no
+   longer tracks occupancy. */
+function bookingStatusClass(status) {
+  return String(status || '').trim() === 'Checked In' ? 'status-occupied' : 'status-reserved';
+}
 function normalizeRoomCategory(value) {
   const raw = String(value || 'Classic').trim().toLowerCase();
   const match = ROOM_CATEGORIES.find(c => c.toLowerCase() === raw);
@@ -329,10 +338,10 @@ function stayEndsAt(reservation) {
 }
 
 /* How much of the stay is left, as a label plus a tone that drives colour only.
-   Only a guest Front Desk has marked Arrived gets a running clock — a booking
-   nobody has turned up for has no stay to count down. */
+   Only a guest Room Management has actually checked in gets a running clock — a
+   reservation nobody has moved into yet has no stay to count down. */
 function remainingStay(reservation, now) {
-  if (reservationArrivalStatus(reservation) !== 'Arrived') {
+  if ((reservation && reservation.status) !== 'Checked In') {
     return { text: 'Not checked in', tone: 'idle' };
   }
   const endsAt = stayEndsAt(reservation);
@@ -633,18 +642,17 @@ function ManageRoomPanel({ onSubmit, onCancel, onCloseModal }) {
 
 function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   const now = useNow(1000);
-  const occupied = (rooms || []).filter(r => {
-    const status = normalizeRoomStatus(r.status);
-    return (status === 'Occupied' || status === 'Reserved') && r.reservation;
-  });
-  const awaitingCheckIn = occupied.filter(r => normalizeRoomStatus(r.status) === 'Reserved').length;
+  // `reservation` is only ever projected from an open booking (see
+  // HotelRoom::activeBooking()), so its presence alone means the room has a live guest
+  // — hotel_rooms.status is housekeeping-only now and no longer part of this filter.
+  const occupied = (rooms || []).filter(r => r.reservation);
+  const awaitingCheckIn = occupied.filter(r => r.reservation.status !== 'Checked In').length;
 
-  // Check-in moves the booking; the server sets the room to Occupied off the back of it,
-  // so the two can't end up disagreeing.
+  // Check-in moves the booking only — the room's own status is untouched.
   const checkInGuest = (room) => {
     if (typeof onBookingAction !== 'function' || !room.reservation) return;
     onBookingAction(room.reservation.bookingId, 'check_in');
-    if (onToast) onToast(`${room.name} checked in — room is now Occupied.`);
+    if (onToast) onToast(`${room.name} checked in.`);
   };
 
   const thStyle = {
@@ -663,7 +671,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
       <div className="rm-panel" style={{ maxWidth: '100%' }}>
         <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Occupancy</p>
         <h3>Guest Details</h3>
-        <p className="rm-panel-desc">No reserved or occupied rooms with registered guests at this time.</p>
+        <p className="rm-panel-desc">No rooms with registered guests at this time.</p>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2.5rem 0' }}>
           <div style={{ textAlign: 'center', color: 'var(--fg-muted)' }}>
             <i className="fa-solid fa-door-open" style={{ fontSize: '2rem', opacity: 0.25, display: 'block', marginBottom: '0.75rem' }}></i>
@@ -704,9 +712,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
               const payment = res.payment || null;
               const total = stayBlocks(res.checkIn, res.checkOut, res.checkInTime) * (Number(room.price) || 0);
               const rowBg = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)';
-              const status = normalizeRoomStatus(room.status);
-              const arrival = reservationArrivalStatus(res);
-              const canCheckIn = status !== 'Occupied' && arrival === 'Arrived';
+              const canCheckIn = res.status !== 'Checked In';
               const remaining = remainingStay(res, now);
               return (
                 <tr key={room.id} style={{ background: rowBg }}>
@@ -744,27 +750,23 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
                     ) : <span style={{ opacity: 0.4 }}>—</span>}
                   </td>
                   <td style={tdStyle}>
-                    <span className={`room-status-badge ${roomStatusClass(status)}`} style={{ position: 'static' }}>{status}</span>
+                    <span className={`room-status-badge ${bookingStatusClass(res.status)}`} style={{ position: 'static' }}>{res.status}</span>
                   </td>
                   <td style={tdStyle}>
-                    {status === 'Occupied' ? (
+                    {!canCheckIn ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#60a5fa', fontSize: '0.78rem', fontWeight: 600 }}>
                         <i className="fa-solid fa-circle-check" style={{ fontSize: '0.8rem' }}></i> Checked in
                       </span>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => canCheckIn && checkInGuest(room)}
-                        disabled={!canCheckIn}
-                        title={canCheckIn ? 'Check the guest in and set this room to Occupied' : 'Front Desk must mark the guest as Arrived first'}
+                        onClick={() => checkInGuest(room)}
+                        title="Check the guest in"
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
                           padding: '0.4rem 0.8rem', borderRadius: 6,
-                          border: '1px solid ' + (canCheckIn ? 'var(--accent)' : 'var(--border)'),
-                          background: canCheckIn ? 'var(--accent)' : 'transparent',
-                          color: canCheckIn ? 'var(--bg)' : 'var(--fg-muted)',
-                          cursor: canCheckIn ? 'pointer' : 'not-allowed',
-                          opacity: canCheckIn ? 1 : 0.5,
+                          border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)',
+                          cursor: 'pointer',
                           fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', fontWeight: 600,
                           letterSpacing: '0.06em', textTransform: 'uppercase',
                         }}
