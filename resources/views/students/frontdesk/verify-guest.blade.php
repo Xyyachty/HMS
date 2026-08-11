@@ -40,6 +40,65 @@
   }
   .booking-input:focus { border-color: var(--accent); }
   .booking-input::placeholder { color: var(--fg-muted); opacity: 0.5; }
+  select.booking-input { color-scheme: dark; }
+  select.booking-input option { background: var(--card); color: var(--fg); }
+  .btn-solid {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+    background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
+    font-family: 'Outfit', sans-serif; font-weight: 600;
+    font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 0.65rem 1.2rem; border-radius: 6px; cursor: pointer;
+    transition: filter 0.2s;
+  }
+  .btn-solid:hover { filter: brightness(1.1); }
+  .btn-solid:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+
+  /* Final bill — a folio, so it is set in a monospaced grid where the amounts line
+     up in a column the way a printed receipt does. */
+  .bill-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 2rem 1.5rem; z-index: 300; overflow-y: auto;
+  }
+  .bill-modal {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    width: 100%; max-width: 560px; margin: auto;
+  }
+  .bill-head {
+    padding: 1.4rem 1.6rem 1rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  }
+  .bill-body { padding: 1.25rem 1.6rem 1.6rem; }
+  .bill-section-title {
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent);
+    margin: 1.15rem 0 0.5rem; padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .bill-line {
+    display: flex; justify-content: space-between; gap: 1rem;
+    font-size: 0.83rem; color: var(--fg-muted); padding: 0.22rem 0;
+  }
+  .bill-line .bill-amt { color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bill-line.is-subtotal {
+    border-top: 1px solid var(--border); margin-top: 0.35rem; padding-top: 0.45rem;
+    color: var(--fg); font-weight: 600;
+  }
+  .bill-line.is-total {
+    border-top: 2px solid var(--accent); margin-top: 0.6rem; padding-top: 0.6rem;
+    font-size: 1rem; color: var(--fg); font-weight: 700;
+  }
+  .bill-line.is-total .bill-amt {
+    color: var(--accent-light); font-family: 'Playfair Display', serif; font-size: 1.15rem;
+  }
+  .bill-line.is-balance .bill-amt { color: #fb7185; font-weight: 700; }
+  .bill-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.55rem 1rem; }
+  .bill-meta dt {
+    font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--fg-muted); margin-bottom: 0.15rem;
+  }
+  .bill-meta dd { margin: 0; color: var(--fg); font-size: 0.85rem; }
+  @media (max-width: 520px) { .bill-meta { grid-template-columns: 1fr; } }
 </style>
 @endsection
 
@@ -116,6 +175,31 @@ function hmsCsrfToken() {
   return meta ? meta.getAttribute('content') : '';
 }
 
+/* 'Aug 12, 2026' from a 'YYYY-MM-DD' string, built from the parts so the date is not
+   shifted a day by being read as UTC midnight. */
+function formatBillDate(dateStr) {
+  const [y, m, d] = String(dateStr || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/* 'Aug 12, 2026 — 2:00 PM' for the bill header. */
+function formatBillDateTime(dateStr, timeStr) {
+  const day = formatBillDate(dateStr);
+  const clock = formatClockTime(timeStr);
+  if (!day) return '—';
+  return clock ? `${day} — ${clock}` : day;
+}
+
+/* The same, from a full ISO timestamp — what an actual check-out is stamped with. */
+function formatBillStamp(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    + ' — ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
 /* End of a paid stay: the booked check-in datetime plus the 12-hour blocks
    booked. Built with the same local-time parsing stayBlocks() uses, so the
    countdown and the Total on the same row can never disagree. */
@@ -174,24 +258,284 @@ function useNow(intervalMs) {
   return now;
 }
 
-function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
+const PAYMENT_METHODS = ['Cash', 'GCash', 'Card', 'Other'];
+
+/*
+ * The final bill, and the one screen that closes a stay.
+ *
+ * Everything shown here is priced by the server (HotelBooking::toBillArray()) rather
+ * than recomputed in the browser, so what the guest is charged cannot drift from what
+ * the database will record. Adding an extra charge re-fetches the whole bill for the
+ * same reason — the new subtotal comes back priced, it is not patched in locally.
+ */
+function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRemoveCharge, onSettle, onToast }) {
+  const [method, setMethod] = useState('Cash');
+  const [amount, setAmount] = useState('');
+  const [reference, setReference] = useState('');
+  const [chargeDesc, setChargeDesc] = useState('');
+  const [chargeAmount, setChargeAmount] = useState('');
+  const [showChargeForm, setShowChargeForm] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const balance = bill ? Number(bill.balance) || 0 : 0;
+
+  // Opening the bill pre-fills the balance: settling it in full is the common case,
+  // and the field stays editable for a guest paying part of it.
+  useEffect(() => {
+    if (!open) return;
+    setMethod('Cash');
+    setReference('');
+    setChargeDesc('');
+    setChargeAmount('');
+    setShowChargeForm(false);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && bill) setAmount(balance > 0 ? String(balance) : '0');
+  }, [open, bill && bill.bookingId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose, busy]);
+
+  if (!open) return null;
+
+  const paid = Math.max(0, parseFloat(amount) || 0);
+  const remainingAfter = Math.max(0, balance - paid);
+
+  const submitCharge = (e) => {
+    e.preventDefault();
+    const value = parseFloat(chargeAmount);
+    if (!chargeDesc.trim()) { if (onToast) onToast('Describe the charge first.'); return; }
+    if (!Number.isFinite(value) || value <= 0) { if (onToast) onToast('Enter a valid charge amount.'); return; }
+    setBusy(true);
+    Promise.resolve(onAddCharge(chargeDesc.trim(), value))
+      .then(() => { setChargeDesc(''); setChargeAmount(''); setShowChargeForm(false); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not add that charge.'); })
+      .finally(() => setBusy(false));
+  };
+
+  const settle = (e) => {
+    e.preventDefault();
+    // A short payment is allowed — a written-off or disputed stay still has to close —
+    // but the desk is told what is being left behind before it does.
+    if (remainingAfter > 0 && !window.confirm(
+      `${formatPeso(remainingAfter)} will still be unpaid after this. Check out anyway?`
+    )) return;
+    setBusy(true);
+    Promise.resolve(onSettle({ amount: paid, method, reference: reference.trim() }))
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not complete check-out.'); })
+      .finally(() => setBusy(false));
+  };
+
+  const roomLines = bill ? bill.room : null;
+  const service = bill ? bill.roomService : null;
+  const extras = bill ? bill.otherCharges : null;
+
+  return (
+    <div className="bill-overlay" onClick={() => { if (!busy) onClose(); }} role="dialog" aria-modal="true">
+      <div className="bill-modal" onClick={e => e.stopPropagation()}>
+        <div className="bill-head">
+          <div>
+            <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
+            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>Final Bill</h2>
+          </div>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
+            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div className="bill-body">
+          {loading ? (
+            <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', margin: 0 }}>Loading the bill…</p>
+          ) : error ? (
+            <p style={{ color: '#fb7185', fontSize: '0.85rem', margin: 0 }}>{error}</p>
+          ) : !bill ? null : (
+            <>
+              <dl className="bill-meta">
+                <div><dt>Guest</dt><dd>{bill.guestName}</dd></div>
+                <div><dt>Room</dt><dd>{bill.roomName || '—'}</dd></div>
+                <div>
+                  <dt>Check-in</dt>
+                  <dd>{formatBillDateTime(bill.checkIn, bill.checkInTime)}</dd>
+                </div>
+                <div>
+                  <dt>Check-out</dt>
+                  <dd>{formatBillStamp(bill.checkedOutAt) || formatBillDate(bill.checkOut) || '—'}</dd>
+                </div>
+              </dl>
+
+              <p className="bill-section-title">Room Charges</p>
+              <div className="bill-line">
+                <span>{roomLines.blocks} × {roomLines.blockHours} hrs × {formatPeso(roomLines.rate)}</span>
+                <span className="bill-amt">{formatPeso(roomLines.subtotal)}</span>
+              </div>
+
+              {service.orders.length > 0 && (
+                <>
+                  <p className="bill-section-title">Room Service</p>
+                  {service.orders.map(order => (
+                    order.items.map((item, i) => (
+                      <div className="bill-line" key={order.orderId + '-' + i}>
+                        <span>{item.name} × {item.qty}</span>
+                        <span className="bill-amt">{formatPeso(item.line)}</span>
+                      </div>
+                    ))
+                  ))}
+                  <div className="bill-line is-subtotal">
+                    <span>Room Service Subtotal</span>
+                    <span className="bill-amt">{formatPeso(service.subtotal)}</span>
+                  </div>
+                </>
+              )}
+
+              <p className="bill-section-title">Other Charges</p>
+              {extras.items.length === 0 ? (
+                <div className="bill-line"><span style={{ opacity: 0.6 }}>None</span><span className="bill-amt">{formatPeso(0)}</span></div>
+              ) : (
+                <>
+                  {extras.items.map(charge => (
+                    <div className="bill-line" key={charge.id}>
+                      <span>
+                        {charge.description}
+                        <button type="button" onClick={() => onRemoveCharge(charge.id)} disabled={busy} title="Remove this charge"
+                          style={{ background: 'none', border: 'none', color: '#fb7185', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.72rem', padding: '0 0 0 0.45rem' }}>
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      </span>
+                      <span className="bill-amt">{formatPeso(charge.amount)}</span>
+                    </div>
+                  ))}
+                  <div className="bill-line is-subtotal">
+                    <span>Other Subtotal</span>
+                    <span className="bill-amt">{formatPeso(extras.subtotal)}</span>
+                  </div>
+                </>
+              )}
+
+              {showChargeForm ? (
+                <form onSubmit={submitCharge} style={{ display: 'flex', gap: '0.4rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
+                  <input type="text" className="booking-input" placeholder="e.g. Minibar" value={chargeDesc}
+                    onChange={e => setChargeDesc(e.target.value)} style={{ flex: '2 1 140px', width: 'auto' }} />
+                  <input type="number" className="booking-input" placeholder="Amount" min="0.01" step="0.01" value={chargeAmount}
+                    onChange={e => setChargeAmount(e.target.value)} style={{ flex: '1 1 90px', width: 'auto' }} />
+                  <button type="submit" className="btn-solid" disabled={busy} style={{ padding: '0.5rem 0.9rem' }}>Add</button>
+                  <button type="button" className="btn-outline" disabled={busy} onClick={() => setShowChargeForm(false)}
+                    style={{ padding: '0.5rem 0.9rem', fontSize: '0.68rem' }}>Cancel</button>
+                </form>
+              ) : (
+                <button type="button" onClick={() => setShowChargeForm(true)} disabled={busy}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.75rem', padding: '0.5rem 0 0', fontFamily: 'Outfit, sans-serif' }}>
+                  <i className="fa-solid fa-plus" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Add charge
+                </button>
+              )}
+
+              <div className="bill-line is-total">
+                <span>Total Bill</span>
+                <span className="bill-amt">{formatPeso(bill.total)}</span>
+              </div>
+
+              {bill.payments.length > 0 && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  {bill.payments.map(p => (
+                    <div className="bill-line" key={p.id}>
+                      <span>{p.type} payment · {p.method}</span>
+                      <span className="bill-amt">− {formatPeso(p.amountPaid)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="bill-line is-subtotal">
+                <span>Previous Payments</span>
+                <span className="bill-amt">− {formatPeso(bill.amountPaid)}</span>
+              </div>
+              <div className="bill-line is-subtotal is-balance">
+                <span>Remaining Balance</span>
+                <span className="bill-amt">{formatPeso(balance)}</span>
+              </div>
+
+              <form onSubmit={settle} style={{ marginTop: '1.4rem' }}>
+                <p className="bill-section-title" style={{ marginTop: 0 }}>Settle</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>Payment Method</label>
+                    <select className="booking-input" value={method} onChange={e => setMethod(e.target.value)}>
+                      {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>Amount Paid</label>
+                    <input type="number" className="booking-input" min="0" step="0.01" value={amount}
+                      onChange={e => setAmount(e.target.value)} />
+                  </div>
+                </div>
+                {method !== 'Cash' && (
+                  <div style={{ marginTop: '0.7rem' }}>
+                    <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>Reference</label>
+                    <input type="text" className="booking-input" placeholder="Receipt no., card last 4, or ref #"
+                      value={reference} onChange={e => setReference(e.target.value)} />
+                  </div>
+                )}
+                <p style={{ margin: '0.65rem 0 0', fontSize: '0.76rem', color: remainingAfter > 0 ? '#fb7185' : '#4ade80' }}>
+                  {remainingAfter > 0
+                    ? `${formatPeso(remainingAfter)} will still be unpaid.`
+                    : 'This settles the bill in full.'}
+                </p>
+                <button type="submit" className="btn-solid" disabled={busy} style={{ width: '100%', marginTop: '1rem' }}>
+                  <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '0.7rem' }}></i>
+                  {busy ? 'Working…' : 'Settle & Check Out'}
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onSettleAndCheckOut }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const now = useNow(1000);
   const PER_PAGE = 8;
 
-  // Ends the stay: the booking closes and the room drops to Cleaning so housekeeping
-  // has to clear it before it's sellable again (App\Support\HotelBookingDesk::checkOut()).
-  const checkOutGuest = (room, reservation, outstanding) => {
-    if (typeof onBookingAction !== 'function' || !reservation) return;
-    // Room service is billed at check-out, so the desk is told what is still owed
-    // before the stay closes rather than discovering it afterwards.
-    if (outstanding > 0 && !window.confirm(
-      `${reservation.fullName || 'This guest'} still owes ${formatPeso(outstanding)} (room + room service). Check out anyway?`
-    )) return;
-    onBookingAction(reservation.bookingId, 'check_out');
-    if (onToast) onToast(`${reservation.fullName || 'Guest'} checked out of ${room.name}.`);
+  // Check-out goes through the final bill: the desk sees every charge on the stay and
+  // takes the closing payment there, rather than the booking simply being closed.
+  const [billFor, setBillFor] = useState(null);
+  const [bill, setBill] = useState(null);
+  const [billLoading, setBillLoading] = useState(false);
+  const [billError, setBillError] = useState('');
+
+  const openBill = (room, reservation) => {
+    setBillFor({ room, reservation });
+    setBill(null);
+    setBillError('');
+    setBillLoading(true);
+    Promise.resolve(onFetchBill(reservation.bookingId))
+      .then(data => setBill(data))
+      .catch(err => setBillError((err && err.message) || 'Could not load this bill.'))
+      .finally(() => setBillLoading(false));
   };
+
+  const closeBill = () => { setBillFor(null); setBill(null); setBillError(''); };
+
+  const refreshBill = (promise) => (
+    Promise.resolve(promise).then(data => { if (data) setBill(data); return data; })
+  );
+
+  const settleAndCheckOut = (payment) => (
+    Promise.resolve(onSettleAndCheckOut(billFor.reservation.bookingId, payment)).then(() => {
+      if (onToast) {
+        onToast(`${billFor.reservation.fullName || 'Guest'} checked out of ${billFor.room.name}.`);
+      }
+      closeBill();
+    })
+  );
 
   const allReservations = (rooms || []).reduce((acc, room) => {
     if (room && room.reservation) acc.push({ room, reservation: room.reservation });
@@ -352,8 +696,8 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
                             {checkedIn ? (
                               <button
                                 type="button"
-                                onClick={() => checkOutGuest(room, reservation, outstanding)}
-                                title="Check the guest out"
+                                onClick={() => openBill(room, reservation)}
+                                title="Show the final bill and check the guest out"
                                 style={{
                                   display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
                                   padding: '0.4rem 0.8rem', borderRadius: 6,
@@ -414,6 +758,18 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
             </>
           )}
       </div>
+
+      <FinalBillModal
+        open={!!billFor}
+        bill={bill}
+        loading={billLoading}
+        error={billError}
+        onClose={closeBill}
+        onAddCharge={(description, amount) => refreshBill(onAddCharge(billFor.reservation.bookingId, description, amount))}
+        onRemoveCharge={(chargeId) => refreshBill(onRemoveCharge(billFor.reservation.bookingId, chargeId))}
+        onSettle={settleAndCheckOut}
+        onToast={onToast}
+      />
     </div>
   );
 }
@@ -454,11 +810,69 @@ function App() {
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 
+  /* The bill routes all answer with the whole re-priced bill, so each of these hands
+     that straight back to the modal rather than patching a total locally. */
+  const billRequest = useCallback((url, method, body) => {
+    pendingWrites.current += 1;
+    return fetch(url, {
+      method,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
+  const fetchBill = useCallback((bookingId) => (
+    billRequest('/students/hotel/bookings/' + bookingId + '/bill', 'GET').then(d => d.bill)
+  ), [billRequest]);
+
+  const addCharge = useCallback((bookingId, description, amount) => (
+    billRequest('/students/hotel/bookings/' + bookingId + '/charges', 'POST', { description, amount }).then(d => d.bill)
+  ), [billRequest]);
+
+  const removeCharge = useCallback((bookingId, chargeId) => (
+    billRequest('/students/hotel/bookings/' + bookingId + '/charges/' + chargeId, 'DELETE').then(d => d.bill)
+  ), [billRequest]);
+
+  /*
+   * Settling is two writes: the closing payment, then the check-out itself. The payment
+   * goes first — if it fails the stay stays open and can be retried, whereas closing
+   * first would leave a checked-out guest with money unrecorded against them. A zero
+   * payment (nothing left to settle) skips straight to the check-out.
+   */
+  const settleAndCheckOut = useCallback((bookingId, payment) => {
+    const takePayment = payment.amount > 0
+      ? billRequest('/students/hotel/bookings/' + bookingId + '/payments', 'POST', {
+          type: 'Full',
+          amount_paid: payment.amount,
+          method: payment.method,
+          reference: payment.reference,
+        })
+      : Promise.resolve(null);
+
+    return takePayment.then(() => (
+      billRequest('/students/hotel/bookings/' + bookingId, 'PATCH', { action: 'check_out' })
+        .then(data => {
+          if (data && data.room) setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r)));
+          // The checked-out room no longer carries this stay, so drop it from the table
+          // even if the poll has not come back around yet.
+          fetchRooms();
+          return data;
+        })
+    ));
+  }, [billRequest, fetchRooms]);
+
   return (
     <VerifyGuestPage
       rooms={rooms}
       onBack={() => { window.location.href = window.HMS_FRONTDESK_URL; }}
       onBookingAction={bookingAction}
+      onFetchBill={fetchBill}
+      onAddCharge={addCharge}
+      onRemoveCharge={removeCharge}
+      onSettleAndCheckOut={settleAndCheckOut}
       onToast={(msg) => window.toast && window.toast(msg)}
     />
   );

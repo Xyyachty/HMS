@@ -14,7 +14,11 @@ class HotelBookingPayment extends Model
 {
     public const TYPES = ['Full', 'Partial'];
 
-    public const METHODS = ['Cash', 'Card', 'GCash', 'Bank Transfer'];
+    /**
+     * What the desk can take. 'Other' is the catch-all the final-bill screen offers for
+     * anything not on this list — the column is free text, so nothing is lost by it.
+     */
+    public const METHODS = ['Cash', 'GCash', 'Card', 'Bank Transfer', 'Other'];
 
     protected $primaryKey = 'hotel_booking_payment_id';
 

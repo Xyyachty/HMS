@@ -42,7 +42,7 @@ class HotelBookingDesk
     /** Bookings a team may see, newest first, with everything the screens render. */
     public static function scopedQuery(StudentGroup $membership)
     {
-        return HotelBooking::with(['guest', 'payments', 'foodOrders', 'room'])
+        return HotelBooking::with(['guest', 'payments', 'foodOrders', 'charges', 'room'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderByDesc('hotel_booking_id');

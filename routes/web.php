@@ -729,7 +729,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!$membership) {
             return response()->json(['rooms' => []]);
         }
-        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'openBookings'])
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'openBookings'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
@@ -982,10 +982,96 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         \App\Support\HotelBookingDesk::addPayment($booking, $data);
 
+        $fresh = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+
         return response()->json([
-            'booking' => \App\Support\HotelBookingDesk::findBooking($membership, $id)->toReservationArray(),
+            'booking' => $fresh->toReservationArray(),
+            'bill'    => $fresh->toBillArray(),
         ], 201);
     })->name('hotel.bookings.payments.store');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Final bill (Front Desk settles it at check-out)
+    |--------------------------------------------------------------------------
+    |
+    | Every charge on a stay, itemised: the room, room service, and whatever Front
+    | Desk added by hand. Read-only — settling it is a payment plus the ordinary
+    | check_out action on the booking.
+    */
+
+    Route::get('/hotel/bookings/{id}/bill', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+
+        return response()->json(['bill' => $booking->toBillArray()]);
+    })->name('hotel.bookings.bill');
+
+    Route::post('/hotel/bookings/{id}/charges', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+        // A closed stay's bill is history; adding to it would change what the guest
+        // was already told they owed.
+        if (!$booking->isOpen()) {
+            return response()->json(['message' => 'That stay is already closed.'], 409);
+        }
+
+        $data = $request->validate([
+            'description' => 'required|string|max:255',
+            'amount'      => 'required|numeric|min:0.01|max:9999999',
+        ]);
+
+        \App\Models\HotelBookingCharge::create([
+            'group_name'       => $membership->group_name,
+            'faculty_id'       => $membership->faculty_id,
+            'group_id'         => $membership->group_id,
+            'hotel_booking_id' => $booking->hotel_booking_id,
+            'description'      => trim($data['description']),
+            'amount'           => round((float) $data['amount'], 2),
+            'added_by'         => auth()->user()?->name,
+        ]);
+
+        return response()->json([
+            'bill' => \App\Support\HotelBookingDesk::findBooking($membership, $id)->toBillArray(),
+        ], 201);
+    })->name('hotel.bookings.charges.store');
+
+    Route::delete('/hotel/bookings/{id}/charges/{chargeId}', function (Request $request, $id, $chargeId) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+        if (!$booking->isOpen()) {
+            return response()->json(['message' => 'That stay is already closed.'], 409);
+        }
+
+        \App\Models\HotelBookingCharge::where('hotel_booking_charge_id', $chargeId)
+            ->where('hotel_booking_id', $booking->hotel_booking_id)
+            ->delete();
+
+        return response()->json([
+            'bill' => \App\Support\HotelBookingDesk::findBooking($membership, $id)->toBillArray(),
+        ]);
+    })->name('hotel.bookings.charges.destroy');
 
     /*
     |--------------------------------------------------------------------------

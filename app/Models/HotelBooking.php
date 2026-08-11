@@ -93,6 +93,13 @@ class HotelBooking extends Model
             ->billable();
     }
 
+    /** Extras Front Desk added by hand — minibar, laundry, late checkout. */
+    public function charges(): HasMany
+    {
+        return $this->hasMany(HotelBookingCharge::class, 'hotel_booking_id', 'hotel_booking_id')
+            ->orderBy('hotel_booking_charge_id');
+    }
+
     /** Bookings that still hold their room. */
     public function scopeOpen(Builder $query): Builder
     {
@@ -172,10 +179,16 @@ class HotelBooking extends Model
         return (float) $this->foodOrders->sum('total');
     }
 
-    /** Room charge plus room service — the figure the guest actually settles. */
+    /** Hand-added extras — minibar, laundry, late checkout. */
+    public function otherChargesTotal(): float
+    {
+        return (float) $this->charges->sum('amount');
+    }
+
+    /** Room + room service + extras — the figure the guest actually settles. */
     public function grandTotal(): float
     {
-        return $this->totalDue() + $this->roomServiceTotal();
+        return $this->totalDue() + $this->roomServiceTotal() + $this->otherChargesTotal();
     }
 
     /** Still owed once everything paid so far is counted against the full bill. */
@@ -209,9 +222,10 @@ class HotelBooking extends Model
             'totalDue'      => $this->totalDue(),
             'amountPaid'    => $this->amountPaid(),
             'balance'       => max(0, $this->totalDue() - $this->amountPaid()),
-            // The final bill: room charge + whatever the guest ordered to the room.
+            // The final bill: room charge + room service + hand-added extras.
             'roomServiceTotal' => $this->roomServiceTotal(),
             'roomServiceCount' => $this->foodOrders->count(),
+            'otherCharges'     => $this->otherChargesTotal(),
             'grandTotal'       => $this->grandTotal(),
             'outstanding'      => $this->outstanding(),
             'reservedAt'    => optional($this->reserved_at)->toIso8601String(),
@@ -223,6 +237,73 @@ class HotelBooking extends Model
             'notes'         => $this->notes ?? '',
             'payment'       => $payment?->toTemplateArray(),
             'payments'      => $this->payments->map->toTemplateArray()->values()->all(),
+        ];
+    }
+
+    /**
+     * The final bill Front Desk settles at check-out: every charge on the stay, itemised,
+     * with what has already been paid against it.
+     *
+     * Built as explicit sections rather than one flat list so the screen can render the
+     * subtotals the guest expects to see, and priced from the same methods the rest of
+     * the app bills from — nothing here recomputes a total its own way.
+     */
+    public function toBillArray(): array
+    {
+        $guest = $this->guest;
+
+        return [
+            'bookingId'    => $this->hotel_booking_id,
+            'guestName'    => $guest?->full_name ?? 'Guest',
+            'contactNo'    => $guest?->contact_no ?? '',
+            'email'        => $guest?->email ?? '',
+            'idNumber'     => $guest?->id_number ?? '',
+            'roomName'     => $this->room?->name ?? '',
+            'roomCategory' => $this->room?->category ?? '',
+            'status'       => $this->status,
+
+            'checkIn'      => optional($this->check_in)->toDateString(),
+            'checkInTime'  => $this->check_in_time ?? '',
+            'checkOut'     => optional($this->check_out)->toDateString(),
+            // Set only once the stay has actually closed; until then the bill shows the
+            // booked departure date instead.
+            'checkedOutAt' => optional($this->checked_out_at)->toIso8601String(),
+
+            'room' => [
+                // "2 blocks × ₱2,500" — the same 12-hour blocks stayBlocks() charges by.
+                'blocks'    => $this->stayBlocks(),
+                'blockHours'=> self::BLOCK_HOURS,
+                'rate'      => (int) $this->room_rate,
+                'subtotal'  => $this->totalDue(),
+            ],
+
+            // One line per dish across every billable order, so the guest sees what they
+            // ordered rather than an opaque per-order total.
+            'roomService' => [
+                'orders'   => $this->foodOrders->map(fn (HotelFoodOrder $order) => [
+                    'orderId' => $order->hotel_food_order_id,
+                    'status'  => $order->status,
+                    'placedAt'=> optional($order->created_at)->toIso8601String(),
+                    'total'   => (int) $order->total,
+                    'items'   => array_map(fn ($item) => [
+                        'name'  => $item['name'] ?? '',
+                        'qty'   => (int) ($item['qty'] ?? 0),
+                        'price' => (int) ($item['price'] ?? 0),
+                        'line'  => (int) ($item['price'] ?? 0) * (int) ($item['qty'] ?? 0),
+                    ], $order->items ?? []),
+                ])->values()->all(),
+                'subtotal' => $this->roomServiceTotal(),
+            ],
+
+            'otherCharges' => [
+                'items'    => $this->charges->map->toTemplateArray()->values()->all(),
+                'subtotal' => $this->otherChargesTotal(),
+            ],
+
+            'total'       => $this->grandTotal(),
+            'payments'    => $this->payments->sortBy('paid_at')->map->toTemplateArray()->values()->all(),
+            'amountPaid'  => $this->amountPaid(),
+            'balance'     => $this->outstanding(),
         ];
     }
 }
