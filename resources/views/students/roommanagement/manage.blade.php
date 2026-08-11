@@ -451,7 +451,7 @@ function ManageRoomPanel({ onSubmit, onCancel, onCloseModal }) {
   );
 }
 
-function GuestDetailsPanel({ rooms, onEditRoom, onToast }) {
+function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   const now = useNow(1000);
   const occupied = (rooms || []).filter(r => {
     const status = normalizeRoomStatus(r.status);
@@ -459,12 +459,11 @@ function GuestDetailsPanel({ rooms, onEditRoom, onToast }) {
   });
   const awaitingCheckIn = occupied.filter(r => normalizeRoomStatus(r.status) === 'Reserved').length;
 
+  // Check-in moves the booking; the server sets the room to Occupied off the back of it,
+  // so the two can't end up disagreeing.
   const checkInGuest = (room) => {
-    if (typeof onEditRoom !== 'function') return;
-    onEditRoom(room.id, {
-      status: 'Occupied',
-      reservation: Object.assign({}, room.reservation, { checkedInAt: new Date().toISOString() }),
-    });
+    if (typeof onBookingAction !== 'function' || !room.reservation) return;
+    onBookingAction(room.reservation.bookingId, 'check_in');
     if (onToast) onToast(`${room.name} checked in — room is now Occupied.`);
   };
 
@@ -604,7 +603,7 @@ function GuestDetailsPanel({ rooms, onEditRoom, onToast }) {
   );
 }
 
-function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onEditRoom, onToast }) {
+function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
   const handleAddRoom = (payload) => {
@@ -630,7 +629,7 @@ function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onEditRoom, 
             <ManageRoomPanel onSubmit={handleAddRoom} onCancel={onBack} onCloseModal={() => {}} />
           )}
           {activeNav === 'guest-details' && (
-            <GuestDetailsPanel rooms={rooms} onEditRoom={onEditRoom} onToast={onToast} />
+            <GuestDetailsPanel rooms={rooms} onBookingAction={onBookingAction} onToast={onToast} />
           )}
         </div>
       </div>
@@ -661,18 +660,16 @@ function App() {
     setRooms(prev => [...prev, roomFromDb]);
   }, []);
 
-  const editRoom = useCallback((id, patch) => {
-    setRooms(prev => prev.map(r => (r.id === id ? Object.assign({}, r, patch) : r)));
-    const body = {};
-    if (patch.status !== undefined) body.status = patch.status;
-    if (patch.reservation !== undefined) body.reservation = patch.reservation;
-    if (Object.keys(body).length === 0) return;
+  // Check-in and check-out are booking moves. The room status follows on the server,
+  // and the response hands the updated room back so this page never has to infer it.
+  const bookingAction = useCallback((bookingId, action) => {
+    if (!bookingId) return;
     pendingWrites.current += 1;
-    fetch('/students/hotel/rooms/' + String(id).replace(/^db-/, ''), {
+    fetch('/students/hotel/bookings/' + bookingId, {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ action }),
     })
       .then(r => (r.ok ? r.json() : null))
       .then(data => { if (data && data.room) setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r))); })
@@ -686,7 +683,7 @@ function App() {
       rooms={rooms}
       onBack={() => { window.location.href = window.HMS_ROOMMANAGEMENT_URL; }}
       onAddRoom={addRoom}
-      onEditRoom={editRoom}
+      onBookingAction={bookingAction}
       onToast={(msg) => window.toast && window.toast(msg)}
     />
   );

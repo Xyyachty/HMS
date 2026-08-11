@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HotelTemplateController;
 use App\Http\Controllers\NotificationController;
 use App\Models\ActivityLog;
+use App\Models\HotelBooking;
 use App\Models\HotelComplaint;
 use App\Models\HotelDineInTable;
 use App\Models\HotelFoodOrder;
@@ -17,6 +18,7 @@ use App\Models\StudentGroup;
 use App\Models\Task;
 use App\Models\GroupSettings;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 
 /*
@@ -711,39 +713,38 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         return response()->json(['ok' => true, 'notifications' => []]);
     })->name('frontdesk.template.reservations');
 
-    // ── Hotel Rooms (shared between Room Management & Front Desk) ──────────
+    /*
+    |--------------------------------------------------------------------------
+    | Hotel Rooms (shared between Room Management & Front Desk)
+    |--------------------------------------------------------------------------
+    |
+    | These routes own the room inventory only. Who is staying in a room is a
+    | hotel_bookings row — see the /hotel/bookings routes below. The room payload
+    | still carries a `reservation` object because the room grid, Verify Guest and
+    | Guest Details all read it, but it is projected from the open booking now, not
+    | stored on the room.
+    */
     Route::get('/hotel/rooms', function (Request $request) {
-        $authUser = auth()->user();
-        $student  = $authUser?->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
+        $membership = \App\Support\HotelBookingDesk::membership();
         if (!$membership) {
             return response()->json(['rooms' => []]);
         }
-        $rooms = HotelRoom::where('group_name', $membership->group_name)
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments'])
+            ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
             ->get()
-            // "id"/"dbId" are the room-grid front-end's keys, not column names.
-            ->map(fn ($r) => [
-                'id'          => 'db-' . $r->hotel_room_id,
-                'dbId'        => $r->hotel_room_id,
-                'name'        => $r->name,
-                'label'       => $r->category,
-                'category'    => $r->category,
-                'status'      => $r->status,
-                'price'       => (int) $r->price,
-                'desc'        => $r->description ?? '',
-                'img'         => \App\Support\HotelImageStore::url($r->image),
-                'reservation' => $r->reservation ?? null,
-                'amenities'   => [['icon'=>'fa-bed','text'=>'Bed'],['icon'=>'fa-wifi','text'=>'WiFi']],
-            ]);
+            ->map(fn (HotelRoom $room) => $room->toTemplateArray());
         return response()->json(['rooms' => $rooms]);
     })->name('hotel.rooms.index');
 
+    /**
+     * Status only — a room's own field. Releasing a room (Available / Cleaning /
+     * Maintenance) also closes whatever booking was holding it, which is what keeps a
+     * departed guest from lingering in room service.
+     */
     Route::patch('/hotel/rooms/{id}', function (Request $request, $id) {
-        $authUser   = auth()->user();
-        $student    = $authUser?->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
+        $membership = \App\Support\HotelBookingDesk::membership();
         if (!$membership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -751,23 +752,17 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->firstOrFail();
-        if ($request->has('status'))      $room->status      = $request->input('status');
-        if ($request->has('reservation')) $room->reservation = $request->input('reservation');
-        $room->save();
+
+        $data = $request->validate([
+            'status' => ['sometimes', 'string', Rule::in(HotelRoom::STATUSES)],
+        ]);
+
+        if (array_key_exists('status', $data)) {
+            \App\Support\HotelBookingDesk::applyRoomStatus($room, $data['status']);
+        }
+
         return response()->json([
-            'room' => [
-                'id'          => 'db-' . $room->hotel_room_id,
-                'dbId'        => $room->hotel_room_id,
-                'name'        => $room->name,
-                'label'       => $room->category,
-                'category'    => $room->category,
-                'status'      => $room->status,
-                'price'       => (int) $room->price,
-                'desc'        => $room->description ?? '',
-                'img'         => \App\Support\HotelImageStore::url($room->image),
-                'reservation' => $room->reservation ?? null,
-                'amenities'   => [['icon'=>'fa-bed','text'=>'Bed'],['icon'=>'fa-wifi','text'=>'WiFi']],
-            ],
+            'room' => $room->fresh()->toTemplateArray(),
         ]);
     })->name('hotel.rooms.update');
 
@@ -805,20 +800,186 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ),
         ]);
         return response()->json([
-            'room' => [
-                'id'       => 'db-' . $room->hotel_room_id,
-                'dbId'     => $room->hotel_room_id,
-                'name'     => $room->name,
-                'label'    => $room->category,
-                'category' => $room->category,
-                'status'   => $room->status,
-                'price'    => (int) $room->price,
-                'desc'     => $room->description ?? '',
-                'img'      => \App\Support\HotelImageStore::url($room->image),
-                'amenities'=> [['icon'=>'fa-bed','text'=>'Bed'],['icon'=>'fa-wifi','text'=>'WiFi']],
-            ],
+            'room' => $room->toTemplateArray(),
         ], 201);
     })->name('hotel.rooms.store');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Hotel bookings (guest stays — the tables that replaced the reservation blob)
+    |--------------------------------------------------------------------------
+    |
+    | A booking joins one room to one guest for one stay, with its payments hanging
+    | off it. Room status moves as a side effect of the lifecycle, all of it inside
+    | App\Support\HotelBookingDesk so the two can never disagree.
+    */
+
+    Route::get('/hotel/bookings', function (Request $request) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['bookings' => []]);
+        }
+
+        $query = \App\Support\HotelBookingDesk::scopedQuery($membership);
+
+        // ?open=1 is the desk's working set: the stays that still hold a room.
+        if ($request->boolean('open')) {
+            $query->open();
+        }
+        if ($request->filled('room_id')) {
+            $query->where('hotel_room_id', (int) $request->input('room_id'));
+        }
+
+        return response()->json([
+            'bookings' => $query->get()->map(fn (HotelBooking $booking) => $booking->toReservationArray() + [
+                'roomId'   => 'db-' . $booking->hotel_room_id,
+                'roomName' => $booking->room?->name,
+            ]),
+        ]);
+    })->name('hotel.bookings.index');
+
+    Route::post('/hotel/bookings', function (Request $request) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+
+        $data = $request->validate([
+            'room_id'            => 'required|integer',
+            'guest.full_name'    => 'required|string|max:255',
+            'guest.contact_no'   => 'nullable|string|max:100',
+            'guest.email'        => 'nullable|string|email|max:255',
+            'guest.id_number'    => 'nullable|string|max:100',
+            'check_in'           => 'required|date',
+            'check_in_time'      => 'required|string|max:10',
+            'check_out'          => 'required|date|after:check_in',
+            'notes'              => 'nullable|string|max:2000',
+            'payment'            => 'nullable|array',
+            'payment.type'       => 'nullable|string|max:20',
+            'payment.amount_paid'=> 'nullable|numeric|min:0',
+            'payment.method'     => 'nullable|string|max:50',
+            'payment.reference'  => 'nullable|string|max:255',
+            'payment.payer_name' => 'nullable|string|max:255',
+            'payment.notes'      => 'nullable|string|max:2000',
+        ]);
+
+        $room = HotelRoom::where('hotel_room_id', $data['room_id'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->first();
+        if (!$room) {
+            return response()->json(['message' => 'That room is not on your team\'s floor.'], 404);
+        }
+
+        // One room, one live stay. Without this two people polling the same grid can
+        // both book the last suite.
+        if ($room->activeBooking()->exists()) {
+            return response()->json(['message' => 'That room already has a guest booked.'], 409);
+        }
+
+        $booking = \App\Support\HotelBookingDesk::reserve(
+            $membership,
+            $room,
+            $data['guest'],
+            [
+                'check_in'      => $data['check_in'],
+                'check_in_time' => $data['check_in_time'],
+                'check_out'     => $data['check_out'],
+                'booked_by'     => auth()->user()?->name,
+                'notes'         => $data['notes'] ?? null,
+            ],
+            $data['payment'] ?? null
+        );
+
+        return response()->json([
+            'booking' => $booking->toReservationArray(),
+            'room'    => $room->fresh()->toTemplateArray(),
+        ], 201);
+    })->name('hotel.bookings.store');
+
+    /**
+     * Lifecycle moves. `action` is one of arrive / check_in / check_out / cancel;
+     * a body without one edits the stay's own details instead.
+     */
+    Route::patch('/hotel/bookings/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+
+        $data = $request->validate([
+            'action'        => ['nullable', 'string', Rule::in(['arrive', 'check_in', 'check_out', 'cancel'])],
+            'check_in'      => 'sometimes|date',
+            'check_in_time' => 'sometimes|string|max:10',
+            'check_out'     => 'sometimes|date',
+            'notes'         => 'sometimes|nullable|string|max:2000',
+        ]);
+
+        $action = $data['action'] ?? null;
+
+        if ($action !== null && !$booking->isOpen()) {
+            return response()->json(['message' => 'That booking is already closed.'], 409);
+        }
+
+        switch ($action) {
+            case 'arrive':
+                \App\Support\HotelBookingDesk::markArrived($booking);
+                break;
+            case 'check_in':
+                \App\Support\HotelBookingDesk::checkIn($booking);
+                break;
+            case 'check_out':
+                \App\Support\HotelBookingDesk::checkOut($booking);
+                break;
+            case 'cancel':
+                \App\Support\HotelBookingDesk::cancel($booking);
+                break;
+            default:
+                $booking->fill(array_intersect_key($data, array_flip([
+                    'check_in', 'check_in_time', 'check_out', 'notes',
+                ])))->save();
+        }
+
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+
+        return response()->json([
+            'booking' => $booking->toReservationArray(),
+            'room'    => $booking->room?->fresh()->toTemplateArray(),
+        ]);
+    })->name('hotel.bookings.update');
+
+    /** A later payment against an existing stay — settling a partial, say. */
+    Route::post('/hotel/bookings/{id}/payments', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+
+        $data = $request->validate([
+            'type'        => 'nullable|string|max:20',
+            'amount_paid' => 'required|numeric|min:0.01',
+            'method'      => 'nullable|string|max:50',
+            'reference'   => 'nullable|string|max:255',
+            'payer_name'  => 'nullable|string|max:255',
+            'notes'       => 'nullable|string|max:2000',
+        ]);
+
+        \App\Support\HotelBookingDesk::addPayment($booking, $data);
+
+        return response()->json([
+            'booking' => \App\Support\HotelBookingDesk::findBooking($membership, $id)->toReservationArray(),
+        ], 201);
+    })->name('hotel.bookings.payments.store');
 
     /*
     |--------------------------------------------------------------------------

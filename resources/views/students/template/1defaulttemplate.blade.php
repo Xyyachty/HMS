@@ -521,6 +521,7 @@
 <script src="{{ asset('js/hms-site-content.js') }}"></script>
 <script>
   window.HMS_ROOM_MANAGEMENT_URL = @json(route('students.roommanagement.manage'));
+  window.HMS_VERIFY_GUEST_URL = @json(route('students.frontdesk.verify-guest'));
   // Resolved out here: the block below is @verbatim, so Blade never runs inside it.
   window.HMS_DEFAULT_LOGO = @json(asset('images/hotel-logo-default.svg'));
 </script>
@@ -564,8 +565,8 @@ function roomStatusClass(status) {
   return 'status-' + normalizeRoomStatus(status).toLowerCase();
 }
 
-/* Arrival lifecycle of a reservation: Reserved -> Arrived.
-   Stored inside the reservation JSON so no schema change is needed. */
+/* Arrival lifecycle of a booking: Reserved -> Arrived. The server derives it from
+   hotel_bookings.arrived_at and sends it down on the room's `reservation`. */
 function reservationArrivalStatus(reservation) {
   const raw = String((reservation && reservation.arrivalStatus) || 'Reserved').trim().toLowerCase();
   return raw === 'arrived' ? 'Arrived' : 'Reserved';
@@ -816,35 +817,38 @@ function pickImageFile(onPicked) {
   input.click();
 }
 
-/* Each role/section (Home, Rooms, Restaurant) owns its own logo, stored under
-   its own card-image key so one role's change never overwrites another's.
-   Header and Footer share this logic — whichever section is on screen decides
-   which logo they show. */
+/* One logo for the whole site. It lives under a single card-image key, so the
+   header, the footer, the mobile menu and every page all read the same value —
+   changing it anywhere changes it everywhere. */
 const DEFAULT_LOGO = window.HMS_DEFAULT_LOGO || '/images/hotel-logo-default.svg';
+const LOGO_ID = 'logo';
 
-function logoSectionForPage(page) {
-  if (page === 'rooms') return 'rooms';
-  if (page === 'restaurant') return 'restaurant';
-  return 'home';
+/* Sites saved while the logo was stored per section still carry those entries
+   and no shared one. Read them in a fixed order so such a site keeps showing a
+   logo instead of snapping back to the default; the first change made after
+   this writes the shared key, which then wins everywhere. */
+const LEGACY_LOGO_IDS = ['logo-home', 'logo-rooms', 'logo-restaurant'];
+
+function resolveLogo() {
+  const shared = resolveCardImg('brand', LOGO_ID, '');
+  if (shared) return shared;
+  for (let i = 0; i < LEGACY_LOGO_IDS.length; i++) {
+    const legacy = resolveCardImg('brand', LEGACY_LOGO_IDS[i], '');
+    if (legacy) return legacy;
+  }
+  return DEFAULT_LOGO;
 }
 
-function resolveLogo(section) {
-  const sectioned = resolveCardImg('brand', 'logo-' + (section || 'home'), '');
-  if (sectioned) return sectioned;
-  // Legacy sites saved before per-section logos existed used one shared key.
-  return resolveCardImg('brand', 'logo', DEFAULT_LOGO);
-}
-
-function BrandLogo({ size, section }) {
+function BrandLogo({ size }) {
   const px = size || 34;
   return (
     <img
-      src={resolveLogo(section)}
+      src={resolveLogo()}
       alt="Hotel logo"
       data-hms-move-root="1"
       data-hms-dynamic-src="1"
       data-hms-content-kind="brand"
-      data-hms-content-id={'logo-' + (section || 'home')}
+      data-hms-content-id={LOGO_ID}
       style={{ width: px, height: px, objectFit: 'contain', display: 'block', flexShrink: 0 }}
       onError={(e) => {
         // Attribute guard, not a src comparison: the browser reports src as a
@@ -857,13 +861,13 @@ function BrandLogo({ size, section }) {
   );
 }
 
-function ChangeLogoButton({ onToast, section }) {
+function ChangeLogoButton({ onToast }) {
   return (
     <button
       type="button"
       title="Change logo"
       data-hms-no-edit="1"
-      onClick={() => changeCardImg('brand', 'logo-' + (section || 'home'), () => { if (onToast) onToast('Logo updated — synced to your team'); })}
+      onClick={() => changeCardImg('brand', LOGO_ID, () => { if (onToast) onToast('Logo updated — applied across the whole site'); })}
       style={Object.assign({}, toolBtnStyle('image'), { width: 22, height: 22 })}
     ><i className="fa-solid fa-image" style={{ fontSize: 10 }}></i></button>
   );
@@ -912,7 +916,7 @@ function MobileMenu({ open, onClose, onNavigate, links, cardImages, page }) {
   void cardImages;
   return (
     <div className={`mobile-menu${open ? ' open' : ''}`}>
-      <BrandLogo size={54} section={logoSectionForPage(page)} />
+      <BrandLogo size={54} />
       {items.map(item => (
         <button key={item.id || item.key} onClick={() => { onNavigate(item.key); onClose(); }}>
           {item.label}
@@ -927,8 +931,7 @@ function MobileMenu({ open, onClose, onNavigate, links, cardImages, page }) {
 function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav, cardImages, onToast }) {
   // Passed only so the navigation re-renders when the shared logo changes.
   void cardImages;
-  const logoSection = logoSectionForPage(currentPage);
-  const canEditThisLogo = !!(window.HMSSiteContent && window.HMSSiteContent.canEditLogo && window.HMSSiteContent.canEditLogo(logoSection));
+  const canEditThisLogo = !!(window.HMSSiteContent && window.HMSSiteContent.canEditLogo && window.HMSSiteContent.canEditLogo());
   const PAGE_OPTIONS = [
     { key: 'home', label: 'Home' },
     { key: 'rooms', label: 'Rooms' },
@@ -988,10 +991,10 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, ca
       <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <button onClick={() => onNavigate('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <BrandLogo size={34} section={logoSection} />
+            <BrandLogo size={34} />
             <span style={{ color: 'var(--fg)', fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
           </button>
-          {canEditThisLogo && <ChangeLogoButton onToast={onToast} section={logoSection} />}
+          {canEditThisLogo && <ChangeLogoButton onToast={onToast} />}
         </div>
         <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: '1.1rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {(links || []).map(link => (
@@ -1224,6 +1227,15 @@ function stayBlocks(checkIn, checkOut, checkInTime) {
   return Math.max(1, Math.ceil(hours / BLOCK_HOURS));
 }
 
+/* 'YYYY-MM-DD' + n days -> 'YYYY-MM-DD'. Built from the date parts, not by adding
+   ms to a Date, so it can't drift across a DST boundary. */
+function addDays(dateStr, n) {
+  const [y, m, d] = String(dateStr || '').split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  const dt = new Date(y, m - 1, d + n);
+  return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+}
+
 function formatClockTime(value) {
   const raw = String(value || '').trim();
   const match = /^(\d{1,2}):(\d{2})/.exec(raw);
@@ -1279,6 +1291,9 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
 
   const blocks = stayBlocks(guestForm.checkIn, guestForm.checkOut, guestForm.checkInTime);
   const totalDue = blocks * (Number(room.price) || 0);
+  // Check-out must be a later date than check-in — a same-day stay isn't a valid
+  // booking here, so the day of check-in itself is not selectable on the calendar.
+  const minCheckOut = addDays(guestForm.checkIn || today, 1);
 
   const updateGuest = (field, value) => {
     setGuestForm(prev => {
@@ -1476,7 +1491,7 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
                   </div>
                   <div>
                     <label style={fieldLabel}>Check-Out</label>
-                    <input type="date" className="booking-input" value={guestForm.checkOut} min={guestForm.checkIn || today}
+                    <input type="date" className="booking-input" value={guestForm.checkOut} min={minCheckOut}
                       onChange={e => updateGuest('checkOut', e.target.value)} required style={{ colorScheme: 'dark' }} />
                   </div>
                 </div>
@@ -1595,7 +1610,7 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
   );
 }
 
-function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onEditRoom, onRemoveRoom, onOpenRoomManagement }) {
+function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onEditRoom, onRemoveRoom, onCreateBooking, onOpenRoomManagement }) {
   const list = rooms && rooms.length ? rooms : [];
   const [tab, setTab] = useState('Classic');
   const [selectedRoomId, setSelectedRoomId] = useState(null);
@@ -1652,48 +1667,43 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
     if (onToast) onToast(`${selectedRoom.name} marked as ${status}`);
   };
 
+  // The stay is written to hotel_bookings, not onto the room — the server flips the
+  // room to Reserved itself and hands back both rows. Everything below only runs once
+  // that POST actually succeeds; onCreateBooking's own .catch already toasts the error,
+  // so a failed booking (room already taken, bad dates, ...) no longer looks like a
+  // success and silently drops the guest.
   const handleReserve = (room, guest, payment) => {
-    if (onEditRoom) {
-      onEditRoom(room.id, {
-        status: 'Reserved',
-        reservation: {
-          fullName: guest.fullName,
-          contactNo: guest.contactNo,
-          email: guest.email,
-          idNumber: guest.idNumber,
+    if (!onCreateBooking) return;
+    onCreateBooking(room, guest, payment).then(() => {
+      if (onToast) {
+        const paid = payment ? ` · ${payment.type} ${formatPeso(payment.amountPaid)} via ${payment.method}` : '';
+        onToast(`${guest.fullName} reserved ${room.name}${paid}. Mark as Arrived on check-in day.`);
+      }
+      // Notify Room Management via cross-module notification so it auto-opens Guest Details
+      if (window.HMSSiteContent && typeof window.HMSSiteContent.recordReservationNotification === 'function') {
+        window.HMSSiteContent.recordReservationNotification({
+          roomId: room.id,
+          roomName: room.name,
+          guestName: guest.fullName,
           checkIn: guest.checkIn,
-          checkInTime: guest.checkInTime || '',
           checkOut: guest.checkOut,
-          reservedAt: new Date().toISOString(),
-          arrivalStatus: 'Reserved',
-          arrivedAt: null,
-          payment: payment || null,
-        },
-      });
-    }
-    if (onToast) {
-      const paid = payment ? ` · ${payment.type} ${formatPeso(payment.amountPaid)} via ${payment.method}` : '';
-      onToast(`${guest.fullName} reserved ${room.name}${paid}. Mark as Arrived on check-in day.`);
-    }
-    // Notify Room Management via cross-module notification so it auto-opens Guest Details
-    if (window.HMSSiteContent && typeof window.HMSSiteContent.recordReservationNotification === 'function') {
-      window.HMSSiteContent.recordReservationNotification({
-        roomId: room.id,
-        roomName: room.name,
-        guestName: guest.fullName,
-        checkIn: guest.checkIn,
-        checkOut: guest.checkOut,
-        fullReservation: Object.assign({}, guest, {
-          payment: payment || null,
-          reservedAt: new Date().toISOString(),
-          arrivalStatus: 'Reserved',
-          arrivedAt: null,
-        }),
-      });
-    }
-    if (showRoomManagement && typeof onOpenRoomManagement === 'function') {
-      onOpenRoomManagement('guest-details');
-    }
+          fullReservation: Object.assign({}, guest, {
+            payment: payment || null,
+            reservedAt: new Date().toISOString(),
+            arrivalStatus: 'Reserved',
+            arrivedAt: null,
+          }),
+        });
+      }
+      // Send the registering staff straight to whichever screen they'd use next: Room
+      // Management owns Guest Details, everyone else (Front Desk included) works the
+      // booking from Verify Guest.
+      if (showRoomManagement && typeof onOpenRoomManagement === 'function') {
+        onOpenRoomManagement('guest-details');
+      } else if (window.HMS_VERIFY_GUEST_URL) {
+        window.top.location.assign(window.HMS_VERIFY_GUEST_URL);
+      }
+    }).catch(() => { /* onCreateBooking already toasted the failure */ });
   };
 
   return (
@@ -1781,17 +1791,14 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• RESTAURANT PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /*
- * Guests eligible for a room-service order: reservation is Arrived (Front Desk
- * confirmed them at the desk via Verify Guest) and the room hasn't since been reset
- * to Available. Room Management resetting a room's status back to Available never
- * clears its old reservation JSON, so without that second check a checked-out guest's
- * stale reservation would still show up as orderable.
+ * Guests eligible for a room-service order: the room has a live booking whose guest
+ * Front Desk confirmed at the desk via Verify Guest. A room only carries a
+ * `reservation` while its booking is still open, so releasing the room closes the
+ * booking and the departed guest drops out of this list on its own.
  */
 function checkedInRoomsFor(rooms) {
   return (rooms || []).filter(r => (
-    r.reservation
-    && reservationArrivalStatus(r.reservation) === 'Arrived'
-    && normalizeRoomStatus(r.status) !== 'Available'
+    r.reservation && reservationArrivalStatus(r.reservation) === 'Arrived'
   ));
 }
 
@@ -2234,7 +2241,9 @@ function BookingPage({ onToast, rooms }) {
     setForm({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
   };
 
-  const minCheckOut = form.checkIn || today;
+  // Check-out must be a later date than check-in, so the day of check-in itself is
+  // not selectable on the check-out calendar.
+  const minCheckOut = addDays(form.checkIn || today, 1);
 
   return (
     <>
@@ -2313,14 +2322,14 @@ function BookingPage({ onToast, rooms }) {
 function Footer({ onNavigate, cardImages, page }) {
   // Passed only so the footer re-renders when the shared logo changes.
   void cardImages;
-  const logoSection = logoSectionForPage(page);
+  void page;
   return (
     <footer data-hms-section="footer" data-hms-bg-target="1" style={{ padding: '3.5rem 1.5rem 1.75rem', borderTop: '1px solid var(--border)' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '2.5rem', marginBottom: '2.5rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.85rem' }}>
-              <BrandLogo size={38} section={logoSection} />
+              <BrandLogo size={38} />
               <span style={{ fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
             </div>
             <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', fontWeight: 300, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem' }}>A sanctuary of refined hospitality. Where every guest becomes part of our story.</p>
@@ -2530,17 +2539,15 @@ function App() {
   const editRoom = useCallback((id, patch) => {
     setRooms(prev => prev.map(r => (r.id === id ? Object.assign({}, r, patch) : r)));
 
-    // status / reservation are the shared workflow fields — write them straight to the
-    // DB and reconcile from the response so Front Desk and Room Management never drift.
-    const writesToDb = patch && (patch.status !== undefined || patch.reservation !== undefined);
-    if (!writesToDb) {
+    // status is the one shared workflow field left on the room — write it straight to
+    // the DB and reconcile from the response so Front Desk and Room Management never
+    // drift. Guest data goes to /hotel/bookings instead.
+    if (!patch || patch.status === undefined) {
       if (window.HMSSiteContent) window.HMSSiteContent.updateRoom(id, patch, []);
       return;
     }
 
-    const body = {};
-    if (patch.status !== undefined) body.status = patch.status;
-    if (patch.reservation !== undefined) body.reservation = patch.reservation;
+    const body = { status: patch.status };
 
     pendingWrites.current += 1;
     fetch('/students/hotel/rooms/' + String(id).replace(/^db-/, ''), {
@@ -2568,6 +2575,49 @@ function App() {
   const removeRoom = useCallback((id) => {
     setRooms(prev => prev.filter(r => r.id !== id));
   }, []);
+
+  /* ── Bookings (hotel_bookings, not a blob on the room) ───────────────── */
+
+  // Takes the stay and the up-front payment in one POST. The room comes back already
+  // flipped to Reserved with its projected `reservation`, so the grid needs no guesswork.
+  const createBooking = useCallback((room, guest, payment) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/bookings', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({
+        room_id: String(room.id).replace(/^db-/, ''),
+        guest: {
+          full_name: guest.fullName,
+          contact_no: guest.contactNo,
+          email: guest.email,
+          id_number: guest.idNumber,
+        },
+        check_in: guest.checkIn,
+        check_in_time: guest.checkInTime || '',
+        check_out: guest.checkOut,
+        payment: payment ? {
+          type: payment.type,
+          amount_paid: payment.amountPaid,
+          method: payment.method,
+          reference: payment.reference,
+          payer_name: payment.payerName,
+          notes: payment.notes,
+        } : null,
+      }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && data.room) setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r)));
+        return data && data.booking;
+      })
+      .catch(err => {
+        showToast((err && err.message) || 'Could not save that booking.');
+        return Promise.reject(err);
+      })
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, [showToast]);
 
   /* ── Restaurant menu (DB-backed, Restaurant role only) ───────────────── */
 
@@ -2665,6 +2715,7 @@ function App() {
         onAddRoom={addRoom}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
+        onCreateBooking={createBooking}
         onOpenRoomManagement={openRoomManagement}
       />
     ),

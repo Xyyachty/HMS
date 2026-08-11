@@ -1209,10 +1209,22 @@ function ExperiencePage({ onNav, canEdit, onToast, cardImages }) {
 
 
 /* â•â•â•â•â•â•â• BOOKING â•â•â•â•â•â•â• */
+/* 'YYYY-MM-DD' + n days -> 'YYYY-MM-DD'. Built from the date parts, not by adding
+   ms to a Date, so it can't drift across a DST boundary. */
+function addDays(dateStr, n) {
+  const [y, m, d] = String(dateStr || '').split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  const dt = new Date(y, m - 1, d + n);
+  return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+}
+
 function BookingPage({ onToast, rooms }) {
   const roomList = rooms && rooms.length ? rooms : ROOMS;
   const [form, setForm] = useState({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
   const today = new Date().toISOString().split('T')[0];
+  // Check-out must be a later date than check-in, so the day of check-in itself is
+  // not selectable on the check-out calendar.
+  const minCheckOut = addDays(form.checkIn || today, 1);
   const update = (f, v) => setForm(p => { const n = { ...p, [f]: v }; if (f === 'checkIn' && v) n.checkOut = ''; return n; });
 
   const getEst = () => {
@@ -1272,7 +1284,7 @@ function BookingPage({ onToast, rooms }) {
                   </div>
                   <div>
                     <label style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' }}>Check-out</label>
-                    <input type="date" className="booking-input" value={form.checkOut} min={form.checkIn || today} onChange={e => update('checkOut', e.target.value)} required />
+                    <input type="date" className="booking-input" value={form.checkOut} min={minCheckOut} onChange={e => update('checkOut', e.target.value)} required />
                   </div>
                   <div>
                     <label style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' }}>Guests</label>

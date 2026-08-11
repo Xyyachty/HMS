@@ -68,8 +68,8 @@ function roomStatusClass(status) {
   return 'status-' + normalizeRoomStatus(status).toLowerCase();
 }
 
-/* Arrival lifecycle of a reservation: Reserved -> Arrived.
-   Stored inside the reservation JSON so no schema change is needed. */
+/* Arrival lifecycle of a booking: Reserved -> Arrived. The server derives it from
+   hotel_bookings.arrived_at and sends it down on the room's `reservation`. */
 function reservationArrivalStatus(reservation) {
   const raw = String((reservation && reservation.arrivalStatus) || 'Reserved').trim().toLowerCase();
   return raw === 'arrived' ? 'Arrived' : 'Reserved';
@@ -185,7 +185,7 @@ function useNow(intervalMs) {
   return now;
 }
 
-function VerifyGuestPage({ rooms, onBack, onEditRoom, onToast }) {
+function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const now = useNow(1000);
@@ -193,14 +193,7 @@ function VerifyGuestPage({ rooms, onBack, onEditRoom, onToast }) {
 
   const markArrived = (room, reservation) => {
     if (!canMarkArrived(reservation)) return;
-    if (typeof onEditRoom === 'function') {
-      onEditRoom(room.id, {
-        reservation: Object.assign({}, reservation, {
-          arrivalStatus: 'Arrived',
-          arrivedAt: new Date().toISOString(),
-        }),
-      });
-    }
+    if (typeof onBookingAction === 'function') onBookingAction(reservation.bookingId, 'arrive');
     if (onToast) onToast(`${reservation.fullName || 'Guest'} marked as Arrived — Room Management can now set ${room.name} to Occupied.`);
   };
 
@@ -432,18 +425,16 @@ function App() {
     return () => { clearInterval(id); window.removeEventListener('focus', fetchRooms); };
   }, [fetchRooms]);
 
-  const editRoom = useCallback((id, patch) => {
-    setRooms(prev => prev.map(r => (r.id === id ? Object.assign({}, r, patch) : r)));
-    const body = {};
-    if (patch.status !== undefined) body.status = patch.status;
-    if (patch.reservation !== undefined) body.reservation = patch.reservation;
-    if (Object.keys(body).length === 0) return;
+  // Lifecycle moves belong to the booking, not the room; the response carries the room
+  // back with its projected reservation so the table re-renders from one source.
+  const bookingAction = useCallback((bookingId, action) => {
+    if (!bookingId) return;
     pendingWrites.current += 1;
-    fetch('/students/hotel/rooms/' + String(id).replace(/^db-/, ''), {
+    fetch('/students/hotel/bookings/' + bookingId, {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ action }),
     })
       .then(r => (r.ok ? r.json() : null))
       .then(data => { if (data && data.room) setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r))); })
@@ -455,7 +446,7 @@ function App() {
     <VerifyGuestPage
       rooms={rooms}
       onBack={() => { window.location.href = window.HMS_FRONTDESK_URL; }}
-      onEditRoom={editRoom}
+      onBookingAction={bookingAction}
       onToast={(msg) => window.toast && window.toast(msg)}
     />
   );

@@ -180,12 +180,17 @@
   }
 
   /**
-   * The brand logo is stored per section (home/rooms/restaurant) so each role
-   * owns its own copy — see cardImageKey('brand', 'logo-' + section). A role
-   * may only change the logo shown on the page(s) it is allowed to edit.
+   * One logo for the whole site, under a single key — see cardImageKey('brand',
+   * 'logo'). It is deliberately not gated on a particular page: there is no page
+   * that owns it, and every role that can edit anything could already change the
+   * logo on its own section before this became shared, so gating it on Home
+   * would take that away rather than merely redirect it.
+   *
+   * A change therefore applies site-wide, and the most recent one wins — see
+   * HotelTemplateBuilder::claimSharedLogo().
    */
-  function canEditLogo(section) {
-    return canEdit() && editablePages().indexOf(section || 'home') !== -1;
+  function canEditLogo() {
+    return canEdit();
   }
 
   function getNav() {
@@ -310,12 +315,11 @@
       item.id === id ? Object.assign({}, item, patchData) : item
     ));
     setRooms(list);
-    // Persist status + reservation to DB so Room Management sees it via polling
-    if (patchData && (patchData.status !== undefined || patchData.reservation !== undefined)) {
+    // Persist status to DB so Room Management sees it via polling. Guest data is not
+    // a room field any more — it lives in hotel_bookings, written via /hotel/bookings.
+    if (patchData && patchData.status !== undefined) {
       var dbId = String(id).replace(/^db-/, '');
-      var body = {};
-      if (patchData.status !== undefined)      body.status      = patchData.status;
-      if (patchData.reservation !== undefined) body.reservation = patchData.reservation;
+      var body = { status: patchData.status };
       fetch('/students/hotel/rooms/' + dbId, {
         method: 'PATCH',
         credentials: 'same-origin',
