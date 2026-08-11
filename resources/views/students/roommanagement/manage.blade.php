@@ -64,6 +64,86 @@
     .rm-row { flex-direction: column; }
     .rm-form-row { grid-template-columns: 1fr; }
   }
+
+  /* Room Availability tab — card grid + detail modal, same look as the hotel
+     site's Rooms page so the calendar reads the same way in both places. */
+  .room-card-tab {
+    font-family: 'Outfit', sans-serif; font-size: 0.74rem; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.5rem 0.9rem; border-radius: 100px;
+    border: 1.5px solid var(--border); background: transparent;
+    color: var(--fg-muted); cursor: pointer; transition: all 0.15s;
+  }
+  .room-card-tab:hover { border-color: var(--accent); color: var(--accent); }
+  .room-card-tab.active { background: var(--accent); border-color: var(--accent); color: #0c0b09; }
+  .room-browse-card {
+    text-align: left; border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; background: var(--bg-warm); cursor: pointer; padding: 0;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .room-browse-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+  .room-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem; z-index: 200;
+  }
+  .room-modal {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+  }
+  .room-modal-img { position: relative; height: 200px; }
+  .room-modal-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .room-modal-close {
+    position: absolute; top: 10px; right: 10px; width: 32px; height: 32px;
+    border-radius: 8px; border: none; background: rgba(0,0,0,0.55); color: #fff;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+
+  .room-cal {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.9rem 1rem 1rem;
+  }
+  .room-cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .room-cal-title {
+    font-family: 'Outfit', sans-serif; font-size: 0.82rem; font-weight: 600;
+    color: var(--fg);
+  }
+  .room-cal-nav {
+    width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--fg-muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .room-cal-nav:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .room-cal-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+  .room-cal-weekdays, .room-cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.25rem;
+  }
+  .room-cal-weekdays { margin-bottom: 0.35rem; }
+  .room-cal-weekdays span {
+    font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--fg-muted); text-align: center;
+  }
+  .room-cal-day {
+    aspect-ratio: 1; border-radius: 8px; border: 1px solid transparent;
+    background: rgba(255,255,255,0.02); color: var(--fg);
+    font-family: 'Outfit', sans-serif; font-size: 0.74rem; cursor: default;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .room-cal-day.is-blank { visibility: hidden; }
+  .room-cal-day.is-past { color: var(--fg-muted); opacity: 0.35; }
+  .room-cal-day.is-booked { background: rgba(244,63,94,0.14); color: #fb7185; }
+  .room-cal-legend { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.75rem; }
+  .room-cal-legend span {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.68rem; color: var(--fg-muted);
+  }
+  .room-cal-swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; background: rgba(255,255,255,0.08); }
+  .room-cal-swatch.is-booked { background: #fb7185; }
+  .room-cal-swatch.is-past { background: var(--fg-muted); opacity: 0.5; }
 </style>
 @endsection
 
@@ -78,7 +158,7 @@
 </script>
 @verbatim
 <script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
+const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
 const ROOM_STATUSES = ['Available', 'Reserved', 'Occupied', 'Cleaning', 'Maintenance'];
 const ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
@@ -134,6 +214,106 @@ function formatCheckIn(date, time) {
 function hmsCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
   return meta ? meta.getAttribute('content') : '';
+}
+
+/* ── Room availability calendar — same shape as the hotel site's Rooms page,
+   read-only here since Room Management doesn't take reservations. ──────── */
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* 'to' is the checkout date and is exclusive — the guest is gone by morning,
+   so that day is free for the next booking. */
+function bookedDateSet(ranges) {
+  const set = new Set();
+  (ranges || []).forEach(r => {
+    if (!r || !r.from || !r.to) return;
+    let cursor = r.from;
+    let guard = 0;
+    while (cursor < r.to && guard < 800) {
+      set.add(cursor);
+      const [y, m, d] = cursor.split('-').map(Number);
+      const next = new Date(y, m - 1, d + 1);
+      cursor = next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0') + '-' + String(next.getDate()).padStart(2, '0');
+      guard += 1;
+    }
+  });
+  return set;
+}
+
+function monthCells(year, month) {
+  const first = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < first.getDay(); i++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) {
+    cells.push(year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0'));
+  }
+  return cells;
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+function RoomAvailabilityCalendar({ ranges }) {
+  const today = todayStr();
+  const bookedSet = useMemo(() => bookedDateSet(ranges), [ranges]);
+  const [cursor, setCursor] = useState(() => {
+    const [y, m] = today.split('-').map(Number);
+    return { year: y, month: m - 1 };
+  });
+
+  const isCurrentMonth = (() => {
+    const [y, m] = today.split('-').map(Number);
+    return cursor.year === y && cursor.month === m - 1;
+  })();
+
+  const cells = useMemo(() => monthCells(cursor.year, cursor.month), [cursor]);
+
+  const goPrev = () => setCursor(prev => {
+    const month = prev.month === 0 ? 11 : prev.month - 1;
+    const year = prev.month === 0 ? prev.year - 1 : prev.year;
+    return { year, month };
+  });
+  const goNext = () => setCursor(prev => {
+    const month = prev.month === 11 ? 0 : prev.month + 1;
+    const year = prev.month === 11 ? prev.year + 1 : prev.year;
+    return { year, month };
+  });
+
+  return (
+    <div className="room-cal">
+      <div className="room-cal-header">
+        <button type="button" className="room-cal-nav" onClick={goPrev} disabled={isCurrentMonth} aria-label="Previous month">
+          <i className="fa-solid fa-chevron-left" style={{ fontSize: 11 }}></i>
+        </button>
+        <span className="room-cal-title">{MONTH_NAMES[cursor.month]} {cursor.year}</span>
+        <button type="button" className="room-cal-nav" onClick={goNext} aria-label="Next month">
+          <i className="fa-solid fa-chevron-right" style={{ fontSize: 11 }}></i>
+        </button>
+      </div>
+      <div className="room-cal-weekdays">
+        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <span key={d}>{d}</span>)}
+      </div>
+      <div className="room-cal-grid">
+        {cells.map((day, i) => {
+          if (!day) return <span key={'blank' + i} className="room-cal-day is-blank"></span>;
+          const isPast = day < today;
+          const isBooked = bookedSet.has(day);
+          const cls = ['room-cal-day'];
+          if (isPast) cls.push('is-past');
+          if (isBooked) cls.push('is-booked');
+          return <span key={day} className={cls.join(' ')}>{Number(day.slice(8, 10))}</span>;
+        })}
+      </div>
+      <div className="room-cal-legend">
+        <span><i className="room-cal-swatch is-available"></i> Available</span>
+        <span><i className="room-cal-swatch is-booked"></i> Booked</span>
+        <span><i className="room-cal-swatch is-past"></i> Past</span>
+      </div>
+    </div>
+  );
 }
 
 /* End of a paid stay: the booked check-in datetime plus the 12-hour blocks
@@ -603,6 +783,114 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   );
 }
 
+/* Browse the inventory and check a room's open dates — the same calendar
+   Front Desk sees on the hotel site's Rooms page, minus the reservation flow
+   Room Management doesn't do. */
+function RoomAvailabilityPanel({ rooms }) {
+  const list = rooms || [];
+  const [tab, setTab] = useState('All');
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const tabs = ['All', ...ROOM_CATEGORIES];
+  const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
+  const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
+  const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setSelectedRoomId(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  return (
+    <div className="rm-panel" style={{ maxWidth: '100%' }}>
+      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Inventory</p>
+      <h3>Room Availability</h3>
+      <p className="rm-panel-desc">Browse every room in the hotel and check which dates are already booked.</p>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.15rem' }}>
+        {tabs.map(t => {
+          const count = t === 'All' ? list.length : list.filter(r => normalizeRoomCategory(r.category || r.label) === t).length;
+          return (
+            <button key={t} type="button" onClick={() => setTab(t)} className={`room-card-tab${tab === t ? ' active' : ''}`}>
+              {t} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {filtered.length === 0 ? (
+        <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', padding: '1.5rem 0', textAlign: 'center' }}>No rooms in this category yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+          {filtered.map(room => {
+            const status = normalizeRoomStatus(room.status);
+            return (
+              <button key={room.id} type="button" className="room-browse-card" onClick={() => setSelectedRoomId(room.id)}>
+                <div style={{ position: 'relative', height: 120 }}>
+                  <img src={room.img} alt={room.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  <span className={`room-status-badge ${roomStatusClass(status)}`} style={{ position: 'absolute', top: 8, right: 8 }}>{status}</span>
+                </div>
+                <div style={{ padding: '0.75rem 0.9rem' }}>
+                  <span style={{ display: 'block', fontSize: '0.62rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+                    {room.label || room.category}
+                  </span>
+                  <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 600, fontSize: '0.9rem' }}>{room.name}</span>
+                  <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '0.9rem', marginTop: 4 }}>
+                    {formatPeso(room.price)}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {selectedRoom && (
+        <div className="room-modal-overlay" onClick={() => setSelectedRoomId(null)} role="dialog" aria-modal="true">
+          <div className="room-modal" onClick={e => e.stopPropagation()}>
+            <div className="room-modal-img">
+              <img src={selectedRoom.img} alt={selectedRoom.name} />
+              <button type="button" className="room-modal-close" onClick={() => setSelectedRoomId(null)} aria-label="Close">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                {selectedRoom.label || selectedRoom.category || 'Room'}
+              </p>
+              <h2 className="font-display" style={{ fontSize: '1.5rem', marginBottom: '1.1rem', color: 'var(--fg)' }}>{selectedRoom.name}</h2>
+
+              <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.35rem' }}>
+                <div>
+                  <p style={fieldLabel}>Status</p>
+                  <span className={`room-status-badge ${roomStatusClass(normalizeRoomStatus(selectedRoom.status))}`} style={{ position: 'static' }}>
+                    {normalizeRoomStatus(selectedRoom.status)}
+                  </span>
+                </div>
+                <div>
+                  <p style={fieldLabel}>Price</p>
+                  <p style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.2rem', margin: 0 }}>
+                    {formatPeso(selectedRoom.price)}
+                  </p>
+                </div>
+                <div>
+                  <p style={fieldLabel}>Description</p>
+                  <p style={{ color: 'var(--fg-muted)', fontSize: '0.86rem', lineHeight: 1.6, margin: 0 }}>
+                    {selectedRoom.desc || 'No description yet.'}
+                  </p>
+                </div>
+              </div>
+
+              <p style={{ ...fieldLabel, marginBottom: '0.5rem' }}>Availability</p>
+              <RoomAvailabilityCalendar ranges={selectedRoom.bookedRanges} />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
@@ -630,6 +918,9 @@ function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onBookingAct
           )}
           {activeNav === 'guest-details' && (
             <GuestDetailsPanel rooms={rooms} onBookingAction={onBookingAction} onToast={onToast} />
+          )}
+          {activeNav === 'rooms' && (
+            <RoomAvailabilityPanel rooms={rooms} />
           )}
         </div>
       </div>
