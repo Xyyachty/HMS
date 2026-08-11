@@ -2035,7 +2035,7 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
         room={selectedRoom}
         onClose={() => setSelectedRoomId(null)}
         onChangeStatus={handleStatusChange}
-        canEditStatus={!!canEditRooms}
+        canEditStatus={!!canManageRooms}
         canReserve={canReserveRooms !== false}
         onReserve={handleReserve}
         onToast={onToast}
