@@ -63,8 +63,25 @@
   .tb-occupied  { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
   .tb-pending   { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
   .tb-preparing { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
+  .tb-ready     { background: rgba(56,189,248,0.18); color: #38bdf8; border-color: rgba(56,189,248,0.35); }
   .tb-delivered { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .tb-completed { background: rgba(20,148,80,0.18); color: #34d399; border-color: rgba(20,148,80,0.35); }
   .tb-cancelled { background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3); }
+  .order-card {
+    border: 1px solid var(--border); border-radius: 12px;
+    background: rgba(255,255,255,0.02); padding: 1rem 1.1rem;
+  }
+  .order-card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.75rem; margin-bottom: 0.75rem;
+  }
+  .order-card-id {
+    font-family: 'Playfair Display', serif; font-size: 1.05rem;
+    font-weight: 700; color: var(--fg);
+  }
+  .order-field { display: flex; gap: 0.5rem; font-size: 0.82rem; margin-bottom: 0.3rem; }
+  .order-field dt { color: var(--fg-muted); min-width: 58px; flex-shrink: 0; }
+  .order-field dd { color: var(--fg); margin: 0; }
   .tb-tab {
     padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px solid var(--border);
     background: transparent; color: var(--fg-muted); cursor: pointer;
@@ -449,8 +466,32 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
   );
 }
 
-const ORDER_STATUSES = ['Pending', 'Preparing', 'Delivered', 'Cancelled'];
-const OPEN_ORDER_STATUSES = ['Pending', 'Preparing'];
+// Mirrors App\Models\HotelFoodOrder::STATUSES / ::FLOW. Cancelled sits off the flow.
+const ORDER_FLOW = ['Pending', 'Preparing', 'Ready', 'Delivered', 'Completed'];
+const ORDER_STATUSES = [...ORDER_FLOW, 'Cancelled'];
+const OPEN_ORDER_STATUSES = ['Pending', 'Preparing', 'Ready'];
+
+/* The button the kitchen presses next, given where the order is now. Front Desk owns
+   the Ready -> Delivered hand-off, so the kitchen is not offered it. */
+function nextKitchenStatus(status) {
+  const at = ORDER_FLOW.indexOf(status);
+  if (at < 0 || at >= ORDER_FLOW.length - 1) return null;
+  const next = ORDER_FLOW[at + 1];
+  return next === 'Delivered' ? null : next;
+}
+
+const ORDER_ACTION_LABEL = {
+  Preparing: 'Accept Order',
+  Ready: 'Mark Ready',
+  Completed: 'Complete Order',
+};
+
+function formatOrderTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
 
 function createEmptyTableForm() {
   return { name: '', capacity: '2' };
@@ -753,6 +794,108 @@ function ManageTablesPanel({ tables, orders, menus, canManage, onAddTable, onEdi
   );
 }
 
+/*
+ * Room-service tickets, newest first. Front Desk places these against a checked-in
+ * guest's stay; the kitchen walks them Pending -> Preparing -> Ready here, Front Desk
+ * marks Delivered when it reaches the room, and the kitchen closes them Completed.
+ */
+function RoomServiceOrdersPanel({ orders, onUpdateOrderStatus, onToast }) {
+  const [filter, setFilter] = useState('Open');
+
+  const roomServiceOrders = (orders || [])
+    .filter(o => o.orderType !== 'dine_in')
+    .sort((a, b) => (a.id < b.id ? 1 : -1));
+
+  const visible = roomServiceOrders.filter(o => (
+    filter === 'All' ? true
+      : filter === 'Open' ? OPEN_ORDER_STATUSES.indexOf(o.status) !== -1
+      : o.status === filter
+  ));
+
+  const openCount = roomServiceOrders.filter(o => OPEN_ORDER_STATUSES.indexOf(o.status) !== -1).length;
+  const filters = ['Open', 'All', ...ORDER_FLOW.slice(1), 'Cancelled'];
+
+  const move = (order, status) => {
+    Promise.resolve(onUpdateOrderStatus(order.id, status))
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not update this order.'); });
+  };
+
+  return (
+    <div className="rm-panel" style={{ maxWidth: '100%' }}>
+      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Room Service</p>
+      <h3>Orders</h3>
+      <p className="rm-panel-desc">
+        {roomServiceOrders.length === 0
+          ? 'No room-service orders yet. Front Desk places them for checked-in guests.'
+          : `${openCount} order${openCount === 1 ? '' : 's'} still in the kitchen · ${roomServiceOrders.length} total.`}
+      </p>
+
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
+        {filters.map(f => (
+          <button key={f} type="button" className={`tb-tab ${filter === f ? 'is-active' : ''}`} onClick={() => setFilter(f)}>{f}</button>
+        ))}
+      </div>
+
+      {visible.length === 0 ? (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>
+          <i className="fa-solid fa-bell-concierge" style={{ fontSize: '1.6rem', color: 'var(--fg-muted)', opacity: 0.3, display: 'block', marginBottom: '0.65rem' }}></i>
+          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.85rem' }}>No orders in this view.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+          {visible.map(order => {
+            const next = nextKitchenStatus(order.status);
+            const finished = order.status === 'Completed' || order.status === 'Cancelled';
+            return (
+              <div key={order.id} className="order-card">
+                <div className="order-card-head">
+                  <span className="order-card-id">Order #{order.id}</span>
+                  <span className={`tb-badge tb-${order.status.toLowerCase()}`}>{order.status}</span>
+                </div>
+
+                <dl style={{ margin: '0 0 0.75rem' }}>
+                  <div className="order-field"><dt>Guest</dt><dd>{order.guestName || '—'}</dd></div>
+                  <div className="order-field"><dt>Room</dt><dd>{order.roomNumber || '—'}</dd></div>
+                  <div className="order-field">
+                    <dt>Order</dt>
+                    <dd>{(order.items || []).map(i => `${i.name} ×${i.qty}`).join(', ') || '—'}</dd>
+                  </div>
+                  <div className="order-field"><dt>Time</dt><dd>{formatOrderTime(order.placedAt)}</dd></div>
+                  <div className="order-field">
+                    <dt>Total</dt>
+                    <dd style={{ color: 'var(--accent-light)', fontWeight: 700 }}>{formatPeso(order.total)}</dd>
+                  </div>
+                </dl>
+
+                {order.status === 'Ready' && (
+                  <p style={{ margin: '0 0 0.6rem', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
+                    Waiting for Front Desk to deliver it to the room.
+                  </p>
+                )}
+
+                {!finished && (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {next && (
+                      <button type="button" className="btn-primary" style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}
+                        onClick={() => move(order, next)}>
+                        {ORDER_ACTION_LABEL[next] || next}
+                      </button>
+                    )}
+                    <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.45rem 0.9rem' }}
+                      onClick={() => move(order, 'Cancelled')}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RestaurantManagementPage({
   initialNav, menus, tables, orders, canManageTables,
   onBack, onAddMenu, onEditMenu, onRemoveMenu,
@@ -796,6 +939,13 @@ function RestaurantManagementPage({
               onCloseTable={onCloseTable}
               onRemoveTable={onRemoveTable}
               onPlaceOrder={onPlaceOrder}
+              onUpdateOrderStatus={onUpdateOrderStatus}
+              onToast={onToast}
+            />
+          )}
+          {activeNav === 'orders' && (
+            <RoomServiceOrdersPanel
+              orders={orders}
               onUpdateOrderStatus={onUpdateOrderStatus}
               onToast={onToast}
             />

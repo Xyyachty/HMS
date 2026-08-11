@@ -2,17 +2,36 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HotelFoodOrder extends Model
 {
-    /** Front Desk places an order as Pending; Restaurant Services moves it along. */
+    /**
+     * Front Desk places an order as Pending and marks it Delivered once it reaches the
+     * guest's door; Restaurant Services moves it through the kitchen in between.
+     *
+     *   Pending -> Preparing -> Ready -> Delivered -> Completed
+     *
+     * Delivered means the food is with the guest; Completed is the kitchen closing the
+     * ticket off afterwards. Cancelled is off to the side of that line and returns the
+     * portions to stock.
+     */
     public const STATUSES = [
         'Pending',
         'Preparing',
+        'Ready',
         'Delivered',
+        'Completed',
         'Cancelled',
     ];
+
+    /** The kitchen pipeline in order, so a screen can offer "the next step". */
+    public const FLOW = ['Pending', 'Preparing', 'Ready', 'Delivered', 'Completed'];
+
+    /** Statuses that still owe the guest food. Anything else is finished. */
+    public const OPEN_STATUSES = ['Pending', 'Preparing', 'Ready'];
 
     protected $primaryKey = 'hotel_food_order_id';
 
@@ -27,6 +46,7 @@ class HotelFoodOrder extends Model
         'faculty_id',
         'group_id',
         'order_type',
+        'hotel_booking_id',
         'dine_in_table_id',
         'room_number',
         'guest_name',
@@ -40,6 +60,29 @@ class HotelFoodOrder extends Model
         'items' => 'array',
         'total' => 'integer',
     ];
+
+    /** The stay this order gets billed to. Null for dine-in. */
+    public function booking(): BelongsTo
+    {
+        return $this->belongsTo(HotelBooking::class, 'hotel_booking_id', 'hotel_booking_id');
+    }
+
+    /** Orders that count towards a bill — a cancelled one is not charged for. */
+    public function scopeBillable(Builder $query): Builder
+    {
+        return $query->where('status', '!=', 'Cancelled');
+    }
+
+    /**
+     * The step after this one, or null at the end of the line. Cancelled has no next
+     * step: it is not on the flow.
+     */
+    public function nextStatus(): ?string
+    {
+        $at = array_search($this->status, self::FLOW, true);
+
+        return $at === false || $at === count(self::FLOW) - 1 ? null : self::FLOW[$at + 1];
+    }
 
     public static function normalizeStatus(?string $value): string
     {
@@ -115,12 +158,14 @@ class HotelFoodOrder extends Model
         return [
             'id'         => $this->hotel_food_order_id,
             'orderType'  => $this->order_type,
+            'bookingId'  => $this->hotel_booking_id,
             'tableId'    => $this->dine_in_table_id,
             'roomNumber' => $this->room_number,
             'guestName'  => $this->guest_name,
             'items'      => $this->items ?? [],
             'total'      => (int) $this->total,
             'status'     => $this->status,
+            'nextStatus' => $this->nextStatus(),
             'placedBy'   => $this->placed_by ?? '',
             'placedAt'   => optional($this->created_at)->toIso8601String(),
             'updatedAt'  => optional($this->updated_at)->toIso8601String(),

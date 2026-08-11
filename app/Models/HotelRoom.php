@@ -97,7 +97,7 @@ class HotelRoom extends Model
     {
         $booking = $this->relationLoaded('activeBooking')
             ? $this->activeBooking
-            : $this->activeBooking()->with(['guest', 'payments'])->first();
+            : $this->activeBooking()->with(['guest', 'payments', 'foodOrders'])->first();
 
         $openBookings = $this->relationLoaded('openBookings')
             ? $this->openBookings

@@ -729,7 +729,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!$membership) {
             return response()->json(['rooms' => []]);
         }
-        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'openBookings'])
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'openBookings'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
@@ -1119,7 +1119,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::get('/hotel/orders', function (Request $request) {
         $membership = \App\Support\HotelOrderAccess::membership();
         if (!$membership) {
-            return response()->json(['orders' => [], 'can_place' => false, 'can_fulfill' => false]);
+            return response()->json(['orders' => [], 'can_place' => false, 'can_fulfill' => false, 'can_deliver' => false]);
         }
 
         $orders = HotelFoodOrder::where('group_name', $membership->group_name)
@@ -1133,6 +1133,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'orders'      => $orders,
             'can_place'   => \App\Support\HotelOrderAccess::canPlace($membership),
             'can_fulfill' => \App\Support\HotelOrderAccess::canFulfill($membership),
+            'can_deliver' => \App\Support\HotelOrderAccess::canDeliver($membership),
         ]);
     })->name('hotel.orders.index');
 
@@ -1168,6 +1169,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ]);
 
         $table = null;
+        $booking = null;
         if ($isDineIn) {
             $table = HotelDineInTable::where('hotel_dine_in_table_id', $data['dine_in_table_id'])
                 ->where('group_name', $membership->group_name)
@@ -1179,6 +1181,22 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             if ($table->status !== 'Occupied') {
                 return response()->json(['message' => 'Seat a guest at this table before ordering.'], 422);
             }
+        } else {
+            // Room service is charged to a stay, so it has to resolve to one. The room
+            // is identified by name (that is all the ordering screen has), and only a
+            // guest who has actually checked in can order to their room.
+            $room = HotelRoom::with('activeBooking')
+                ->where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->where('name', trim($data['room_number']))
+                ->first();
+
+            $booking = $room?->activeBooking;
+            if (!$booking || $booking->status !== 'Checked In') {
+                return response()->json([
+                    'message' => 'That room has no checked-in guest to bill this order to.',
+                ], 422);
+            }
         }
 
         $items = HotelFoodOrder::sanitizeItems($data['items']);
@@ -1187,7 +1205,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
 
         try {
-            $order = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $data, $items, $orderType, $table) {
+            $order = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $data, $items, $orderType, $table, $booking) {
                 $menuItems = \App\Support\HotelOrderAccess::lockMenuItemsFor($membership, $items);
 
                 // Same dish can appear on more than one line; charge stock for the sum.
@@ -1218,6 +1236,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     'faculty_id'       => $membership->faculty_id,
                     'group_id'         => $membership->group_id,
                     'order_type'       => $orderType,
+                    'hotel_booking_id' => $booking?->hotel_booking_id,
                     'dine_in_table_id' => $table?->hotel_dine_in_table_id,
                     'room_number'      => isset($data['room_number']) ? trim($data['room_number']) : null,
                     'guest_name'       => trim($data['guest_name'] ?? $table?->guest_name ?? ''),
@@ -1239,10 +1258,6 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!$membership) {
             return response()->json(['message' => 'Join a hotel team first.'], 404);
         }
-        if (!\App\Support\HotelOrderAccess::canFulfill($membership)) {
-            return response()->json(['message' => 'Only Restaurant Services staff can update an order.'], 403);
-        }
-
         $order = HotelFoodOrder::where('hotel_food_order_id', $id)
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
@@ -1253,6 +1268,21 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ]);
 
         $next = HotelFoodOrder::normalizeStatus($data['status']);
+
+        // The kitchen owns the whole flow; Front Desk owns exactly one step of it —
+        // marking a Ready order Delivered, which is the moment they hand it to the
+        // guest. Anything else from them is refused rather than silently ignored.
+        if (!\App\Support\HotelOrderAccess::canFulfill($membership)) {
+            $isFrontDeskHandover = $next === 'Delivered'
+                && $order->status === 'Ready'
+                && \App\Support\HotelOrderAccess::canDeliver($membership);
+
+            if (!$isFrontDeskHandover) {
+                return response()->json([
+                    'message' => 'Only Restaurant Services staff can update an order. Front Desk can mark a Ready order as Delivered.',
+                ], 403);
+            }
+        }
 
         // Cancelling puts the portions back on the shelf. Only on the transition,
         // so re-cancelling an already-cancelled order cannot inflate stock.
@@ -1651,6 +1681,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
         return view('students.frontdesk.dine-in', $data);
     })->name('frontdesk.dine-in');
+
+    Route::get('/frontdesk/room-service', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.frontdesk.room-service', $data);
+    })->name('frontdesk.room-service');
 
     Route::get('/restaurant', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');

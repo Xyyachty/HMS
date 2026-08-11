@@ -182,8 +182,13 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
 
   // Ends the stay: the booking closes and the room drops to Cleaning so housekeeping
   // has to clear it before it's sellable again (App\Support\HotelBookingDesk::checkOut()).
-  const checkOutGuest = (room, reservation) => {
+  const checkOutGuest = (room, reservation, outstanding) => {
     if (typeof onBookingAction !== 'function' || !reservation) return;
+    // Room service is billed at check-out, so the desk is told what is still owed
+    // before the stay closes rather than discovering it afterwards.
+    if (outstanding > 0 && !window.confirm(
+      `${reservation.fullName || 'This guest'} still owes ${formatPeso(outstanding)} (room + room service). Check out anyway?`
+    )) return;
     onBookingAction(reservation.bookingId, 'check_out');
     if (onToast) onToast(`${reservation.fullName || 'Guest'} checked out of ${room.name}.`);
   };
@@ -282,7 +287,16 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
                   <tbody>
                     {pageRows.map(({ room, reservation }, idx) => {
                       const payment = reservation.payment || null;
-                      const total = stayBlocks(reservation.checkIn, reservation.checkOut, reservation.checkInTime) * (Number(room.price) || 0);
+                      // The server bills the stay at the rate it was sold at; the local
+                      // stayBlocks() maths is only a fallback for a payload that predates it.
+                      const roomTotal = Number(reservation.totalDue)
+                        || stayBlocks(reservation.checkIn, reservation.checkOut, reservation.checkInTime) * (Number(room.price) || 0);
+                      const foodTotal = Number(reservation.roomServiceTotal) || 0;
+                      const foodCount = Number(reservation.roomServiceCount) || 0;
+                      const grandTotal = Number(reservation.grandTotal) || (roomTotal + foodTotal);
+                      const outstanding = reservation.outstanding != null
+                        ? Number(reservation.outstanding)
+                        : Math.max(0, grandTotal - (Number(reservation.amountPaid) || 0));
                       const rowBg = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)';
                       const checkedIn = reservation.status === 'Checked In';
                       const remaining = remainingStay(reservation, now);
@@ -305,13 +319,27 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
                             {remaining.text}
                           </td>
                           <td style={{ ...tdStyle, color: 'var(--accent)' }}>{formatPeso(room.price)}</td>
-                          <td style={{ ...tdStyle, color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontWeight: 700 }}>{formatPeso(total)}</td>
+                          <td style={tdStyle}>
+                            {foodTotal > 0 ? (
+                              <>
+                                <span style={{ display: 'block', fontSize: '0.72rem' }}>Room {formatPeso(roomTotal)}</span>
+                                <span style={{ display: 'block', fontSize: '0.72rem' }}>
+                                  Room service {formatPeso(foodTotal)} ({foodCount})
+                                </span>
+                                <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontWeight: 700, marginTop: 2 }}>
+                                  {formatPeso(grandTotal)}
+                                </span>
+                              </>
+                            ) : (
+                              <span style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontWeight: 700 }}>{formatPeso(grandTotal)}</span>
+                            )}
+                          </td>
                           <td style={tdStyle}>
                             {payment ? (
                               <>
                                 <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 500 }}>{payment.type} · {payment.method}</span>
-                                <span style={{ display: 'block', fontSize: '0.75rem' }}>{formatPeso(payment.amountPaid)}</span>
-                                {payment.balance > 0 && <span style={{ display: 'block', fontSize: '0.72rem', color: '#fb7185' }}>Bal: {formatPeso(payment.balance)}</span>}
+                                <span style={{ display: 'block', fontSize: '0.75rem' }}>{formatPeso(reservation.amountPaid)}</span>
+                                {outstanding > 0 && <span style={{ display: 'block', fontSize: '0.72rem', color: '#fb7185' }}>Bal: {formatPeso(outstanding)}</span>}
                               </>
                             ) : <span style={{ opacity: 0.4 }}>—</span>}
                           </td>
@@ -324,7 +352,7 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast }) {
                             {checkedIn ? (
                               <button
                                 type="button"
-                                onClick={() => checkOutGuest(room, reservation)}
+                                onClick={() => checkOutGuest(room, reservation, outstanding)}
                                 title="Check the guest out"
                                 style={{
                                   display: 'inline-flex', alignItems: 'center', gap: '0.4rem',

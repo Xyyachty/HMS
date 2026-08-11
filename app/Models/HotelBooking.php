@@ -86,6 +86,13 @@ class HotelBooking extends Model
         return $this->hasMany(HotelBookingPayment::class, 'hotel_booking_id', 'hotel_booking_id');
     }
 
+    /** Room-service orders charged to this stay — cancelled ones are not billed. */
+    public function foodOrders(): HasMany
+    {
+        return $this->hasMany(HotelFoodOrder::class, 'hotel_booking_id', 'hotel_booking_id')
+            ->billable();
+    }
+
     /** Bookings that still hold their room. */
     public function scopeOpen(Builder $query): Builder
     {
@@ -144,6 +151,11 @@ class HotelBooking extends Model
         return $hours <= 0 ? 1 : max(1, (int) ceil($hours / self::BLOCK_HOURS));
     }
 
+    /**
+     * The room charge alone. Deliberately excludes room service: the payments taken at
+     * booking time recorded their balance against this figure, and moving it would
+     * rewrite what those receipts said the guest still owed.
+     */
     public function totalDue(): float
     {
         return $this->stayBlocks() * (float) $this->room_rate;
@@ -152,6 +164,24 @@ class HotelBooking extends Model
     public function amountPaid(): float
     {
         return (float) $this->payments->sum('amount_paid');
+    }
+
+    /** What this stay ordered from the kitchen, to settle at check-out. */
+    public function roomServiceTotal(): float
+    {
+        return (float) $this->foodOrders->sum('total');
+    }
+
+    /** Room charge plus room service — the figure the guest actually settles. */
+    public function grandTotal(): float
+    {
+        return $this->totalDue() + $this->roomServiceTotal();
+    }
+
+    /** Still owed once everything paid so far is counted against the full bill. */
+    public function outstanding(): float
+    {
+        return max(0, $this->grandTotal() - $this->amountPaid());
     }
 
     /**
@@ -179,6 +209,11 @@ class HotelBooking extends Model
             'totalDue'      => $this->totalDue(),
             'amountPaid'    => $this->amountPaid(),
             'balance'       => max(0, $this->totalDue() - $this->amountPaid()),
+            // The final bill: room charge + whatever the guest ordered to the room.
+            'roomServiceTotal' => $this->roomServiceTotal(),
+            'roomServiceCount' => $this->foodOrders->count(),
+            'grandTotal'       => $this->grandTotal(),
+            'outstanding'      => $this->outstanding(),
             'reservedAt'    => optional($this->reserved_at)->toIso8601String(),
             'arrivalStatus' => $this->arrivalStatus(),
             'arrivedAt'     => optional($this->arrived_at)->toIso8601String(),

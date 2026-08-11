@@ -18,8 +18,15 @@ class HotelOrderAccess
      */
     public const PLACE_ROLES = ['front_desk', 'restaurant_management', 'administrator'];
 
-    /** Roles that may move an order along (Preparing / Delivered / Cancelled). */
+    /** Roles that may move an order along the kitchen flow, or cancel it. */
     public const FULFILL_ROLES = ['restaurant_management', 'administrator'];
+
+    /**
+     * Front Desk carries the tray to the room, so it is Front Desk — not the kitchen —
+     * that knows when a room-service order actually reached the guest. This is the one
+     * transition they may make, and only from Ready.
+     */
+    public const DELIVER_ROLES = ['front_desk', 'administrator'];
 
     public static function membership(): ?StudentGroup
     {
@@ -110,5 +117,10 @@ class HotelOrderAccess
     public static function canFulfill(StudentGroup $membership): bool
     {
         return count(array_intersect(self::roles($membership), self::FULFILL_ROLES)) > 0;
+    }
+
+    public static function canDeliver(StudentGroup $membership): bool
+    {
+        return count(array_intersect(self::roles($membership), self::DELIVER_ROLES)) > 0;
     }
 }
