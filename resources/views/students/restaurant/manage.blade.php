@@ -486,6 +486,16 @@ const ORDER_ACTION_LABEL = {
   Completed: 'Complete Order',
 };
 
+/* Mirrors HotelFoodOrder::isForwardTransition() — status only moves forward here
+   too, so a disabled pill in the UI matches what the server would refuse anyway. */
+function canMoveOrderTo(from, to) {
+  if (from === to || from === 'Completed' || from === 'Cancelled') return false;
+  if (to === 'Cancelled') return true;
+  const fromAt = ORDER_FLOW.indexOf(from);
+  const toAt = ORDER_FLOW.indexOf(to);
+  return fromAt !== -1 && toAt !== -1 && toAt > fromAt;
+}
+
 function formatOrderTime(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -741,7 +751,7 @@ function DineInOrderCard({ order, tableName, onMove }) {
             key={status}
             type="button"
             className={`tb-tab ${order.status === status ? 'is-active' : ''}`}
-            disabled={order.status === status}
+            disabled={!canMoveOrderTo(order.status, status)}
             onClick={() => onMove(order, status)}
           >
             {status}

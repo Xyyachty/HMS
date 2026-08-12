@@ -42,6 +42,9 @@ class HotelComplaint extends Model
         'Cancelled',
     ];
 
+    /** The working pipeline, in order. Cancelled sits off to the side as an exit. */
+    public const FLOW = ['Open', 'In Progress', 'Resolved'];
+
     protected $primaryKey = 'hotel_complaint_id';
 
     protected $fillable = [
@@ -102,6 +105,29 @@ class HotelComplaint extends Model
     public static function departmentForCategory(?string $category): string
     {
         return self::CATEGORY_DEPARTMENTS[self::normalizeCategory($category)] ?? 'maintenance';
+    }
+
+    /**
+     * Whether $to is a legal move from $from: forward through FLOW only, or
+     * Cancelled as an exit from anywhere still open. Nothing moves once a
+     * complaint has reached Resolved or Cancelled. Reassigning a complaint to the
+     * other department resets it to Open separately from this check — that reset
+     * is the new department starting fresh, not a user demoting a status.
+     */
+    public static function isForwardTransition(string $from, string $to): bool
+    {
+        if ($from === $to || in_array($from, ['Resolved', 'Cancelled'], true)) {
+            return false;
+        }
+
+        if ($to === 'Cancelled') {
+            return true;
+        }
+
+        $fromIndex = array_search($from, self::FLOW, true);
+        $toIndex = array_search($to, self::FLOW, true);
+
+        return $fromIndex !== false && $toIndex !== false && $toIndex > $fromIndex;
     }
 
     public function departmentLabel(): string

@@ -104,6 +104,28 @@ class HotelFoodOrder extends Model
     }
 
     /**
+     * Whether $to is a legal move from $from: forward through FLOW only, or
+     * Cancelled as an exit from anywhere still open. Nothing moves once an order
+     * has reached Completed or Cancelled — those are the end of the line for every
+     * user, kitchen included, not just Front Desk.
+     */
+    public static function isForwardTransition(string $from, string $to): bool
+    {
+        if ($from === $to || in_array($from, ['Completed', 'Cancelled'], true)) {
+            return false;
+        }
+
+        if ($to === 'Cancelled') {
+            return true;
+        }
+
+        $fromIndex = array_search($from, self::FLOW, true);
+        $toIndex = array_search($to, self::FLOW, true);
+
+        return $fromIndex !== false && $toIndex !== false && $toIndex > $fromIndex;
+    }
+
+    /**
      * Line items arrive from the browser, so keep only the fields we store and
      * drop anything that cannot be priced.
      */

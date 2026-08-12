@@ -100,6 +100,17 @@ const CFG = window.HMS_COMPLAINTS;
 const DEPARTMENT_LABELS = CFG.departments;
 const STATUSES = CFG.statuses;
 const OPEN_STATUSES = ['Open', 'In Progress'];
+const COMPLAINT_FLOW = STATUSES.filter(s => s !== 'Cancelled');
+
+/* Mirrors HotelComplaint::isForwardTransition() — status only moves forward here
+   too, so a disabled pill in the UI matches what the server would refuse anyway. */
+function canMoveComplaintTo(from, to) {
+  if (from === to || from === 'Resolved' || from === 'Cancelled') return false;
+  if (to === 'Cancelled') return true;
+  const fromAt = COMPLAINT_FLOW.indexOf(from);
+  const toAt = COMPLAINT_FLOW.indexOf(to);
+  return fromAt !== -1 && toAt !== -1 && toAt > fromAt;
+}
 
 function slug(value) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, '-');
@@ -311,14 +322,14 @@ function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
               key={status}
               type="button"
               className={`cx-tab ${complaint.status === status ? 'is-active' : ''}`}
-              disabled={complaint.status === status}
+              disabled={!canMoveComplaintTo(complaint.status, status)}
               onClick={() => onUpdate(complaint.id, { status })}
             >
               {status}
             </button>
           ))}
 
-          {!canHandle && canCancel && complaint.status !== 'Cancelled' && (
+          {!canHandle && canCancel && canMoveComplaintTo(complaint.status, 'Cancelled') && (
             <button type="button" className="cx-tab" onClick={() => onUpdate(complaint.id, { status: 'Cancelled' })}>
               Cancel complaint
             </button>

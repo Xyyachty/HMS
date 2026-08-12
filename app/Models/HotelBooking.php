@@ -125,6 +125,29 @@ class HotelBooking extends Model
     }
 
     /**
+     * Whether $to is a legal move from $from: forward through the stay, or
+     * Cancelled as an exit from anywhere still open. Nothing moves once a booking
+     * has reached Checked Out or Cancelled — and 'arrive'/'check_in' called a
+     * second time may not demote a guest already further along than that.
+     */
+    public static function isForwardTransition(string $from, string $to): bool
+    {
+        if ($from === $to || in_array($from, ['Checked Out', 'Cancelled'], true)) {
+            return false;
+        }
+
+        if ($to === 'Cancelled') {
+            return true;
+        }
+
+        $flow = ['Reserved', 'Arrived', 'Checked In', 'Checked Out'];
+        $fromIndex = array_search($from, $flow, true);
+        $toIndex = array_search($to, $flow, true);
+
+        return $fromIndex !== false && $toIndex !== false && $toIndex > $fromIndex;
+    }
+
+    /**
      * Reserved -> Arrived is the only distinction the desk screens draw, and both
      * Checked In and Checked Out imply the guest turned up.
      */

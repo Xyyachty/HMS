@@ -941,6 +941,20 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ], 422);
         }
 
+        // Status only ever moves forward, for every role — a booking already
+        // Checked In cannot be walked back to Arrived, whoever asks.
+        $actionTarget = [
+            'arrive'    => 'Arrived',
+            'check_in'  => 'Checked In',
+            'check_out' => 'Checked Out',
+            'cancel'    => 'Cancelled',
+        ][$action] ?? null;
+        if ($actionTarget && !HotelBooking::isForwardTransition($booking->status, $actionTarget)) {
+            return response()->json([
+                'message' => $booking->status . ' cannot go back to ' . $actionTarget . '. Status only moves forward.',
+            ], 422);
+        }
+
         switch ($action) {
             case 'arrive':
                 \App\Support\HotelBookingDesk::markArrived($booking);
@@ -1379,6 +1393,14 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
         }
 
+        // Status only ever moves forward, for every role — the kitchen included.
+        // Once Completed or Cancelled, an order is done; nothing may reopen it.
+        if (!HotelFoodOrder::isForwardTransition($order->status, $next)) {
+            return response()->json([
+                'message' => $order->status . ' cannot go back to ' . $next . '. Status only moves forward.',
+            ], 422);
+        }
+
         // Cancelling puts the portions back on the shelf. Only on the transition,
         // so re-cancelling an already-cancelled order cannot inflate stock.
         if ($next === 'Cancelled' && $order->status !== 'Cancelled') {
@@ -1539,6 +1561,16 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 return response()->json([
                     'message' => 'Only ' . $complaint->departmentLabel() . ' staff can update this complaint.',
                 ], 403);
+            }
+
+            // Status only ever moves forward, for every role. Once Resolved or
+            // Cancelled, a complaint is done; nothing may reopen it this way —
+            // reassigning to the other department is the one deliberate reset,
+            // handled above, not through this field.
+            if (!HotelComplaint::isForwardTransition($complaint->status, $next)) {
+                return response()->json([
+                    'message' => $complaint->status . ' cannot go back to ' . $next . '. Status only moves forward.',
+                ], 422);
             }
 
             $complaint->status = $next;
