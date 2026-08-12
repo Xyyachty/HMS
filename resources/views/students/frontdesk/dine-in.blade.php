@@ -95,6 +95,11 @@ function AssignForm({ table, onAssign, onCancel, busy }) {
   const [guestName, setGuestName] = useState('');
   const [partySize, setPartySize] = useState(Math.min(2, table.capacity));
   const [error, setError] = useState('');
+  const partyStepBtn = {
+    width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)',
+    background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem',
+  };
 
   const submit = (e) => {
     e.preventDefault();
@@ -119,15 +124,17 @@ function AssignForm({ table, onAssign, onCancel, busy }) {
         style={{ marginBottom: '0.6rem' }}
       />
       <label className="dn-field-label">Party size (seats {table.capacity})</label>
-      <input
-        type="number"
-        className="booking-input"
-        min={1}
-        max={table.capacity}
-        value={partySize}
-        onChange={e => setPartySize(parseInt(e.target.value, 10) || 1)}
-        style={{ marginBottom: '0.6rem' }}
-      />
+      {/* Stepper rather than a number input, matching the menu's quantity control —
+          and it cannot be typed past the table's own capacity. */}
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
+        <button type="button" style={partyStepBtn} aria-label="Fewer guests"
+          disabled={partySize <= 1}
+          onClick={() => setPartySize(n => Math.max(1, n - 1))}>−</button>
+        <span style={{ color: 'var(--fg)', minWidth: 24, textAlign: 'center', fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }}>{partySize}</span>
+        <button type="button" style={partyStepBtn} aria-label="More guests"
+          disabled={partySize >= table.capacity}
+          onClick={() => setPartySize(n => Math.min(table.capacity, n + 1))}>+</button>
+      </div>
       {error && <p style={{ margin: '0 0 0.6rem', color: '#fb7185', fontSize: '0.78rem' }}>{error}</p>}
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button type="submit" className="btn-solid" disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>

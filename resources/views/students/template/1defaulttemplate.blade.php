@@ -2122,6 +2122,11 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
   const inStock = item.stock == null || item.stock > 0;
   const maxQty = item.stock != null ? item.stock : 99;
   const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
+  const qtyStepBtn = {
+    width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)',
+    background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem',
+  };
 
   const handleAdd = () => {
     const clean = Math.max(1, Math.min(maxQty, parseInt(qty, 10) || 1));
@@ -2163,8 +2168,17 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
               <>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={fieldLabel}>Quantity</label>
-                  <input type="number" className="booking-input" min="1" max={maxQty} value={qty}
-                    onChange={e => setQty(e.target.value)} style={{ width: 110 }} />
+                  {/* Stepper, not a number input: the same - / + the cart already uses,
+                      and it cannot be typed into an out-of-stock or non-numeric value. */}
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <button type="button" style={qtyStepBtn} aria-label="Decrease quantity"
+                      disabled={qty <= 1}
+                      onClick={() => setQty(q => Math.max(1, q - 1))}>−</button>
+                    <span style={{ color: 'var(--fg)', minWidth: 24, textAlign: 'center', fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }}>{qty}</span>
+                    <button type="button" style={qtyStepBtn} aria-label="Increase quantity"
+                      disabled={qty >= maxQty}
+                      onClick={() => setQty(q => Math.min(maxQty, q + 1))}>+</button>
+                  </div>
                 </div>
                 <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleAdd}>
                   Add to Order <i className="fa-solid fa-cart-plus" style={{ fontSize: '0.7rem' }}></i>
