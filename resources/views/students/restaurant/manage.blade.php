@@ -833,7 +833,9 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
         >
           <option value="" style={{ background: '#181714' }}>Select an occupied table…</option>
           {occupiedTables.map(t => (
-            <option key={t.id} value={t.id} style={{ background: '#181714' }}>{t.name}</option>
+            <option key={t.id} value={t.id} style={{ background: '#181714' }}>
+              {t.name}{t.assignedBy ? ` — ${t.assignedBy}` : ''}
+            </option>
           ))}
         </select>
         {occupiedTables.length === 0 && (
