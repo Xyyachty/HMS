@@ -832,9 +832,11 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
           style={{ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}
         >
           <option value="" style={{ background: '#181714' }}>Select an occupied table…</option>
+          {/* The guest's name, not assignedBy — whoever is taking this order needs to
+              know which customer they are ordering for, not which staffer seated them. */}
           {occupiedTables.map(t => (
             <option key={t.id} value={t.id} style={{ background: '#181714' }}>
-              {t.name}{t.assignedBy ? ` — ${t.assignedBy}` : ''}
+              {t.name}{t.guestName ? ` — ${t.guestName}` : ''}
             </option>
           ))}
         </select>
