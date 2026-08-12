@@ -130,6 +130,7 @@ function App() {
   const [search, setSearch] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [page, setPage] = useState(1);
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(() => {
@@ -181,8 +182,16 @@ function App() {
     };
   }, { room: 0, service: 0, extras: 0, grand: 0, paid: 0, balance: 0 }), [rows]);
 
-  const clearFilters = () => { setSearch(''); setFrom(''); setTo(''); };
+  const clearFilters = () => { setSearch(''); setFrom(''); setTo(''); setPage(1); };
   const filtering = !!(search || from || to);
+
+  // safePage rather than page: narrowing the filters must not strand the view on a
+  // page that no longer exists. The tiles and the totals row stay on the whole
+  // filtered set, not the page — a report totals what it reports on.
+  const PER_PAGE = 5;
+  const totalPages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = rows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
   return (
     <div data-hms-no-edit="1" style={{ maxWidth: 1180, margin: '0 auto', padding: '1.5rem' }}>
@@ -216,17 +225,17 @@ function App() {
             className="booking-input"
             placeholder="Search by guest, room, contact, ID, or who booked it…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
             style={{ paddingLeft: '2.1rem' }}
           />
         </div>
         <div style={{ minWidth: 150 }}>
           <label className="rp-tile-label">Closed From</label>
-          <input type="date" className="booking-input" value={from} onChange={e => setFrom(e.target.value)} style={{ colorScheme: 'dark' }} />
+          <input type="date" className="booking-input" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }} style={{ colorScheme: 'dark' }} />
         </div>
         <div style={{ minWidth: 150 }}>
           <label className="rp-tile-label">Closed To</label>
-          <input type="date" className="booking-input" value={to} onChange={e => setTo(e.target.value)} style={{ colorScheme: 'dark' }} />
+          <input type="date" className="booking-input" value={to} onChange={e => { setTo(e.target.value); setPage(1); }} style={{ colorScheme: 'dark' }} />
         </div>
         {filtering && (
           <button type="button" className="btn-outline" onClick={clearFilters} style={{ fontSize: '0.68rem', padding: '0.6rem 0.9rem' }}>
@@ -266,7 +275,7 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(b => {
+              {pageRows.map(b => {
                 const roomCharge = Number(b.totalDue) || 0;
                 const service = Number(b.roomServiceTotal) || 0;
                 const extras = Number(b.otherCharges) || 0;
@@ -308,6 +317,42 @@ function App() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      )}
+
+      {loaded && totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.85rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--fg-muted)' }}>
+            Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, rows.length)} of {rows.length}
+          </span>
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+              style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === 1 ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === 1 ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === 1 ? 0.4 : 1 }}
+            >
+              <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setPage(n)}
+                style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid ' + (n === safePage ? 'var(--accent)' : 'var(--border)'), background: n === safePage ? 'var(--accent)' : 'transparent', color: n === safePage ? 'var(--bg)' : 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: n === safePage ? 700 : 400 }}
+              >
+                {n}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+              style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === totalPages ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === totalPages ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === totalPages ? 0.4 : 1 }}
+            >
+              <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
+            </button>
+          </div>
         </div>
       )}
     </div>
