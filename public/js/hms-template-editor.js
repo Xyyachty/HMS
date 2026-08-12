@@ -607,6 +607,9 @@
       if (id === USER_KEY || id === DELETED_KEY || SITE_CONTENT_KEYS.indexOf(id) !== -1) return;
       const entry = customizations[id];
       if (!entry || entry.freePosition !== true) return;
+      // A free-position rule is a page's own layout; it must not move the element
+      // another page happens to match with the same selector.
+      if (!entryBelongsToCurrentPage(entry)) return;
       let sel = id;
       try {
         document.querySelector(sel);
@@ -1152,9 +1155,27 @@
     (customizations[DELETED_KEY] || []).forEach((entry) => {
       const id = typeof entry === 'string' ? entry : (entry && entry.id);
       if (!id) return;
+      // Same selector-collision problem: hiding "the second card" on the restaurant
+      // page must not hide the second room card too.
+      if (typeof entry !== 'string' && !entryBelongsToCurrentPage(entry)) return;
       const el = findByKey(id);
       if (el) el.style.display = 'none';
     });
+  }
+
+  /**
+   * Whether an entry saved on one page may be applied on the page now showing.
+   *
+   * Entries are keyed by a structural CSS selector, and the same selector matches on
+   * more than one page — "the second card's h3" is a menu item on the restaurant page
+   * and a room name on the rooms page, so an edit to one was landing on the other.
+   * An entry with no page is left alone: those predate the field and have always been
+   * applied wherever they matched.
+   */
+  function entryBelongsToCurrentPage(entry) {
+    if (!entry || !entry.page) return true;
+    const page = getCurrentPage();
+    return !page || entry.page === page;
   }
 
   function applyAllCustomizations() {
@@ -1162,6 +1183,7 @@
     let migrated = false;
     Object.keys(customizations).forEach((id) => {
       if (id === USER_KEY || id === DELETED_KEY || SITE_CONTENT_KEYS.indexOf(id) !== -1) return;
+      if (!entryBelongsToCurrentPage(customizations[id])) return;
       let el = findByKey(id);
       if (!el) return;
 
