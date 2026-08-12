@@ -501,6 +501,124 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
   );
 }
 
+/*
+ * Read-only view of one stay. The table now carries only what the desk scans by
+ * (who, where, when, status), so everything it used to spell out in the Total and
+ * Payment columns lives here instead, in full rather than abbreviated.
+ */
+function GuestDetailsModal({ room, reservation, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  if (!reservation) return null;
+
+  const roomTotal = Number(reservation.totalDue) || 0;
+  const foodTotal = Number(reservation.roomServiceTotal) || 0;
+  const foodCount = Number(reservation.roomServiceCount) || 0;
+  const extras = Number(reservation.otherCharges) || 0;
+  const grandTotal = Number(reservation.grandTotal) || (roomTotal + foodTotal + extras);
+  const paid = Number(reservation.amountPaid) || 0;
+  const outstanding = reservation.outstanding != null
+    ? Number(reservation.outstanding)
+    : Math.max(0, grandTotal - paid);
+  const payments = reservation.payments || [];
+
+  return (
+    <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="bill-modal" onClick={e => e.stopPropagation()}>
+        <div className="bill-head">
+          <div>
+            <p style={{ margin: 0, color: 'var(--accent)', fontSize: '0.62rem', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+              Reservation
+            </p>
+            <h2 className="font-display" style={{ margin: '0.25rem 0 0.4rem', fontSize: '1.35rem', color: 'var(--fg)' }}>
+              {reservation.fullName || 'Guest'}
+            </h2>
+            <span className={`room-status-badge ${bookingStatusClass(reservation.status)}`} style={{ position: 'static' }}>
+              {reservation.status}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg-muted)', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div className="bill-body">
+          <p className="bill-section-title" style={{ marginTop: 0 }}>Guest</p>
+          <dl className="bill-meta">
+            <div><dt>Full name</dt><dd>{reservation.fullName || '—'}</dd></div>
+            <div><dt>Contact no.</dt><dd>{reservation.contactNo || '—'}</dd></div>
+            <div><dt>Email</dt><dd style={{ overflowWrap: 'anywhere' }}>{reservation.email || '—'}</dd></div>
+            <div><dt>ID number</dt><dd>{reservation.idNumber || '—'}</dd></div>
+          </dl>
+
+          <p className="bill-section-title">Stay</p>
+          <dl className="bill-meta">
+            <div><dt>Room</dt><dd>{room ? `${room.name} · ${room.label || room.category}` : '—'}</dd></div>
+            <div><dt>Rate / 12 hrs</dt><dd>{formatPeso(reservation.roomRate || (room && room.price))}</dd></div>
+            <div><dt>Check-in</dt><dd>{formatBillDateTime(reservation.checkIn, reservation.checkInTime)}</dd></div>
+            <div><dt>Check-out</dt><dd>{formatBillDate(reservation.checkOut) || '—'}</dd></div>
+            <div><dt>Booked</dt><dd>{formatBillStamp(reservation.reservedAt) || '—'}</dd></div>
+            <div><dt>Arrived</dt><dd>{formatBillStamp(reservation.arrivedAt) || '—'}</dd></div>
+            <div><dt>Checked in</dt><dd>{formatBillStamp(reservation.checkedInAt) || '—'}</dd></div>
+            <div><dt>Checked out</dt><dd>{formatBillStamp(reservation.checkedOutAt) || '—'}</dd></div>
+            <div><dt>Booked by</dt><dd>{reservation.bookedBy || '—'}</dd></div>
+          </dl>
+
+          {reservation.notes && (
+            <>
+              <p className="bill-section-title">Notes</p>
+              <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.84rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {reservation.notes}
+              </p>
+            </>
+          )}
+
+          <p className="bill-section-title">Charges</p>
+          <div className="bill-line"><span>Room charge</span><span className="bill-amt">{formatPeso(roomTotal)}</span></div>
+          <div className="bill-line">
+            <span>Room service{foodCount > 0 ? ` (${foodCount} order${foodCount === 1 ? '' : 's'})` : ''}</span>
+            <span className="bill-amt">{formatPeso(foodTotal)}</span>
+          </div>
+          <div className="bill-line"><span>Other charges</span><span className="bill-amt">{formatPeso(extras)}</span></div>
+          <div className="bill-line is-total"><span>Total</span><span className="bill-amt">{formatPeso(grandTotal)}</span></div>
+          <div className="bill-line is-subtotal"><span>Paid</span><span className="bill-amt">{formatPeso(paid)}</span></div>
+          <div className={`bill-line${outstanding > 0 ? ' is-balance' : ''}`}>
+            <span>Balance</span><span className="bill-amt">{formatPeso(outstanding)}</span>
+          </div>
+
+          <p className="bill-section-title">Payments</p>
+          {payments.length === 0 ? (
+            <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Nothing has been paid on this stay yet.</p>
+          ) : (
+            payments.map(p => (
+              <div key={p.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(42,38,33,0.5)' }}>
+                <div className="bill-line" style={{ padding: 0 }}>
+                  <span style={{ color: 'var(--fg)' }}>{p.type} · {p.method}</span>
+                  <span className="bill-amt">{formatPeso(p.amountPaid)}</span>
+                </div>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
+                  {formatBillStamp(p.paidAt) || '—'}
+                  {p.reference ? ` · Ref ${p.reference}` : ''}
+                  {p.payerName ? ` · ${p.payerName}` : ''}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onSettleAndCheckOut }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -513,6 +631,10 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
   const [bill, setBill] = useState(null);
   const [billLoading, setBillLoading] = useState(false);
   const [billError, setBillError] = useState('');
+
+  // The View action. Read-only, so it needs no fetch: the row already holds the whole
+  // reservation payload the modal renders.
+  const [detailsFor, setDetailsFor] = useState(null);
 
   const openBill = (room, reservation) => {
     setBillFor({ room, reservation });
@@ -560,15 +682,25 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
   const safePage = Math.min(page, totalPages);
   const pageRows = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
+  /* No nowrap and no fixed widths: the table has to fit the page rather than force a
+     horizontal scrollbar, so long headers wrap instead of pushing the table wider.
+     Cells that must stay on one line (dates, countdown, rate) opt in via tdTight. */
   const thStyle = {
-    padding: '0.6rem 0.85rem', fontSize: '0.62rem', fontWeight: 700,
-    letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)',
-    borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap',
+    padding: '0.6rem 0.7rem', fontSize: '0.6rem', fontWeight: 700,
+    letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)',
+    borderBottom: '1px solid var(--border)',
     textAlign: 'left', background: 'rgba(255,255,255,0.02)',
   };
   const tdStyle = {
-    padding: '0.75rem 0.85rem', fontSize: '0.8rem', color: 'var(--fg-muted)',
-    borderBottom: '1px solid rgba(42,38,33,0.5)', verticalAlign: 'middle', whiteSpace: 'nowrap',
+    padding: '0.7rem', fontSize: '0.78rem', color: 'var(--fg-muted)',
+    borderBottom: '1px solid rgba(42,38,33,0.5)', verticalAlign: 'middle',
+  };
+  const tdTight = { ...tdStyle, whiteSpace: 'nowrap' };
+  const rowBtn = {
+    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+    padding: '0.35rem 0.65rem', borderRadius: 6, cursor: 'pointer',
+    fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem', fontWeight: 600,
+    letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
   };
 
   return (
@@ -615,49 +747,38 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
             </div>
           ) : (
             <>
-              <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif' }}>
+              <div style={{ borderRadius: 10, border: '1px solid var(--border)' }}>
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif' }}>
                   <thead>
                     <tr>
-                      <th style={thStyle}>Guest Name</th>
-                      <th style={thStyle}>Room</th>
-                      <th style={thStyle}>Check-In</th>
-                      <th style={thStyle}>Check-Out</th>
-                      <th style={thStyle}>Time Remaining</th>
-                      <th style={thStyle}>Rate / 12 hrs</th>
-                      <th style={thStyle}>Total</th>
-                      <th style={thStyle}>Payment</th>
-                      <th style={thStyle}>Status</th>
-                      <th style={thStyle}>Action</th>
+                      <th style={{ ...thStyle, width: '17%' }}>Guest Name</th>
+                      <th style={{ ...thStyle, width: '14%' }}>Room</th>
+                      <th style={{ ...thStyle, width: '14%' }}>Check-In</th>
+                      <th style={{ ...thStyle, width: '11%' }}>Check-Out</th>
+                      <th style={{ ...thStyle, width: '12%' }}>Time Remaining</th>
+                      <th style={{ ...thStyle, width: '10%' }}>Rate / 12 hrs</th>
+                      <th style={{ ...thStyle, width: '10%' }}>Status</th>
+                      <th style={{ ...thStyle, width: '12%' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pageRows.map(({ room, reservation }, idx) => {
-                      const payment = reservation.payment || null;
-                      // The server bills the stay at the rate it was sold at; the local
-                      // stayBlocks() maths is only a fallback for a payload that predates it.
-                      const roomTotal = Number(reservation.totalDue)
-                        || stayBlocks(reservation.checkIn, reservation.checkOut, reservation.checkInTime) * (Number(room.price) || 0);
-                      const foodTotal = Number(reservation.roomServiceTotal) || 0;
-                      const foodCount = Number(reservation.roomServiceCount) || 0;
-                      const grandTotal = Number(reservation.grandTotal) || (roomTotal + foodTotal);
-                      const outstanding = reservation.outstanding != null
-                        ? Number(reservation.outstanding)
-                        : Math.max(0, grandTotal - (Number(reservation.amountPaid) || 0));
                       const rowBg = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)';
                       const checkedIn = reservation.status === 'Checked In';
                       const remaining = remainingStay(reservation, now);
                       return (
                         <tr key={room.id} style={{ background: rowBg }}>
-                          <td style={{ ...tdStyle, color: 'var(--fg)', fontWeight: 600 }}>{reservation.fullName || '—'}</td>
+                          <td style={{ ...tdStyle, color: 'var(--fg)', fontWeight: 600, overflowWrap: 'anywhere' }}>
+                            {reservation.fullName || '—'}
+                          </td>
                           <td style={tdStyle}>
-                            <span style={{ display: 'block', fontSize: '0.62rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>{room.label || room.category}</span>
+                            <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>{room.label || room.category}</span>
                             <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{room.name}</span>
                           </td>
                           <td style={tdStyle}>{formatCheckIn(reservation.checkIn, reservation.checkInTime)}</td>
-                          <td style={tdStyle}>{reservation.checkOut || '—'}</td>
+                          <td style={tdTight}>{reservation.checkOut || '—'}</td>
                           <td style={{
-                            ...tdStyle,
+                            ...tdTight,
                             color: STAY_TONE_COLORS[remaining.tone],
                             fontWeight: remaining.tone === 'idle' ? 400 : 600,
                             opacity: remaining.tone === 'idle' ? 0.6 : 1,
@@ -665,74 +786,43 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                           }}>
                             {remaining.text}
                           </td>
-                          <td style={{ ...tdStyle, color: 'var(--accent)' }}>{formatPeso(room.price)}</td>
-                          <td style={tdStyle}>
-                            {foodTotal > 0 ? (
-                              <>
-                                <span style={{ display: 'block', fontSize: '0.72rem' }}>Room {formatPeso(roomTotal)}</span>
-                                <span style={{ display: 'block', fontSize: '0.72rem' }}>
-                                  Room service {formatPeso(foodTotal)} ({foodCount})
-                                </span>
-                                <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontWeight: 700, marginTop: 2 }}>
-                                  {formatPeso(grandTotal)}
-                                </span>
-                              </>
-                            ) : (
-                              <span style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontWeight: 700 }}>{formatPeso(grandTotal)}</span>
-                            )}
-                          </td>
-                          <td style={tdStyle}>
-                            {payment ? (
-                              <>
-                                <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 500 }}>{payment.type} · {payment.method}</span>
-                                <span style={{ display: 'block', fontSize: '0.75rem' }}>{formatPeso(reservation.amountPaid)}</span>
-                                {outstanding > 0 && <span style={{ display: 'block', fontSize: '0.72rem', color: '#fb7185' }}>Bal: {formatPeso(outstanding)}</span>}
-                              </>
-                            ) : <span style={{ opacity: 0.4 }}>—</span>}
-                          </td>
+                          <td style={{ ...tdTight, color: 'var(--accent)' }}>{formatPeso(room.price)}</td>
                           <td style={tdStyle}>
                             <span className={`room-status-badge ${bookingStatusClass(reservation.status)}`} style={{ position: 'static' }}>
                               {reservation.status}
                             </span>
                           </td>
                           <td style={tdStyle}>
-                            {checkedIn ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                               <button
                                 type="button"
-                                onClick={() => openBill(room, reservation)}
-                                title="Show the final bill and check the guest out"
-                                style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                                  padding: '0.4rem 0.8rem', borderRadius: 6,
-                                  border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)',
-                                  cursor: 'pointer',
-                                  fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', fontWeight: 600,
-                                  letterSpacing: '0.06em', textTransform: 'uppercase',
-                                }}
+                                onClick={() => setDetailsFor({ room, reservation })}
+                                title="See everything recorded for this stay"
+                                style={{ ...rowBtn, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg)' }}
                               >
-                                <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '0.7rem' }}></i> Check Out
+                                <i className="fa-solid fa-eye" style={{ fontSize: '0.68rem' }}></i> View
                               </button>
-                            ) : reservation.status === 'Booked' ? (
-                              <button
-                                type="button"
-                                onClick={() => onBookingAction(reservation.bookingId, 'arrive')}
-                                title="Confirm the guest has arrived at the desk"
-                                style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                                  padding: '0.4rem 0.8rem', borderRadius: 6,
-                                  border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)',
-                                  cursor: 'pointer',
-                                  fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', fontWeight: 600,
-                                  letterSpacing: '0.06em', textTransform: 'uppercase',
-                                }}
-                              >
-                                <i className="fa-solid fa-door-open" style={{ fontSize: '0.7rem' }}></i> Arrive
-                              </button>
-                            ) : (
-                              <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
-                                {reservation.status === 'Arrived' ? 'Arrived — awaiting room check-in' : 'Awaiting check-in'}
-                              </span>
-                            )}
+                              {checkedIn && (
+                                <button
+                                  type="button"
+                                  onClick={() => openBill(room, reservation)}
+                                  title="Show the final bill and check the guest out"
+                                  style={{ ...rowBtn, border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)' }}
+                                >
+                                  <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '0.68rem' }}></i> Check Out
+                                </button>
+                              )}
+                              {reservation.status === 'Booked' && (
+                                <button
+                                  type="button"
+                                  onClick={() => onBookingAction(reservation.bookingId, 'arrive')}
+                                  title="Confirm the guest has arrived at the desk"
+                                  style={{ ...rowBtn, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)' }}
+                                >
+                                  <i className="fa-solid fa-door-open" style={{ fontSize: '0.68rem' }}></i> Arrive
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -791,6 +881,14 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
         onSettle={settleAndCheckOut}
         onToast={onToast}
       />
+
+      {detailsFor && (
+        <GuestDetailsModal
+          room={detailsFor.room}
+          reservation={detailsFor.reservation}
+          onClose={() => setDetailsFor(null)}
+        />
+      )}
     </div>
   );
 }
