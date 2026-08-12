@@ -497,129 +497,10 @@ function createEmptyTableForm() {
   return { name: '', capacity: '2' };
 }
 
-function TableOrderPanel({ table, menus, orders, onPlaceOrder, onUpdateOrderStatus, onToast }) {
-  const [cart, setCart] = useState({});
-  const [category, setCategory] = useState('All');
-  const [placing, setPlacing] = useState(false);
-
-  const tableOrders = (orders || [])
-    .filter(o => o.tableId === table.id)
-    .sort((a, b) => (a.id < b.id ? 1 : -1));
-
-  const menuList = (menus || []).filter(m => category === 'All' || normalizeMenuCategory(m.category) === category);
-
-  const addToCart = (item) => {
-    setCart(prev => {
-      const qty = (prev[item.id] && prev[item.id].qty) || 0;
-      return Object.assign({}, prev, { [item.id]: { item, qty: qty + 1 } });
-    });
-  };
-  const removeFromCart = (id) => {
-    setCart(prev => {
-      const next = Object.assign({}, prev);
-      const line = next[id];
-      if (!line) return prev;
-      if (line.qty <= 1) { delete next[id]; return next; }
-      next[id] = Object.assign({}, line, { qty: line.qty - 1 });
-      return next;
-    });
-  };
-
-  const cartLines = Object.values(cart);
-  const cartTotal = cartLines.reduce((sum, l) => sum + (Number(l.item.price) || 0) * l.qty, 0);
-
-  const placeOrder = () => {
-    if (!cartLines.length) { if (onToast) onToast('Add at least one item to the order.'); return; }
-    setPlacing(true);
-    const items = cartLines.map(l => ({ menu_item_id: l.item.id, name: l.item.name, price: l.item.price, qty: l.qty }));
-    Promise.resolve(onPlaceOrder(table.id, items))
-      .then(() => { setCart({}); if (onToast) onToast(`Order sent to the kitchen for ${table.name}.`); })
-      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not place this order.'); })
-      .finally(() => setPlacing(false));
-  };
-
-  return (
-    <div style={{ marginTop: '0.9rem', paddingTop: '0.9rem', borderTop: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-        <button type="button" className={`tb-tab ${category === 'All' ? 'is-active' : ''}`} onClick={() => setCategory('All')}>All</button>
-        {MENU_CATEGORIES.map(c => (
-          <button key={c} type="button" className={`tb-tab ${category === c ? 'is-active' : ''}`} onClick={() => setCategory(c)}>{c}</button>
-        ))}
-      </div>
-
-      <div style={{ display: 'grid', gap: '0.4rem', maxHeight: 220, overflowY: 'auto', marginBottom: '0.85rem' }}>
-        {menuList.length === 0 && (
-          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem' }}>No menu items in this category.</p>
-        )}
-        {menuList.map(item => (
-          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem' }}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ margin: 0, color: 'var(--fg)', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
-              <p style={{ margin: 0, color: 'var(--accent-light)', fontSize: '0.74rem' }}>{formatPeso(item.price)}</p>
-            </div>
-            {item.stock <= 0 ? (
-              <span style={{ fontSize: '0.68rem', color: '#fb7185' }}>Out of stock</span>
-            ) : cart[item.id] ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <button type="button" onClick={() => removeFromCart(item.id)} style={toolBtnStyle('edit')}>−</button>
-                <span style={{ color: 'var(--fg)', fontSize: '0.82rem', minWidth: 16, textAlign: 'center' }}>{cart[item.id].qty}</span>
-                <button type="button" onClick={() => addToCart(item)} style={toolBtnStyle('edit')}>+</button>
-              </div>
-            ) : (
-              <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.4rem 0.7rem' }} onClick={() => addToCart(item)}>
-                Add
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {cartLines.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-          <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>{cartLines.length} item(s) · {formatPeso(cartTotal)}</span>
-          <button type="button" className="btn-primary" disabled={placing} onClick={placeOrder} style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}>
-            {placing ? 'Sending…' : 'Send to Kitchen'}
-          </button>
-        </div>
-      )}
-
-      {tableOrders.length > 0 && (
-        <div style={{ display: 'grid', gap: '0.5rem' }}>
-          {tableOrders.map(order => (
-            <div key={order.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.4rem' }}>
-                <span className={`tb-badge tb-${order.status.toLowerCase()}`}>{order.status}</span>
-                <span style={{ color: 'var(--accent-light)', fontSize: '0.78rem', fontWeight: 700 }}>{formatPeso(order.total)}</span>
-              </div>
-              <p style={{ margin: '0 0 0.5rem', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-                {(order.items || []).map(i => `${i.qty}× ${i.name}`).join(', ')}
-              </p>
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                {ORDER_STATUSES.map(status => (
-                  <button
-                    key={status}
-                    type="button"
-                    className={`tb-tab ${order.status === status ? 'is-active' : ''}`}
-                    disabled={order.status === status}
-                    onClick={() => Promise.resolve(onUpdateOrderStatus(order.id, status)).catch(err => { if (onToast) onToast((err && err.message) || 'Could not update this order.'); })}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ManageTablesPanel({ tables, orders, menus, canManage, onAddTable, onEditTable, onCloseTable, onRemoveTable, onPlaceOrder, onUpdateOrderStatus, onToast }) {
+function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable, onCloseTable, onRemoveTable, onToast }) {
   const [form, setForm] = useState(createEmptyTableForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [expandedId, setExpandedId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
 
@@ -677,7 +558,8 @@ function ManageTablesPanel({ tables, orders, menus, canManage, onAddTable, onEdi
       <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Dine-in</p>
       <h3>Manage Tables</h3>
       <p className="rm-panel-desc">
-        Add tables for Front Desk to seat guests at. Once a guest is seated, take their order here.
+        Add tables for Front Desk to seat guests at, and track whether each one is
+        Available or Occupied. Orders are taken from the Dine-In tab in Orders.
       </p>
 
       {canManage && (
@@ -715,7 +597,6 @@ function ManageTablesPanel({ tables, orders, menus, canManage, onAddTable, onEdi
         <div style={{ display: 'grid', gap: '0.6rem' }}>
           {list.map(table => {
             const isEditing = editingId === table.id;
-            const isExpanded = expandedId === table.id;
             const occupied = table.status === 'Occupied';
 
             return (
@@ -748,12 +629,6 @@ function ManageTablesPanel({ tables, orders, menus, canManage, onAddTable, onEdi
                     </div>
                     {canManage && (
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        {occupied && (
-                          <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.4rem 0.75rem' }}
-                            onClick={() => setExpandedId(isExpanded ? null : table.id)}>
-                            {isExpanded ? 'Hide Order' : 'Take Order'}
-                          </button>
-                        )}
                         {occupied ? (
                           <button type="button" title="Close table" disabled={hasOpenOrder(table)}
                             onClick={() => closeTable(table)} style={toolBtnStyle('danger')}>
@@ -772,17 +647,6 @@ function ManageTablesPanel({ tables, orders, menus, canManage, onAddTable, onEdi
                       </div>
                     )}
                   </div>
-                )}
-
-                {occupied && isExpanded && (
-                  <TableOrderPanel
-                    table={table}
-                    menus={menus}
-                    orders={orders}
-                    onPlaceOrder={onPlaceOrder}
-                    onUpdateOrderStatus={onUpdateOrderStatus}
-                    onToast={onToast}
-                  />
                 )}
               </div>
             );
@@ -888,7 +752,133 @@ function DineInOrderCard({ order, tableName, onMove }) {
   );
 }
 
-function OrdersPanel({ orders, tables, onUpdateOrderStatus, onToast }) {
+/*
+ * Taking a dine-in order lives here now, not on the table card in Manage Tables —
+ * Manage Tables only adds tables and shows their status. The cart-building logic is
+ * the same as before, just keyed off a table picked from this form instead of the
+ * table the card belonged to.
+ */
+function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
+  const [tableId, setTableId] = useState('');
+  const [cart, setCart] = useState({});
+  const [category, setCategory] = useState('All');
+  const [placing, setPlacing] = useState(false);
+
+  const fieldLabel = {
+    fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
+    color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem',
+  };
+
+  const occupiedTables = (tables || []).filter(t => t.status === 'Occupied');
+  const menuList = (menus || []).filter(m => category === 'All' || normalizeMenuCategory(m.category) === category);
+
+  const addToCart = (item) => {
+    setCart(prev => {
+      const qty = (prev[item.id] && prev[item.id].qty) || 0;
+      return Object.assign({}, prev, { [item.id]: { item, qty: qty + 1 } });
+    });
+  };
+  const removeFromCart = (id) => {
+    setCart(prev => {
+      const next = Object.assign({}, prev);
+      const line = next[id];
+      if (!line) return prev;
+      if (line.qty <= 1) { delete next[id]; return next; }
+      next[id] = Object.assign({}, line, { qty: line.qty - 1 });
+      return next;
+    });
+  };
+
+  const cartLines = Object.values(cart);
+  const cartTotal = cartLines.reduce((sum, l) => sum + (Number(l.item.price) || 0) * l.qty, 0);
+
+  const placeOrder = () => {
+    if (!tableId) { if (onToast) onToast('Choose a table first.'); return; }
+    if (!cartLines.length) { if (onToast) onToast('Add at least one item to the order.'); return; }
+    setPlacing(true);
+    const items = cartLines.map(l => ({ menu_item_id: l.item.id, name: l.item.name, price: l.item.price, qty: l.qty }));
+    const table = occupiedTables.find(t => String(t.id) === String(tableId));
+    Promise.resolve(onPlaceOrder(tableId, items))
+      .then(() => {
+        setCart({});
+        setTableId('');
+        if (onToast) onToast(`Order sent to the kitchen for ${table ? table.name : 'the table'}.`);
+      })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not place this order.'); })
+      .finally(() => setPlacing(false));
+  };
+
+  return (
+    <div className="order-card" style={{ marginBottom: '1.2rem' }}>
+      <h4 style={{ margin: '0 0 0.85rem', fontFamily: 'Playfair Display, serif', fontSize: '1rem', color: 'var(--fg)' }}>
+        New Dine-In Order
+      </h4>
+
+      <div style={{ marginBottom: '0.9rem', maxWidth: 320 }}>
+        <label style={fieldLabel}>Table</label>
+        <select
+          className="booking-input" value={tableId} onChange={e => setTableId(e.target.value)}
+          style={{ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}
+        >
+          <option value="" style={{ background: '#181714' }}>Select an occupied table…</option>
+          {occupiedTables.map(t => (
+            <option key={t.id} value={t.id} style={{ background: '#181714' }}>{t.name}</option>
+          ))}
+        </select>
+        {occupiedTables.length === 0 && (
+          <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
+            No occupied tables right now — seat a guest first.
+          </p>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+        <button type="button" className={`tb-tab ${category === 'All' ? 'is-active' : ''}`} onClick={() => setCategory('All')}>All</button>
+        {MENU_CATEGORIES.map(c => (
+          <button key={c} type="button" className={`tb-tab ${category === c ? 'is-active' : ''}`} onClick={() => setCategory(c)}>{c}</button>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gap: '0.4rem', maxHeight: 220, overflowY: 'auto', marginBottom: '0.85rem' }}>
+        {menuList.length === 0 && (
+          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem' }}>No menu items in this category.</p>
+        )}
+        {menuList.map(item => (
+          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem' }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p style={{ margin: 0, color: 'var(--fg)', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
+              <p style={{ margin: 0, color: 'var(--accent-light)', fontSize: '0.74rem' }}>{formatPeso(item.price)}</p>
+            </div>
+            {item.stock <= 0 ? (
+              <span style={{ fontSize: '0.68rem', color: '#fb7185' }}>Out of stock</span>
+            ) : cart[item.id] ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <button type="button" onClick={() => removeFromCart(item.id)} style={toolBtnStyle('edit')}>−</button>
+                <span style={{ color: 'var(--fg)', fontSize: '0.82rem', minWidth: 16, textAlign: 'center' }}>{cart[item.id].qty}</span>
+                <button type="button" onClick={() => addToCart(item)} style={toolBtnStyle('edit')}>+</button>
+              </div>
+            ) : (
+              <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.4rem 0.7rem' }} onClick={() => addToCart(item)}>
+                Add
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {cartLines.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>{cartLines.length} item(s) · {formatPeso(cartTotal)}</span>
+          <button type="button" className="btn-primary" disabled={placing || !tableId} onClick={placeOrder} style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}>
+            {placing ? 'Sending…' : 'Send to Kitchen'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUpdateOrderStatus, onToast }) {
   const [orderType, setOrderType] = useState('room_service');
   const [filter, setFilter] = useState('Open');
 
@@ -920,7 +910,7 @@ function OrdersPanel({ orders, tables, onUpdateOrderStatus, onToast }) {
       <p className="rm-panel-desc">
         {typedOrders.length === 0
           ? (orderType === 'dine_in'
-              ? 'No dine-in orders yet. Take one from Manage Tables once a guest is seated.'
+              ? 'No dine-in orders yet. Take one below once a guest is seated.'
               : 'No room-service orders yet. Front Desk places them for checked-in guests.')
           : `${openCount} order${openCount === 1 ? '' : 's'} still in the kitchen · ${typedOrders.length} total.`}
       </p>
@@ -933,6 +923,10 @@ function OrdersPanel({ orders, tables, onUpdateOrderStatus, onToast }) {
           <i className="fa-solid fa-utensils" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Dine-In
         </button>
       </div>
+
+      {orderType === 'dine_in' && canPlaceDineIn && (
+        <NewDineInOrderForm tables={tables} menus={menus} onPlaceOrder={onPlaceOrder} onToast={onToast} />
+      )}
 
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
         {filters.map(f => (
@@ -994,14 +988,11 @@ function RestaurantManagementPage({
             <ManageTablesPanel
               tables={tables}
               orders={orders}
-              menus={menus}
               canManage={canManageTables}
               onAddTable={onAddTable}
               onEditTable={onEditTable}
               onCloseTable={onCloseTable}
               onRemoveTable={onRemoveTable}
-              onPlaceOrder={onPlaceOrder}
-              onUpdateOrderStatus={onUpdateOrderStatus}
               onToast={onToast}
             />
           )}
@@ -1009,6 +1000,9 @@ function RestaurantManagementPage({
             <OrdersPanel
               orders={orders}
               tables={tables}
+              menus={menus}
+              canPlaceDineIn={canManageTables}
+              onPlaceOrder={onPlaceOrder}
               onUpdateOrderStatus={onUpdateOrderStatus}
               onToast={onToast}
             />
