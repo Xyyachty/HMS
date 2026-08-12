@@ -990,13 +990,153 @@ function EditRoomModal({ room, onClose, onSaved }) {
   );
 }
 
+/* 'Aug 12, 2026 - 2:00 PM' from a full ISO timestamp. */
+function formatStamp(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    + ' · ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+/*
+ * Read-only view of one stay. The table carries only what Room Management scans by
+ * (who, where, when, status), so the money detail the Total and Payment columns used
+ * to abbreviate lives here in full instead.
+ */
+function GuestDetailsModal({ room, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const res = room && room.reservation;
+  if (!res) return null;
+
+  const label = { fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.15rem' };
+  const value = { margin: 0, color: 'var(--fg)', fontSize: '0.85rem' };
+  const sectionTitle = {
+    fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
+    color: 'var(--accent)', margin: '1.15rem 0 0.55rem', paddingBottom: '0.3rem',
+    borderBottom: '1px solid var(--border)',
+  };
+  const line = { display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.83rem', color: 'var(--fg-muted)', padding: '0.22rem 0' };
+  const amt = { color: 'var(--fg)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' };
+
+  const roomTotal = Number(res.totalDue) || 0;
+  const service = Number(res.roomServiceTotal) || 0;
+  const serviceCount = Number(res.roomServiceCount) || 0;
+  const extras = Number(res.otherCharges) || 0;
+  const grand = Number(res.grandTotal) || (roomTotal + service + extras);
+  const paid = Number(res.amountPaid) || 0;
+  const outstanding = res.outstanding != null ? Number(res.outstanding) : Math.max(0, grand - paid);
+  const payments = res.payments || [];
+
+  return (
+    <div className="room-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="room-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+        <div style={{ padding: '1.4rem 1.6rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+          <div>
+            <p style={{ margin: 0, color: 'var(--accent)', fontSize: '0.62rem', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Guest</p>
+            <h2 className="font-display" style={{ margin: '0.25rem 0 0.4rem', fontSize: '1.35rem', color: 'var(--fg)' }}>
+              {res.fullName || 'Guest'}
+            </h2>
+            <span className={`room-status-badge ${bookingStatusClass(res.status)}`} style={{ position: 'static' }}>{res.status}</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg-muted)', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div style={{ padding: '0.25rem 1.6rem 1.6rem' }}>
+          <p style={sectionTitle}>Guest</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.55rem 1rem' }}>
+            <div><p style={label}>Full name</p><p style={value}>{res.fullName || '—'}</p></div>
+            <div><p style={label}>Contact no.</p><p style={value}>{res.contactNo || '—'}</p></div>
+            <div><p style={label}>Email</p><p style={{ ...value, overflowWrap: 'anywhere' }}>{res.email || '—'}</p></div>
+            <div><p style={label}>ID number</p><p style={value}>{res.idNumber || '—'}</p></div>
+          </div>
+
+          <p style={sectionTitle}>Stay</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.55rem 1rem' }}>
+            <div><p style={label}>Room</p><p style={value}>{room.name} · {room.label || room.category}</p></div>
+            <div><p style={label}>Rate / 12 hrs</p><p style={value}>{formatPeso(res.roomRate || room.price)}</p></div>
+            <div><p style={label}>Check-in</p><p style={value}>{formatCheckIn(res.checkIn, res.checkInTime)}</p></div>
+            <div><p style={label}>Check-out</p><p style={value}>{res.checkOut || '—'}</p></div>
+            <div><p style={label}>Booked</p><p style={value}>{formatStamp(res.reservedAt)}</p></div>
+            <div><p style={label}>Arrived</p><p style={value}>{formatStamp(res.arrivedAt)}</p></div>
+            <div><p style={label}>Checked in</p><p style={value}>{formatStamp(res.checkedInAt)}</p></div>
+            <div><p style={label}>Booked by</p><p style={value}>{res.bookedBy || '—'}</p></div>
+          </div>
+
+          {res.notes && (
+            <>
+              <p style={sectionTitle}>Notes</p>
+              <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.84rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{res.notes}</p>
+            </>
+          )}
+
+          <p style={sectionTitle}>Charges</p>
+          <div style={line}><span>Room charge</span><span style={amt}>{formatPeso(roomTotal)}</span></div>
+          <div style={line}>
+            <span>Room service{serviceCount > 0 ? ` (${serviceCount} order${serviceCount === 1 ? '' : 's'})` : ''}</span>
+            <span style={amt}>{formatPeso(service)}</span>
+          </div>
+          <div style={line}><span>Other charges</span><span style={amt}>{formatPeso(extras)}</span></div>
+          <div style={{ ...line, borderTop: '2px solid var(--accent)', marginTop: '0.6rem', paddingTop: '0.6rem', color: 'var(--fg)', fontWeight: 700 }}>
+            <span>Total</span>
+            <span style={{ ...amt, color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.1rem' }}>{formatPeso(grand)}</span>
+          </div>
+          <div style={{ ...line, color: 'var(--fg)', fontWeight: 600 }}><span>Paid</span><span style={amt}>{formatPeso(paid)}</span></div>
+          <div style={line}>
+            <span>Balance</span>
+            <span style={{ ...amt, color: outstanding > 0 ? '#fb7185' : 'var(--fg)', fontWeight: 700 }}>{formatPeso(outstanding)}</span>
+          </div>
+
+          <p style={sectionTitle}>Payments</p>
+          {payments.length === 0 ? (
+            <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Nothing has been paid on this stay yet.</p>
+          ) : (
+            payments.map(p => (
+              <div key={p.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(42,38,33,0.5)' }}>
+                <div style={{ ...line, padding: 0 }}>
+                  <span style={{ color: 'var(--fg)' }}>{p.type} · {p.method}</span>
+                  <span style={amt}>{formatPeso(p.amountPaid)}</span>
+                </div>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
+                  {formatStamp(p.paidAt)}
+                  {p.reference ? ` · Ref ${p.reference}` : ''}
+                  {p.payerName ? ` · ${p.payerName}` : ''}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   const now = useNow(1000);
+  // The View action. Read-only, so it needs no fetch: the row already holds the whole
+  // reservation payload the modal renders. Keyed by room id so a poll refresh swaps
+  // in the updated row rather than leaving a stale snapshot open.
+  const [detailsRoomId, setDetailsRoomId] = useState(null);
   // `reservation` is only ever projected from an open booking (see
   // HotelRoom::activeBooking()), so its presence alone means the room has a live guest
   // — hotel_rooms.status is housekeeping-only now and no longer part of this filter.
   const occupied = (rooms || []).filter(r => r.reservation);
   const awaitingCheckIn = occupied.filter(r => r.reservation.status !== 'Checked In').length;
+  // Resolved from the live list, so an open modal follows the 8s poll instead of
+  // holding the row as it looked when it was opened.
+  const detailsRoom = occupied.find(r => r.id === detailsRoomId) || null;
 
   // Check-in moves the booking only — the room's own status is untouched.
   const checkInGuest = (room) => {
@@ -1005,15 +1145,25 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
     if (onToast) onToast(`${room.name} checked in.`);
   };
 
+  /* No nowrap and no fixed widths: the table has to fit the page rather than force a
+     horizontal scrollbar, so long headers wrap instead of pushing the table wider.
+     Cells that must stay on one line (dates, countdown) opt in via tdTight. */
   const thStyle = {
-    padding: '0.6rem 0.85rem', fontSize: '0.62rem', fontWeight: 700,
-    letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)',
-    borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap',
+    padding: '0.6rem 0.7rem', fontSize: '0.6rem', fontWeight: 700,
+    letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)',
+    borderBottom: '1px solid var(--border)',
     textAlign: 'left', background: 'rgba(255,255,255,0.02)',
   };
   const tdStyle = {
-    padding: '0.7rem 0.85rem', fontSize: '0.8rem', color: 'var(--fg-muted)',
-    borderBottom: '1px solid rgba(42,38,33,0.5)', verticalAlign: 'middle', whiteSpace: 'nowrap',
+    padding: '0.7rem', fontSize: '0.78rem', color: 'var(--fg-muted)',
+    borderBottom: '1px solid rgba(42,38,33,0.5)', verticalAlign: 'middle',
+  };
+  const tdTight = { ...tdStyle, whiteSpace: 'nowrap' };
+  const rowBtn = {
+    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+    padding: '0.35rem 0.65rem', borderRadius: 6, cursor: 'pointer',
+    fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem', fontWeight: 600,
+    letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
   };
 
   if (!occupied.length) {
@@ -1040,48 +1190,44 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
         {occupied.length} room{occupied.length > 1 ? 's' : ''} with a registered guest
         {awaitingCheckIn > 0 ? ` · ${awaitingCheckIn} awaiting check-in` : ''}.
       </p>
-      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif' }}>
+      <div style={{ borderRadius: 10, border: '1px solid var(--border)' }}>
+        <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif' }}>
           <thead>
             <tr>
-              <th style={thStyle}>Guest Name</th>
-              <th style={thStyle}>Room</th>
-              <th style={thStyle}>Contact</th>
-              <th style={thStyle}>Check-In</th>
-              <th style={thStyle}>Check-Out</th>
-              <th style={thStyle}>Time Remaining</th>
-              <th style={thStyle}>Total</th>
-              <th style={thStyle}>Payment</th>
-              <th style={thStyle}>Status</th>
-              <th style={thStyle}>Action</th>
+              <th style={{ ...thStyle, width: '16%' }}>Guest Name</th>
+              <th style={{ ...thStyle, width: '13%' }}>Room</th>
+              <th style={{ ...thStyle, width: '16%' }}>Contact</th>
+              <th style={{ ...thStyle, width: '13%' }}>Check-In</th>
+              <th style={{ ...thStyle, width: '10%' }}>Check-Out</th>
+              <th style={{ ...thStyle, width: '11%' }}>Time Remaining</th>
+              <th style={{ ...thStyle, width: '10%' }}>Status</th>
+              <th style={{ ...thStyle, width: '11%' }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {occupied.map((room, idx) => {
               const res = room.reservation;
-              const payment = res.payment || null;
-              const total = stayBlocks(res.checkIn, res.checkOut, res.checkInTime) * (Number(room.price) || 0);
               const rowBg = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)';
               const canCheckIn = res.status !== 'Checked In';
               const remaining = remainingStay(res, now);
               return (
                 <tr key={room.id} style={{ background: rowBg }}>
-                  <td style={{ ...tdStyle, color: 'var(--fg)', fontWeight: 600 }}>
+                  <td style={{ ...tdStyle, color: 'var(--fg)', fontWeight: 600, overflowWrap: 'anywhere' }}>
                     <span style={{ display: 'block' }}>{res.fullName || '—'}</span>
                     <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--fg-muted)', fontWeight: 400 }}>{res.idNumber || ''}</span>
                   </td>
                   <td style={tdStyle}>
-                    <span style={{ display: 'block', fontSize: '0.62rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>{room.label || room.category}</span>
+                    <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>{room.label || room.category}</span>
                     <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{room.name}</span>
                   </td>
-                  <td style={tdStyle}>
+                  <td style={{ ...tdStyle, overflowWrap: 'anywhere' }}>
                     <span style={{ display: 'block' }}>{res.contactNo || '—'}</span>
                     <span style={{ display: 'block', fontSize: '0.72rem' }}>{res.email || ''}</span>
                   </td>
                   <td style={tdStyle}>{formatCheckIn(res.checkIn, res.checkInTime)}</td>
-                  <td style={tdStyle}>{res.checkOut || '—'}</td>
+                  <td style={tdTight}>{res.checkOut || '—'}</td>
                   <td style={{
-                    ...tdStyle,
+                    ...tdTight,
                     color: STAY_TONE_COLORS[remaining.tone],
                     fontWeight: remaining.tone === 'idle' ? 400 : 600,
                     opacity: remaining.tone === 'idle' ? 0.6 : 1,
@@ -1089,41 +1235,30 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
                   }}>
                     {remaining.text}
                   </td>
-                  <td style={{ ...tdStyle, color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontWeight: 700 }}>{formatPeso(total)}</td>
-                  <td style={tdStyle}>
-                    {payment ? (
-                      <>
-                        <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 500 }}>{payment.type} · {payment.method}</span>
-                        <span style={{ display: 'block', fontSize: '0.75rem' }}>{formatPeso(payment.amountPaid)}</span>
-                        {payment.balance > 0 && <span style={{ display: 'block', fontSize: '0.72rem', color: '#fb7185' }}>Bal: {formatPeso(payment.balance)}</span>}
-                      </>
-                    ) : <span style={{ opacity: 0.4 }}>—</span>}
-                  </td>
                   <td style={tdStyle}>
                     <span className={`room-status-badge ${bookingStatusClass(res.status)}`} style={{ position: 'static' }}>{res.status}</span>
                   </td>
                   <td style={tdStyle}>
-                    {!canCheckIn ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#60a5fa', fontSize: '0.78rem', fontWeight: 600 }}>
-                        <i className="fa-solid fa-circle-check" style={{ fontSize: '0.8rem' }}></i> Checked in
-                      </span>
-                    ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                       <button
                         type="button"
-                        onClick={() => checkInGuest(room)}
-                        title="Check the guest in"
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                          padding: '0.4rem 0.8rem', borderRadius: 6,
-                          border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)',
-                          cursor: 'pointer',
-                          fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', fontWeight: 600,
-                          letterSpacing: '0.06em', textTransform: 'uppercase',
-                        }}
+                        onClick={() => setDetailsRoomId(room.id)}
+                        title="See everything recorded for this guest"
+                        style={{ ...rowBtn, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg)' }}
                       >
-                        <i className="fa-solid fa-right-to-bracket" style={{ fontSize: '0.7rem' }}></i> Check In
+                        <i className="fa-solid fa-eye" style={{ fontSize: '0.68rem' }}></i> View
                       </button>
-                    )}
+                      {canCheckIn && (
+                        <button
+                          type="button"
+                          onClick={() => checkInGuest(room)}
+                          title="Check the guest in"
+                          style={{ ...rowBtn, border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)' }}
+                        >
+                          <i className="fa-solid fa-right-to-bracket" style={{ fontSize: '0.68rem' }}></i> Check In
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -1131,6 +1266,10 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
           </tbody>
         </table>
       </div>
+
+      {detailsRoom && (
+        <GuestDetailsModal room={detailsRoom} onClose={() => setDetailsRoomId(null)} />
+      )}
     </div>
   );
 }
