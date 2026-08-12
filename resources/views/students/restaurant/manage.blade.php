@@ -744,7 +744,6 @@ function ManageTablesPanel({ tables, orders, menus, canManage, onAddTable, onEdi
                       </div>
                       <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.76rem' }}>
                         Seats {table.capacity}
-                        {occupied && ` · ${table.guestName || 'Guest'} (party of ${table.partySize || '—'})`}
                       </p>
                     </div>
                     {canManage && (
