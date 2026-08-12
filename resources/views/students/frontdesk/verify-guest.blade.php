@@ -129,11 +129,14 @@ function roomStatusClass(status) {
   return 'status-' + normalizeRoomStatus(status).toLowerCase();
 }
 
-/* Booking-lifecycle badge (Reserved / Checked In) — reuses the room-status-badge
-   colours (purple/blue) for a different meaning now that hotel_rooms.status no
-   longer tracks occupancy. */
+/* Booking-lifecycle badge (Reserved / Arrived / Checked In) — reuses the
+   room-status-badge colours (purple/amber/blue) for a different meaning now that
+   hotel_rooms.status no longer tracks occupancy. */
 function bookingStatusClass(status) {
-  return String(status || '').trim() === 'Checked In' ? 'status-occupied' : 'status-reserved';
+  const s = String(status || '').trim();
+  if (s === 'Checked In') return 'status-occupied';
+  if (s === 'Arrived') return 'status-cleaning';
+  return 'status-reserved';
 }
 
 function formatPeso(amount) {
@@ -709,8 +712,26 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                               >
                                 <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '0.7rem' }}></i> Check Out
                               </button>
+                            ) : reservation.status === 'Reserved' ? (
+                              <button
+                                type="button"
+                                onClick={() => onBookingAction(reservation.bookingId, 'arrive')}
+                                title="Confirm the guest has arrived at the desk"
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                                  padding: '0.4rem 0.8rem', borderRadius: 6,
+                                  border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)',
+                                  cursor: 'pointer',
+                                  fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', fontWeight: 600,
+                                  letterSpacing: '0.06em', textTransform: 'uppercase',
+                                }}
+                              >
+                                <i className="fa-solid fa-door-open" style={{ fontSize: '0.7rem' }}></i> Arrive
+                              </button>
                             ) : (
-                              <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>Awaiting check-in</span>
+                              <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
+                                {reservation.status === 'Arrived' ? 'Arrived — awaiting room check-in' : 'Awaiting check-in'}
+                              </span>
                             )}
                           </td>
                         </tr>
