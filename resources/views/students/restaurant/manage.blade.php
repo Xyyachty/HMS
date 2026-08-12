@@ -723,7 +723,7 @@ function RoomServiceOrderCard({ order, onMove }) {
   );
 }
 
-function DineInOrderCard({ order, tableName, onMove }) {
+function DineInOrderCard({ order, table, onMove }) {
   return (
     <div className="order-card">
       <div className="order-card-head">
@@ -732,8 +732,9 @@ function DineInOrderCard({ order, tableName, onMove }) {
       </div>
 
       <dl style={{ margin: '0 0 0.75rem' }}>
-        <div className="order-field"><dt>Table</dt><dd>{tableName || '—'}</dd></div>
+        <div className="order-field"><dt>Table</dt><dd>{(table && table.name) || '—'}</dd></div>
         <div className="order-field"><dt>Guest</dt><dd>{order.guestName || '—'}</dd></div>
+        <div className="order-field"><dt>Assigned By</dt><dd>{(table && table.assignedBy) || '—'}</dd></div>
         <div className="order-field">
           <dt>Order</dt>
           <dd>{(order.items || []).map(i => `${i.name} ×${i.qty}`).join(', ') || '—'}</dd>
@@ -906,7 +907,7 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
 
   const openCount = typedOrders.filter(o => OPEN_ORDER_STATUSES.indexOf(o.status) !== -1).length;
   const filters = ['Open', 'All', ...ORDER_FLOW.slice(1), 'Cancelled'];
-  const tableName = (id) => (tables || []).find(t => t.id === id)?.name;
+  const tableFor = (id) => (tables || []).find(t => t.id === id);
 
   const move = (order, status) => {
     Promise.resolve(onUpdateOrderStatus(order.id, status))
@@ -953,7 +954,7 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
           {visible.map(order => (
             orderType === 'dine_in'
-              ? <DineInOrderCard key={order.id} order={order} tableName={tableName(order.tableId)} onMove={move} />
+              ? <DineInOrderCard key={order.id} order={order} table={tableFor(order.tableId)} onMove={move} />
               : <RoomServiceOrderCard key={order.id} order={order} onMove={move} />
           ))}
         </div>
