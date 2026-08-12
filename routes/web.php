@@ -1933,6 +1933,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         return view('students.frontdesk.room-service', $data);
     })->name('frontdesk.room-service');
 
+    // Read-only: everything the team has finished, drawn from the existing
+    // bookings / orders / complaints / inspections endpoints. No new state.
+    Route::get('/frontdesk/reports', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.frontdesk.reports', $data);
+    })->name('frontdesk.reports');
+
     Route::get('/restaurant', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');
         return view('students.restaurant', $data);
