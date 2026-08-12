@@ -159,7 +159,14 @@
   .page-header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.75rem; }
   .page-header p { color: var(--fg-muted); font-weight: 300; font-size: 1rem; }
 
+  /* Every card is a flex column filling its grid cell, so the row's own equal-height
+     stretch reaches the card itself. The image area is a fixed, non-shrinking band and
+     the body takes the rest, which keeps the image/content split identical no matter
+     how long a room's name or description happens to be. */
   .room-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     border-radius: 10px;
     overflow: hidden;
     background: var(--card);
@@ -168,9 +175,24 @@
     cursor: pointer;
   }
   .room-card:hover { border-color: var(--accent); transform: translateY(-4px); }
-  .room-card-img { position: relative; height: 240px; overflow: hidden; }
+  .room-card-img { position: relative; height: 240px; flex: 0 0 240px; overflow: hidden; }
   .room-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s; }
   .room-card:hover .room-card-img img { transform: scale(1.05); }
+  /* Shorter band for the home page's preview cards. */
+  .room-card-media { position: relative; height: 180px; flex: 0 0 180px; overflow: hidden; }
+  .room-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .room-card-body { flex: 1 1 auto; display: flex; flex-direction: column; }
+  /* Clamped rather than wrapped: a long name must not buy itself a second line and
+     push its card taller than the one beside it. */
+  .room-card-name {
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+    overflow: hidden; overflow-wrap: anywhere;
+  }
+  /* Exactly two lines' worth of space whether the text fills them or not. */
+  .room-card-desc {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; height: 2.48rem;
+  }
   .room-card-badge {
     position: absolute; top: 0.85rem; left: 0.85rem;
     background: rgba(12,11,9,0.75); padding: 0.2rem 0.65rem; border-radius: 4px;
@@ -1181,7 +1203,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
           </div>
           <button className="btn-outline" onClick={() => onNavigate('rooms')} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>View all rooms</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem', alignItems: 'stretch' }}>
           {roomList.map(room => (
             <div key={room.id} className="room-card" style={{ cursor: 'pointer', position: 'relative' }} onClick={() => onNavigate('rooms')}>
               {canEditRooms && (
@@ -1196,15 +1218,15 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
                     style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
                 </div>
               )}
-              <div style={{ height: 180, overflow: 'hidden', borderRadius: '12px 12px 0 0' }}>
-                <img src={room.img} alt={room.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <div className="room-card-media" style={{ borderRadius: '12px 12px 0 0' }}>
+                <img src={room.img} alt={room.name} />
               </div>
-              <div style={{ padding: '1.1rem 1.15rem 1.25rem' }}>
+              <div className="room-card-body" style={{ padding: '1.1rem 1.15rem 1.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'start' }}>
-                  <h3 className="font-display" style={{ fontSize: '1.15rem', margin: 0 }}>{room.name}</h3>
+                  <h3 className="font-display room-card-name" style={{ fontSize: '1.15rem', margin: 0 }}>{room.name}</h3>
                   <span style={{ color: 'var(--accent)', fontWeight: 700, whiteSpace: 'nowrap' }}>{formatPeso(room.price)}</span>
                 </div>
-                <p style={{ color: 'var(--fg-muted)', fontSize: '0.8rem', margin: '0.55rem 0 0', lineHeight: 1.55 }}>
+                <p className="room-card-desc" style={{ color: 'var(--fg-muted)', fontSize: '0.8rem', margin: '0.55rem 0 0', lineHeight: 1.55 }}>
                   {(room.desc || '').slice(0, 90)}{(room.desc || '').length > 90 ? 'â€¦' : ''}
                 </p>
               </div>
@@ -1987,7 +2009,7 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
         {filtered.length === 0 && !canEditRooms ? (
           <p style={{ textAlign: 'center', color: 'var(--fg-muted)', padding: '3rem 1rem' }}>No rooms found in this category.</p>
         ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', alignItems: 'stretch' }}>
           {filtered.map(room => {
             return (
             <div key={room.id} className="room-card" style={{ position: 'relative' }}
@@ -2007,11 +2029,11 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
               <div className="room-card-img">
                 <img src={room.img} alt={room.name} loading="lazy" />
               </div>
-              <div style={{ padding: '1.15rem 1.25rem 1.25rem' }}>
-                <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+              <div className="room-card-body" style={{ padding: '1.15rem 1.25rem 1.25rem' }}>
+                <p className="room-card-name" style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
                   {room.label || room.category || 'Room'}
                 </p>
-                <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>{room.name}</h3>
+                <h3 className="font-display room-card-name" style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>{room.name}</h3>
               </div>
             </div>
             );
