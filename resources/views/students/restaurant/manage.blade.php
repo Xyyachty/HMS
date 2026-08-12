@@ -795,25 +795,119 @@ function ManageTablesPanel({ tables, orders, menus, canManage, onAddTable, onEdi
 }
 
 /*
- * Room-service tickets, newest first. Front Desk places these against a checked-in
- * guest's stay; the kitchen walks them Pending -> Preparing -> Ready here, Front Desk
- * marks Delivered when it reaches the room, and the kitchen closes them Completed.
+ * One ticket queue for the kitchen, split by order type. Front Desk places
+ * room-service orders against a checked-in guest's stay and hands Ready ones to the
+ * room; Restaurant Management places dine-in orders from Manage Tables and carries
+ * the whole thing through themselves, table-side, so a dine-in card lets them jump
+ * straight to any status instead of only offering "next".
  */
-function RoomServiceOrdersPanel({ orders, onUpdateOrderStatus, onToast }) {
+function RoomServiceOrderCard({ order, onMove }) {
+  const next = nextKitchenStatus(order.status);
+  const finished = order.status === 'Completed' || order.status === 'Cancelled';
+
+  return (
+    <div className="order-card">
+      <div className="order-card-head">
+        <span className="order-card-id">Order #{order.id}</span>
+        <span className={`tb-badge tb-${order.status.toLowerCase()}`}>{order.status}</span>
+      </div>
+
+      <dl style={{ margin: '0 0 0.75rem' }}>
+        <div className="order-field"><dt>Guest</dt><dd>{order.guestName || '—'}</dd></div>
+        <div className="order-field"><dt>Room</dt><dd>{order.roomNumber || '—'}</dd></div>
+        <div className="order-field">
+          <dt>Order</dt>
+          <dd>{(order.items || []).map(i => `${i.name} ×${i.qty}`).join(', ') || '—'}</dd>
+        </div>
+        <div className="order-field"><dt>Time</dt><dd>{formatOrderTime(order.placedAt)}</dd></div>
+        <div className="order-field">
+          <dt>Total</dt>
+          <dd style={{ color: 'var(--accent-light)', fontWeight: 700 }}>{formatPeso(order.total)}</dd>
+        </div>
+      </dl>
+
+      {order.status === 'Ready' && (
+        <p style={{ margin: '0 0 0.6rem', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
+          Waiting for Front Desk to deliver it to the room.
+        </p>
+      )}
+
+      {!finished && (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {next && (
+            <button type="button" className="btn-primary" style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}
+              onClick={() => onMove(order, next)}>
+              {ORDER_ACTION_LABEL[next] || next}
+            </button>
+          )}
+          <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.45rem 0.9rem' }}
+            onClick={() => onMove(order, 'Cancelled')}>
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DineInOrderCard({ order, tableName, onMove }) {
+  return (
+    <div className="order-card">
+      <div className="order-card-head">
+        <span className="order-card-id">Order #{order.id}</span>
+        <span className={`tb-badge tb-${order.status.toLowerCase()}`}>{order.status}</span>
+      </div>
+
+      <dl style={{ margin: '0 0 0.75rem' }}>
+        <div className="order-field"><dt>Table</dt><dd>{tableName || '—'}</dd></div>
+        <div className="order-field"><dt>Guest</dt><dd>{order.guestName || '—'}</dd></div>
+        <div className="order-field">
+          <dt>Order</dt>
+          <dd>{(order.items || []).map(i => `${i.name} ×${i.qty}`).join(', ') || '—'}</dd>
+        </div>
+        <div className="order-field"><dt>Time</dt><dd>{formatOrderTime(order.placedAt)}</dd></div>
+        <div className="order-field">
+          <dt>Total</dt>
+          <dd style={{ color: 'var(--accent-light)', fontWeight: 700 }}>{formatPeso(order.total)}</dd>
+        </div>
+      </dl>
+
+      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+        {ORDER_STATUSES.map(status => (
+          <button
+            key={status}
+            type="button"
+            className={`tb-tab ${order.status === status ? 'is-active' : ''}`}
+            disabled={order.status === status}
+            onClick={() => onMove(order, status)}
+          >
+            {status}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OrdersPanel({ orders, tables, onUpdateOrderStatus, onToast }) {
+  const [orderType, setOrderType] = useState('room_service');
   const [filter, setFilter] = useState('Open');
 
-  const roomServiceOrders = (orders || [])
-    .filter(o => o.orderType !== 'dine_in')
+  const changeOrderType = (next) => { setOrderType(next); setFilter('Open'); };
+
+  const typedOrders = (orders || [])
+    .filter(o => (orderType === 'dine_in' ? o.orderType === 'dine_in' : o.orderType !== 'dine_in'))
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 
-  const visible = roomServiceOrders.filter(o => (
+  const visible = typedOrders.filter(o => (
     filter === 'All' ? true
       : filter === 'Open' ? OPEN_ORDER_STATUSES.indexOf(o.status) !== -1
       : o.status === filter
   ));
 
-  const openCount = roomServiceOrders.filter(o => OPEN_ORDER_STATUSES.indexOf(o.status) !== -1).length;
+  const openCount = typedOrders.filter(o => OPEN_ORDER_STATUSES.indexOf(o.status) !== -1).length;
   const filters = ['Open', 'All', ...ORDER_FLOW.slice(1), 'Cancelled'];
+  const tableName = (id) => (tables || []).find(t => t.id === id)?.name;
 
   const move = (order, status) => {
     Promise.resolve(onUpdateOrderStatus(order.id, status))
@@ -822,13 +916,24 @@ function RoomServiceOrdersPanel({ orders, onUpdateOrderStatus, onToast }) {
 
   return (
     <div className="rm-panel" style={{ maxWidth: '100%' }}>
-      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Room Service</p>
+      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Kitchen</p>
       <h3>Orders</h3>
       <p className="rm-panel-desc">
-        {roomServiceOrders.length === 0
-          ? 'No room-service orders yet. Front Desk places them for checked-in guests.'
-          : `${openCount} order${openCount === 1 ? '' : 's'} still in the kitchen · ${roomServiceOrders.length} total.`}
+        {typedOrders.length === 0
+          ? (orderType === 'dine_in'
+              ? 'No dine-in orders yet. Take one from Manage Tables once a guest is seated.'
+              : 'No room-service orders yet. Front Desk places them for checked-in guests.')
+          : `${openCount} order${openCount === 1 ? '' : 's'} still in the kitchen · ${typedOrders.length} total.`}
       </p>
+
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+        <button type="button" className={`tb-tab ${orderType === 'room_service' ? 'is-active' : ''}`} onClick={() => changeOrderType('room_service')}>
+          <i className="fa-solid fa-bell-concierge" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Room Service
+        </button>
+        <button type="button" className={`tb-tab ${orderType === 'dine_in' ? 'is-active' : ''}`} onClick={() => changeOrderType('dine_in')}>
+          <i className="fa-solid fa-utensils" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Dine-In
+        </button>
+      </div>
 
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
         {filters.map(f => (
@@ -838,58 +943,16 @@ function RoomServiceOrdersPanel({ orders, onUpdateOrderStatus, onToast }) {
 
       {visible.length === 0 ? (
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>
-          <i className="fa-solid fa-bell-concierge" style={{ fontSize: '1.6rem', color: 'var(--fg-muted)', opacity: 0.3, display: 'block', marginBottom: '0.65rem' }}></i>
+          <i className={`fa-solid ${orderType === 'dine_in' ? 'fa-utensils' : 'fa-bell-concierge'}`} style={{ fontSize: '1.6rem', color: 'var(--fg-muted)', opacity: 0.3, display: 'block', marginBottom: '0.65rem' }}></i>
           <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.85rem' }}>No orders in this view.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-          {visible.map(order => {
-            const next = nextKitchenStatus(order.status);
-            const finished = order.status === 'Completed' || order.status === 'Cancelled';
-            return (
-              <div key={order.id} className="order-card">
-                <div className="order-card-head">
-                  <span className="order-card-id">Order #{order.id}</span>
-                  <span className={`tb-badge tb-${order.status.toLowerCase()}`}>{order.status}</span>
-                </div>
-
-                <dl style={{ margin: '0 0 0.75rem' }}>
-                  <div className="order-field"><dt>Guest</dt><dd>{order.guestName || '—'}</dd></div>
-                  <div className="order-field"><dt>Room</dt><dd>{order.roomNumber || '—'}</dd></div>
-                  <div className="order-field">
-                    <dt>Order</dt>
-                    <dd>{(order.items || []).map(i => `${i.name} ×${i.qty}`).join(', ') || '—'}</dd>
-                  </div>
-                  <div className="order-field"><dt>Time</dt><dd>{formatOrderTime(order.placedAt)}</dd></div>
-                  <div className="order-field">
-                    <dt>Total</dt>
-                    <dd style={{ color: 'var(--accent-light)', fontWeight: 700 }}>{formatPeso(order.total)}</dd>
-                  </div>
-                </dl>
-
-                {order.status === 'Ready' && (
-                  <p style={{ margin: '0 0 0.6rem', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-                    Waiting for Front Desk to deliver it to the room.
-                  </p>
-                )}
-
-                {!finished && (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {next && (
-                      <button type="button" className="btn-primary" style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}
-                        onClick={() => move(order, next)}>
-                        {ORDER_ACTION_LABEL[next] || next}
-                      </button>
-                    )}
-                    <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.45rem 0.9rem' }}
-                      onClick={() => move(order, 'Cancelled')}>
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {visible.map(order => (
+            orderType === 'dine_in'
+              ? <DineInOrderCard key={order.id} order={order} tableName={tableName(order.tableId)} onMove={move} />
+              : <RoomServiceOrderCard key={order.id} order={order} onMove={move} />
+          ))}
         </div>
       )}
     </div>
@@ -944,8 +1007,9 @@ function RestaurantManagementPage({
             />
           )}
           {activeNav === 'orders' && (
-            <RoomServiceOrdersPanel
+            <OrdersPanel
               orders={orders}
+              tables={tables}
               onUpdateOrderStatus={onUpdateOrderStatus}
               onToast={onToast}
             />
