@@ -16,7 +16,7 @@ use Illuminate\Support\Carbon;
  * next guest, and Verify Guest can search across every booking instead of walking rooms.
  *
  * Lifecycle, and who moves it:
- *   Reserved    Front Desk / the public site took the booking and the payment
+ *   Booked      Front Desk / the public site took the booking and the payment
  *   Arrived     Front Desk confirmed the guest at the desk (Verify Guest)
  *   Checked In  Room Management handed the room over; the room goes Occupied
  *   Checked Out the stay ended; the room is released back to Available
@@ -25,7 +25,7 @@ use Illuminate\Support\Carbon;
 class HotelBooking extends Model
 {
     public const STATUSES = [
-        'Reserved',
+        'Booked',
         'Arrived',
         'Checked In',
         'Checked Out',
@@ -33,7 +33,7 @@ class HotelBooking extends Model
     ];
 
     /** Statuses that still hold the room. Anything else is history. */
-    public const OPEN_STATUSES = ['Reserved', 'Arrived', 'Checked In'];
+    public const OPEN_STATUSES = ['Booked', 'Arrived', 'Checked In'];
 
     /** Length of one charged stay block, in hours — matches the front-end's BLOCK_HOURS. */
     public const BLOCK_HOURS = 12;
@@ -110,13 +110,20 @@ class HotelBooking extends Model
     {
         $raw = mb_strtolower(trim((string) $value));
 
+        // 'Reserved' was this status' name before it was renamed to 'Booked'. The
+        // backfill migration rewrote the stored rows, but a stale browser payload
+        // or a half-open page can still send the old word, so it stays understood.
+        if ($raw === 'reserved') {
+            return 'Booked';
+        }
+
         foreach (self::STATUSES as $status) {
             if (mb_strtolower($status) === $raw) {
                 return $status;
             }
         }
 
-        return 'Reserved';
+        return 'Booked';
     }
 
     public function isOpen(): bool
@@ -140,7 +147,7 @@ class HotelBooking extends Model
             return true;
         }
 
-        $flow = ['Reserved', 'Arrived', 'Checked In', 'Checked Out'];
+        $flow = ['Booked', 'Arrived', 'Checked In', 'Checked Out'];
         $fromIndex = array_search($from, $flow, true);
         $toIndex = array_search($to, $flow, true);
 
@@ -148,14 +155,14 @@ class HotelBooking extends Model
     }
 
     /**
-     * Reserved -> Arrived is the only distinction the desk screens draw, and both
+     * Booked -> Arrived is the only distinction the desk screens draw, and both
      * Checked In and Checked Out imply the guest turned up.
      */
     public function arrivalStatus(): string
     {
         return $this->arrived_at || in_array($this->status, ['Arrived', 'Checked In', 'Checked Out'], true)
             ? 'Arrived'
-            : 'Reserved';
+            : 'Booked';
     }
 
     /** Charged 12-hour blocks between check-in and check-out; at least one. */

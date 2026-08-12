@@ -395,7 +395,7 @@
 
   /**
    * Room-keyed reservation map (one reservation per room). The Room Management
-   * page reads this so it can render a "Reserved" badge + guest details when
+   * page reads this so it can render a "Booked" badge + guest details when
    * the room card is opened. Persisted to template customizations AND to a
    * dedicated localStorage key so it survives the post-reservation redirect.
    */

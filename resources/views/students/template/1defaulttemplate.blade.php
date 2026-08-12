@@ -628,11 +628,11 @@ function roomStatusClass(status) {
   return 'status-' + normalizeRoomStatus(status).toLowerCase();
 }
 
-/* Arrival lifecycle of a booking: Reserved -> Arrived. The server derives it from
+/* Arrival lifecycle of a booking: Booked -> Arrived. The server derives it from
    hotel_bookings.arrived_at and sends it down on the room's `reservation`. */
 function reservationArrivalStatus(reservation) {
-  const raw = String((reservation && reservation.arrivalStatus) || 'Reserved').trim().toLowerCase();
-  return raw === 'arrived' ? 'Arrived' : 'Reserved';
+  const raw = String((reservation && reservation.arrivalStatus) || 'Booked').trim().toLowerCase();
+  return raw === 'arrived' ? 'Arrived' : 'Booked';
 }
 
 function todayIsoDate() {
@@ -1929,8 +1929,8 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
     if (onToast) onToast(`${selectedRoom.name} marked as ${status}`);
   };
 
-  // The stay is written to hotel_bookings, not onto the room — the server flips the
-  // room to Reserved itself and hands back both rows. Everything below only runs once
+  // The stay is written to hotel_bookings, not onto the room — the server records the
+  // booking itself and hands back both rows. Everything below only runs once
   // that POST actually succeeds; onCreateBooking's own .catch already toasts the error,
   // so a failed booking (room already taken, bad dates, ...) no longer looks like a
   // success and silently drops the guest.
@@ -1957,7 +1957,7 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
             fullReservation: Object.assign({}, guest, {
               payment: payment || null,
               reservedAt: new Date().toISOString(),
-              arrivalStatus: 'Reserved',
+              arrivalStatus: 'Booked',
               arrivedAt: null,
             }),
           });
@@ -2845,8 +2845,8 @@ function App() {
 
   /* ── Bookings (hotel_bookings, not a blob on the room) ───────────────── */
 
-  // Takes the stay and the up-front payment in one POST. The room comes back already
-  // flipped to Reserved with its projected `reservation`, so the grid needs no guesswork.
+  // Takes the stay and the up-front payment in one POST. The room comes back with its
+  // projected `reservation` already on it, so the grid needs no guesswork.
   const createBooking = useCallback((room, guest, payment) => {
     pendingWrites.current += 1;
     return fetch('/students/hotel/bookings', {

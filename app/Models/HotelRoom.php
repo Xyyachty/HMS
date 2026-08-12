@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class HotelRoom extends Model
 {
     // Housekeeping condition only. Who is staying in the room is a HotelBooking
-    // status (Reserved / Arrived / Checked In / Checked Out), not this — see
+    // status (Booked / Arrived / Checked In / Checked Out), not this — see
     // activeBooking() and the Rooms page calendar, which is what carries occupancy now.
     public const STATUSES = [
         'Available',

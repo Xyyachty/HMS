@@ -12,11 +12,11 @@ use Illuminate\Support\Facades\DB;
 /**
  * Every write to a booking goes through here.
  *
- * A stay touches three tables and the room's own status at once — reserving writes a
- * guest, a booking and a payment and flips the room to Reserved; checking in moves the
- * booking and the room together. Keeping that in one place is what stops the room
- * status and the booking lifecycle from drifting apart, which is exactly what happened
- * while the booking lived in a JSON blob on the room.
+ * A stay touches three tables at once — booking one writes a guest, a booking and a
+ * payment — and checking out moves the booking and the room's housekeeping status
+ * together. Keeping that in one place is what stops the room status and the booking
+ * lifecycle from drifting apart, which is exactly what happened while the booking
+ * lived in a JSON blob on the room.
  */
 class HotelBookingDesk
 {
@@ -77,7 +77,7 @@ class HotelBookingDesk
             $booking = HotelBooking::create($scope + [
                 'hotel_room_id'  => $room->hotel_room_id,
                 'hotel_guest_id' => $guestModel->hotel_guest_id,
-                'status'         => 'Reserved',
+                'status'         => 'Booked',
                 'check_in'       => $stay['check_in'] ?? null,
                 'check_in_time'  => $stay['check_in_time'] ?? null,
                 'check_out'      => $stay['check_out'] ?? null,
@@ -212,7 +212,7 @@ class HotelBookingDesk
 
         if ($booking && in_array($status, ['Available', 'Cleaning', 'Maintenance'], true)) {
             // Nobody ever arrived: the booking was called off, not completed.
-            if ($booking->arrivalStatus() === 'Reserved') {
+            if ($booking->arrivalStatus() === 'Booked') {
                 self::cancel($booking);
             } else {
                 self::checkOut($booking, $status);

@@ -129,7 +129,7 @@ function roomStatusClass(status) {
   return 'status-' + normalizeRoomStatus(status).toLowerCase();
 }
 
-/* Booking-lifecycle badge (Reserved / Arrived / Checked In) — reuses the
+/* Booking-lifecycle badge (Booked / Arrived / Checked In) — reuses the
    room-status-badge colours (purple/amber/blue) for a different meaning now that
    hotel_rooms.status no longer tracks occupancy. */
 function bookingStatusClass(status) {
@@ -712,7 +712,7 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                               >
                                 <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '0.7rem' }}></i> Check Out
                               </button>
-                            ) : reservation.status === 'Reserved' ? (
+                            ) : reservation.status === 'Booked' ? (
                               <button
                                 type="button"
                                 onClick={() => onBookingAction(reservation.bookingId, 'arrive')}

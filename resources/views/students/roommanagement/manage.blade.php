@@ -175,7 +175,7 @@ function normalizeRoomStatus(value) {
 }
 function roomStatusClass(status) { return 'status-' + normalizeRoomStatus(status).toLowerCase(); }
 
-/* Booking-lifecycle badge (Reserved / Checked In) — reuses the room-status-badge
+/* Booking-lifecycle badge (Booked / Checked In) — reuses the room-status-badge
    colours (purple/blue) for a different meaning now that hotel_rooms.status no
    longer tracks occupancy. */
 function bookingStatusClass(status) {
@@ -187,8 +187,8 @@ function normalizeRoomCategory(value) {
   return match || 'Classic';
 }
 function reservationArrivalStatus(reservation) {
-  const raw = String((reservation && reservation.arrivalStatus) || 'Reserved').trim().toLowerCase();
-  return raw === 'arrived' ? 'Arrived' : 'Reserved';
+  const raw = String((reservation && reservation.arrivalStatus) || 'Booked').trim().toLowerCase();
+  return raw === 'arrived' ? 'Arrived' : 'Booked';
 }
 function formatPeso(amount) {
   const n = Number(amount);
