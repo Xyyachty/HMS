@@ -20,6 +20,18 @@
   /* Only the two booking-lifecycle tones are used now — see bookingStatusClass(). */
   .room-status-badge.status-reserved { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .room-status-badge.status-occupied { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
+  .rm-table { width: 100%; border-collapse: collapse; font-family: 'Outfit', sans-serif; }
+  .rm-table th {
+    padding: 0.6rem 0.85rem; font-size: 0.62rem; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted);
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+    text-align: left; background: rgba(255,255,255,0.02);
+  }
+  .rm-table td {
+    padding: 0.7rem 0.85rem; font-size: 0.82rem; color: var(--fg-muted);
+    border-bottom: 1px solid rgba(42,38,33,0.5); vertical-align: middle; white-space: nowrap;
+  }
+  .rm-table tr:last-child td { border-bottom: none; }
   .btn-primary {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: var(--accent); color: var(--bg);
@@ -440,7 +452,7 @@ function createEmptyRoomForm() {
 function validateRoomForm(form) {
   const errors = {};
   if (!String(form.name || '').trim()) errors.name = 'Room name is required.';
-  if (!String(form.category || '').trim()) errors.category = 'Room type is required.';
+  if (!String(form.category || '').trim()) errors.category = 'Room category is required.';
   const price = parseFloat(String(form.price || '').replace(/,/g, ''));
   if (!String(form.price || '').trim() || !Number.isFinite(price) || price <= 0) {
     errors.price = 'Enter a valid price.';
@@ -448,7 +460,7 @@ function validateRoomForm(form) {
   return errors;
 }
 
-function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal }) {
+function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdated }) {
   const [form, setForm] = useState(createEmptyRoomForm);
   const [errors, setErrors] = useState({});
   const [imgPreview, setImgPreview] = useState('');
@@ -574,12 +586,12 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal }) {
 
         <div className="rm-form-row">
           <div>
-            <label style={fieldLabel}>Room Type *</label>
+            <label style={fieldLabel}>Room Category *</label>
             <select
               className="booking-input" value={form.category} onChange={e => update('category', e.target.value)}
               style={Object.assign({ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: form.category ? 'var(--fg)' : 'var(--fg-muted)' }, errors.category ? { borderColor: '#f43f5e' } : {})}
             >
-              <option value="" style={{ background: '#181714', color: 'var(--fg-muted)' }}>Select type</option>
+              <option value="" style={{ background: '#181714', color: 'var(--fg-muted)' }}>Select category</option>
               {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: '#181714', color: 'var(--fg)' }}>{c}</option>)}
             </select>
             {errorText('category')}
@@ -647,7 +659,7 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal }) {
 
       <div style={{ marginTop: '2.25rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
         <h3 style={{ margin: '0 0 0.35rem' }}>All Rooms</h3>
-        <p className="rm-panel-desc">Every room in the hotel. Open one to see which dates are already booked.</p>
+        <p className="rm-panel-desc">Every room in the hotel. Update one to edit its details or check its booked dates.</p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.15rem' }}>
           {tabs.map(t => {
@@ -665,63 +677,234 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal }) {
             {list.length === 0 ? 'No rooms yet. Add the first one above.' : 'No rooms in this category yet.'}
           </p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-            {filtered.map(room => (
-              <button key={room.id} type="button" className="room-browse-card" onClick={() => setSelectedRoomId(room.id)}>
-                <div style={{ position: 'relative', height: 120 }}>
-                  <img src={room.img} alt={room.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                </div>
-                <div style={{ padding: '0.75rem 0.9rem' }}>
-                  <span style={{ display: 'block', fontSize: '0.62rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
-                    {room.label || room.category}
-                  </span>
-                  <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 600, fontSize: '0.9rem' }}>{room.name}</span>
-                  <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '0.9rem', marginTop: 4 }}>
-                    {formatPeso(room.price)}
-                  </span>
-                </div>
-              </button>
-            ))}
+          <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
+            <table className="rm-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 92 }}>Image</th>
+                  <th>Room</th>
+                  <th>Room Category</th>
+                  <th>Description</th>
+                  <th style={{ width: 110 }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(room => (
+                  <tr key={room.id}>
+                    <td>
+                      <img
+                        src={room.img}
+                        alt={room.name}
+                        style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 6, display: 'block', background: '#12110f' }}
+                      />
+                    </td>
+                    <td>
+                      <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 600 }}>{room.name}</span>
+                      <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '0.82rem', marginTop: 2 }}>
+                        {formatPeso(room.price)}
+                      </span>
+                    </td>
+                    <td>{room.label || room.category}</td>
+                    <td style={{ whiteSpace: 'normal', minWidth: 220, maxWidth: 380 }}>
+                      {room.desc || <span style={{ opacity: 0.45 }}>No description yet.</span>}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        style={{ fontSize: '0.68rem', padding: '0.4rem 0.8rem' }}
+                        onClick={() => setSelectedRoomId(room.id)}
+                      >
+                        <i className="fa-solid fa-pen" style={{ fontSize: '0.65rem' }}></i> Update
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
       {selectedRoom && (
-        <div className="room-modal-overlay" onClick={() => setSelectedRoomId(null)} role="dialog" aria-modal="true">
-          <div className="room-modal" onClick={e => e.stopPropagation()}>
-            <div className="room-modal-img">
-              <img src={selectedRoom.img} alt={selectedRoom.name} />
-              <button type="button" className="room-modal-close" onClick={() => setSelectedRoomId(null)} aria-label="Close">
-                <i className="fa-solid fa-xmark"></i>
+        <EditRoomModal
+          room={selectedRoom}
+          onClose={() => setSelectedRoomId(null)}
+          onSaved={onRoomUpdated}
+        />
+      )}
+    </div>
+  );
+}
+
+/* The Update action from the rooms table. Edits the room's own fields; the booked
+   dates below it stay read-only — they belong to bookings, not to the room. */
+function EditRoomModal({ room, onClose, onSaved }) {
+  const [form, setForm] = useState(() => ({
+    name: room.name || '',
+    category: normalizeRoomCategory(room.category || room.label),
+    price: String(room.price || ''),
+    desc: room.desc || '',
+    img: room.img || '',
+  }));
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const fieldLabel = {
+    fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
+    color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem',
+  };
+
+  const update = (field, value) => {
+    setForm(prev => Object.assign({}, prev, { [field]: value }));
+    if (errors[field]) setErrors(prev => Object.assign({}, prev, { [field]: null }));
+  };
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const nextErrors = validateRoomForm(form);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+
+    setSaving(true);
+    // room.dbId is the hotel_rooms primary key; room.id is the front-end's "db-N".
+    fetch('/students/hotel/rooms/' + room.dbId, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({
+        name: String(form.name).trim(),
+        category: form.category,
+        price: parseInt(String(form.price).replace(/,/g, ''), 10),
+        description: String(form.desc || '').trim(),
+        // Handed back as-is when untouched: the server collapses an existing
+        // /storage/... URL to the path it already holds rather than re-uploading.
+        image: form.img || '',
+      }),
+    })
+      .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
+      .then(data => {
+        if (data.room && typeof onSaved === 'function') onSaved(data.room);
+        onClose();
+        if (window.Swal) {
+          window.Swal.fire({
+            icon: 'success',
+            title: 'Room Updated!',
+            text: data.room.name + ' has been saved.',
+            background: '#181714', color: '#f5f0e8', iconColor: '#4ade80',
+            confirmButtonColor: '#c9a84c', confirmButtonText: 'Great!',
+            timer: 3000, timerProgressBar: true,
+          });
+        }
+      })
+      .catch(err => {
+        const msg = (err && err.message) ? err.message : 'Failed to save. Please try again.';
+        if (window.Swal) {
+          window.Swal.fire({
+            icon: 'error', title: 'Error', text: msg,
+            background: '#181714', color: '#f5f0e8', iconColor: '#fb7185', confirmButtonColor: '#c9a84c',
+          });
+        } else {
+          setErrors({ name: msg });
+        }
+      })
+      .finally(() => setSaving(false));
+  };
+
+  const errorText = (key) => (
+    errors[key]
+      ? <p style={{ margin: '0.35rem 0 0', color: '#fb7185', fontSize: '0.72rem' }}>{errors[key]}</p>
+      : null
+  );
+
+  return (
+    <div className="room-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="room-modal" onClick={e => e.stopPropagation()}>
+        <div className="room-modal-img">
+          <img src={form.img || room.img} alt={room.name} />
+          <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div style={{ padding: '1.5rem' }}>
+          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+            Update Room
+          </p>
+          <h2 className="font-display" style={{ fontSize: '1.5rem', marginBottom: '1.1rem', color: 'var(--fg)' }}>{room.name}</h2>
+
+          <form onSubmit={handleSubmit} className="rm-form-grid" noValidate>
+            <div>
+              <label style={fieldLabel}>Room Name *</label>
+              <input
+                type="text" className="booking-input" value={form.name}
+                onChange={e => update('name', e.target.value)}
+                style={errors.name ? { borderColor: '#f43f5e' } : undefined}
+              />
+              {errorText('name')}
+            </div>
+
+            <div className="rm-form-row">
+              <div>
+                <label style={fieldLabel}>Room Category *</label>
+                <select
+                  className="booking-input" value={form.category} onChange={e => update('category', e.target.value)}
+                  style={Object.assign({ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }, errors.category ? { borderColor: '#f43f5e' } : {})}
+                >
+                  <option value="" style={{ background: '#181714', color: 'var(--fg-muted)' }}>Select category</option>
+                  {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: '#181714', color: 'var(--fg)' }}>{c}</option>)}
+                </select>
+                {errorText('category')}
+              </div>
+              <div>
+                <label style={fieldLabel}>Price *</label>
+                <input
+                  type="number" min="1" step="1" className="booking-input" value={form.price}
+                  onChange={e => update('price', e.target.value)}
+                  style={errors.price ? { borderColor: '#f43f5e' } : undefined}
+                />
+                {errorText('price')}
+              </div>
+            </div>
+
+            <div>
+              <label style={fieldLabel}>Description</label>
+              <textarea
+                className="booking-input" rows={3} value={form.desc}
+                onChange={e => update('desc', e.target.value)}
+                style={{ resize: 'vertical', minHeight: 88 }}
+              />
+            </div>
+
+            <div>
+              <label style={fieldLabel}>Room Image</label>
+              <button
+                type="button"
+                onClick={() => pickImageFile(url => { if (url) update('img', url); })}
+                className="btn-outline"
+                style={{ fontSize: '0.7rem', padding: '0.5rem 0.9rem' }}
+              >
+                <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '0.7rem' }}></i> Replace image
               </button>
             </div>
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-                {selectedRoom.label || selectedRoom.category || 'Room'}
-              </p>
-              <h2 className="font-display" style={{ fontSize: '1.5rem', marginBottom: '1.1rem', color: 'var(--fg)' }}>{selectedRoom.name}</h2>
 
-              <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.35rem' }}>
-                <div>
-                  <p style={fieldLabel}>Price</p>
-                  <p style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.2rem', margin: 0 }}>
-                    {formatPeso(selectedRoom.price)}
-                  </p>
-                </div>
-                <div>
-                  <p style={fieldLabel}>Description</p>
-                  <p style={{ color: 'var(--fg-muted)', fontSize: '0.86rem', lineHeight: 1.6, margin: 0 }}>
-                    {selectedRoom.desc || 'No description yet.'}
-                  </p>
-                </div>
-              </div>
-
-              <p style={{ ...fieldLabel, marginBottom: '0.5rem' }}>Availability</p>
-              <RoomAvailabilityCalendar ranges={selectedRoom.bookedRanges} />
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+              <button type="submit" className="btn-primary" disabled={saving}>
+                <i className="fa-solid fa-floppy-disk" style={{ fontSize: '0.7rem' }}></i> {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+              <button type="button" className="btn-outline" onClick={onClose} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>Cancel</button>
             </div>
-          </div>
+          </form>
+
+          <p style={{ ...fieldLabel, margin: '1.35rem 0 0.5rem' }}>Availability</p>
+          <RoomAvailabilityCalendar ranges={room.bookedRanges} />
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -871,7 +1054,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   );
 }
 
-function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onBookingAction, onToast }) {
+function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onRoomUpdated, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
   const handleAddRoom = (payload) => {
@@ -899,7 +1082,7 @@ function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onBookingAct
             // Manage Room is the fallback: ?nav=rooms was the old Room Availability
             // section, whose room list lives here now, so an old link still lands
             // somewhere sensible instead of on a blank panel.
-            <ManageRoomPanel rooms={rooms} onSubmit={handleAddRoom} onCancel={onBack} onCloseModal={() => {}} />
+            <ManageRoomPanel rooms={rooms} onSubmit={handleAddRoom} onCancel={onBack} onCloseModal={() => {}} onRoomUpdated={onRoomUpdated} />
           )}
         </div>
       </div>
@@ -930,6 +1113,10 @@ function App() {
     setRooms(prev => [...prev, roomFromDb]);
   }, []);
 
+  const replaceRoom = useCallback((roomFromDb) => {
+    setRooms(prev => prev.map(r => (r.id === roomFromDb.id ? roomFromDb : r)));
+  }, []);
+
   // Check-in and check-out are booking moves. The room status follows on the server,
   // and the response hands the updated room back so this page never has to infer it.
   const bookingAction = useCallback((bookingId, action) => {
@@ -953,6 +1140,7 @@ function App() {
       rooms={rooms}
       onBack={() => { window.location.href = window.HMS_ROOMMANAGEMENT_URL; }}
       onAddRoom={addRoom}
+      onRoomUpdated={replaceRoom}
       onBookingAction={bookingAction}
       onToast={(msg) => window.toast && window.toast(msg)}
     />

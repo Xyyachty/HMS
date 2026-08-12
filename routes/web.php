@@ -739,9 +739,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     })->name('hotel.rooms.index');
 
     /**
-     * Status only — a room's own field. Releasing a room (Available / Cleaning /
+     * Edits a room, and/or moves its status. Releasing a room (Available / Cleaning /
      * Maintenance) also closes whatever booking was holding it, which is what keeps a
-     * departed guest from lingering in room service.
+     * departed guest from lingering in room service — so status still goes through
+     * applyRoomStatus() rather than being written with the rest of the fields.
      */
     Route::patch('/hotel/rooms/{id}', function (Request $request, $id) {
         $membership = \App\Support\HotelBookingDesk::membership();
@@ -754,8 +755,35 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ->firstOrFail();
 
         $data = $request->validate([
-            'status' => ['sometimes', 'string', Rule::in(HotelRoom::STATUSES)],
+            'status'      => ['sometimes', 'string', Rule::in(HotelRoom::STATUSES)],
+            'name'        => 'sometimes|required|string|max:255',
+            'category'    => 'sometimes|required|string|max:100',
+            'price'       => 'sometimes|required|integer|min:1',
+            'description' => 'sometimes|nullable|string|max:5000',
+            'image'       => 'sometimes|nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
         ]);
+
+        foreach (['name', 'category', 'price', 'description'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $room->{$field} = $field === 'price' ? (int) $data[$field] : $data[$field];
+            }
+        }
+
+        // persist() passes an existing storage path straight back, so the edit form can
+        // return the photo it was given without re-uploading it.
+        if (array_key_exists('image', $data)) {
+            $room->image = \App\Support\HotelImageStore::persist(
+                $data['image'],
+                $membership->faculty_id,
+                $membership->group_name
+            );
+        }
+
+        if ($room->isDirty()) {
+            $room->save();
+        }
 
         if (array_key_exists('status', $data)) {
             \App\Support\HotelBookingDesk::applyRoomStatus($room, $data['status']);
