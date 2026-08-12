@@ -492,6 +492,7 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
   // room and looking one up are the same job, so they share a screen now.
   const [tab, setTab] = useState('All');
   const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const [page, setPage] = useState(1);
 
   const list = rooms || [];
   const tabs = ['All', ...ROOM_CATEGORIES];
@@ -499,6 +500,13 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
   const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
   // Preview only — HotelRoomDefaults::nextNameFor() decides the real one on save.
   const nextRoomName = form.category ? nextRoomNameFor(list, form.category) : '';
+
+  // Fifty rooms is a long scroll, so the table pages. safePage rather than page so
+  // switching to a shorter category tab cannot strand the view past the last page.
+  const PER_PAGE = 5;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const pageRooms = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setSelectedRoomId(null); };
@@ -693,7 +701,7 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
           {tabs.map(t => {
             const count = t === 'All' ? list.length : list.filter(r => normalizeRoomCategory(r.category || r.label) === t).length;
             return (
-              <button key={t} type="button" onClick={() => setTab(t)} className={`room-card-tab${tab === t ? ' active' : ''}`}>
+              <button key={t} type="button" onClick={() => { setTab(t); setPage(1); }} className={`room-card-tab${tab === t ? ' active' : ''}`}>
                 {t} ({count})
               </button>
             );
@@ -717,7 +725,7 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(room => (
+                {pageRooms.map(room => (
                   <tr key={room.id}>
                     <td>
                       <img
@@ -750,6 +758,42 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.85rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--fg-muted)' }}>
+              Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, filtered.length)} of {filtered.length}
+            </span>
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={safePage === 1}
+                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === 1 ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === 1 ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === 1 ? 0.4 : 1 }}
+              >
+                <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setPage(n)}
+                  style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid ' + (n === safePage ? 'var(--accent)' : 'var(--border)'), background: n === safePage ? 'var(--accent)' : 'transparent', color: n === safePage ? 'var(--bg)' : 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: n === safePage ? 700 : 400 }}
+                >
+                  {n}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={safePage === totalPages}
+                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === totalPages ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === totalPages ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === totalPages ? 0.4 : 1 }}
+              >
+                <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
+              </button>
+            </div>
           </div>
         )}
       </div>
