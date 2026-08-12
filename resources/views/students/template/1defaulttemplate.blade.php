@@ -1737,10 +1737,20 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
                         onChange={e => updateGuest('checkInTime', e.target.value)} required style={{ colorScheme: 'dark' }} />
                     </div>
                   </div>
-                  <div>
-                    <label style={fieldLabel}>Check-Out</label>
-                    <input type="date" className="booking-input" value={guestForm.checkOut} min={minCheckOut}
-                      onChange={e => updateGuest('checkOut', e.target.value)} required style={{ colorScheme: 'dark' }} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+                    <div>
+                      <label style={fieldLabel}>Check-Out</label>
+                      <input type="date" className="booking-input" value={guestForm.checkOut} min={minCheckOut}
+                        onChange={e => updateGuest('checkOut', e.target.value)} required style={{ colorScheme: 'dark' }} />
+                    </div>
+                    <div>
+                      <label style={fieldLabel}>Check-out Time</label>
+                      {/* Standard checkout time only — there is no check-out time column, and
+                          billing already assumes checkout falls at the check-in clock time. */}
+                      <div className="booking-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--fg-muted)' }}>
+                        12:00 PM
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }}>
