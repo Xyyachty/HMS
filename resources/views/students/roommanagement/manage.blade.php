@@ -445,13 +445,36 @@ function pickImageFile(onPicked) {
   input.click();
 }
 
+// No name: adding a room derives it from the category (see nextRoomNameFor).
 function createEmptyRoomForm() {
-  return { name: '', category: '', status: 'Available', price: '', desc: '', img: '' };
+  return { category: '', status: 'Available', price: '', desc: '', img: '' };
 }
 
-function validateRoomForm(form) {
+/* Mirrors App\Support\HotelRoomDefaults: each category numbers from its own hundreds
+   block, and the next room takes the highest number already used there plus one. Only
+   a preview — the server recomputes it on save, so the two cannot disagree on disk. */
+const CATEGORY_FLOORS = { Classic: 1, Superior: 2, Deluxe: 3, Premium: 4, Family: 5 };
+
+function nextRoomNameFor(rooms, category) {
+  const cat = normalizeRoomCategory(category);
+  const floor = CATEGORY_FLOORS[cat] || 1;
+  let highest = floor * 100;
+  const pattern = new RegExp('^' + cat + '\\s+(\\d+)$', 'i');
+
+  (rooms || []).forEach(room => {
+    if (normalizeRoomCategory(room.category || room.label) !== cat) return;
+    const match = pattern.exec(String(room.name || '').trim());
+    if (match) highest = Math.max(highest, parseInt(match[1], 10));
+  });
+
+  return cat + ' ' + (highest + 1);
+}
+
+/* requireName is false when adding: the name is derived from the category there, so
+   there is no field for anyone to leave blank. The edit form still takes one. */
+function validateRoomForm(form, requireName = true) {
   const errors = {};
-  if (!String(form.name || '').trim()) errors.name = 'Room name is required.';
+  if (requireName && !String(form.name || '').trim()) errors.name = 'Room name is required.';
   if (!String(form.category || '').trim()) errors.category = 'Room category is required.';
   const price = parseFloat(String(form.price || '').replace(/,/g, ''));
   if (!String(form.price || '').trim() || !Number.isFinite(price) || price <= 0) {
@@ -474,6 +497,8 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
   const tabs = ['All', ...ROOM_CATEGORIES];
   const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
   const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
+  // Preview only — HotelRoomDefaults::nextNameFor() decides the real one on save.
+  const nextRoomName = form.category ? nextRoomNameFor(list, form.category) : '';
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setSelectedRoomId(null); };
@@ -499,7 +524,7 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const nextErrors = validateRoomForm(form);
+    const nextErrors = validateRoomForm(form, false);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
 
@@ -507,8 +532,8 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
     fetch('/students/hotel/rooms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      // No name: the server numbers the room from its category (Classic 110 -> 111).
       body: JSON.stringify({
-        name: String(form.name).trim(),
         category: form.category,
         price: parseInt(String(form.price).replace(/,/g, ''), 10),
         description: String(form.desc || '').trim(),
@@ -545,7 +570,8 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
             background: '#181714', color: '#f5f0e8', iconColor: '#fb7185', confirmButtonColor: '#c9a84c',
           });
         } else {
-          setErrors({ name: msg });
+          // Category, not name: the add form has no name field to show it under.
+          setErrors({ category: msg });
         }
       })
       .finally(() => setSaving(false));
@@ -575,13 +601,15 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
 
       <form onSubmit={handleSubmit} className="rm-form-grid" noValidate style={{ maxWidth: 520 }}>
         <div>
-          <label style={fieldLabel}>Room Name *</label>
-          <input
-            type="text" className="booking-input" placeholder="e.g. Deluxe King Room"
-            value={form.name} onChange={e => update('name', e.target.value)}
-            style={errors.name ? { borderColor: '#f43f5e' } : undefined}
-          />
-          {errorText('name')}
+          <label style={fieldLabel}>Room Name</label>
+          {/* Not typed: the server numbers a new room from its category. This only
+              previews what it will be called, so the name cannot drift from the
+              sequence. The server recomputes it on save either way. */}
+          <div className="booking-input" style={{ color: form.category ? 'var(--fg)' : 'var(--fg-muted)', cursor: 'default', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {form.category
+              ? <><i className="fa-solid fa-hashtag" style={{ fontSize: '0.7rem', color: 'var(--accent)' }}></i>{nextRoomName}</>
+              : 'Pick a category to see the room number'}
+          </div>
         </div>
 
         <div className="rm-form-row">

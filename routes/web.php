@@ -729,6 +729,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!$membership) {
             return response()->json(['rooms' => []]);
         }
+
+        // A team starts with ten rooms per category. No-ops once it has any rooms at
+        // all, so a team that already built its own inventory is never touched.
+        \App\Support\HotelRoomDefaults::ensureFor($membership);
+
         $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'openBookings'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
@@ -804,7 +809,6 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // The front-end still posts the photo as a base64 data-URL; it is decoded to a
         // file below so only the path reaches the database.
         $data = $request->validate([
-            'name'        => 'required|string|max:255',
             'category'    => 'required|string|max:100',
             'price'       => 'required|integer|min:1',
             'description' => 'nullable|string|max:5000',
@@ -812,12 +816,17 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
         ]);
+
+        // The name is the category's next free number, never whatever the browser sent
+        // — that is what keeps Classic 111 following Classic 110 without anyone typing.
+        $category = \App\Support\HotelRoomDefaults::normalizeCategory($data['category']);
+
         $room = HotelRoom::create([
             'group_name'  => $membership->group_name,
             'faculty_id'  => $membership->faculty_id,
             'group_id'    => $membership->group_id,
-            'name'        => $data['name'],
-            'category'    => $data['category'],
+            'name'        => \App\Support\HotelRoomDefaults::nextNameFor($membership, $category),
+            'category'    => $category,
             'status'      => 'Available',
             'price'       => (int) $data['price'],
             'description' => $data['description'] ?? null,
