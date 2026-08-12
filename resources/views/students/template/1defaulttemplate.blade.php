@@ -682,6 +682,16 @@ function menuFoodImg(item) {
   return 'https://picsum.photos/seed/' + seed + '/800/600.jpg';
 }
 
+/* A room with no photo of its own — every seeded room starts that way — would render
+   <img src=""> and leave a blank hole where its neighbours show a picture. Same
+   stand-in the menu uses, seeded by the room so each one keeps the same photo
+   between renders instead of reshuffling. */
+function roomCardImg(room) {
+  if (room && room.img) return room.img;
+  const seed = encodeURIComponent((room && (room.id || room.name)) || 'room');
+  return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
+}
+
 const ROOMS = [
   {
     id: 'classic', label: 'Classic', category: 'Classic', status: 'Available', name: 'Classic Queen Room', price: 180,
@@ -1219,7 +1229,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
                 </div>
               )}
               <div className="room-card-media" style={{ borderRadius: '12px 12px 0 0' }}>
-                <img src={room.img} alt={room.name} />
+                <img src={roomCardImg(room)} alt={room.name} />
               </div>
               <div className="room-card-body" style={{ padding: '1.1rem 1.15rem 1.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'start' }}>
@@ -1627,7 +1637,7 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
     <div className="room-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true">
       <div className="room-modal" onClick={e => e.stopPropagation()}>
         <div className="room-modal-img">
-          <img src={room.img} alt={room.name} />
+          <img src={roomCardImg(room)} alt={room.name} />
           <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close">
             <i className="fa-solid fa-xmark"></i>
           </button>
@@ -2027,7 +2037,7 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
                 </div>
               )}
               <div className="room-card-img">
-                <img src={room.img} alt={room.name} loading="lazy" />
+                <img src={roomCardImg(room)} alt={room.name} loading="lazy" />
               </div>
               <div className="room-card-body" style={{ padding: '1.15rem 1.25rem 1.25rem' }}>
                 <p className="room-card-name" style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>

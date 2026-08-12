@@ -472,6 +472,15 @@ function nextRoomNameFor(rooms, category) {
 
 /* requireName is false when adding: the name is derived from the category there, so
    there is no field for anyone to leave blank. The edit form still takes one. */
+/* A room with no photo of its own — every seeded room starts that way — would render
+   <img src=""> and leave a blank box in the table. Same stand-in the hotel site uses,
+   seeded by the room so it keeps the same photo between renders. */
+function roomCardImg(room) {
+  if (room && room.img) return room.img;
+  const seed = encodeURIComponent((room && (room.id || room.name)) || 'room');
+  return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
+}
+
 function validateRoomForm(form, requireName = true) {
   const errors = {};
   if (requireName && !String(form.name || '').trim()) errors.name = 'Room name is required.';
@@ -729,7 +738,7 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
                   <tr key={room.id}>
                     <td>
                       <img
-                        src={room.img}
+                        src={roomCardImg(room)}
                         alt={room.name}
                         style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 6, display: 'block', background: '#12110f' }}
                       />
@@ -899,7 +908,7 @@ function EditRoomModal({ room, onClose, onSaved }) {
     <div className="room-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="room-modal" onClick={e => e.stopPropagation()}>
         <div className="room-modal-img">
-          <img src={form.img || room.img} alt={room.name} />
+          <img src={form.img || roomCardImg(room)} alt={room.name} />
           <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close">
             <i className="fa-solid fa-xmark"></i>
           </button>
