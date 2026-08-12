@@ -796,7 +796,7 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
     if (!tableId) { if (onToast) onToast('Choose a table first.'); return; }
     if (!cartLines.length) { if (onToast) onToast('Add at least one item to the order.'); return; }
     setPlacing(true);
-    const items = cartLines.map(l => ({ menu_item_id: l.item.id, name: l.item.name, price: l.item.price, qty: l.qty }));
+    const items = cartLines.map(l => ({ menu_item_id: l.item.dbId, name: l.item.name, price: l.item.price, qty: l.qty }));
     const table = occupiedTables.find(t => String(t.id) === String(tableId));
     Promise.resolve(onPlaceOrder(tableId, items))
       .then(() => {
@@ -870,7 +870,7 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>{cartLines.length} item(s) · {formatPeso(cartTotal)}</span>
           <button type="button" className="btn-primary" disabled={placing || !tableId} onClick={placeOrder} style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}>
-            {placing ? 'Sending…' : 'Send to Kitchen'}
+            {placing ? 'Sending…' : 'Order Now'}
           </button>
         </div>
       )}
