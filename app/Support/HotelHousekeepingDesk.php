@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\ActivityLog;
 use App\Models\HotelBooking;
 use App\Models\HotelComplaint;
 use App\Models\HotelRoom;
