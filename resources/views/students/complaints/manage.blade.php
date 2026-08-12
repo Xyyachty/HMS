@@ -150,6 +150,12 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
   const [details, setDetails] = useState('');
   const [error, setError] = useState('');
 
+  /* Only rooms with a guest actually in them. A complaint comes from someone staying
+     in the room, so a vacant or merely-booked room is not a room to file against. */
+  const occupiedRooms = (rooms || []).filter(
+    r => r.reservation && r.reservation.status === 'Checked In'
+  );
+
   const pickCategory = (value) => {
     setCategory(value);
     if (!departmentTouched) setDepartment(categories[value] || 'maintenance');
@@ -188,23 +194,30 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.9rem' }}>
         <div>
           <label className="cx-field-label">Room</label>
-          {(rooms || []).length > 0 ? (
+          {occupiedRooms.length > 0 ? (
             <select className="booking-select" value={roomNumber} onChange={e => pickRoom(e.target.value)}>
               <option value="">Select a room…</option>
-              {rooms.map(room => (
+              {occupiedRooms.map(room => (
                 <option key={room.id} value={room.name}>
-                  {room.name} · {room.status}{room.reservation && room.reservation.fullName ? ` · ${room.reservation.fullName}` : ''}
+                  {room.name} · {room.reservation.fullName || 'Guest'}
                 </option>
               ))}
             </select>
           ) : (
-            <input
-              type="text"
-              className="booking-input"
-              placeholder="Room number"
-              value={roomNumber}
-              onChange={e => setRoomNumber(e.target.value)}
-            />
+            <>
+              {/* Nobody is checked in, but the desk can still take a complaint from a
+                  walk-in or a diner, so the field stays usable as free text. */}
+              <input
+                type="text"
+                className="booking-input"
+                placeholder="Room number"
+                value={roomNumber}
+                onChange={e => setRoomNumber(e.target.value)}
+              />
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
+                No guests are checked in right now.
+              </p>
+            </>
           )}
         </div>
 
