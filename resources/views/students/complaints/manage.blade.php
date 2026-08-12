@@ -274,6 +274,7 @@ function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
   const [note, setNote] = useState(complaint.resolutionNote || '');
   const [noteOpen, setNoteOpen] = useState(false);
   const otherDepartment = complaint.department === 'maintenance' ? 'housekeeping' : 'maintenance';
+  const isClosed = complaint.status === 'Resolved' || complaint.status === 'Cancelled';
 
   useEffect(() => { setNote(complaint.resolutionNote || ''); }, [complaint.resolutionNote]);
 
@@ -341,15 +342,19 @@ function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
                 <i className="fa-solid fa-pen" style={{ fontSize: '0.65rem', marginRight: 5 }}></i>
                 {complaint.resolutionNote ? 'Edit note' : 'Add note'}
               </button>
-              <button
-                type="button"
-                className="cx-tab"
-                title={`Hand this complaint to ${DEPARTMENT_LABELS[otherDepartment]}`}
-                onClick={() => onUpdate(complaint.id, { department: otherDepartment })}
-              >
-                <i className="fa-solid fa-right-left" style={{ fontSize: '0.65rem', marginRight: 5 }}></i>
-                Send to {DEPARTMENT_LABELS[otherDepartment]}
-              </button>
+              {/* A closed complaint cannot be handed over — that would reopen it,
+                  the same backward move the status pills forbid. */}
+              {!isClosed && (
+                <button
+                  type="button"
+                  className="cx-tab"
+                  title={`Hand this complaint to ${DEPARTMENT_LABELS[otherDepartment]}`}
+                  onClick={() => onUpdate(complaint.id, { department: otherDepartment })}
+                >
+                  <i className="fa-solid fa-right-left" style={{ fontSize: '0.65rem', marginRight: 5 }}></i>
+                  Send to {DEPARTMENT_LABELS[otherDepartment]}
+                </button>
+              )}
             </>
           )}
         </div>

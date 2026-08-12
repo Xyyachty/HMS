@@ -1539,15 +1539,21 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     'message' => 'Only ' . $complaint->departmentLabel() . ' staff can reassign this complaint.',
                 ], 403);
             }
+            // A closed complaint has nowhere to be handed to — reassigning one used to
+            // reopen it, which is the same backward move the status pills forbid.
+            if (in_array($complaint->status, ['Resolved', 'Cancelled'], true)) {
+                return response()->json([
+                    'message' => 'This complaint is already ' . $complaint->status . ' and cannot be reassigned.',
+                ], 422);
+            }
             $next = HotelComplaint::normalizeDepartment($data['department']);
             if ($next !== $complaint->department) {
                 $reassignedFrom = $complaint->department;
                 $complaint->department = $next;
-                // A handed-over complaint goes back on the new department's queue
-                // rather than arriving half-worked by someone else. Any note the
-                // first department left stays — it is what they found.
-                $complaint->status = 'Open';
-                $complaint->resolved_at = null;
+                // The status stays where the first department left it: status only ever
+                // moves forward, so a handed-over complaint cannot drop back to Open.
+                // handled_by clears because the new department has not worked it yet;
+                // any note the first department left stays — it is what they found.
                 $complaint->handled_by = null;
             }
         }
