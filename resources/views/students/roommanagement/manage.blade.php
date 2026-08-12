@@ -17,11 +17,9 @@
     font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent;
   }
-  .room-status-badge.status-available { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  /* Only the two booking-lifecycle tones are used now — see bookingStatusClass(). */
   .room-status-badge.status-reserved { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .room-status-badge.status-occupied { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
-  .room-status-badge.status-cleaning { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
-  .room-status-badge.status-maintenance { background: rgba(244,63,94,0.18); color: #fb7185; border-color: rgba(244,63,94,0.35); }
   .btn-primary {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: var(--accent); color: var(--bg);
@@ -160,20 +158,15 @@
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
-// Housekeeping condition only — occupancy lives on the booking (reservation.status),
-// not on the room's own status. See bookingStatusClass() below for that badge.
-const ROOM_STATUSES = ['Available', 'Cleaning', 'Maintenance'];
 const ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
 const BLOCK_HOURS = 12;
 const IMAGE_MAX_DIMENSION = 1280;
 const IMAGE_MAX_BYTES = 600 * 1024;
 
-function normalizeRoomStatus(value) {
-  const raw = String(value || 'Available').trim().toLowerCase();
-  const match = ROOM_STATUSES.find(s => s.toLowerCase() === raw);
-  return match || 'Available';
-}
-function roomStatusClass(status) { return 'status-' + normalizeRoomStatus(status).toLowerCase(); }
+/* hotel_rooms.status is not read on this page at all now: it is a housekeeping
+   condition (Available / Cleaning / Maintenance) that Housekeeping owns, and it
+   answered none of the questions Room Management asks here. Occupancy comes off
+   the booking (see bookingStatusClass) and availability off the calendar. */
 
 /* Booking-lifecycle badge (Booked / Checked In) — reuses the room-status-badge
    colours (purple/blue) for a different meaning now that hotel_rooms.status no
@@ -825,12 +818,13 @@ function RoomAvailabilityPanel({ rooms }) {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
           {filtered.map(room => {
-            const status = normalizeRoomStatus(room.status);
             return (
               <button key={room.id} type="button" className="room-browse-card" onClick={() => setSelectedRoomId(room.id)}>
+                {/* No status badge here: this section answers "which dates is this room
+                    free", and hotel_rooms.status is a housekeeping condition that says
+                    nothing about that. The calendar below is the answer. */}
                 <div style={{ position: 'relative', height: 120 }}>
                   <img src={room.img} alt={room.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                  <span className={`room-status-badge ${roomStatusClass(status)}`} style={{ position: 'absolute', top: 8, right: 8 }}>{status}</span>
                 </div>
                 <div style={{ padding: '0.75rem 0.9rem' }}>
                   <span style={{ display: 'block', fontSize: '0.62rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
@@ -863,12 +857,6 @@ function RoomAvailabilityPanel({ rooms }) {
               <h2 className="font-display" style={{ fontSize: '1.5rem', marginBottom: '1.1rem', color: 'var(--fg)' }}>{selectedRoom.name}</h2>
 
               <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.35rem' }}>
-                <div>
-                  <p style={fieldLabel}>Status</p>
-                  <span className={`room-status-badge ${roomStatusClass(normalizeRoomStatus(selectedRoom.status))}`} style={{ position: 'static' }}>
-                    {normalizeRoomStatus(selectedRoom.status)}
-                  </span>
-                </div>
                 <div>
                   <p style={fieldLabel}>Price</p>
                   <p style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.2rem', margin: 0 }}>
