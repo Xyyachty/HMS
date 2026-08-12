@@ -896,8 +896,10 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
 function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUpdateOrderStatus, onToast }) {
   const [orderType, setOrderType] = useState('room_service');
   const [filter, setFilter] = useState('Open');
+  const [page, setPage] = useState(1);
 
-  const changeOrderType = (next) => { setOrderType(next); setFilter('Open'); };
+  const changeOrderType = (next) => { setOrderType(next); setFilter('Open'); setPage(1); };
+  const changeFilter = (next) => { setFilter(next); setPage(1); };
 
   const typedOrders = (orders || [])
     .filter(o => (orderType === 'dine_in' ? o.orderType === 'dine_in' : o.orderType !== 'dine_in'))
@@ -912,6 +914,13 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
   const openCount = typedOrders.filter(o => OPEN_ORDER_STATUSES.indexOf(o.status) !== -1).length;
   const filters = ['Open', 'All', ...ORDER_FLOW.slice(1), 'Cancelled'];
   const tableFor = (id) => (tables || []).find(t => t.id === id);
+
+  // safePage rather than page: switching to a filter with fewer orders must not
+  // strand the view on a page that no longer exists.
+  const PER_PAGE = 5;
+  const totalPages = Math.max(1, Math.ceil(visible.length / PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const pageOrders = visible.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
   const move = (order, status) => {
     Promise.resolve(onUpdateOrderStatus(order.id, status))
@@ -945,7 +954,7 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
 
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
         {filters.map(f => (
-          <button key={f} type="button" className={`tb-tab ${filter === f ? 'is-active' : ''}`} onClick={() => setFilter(f)}>{f}</button>
+          <button key={f} type="button" className={`tb-tab ${filter === f ? 'is-active' : ''}`} onClick={() => changeFilter(f)}>{f}</button>
         ))}
       </div>
 
@@ -955,13 +964,51 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
           <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.85rem' }}>No orders in this view.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-          {visible.map(order => (
-            orderType === 'dine_in'
-              ? <DineInOrderCard key={order.id} order={order} table={tableFor(order.tableId)} onMove={move} />
-              : <RoomServiceOrderCard key={order.id} order={order} onMove={move} />
-          ))}
-        </div>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', alignItems: 'stretch' }}>
+            {pageOrders.map(order => (
+              orderType === 'dine_in'
+                ? <DineInOrderCard key={order.id} order={order} table={tableFor(order.tableId)} onMove={move} />
+                : <RoomServiceOrderCard key={order.id} order={order} onMove={move} />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--fg-muted)' }}>
+                Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, visible.length)} of {visible.length}
+              </span>
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === 1 ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === 1 ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === 1 ? 0.4 : 1 }}
+                >
+                  <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setPage(n)}
+                    style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid ' + (n === safePage ? 'var(--accent)' : 'var(--border)'), background: n === safePage ? 'var(--accent)' : 'transparent', color: n === safePage ? 'var(--bg)' : 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: n === safePage ? 700 : 400 }}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === totalPages ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === totalPages ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === totalPages ? 0.4 : 1 }}
+                >
+                  <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
