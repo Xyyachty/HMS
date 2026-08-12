@@ -75,18 +75,15 @@
                 @elseif(($builderRole ?? null) === 'room_management')
                 <a href="{{ route('students.roommanagement.manage', ['nav' => 'manage-room']) }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
-                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.manage') && request()->query('nav', 'manage-room') === 'manage-room' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    {{-- Anything that is not Guest Details lands on Manage Room now, including
+                         the retired ?nav=rooms, so this highlights for all of it. --}}
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.manage') && request()->query('nav') !== 'guest-details' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-bed text-[13px] text-emerald-400"></i> Manage Room
                 </a>
                 <a href="{{ route('students.roommanagement.manage', ['nav' => 'guest-details']) }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.manage') && request()->query('nav') === 'guest-details' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-user text-[13px] text-emerald-400"></i> Guest Details
-                </a>
-                <a href="{{ route('students.roommanagement.manage', ['nav' => 'rooms']) }}"
-                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
-                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.manage') && request()->query('nav') === 'rooms' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
-                    <i class="fas fa-calendar-days text-[13px] text-emerald-400"></i> Room Availability
                 </a>
                 @elseif(($builderRole ?? null) === 'restaurant_management')
                 <a href="{{ route('students.restaurant.manage', ['nav' => 'manage-menu']) }}"

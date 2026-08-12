@@ -448,11 +448,26 @@ function validateRoomForm(form) {
   return errors;
 }
 
-function ManageRoomPanel({ onSubmit, onCancel, onCloseModal }) {
+function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal }) {
   const [form, setForm] = useState(createEmptyRoomForm);
   const [errors, setErrors] = useState({});
   const [imgPreview, setImgPreview] = useState('');
   const [saving, setSaving] = useState(false);
+  // The inventory list that used to be its own Room Availability section. Adding a
+  // room and looking one up are the same job, so they share a screen now.
+  const [tab, setTab] = useState('All');
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
+
+  const list = rooms || [];
+  const tabs = ['All', ...ROOM_CATEGORIES];
+  const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
+  const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setSelectedRoomId(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   const fieldLabel = {
     fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -541,12 +556,12 @@ function ManageRoomPanel({ onSubmit, onCancel, onCloseModal }) {
   );
 
   return (
-    <div className="rm-panel">
+    <div className="rm-panel" style={{ maxWidth: '100%' }}>
       <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Inventory</p>
       <h3>Manage Room</h3>
-      <p className="rm-panel-desc">Add a new room to the hotel inventory. It will appear in the Rooms section right away.</p>
+      <p className="rm-panel-desc">Add a new room to the hotel inventory, and browse every room already in it.</p>
 
-      <form onSubmit={handleSubmit} className="rm-form-grid" noValidate>
+      <form onSubmit={handleSubmit} className="rm-form-grid" noValidate style={{ maxWidth: 520 }}>
         <div>
           <label style={fieldLabel}>Room Name *</label>
           <input
@@ -629,6 +644,84 @@ function ManageRoomPanel({ onSubmit, onCancel, onCloseModal }) {
           <button type="button" className="btn-outline" onClick={handleCancel} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>Cancel</button>
         </div>
       </form>
+
+      <div style={{ marginTop: '2.25rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+        <h3 style={{ margin: '0 0 0.35rem' }}>All Rooms</h3>
+        <p className="rm-panel-desc">Every room in the hotel. Open one to see which dates are already booked.</p>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.15rem' }}>
+          {tabs.map(t => {
+            const count = t === 'All' ? list.length : list.filter(r => normalizeRoomCategory(r.category || r.label) === t).length;
+            return (
+              <button key={t} type="button" onClick={() => setTab(t)} className={`room-card-tab${tab === t ? ' active' : ''}`}>
+                {t} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        {filtered.length === 0 ? (
+          <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', padding: '1.5rem 0', textAlign: 'center' }}>
+            {list.length === 0 ? 'No rooms yet. Add the first one above.' : 'No rooms in this category yet.'}
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+            {filtered.map(room => (
+              <button key={room.id} type="button" className="room-browse-card" onClick={() => setSelectedRoomId(room.id)}>
+                <div style={{ position: 'relative', height: 120 }}>
+                  <img src={room.img} alt={room.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                </div>
+                <div style={{ padding: '0.75rem 0.9rem' }}>
+                  <span style={{ display: 'block', fontSize: '0.62rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+                    {room.label || room.category}
+                  </span>
+                  <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 600, fontSize: '0.9rem' }}>{room.name}</span>
+                  <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '0.9rem', marginTop: 4 }}>
+                    {formatPeso(room.price)}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selectedRoom && (
+        <div className="room-modal-overlay" onClick={() => setSelectedRoomId(null)} role="dialog" aria-modal="true">
+          <div className="room-modal" onClick={e => e.stopPropagation()}>
+            <div className="room-modal-img">
+              <img src={selectedRoom.img} alt={selectedRoom.name} />
+              <button type="button" className="room-modal-close" onClick={() => setSelectedRoomId(null)} aria-label="Close">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                {selectedRoom.label || selectedRoom.category || 'Room'}
+              </p>
+              <h2 className="font-display" style={{ fontSize: '1.5rem', marginBottom: '1.1rem', color: 'var(--fg)' }}>{selectedRoom.name}</h2>
+
+              <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.35rem' }}>
+                <div>
+                  <p style={fieldLabel}>Price</p>
+                  <p style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.2rem', margin: 0 }}>
+                    {formatPeso(selectedRoom.price)}
+                  </p>
+                </div>
+                <div>
+                  <p style={fieldLabel}>Description</p>
+                  <p style={{ color: 'var(--fg-muted)', fontSize: '0.86rem', lineHeight: 1.6, margin: 0 }}>
+                    {selectedRoom.desc || 'No description yet.'}
+                  </p>
+                </div>
+              </div>
+
+              <p style={{ ...fieldLabel, marginBottom: '0.5rem' }}>Availability</p>
+              <RoomAvailabilityCalendar ranges={selectedRoom.bookedRanges} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -778,109 +871,6 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   );
 }
 
-/* Browse the inventory and check a room's open dates — the same calendar
-   Front Desk sees on the hotel site's Rooms page, minus the reservation flow
-   Room Management doesn't do. */
-function RoomAvailabilityPanel({ rooms }) {
-  const list = rooms || [];
-  const [tab, setTab] = useState('All');
-  const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const tabs = ['All', ...ROOM_CATEGORIES];
-  const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
-  const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
-  const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
-
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') setSelectedRoomId(null); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
-
-  return (
-    <div className="rm-panel" style={{ maxWidth: '100%' }}>
-      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Inventory</p>
-      <h3>Room Availability</h3>
-      <p className="rm-panel-desc">Browse every room in the hotel and check which dates are already booked.</p>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.15rem' }}>
-        {tabs.map(t => {
-          const count = t === 'All' ? list.length : list.filter(r => normalizeRoomCategory(r.category || r.label) === t).length;
-          return (
-            <button key={t} type="button" onClick={() => setTab(t)} className={`room-card-tab${tab === t ? ' active' : ''}`}>
-              {t} ({count})
-            </button>
-          );
-        })}
-      </div>
-
-      {filtered.length === 0 ? (
-        <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', padding: '1.5rem 0', textAlign: 'center' }}>No rooms in this category yet.</p>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-          {filtered.map(room => {
-            return (
-              <button key={room.id} type="button" className="room-browse-card" onClick={() => setSelectedRoomId(room.id)}>
-                {/* No status badge here: this section answers "which dates is this room
-                    free", and hotel_rooms.status is a housekeeping condition that says
-                    nothing about that. The calendar below is the answer. */}
-                <div style={{ position: 'relative', height: 120 }}>
-                  <img src={room.img} alt={room.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                </div>
-                <div style={{ padding: '0.75rem 0.9rem' }}>
-                  <span style={{ display: 'block', fontSize: '0.62rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
-                    {room.label || room.category}
-                  </span>
-                  <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 600, fontSize: '0.9rem' }}>{room.name}</span>
-                  <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '0.9rem', marginTop: 4 }}>
-                    {formatPeso(room.price)}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {selectedRoom && (
-        <div className="room-modal-overlay" onClick={() => setSelectedRoomId(null)} role="dialog" aria-modal="true">
-          <div className="room-modal" onClick={e => e.stopPropagation()}>
-            <div className="room-modal-img">
-              <img src={selectedRoom.img} alt={selectedRoom.name} />
-              <button type="button" className="room-modal-close" onClick={() => setSelectedRoomId(null)} aria-label="Close">
-                <i className="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-                {selectedRoom.label || selectedRoom.category || 'Room'}
-              </p>
-              <h2 className="font-display" style={{ fontSize: '1.5rem', marginBottom: '1.1rem', color: 'var(--fg)' }}>{selectedRoom.name}</h2>
-
-              <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.35rem' }}>
-                <div>
-                  <p style={fieldLabel}>Price</p>
-                  <p style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.2rem', margin: 0 }}>
-                    {formatPeso(selectedRoom.price)}
-                  </p>
-                </div>
-                <div>
-                  <p style={fieldLabel}>Description</p>
-                  <p style={{ color: 'var(--fg-muted)', fontSize: '0.86rem', lineHeight: 1.6, margin: 0 }}>
-                    {selectedRoom.desc || 'No description yet.'}
-                  </p>
-                </div>
-              </div>
-
-              <p style={{ ...fieldLabel, marginBottom: '0.5rem' }}>Availability</p>
-              <RoomAvailabilityCalendar ranges={selectedRoom.bookedRanges} />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
@@ -903,14 +893,13 @@ function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onBookingAct
 
       <div className="rm-row">
         <div className="rm-content">
-          {activeNav === 'manage-room' && (
-            <ManageRoomPanel onSubmit={handleAddRoom} onCancel={onBack} onCloseModal={() => {}} />
-          )}
-          {activeNav === 'guest-details' && (
+          {activeNav === 'guest-details' ? (
             <GuestDetailsPanel rooms={rooms} onBookingAction={onBookingAction} onToast={onToast} />
-          )}
-          {activeNav === 'rooms' && (
-            <RoomAvailabilityPanel rooms={rooms} />
+          ) : (
+            // Manage Room is the fallback: ?nav=rooms was the old Room Availability
+            // section, whose room list lives here now, so an old link still lands
+            // somewhere sensible instead of on a blank panel.
+            <ManageRoomPanel rooms={rooms} onSubmit={handleAddRoom} onCancel={onBack} onCloseModal={() => {}} />
           )}
         </div>
       </div>
