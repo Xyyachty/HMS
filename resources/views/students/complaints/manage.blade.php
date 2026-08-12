@@ -194,31 +194,23 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.9rem' }}>
         <div>
           <label className="cx-field-label">Room</label>
-          {occupiedRooms.length > 0 ? (
-            <select className="booking-select" value={roomNumber} onChange={e => pickRoom(e.target.value)}>
-              <option value="">Select a room…</option>
-              {occupiedRooms.map(room => (
-                <option key={room.id} value={room.name}>
-                  {room.name} · {room.reservation.fullName || 'Guest'}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <>
-              {/* Nobody is checked in, but the desk can still take a complaint from a
-                  walk-in or a diner, so the field stays usable as free text. */}
-              <input
-                type="text"
-                className="booking-input"
-                placeholder="Room number"
-                value={roomNumber}
-                onChange={e => setRoomNumber(e.target.value)}
-              />
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                No guests are checked in right now.
-              </p>
-            </>
-          )}
+          {/* Always a dropdown. With nobody checked in there is no room to complain
+              from, so it disables and says so rather than turning into a text box. */}
+          <select
+            className="booking-select"
+            value={roomNumber}
+            onChange={e => pickRoom(e.target.value)}
+            disabled={occupiedRooms.length === 0}
+          >
+            <option value="">
+              {occupiedRooms.length === 0 ? 'No checked-in guests' : 'Select a room…'}
+            </option>
+            {occupiedRooms.map(room => (
+              <option key={room.id} value={room.name}>
+                {room.name} · {room.reservation.fullName || 'Guest'}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
