@@ -869,7 +869,7 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
       {cartLines.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>{cartLines.length} item(s) · {formatPeso(cartTotal)}</span>
-          <button type="button" className="btn-primary" disabled={placing || !tableId} onClick={placeOrder} style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}>
+          <button type="button" className="btn-primary" disabled={placing} onClick={placeOrder} style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}>
             {placing ? 'Sending…' : 'Order Now'}
           </button>
         </div>
