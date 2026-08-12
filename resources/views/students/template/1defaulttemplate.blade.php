@@ -1850,16 +1850,24 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
                       readOnly={paymentForm.type === 'full'}
                       required
                     />
-                    {paymentForm.type === 'partial' && (
-                      <p style={{ margin: '0.4rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                        Remaining balance: {formatPeso(Math.max(0, totalDue - (parseFloat(paymentForm.amount) || 0)))}
-                      </p>
-                    )}
+                    {/* Shown for both types: a full payment settles the stay, and saying
+                        so as a plain 0.00 is what tells the desk it is settled. */}
+                    <p style={{ margin: '0.4rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
+                      Remaining balance: {formatPeso(Math.max(0, totalDue - (
+                        paymentForm.type === 'full' ? totalDue : (parseFloat(paymentForm.amount) || 0)
+                      )))}
+                    </p>
                   </div>
 
                   <div>
                     <label style={fieldLabel}>Payment Method</label>
-                    <select className="booking-input" value={paymentForm.method} onChange={e => updatePayment('method', e.target.value)} required>
+                    <select className="booking-input" value={paymentForm.method} onChange={e => {
+                      const method = e.target.value;
+                      updatePayment('method', method);
+                      // Drop a reference typed under GCash before switching to Cash;
+                      // the field is hidden then, so it must not submit unseen.
+                      if (method === 'Cash') updatePayment('reference', '');
+                    }} required>
                       <option value="Cash">Cash</option>
                       <option value="Credit Card">Credit Card</option>
                       <option value="Debit Card">Debit Card</option>
@@ -1875,11 +1883,16 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
                       onChange={e => updatePayment('payerName', e.target.value)} required />
                   </div>
 
-                  <div>
-                    <label style={fieldLabel}>Reference / Transaction ID</label>
-                    <input type="text" className="booking-input" placeholder="Receipt no., card last 4, or ref #" value={paymentForm.reference}
-                      onChange={e => updatePayment('reference', e.target.value)} required={paymentForm.method !== 'Cash'} />
-                  </div>
+                  {/* Cash has nothing to reference — no receipt no., card digits or
+                      transaction id — so the field is not shown rather than sitting
+                      there empty and optional. */}
+                  {paymentForm.method !== 'Cash' && (
+                    <div>
+                      <label style={fieldLabel}>Reference / Transaction ID</label>
+                      <input type="text" className="booking-input" placeholder="Receipt no., card last 4, or ref #" value={paymentForm.reference}
+                        onChange={e => updatePayment('reference', e.target.value)} required />
+                    </div>
+                  )}
 
                   <div>
                     <label style={fieldLabel}>Payment Notes</label>
