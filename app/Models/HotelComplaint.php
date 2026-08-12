@@ -48,6 +48,7 @@ class HotelComplaint extends Model
         'group_name',
         'faculty_id',
         'group_id',
+        'hotel_room_inspection_id',
         'room_number',
         'guest_name',
         'category',
@@ -114,6 +115,7 @@ class HotelComplaint extends Model
         // "id" here is the front-end's key for a complaint, not the column name.
         return [
             'id'              => $this->hotel_complaint_id,
+            'inspectionId'    => $this->hotel_room_inspection_id,
             'roomNumber'      => $this->room_number,
             'guestName'       => $this->guest_name ?? '',
             'category'        => $this->category,

@@ -932,6 +932,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'That booking is already closed.'], 409);
         }
 
+        // Payment Completed is a real precondition for check-out, not just a browser
+        // confirm — a room only reaches Housekeeping once the bill is settled.
+        if ($action === 'check_out' && $booking->outstanding() > 0) {
+            return response()->json([
+                'message' => 'Settle the bill before checking the guest out. Outstanding: PHP '
+                    . number_format($booking->outstanding(), 2),
+            ], 422);
+        }
+
         switch ($action) {
             case 'arrive':
                 \App\Support\HotelBookingDesk::markArrived($booking);
@@ -1566,10 +1575,123 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 'Marked the room ' . $complaint->room_number . ' complaint ('
                     . $complaint->category . ') as ' . $complaint->status . '.'
             );
+
+            // Housekeeping's pass paused for this issue — see whether it can now
+            // move on to a final re-inspection.
+            \App\Support\HotelHousekeepingDesk::onIssueClosed($complaint, auth()->user());
         }
 
         return response()->json(['complaint' => $complaint->toTemplateArray()]);
     })->name('hotel.complaints.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Housekeeping inspections (opened automatically on check-out)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/hotel/inspections', function (Request $request) {
+        $membership = \App\Support\HotelHousekeepingAccess::membership();
+        if (!$membership) {
+            return response()->json([
+                'inspections' => [],
+                'can_inspect' => false,
+                'findings'    => \App\Models\HotelRoomInspection::FINDINGS,
+                'statuses'    => \App\Models\HotelRoomInspection::STATUSES,
+                'categories'  => HotelComplaint::CATEGORY_DEPARTMENTS,
+            ]);
+        }
+
+        $inspections = \App\Models\HotelRoomInspection::with(['room', 'complaints'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderByDesc('hotel_room_inspection_id')
+            ->limit(200)
+            ->get()
+            ->map(fn ($inspection) => $inspection->toTemplateArray());
+
+        return response()->json([
+            'inspections' => $inspections,
+            'can_inspect' => \App\Support\HotelHousekeepingAccess::canInspect($membership),
+            'findings'    => \App\Models\HotelRoomInspection::FINDINGS,
+            'statuses'    => \App\Models\HotelRoomInspection::STATUSES,
+            'categories'  => HotelComplaint::CATEGORY_DEPARTMENTS,
+        ]);
+    })->name('hotel.inspections.index');
+
+    Route::patch('/hotel/inspections/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelHousekeepingAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelHousekeepingAccess::canInspect($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can update an inspection.'], 403);
+        }
+
+        $inspection = \App\Models\HotelRoomInspection::where('hotel_room_inspection_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'action'  => ['required', 'string', Rule::in(['start', 'record', 'complete'])],
+            'finding' => ['sometimes', 'nullable', 'string', Rule::in(array_keys(\App\Models\HotelRoomInspection::FINDINGS))],
+            'notes'   => 'sometimes|nullable|string|max:2000',
+        ]);
+
+        $actor = auth()->user();
+        $by = $actor?->name;
+
+        try {
+            switch ($data['action']) {
+                case 'start':
+                    \App\Support\HotelHousekeepingDesk::startInspection($inspection, $by);
+                    break;
+                case 'record':
+                    if (empty($data['finding'])) {
+                        return response()->json(['message' => 'Choose what you found before saving.'], 422);
+                    }
+                    \App\Support\HotelHousekeepingDesk::recordFinding($inspection, $data['finding'], $data['notes'] ?? null, $by);
+                    break;
+                case 'complete':
+                    \App\Support\HotelHousekeepingDesk::complete($inspection, $by, $actor);
+                    break;
+            }
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['inspection' => $inspection->fresh(['room', 'complaints'])->toTemplateArray()]);
+    })->name('hotel.inspections.update');
+
+    Route::post('/hotel/inspections/{id}/issues', function (Request $request, $id) {
+        $membership = \App\Support\HotelHousekeepingAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelHousekeepingAccess::canInspect($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can report an issue.'], 403);
+        }
+
+        $inspection = \App\Models\HotelRoomInspection::where('hotel_room_inspection_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        if (!in_array($inspection->status, ['Pending', 'Inspecting', 'Awaiting Re-inspection'], true)) {
+            return response()->json(['message' => 'This inspection already has an issue awaiting Maintenance.'], 409);
+        }
+
+        $data = $request->validate([
+            'category'   => 'nullable|string|max:100',
+            'department' => 'nullable|string|max:50',
+            'details'    => 'required|string|max:2000',
+        ]);
+
+        \App\Support\HotelHousekeepingDesk::reportIssue($inspection, $data, auth()->user());
+
+        return response()->json(['inspection' => $inspection->fresh(['room', 'complaints'])->toTemplateArray()], 201);
+    })->name('hotel.inspections.issues.store');
 
     // One page, three doors: each role opens it from its own module so the shell
     // keeps that role's theme, sidebar and Back target.
@@ -1789,5 +1911,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.housekeeping', $data);
     })->name('housekeeping');
+
+    Route::get('/housekeeping/inspections', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
+        return view('students.housekeeping.inspections', $data);
+    })->name('housekeeping.inspections');
 });
 

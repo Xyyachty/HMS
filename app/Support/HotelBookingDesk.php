@@ -178,6 +178,11 @@ class HotelBookingDesk
 
             self::setRoomStatus($booking->room, $roomStatus ?? self::ROOM_STATUS_ON['check_out']);
 
+            // Housekeeping's pass starts the moment the stay ends, in the same
+            // transaction, so a freed room can never exist without a queue entry for
+            // it. openInspection() no-ops if one is already open for this room.
+            HotelHousekeepingDesk::openInspection($booking);
+
             return $booking;
         });
     }

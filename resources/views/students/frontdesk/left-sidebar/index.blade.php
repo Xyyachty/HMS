@@ -57,10 +57,15 @@
                     <i class="fas fa-screwdriver-wrench text-[13px] text-emerald-400"></i> Complaints / Concerns
                 </a>
                 @elseif(($builderRole ?? null) === 'housekeeping')
+                <a href="{{ route('students.housekeeping.inspections') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.housekeeping.inspections') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-broom text-[13px] text-emerald-400"></i> Room Inspections
+                </a>
                 <a href="{{ route('students.housekeeping.complaints') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.housekeeping.complaints') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
-                    <i class="fas fa-broom text-[13px] text-emerald-400"></i> Complaints / Concerns
+                    <i class="fas fa-comment-dots text-[13px] text-emerald-400"></i> Complaints / Concerns
                 </a>
                 @elseif(($builderRole ?? null) === 'room_management')
                 <a href="{{ route('students.roommanagement.manage', ['nav' => 'manage-room']) }}"

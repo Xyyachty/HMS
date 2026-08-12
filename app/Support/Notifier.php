@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\FacultyClass;
 use App\Models\HotelComplaint;
 use App\Models\HotelDineInTable;
+use App\Models\HotelRoomInspection;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\Task;
@@ -458,6 +459,75 @@ class Notifier
             ($table->guest_name ? $table->guest_name . ' ' : 'A guest ')
                 . '(party of ' . $table->party_size . ') is waiting to order.',
             route('students.restaurant.manage', ['nav' => 'manage-tables']),
+            $actor
+        );
+    }
+
+    /**
+     * A stay ended and the room needs the post-checkout pass. No actor: check-out can
+     * be Front Desk settling the bill or a room-status flip, and either way this is
+     * addressed to Housekeeping, not credited to whoever triggered it.
+     */
+    public static function roomAwaitingInspection(HotelRoomInspection $inspection): void
+    {
+        static::push(
+            static::teamRoleUserIds($inspection->group_name, (int) $inspection->faculty_id, ['housekeeping']),
+            UserNotification::ROOM_INSPECTION,
+            'Room ready to inspect · ' . $inspection->room_name,
+            ($inspection->guest_name ? $inspection->guest_name . ' checked out. ' : 'A guest checked out. ')
+                . 'The room needs a housekeeping pass before it can be sold again.',
+            route('students.housekeeping.inspections'),
+            null
+        );
+    }
+
+    /**
+     * Maintenance closed every issue this inspection raised. Housekeeping does the
+     * final look before the room goes back on sale — PROCEDURES.md's "conduct a final
+     * inspection after repair".
+     */
+    public static function roomAwaitingReinspection(HotelRoomInspection $inspection): void
+    {
+        static::push(
+            static::teamRoleUserIds($inspection->group_name, (int) $inspection->faculty_id, ['housekeeping']),
+            UserNotification::ROOM_INSPECTION,
+            'Repair done, re-inspect · ' . $inspection->room_name,
+            'Maintenance closed the reported issue. Give the room a final look before marking it ready.',
+            route('students.housekeeping.inspections'),
+            null
+        );
+    }
+
+    /**
+     * Housekeeping cleared the room. The Front Desk is the only audience — they are
+     * the ones who sell it next.
+     */
+    public static function roomReadyForNextGuest(HotelRoomInspection $inspection): void
+    {
+        static::push(
+            static::teamRoleUserIds($inspection->group_name, (int) $inspection->faculty_id, ['front_desk']),
+            UserNotification::ROOM_READY,
+            'Room ready · ' . $inspection->room_name,
+            'Housekeeping finished inspecting and cleaning. The room is available for the next guest.',
+            route('students.frontdesk.verify-guest'),
+            null
+        );
+    }
+
+    /**
+     * Housekeeping found something missing from the room. The Front Desk hears about
+     * it separately from the maintenance complaint itself — they are the ones who
+     * would decide whether to follow up with the guest who checked out.
+     */
+    public static function inspectionItemsMissing(?User $actor, HotelRoomInspection $inspection, HotelComplaint $complaint): void
+    {
+        static::push(
+            static::teamRoleUserIds($inspection->group_name, (int) $inspection->faculty_id, ['front_desk']),
+            UserNotification::ROOM_INSPECTION,
+            'Items missing · ' . $inspection->room_name,
+            'Housekeeping reported missing items after ' . ($inspection->guest_name ?: 'the last guest') . '\'s stay: '
+                . $complaint->details,
+            route('students.frontdesk.verify-guest'),
             $actor
         );
     }
