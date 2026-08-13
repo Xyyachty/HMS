@@ -892,14 +892,20 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gap: '0.4rem', maxHeight: 220, overflowY: 'auto', marginBottom: '0.85rem' }}>
+      <div style={{ display: 'grid', gap: '0.4rem', maxHeight: 340, overflowY: 'auto', marginBottom: '0.85rem' }}>
         {menuList.length === 0 && (
           <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem' }}>No menu items in this category.</p>
         )}
         {menuList.map(item => (
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem' }}>
+            {/* Whoever is taking the order picks the dish by sight, so the photo comes
+                before the name — same thumbnail the Manage Menu list uses. */}
+            <img src={menuFoodImg(item)} alt="" style={{ width: 52, height: 40, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: '#12110f' }} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ margin: 0, color: 'var(--fg)', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
+              {item.sub ? (
+                <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sub}</p>
+              ) : null}
               <p style={{ margin: 0, color: 'var(--accent-light)', fontSize: '0.74rem' }}>{formatPeso(item.price)}</p>
             </div>
             {item.stock <= 0 ? (
