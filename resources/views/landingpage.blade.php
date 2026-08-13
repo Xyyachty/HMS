@@ -314,7 +314,7 @@
       <div class="flex items-center gap-3">
         <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System" class="h-10 w-auto object-contain" />
         <div>
-          <p id="loginDrawerTitle" class="text-white font-bold text-lg leading-tight">Welcome back</p>
+          <p id="loginDrawerTitle" class="text-white font-bold text-lg leading-tight">Welcome</p>
           <p class="text-white/70 text-xs">Log in to your Hotel Management System account</p>
         </div>
       </div>
