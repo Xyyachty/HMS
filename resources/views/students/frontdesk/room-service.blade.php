@@ -117,7 +117,7 @@ function RoomServicePage({ orders, onBack }) {
   ));
 
   const movingCount = roomServiceOrders.filter(o => o.status === 'Ready' || o.status === 'Delivering').length;
-  const filters = ['Open', 'All', ...ORDER_FLOW, 'Cancelled'];
+  const filters = ['Open', 'All', ...ORDER_FLOW];
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem' }}>
@@ -175,11 +175,14 @@ function RoomServicePage({ orders, onBack }) {
                 </dl>
 
                 <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
+                  {/* Completed is the only way a room-service order ends now. Cancelled
+                      is kept for the one order cancelled under the old rule, which would
+                      otherwise read as delivered. */}
                   {order.status === 'Preparing' ? 'The kitchen is cooking it.'
                     : order.status === 'Ready' ? 'Plated. The kitchen is about to bring it up.'
                     : order.status === 'Delivering' ? 'On the way to the guest’s room.'
-                    : order.status === 'Completed' ? 'Delivered and closed. Charged to the guest’s bill.'
-                    : 'Cancelled — the portions went back to stock.'}
+                    : order.status === 'Cancelled' ? 'Cancelled — the portions went back to stock.'
+                    : 'Delivered and closed. Charged to the guest’s bill.'}
                 </p>
               </div>
             ))}

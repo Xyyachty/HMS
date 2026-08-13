@@ -956,7 +956,9 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
   ));
 
   const openCount = typedOrders.filter(o => OPEN_ORDER_STATUSES.indexOf(o.status) !== -1).length;
-  const filters = ['Open', 'All', ...ORDER_FLOW, 'Cancelled'];
+  // Only dine-in can be cancelled, so only the dine-in tab offers the filter — on
+  // room service it would never match anything.
+  const filters = ['Open', 'All', ...ORDER_FLOW, ...(orderType === 'dine_in' ? ['Cancelled'] : [])];
   const tableFor = (id) => (tables || []).find(t => t.id === id);
 
   // safePage rather than page: switching to a filter with fewer orders must not
