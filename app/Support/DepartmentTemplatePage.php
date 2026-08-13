@@ -15,7 +15,7 @@ class DepartmentTemplatePage
     {
         $student = $authUser->student;
         $groupMembership = $student
-            ? StudentGroup::with(['student.user', 'roles'])->where('student_id', $student->id)->first()
+            ? StudentGroup::with(['student.user', 'roles'])->where('student_id', $student->student_id)->first()
             : null;
 
         $facultyId = $groupMembership?->faculty_id;
@@ -39,8 +39,9 @@ class DepartmentTemplatePage
                     ])));
                     $displayName = $displayName !== '' ? $displayName : ($user?->name ?? 'Student');
 
+                    // "id" is the member shape the department Blade views read.
                     return (object) [
-                        'id' => $user?->id,
+                        'id' => $user?->user_id,
                         'name' => $displayName,
                         'email' => $user?->email,
                         'roles' => $member->roles->pluck('role')->toArray(),
@@ -52,6 +53,13 @@ class DepartmentTemplatePage
                 'members' => $groupMembers,
             ];
         }
+
+        // Badge on the Guest Details sidebar item. Only Room Management sees that item,
+        // so nobody else pays for the count. The sidebar's poll keeps it fresh after
+        // this first paint — see syncGuestDetailsBadge() in builder/ops-shell.
+        $guestDetailsPending = $groupMembership && $role === 'room_management'
+            ? HotelBookingDesk::scopedQuery($groupMembership)->awaitingCheckIn()->count()
+            : 0;
 
         $tasks = $facultyId
             ? Task::where('faculty_id', $facultyId)->where('role', $role)->where('status', 'active')->get()
@@ -111,7 +119,8 @@ class DepartmentTemplatePage
             'templatePayload',
             'canEditTemplate',
             'editablePages',
-            'preferredPage'
+            'preferredPage',
+            'guestDetailsPending'
         ) + ['builderRole' => $role];
     }
 }

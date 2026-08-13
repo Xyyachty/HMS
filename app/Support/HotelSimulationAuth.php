@@ -27,6 +27,7 @@ class HotelSimulationAuth
         return [
             'group_name' => (string) $membership->group_name,
             'faculty_id' => (int) $membership->faculty_id,
+            'group_id' => $membership->group_id,
             'membership' => $membership,
         ];
     }
@@ -82,7 +83,7 @@ class HotelSimulationAuth
             return ['ok' => false, 'error' => 'Join a hotel team first before staff login.', 'status' => 422];
         }
 
-        $staffUser = User::where('email', $email)->first();
+        $staffUser = User::whereEmail($email)->first();
         if (!$staffUser || !Hash::check($password, $staffUser->password)) {
             return ['ok' => false, 'error' => 'Invalid staff email or password.', 'status' => 401];
         }
@@ -93,7 +94,7 @@ class HotelSimulationAuth
         }
 
         $membership = StudentGroup::with('roles')
-            ->where('student_id', $student->id)
+            ->where('student_id', $student->student_id)
             ->where('group_name', $ctx['group_name'])
             ->where('faculty_id', $ctx['faculty_id'])
             ->first();
@@ -122,8 +123,8 @@ class HotelSimulationAuth
 
         $auth = [
             'type' => 'staff',
-            'user_id' => $staffUser->id,
-            'student_id' => $student->id,
+            'user_id' => $staffUser->user_id,
+            'student_id' => $student->student_id,
             'name' => $name,
             'email' => $staffUser->email,
             'editable_pages' => $editablePages,
@@ -156,11 +157,11 @@ class HotelSimulationAuth
         }
 
         // Block using a team staff email as customer (keeps roles clear)
-        $staffEmail = User::where('email', $email)->whereHas('student')->exists();
+        $staffEmail = User::whereEmail($email)->whereHas('student')->exists();
         if ($staffEmail) {
             $onTeam = StudentGroup::where('group_name', $ctx['group_name'])
                 ->where('faculty_id', $ctx['faculty_id'])
-                ->whereHas('student.user', fn ($q) => $q->where('email', $email))
+                ->whereHas('student.user', fn ($q) => $q->whereEmail($email))
                 ->exists();
             if ($onTeam) {
                 return ['ok' => false, 'error' => 'That email belongs to hotel staff. Use Staff login instead.', 'status' => 422];
@@ -170,6 +171,7 @@ class HotelSimulationAuth
         $customer = HotelCustomer::create([
             'group_name' => $ctx['group_name'],
             'faculty_id' => $ctx['faculty_id'],
+            'group_id' => $ctx['group_id'],
             'name' => trim($name),
             'email' => $email,
             'password' => Hash::make($password),
@@ -177,7 +179,7 @@ class HotelSimulationAuth
 
         $auth = [
             'type' => 'customer',
-            'customer_id' => $customer->id,
+            'customer_id' => $customer->hotel_customer_id,
             'name' => $customer->name,
             'email' => $customer->email,
             'editable_pages' => [],
@@ -209,7 +211,7 @@ class HotelSimulationAuth
 
         $auth = [
             'type' => 'customer',
-            'customer_id' => $customer->id,
+            'customer_id' => $customer->hotel_customer_id,
             'name' => $customer->name,
             'email' => $customer->email,
             'editable_pages' => [],

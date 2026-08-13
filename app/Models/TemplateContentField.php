@@ -6,8 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class TemplateContentField extends Model
 {
+    protected $primaryKey = 'template_content_field_id';
+
     protected $fillable = [
-        'content_item_id',
+        'template_content_item_id',
         'field_name',
         'field_value',
     ];

@@ -21,6 +21,9 @@
                 <button class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-all" title="Reset selected element styles" onclick="resetSelectedStyles()">
                     <i class="fas fa-eraser text-[10px]"></i>
                 </button>
+                <button class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-rose-900/60 border border-zinc-700 hover:border-rose-500/50 flex items-center justify-center text-zinc-400 hover:text-rose-300 transition-all" title="Reset all design customizations to default" onclick="resetAllDesign()">
+                    <i class="fas fa-rotate-right text-[10px]"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -693,6 +696,20 @@
         if (typeof toast === 'function') toast('Styles reset for selection');
     }
 
+    function resetAllDesign() {
+        if (!confirm('Reset all design customizations? This will restore the page to its original default appearance.')) return;
+        postToTemplate({ type: 'reset-all' });
+        window.selectedElementId = null;
+        window.templateCustomizations = {};
+        const label = document.getElementById('selectedElement');
+        if (label) label.textContent = 'Select an element to style';
+        const parentBtn = document.getElementById('selectParentBtn');
+        if (parentBtn) parentBtn.classList.add('hidden');
+        const movement = document.getElementById('movementControls');
+        if (movement) movement.classList.add('hidden');
+        if (typeof toast === 'function') toast('Design reset to defaults');
+    }
+
     function undoEditorChange() {
         postToTemplate({ type: 'undo' });
     }
@@ -836,11 +853,24 @@
                 window.hmsBuilder.state.customizations = window.templateCustomizations;
                 window.hmsBuilder.markDirty();
             }
-            if (typeof setSaveDraftUnsaved === 'function') {
-                setSaveDraftUnsaved(true);
-            }
+            if (typeof setSaveDraftUnsaved === 'function') setSaveDraftUnsaved(true);
             const status = document.getElementById('autoSaveStatus');
-            if (status) status.textContent = 'Unsaved changes — Ctrl+S to save';
+            if (status) status.textContent = 'Saving…';
+            // Auto-persist so teammates pick up the change on their next poll.
+            // Routed through the builder so it sends this role's own row plus our
+            // edits — posting the merged set here would let a stale shared key
+            // overwrite a teammate's newer work.
+            clearTimeout(window._hmsSiteContentSaveTimer);
+            window._hmsSiteContentSaveTimer = setTimeout(async function () {
+                try {
+                    if (!window.hmsBuilder || typeof window.hmsBuilder.autosave !== 'function') return;
+                    await window.hmsBuilder.autosave();
+                    window.templateSyncVersion = window.hmsBuilder.syncVersion || window.templateSyncVersion;
+                    if (typeof setSaveDraftUnsaved === 'function') setSaveDraftUnsaved(false);
+                    const st = document.getElementById('autoSaveStatus');
+                    if (st) st.textContent = 'Auto-saved · Ctrl+S to publish';
+                } catch (e) { /* ignore — user can still manually save */ }
+            }, 400);
         }
 
         if (data.type === 'request-save-draft') {

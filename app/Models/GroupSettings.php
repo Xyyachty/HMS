@@ -10,9 +10,12 @@ class GroupSettings extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'group_setting_id';
+
     protected $fillable = [
         'group_name',
         'faculty_id',
+        'group_id',
         'selected_template',
         'is_published',
     ];

@@ -16,3 +16,17 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Working screenshots and scratch spreadsheets pile up in the project root during
+# development. Ignore the root ones wholesale — assets that belong to the app live
+# under public/ or resources/ — and keep the two root files that are genuinely ours.
+/*.png
+!/chtm-logoo.png
+/*.xlsx
+!/test_students.xlsx
+
+# Pre-migration database backups. Large, point-in-time, and kept outside the repo
+# at C:\Users\Xyron\hms_backups. The generated Postgres import (hms_pgsql.sql) IS
+# tracked, since it is a build artefact of the migration rather than a backup.
+/database/hms_pre_supabase_*.sql
+/database/hms_recovered_*.sql

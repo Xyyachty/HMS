@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
@@ -24,6 +25,11 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
+        // Auth::attempt queries the column directly, so it never passes through the
+        // model's email mutator. Emails are stored lowercased; match that here or
+        // logins with different capitalisation fail on PostgreSQL.
+        $credentials['email'] = strtolower(trim($credentials['email']));
+
         $remember = $request->boolean('remember');
 
         if (Auth::attempt($credentials, $remember)) {
@@ -40,6 +46,8 @@ class AuthController extends Controller
                 ])->onlyInput('email');
             }
             if ($user) {
+                ActivityLog::record($user, ActivityLog::LOGIN, 'Signed in to the portal.');
+
                 $roleLabel = $user->role === 'dean' ? 'admin' : $user->role;
 
                 if (!$roleLabel && $user->faculty) {
@@ -86,7 +94,7 @@ class AuthController extends Controller
             'password' => ['required', 'min:8', 'confirmed'],
         ]);
 
-        $user = User::where('email', $data['email'])->first();
+        $user = User::whereEmail($data['email'])->first();
 
         if (!$user) {
             return back()->withErrors([
@@ -107,7 +115,7 @@ class AuthController extends Controller
             'email' => ['required', 'email', 'regex:/^[^@\s]+@hms\.edu$/i'],
         ]);
 
-        $exists = User::where('email', $request->input('email'))->exists();
+        $exists = User::whereEmail($request->input('email'))->exists();
 
         return response()->json([
             'exists' => $exists,
@@ -116,6 +124,9 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        // Record before the session dies, or there is no user left to attribute.
+        ActivityLog::record($request->user(), ActivityLog::LOGOUT, 'Signed out of the portal.');
+
         Auth::logout();
 
         $request->session()->invalidate();

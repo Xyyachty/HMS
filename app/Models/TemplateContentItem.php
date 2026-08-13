@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class TemplateContentItem extends Model
 {
+    protected $primaryKey = 'template_content_item_id';
+
     protected $fillable = [
         'team_role_template_id',
         'version_id',
@@ -17,11 +19,11 @@ class TemplateContentItem extends Model
 
     public function fields()
     {
-        return $this->hasMany(TemplateContentField::class, 'content_item_id');
+        return $this->hasMany(TemplateContentField::class, 'template_content_item_id', 'template_content_item_id');
     }
 
     public function children()
     {
-        return $this->hasMany(self::class, 'parent_id');
+        return $this->hasMany(self::class, 'parent_id', 'template_content_item_id');
     }
 }

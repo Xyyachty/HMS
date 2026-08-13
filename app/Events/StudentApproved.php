@@ -36,9 +36,10 @@ class StudentApproved implements ShouldBroadcast
             $this->user->middle_name ?? null,
         ])));
 
+        // Same wire contract as StudentCreated: "student_id" is the school number.
         return [
-            'user_id' => $this->user->id,
-            'student_id' => $this->student?->student_id,
+            'user_id' => $this->user->user_id,
+            'student_id' => $this->student?->student_number,
             'name' => $displayName !== '' ? $displayName : ($this->user->name ?? 'Student'),
             'email' => $this->user->email,
             'phone_number' => $this->user->phone_number,

@@ -16,6 +16,15 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * Every table names its key after what it identifies, so Eloquent's "id" default
+     * does not apply. Authenticatable picks this up on its own —
+     * getAuthIdentifierName() returns the key name — but relationships do not:
+     * getForeignKey() would build "user_user_id", so every relation below spells its
+     * keys out.
+     */
+    protected $primaryKey = 'user_id';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
@@ -56,6 +65,27 @@ class User extends Authenticatable
     }
 
     /**
+     * Store emails lowercased. MySQL's utf8mb4_unicode_ci matched them
+     * case-insensitively for free; PostgreSQL does not, so "A@x.com" and
+     * "a@x.com" would otherwise become two accounts that both pass the unique
+     * index. hotel_customers already normalizes this way — see HotelSimulationAuth.
+     */
+    public function setEmailAttribute(?string $value): void
+    {
+        $this->attributes['email'] = strtolower(trim((string) $value));
+    }
+
+    /**
+     * Look a user up by email. Normalizes the needle the same way the mutator
+     * normalizes the stored value, so lookups keep working regardless of how the
+     * address was typed.
+     */
+    public function scopeWhereEmail($query, ?string $email)
+    {
+        return $query->where('email', strtolower(trim((string) $email)));
+    }
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var array<int, string>
@@ -80,7 +110,7 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): string
     {
         if (!empty($this->avatar)) {
-            return asset('storage/' . ltrim($this->avatar, '/'));
+            return \App\Support\HotelImageStore::url($this->avatar);
         }
 
         $label = trim(implode(' ', array_filter([
@@ -111,17 +141,17 @@ class User extends Authenticatable
 
     public function faculty()
     {
-        return $this->hasOne(Faculty::class);
+        return $this->hasOne(Faculty::class, 'user_id', 'user_id');
     }
 
     public function student()
     {
-        return $this->hasOne(Student::class);
+        return $this->hasOne(Student::class, 'user_id', 'user_id');
     }
 
     public function tasks()
     {
-        return $this->hasMany(Task::class, 'assigned_to');
+        return $this->hasMany(Task::class, 'assigned_to', 'user_id');
     }
 
 }

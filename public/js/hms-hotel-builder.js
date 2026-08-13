@@ -1,6 +1,6 @@
 /**
  * HMS Hotel Template Builder client
- * Role-scoped edit, manual save (Ctrl+S / Save Draft), sync, version restore.
+ * Role-scoped edit, manual save (Ctrl+S / Save Draft), autosave timer, sync, version restore.
  */
 (function (window) {
   'use strict';
@@ -10,6 +10,34 @@
     if (meta && meta.content) return meta.content;
     const m = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
     return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  /** Order-independent serialization so key comparisons are stable. */
+  function stableStringify(value) {
+    if (value === null || typeof value !== 'object') return JSON.stringify(value);
+    if (Array.isArray(value)) return '[' + value.map(stableStringify).join(',') + ']';
+    return '{' + Object.keys(value).sort().map(function (k) {
+      return JSON.stringify(k) + ':' + stableStringify(value[k]);
+    }).join(',') + '}';
+  }
+
+  /**
+   * Marks a key the member deleted locally (Reset design). A deleted key is
+   * simply absent from the customizations object, which is indistinguishable
+   * from "never set" — so removals need an explicit marker to survive the
+   * save/sync merge instead of being silently refilled from the server.
+   * Never leaves the browser: applyLocalOverlay turns it back into a deletion.
+   */
+  const REMOVED = Object.freeze({ __hmsRemoved: true });
+
+  /** base + local edits, where a REMOVED marker deletes the key outright. */
+  function applyLocalOverlay(base, overlay) {
+    const out = Object.assign({}, base);
+    Object.keys(overlay || {}).forEach(function (key) {
+      if (overlay[key] === REMOVED) delete out[key];
+      else out[key] = overlay[key];
+    });
+    return out;
   }
 
   function HotelBuilder(options) {
@@ -23,6 +51,10 @@
     this.onToast = options.onToast || function () {};
     this._dirty = false;
     this._syncTimer = null;
+    // Last merged team state received from the server. Anything that differs
+    // from this was changed locally; anything equal to it is somebody else's
+    // work we are merely displaying and must never write back.
+    this.mergedBaseline = (options.initial && options.initial.customizations) || {};
   }
 
   HotelBuilder.prototype.setMode = function (mode) {
@@ -53,26 +85,105 @@
     };
   };
 
+  /**
+   * Keys whose current value differs from the last merged state the server
+   * sent — i.e. edits this member actually made, as opposed to teammates'
+   * work that merely passed through this browser.
+   */
+  HotelBuilder.prototype.locallyChangedKeys = function () {
+    const current = window.templateCustomizations || this.state.customizations || {};
+    const baseline = this.mergedBaseline || {};
+    const changed = {};
+    Object.keys(current).forEach(function (key) {
+      if (stableStringify(current[key]) !== stableStringify(baseline[key])) {
+        changed[key] = current[key];
+      }
+    });
+    // Reset design deletes keys outright, so they are gone from `current` and
+    // the loop above cannot see them. Left unreported, the next save posted the
+    // server's old value straight back and the reset appeared to undo itself.
+    Object.keys(baseline).forEach(function (key) {
+      if (!Object.prototype.hasOwnProperty.call(current, key)) {
+        changed[key] = REMOVED;
+      }
+    });
+    return changed;
+  };
+
+  /**
+   * Persist this role's own row plus our local edits — never the merged team
+   * set. Echoing merged state lets a stale copy of a shared key overwrite a
+   * teammate's newer value once the rows are merged again.
+   */
   HotelBuilder.prototype.payloadBody = function () {
+    const own = this.state.own_customizations;
+    // Without a known own-row baseline, fall back to the current view rather
+    // than posting a near-empty set that would wipe this role's saved work.
+    const base = own && typeof own === 'object'
+      ? applyLocalOverlay(own, this.locallyChangedKeys())
+      : (window.templateCustomizations || this.state.customizations || {});
     return {
-      customizations: window.templateCustomizations || this.state.customizations || {},
+      customizations: base,
       layout: this.state.layout || [],
       selected_template: this.state.selected_template || null,
     };
   };
 
-  HotelBuilder.prototype.applyServerState = function (tpl) {
+  HotelBuilder.prototype.applyServerState = function (tpl, keepLocal) {
     if (!tpl) return;
     this.state = Object.assign({}, this.state, tpl);
     this.syncVersion = tpl.sync_version || this.syncVersion;
     if (tpl.can_edit != null) this.canEdit = !!tpl.can_edit;
-    window.templateCustomizations = tpl.customizations || {};
-    this.onChange({ type: 'state', template: tpl });
+
+    const serverMerged = tpl.customizations || {};
+    this.mergedBaseline = serverMerged;
+
+    // Re-overlay unsaved local edits so receiving teammate updates never
+    // discards work in progress.
+    const view = keepLocal && Object.keys(keepLocal).length
+      ? applyLocalOverlay(serverMerged, keepLocal)
+      : Object.assign({}, serverMerged);
+
+    window.templateCustomizations = view;
+    this.onChange({ type: 'state', template: Object.assign({}, tpl, { customizations: view }) });
   };
 
   HotelBuilder.prototype.autosave = async function () {
-    // Manual save only — kept for API compatibility; does not run on a timer.
-    return this.save(false);
+    if (!this.canEdit || this.mode !== 'build' || !this._dirty) return;
+    if (this._autosaving) return;
+    this._autosaving = true;
+    try {
+      if (typeof window.postToTemplate === 'function') {
+        window.postToTemplate({ type: 'request-customizations' });
+        await new Promise(function (r) { setTimeout(r, 120); });
+      }
+      if (window.templateCustomizations) {
+        this.state.customizations = window.templateCustomizations;
+      }
+      const res = await fetch(this.routes.autosave, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: this._headers(),
+        body: JSON.stringify(this.payloadBody()),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Autosave failed');
+      this._dirty = false;
+      // Keep anything typed while the request was in flight.
+      this.applyServerState(data.template, this.locallyChangedKeys());
+      this.onChange({ type: 'dirty', dirty: false });
+      this.onChange({ type: 'autosaved' });
+    } catch (e) {
+      // silent — stays dirty, next timer tick retries
+    } finally {
+      this._autosaving = false;
+    }
+  };
+
+  HotelBuilder.prototype.startAutoSave = function (ms) {
+    const self = this;
+    clearInterval(this._autoSaveTimer);
+    this._autoSaveTimer = setInterval(function () { self.autosave(); }, ms || 7000);
   };
 
   HotelBuilder.prototype.save = async function (publish) {
@@ -102,7 +213,8 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Save failed');
       this._dirty = false;
-      this.applyServerState(data.template);
+      // Keep anything typed while the request was in flight.
+      this.applyServerState(data.template, this.locallyChangedKeys());
       this.onChange({ type: 'dirty', dirty: false });
       this.onToast(publish ? 'Published — team can see updates' : 'Draft saved');
       return data.template;
@@ -122,11 +234,12 @@
       if (!res.ok) return;
       const next = data.sync_version || 0;
       if (next && next !== this.syncVersion) {
-        // Don't clobber local dirty buffer for the active editor
-        if (this.canEdit && this._dirty && this.mode === 'build') {
-          return;
-        }
-        this.applyServerState(data);
+        // An active editor still receives every teammate's change; only the
+        // keys they are actively editing are held back from being overwritten.
+        const pending = (this.canEdit && this._dirty && this.mode === 'build')
+          ? this.locallyChangedKeys()
+          : null;
+        this.applyServerState(data, pending);
         this.onToast('Team update synced');
       } else if (typeof data.can_edit === 'boolean' && data.can_edit !== this.canEdit) {
         window.location.reload();
