@@ -16,6 +16,7 @@ use App\Models\StudentGroupRole;
 use App\Models\Task;
 use App\Models\User;
 use App\Support\Notifier;
+use App\Support\StudentWelcomeMailer;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 class FacultyController extends Controller
 {
@@ -553,10 +554,23 @@ class FacultyController extends Controller
         Notifier::studentAdded(auth()->user(), $user, $fullName, $class, $facultyId);
         $this->notifyIfClassOpened($facultyId, $openClassIdBefore);
 
+        // Only now that the account exists. The password is the one just typed, which
+        // is the last point it is readable — the column holds a hash from here on.
+        $mailResult = StudentWelcomeMailer::send(
+            $user,
+            $validated['password'],
+            $class->name ?? null,
+            $validated['student_id']
+        );
+
         $message = 'Student account created successfully and added to ' . ($class->name ?? 'class') . '.';
         if ($class->status === 'closed') {
             $message .= ' ' . $class->name . ' is now full. A new class tab was opened.';
         }
+
+        $message .= $mailResult['sent']
+            ? ' A welcome email with the sign-in details was sent to ' . $user->email . '.'
+            : ' Note: ' . $mailResult['reason'] . '.';
 
         return redirect()
             ->route('faculty.students', ['class' => $class->letter])
@@ -669,6 +683,12 @@ class FacultyController extends Controller
         $classesOpened = [];
         $lastClassLetter = null;
 
+        // Each welcome email is a round trip to Gmail, so a full class costs a minute
+        // or two. The default 30 seconds would cut the import in half — some students
+        // created and emailed, the rest silently not.
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+
         foreach ($sheetData['students'] as $entry) {
             // The row number as it appears in Excel, so a failure can be found by eye.
             $rowNumber = $entry['row'];
@@ -715,8 +735,13 @@ class FacultyController extends Controller
                 continue;
             }
 
-            $fullName        = trim(implode(' ', array_filter([$firstName, $middleName, $lastName])));
-            $defaultPassword = Hash::make('password');
+            $fullName = trim(implode(' ', array_filter([$firstName, $middleName, $lastName])));
+
+            // One password per student rather than a shared default. These go out by
+            // email, and a password every student knows is one every student can use
+            // on any classmate's account.
+            $plainPassword   = StudentWelcomeMailer::generatePassword();
+            $defaultPassword = Hash::make($plainPassword);
 
             try {
                 [$user, $student, $classLetter] = DB::transaction(function () use (
@@ -762,6 +787,16 @@ class FacultyController extends Controller
                 }
                 $lastClassLetter = $classLetter;
 
+                // Sent only on this path, where the account is known to exist. A row
+                // that failed above never reaches here, so nobody is told an account
+                // is ready that was not created.
+                $mailResult = StudentWelcomeMailer::send(
+                    $user,
+                    $plainPassword,
+                    'Class ' . $classLetter,
+                    $studentId
+                );
+
                 $results[] = [
                     'row'        => $rowNumber,
                     'status'     => 'success',
@@ -769,6 +804,8 @@ class FacultyController extends Controller
                     'student_id' => $studentId,
                     'email'      => $email,
                     'class'      => $classLetter,
+                    'emailed'    => $mailResult['sent'],
+                    'reason'     => $mailResult['sent'] ? '' : $mailResult['reason'],
                 ];
             } catch (\Exception $e) {
                 $results[] = [
@@ -782,9 +819,15 @@ class FacultyController extends Controller
 
         $created = collect($results)->where('status', 'success')->count();
         $failed  = collect($results)->where('status', 'failed')->count();
+        $emailed = collect($results)->where('status', 'success')->where('emailed', true)->count();
+        $notEmailed = $created - $emailed;
         $openClass = FacultyClass::where('faculty_id', $facultyId)->where('status', 'open')->orderBy('sort_order')->first();
 
         $message = "{$created} student(s) imported successfully. {$failed} failed.";
+        if ($created > 0) {
+            $message .= " {$emailed} welcome email(s) sent"
+                . ($notEmailed > 0 ? ", {$notEmailed} could not be emailed" : '') . '.';
+        }
         if (!empty($classesOpened)) {
             $message .= ' New class tab(s) opened: Class ' . implode(', Class ', array_unique($classesOpened)) . '.';
         }

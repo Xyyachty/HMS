@@ -571,8 +571,9 @@
                     <input name="middle_name" type="text" placeholder="e.g. A." class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
-                    <input name="email" type="text" placeholder="username or user@hms.edu" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email <span class="text-emerald-600 normal-case tracking-normal font-semibold">(real address — the welcome is sent here)</span></label>
+                    <input name="email" type="email" placeholder="e.g. student@gmail.com" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    <p class="mt-1 text-[11px] text-slate-400">Their sign-in details are emailed here as soon as the account is created.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
@@ -1042,15 +1043,26 @@
                 data.results.forEach(r => {
                     const ok = r.status === 'success';
                     const tr = document.createElement('tr');
+
+                    // Three outcomes, not two: created and emailed, created but the
+                    // email did not go, and not created at all.
+                    let statusCell;
+                    if (!ok) {
+                        statusCell = '<span class="inline-flex items-center gap-1 text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✗ Failed</span>';
+                    } else if (r.emailed) {
+                        statusCell = '<span class="inline-flex items-center gap-1 text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✓ Added &amp; emailed</span>';
+                    } else {
+                        statusCell = '<span class="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-bold">! Added, no email</span>';
+                    }
+
+                    const note = ok ? (r.emailed ? (r.email || '') : (r.reason || '')) : (r.reason || '');
+                    const esc = v => String(v || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
                     tr.innerHTML = `
                         <td class="px-3 py-2 text-slate-400">${r.row}</td>
-                        <td class="px-3 py-2 font-semibold text-slate-700">${r.name}</td>
-                        <td class="px-3 py-2">
-                            ${ok
-                                ? '<span class="inline-flex items-center gap-1 text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✓ Success</span>'
-                                : '<span class="inline-flex items-center gap-1 text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✗ Failed</span>'}
-                        </td>
-                        <td class="px-3 py-2 text-slate-400">${ok ? (r.email||'') : (r.reason||'')}</td>
+                        <td class="px-3 py-2 font-semibold text-slate-700">${esc(r.name)}</td>
+                        <td class="px-3 py-2">${statusCell}</td>
+                        <td class="px-3 py-2 text-slate-400">${esc(note)}</td>
                     `;
                     rb.appendChild(tr);
                 });
