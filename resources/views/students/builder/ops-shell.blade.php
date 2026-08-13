@@ -357,12 +357,16 @@
         // out when this page actually rendered a badge — a role with none bails first.
         const NAV_BADGE_ROLE = @json($builderRole ?? null);
 
+        // Kept before anything can replace window.fetch below, and used for the badge
+        // request itself so refreshing can never trigger another refresh.
+        const nativeFetch = window.fetch.bind(window);
+
         async function syncNavBadges() {
             const badges = document.querySelectorAll('[data-nav-badge]');
             if (!badges.length || !NAV_BADGE_ROLE) return;
             try {
                 const url = @json(route('students.hotel.nav-badges')) + '?role=' + encodeURIComponent(NAV_BADGE_ROLE);
-                const res = await fetch(url, {
+                const res = await nativeFetch(url, {
                     credentials: 'same-origin',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
@@ -380,8 +384,46 @@
                 });
             } catch (e) { /* ignore */ }
         }
+        // The eight-second poll is what carries another desk's work over to this one.
+        // For work done here it is too slow to feel automatic, so a write refreshes the
+        // badges as soon as it lands. Wrapping fetch does that for every ops page at
+        // once — they all write through it — instead of each one remembering to ask.
+        let navBadgeTimer = null;
+        function scheduleNavBadgeSync() {
+            clearTimeout(navBadgeTimer);
+            // A single action can fire several writes (a cart, a batch of rooms).
+            // Coalesce them into one refresh once they have all landed.
+            navBadgeTimer = setTimeout(syncNavBadges, 250);
+        }
+
+        window.fetch = function (input, init) {
+            const method = String(
+                (init && init.method) || (input && input.method) || 'GET'
+            ).toUpperCase();
+            const url = String(typeof input === 'string' ? input : (input && input.url) || '');
+            const changesQueue = method !== 'GET' && method !== 'HEAD' && url.indexOf('/students/hotel') !== -1;
+
+            const request = nativeFetch(input, init);
+            if (!changesQueue) return request;
+
+            // Only on success, and never swallowing a rejection: the caller still gets
+            // the original promise's outcome either way.
+            return request.then(res => {
+                if (res && res.ok) scheduleNavBadgeSync();
+                return res;
+            });
+        };
+
+        // Anything that wants to force a refresh without a write.
+        window.refreshNavBadges = syncNavBadges;
+
         setInterval(syncNavBadges, 8000);
         document.addEventListener('DOMContentLoaded', syncNavBadges);
+        // Coming back to the tab is the other moment the numbers are likely stale.
+        window.addEventListener('focus', syncNavBadges);
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) syncNavBadges();
+        });
     </script>
     @yield('scripts')
 </body>
