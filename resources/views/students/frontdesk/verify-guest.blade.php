@@ -337,6 +337,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
   const roomLines = bill ? bill.room : null;
   const service = bill ? bill.roomService : null;
   const extras = bill ? bill.otherCharges : null;
+  const addons = bill ? bill.addons : null;
 
   return (
     <div className="bill-overlay" onClick={() => { if (!busy) onClose(); }} role="dialog" aria-modal="true">
@@ -392,6 +393,24 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                   <div className="bill-line is-subtotal">
                     <span>Room Service Subtotal</span>
                     <span className="bill-amt">{formatPeso(service.subtotal)}</span>
+                  </div>
+                </>
+              )}
+
+              {/* Housekeeping's add-ons. No remove button: they were lent at registration
+                  and go back into stock when the stay closes, not when a line is deleted. */}
+              {addons && addons.items.length > 0 && (
+                <>
+                  <p className="bill-section-title">Add-ons</p>
+                  {addons.items.map(addon => (
+                    <div className="bill-line" key={addon.id}>
+                      <span>{addon.name} × {addon.qty}</span>
+                      <span className="bill-amt">{formatPeso(addon.line)}</span>
+                    </div>
+                  ))}
+                  <div className="bill-line is-subtotal">
+                    <span>Add-ons Subtotal</span>
+                    <span className="bill-amt">{formatPeso(addons.subtotal)}</span>
                   </div>
                 </>
               )}
@@ -519,7 +538,9 @@ function GuestDetailsModal({ room, reservation, onClose }) {
   const foodTotal = Number(reservation.roomServiceTotal) || 0;
   const foodCount = Number(reservation.roomServiceCount) || 0;
   const extras = Number(reservation.otherCharges) || 0;
-  const grandTotal = Number(reservation.grandTotal) || (roomTotal + foodTotal + extras);
+  const addonsTotal = Number(reservation.addonsTotal) || 0;
+  const addonsCount = Number(reservation.addonsCount) || 0;
+  const grandTotal = Number(reservation.grandTotal) || (roomTotal + foodTotal + addonsTotal + extras);
   const paid = Number(reservation.amountPaid) || 0;
   const outstanding = reservation.outstanding != null
     ? Number(reservation.outstanding)
@@ -588,6 +609,12 @@ function GuestDetailsModal({ room, reservation, onClose }) {
             <span>Room service{foodCount > 0 ? ` (${foodCount} order${foodCount === 1 ? '' : 's'})` : ''}</span>
             <span className="bill-amt">{formatPeso(foodTotal)}</span>
           </div>
+          {addonsCount > 0 && (
+            <div className="bill-line">
+              <span>Add-ons ({addonsCount} item{addonsCount === 1 ? '' : 's'})</span>
+              <span className="bill-amt">{formatPeso(addonsTotal)}</span>
+            </div>
+          )}
           <div className="bill-line"><span>Other charges</span><span className="bill-amt">{formatPeso(extras)}</span></div>
           <div className="bill-line is-total"><span>Total</span><span className="bill-amt">{formatPeso(grandTotal)}</span></div>
           <div className="bill-line is-subtotal"><span>Paid</span><span className="bill-amt">{formatPeso(paid)}</span></div>

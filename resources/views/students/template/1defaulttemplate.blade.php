@@ -1499,7 +1499,18 @@ function RoomAvailabilityCalendar({ ranges, checkIn, checkOut, onPick }) {
   );
 }
 
-function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast }) {
+/* The add-on picker's − / + buttons, sized down from the room-service stepper because
+   they sit inside a form row rather than on their own. */
+function addonStepBtn(disabled) {
+  return {
+    width: 26, height: 26, borderRadius: 7, border: '1px solid var(--border)',
+    background: 'rgba(255,255,255,0.03)', color: disabled ? 'var(--fg-muted)' : 'var(--fg)',
+    cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.45 : 1,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem',
+  };
+}
+
+function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -1521,11 +1532,16 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
     payerName: '',
     notes: '',
   });
+  // Housekeeping add-ons ticked for this stay: [{ dbId, name, price, qty }].
+  const [addonLines, setAddonLines] = useState([]);
+  const [showAddons, setShowAddons] = useState(false);
 
   useEffect(() => {
     setStep('details');
     setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', checkIn: '', checkInTime: '', checkOut: '' });
     setPaymentForm({ type: 'full', amount: '', method: 'Cash', reference: '', payerName: '', notes: '' });
+    setAddonLines([]);
+    setShowAddons(false);
   }, [room.id]);
 
   useEffect(() => {
@@ -1566,6 +1582,23 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
   const updatePayment = (field, value) => {
     setPaymentForm(prev => Object.assign({}, prev, { [field]: value }));
   };
+
+  const addonList = Array.isArray(addons) ? addons : [];
+  const addonQty = (dbId) => {
+    const line = addonLines.find(l => l.dbId === dbId);
+    return line ? line.qty : 0;
+  };
+  // Steps a line up or down, dropping it at zero so the payload carries only what was
+  // actually picked. Availability is the server's number, not one counted here.
+  const stepAddon = (addon, delta) => {
+    const next = Math.max(0, Math.min(addon.available, addonQty(addon.dbId) + delta));
+    setAddonLines(prev => {
+      const rest = prev.filter(l => l.dbId !== addon.dbId);
+      if (next === 0) return rest;
+      return rest.concat([{ dbId: addon.dbId, name: addon.name, price: addon.price, qty: next }]);
+    });
+  };
+  const addonsTotal = addonLines.reduce((sum, line) => sum + (Number(line.price) || 0) * line.qty, 0);
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
@@ -1620,7 +1653,7 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
     };
 
     if (typeof onReserve === 'function') {
-      onReserve(room, { ...guestForm }, payment);
+      onReserve(room, { ...guestForm }, payment, addonLines);
     } else if (onToast) {
       onToast(`Payment received for ${room.name}.`);
     }
@@ -1785,6 +1818,56 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
                     </div>
                   </div>
                 </div>
+
+                {/* Housekeeping's add-ons. Inline rather than a second overlay — the modal
+                    already scrolls, and a nested dialog over a dialog reads badly. */}
+                <button type="button" onClick={() => setShowAddons(v => !v)}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.75rem', padding: '0.85rem 0 0', fontFamily: 'Outfit, sans-serif' }}>
+                  <i className={'fa-solid ' + (showAddons ? 'fa-minus' : 'fa-plus')} style={{ fontSize: '0.65rem', marginRight: 5 }}></i>
+                  Add-ons{addonLines.length > 0 ? ` (${addonLines.length})` : ''}
+                </button>
+
+                {showAddons && (
+                  <div style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 10, padding: '0.85rem' }}>
+                    {addonList.length === 0 ? (
+                      <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
+                        Housekeeping has not added any add-ons yet.
+                      </p>
+                    ) : addonList.map(addon => (
+                      <div key={addon.id} style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <img src={addon.img} alt={addon.name}
+                          style={{ width: 44, height: 34, objectFit: 'cover', borderRadius: 5, display: 'block', flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--fg)' }}>{addon.name}</p>
+                          <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
+                            {formatPeso(addon.price)} · {addon.available} available
+                          </p>
+                        </div>
+                        {addon.available > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                            <button type="button" onClick={() => stepAddon(addon, -1)} disabled={addonQty(addon.dbId) === 0}
+                              style={addonStepBtn(addonQty(addon.dbId) === 0)}>&minus;</button>
+                            <span style={{ minWidth: 16, textAlign: 'center', fontSize: '0.82rem', color: 'var(--fg)' }}>
+                              {addonQty(addon.dbId)}
+                            </span>
+                            <button type="button" onClick={() => stepAddon(addon, 1)} disabled={addonQty(addon.dbId) >= addon.available}
+                              style={addonStepBtn(addonQty(addon.dbId) >= addon.available)}>+</button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.72rem', color: '#fb7185', flexShrink: 0 }}>Out of stock</span>
+                        )}
+                      </div>
+                    ))}
+
+                    {addonsTotal > 0 && (
+                      <p style={{ margin: '0.7rem 0 0', fontSize: '0.75rem', color: 'var(--fg-muted)' }}>
+                        Add-ons: <strong style={{ color: 'var(--fg)' }}>{formatPeso(addonsTotal)}</strong>
+                        {' '}&mdash; settled with the final bill at check-out, like room service.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }}>
                   Proceed Payment <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
                 </button>
@@ -1913,7 +1996,7 @@ function RoomDetailModal({ room, onClose, onChangeStatus, canEditStatus, canRese
   );
 }
 
-function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onEditRoom, onRemoveRoom, onCreateBooking, onOpenRoomManagement }) {
+function RoomsPage({ onNavigate, onToast, rooms, addons, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement }) {
   const list = rooms && rooms.length ? rooms : [];
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
@@ -1979,9 +2062,11 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
   // that POST actually succeeds; onCreateBooking's own .catch already toasts the error,
   // so a failed booking (room already taken, bad dates, ...) no longer looks like a
   // success and silently drops the guest.
-  const handleReserve = (room, guest, payment) => {
+  const handleReserve = (room, guest, payment, addonLines) => {
     if (!onCreateBooking) return;
-    onCreateBooking(room, guest, payment).then(() => {
+    onCreateBooking(room, guest, payment, addonLines).then(() => {
+      // What is free changed the moment those add-ons went out with the guest.
+      if (typeof onRefreshAddons === 'function') onRefreshAddons();
       // The toast and the cross-module notification are both advisory, and the
       // notification writes customizations + localStorage. The booking is already saved
       // by the time either runs, so they are fenced off together: a failure in here must
@@ -2088,6 +2173,7 @@ function RoomsPage({ onNavigate, onToast, rooms, canEditRooms, canManageRooms, c
       </section>
       <RoomDetailModal
         room={selectedRoom}
+        addons={addons}
         onClose={() => setSelectedRoomId(null)}
         onChangeStatus={handleStatusChange}
         canEditStatus={!!canManageRooms}
@@ -2738,6 +2824,7 @@ function App() {
   const [canManageRooms, setCanManageRooms] = useState(false);
   const [canReserveRooms, setCanReserveRooms] = useState(true);
   const [canOrderMenu, setCanOrderMenu] = useState(false);
+  const [addons, setAddons] = useState([]);
   const [cardImages, setCardImages] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getCardImages ? window.HMSSiteContent.getCardImages() : {}
   ));
@@ -2759,6 +2846,19 @@ function App() {
       .catch(() => {});
   }, []);
 
+  // Housekeeping's add-ons catalogue. Front Desk only reads it — what is free right
+  // now is computed server-side, so the picker never has to work it out itself.
+  const fetchAddons = useCallback(() => {
+    if (pendingWrites.current > 0) return;
+    fetch('/students/hotel/addons', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => {
+        if (pendingWrites.current > 0) return;
+        if (Array.isArray(data.items)) setAddons(data.items);
+      })
+      .catch(() => {});
+  }, []);
+
   // The server decides who may edit the menu — the client only mirrors that answer.
   const fetchMenus = useCallback(() => {
     if (pendingWrites.current > 0) return;
@@ -2772,9 +2872,10 @@ function App() {
       .catch(() => {});
   }, []);
 
-  // Poll so Front Desk arrivals, room status changes and menu edits cross over between sessions.
+  // Poll so Front Desk arrivals, room status changes, menu edits and Housekeeping's
+  // add-on stock all cross over between sessions.
   useEffect(() => {
-    const refresh = () => { fetchRooms(); fetchMenus(); };
+    const refresh = () => { fetchRooms(); fetchMenus(); fetchAddons(); };
     refresh();
     const id = setInterval(refresh, 8000);
     window.addEventListener('focus', refresh);
@@ -2782,7 +2883,7 @@ function App() {
       clearInterval(id);
       window.removeEventListener('focus', refresh);
     };
-  }, [fetchRooms, fetchMenus]);
+  }, [fetchRooms, fetchMenus, fetchAddons]);
 
   const syncSiteContent = useCallback(() => {
     if (!window.HMSSiteContent) return;
@@ -2906,7 +3007,7 @@ function App() {
 
   // Takes the stay and the up-front payment in one POST. The room comes back with its
   // projected `reservation` already on it, so the grid needs no guesswork.
-  const createBooking = useCallback((room, guest, payment) => {
+  const createBooking = useCallback((room, guest, payment, addonLines) => {
     pendingWrites.current += 1;
     return fetch('/students/hotel/bookings', {
       method: 'POST',
@@ -2931,6 +3032,9 @@ function App() {
           payer_name: payment.payerName,
           notes: payment.notes,
         } : null,
+        // Attached in the same POST on purpose: an add-on that ran out takes the whole
+        // reservation down with it rather than leaving a stay half-equipped.
+        addons: (addonLines || []).map(line => ({ addon_id: line.dbId, qty: line.qty })),
       }),
     })
       .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
@@ -3034,6 +3138,7 @@ function App() {
         onNavigate={navigateTo}
         onToast={showToast}
         rooms={rooms}
+        addons={addons}
         canEditRooms={canEditRooms}
         canManageRooms={canManageRooms}
         canReserveRooms={canReserveRooms}
@@ -3041,6 +3146,7 @@ function App() {
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
         onCreateBooking={createBooking}
+        onRefreshAddons={fetchAddons}
         onOpenRoomManagement={openRoomManagement}
       />
     ),

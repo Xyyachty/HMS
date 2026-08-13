@@ -734,7 +734,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // all, so a team that already built its own inventory is never touched.
         \App\Support\HotelRoomDefaults::ensureFor($membership);
 
-        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'openBookings'])
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
@@ -916,6 +916,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'payment.reference'  => 'nullable|string|max:255',
             'payment.payer_name' => 'nullable|string|max:255',
             'payment.notes'      => 'nullable|string|max:2000',
+            // Housekeeping add-ons Front Desk ticked while registering the guest.
+            'addons'             => 'nullable|array',
+            'addons.*.addon_id'  => 'required|integer',
+            'addons.*.qty'       => 'required|integer|min:1|max:99',
         ]);
 
         $room = HotelRoom::where('hotel_room_id', $data['room_id'])
@@ -938,19 +942,26 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
         }
 
-        $booking = \App\Support\HotelBookingDesk::reserve(
-            $membership,
-            $room,
-            $data['guest'],
-            [
-                'check_in'      => $data['check_in'],
-                'check_in_time' => $data['check_in_time'],
-                'check_out'     => $data['check_out'],
-                'booked_by'     => auth()->user()?->name,
-                'notes'         => $data['notes'] ?? null,
-            ],
-            $data['payment'] ?? null
-        );
+        try {
+            $booking = \App\Support\HotelBookingDesk::reserve(
+                $membership,
+                $room,
+                $data['guest'],
+                [
+                    'check_in'      => $data['check_in'],
+                    'check_in_time' => $data['check_in_time'],
+                    'check_out'     => $data['check_out'],
+                    'booked_by'     => auth()->user()?->name,
+                    'notes'         => $data['notes'] ?? null,
+                ],
+                $data['payment'] ?? null,
+                $data['addons'] ?? []
+            );
+        } catch (\RuntimeException $e) {
+            // An add-on ran out between the picker rendering and this request. The whole
+            // reservation rolled back, so there is no half-booked stay to clean up.
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json([
             'booking' => $booking->toReservationArray(),
@@ -1273,6 +1284,123 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json(['deleted' => true]);
     })->name('hotel.menus.destroy');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Room add-ons
+    |--------------------------------------------------------------------------
+    |
+    | Housekeeping owns this catalogue; Front Desk reads it to attach an add-on to a
+    | stay while registering a guest. There is deliberately no delete route — the
+    | Housekeeping table offers Update only, and deleting a row that stays are billed
+    | against would strand those lines.
+    |
+    | "available" is never stored. It is quantity minus whatever is out on open stays,
+    | so a guest checking out returns the folding bed with no reversal step.
+    */
+    Route::get('/hotel/addons', function () {
+        $membership = \App\Support\HotelAddonAccess::membership();
+        if (!$membership) {
+            return response()->json(['items' => [], 'can_manage' => false]);
+        }
+
+        // A team starts with a folding bed and an extra towel. No-ops once it has any
+        // add-ons at all, so a team that built its own list is never touched.
+        \App\Support\HotelAddonAccess::seedDefaults($membership);
+
+        $reserved = \App\Support\HotelAddonDesk::reservedFor($membership);
+
+        $items = \App\Models\HotelAddon::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_addon_id')
+            ->get()
+            ->map(fn (\App\Models\HotelAddon $addon) => $addon->toTemplateArray(
+                $reserved[$addon->hotel_addon_id] ?? 0
+            ));
+
+        return response()->json([
+            'items'      => $items,
+            'can_manage' => \App\Support\HotelAddonAccess::canManage($membership),
+        ]);
+    })->name('hotel.addons.index');
+
+    Route::post('/hotel/addons', function (Request $request) {
+        $membership = \App\Support\HotelAddonAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAddonAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can add add-ons.'], 403);
+        }
+
+        $data = $request->validate([
+            'name'     => 'required|string|max:120',
+            'price'    => 'required|integer|min:0|max:9999999',
+            'quantity' => 'required|integer|min:0|max:99999',
+            'image'    => 'nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        $addon = \App\Models\HotelAddon::create([
+            'group_name' => $membership->group_name,
+            'faculty_id' => $membership->faculty_id,
+            'group_id'   => $membership->group_id,
+            'name'       => trim($data['name']),
+            'price'      => (int) $data['price'],
+            'quantity'   => (int) $data['quantity'],
+            'image'      => \App\Support\HotelImageStore::persist(
+                $data['image'] ?? null,
+                $membership->faculty_id,
+                $membership->group_name
+            ),
+        ]);
+
+        // Nothing can be out on loan yet, so the fresh row's reserved count is zero.
+        return response()->json(['item' => $addon->toTemplateArray(0)], 201);
+    })->name('hotel.addons.store');
+
+    Route::patch('/hotel/addons/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelAddonAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAddonAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can edit add-ons.'], 403);
+        }
+
+        $addon = \App\Models\HotelAddon::where('hotel_addon_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'name'     => 'sometimes|string|max:120',
+            'price'    => 'sometimes|integer|min:0|max:9999999',
+            'quantity' => 'sometimes|integer|min:0|max:99999',
+            'image'    => 'sometimes|nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        if (array_key_exists('name', $data))     $addon->name     = trim($data['name']);
+        if (array_key_exists('price', $data))    $addon->price    = (int) $data['price'];
+        if (array_key_exists('quantity', $data)) $addon->quantity = (int) $data['quantity'];
+        if (array_key_exists('image', $data))    $addon->image    = \App\Support\HotelImageStore::persist(
+            $data['image'],
+            $membership->faculty_id,
+            $membership->group_name
+        );
+        $addon->save();
+
+        // Lowering quantity below what is already lent out is allowed — the stays that
+        // hold those add-ons are real. availability floors at 0 until they end.
+        $reserved = \App\Support\HotelAddonDesk::reservedFor($membership);
+
+        return response()->json([
+            'item' => $addon->toTemplateArray($reserved[$addon->hotel_addon_id] ?? 0),
+        ]);
+    })->name('hotel.addons.update');
 
     /*
     |--------------------------------------------------------------------------
@@ -2016,5 +2144,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.housekeeping.inspections', $data);
     })->name('housekeeping.inspections');
+
+    Route::get('/housekeeping/addons', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
+        return view('students.housekeeping.addons', $data);
+    })->name('housekeeping.addons');
 });
 

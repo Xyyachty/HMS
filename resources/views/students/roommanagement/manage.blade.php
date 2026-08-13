@@ -1028,7 +1028,9 @@ function GuestDetailsModal({ room, onClose }) {
   const service = Number(res.roomServiceTotal) || 0;
   const serviceCount = Number(res.roomServiceCount) || 0;
   const extras = Number(res.otherCharges) || 0;
-  const grand = Number(res.grandTotal) || (roomTotal + service + extras);
+  const addonsTotal = Number(res.addonsTotal) || 0;
+  const addonsCount = Number(res.addonsCount) || 0;
+  const grand = Number(res.grandTotal) || (roomTotal + service + addonsTotal + extras);
   const paid = Number(res.amountPaid) || 0;
   const outstanding = res.outstanding != null ? Number(res.outstanding) : Math.max(0, grand - paid);
   const payments = res.payments || [];
@@ -1088,6 +1090,12 @@ function GuestDetailsModal({ room, onClose }) {
             <span>Room service{serviceCount > 0 ? ` (${serviceCount} order${serviceCount === 1 ? '' : 's'})` : ''}</span>
             <span style={amt}>{formatPeso(service)}</span>
           </div>
+          {addonsCount > 0 && (
+            <div style={line}>
+              <span>Add-ons ({addonsCount} item{addonsCount === 1 ? '' : 's'})</span>
+              <span style={amt}>{formatPeso(addonsTotal)}</span>
+            </div>
+          )}
           <div style={line}><span>Other charges</span><span style={amt}>{formatPeso(extras)}</span></div>
           <div style={{ ...line, borderTop: '2px solid var(--accent)', marginTop: '0.6rem', paddingTop: '0.6rem', color: 'var(--fg)', fontWeight: 700 }}>
             <span>Total</span>
