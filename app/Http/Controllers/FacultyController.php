@@ -646,51 +646,48 @@ class FacultyController extends Controller
         $sheet     = $spreadsheet->getActiveSheet();
         $allRows   = $sheet->toArray(null, true, true, false);
 
-        if (empty($allRows) || count($allRows) < 2) {
+        if (empty($allRows)) {
             return response()->json(['message' => 'The file is empty or has no data rows.'], 422);
         }
 
-        // Normalize header row (row index 0)
-        $rawHeader = array_map(fn($h) => strtolower(trim((string) $h)), $allRows[0]);
+        // Takes both the template this app hands out and the registrar's official class
+        // list, which buries its header under a letterhead and writes the name as one
+        // "LAST, FIRST M." cell. See StudentRosterSheet.
+        $sheetData = \App\Support\StudentRosterSheet::parse($allRows);
 
-        $required = ['student_id', 'first_name', 'last_name', 'email'];
-        foreach ($required as $col) {
-            if (!in_array($col, $rawHeader, true)) {
-                return response()->json([
-                    'message' => "Missing required column: '{$col}'. Expected columns: student_id, first_name, last_name, email, middle_name (optional), phone_number (optional)"
-                ], 422);
-            }
+        if ($sheetData['header_row'] === null) {
+            return response()->json([
+                'message' => 'Could not find the column headings. The sheet needs a student number column and either a name column or first name and last name columns.'
+            ], 422);
+        }
+
+        if (empty($sheetData['students'])) {
+            return response()->json(['message' => 'The file is empty or has no data rows.'], 422);
         }
 
         $results   = [];
-        $rowNumber = 1;
         $classesOpened = [];
         $lastClassLetter = null;
 
-        foreach (array_slice($allRows, 1) as $row) {
-            $rowNumber++;
+        foreach ($sheetData['students'] as $entry) {
+            // The row number as it appears in Excel, so a failure can be found by eye.
+            $rowNumber = $entry['row'];
 
-            // Map values by header name
-            $data = array_combine($rawHeader, array_map(fn($v) => trim((string) ($v ?? '')), $row));
-
-            $studentId  = User::cleanOptional($data['student_id']   ?? '');
-            $firstName  = User::cleanOptional($data['first_name']   ?? '');
-            $lastName   = User::cleanOptional($data['last_name']    ?? '');
-            $middleName = User::cleanOptional($data['middle_name']  ?? '');
-            $emailRaw   = User::cleanOptional($data['email']        ?? '');
-            $phone      = User::cleanOptional($data['phone_number'] ?? '');
-
-            // Skip completely blank rows
-            if ($studentId === '' && $firstName === '' && $lastName === '' && $emailRaw === '') {
-                continue;
-            }
+            $studentId  = User::cleanOptional($entry['student_number']);
+            $firstName  = User::cleanOptional($entry['first_name']);
+            $lastName   = User::cleanOptional($entry['last_name']);
+            $middleName = User::cleanOptional($entry['middle_name']);
+            $emailRaw   = User::cleanOptional($entry['email']);
+            $phone      = User::cleanOptional($entry['phone_number']);
 
             // Basic validation
             $errors = [];
-            if ($studentId === '') $errors[] = 'student_id is required';
-            if ($firstName  === '') $errors[] = 'first_name is required';
-            if ($lastName   === '') $errors[] = 'last_name is required';
-            if ($emailRaw   === '') $errors[] = 'email is required';
+            if ($studentId === '') $errors[] = 'student number is required';
+            if ($firstName  === '') $errors[] = 'first name is required';
+            if ($lastName   === '') $errors[] = 'last name is required';
+            // Registrar lists carry "N/A" where a student never gave an address; the
+            // parser hands that over as blank rather than inventing one.
+            if ($emailRaw   === '') $errors[] = 'no email in the file — add it and re-upload, or add this student manually';
 
             $email = str_contains($emailRaw, '@')
                 ? strtolower($emailRaw)
