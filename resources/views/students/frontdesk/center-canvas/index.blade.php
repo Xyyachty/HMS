@@ -66,15 +66,6 @@
 
     <div id="canvasFrame" class="flex-1 min-h-0 {{ ($canPickTemplate || $waitingForFrontDesk) ? 'hidden' : '' }}">
         <div class="canvas-frame h-full">
-            <div class="browser-bar flex items-center justify-between">
-                <div id="urlPill" class="url-pill truncate max-w-[50%]">—</div>
-                <div class="flex items-center gap-2">
-                    <button type="button" onclick="toggleFullscreenRedesign()" class="browser-btn" title="Fullscreen redesign" style="width:auto;padding:0 10px;gap:6px;font-size:11px;font-weight:600;cursor:pointer;">
-                        <i class="fas fa-expand" id="fsCanvasIcon"></i>
-                        <span id="fsCanvasLabel">Fullscreen</span>
-                    </button>
-                </div>
-            </div>
             <div class="flex-1 min-h-0 bg-white">
                 <iframe id="templateFrame" src="" title="{{ $moduleLabel }} Template" class="w-full h-full border-0"></iframe>
             </div>
@@ -123,7 +114,8 @@
         if (serverTemplate && TEMPLATE_URLS[serverTemplate]) {
             var frame = document.getElementById('templateFrame');
             frame.src = TEMPLATE_URLS[serverTemplate];
-            document.getElementById('urlPill').textContent = TEMPLATE_LABELS[serverTemplate];
+            var pill = document.getElementById('urlPill');
+            if (pill) pill.textContent = TEMPLATE_LABELS[serverTemplate];
             var side = document.getElementById('sidebarTemplateUrl');
             if (side) side.textContent = TEMPLATE_LABELS[serverTemplate];
             frame.addEventListener('load', function () {

@@ -9,6 +9,8 @@ class FacultyClass extends Model
 {
     public const CAPACITY = 40;
 
+    protected $primaryKey = 'faculty_class_id';
+
     protected $fillable = [
         'faculty_id',
         'name',
@@ -20,12 +22,12 @@ class FacultyClass extends Model
 
     public function faculty()
     {
-        return $this->belongsTo(Faculty::class);
+        return $this->belongsTo(Faculty::class, 'faculty_id', 'faculty_id');
     }
 
     public function students()
     {
-        return $this->hasMany(Student::class, 'faculty_class_id');
+        return $this->hasMany(Student::class, 'faculty_class_id', 'faculty_class_id');
     }
 
     public function isOpen(): bool
@@ -161,13 +163,18 @@ class FacultyClass extends Model
             if (!$open) {
                 $last = static::where('faculty_id', $facultyId)->orderByDesc('sort_order')->first();
                 $open = static::openNextClass($facultyId, $last);
-                $open = static::where('id', $open->id)->lockForUpdate()->first();
+                $open = static::where('faculty_class_id', $open->faculty_class_id)->lockForUpdate()->first();
             }
 
-            if ($open->students()->lockForUpdate()->count() >= ($open->capacity ?: self::CAPACITY)) {
+            // Counted without a row lock on purpose. PostgreSQL rejects
+            // "SELECT count(*) ... FOR UPDATE" outright ("FOR UPDATE is not allowed
+            // with aggregate functions") where MySQL simply allowed it. The lock is
+            // not needed anyway: the class row itself is already locked above, and
+            // that is what serialises two students claiming the last seat at once.
+            if ($open->students()->count() >= ($open->capacity ?: self::CAPACITY)) {
                 $open->update(['status' => 'closed']);
                 $open = static::openNextClass($facultyId, $open);
-                $open = static::where('id', $open->id)->lockForUpdate()->first();
+                $open = static::where('faculty_class_id', $open->faculty_class_id)->lockForUpdate()->first();
             }
 
             return $open;

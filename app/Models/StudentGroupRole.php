@@ -9,6 +9,8 @@ class StudentGroupRole extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'student_group_role_id';
+
     protected $fillable = [
         'student_group_id',
         'role',
@@ -16,6 +18,6 @@ class StudentGroupRole extends Model
 
     public function studentGroup()
     {
-        return $this->belongsTo(StudentGroup::class);
+        return $this->belongsTo(StudentGroup::class, 'student_group_id', 'student_group_id');
     }
 }

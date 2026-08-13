@@ -82,11 +82,14 @@
   }
   body.hms-design-mode .nav-add-btn { display: inline-flex; }
   .nav-bar {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    position: fixed !important; top: 0 !important; left: 0; right: 0; z-index: 1000;
     padding: 0 2rem; height: 64px;
     background: var(--card);
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center;
+  }
+  .hero-split {
+    margin-top: 64px !important;
   }
   .nav-link {
     color: var(--fg-muted); font-size: 0.82rem; font-weight: 500;
@@ -427,7 +430,7 @@
 <body>
 <div id="root"></div>
 
-<script src="{{ asset('js/hms-site-content.js') }}"></script>
+<script src="{{ asset('js/hms-site-content.js') }}?v={{ filemtime(public_path('js/hms-site-content.js')) }}"></script>
 @verbatim
 <script type="text/babel">
 const { useState, useCallback, useRef, useMemo, useEffect } = React;
@@ -1206,10 +1209,22 @@ function ExperiencePage({ onNav, canEdit, onToast, cardImages }) {
 
 
 /* â•â•â•â•â•â•â• BOOKING â•â•â•â•â•â•â• */
+/* 'YYYY-MM-DD' + n days -> 'YYYY-MM-DD'. Built from the date parts, not by adding
+   ms to a Date, so it can't drift across a DST boundary. */
+function addDays(dateStr, n) {
+  const [y, m, d] = String(dateStr || '').split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  const dt = new Date(y, m - 1, d + n);
+  return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+}
+
 function BookingPage({ onToast, rooms }) {
   const roomList = rooms && rooms.length ? rooms : ROOMS;
   const [form, setForm] = useState({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
   const today = new Date().toISOString().split('T')[0];
+  // Check-out must be a later date than check-in, so the day of check-in itself is
+  // not selectable on the check-out calendar.
+  const minCheckOut = addDays(form.checkIn || today, 1);
   const update = (f, v) => setForm(p => { const n = { ...p, [f]: v }; if (f === 'checkIn' && v) n.checkOut = ''; return n; });
 
   const getEst = () => {
@@ -1269,7 +1284,7 @@ function BookingPage({ onToast, rooms }) {
                   </div>
                   <div>
                     <label style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' }}>Check-out</label>
-                    <input type="date" className="booking-input" value={form.checkOut} min={form.checkIn || today} onChange={e => update('checkOut', e.target.value)} required />
+                    <input type="date" className="booking-input" value={form.checkOut} min={minCheckOut} onChange={e => update('checkOut', e.target.value)} required />
                   </div>
                   <div>
                     <label style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' }}>Guests</label>

@@ -54,7 +54,7 @@
                     <img src="https://ui-avatars.com/api/?name={{ urlencode($displayName) }}&background=DB2777&color=fff&size=40&font-size=0.4" class="w-12 h-12 rounded-xl shadow-md border-2 border-white" alt="{{ $displayName }}">
                     <div class="min-w-0">
                         <h4 class="font-bold text-slate-800 text-sm truncate">{{ $displayName }}</h4>
-                        <p class="text-xs text-slate-400 font-mono">{{ $task->student?->student_id ? '#' . $task->student->student_id : ($user?->email ?? '—') }}</p>
+                        <p class="text-xs text-slate-400 font-mono">{{ $task->student?->student_number ? '#' . $task->student->student_number : ($user?->email ?? '—') }}</p>
                     </div>
                 </div>
 

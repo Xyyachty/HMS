@@ -4,14 +4,15 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use App\Events\StudentApproved;
+use App\Models\ActivityLog;
 use App\Models\Faculty;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Notifier;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class DeanController extends Controller
@@ -24,9 +25,14 @@ class DeanController extends Controller
             ->where('status', 'pending')
             ->count();
 
-        $totalTeams = (int) StudentGroup::query()
-            ->selectRaw('COUNT(DISTINCT CONCAT(COALESCE(faculty_id, 0), "::", group_name)) as aggregate')
-            ->value('aggregate');
+        // A team is a (faculty, name) pair. Counted as DISTINCT rows rather than
+        // a CONCAT of the two: the old raw SQL quoted its separator with double
+        // quotes, which PostgreSQL reads as an identifier rather than a string.
+        $totalTeams = StudentGroup::query()
+            ->select('faculty_id', 'group_name')
+            ->distinct()
+            ->get()
+            ->count();
 
         $studentsThisMonth = Student::where('created_at', '>=', now()->startOfMonth())->count();
         $studentsLastMonth = Student::whereBetween('created_at', [
@@ -40,10 +46,12 @@ class DeanController extends Controller
             $studentTrend = $studentsThisMonth > 0 ? 100 : 0;
         }
 
-        $teamsThisMonth = (int) StudentGroup::query()
+        $teamsThisMonth = StudentGroup::query()
             ->where('created_at', '>=', now()->startOfMonth())
-            ->selectRaw('COUNT(DISTINCT CONCAT(COALESCE(faculty_id, 0), "::", group_name)) as aggregate')
-            ->value('aggregate');
+            ->select('faculty_id', 'group_name')
+            ->distinct()
+            ->get()
+            ->count();
 
         $recentStudents = Student::with('user')
             ->latest()
@@ -115,7 +123,7 @@ class DeanController extends Controller
             }
 
             return [
-                'id' => $user->id,
+                'id' => $user->user_id,
                 'name' => $displayName,
                 'first_name' => $user->first_name,
                 'middle_name' => $user->middle_name,
@@ -164,7 +172,7 @@ class DeanController extends Controller
 
         $teamActivityByFacultyGroup = [];
         foreach ($faculties as $faculty) {
-            $facultyId = (int) $faculty->id;
+            $facultyId = (int) $faculty->faculty_id;
             $facultyTasks = $allTasks->get($facultyId, collect());
             $groups = $faculty->studentGroups
                 ? $faculty->studentGroups->groupBy('group_name')
@@ -202,7 +210,7 @@ class DeanController extends Controller
                             'role_label' => $roleLabels[$task->role] ?? $task->role,
                             'priority' => strtolower($task->priority ?? 'medium'),
                             'status' => $task->status,
-                            'due_date' => optional($task->due_date)->format('M d, Y'),
+                            'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
                             'updated_at' => optional($task->updated_at)->format('M d, Y'),
                         ];
                     })
@@ -244,11 +252,18 @@ class DeanController extends Controller
         ]);
 
         Faculty::create([
-            'user_id' => $user->id,
+            'user_id' => $user->user_id,
             'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
             'status' => $validated['status'],
             'block' => strtoupper($validated['block']),
         ]);
+
+        ActivityLog::recordFor(
+            ActivityLog::ACCOUNT_CREATED,
+            'Created faculty account for ' . $fullName . ' (block ' . strtoupper($validated['block']) . ').'
+        );
+
+        Notifier::accountCreated(auth()->user(), $user, 'faculty');
 
         return redirect()->route('dean.faculties')->with('success', 'Faculty account created successfully.');
     }
@@ -290,19 +305,14 @@ class DeanController extends Controller
             'email_verified_at' => now(),
         ];
 
-        if (Schema::hasColumn('users', 'status')) {
-            $userData['status'] = $validated['status'];
-        }
-
-        if (Schema::hasColumn('users', 'phone_number')) {
-            $userData['phone_number'] = User::cleanOptional($validated['phone_number'] ?? null);
-        }
+        $userData['status'] = $validated['status'];
+        $userData['phone_number'] = User::cleanOptional($validated['phone_number'] ?? null);
 
         $user = User::create($userData);
 
         if ($validated['role'] === 'faculty') {
             Faculty::create([
-                'user_id' => $user->id,
+                'user_id' => $user->user_id,
                 'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
                 'status' => $validated['status'],
                 'block' => strtoupper($validated['block']),
@@ -312,6 +322,13 @@ class DeanController extends Controller
         $message = $validated['role'] === 'faculty'
             ? 'Faculty account created successfully.'
             : 'Student account created successfully.';
+
+        ActivityLog::recordFor(
+            ActivityLog::ACCOUNT_CREATED,
+            'Created ' . $validated['role'] . ' account for ' . $fullName . ' (' . $validated['email'] . ').'
+        );
+
+        Notifier::accountCreated(auth()->user(), $user, $validated['role']);
 
         return redirect()->route('dean.users')->with('success', $message);
     }
@@ -324,7 +341,7 @@ class DeanController extends Controller
 
         if ($user->role === 'faculty') {
             $selectable = Faculty::selectableBlocksForFaculty(
-                $user->faculty?->id,
+                $user->faculty?->faculty_id,
                 $user->faculty?->block
             );
             $rules['block'] = [
@@ -336,9 +353,7 @@ class DeanController extends Controller
 
         $validated = $request->validate($rules);
 
-        if (Schema::hasColumn('users', 'status')) {
-            $user->status = $validated['status'];
-        }
+        $user->status = $validated['status'];
 
         $user->save();
 
@@ -352,11 +367,19 @@ class DeanController extends Controller
             $user->faculty->save();
         }
 
+        ActivityLog::recordFor(
+            ActivityLog::ACCOUNT_UPDATED,
+            'Updated ' . ($user->role ?: 'user') . ' account ' . ($user->name ?? $user->email)
+                . ' — status set to ' . $validated['status'] . '.'
+        );
+
         return redirect()->route('dean.users')->with('success', 'User updated successfully.');
     }
 
     public function reports()
     {
+        ActivityLog::recordFor(ActivityLog::REPORT_GENERATED, 'Generated the dean performance report.');
+
         $roleLabels = [
             'front_desk' => 'Front Desk',
             'restaurant_management' => 'Restaurant',
@@ -383,7 +406,7 @@ class DeanController extends Controller
         foreach ($completedTasks as $task) {
             $studentId = $task->student_id ? (int) $task->student_id : null;
             if (!$studentId && $task->assigned_to) {
-                $studentId = Student::where('user_id', $task->assigned_to)->value('id');
+                $studentId = Student::where('user_id', $task->assigned_to)->value('student_id');
                 $studentId = $studentId ? (int) $studentId : null;
             }
 
@@ -440,7 +463,7 @@ class DeanController extends Controller
                 'student_name' => $studentName,
                 'role' => $roleKey,
                 'role_label' => $roleLabels[$roleKey] ?? $roleKey,
-                'due_date' => optional($task->due_date)->format('M d, Y'),
+                'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
                 'completed_at' => optional($task->updated_at)->format('M d, Y'),
                 'priority' => strtolower($task->priority ?? 'medium'),
             ];
@@ -564,13 +587,8 @@ class DeanController extends Controller
                 'email_verified_at' => now(),
             ];
 
-            if (Schema::hasColumn('users', 'status')) {
-                $userData['status'] = $validated['status'] ?? 'active';
-            }
-
-            if (Schema::hasColumn('users', 'phone_number')) {
-                $userData['phone_number'] = User::cleanOptional($validated['phone_number'] ?? null);
-            }
+            $userData['status'] = $validated['status'] ?? 'active';
+            $userData['phone_number'] = User::cleanOptional($validated['phone_number'] ?? null);
 
             try {
                 if ($validated['role'] === 'faculty') {
@@ -590,7 +608,7 @@ class DeanController extends Controller
 
                 if ($validated['role'] === 'faculty') {
                     Faculty::create([
-                        'user_id' => $user->id,
+                        'user_id' => $user->user_id,
                         'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
                         'status' => $validated['status'] ?? 'active',
                         'block' => $block,
@@ -607,6 +625,14 @@ class DeanController extends Controller
         $message = "{$successCount} users imported successfully.";
         if ($errorCount > 0) {
             $message .= " {$errorCount} rows failed.";
+        }
+
+        if ($successCount > 0) {
+            ActivityLog::recordFor(
+                ActivityLog::ACCOUNT_CREATED,
+                'Bulk imported ' . $successCount . ' user account(s)'
+                    . ($errorCount > 0 ? ', ' . $errorCount . ' row(s) failed' : '') . '.'
+            );
         }
 
         if ($errorCount > 0 && count($errors) <= 10) {
@@ -637,6 +663,11 @@ class DeanController extends Controller
 
         $user->load('student');
         event(new StudentApproved($user, $user->student));
+
+        ActivityLog::recordFor(
+            ActivityLog::ACCOUNT_APPROVED,
+            'Approved student account ' . ($user->name ?? $user->email) . '.'
+        );
 
         return redirect()->route('dean.users')->with('success', 'Student account approved successfully.');
     }

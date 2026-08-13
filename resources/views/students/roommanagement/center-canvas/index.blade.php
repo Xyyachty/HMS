@@ -21,10 +21,6 @@
     {{-- Canvas Frame --}}
     <div id="canvasFrame" class="flex-1 min-h-0 {{ !$hasTemplate ? 'hidden' : '' }}">
         <div class="canvas-frame h-full">
-            <div class="browser-bar flex items-center justify-between">
-                <div id="urlPill" class="url-pill truncate max-w-[60%]">Template {{ $selectedTemplate ?? '—' }}</div>
-                <div></div>
-            </div>
             <div class="flex-1 min-h-0 bg-white">
                 <iframe id="templateFrame" src="{{ $selectedTemplate ? route('students.frontdesk.template.' . $selectedTemplate, ['role' => $builderRole ?? 'room_management']) : '' }}" title="Room Management Template" class="w-full h-full border-0"></iframe>
             </div>

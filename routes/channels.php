@@ -14,5 +14,7 @@ use Illuminate\Support\Facades\Broadcast;
 */
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
-    return (int) $user->id === (int) $id;
+    // The channel name keeps its {id} placeholder — it is Laravel's own convention
+    // for private user channels and is not tied to the column name.
+    return (int) $user->user_id === (int) $id;
 });

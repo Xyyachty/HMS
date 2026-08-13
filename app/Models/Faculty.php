@@ -10,6 +10,8 @@ class Faculty extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'faculty_id';
+
     protected $fillable = [
         'user_id',
         'phone_number',
@@ -66,7 +68,7 @@ class Faculty extends Model
         $existing = static::existingClassLetters();
 
         $taken = static::query()
-            ->when($exceptFacultyId, fn ($q) => $q->where('id', '!=', $exceptFacultyId))
+            ->when($exceptFacultyId, fn ($q) => $q->where('faculty_id', '!=', $exceptFacultyId))
             ->whereNotNull('block')
             ->where('block', '!=', '')
             ->pluck('block')
@@ -96,21 +98,21 @@ class Faculty extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
     public function studentGroups()
     {
-        return $this->hasMany(StudentGroup::class);
+        return $this->hasMany(StudentGroup::class, 'faculty_id', 'faculty_id');
     }
 
     public function classes()
     {
-        return $this->hasMany(FacultyClass::class);
+        return $this->hasMany(FacultyClass::class, 'faculty_id', 'faculty_id');
     }
 
     public function students()
     {
-        return $this->hasMany(Student::class);
+        return $this->hasMany(Student::class, 'faculty_id', 'faculty_id');
     }
 }

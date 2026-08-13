@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\TeamRoleTemplateVersion;
 use App\Support\HotelTemplateBuilder;
+use App\Support\Notifier;
 use App\Support\StudentGroupSync;
 use Illuminate\Http\Request;
 
@@ -82,6 +84,25 @@ class HotelTemplateController extends Controller
             $data['label'] ?? null
         );
 
+        // Explicit saves are important work; autosave is deliberately not logged.
+        ActivityLog::record(
+            $user,
+            ActivityLog::WEBSITE_CUSTOMIZED,
+            'Saved website customizations for the ' . $role . ' module'
+                . (($data['publish'] ?? false) ? ' and published them to the team.' : '.')
+        );
+
+        // Only publishing is worth telling faculty about — autosave and draft saves
+        // fire constantly and would bury the feed.
+        if ($data['publish'] ?? false) {
+            Notifier::sitePublished(
+                $user,
+                (string) $membership->group_name,
+                (int) $membership->faculty_id,
+                HotelTemplateBuilder::ROLES[$role] ?? $role
+            );
+        }
+
         return response()->json([
             'success' => true,
             'template' => HotelTemplateBuilder::payload($saved, true),
@@ -126,7 +147,7 @@ class HotelTemplateController extends Controller
         }
 
         $template = HotelTemplateBuilder::ensureTemplate($membership, $role);
-        $versions = TeamRoleTemplateVersion::where('team_role_template_id', $template->id)
+        $versions = TeamRoleTemplateVersion::where('team_role_template_id', $template->team_role_template_id)
             ->orderByDesc('version')
             ->limit(30)
             ->get()
@@ -160,6 +181,12 @@ class HotelTemplateController extends Controller
         $template = HotelTemplateBuilder::ensureTemplate($membership, $role);
         $restored = HotelTemplateBuilder::restoreVersion($template, $version, $user);
 
+        ActivityLog::record(
+            $user,
+            ActivityLog::TEMPLATE_RESTORED,
+            'Restored version ' . $version . ' of the ' . $role . ' website template.'
+        );
+
         return response()->json([
             'success' => true,
             'template' => HotelTemplateBuilder::payload($restored, true),
@@ -176,25 +203,25 @@ class HotelTemplateController extends Controller
 
         $data = $request->validate([
             'group_name' => ['required', 'string', 'max:255'],
-            'student_id' => ['required', 'integer', 'exists:students,id'],
+            'student_id' => ['required', 'integer', 'exists:students,student_id'],
         ]);
 
-        $student = Student::where('id', $data['student_id'])
-            ->where('faculty_id', $faculty->id)
+        $student = Student::where('student_id', $data['student_id'])
+            ->where('faculty_id', $faculty->faculty_id)
             ->firstOrFail();
 
-        $membership = StudentGroup::where('faculty_id', $faculty->id)
+        $membership = StudentGroup::where('faculty_id', $faculty->faculty_id)
             ->where('group_name', $data['group_name'])
-            ->where('student_id', $student->id)
+            ->where('student_id', $student->student_id)
             ->first();
 
         if (!$membership) {
             return response()->json(['error' => 'Student is not on that team'], 422);
         }
 
-        $grants = \App\Models\TeamTemplateEditGrant::where('faculty_id', $faculty->id)
+        $grants = \App\Models\TeamTemplateEditGrant::where('faculty_id', $faculty->faculty_id)
             ->where('group_name', $data['group_name'])
-            ->where('student_id', $student->id)
+            ->where('student_id', $student->student_id)
             ->pluck('role')
             ->all();
 
@@ -214,7 +241,7 @@ class HotelTemplateController extends Controller
 
         $data = $request->validate([
             'group_name' => ['required', 'string', 'max:255'],
-            'student_id' => ['required', 'integer', 'exists:students,id'],
+            'student_id' => ['required', 'integer', 'exists:students,student_id'],
             'role' => ['required', 'string'],
             'grant' => ['required', 'boolean'],
         ]);
@@ -223,24 +250,25 @@ class HotelTemplateController extends Controller
             return response()->json(['error' => 'Invalid role'], 422);
         }
 
-        $student = Student::where('id', $data['student_id'])
-            ->where('faculty_id', $faculty->id)
+        $student = Student::where('student_id', $data['student_id'])
+            ->where('faculty_id', $faculty->faculty_id)
             ->firstOrFail();
 
-        $membership = StudentGroup::where('faculty_id', $faculty->id)
+        $membership = StudentGroup::where('faculty_id', $faculty->faculty_id)
             ->where('group_name', $data['group_name'])
-            ->where('student_id', $student->id)
+            ->where('student_id', $student->student_id)
             ->first();
 
         if (!$membership) {
             return response()->json(['error' => 'Student is not on that team'], 422);
         }
 
-        // Dummy membership object for grant helpers (needs faculty_id + group_name)
+        // Dummy membership object for grant helpers (needs faculty_id + group_name + group_id)
         $ctx = new StudentGroup([
-            'faculty_id' => $faculty->id,
+            'faculty_id' => $faculty->faculty_id,
             'group_name' => $data['group_name'],
-            'student_id' => $student->id,
+            'student_id' => $student->student_id,
+            'group_id' => $membership->group_id,
         ]);
 
         if ($data['grant']) {
@@ -248,6 +276,13 @@ class HotelTemplateController extends Controller
         } else {
             HotelTemplateBuilder::revokeEdit($ctx, $student, $data['role']);
         }
+
+        ActivityLog::record(
+            $request->user(),
+            ActivityLog::PERMISSION_GRANTED,
+            ($data['grant'] ? 'Granted' : 'Revoked') . ' ' . $data['role']
+                . ' edit access for a member of team "' . $data['group_name'] . '".'
+        );
 
         return response()->json(['success' => true]);
     }
