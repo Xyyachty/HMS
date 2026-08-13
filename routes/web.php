@@ -1404,14 +1404,14 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
     /*
     |--------------------------------------------------------------------------
-    | Hotel room-service orders (Front Desk places, Restaurant Services fulfils)
+    | Hotel room-service orders (Front Desk places, Restaurant Services cooks and delivers)
     |--------------------------------------------------------------------------
     */
 
     Route::get('/hotel/orders', function (Request $request) {
         $membership = \App\Support\HotelOrderAccess::membership();
         if (!$membership) {
-            return response()->json(['orders' => [], 'can_place' => false, 'can_fulfill' => false, 'can_deliver' => false]);
+            return response()->json(['orders' => [], 'can_place' => false, 'can_fulfill' => false]);
         }
 
         $orders = HotelFoodOrder::where('group_name', $membership->group_name)
@@ -1425,7 +1425,6 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'orders'      => $orders,
             'can_place'   => \App\Support\HotelOrderAccess::canPlace($membership),
             'can_fulfill' => \App\Support\HotelOrderAccess::canFulfill($membership),
-            'can_deliver' => \App\Support\HotelOrderAccess::canDeliver($membership),
         ]);
     })->name('hotel.orders.index');
 
@@ -1561,19 +1560,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $next = HotelFoodOrder::normalizeStatus($data['status']);
 
-        // The kitchen owns the whole flow; Front Desk owns exactly one step of it —
-        // marking a Ready order Delivered, which is the moment they hand it to the
-        // guest. Anything else from them is refused rather than silently ignored.
+        // The kitchen owns every step, delivery included. Front Desk reads the status
+        // and nothing more, so any write from them is refused rather than ignored.
         if (!\App\Support\HotelOrderAccess::canFulfill($membership)) {
-            $isFrontDeskHandover = $next === 'Delivered'
-                && $order->status === 'Ready'
-                && \App\Support\HotelOrderAccess::canDeliver($membership);
-
-            if (!$isFrontDeskHandover) {
-                return response()->json([
-                    'message' => 'Only Restaurant Services staff can update an order. Front Desk can mark a Ready order as Delivered.',
-                ], 403);
-            }
+            return response()->json([
+                'message' => 'Only Restaurant Services staff can update an order.',
+            ], 403);
         }
 
         // Status only ever moves forward, for every role — the kitchen included.
@@ -2015,7 +2007,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->exists();
             if ($openOrder) {
                 return response()->json([
-                    'message' => 'This table still has an order in progress — mark it Delivered or Cancelled first.',
+                    'message' => 'This table still has an order in the kitchen — mark it Ready or Cancelled first.',
                 ], 422);
             }
 

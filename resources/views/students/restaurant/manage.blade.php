@@ -64,7 +64,7 @@
   .tb-pending   { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
   .tb-preparing { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .tb-ready     { background: rgba(56,189,248,0.18); color: #38bdf8; border-color: rgba(56,189,248,0.35); }
-  .tb-delivered { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .tb-delivering { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
   .tb-completed { background: rgba(20,148,80,0.18); color: #34d399; border-color: rgba(20,148,80,0.35); }
   .tb-cancelled { background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3); }
   .order-card {
@@ -511,22 +511,22 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
 }
 
 // Mirrors App\Models\HotelFoodOrder::STATUSES / ::FLOW. Cancelled sits off the flow.
-const ORDER_FLOW = ['Pending', 'Preparing', 'Ready', 'Delivered', 'Completed'];
+const ORDER_FLOW = ['Pending', 'Preparing', 'Ready', 'Delivering', 'Completed'];
 const ORDER_STATUSES = [...ORDER_FLOW, 'Cancelled'];
 const OPEN_ORDER_STATUSES = ['Pending', 'Preparing', 'Ready'];
 
-/* The button the kitchen presses next, given where the order is now. Front Desk owns
-   the Ready -> Delivered hand-off, so the kitchen is not offered it. */
+/* The button the kitchen presses next, given where the order is now. Every step of
+   the flow is theirs, delivery included, so none of them is held back. */
 function nextKitchenStatus(status) {
   const at = ORDER_FLOW.indexOf(status);
   if (at < 0 || at >= ORDER_FLOW.length - 1) return null;
-  const next = ORDER_FLOW[at + 1];
-  return next === 'Delivered' ? null : next;
+  return ORDER_FLOW[at + 1];
 }
 
 const ORDER_ACTION_LABEL = {
   Preparing: 'Accept Order',
   Ready: 'Mark Ready',
+  Delivering: 'Start Delivery',
   Completed: 'Complete Order',
 };
 
@@ -712,11 +712,12 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
 }
 
 /*
- * One ticket queue for the kitchen, split by order type. Front Desk places
- * room-service orders against a checked-in guest's stay and hands Ready ones to the
- * room; Restaurant Management places dine-in orders from Manage Tables and carries
- * the whole thing through themselves, table-side, so a dine-in card lets them jump
- * straight to any status instead of only offering "next".
+ * One ticket queue for the kitchen, split by order type. Restaurant Management runs
+ * both kinds end to end — Front Desk places a room-service order against a checked-in
+ * guest's stay and then only watches it, and dine-in orders are taken here from Manage
+ * Tables. The two cards differ only in pace: a dine-in ticket is worked table-side and
+ * may jump straight to any status, while a room-service one steps through the flow one
+ * button at a time, ending with the runner carrying it up to the room.
  */
 function RoomServiceOrderCard({ order, onMove }) {
   const next = nextKitchenStatus(order.status);
@@ -743,9 +744,9 @@ function RoomServiceOrderCard({ order, onMove }) {
         </div>
       </dl>
 
-      {order.status === 'Ready' && (
+      {order.status === 'Delivering' && (
         <p style={{ margin: '0 0 0.6rem', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-          Waiting for Front Desk to deliver it to the room.
+          On the way to room {order.roomNumber || '—'}. Complete it once the guest has it.
         </p>
       )}
 

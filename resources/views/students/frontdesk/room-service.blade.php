@@ -40,7 +40,7 @@
   .rs-pending   { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
   .rs-preparing { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .rs-ready     { background: rgba(56,189,248,0.18); color: #38bdf8; border-color: rgba(56,189,248,0.35); }
-  .rs-delivered { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .rs-delivering { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
   .rs-completed { background: rgba(20,148,80,0.18); color: #34d399; border-color: rgba(20,148,80,0.35); }
   .rs-cancelled { background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3); }
   .rs-tab {
@@ -82,13 +82,13 @@
 </script>
 @verbatim
 <script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
+const { useState, useEffect, useCallback } = React;
 
 const CFG = window.HMS_ROOM_SERVICE;
 
-// Mirrors App\Models\HotelFoodOrder::FLOW. Front Desk only ever presses one of these
-// transitions — Ready -> Delivered — the rest is the kitchen's, shown for context.
-const ORDER_FLOW = ['Pending', 'Preparing', 'Ready', 'Delivered', 'Completed'];
+// Mirrors App\Models\HotelFoodOrder::FLOW. Every one of these transitions belongs to
+// Restaurant Services, delivery included — this page is a window onto their queue.
+const ORDER_FLOW = ['Pending', 'Preparing', 'Ready', 'Delivering', 'Completed'];
 const OPEN_ORDER_STATUSES = ['Pending', 'Preparing', 'Ready'];
 
 function formatPeso(amount) {
@@ -104,12 +104,7 @@ function formatOrderTime(iso) {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-function hmsCsrfToken() {
-  const meta = document.querySelector('meta[name="csrf-token"]');
-  return meta ? meta.getAttribute('content') : '';
-}
-
-function RoomServicePage({ orders, canDeliver, onDeliver, onBack, onToast }) {
+function RoomServicePage({ orders, onBack }) {
   const [filter, setFilter] = useState('Open');
 
   const roomServiceOrders = (orders || [])
@@ -122,14 +117,8 @@ function RoomServicePage({ orders, canDeliver, onDeliver, onBack, onToast }) {
       : o.status === filter
   ));
 
-  const readyCount = roomServiceOrders.filter(o => o.status === 'Ready').length;
+  const movingCount = roomServiceOrders.filter(o => o.status === 'Ready' || o.status === 'Delivering').length;
   const filters = ['Open', 'All', ...ORDER_FLOW.slice(1), 'Cancelled'];
-
-  const deliver = (order) => {
-    Promise.resolve(onDeliver(order.id))
-      .then(() => { if (onToast) onToast(`Order #${order.id} delivered to ${order.roomNumber || 'the room'}.`); })
-      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not update this order.'); });
-  };
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem' }}>
@@ -147,9 +136,9 @@ function RoomServicePage({ orders, canDeliver, onDeliver, onBack, onToast }) {
         <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', marginBottom: '1rem' }}>
           {roomServiceOrders.length === 0
             ? 'No room-service orders yet. Place one from the hotel site’s Restaurant page for a checked-in guest.'
-            : readyCount > 0
-              ? `${readyCount} order${readyCount === 1 ? '' : 's'} ready to take up to the room.`
-              : 'Nothing is waiting on the desk right now.'}
+            : movingCount > 0
+              ? `${movingCount} order${movingCount === 1 ? '' : 's'} plated and heading up to the rooms.`
+              : 'Nothing is moving right now. The kitchen updates this as it works.'}
         </p>
 
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
@@ -186,20 +175,14 @@ function RoomServicePage({ orders, canDeliver, onDeliver, onBack, onToast }) {
                   </div>
                 </dl>
 
-                {order.status === 'Ready' && canDeliver ? (
-                  <button type="button" className="btn-solid" onClick={() => deliver(order)}>
-                    <i className="fa-solid fa-person-walking" style={{ fontSize: '0.7rem' }}></i> Mark Delivered
-                  </button>
-                ) : (
-                  <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-                    {order.status === 'Pending' ? 'Waiting for the kitchen to accept it.'
-                      : order.status === 'Preparing' ? 'The kitchen is cooking it.'
-                      : order.status === 'Ready' ? 'Ready — only Front Desk can mark it delivered.'
-                      : order.status === 'Delivered' ? 'With the guest. The kitchen closes the ticket.'
-                      : order.status === 'Completed' ? 'Closed. Charged to the guest’s bill.'
-                      : 'Cancelled — the portions went back to stock.'}
-                  </p>
-                )}
+                <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
+                  {order.status === 'Pending' ? 'Waiting for the kitchen to accept it.'
+                    : order.status === 'Preparing' ? 'The kitchen is cooking it.'
+                    : order.status === 'Ready' ? 'Plated. The kitchen is about to bring it up.'
+                    : order.status === 'Delivering' ? 'On the way to the guest’s room.'
+                    : order.status === 'Completed' ? 'Delivered and closed. Charged to the guest’s bill.'
+                    : 'Cancelled — the portions went back to stock.'}
+                </p>
               </div>
             ))}
           </div>
@@ -211,17 +194,14 @@ function RoomServicePage({ orders, canDeliver, onDeliver, onBack, onToast }) {
 
 function App() {
   const [orders, setOrders] = useState([]);
-  const [canDeliver, setCanDeliver] = useState(false);
-  const pendingWrites = useRef(0);
 
+  // Nothing on this page writes, so the poll never has to worry about racing an
+  // in-flight update of its own — whatever the kitchen last saved is the truth.
   const fetchOrders = useCallback(() => {
-    if (pendingWrites.current > 0) return;
     fetch(CFG.ordersUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
-        if (pendingWrites.current > 0) return;
         if (Array.isArray(data.orders)) setOrders(data.orders);
-        setCanDeliver(!!data.can_deliver);
       })
       .catch(() => {});
   }, []);
@@ -233,31 +213,10 @@ function App() {
     return () => { clearInterval(id); window.removeEventListener('focus', fetchOrders); };
   }, [fetchOrders]);
 
-  // The server is the one that decides whether this desk may make the transition, so
-  // the row is reconciled from its response rather than patched optimistically.
-  const deliverOrder = useCallback((orderId) => {
-    pendingWrites.current += 1;
-    return fetch(CFG.ordersUrl + '/' + orderId, {
-      method: 'PATCH',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
-      body: JSON.stringify({ status: 'Delivered' }),
-    })
-      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
-      .then(data => {
-        if (data && data.order) setOrders(prev => prev.map(o => (o.id === data.order.id ? data.order : o)));
-        return data;
-      })
-      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
-  }, []);
-
   return (
     <RoomServicePage
       orders={orders}
-      canDeliver={canDeliver}
-      onDeliver={deliverOrder}
       onBack={() => { window.location.href = CFG.backUrl; }}
-      onToast={(msg) => window.toast && window.toast(msg)}
     />
   );
 }

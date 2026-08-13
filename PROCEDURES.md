@@ -100,8 +100,9 @@
 - ### Update the order status
   - ### Pending
   - ### Preparing
-  - ### Ready for Delivery
-  - ### Delivered
+  - ### Ready
+  - ### Delivering
+  - ### Completed
 
 ### Deliver the order to the guest's room
 
@@ -124,8 +125,9 @@
 - ### Update the order status
   - ### Pending
   - ### Preparing
-  - ### Ready for Delivery
-  - ### Delivered
+  - ### Ready
+  - ### Delivering
+  - ### Completed
 
 ### processes payment — post charges to the guest's room bill (if a hotel guest) or process immediate payment (walk-in/dine-in only guest)
 
