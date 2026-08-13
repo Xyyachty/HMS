@@ -54,12 +54,10 @@ class DepartmentTemplatePage
             ];
         }
 
-        // Badge on the Guest Details sidebar item. Only Room Management sees that item,
-        // so nobody else pays for the count. The sidebar's poll keeps it fresh after
-        // this first paint — see syncGuestDetailsBadge() in builder/ops-shell.
-        $guestDetailsPending = $groupMembership && $role === 'room_management'
-            ? HotelBookingDesk::scopedQuery($groupMembership)->awaitingCheckIn()->count()
-            : 0;
+        // Badges on the Staff Tools nav, counted for this role only so no desk pays for
+        // another's queries. Rendered from the server so they are right on first paint;
+        // syncNavBadges() in builder/ops-shell keeps them fresh after that.
+        $navBadges = HotelNavBadges::forRole($groupMembership, $role);
 
         $tasks = $facultyId
             ? Task::where('faculty_id', $facultyId)->where('role', $role)->where('status', 'active')->get()
@@ -120,7 +118,7 @@ class DepartmentTemplatePage
             'canEditTemplate',
             'editablePages',
             'preferredPage',
-            'guestDetailsPending'
+            'navBadges'
         ) + ['builderRole' => $role];
     }
 }

@@ -762,6 +762,20 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     })->name('hotel.guests.pending-count');
 
     /**
+     * Counts behind the Staff Tools nav badges, for whichever role the sidebar was
+     * rendered for. The role comes from the query string rather than the session
+     * because a student may hold more than one, and the badge has to match the nav
+     * that is actually on screen.
+     */
+    Route::get('/hotel/nav-badges', function (Request $request) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+
+        return response()->json([
+            'badges' => \App\Support\HotelNavBadges::forRole($membership, $request->query('role')),
+        ]);
+    })->name('hotel.nav-badges');
+
+    /**
      * Edits a room, and/or moves its status. Releasing a room (Available / Cleaning /
      * Maintenance) also closes whatever booking was holding it, which is what keeps a
      * departed guest from lingering in room service — so status still goes through

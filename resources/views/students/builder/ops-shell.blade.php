@@ -353,25 +353,35 @@
         setInterval(syncGroupPresence, 8000);
         document.addEventListener('DOMContentLoaded', syncGroupPresence);
 
-        // Guest Details badge. The element only exists for Room Management, so every
-        // other role bails before the fetch.
-        async function syncGuestDetailsBadge() {
-            const el = document.querySelector('[data-guest-details-badge]');
-            if (!el) return;
+        // Staff Tools nav badges. One request for the whole sidebar, and it only goes
+        // out when this page actually rendered a badge — a role with none bails first.
+        const NAV_BADGE_ROLE = @json($builderRole ?? null);
+
+        async function syncNavBadges() {
+            const badges = document.querySelectorAll('[data-nav-badge]');
+            if (!badges.length || !NAV_BADGE_ROLE) return;
             try {
-                const res = await fetch(@json(route('students.hotel.guests.pending-count')), {
+                const url = @json(route('students.hotel.nav-badges')) + '?role=' + encodeURIComponent(NAV_BADGE_ROLE);
+                const res = await fetch(url, {
                     credentials: 'same-origin',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 if (!res.ok) return;
                 const data = await res.json();
-                const n = Number(data.count) || 0;
-                el.textContent = n > 99 ? '99+' : String(n);
-                el.classList.toggle('hidden', n === 0);
+                const counts = (data && data.badges) || {};
+                badges.forEach(el => {
+                    // A key the server did not send is left alone rather than zeroed —
+                    // a partial response should not blank a badge that is still valid.
+                    const key = el.getAttribute('data-nav-badge');
+                    if (!(key in counts)) return;
+                    const n = Number(counts[key]) || 0;
+                    el.textContent = n > 99 ? '99+' : String(n);
+                    el.classList.toggle('hidden', n === 0);
+                });
             } catch (e) { /* ignore */ }
         }
-        setInterval(syncGuestDetailsBadge, 8000);
-        document.addEventListener('DOMContentLoaded', syncGuestDetailsBadge);
+        setInterval(syncNavBadges, 8000);
+        document.addEventListener('DOMContentLoaded', syncNavBadges);
     </script>
     @yield('scripts')
 </body>
