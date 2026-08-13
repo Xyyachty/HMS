@@ -352,6 +352,26 @@
         }
         setInterval(syncGroupPresence, 8000);
         document.addEventListener('DOMContentLoaded', syncGroupPresence);
+
+        // Guest Details badge. The element only exists for Room Management, so every
+        // other role bails before the fetch.
+        async function syncGuestDetailsBadge() {
+            const el = document.querySelector('[data-guest-details-badge]');
+            if (!el) return;
+            try {
+                const res = await fetch(@json(route('students.hotel.guests.pending-count')), {
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const n = Number(data.count) || 0;
+                el.textContent = n > 99 ? '99+' : String(n);
+                el.classList.toggle('hidden', n === 0);
+            } catch (e) { /* ignore */ }
+        }
+        setInterval(syncGuestDetailsBadge, 8000);
+        document.addEventListener('DOMContentLoaded', syncGuestDetailsBadge);
     </script>
     @yield('scripts')
 </body>

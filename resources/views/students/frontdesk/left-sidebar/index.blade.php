@@ -84,6 +84,11 @@
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.manage') && request()->query('nav') === 'guest-details' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-user text-[13px] text-emerald-400"></i> Guest Details
+                    {{-- Guests registered but not checked in yet. Rendered from the server so
+                         it is right on first paint; syncGuestDetailsBadge() keeps it fresh. --}}
+                    @php $pendingGuests = (int) ($guestDetailsPending ?? 0); @endphp
+                    <span data-guest-details-badge
+                        class="{{ $pendingGuests > 0 ? '' : 'hidden' }} ml-auto min-w-[20px] h-[18px] px-1.5 flex items-center justify-center rounded-full bg-amber-400 text-zinc-950 text-[10px] font-bold leading-none">{{ $pendingGuests > 99 ? '99+' : $pendingGuests }}</span>
                 </a>
                 @elseif(($builderRole ?? null) === 'restaurant_management')
                 <a href="{{ route('students.restaurant.manage', ['nav' => 'manage-menu']) }}"

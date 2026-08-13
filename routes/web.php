@@ -744,6 +744,24 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     })->name('hotel.rooms.index');
 
     /**
+     * Guests Front Desk has registered that Room Management has not checked in yet.
+     * Count only — this is polled every few seconds for the sidebar badge, so it stays
+     * a single COUNT(*) rather than reusing the full /hotel/rooms payload.
+     */
+    Route::get('/hotel/guests/pending-count', function () {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['count' => 0]);
+        }
+
+        return response()->json([
+            'count' => \App\Support\HotelBookingDesk::scopedQuery($membership)
+                ->awaitingCheckIn()
+                ->count(),
+        ]);
+    })->name('hotel.guests.pending-count');
+
+    /**
      * Edits a room, and/or moves its status. Releasing a room (Available / Cleaning /
      * Maintenance) also closes whatever booking was holding it, which is what keeps a
      * departed guest from lingering in room service — so status still goes through

@@ -35,6 +35,9 @@ class HotelBooking extends Model
     /** Statuses that still hold the room. Anything else is history. */
     public const OPEN_STATUSES = ['Booked', 'Arrived', 'Checked In'];
 
+    /** Registered but not handed a room yet — what the Guest Details badge counts. */
+    public const AWAITING_CHECK_IN_STATUSES = ['Booked', 'Arrived'];
+
     /** Length of one charged stay block, in hours — matches the front-end's BLOCK_HOURS. */
     public const BLOCK_HOURS = 12;
 
@@ -104,6 +107,12 @@ class HotelBooking extends Model
     public function scopeOpen(Builder $query): Builder
     {
         return $query->whereIn('status', self::OPEN_STATUSES);
+    }
+
+    /** Bookings Room Management has yet to act on. */
+    public function scopeAwaitingCheckIn(Builder $query): Builder
+    {
+        return $query->whereIn('status', self::AWAITING_CHECK_IN_STATUSES);
     }
 
     public static function normalizeStatus(?string $value): string
