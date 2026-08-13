@@ -68,6 +68,29 @@ services:
       - key: LOG_CHANNEL
         value: stderr
 
+      # Student welcome emails. Gmail SMTP with an App Password — the account's own
+      # password will not authenticate here, and 2-Step Verification has to be on for
+      # Google to issue one.
+      - key: MAIL_MAILER
+        value: smtp
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_ENCRYPTION
+        value: tls
+      - key: MAIL_USERNAME
+        value: xyron.sandigan15@gmail.com
+      # Gmail refuses to send as anyone but the authenticated account, so this matches
+      # MAIL_USERNAME rather than being a friendly noreply@ address.
+      - key: MAIL_FROM_ADDRESS
+        value: xyron.sandigan15@gmail.com
+      - key: MAIL_FROM_NAME
+        value: HMS
+      # The 16-character App Password. Dashboard only — it must not enter git.
+      - key: MAIL_PASSWORD
+        sync: false
+
       - key: SUPABASE_S3_KEY
         sync: false
       - key: SUPABASE_S3_SECRET
