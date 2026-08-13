@@ -713,9 +713,10 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
  * One ticket queue for the kitchen, split by order type. Restaurant Management runs
  * both kinds end to end — Front Desk places a room-service order against a checked-in
  * guest's stay and then only watches it, and dine-in orders are taken here from Manage
- * Tables. The two cards differ only in pace: a dine-in ticket is worked table-side and
- * may jump straight to any status, while a room-service one steps through the flow one
- * button at a time, ending with the runner carrying it up to the room.
+ * Tables. A dine-in ticket is worked table-side, so it may jump straight to any status
+ * and it may still be cancelled. A room-service one steps through the flow one button
+ * at a time and has no cancel: it is already on the guest's bill, so it runs all the
+ * way to Completed with the runner carrying it up to the room.
  */
 function RoomServiceOrderCard({ order, onMove }) {
   const next = nextKitchenStatus(order.status);
@@ -748,17 +749,11 @@ function RoomServiceOrderCard({ order, onMove }) {
         </p>
       )}
 
-      {!finished && (
+      {!finished && next && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {next && (
-            <button type="button" className="btn-primary" style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}
-              onClick={() => onMove(order, next)}>
-              {ORDER_ACTION_LABEL[next] || next}
-            </button>
-          )}
-          <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.45rem 0.9rem' }}
-            onClick={() => onMove(order, 'Cancelled')}>
-            Cancel
+          <button type="button" className="btn-primary" style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}
+            onClick={() => onMove(order, next)}>
+            {ORDER_ACTION_LABEL[next] || next}
           </button>
         </div>
       )}

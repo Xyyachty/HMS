@@ -17,8 +17,12 @@ class HotelFoodOrder extends Model
      * An order starts at Preparing: it lands in the kitchen already accepted, so there
      * is no queue in front of the stove to sit in. Delivering means a runner has left
      * the kitchen with it; Completed is the guest having it in hand and the ticket
-     * closed. Cancelled is off to the side of that line and returns the portions to
-     * stock.
+     * closed.
+     *
+     * Cancelled is off to the side of that line and returns the portions to stock, but
+     * it is a dine-in exit only — a room-service order is billed to a stay as soon as
+     * it is placed, so it runs to Completed. The route enforces that; the flow itself
+     * is shared by both order types.
      */
     public const STATUSES = [
         'Preparing',

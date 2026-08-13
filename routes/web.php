@@ -1570,6 +1570,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ], 403);
         }
 
+        // A room-service order is billed to a stay the moment it is placed, so there
+        // is no cancelling it — it runs to Completed. Dine-in keeps the exit: nothing
+        // is charged to a room there, and a table can change its mind.
+        if ($next === 'Cancelled' && $order->order_type !== 'dine_in') {
+            return response()->json([
+                'message' => 'A room-service order cannot be cancelled. See it through to Completed.',
+            ], 422);
+        }
+
         // Status only ever moves forward, for every role — the kitchen included.
         // Once Completed or Cancelled, an order is done; nothing may reopen it.
         if (!HotelFoodOrder::isForwardTransition($order->status, $next)) {
