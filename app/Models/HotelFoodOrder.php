@@ -12,14 +12,15 @@ class HotelFoodOrder extends Model
      * Restaurant Services carries an order the whole way — they cook it and they walk
      * it up to the room themselves. Front Desk only reads the status.
      *
-     *   Pending -> Preparing -> Ready -> Delivering -> Completed
+     *   Preparing -> Ready -> Delivering -> Completed
      *
-     * Delivering means a runner has left the kitchen with it; Completed is the guest
-     * having it in hand and the ticket closed. Cancelled is off to the side of that
-     * line and returns the portions to stock.
+     * An order starts at Preparing: it lands in the kitchen already accepted, so there
+     * is no queue in front of the stove to sit in. Delivering means a runner has left
+     * the kitchen with it; Completed is the guest having it in hand and the ticket
+     * closed. Cancelled is off to the side of that line and returns the portions to
+     * stock.
      */
     public const STATUSES = [
-        'Pending',
         'Preparing',
         'Ready',
         'Delivering',
@@ -28,10 +29,10 @@ class HotelFoodOrder extends Model
     ];
 
     /** The kitchen pipeline in order, so a screen can offer "the next step". */
-    public const FLOW = ['Pending', 'Preparing', 'Ready', 'Delivering', 'Completed'];
+    public const FLOW = ['Preparing', 'Ready', 'Delivering', 'Completed'];
 
     /** Statuses that still owe the guest food. Anything else is finished. */
-    public const OPEN_STATUSES = ['Pending', 'Preparing', 'Ready'];
+    public const OPEN_STATUSES = ['Preparing', 'Ready'];
 
     protected $primaryKey = 'hotel_food_order_id';
 
@@ -93,7 +94,7 @@ class HotelFoodOrder extends Model
             }
         }
 
-        return 'Pending';
+        return 'Preparing';
     }
 
     public static function normalizeOrderType(?string $value): string

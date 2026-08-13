@@ -61,7 +61,6 @@
   }
   .tb-available { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
   .tb-occupied  { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
-  .tb-pending   { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
   .tb-preparing { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .tb-ready     { background: rgba(56,189,248,0.18); color: #38bdf8; border-color: rgba(56,189,248,0.35); }
   .tb-delivering { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
@@ -511,9 +510,9 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
 }
 
 // Mirrors App\Models\HotelFoodOrder::STATUSES / ::FLOW. Cancelled sits off the flow.
-const ORDER_FLOW = ['Pending', 'Preparing', 'Ready', 'Delivering', 'Completed'];
+const ORDER_FLOW = ['Preparing', 'Ready', 'Delivering', 'Completed'];
 const ORDER_STATUSES = [...ORDER_FLOW, 'Cancelled'];
-const OPEN_ORDER_STATUSES = ['Pending', 'Preparing', 'Ready'];
+const OPEN_ORDER_STATUSES = ['Preparing', 'Ready'];
 
 /* The button the kitchen presses next, given where the order is now. Every step of
    the flow is theirs, delivery included, so none of them is held back. */
@@ -524,7 +523,6 @@ function nextKitchenStatus(status) {
 }
 
 const ORDER_ACTION_LABEL = {
-  Preparing: 'Accept Order',
   Ready: 'Mark Ready',
   Delivering: 'Start Delivery',
   Completed: 'Complete Order',
@@ -957,7 +955,7 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
   ));
 
   const openCount = typedOrders.filter(o => OPEN_ORDER_STATUSES.indexOf(o.status) !== -1).length;
-  const filters = ['Open', 'All', ...ORDER_FLOW.slice(1), 'Cancelled'];
+  const filters = ['Open', 'All', ...ORDER_FLOW, 'Cancelled'];
   const tableFor = (id) => (tables || []).find(t => t.id === id);
 
   // safePage rather than page: switching to a filter with fewer orders must not

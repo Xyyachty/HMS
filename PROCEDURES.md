@@ -98,7 +98,6 @@
 ### Prepare the order
 
 - ### Update the order status
-  - ### Pending
   - ### Preparing
   - ### Ready
   - ### Delivering
@@ -123,7 +122,6 @@
 ### Prepare the order
 
 - ### Update the order status
-  - ### Pending
   - ### Preparing
   - ### Ready
   - ### Delivering

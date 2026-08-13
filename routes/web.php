@@ -1533,7 +1533,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     'guest_name'       => trim($data['guest_name'] ?? $table?->guest_name ?? ''),
                     'items'            => $items,
                     'total'            => HotelFoodOrder::totalFor($items),
-                    'status'           => 'Pending',
+                    // Straight to the stove: Restaurant Services owns the order from
+                    // the moment it is placed, so there is nothing to accept first.
+                    'status'           => 'Preparing',
                     'placed_by'        => auth()->user()?->name,
                 ]);
             });
@@ -2003,7 +2005,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
 
             $openOrder = HotelFoodOrder::where('dine_in_table_id', $table->hotel_dine_in_table_id)
-                ->whereIn('status', ['Pending', 'Preparing'])
+                ->whereIn('status', ['Preparing'])
                 ->exists();
             if ($openOrder) {
                 return response()->json([

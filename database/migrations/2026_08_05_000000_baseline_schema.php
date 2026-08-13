@@ -406,7 +406,7 @@ return new class extends Migration
                 // Line items: menu_item_id, name, price, qty.
                 $table->json('items');
                 $table->integer('total')->default(0);
-                $table->string('status')->default('Pending');
+                $table->string('status')->default('Preparing');
                 $table->string('placed_by')->nullable();
                 $table->timestamps();
                 $table->index(['group_name', 'faculty_id']);

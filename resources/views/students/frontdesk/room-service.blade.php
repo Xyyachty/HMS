@@ -37,7 +37,6 @@
     font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent; display: inline-block;
   }
-  .rs-pending   { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
   .rs-preparing { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .rs-ready     { background: rgba(56,189,248,0.18); color: #38bdf8; border-color: rgba(56,189,248,0.35); }
   .rs-delivering { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
@@ -88,8 +87,8 @@ const CFG = window.HMS_ROOM_SERVICE;
 
 // Mirrors App\Models\HotelFoodOrder::FLOW. Every one of these transitions belongs to
 // Restaurant Services, delivery included — this page is a window onto their queue.
-const ORDER_FLOW = ['Pending', 'Preparing', 'Ready', 'Delivering', 'Completed'];
-const OPEN_ORDER_STATUSES = ['Pending', 'Preparing', 'Ready'];
+const ORDER_FLOW = ['Preparing', 'Ready', 'Delivering', 'Completed'];
+const OPEN_ORDER_STATUSES = ['Preparing', 'Ready'];
 
 function formatPeso(amount) {
   const n = Number(amount);
@@ -118,7 +117,7 @@ function RoomServicePage({ orders, onBack }) {
   ));
 
   const movingCount = roomServiceOrders.filter(o => o.status === 'Ready' || o.status === 'Delivering').length;
-  const filters = ['Open', 'All', ...ORDER_FLOW.slice(1), 'Cancelled'];
+  const filters = ['Open', 'All', ...ORDER_FLOW, 'Cancelled'];
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem' }}>
@@ -176,8 +175,7 @@ function RoomServicePage({ orders, onBack }) {
                 </dl>
 
                 <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-                  {order.status === 'Pending' ? 'Waiting for the kitchen to accept it.'
-                    : order.status === 'Preparing' ? 'The kitchen is cooking it.'
+                  {order.status === 'Preparing' ? 'The kitchen is cooking it.'
                     : order.status === 'Ready' ? 'Plated. The kitchen is about to bring it up.'
                     : order.status === 'Delivering' ? 'On the way to the guest’s room.'
                     : order.status === 'Completed' ? 'Delivered and closed. Charged to the guest’s bill.'
