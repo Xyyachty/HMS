@@ -64,6 +64,10 @@ class StudentWelcomeMailer
     public static function send(User $user, string $plainPassword, ?string $className = null, ?string $studentNumber = null): array
     {
         if (!self::isDeliverable($user->email)) {
+            // Logged as well as returned. This path used to fail in silence, which
+            // left nothing to look at when a student said no email arrived.
+            Log::warning('Student welcome email skipped, address not deliverable: ' . var_export($user->email, true));
+
             return [
                 'sent'   => false,
                 'reason' => Str::endsWith(Str::lower((string) $user->email), self::PLACEHOLDER_DOMAIN)
@@ -83,6 +87,8 @@ class StudentWelcomeMailer
                 className: $className,
                 studentNumber: $studentNumber,
             ));
+
+            Log::info('Student welcome email handed to the mail server for ' . $user->email . '.');
 
             return ['sent' => true, 'reason' => ''];
         } catch (\Throwable $e) {

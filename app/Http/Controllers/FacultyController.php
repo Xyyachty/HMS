@@ -494,13 +494,15 @@ class FacultyController extends Controller
         // a password that opens a student's account and no two students share one.
         $plainPassword = StudentWelcomeMailer::generatePassword();
 
-        $emailInput = trim($validated['email']);
-        $email = str_contains($emailInput, '@')
-            ? strtolower($emailInput)
-            : strtolower($emailInput . '@hms.edu');
+        $email = strtolower(trim($validated['email']));
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return back()->withErrors(['email' => 'Please enter a valid email address.'])->withInput();
+        // No @hms.edu fallback on this form. The password now exists only in the
+        // welcome email, so an address that cannot receive mail leaves a student
+        // with an account and no way into it. Say so before the row is created.
+        if (!StudentWelcomeMailer::isDeliverable($email)) {
+            return back()->withErrors([
+                'email' => 'Enter a real email address the student can open — their password is only sent there.',
+            ])->withInput();
         }
 
         if (User::whereEmail($email)->exists()) {
