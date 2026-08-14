@@ -487,8 +487,12 @@ class FacultyController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'max:255'],
             'phone_number' => ['nullable', 'string', 'max:30'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
+
+        // Generated rather than typed, same as the bulk upload. The only place it is
+        // ever readable is the student's own welcome email, so no faculty member holds
+        // a password that opens a student's account and no two students share one.
+        $plainPassword = StudentWelcomeMailer::generatePassword();
 
         $emailInput = trim($validated['email']);
         $email = str_contains($emailInput, '@')
@@ -516,7 +520,7 @@ class FacultyController extends Controller
             ->orderBy('sort_order')
             ->value('faculty_class_id');
 
-        [$user, $student, $class] = DB::transaction(function () use ($validated, $email, $fullName, $facultyId) {
+        [$user, $student, $class] = DB::transaction(function () use ($validated, $email, $fullName, $facultyId, $plainPassword) {
             $class = FacultyClass::claimSeat($facultyId);
 
             $user = User::create([
@@ -525,7 +529,7 @@ class FacultyController extends Controller
                 'middle_name' => User::cleanOptional($validated['middle_name'] ?? null),
                 'last_name' => $validated['last_name'],
                 'email' => $email,
-                'password' => Hash::make($validated['password']),
+                'password' => Hash::make($plainPassword),
                 'role' => 'student',
                 'status' => 'active',
                 'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
@@ -554,11 +558,12 @@ class FacultyController extends Controller
         Notifier::studentAdded(auth()->user(), $user, $fullName, $class, $facultyId);
         $this->notifyIfClassOpened($facultyId, $openClassIdBefore);
 
-        // Only now that the account exists. The password is the one just typed, which
-        // is the last point it is readable — the column holds a hash from here on.
+        // Only now that the account exists. This is the last point the generated
+        // password is readable — the column holds a hash from here on, so a student
+        // whose email never arrives has to reset rather than be told.
         $mailResult = StudentWelcomeMailer::send(
             $user,
-            $validated['password'],
+            $plainPassword,
             $class->name ?? null,
             $validated['student_id']
         );
@@ -568,9 +573,13 @@ class FacultyController extends Controller
             $message .= ' ' . $class->name . ' is now full. A new class tab was opened.';
         }
 
+        // When the email did not go out, this banner is the only place the password
+        // is ever shown — the account is otherwise created with a password nobody
+        // knows. Shown once, on the faculty's own screen, and never stored in clear.
         $message .= $mailResult['sent']
             ? ' A welcome email with the sign-in details was sent to ' . $user->email . '.'
-            : ' Note: ' . $mailResult['reason'] . '.';
+            : ' Note: ' . $mailResult['reason'] . '. Their password is ' . $plainPassword
+                . ' — write it down now and give it to them, it is not shown again.';
 
         return redirect()
             ->route('faculty.students', ['class' => $class->letter])

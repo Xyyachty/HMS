@@ -439,7 +439,7 @@
                         <code class="bg-blue-100 px-1 rounded">student_id, first_name, last_name, email</code>
                         <span class="mx-1 text-blue-400">+</span>
                         optional: <code class="bg-blue-100 px-1 rounded">middle_name, phone_number</code>
-                        <br><span class="text-blue-500 mt-1 block">Default password will be <strong>password</strong> for each student.</span>
+                        <br><span class="text-blue-500 mt-1 block">Each student gets their own generated password, emailed to them with their sign-in details.</span>
                     </div>
                 </div>
 
@@ -546,7 +546,7 @@
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <form method="POST" action="{{ route('faculty.students.store') }}" onsubmit="return validateStudentPasswords()">
+        <form method="POST" action="{{ route('faculty.students.store') }}">
             @csrf
             @if ($errors->any())
                 <div class="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -582,25 +582,11 @@
                         <input name="phone_number" type="text" placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
-                    <div class="relative">
-                        <input id="createStudentPassword" name="password" type="password" placeholder="Min. 8 characters" required oninput="validateStudentPasswords()" class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                        <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                        </button>
+                <div class="md:col-span-2">
+                    <div class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                        <span class="iconify text-base text-slate-400 shrink-0 mt-0.5" data-icon="mdi:key-outline"></span>
+                        <span>A password is generated for this student and emailed to them with their sign-in details. Nobody types it, so no two students share one.</span>
                     </div>
-                    <p id="createStudentPasswordHelp" class="mt-1 text-[11px] text-red-500 hidden">Password must be at least 8 characters.</p>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm Password</label>
-                    <div class="relative">
-                        <input id="createStudentPasswordConfirm" name="password_confirmation" type="password" placeholder="Re-enter password" required oninput="validateStudentPasswords()" class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                        <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                        </button>
-                    </div>
-                    <p id="createStudentPasswordMatch" class="mt-1 text-[11px] text-red-500 hidden">Passwords do not match.</p>
                 </div>
             </div>
             <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0">
@@ -1114,25 +1100,6 @@
         const isHidden = input.type === 'password';
         input.type = isHidden ? 'text' : 'password';
         icon.setAttribute('data-icon', isHidden ? 'mdi:eye-outline' : 'mdi:eye-off-outline');
-    }
-
-    function validateStudentPasswords() {
-        const password = document.getElementById('createStudentPassword');
-        const confirm = document.getElementById('createStudentPasswordConfirm');
-        const lengthHelp = document.getElementById('createStudentPasswordHelp');
-        const matchHelp = document.getElementById('createStudentPasswordMatch');
-
-        if (!password || !confirm) {
-            return true;
-        }
-
-        const tooShort = password.value.length > 0 && password.value.length < 8;
-        const mismatch = confirm.value.length > 0 && password.value !== confirm.value;
-
-        lengthHelp.classList.toggle('hidden', !tooShort);
-        matchHelp.classList.toggle('hidden', !mismatch);
-
-        return !(tooShort || mismatch);
     }
 
     function validateUpdatePasswords() {
