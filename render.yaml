@@ -68,27 +68,19 @@ services:
       - key: LOG_CHANNEL
         value: stderr
 
-      # Student welcome emails. Gmail SMTP with an App Password — the account's own
-      # password will not authenticate here, and 2-Step Verification has to be on for
-      # Google to issue one.
+      # Student welcome emails go through Brevo's HTTP API, not SMTP. Render blocks
+      # outbound traffic on ports 25, 465 and 587 for free web services, so Gmail
+      # SMTP from here times out and no student is ever told their password.
       - key: MAIL_MAILER
-        value: smtp
-      - key: MAIL_HOST
-        value: smtp.gmail.com
-      - key: MAIL_PORT
-        value: "587"
-      - key: MAIL_ENCRYPTION
-        value: tls
-      - key: MAIL_USERNAME
-        value: xyron.sandigan15@gmail.com
-      # Gmail refuses to send as anyone but the authenticated account, so this matches
-      # MAIL_USERNAME rather than being a friendly noreply@ address.
+        value: brevo
+      # Must be verified as a sender in Brevo or every send is refused. Students
+      # still see this address; only the wire protocol changed.
       - key: MAIL_FROM_ADDRESS
         value: xyron.sandigan15@gmail.com
       - key: MAIL_FROM_NAME
         value: HMS
-      # The 16-character App Password. Dashboard only — it must not enter git.
-      - key: MAIL_PASSWORD
+      # Starts xkeysib-. Dashboard only — it must not enter git.
+      - key: BREVO_API_KEY
         sync: false
 
       - key: SUPABASE_S3_KEY

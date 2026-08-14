@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Mail\Transport\BrevoApiTransport;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
 
@@ -24,6 +26,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Laravel has no Brevo transport of its own, so the 'brevo' mailer in
+        // config/mail.php only resolves once this is registered.
+        Mail::extend('brevo', function (array $config) {
+            return new BrevoApiTransport(
+                (string) ($config['key'] ?? config('services.brevo.key') ?? '')
+            );
+        });
     }
 }

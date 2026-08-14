@@ -28,7 +28,7 @@ return [
     | sending an e-mail. You will specify which one you are using for your
     | mailers below. You are free to add additional mailers as required.
     |
-    | Supported: "smtp", "sendmail", "mailgun", "ses",
+    | Supported: "smtp", "sendmail", "mailgun", "ses", "brevo",
     |            "postmark", "log", "array", "failover"
     |
     */
@@ -43,6 +43,12 @@ return [
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
+        ],
+
+        // Registered by AppServiceProvider — 'brevo' is not a transport Laravel
+        // ships with. Its credentials live in services.brevo.
+        'brevo' => [
+            'transport' => 'brevo',
         ],
 
         'ses' => [
