@@ -419,6 +419,18 @@
                                 @if($group)
                                     <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Hotel Management Simulation</p>
                                     <h3 class="text-lg font-extrabold text-white leading-tight">{{ $group->name }}</h3>
+                                    {{-- The hotel Front Desk proposed, once it exists. --}}
+                                    @if($hotelConcept)
+                                        <div class="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/15 border border-white/20 text-white text-[11px] font-bold max-w-full">
+                                                <span class="iconify text-[11px] shrink-0" data-icon="mdi:lightbulb-on-outline"></span>
+                                                <span class="truncate">{{ $hotelConcept->title }}</span>
+                                            </span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/80 text-[10px] font-semibold">
+                                                {{ $hotelConcept->hotel_type_label }}
+                                            </span>
+                                        </div>
+                                    @endif
                                 @else
                                     <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Team</p>
                                     <h3 class="text-base font-extrabold text-white">Not assigned yet</h3>
