@@ -559,7 +559,6 @@
                 <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                     <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
                         <div class="min-w-0">
-                            <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">Hotel Concept</p>
                             <h3 class="text-sm font-bold text-slate-800">Edit History</h3>
                         </div>
                         <span id="conceptHistoryCount" class="shrink-0 text-[10px] font-semibold text-slate-400">
