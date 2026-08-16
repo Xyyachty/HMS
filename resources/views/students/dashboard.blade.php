@@ -419,18 +419,20 @@
                                 @if($group)
                                     <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Hotel Management Simulation</p>
                                     <h3 class="text-lg font-extrabold text-white leading-tight">{{ $group->name }}</h3>
-                                    {{-- The hotel Front Desk proposed, once it exists. --}}
-                                    @if($hotelConcept)
-                                        <div class="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/15 border border-white/20 text-white text-[11px] font-bold max-w-full">
-                                                <span class="iconify text-[11px] shrink-0" data-icon="mdi:lightbulb-on-outline"></span>
-                                                <span class="truncate">{{ $hotelConcept->title }}</span>
-                                            </span>
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/80 text-[10px] font-semibold">
-                                                {{ $hotelConcept->hotel_type_label }}
-                                            </span>
-                                        </div>
-                                    @endif
+                                    {{-- The hotel Front Desk proposed. Kept in step with the edit
+                                         form below, so the header never shows a title the member
+                                         has already changed. --}}
+                                    <div id="teamHeaderConcept"
+                                        class="mt-1.5 flex items-center gap-1.5 flex-wrap {{ $hotelConcept ? '' : 'hidden' }}">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/15 border border-white/20 text-white text-[11px] font-bold max-w-full">
+                                            <span class="iconify text-[11px] shrink-0" data-icon="mdi:lightbulb-on-outline"></span>
+                                            <span class="truncate" id="teamHeaderConceptTitle">{{ $hotelConcept->title ?? '' }}</span>
+                                        </span>
+                                        <span id="teamHeaderConceptType"
+                                            class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/80 text-[10px] font-semibold">
+                                            {{ $hotelConcept->hotel_type_label ?? '' }}
+                                        </span>
+                                    </div>
                                 @else
                                     <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Team</p>
                                     <h3 class="text-base font-extrabold text-white">Not assigned yet</h3>
@@ -1161,10 +1163,68 @@
             const form = document.getElementById('hotelConceptForm');
             if (!form) return;
             form.classList.toggle('hidden');
-            if (!form.classList.contains('hidden')) {
+            if (form.classList.contains('hidden')) {
+                // Closed without saving — the header goes back to what is stored.
+                restoreHotelConceptHeader();
+            } else {
                 form.querySelector('input[name="title"]')?.focus();
             }
         }
+
+        /* What the server rendered, kept so a cancelled edit can be undone in the header. */
+        const savedConceptHeader = {
+            title: @json($hotelConcept->title ?? ''),
+            type: @json($hotelConcept->hotel_type_label ?? ''),
+        };
+
+        function restoreHotelConceptHeader() {
+            const pill = document.getElementById('teamHeaderConcept');
+            const titleOut = document.getElementById('teamHeaderConceptTitle');
+            const typeOut = document.getElementById('teamHeaderConceptType');
+            if (!pill) return;
+
+            if (titleOut) titleOut.textContent = savedConceptHeader.title;
+            if (typeOut) {
+                typeOut.textContent = savedConceptHeader.type;
+                typeOut.classList.toggle('hidden', savedConceptHeader.type === '');
+            }
+            pill.classList.toggle('hidden', savedConceptHeader.title === '');
+
+            const form = document.getElementById('hotelConceptForm');
+            if (form && form.classList.contains('hidden')) {
+                form.reset();
+            }
+        }
+
+        /* Header pill follows the edit form: the concept is the team's headline,
+           so it should read what the member is proposing right now, not the
+           version they are in the middle of replacing. */
+        (function trackConceptInHeader() {
+            const form = document.getElementById('hotelConceptForm');
+            const pill = document.getElementById('teamHeaderConcept');
+            if (!form || !pill) return;
+
+            const titleInput = form.querySelector('input[name="title"]');
+            const typeSelect = form.querySelector('select[name="hotel_type"]');
+            const titleOut = document.getElementById('teamHeaderConceptTitle');
+            const typeOut = document.getElementById('teamHeaderConceptType');
+
+            function sync() {
+                const title = (titleInput?.value || '').trim();
+                const typeOption = typeSelect?.selectedOptions?.[0];
+                const type = typeSelect?.value ? (typeOption?.textContent || '').trim() : '';
+
+                if (titleOut) titleOut.textContent = title;
+                if (typeOut) {
+                    typeOut.textContent = type;
+                    typeOut.classList.toggle('hidden', type === '');
+                }
+                pill.classList.toggle('hidden', title === '');
+            }
+
+            titleInput?.addEventListener('input', sync);
+            typeSelect?.addEventListener('change', sync);
+        })();
 
         /* Teammate activity — reads the centralized activity_logs table. The endpoint
            is gated server-side by ActivityLogAccess, which only allows members of the
