@@ -67,6 +67,36 @@
         </div>
     </div>
 
+    @php
+        $studentBlocks = $users
+            ->where('role', 'student')
+            ->map(fn ($u) => $u->student?->facultyClass?->letter)
+            ->filter()
+            ->map(fn ($letter) => strtoupper($letter));
+        $blockTabs = collect($systemBlocks)->merge($studentBlocks)->unique()->sort()->values();
+        $hasUnassignedStudents = $users
+            ->where('role', 'student')
+            ->contains(fn ($u) => ! $u->student?->facultyClass?->letter);
+    @endphp
+
+    <!-- Block sub-tabs (Students only) -->
+    <div id="blockTabBar" class="hidden px-4 md:px-6 pt-3 pb-3 border-b border-slate-100 bg-slate-50/60 flex-wrap gap-2">
+        <button type="button" onclick="switchBlockTab('')" data-block-tab=""
+            class="block-tab-btn px-3.5 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:text-brand transition">
+            All Blocks
+        </button>
+        @foreach ($blockTabs as $letter)
+            <button type="button" onclick="switchBlockTab('{{ $letter }}')" data-block-tab="{{ $letter }}"
+                class="block-tab-btn px-3.5 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:text-brand transition">
+                Block {{ $letter }}
+            </button>
+        @endforeach
+        <button type="button" onclick="switchBlockTab('__none__')" data-block-tab="__none__"
+            class="block-tab-btn px-3.5 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:text-brand transition {{ $hasUnassignedStudents ? '' : 'hidden' }}">
+            Unassigned
+        </button>
+    </div>
+
     @if (session('success'))
         <div id="successAlert" class="mx-6 mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {{ session('success') }}
@@ -112,7 +142,7 @@
                         }
                         $blockLabel = \App\Models\Faculty::blockLabel($block);
                     @endphp
-                    <tr data-user-id="{{ $user->user_id }}" data-role="{{ $user->role }}">
+                    <tr data-user-id="{{ $user->user_id }}" data-role="{{ $user->role }}" data-block="{{ strtoupper((string) $block) }}">
                         <td>
                             <span class="font-semibold text-slate-800">{{ $displayName }}</span>
                         </td>
@@ -389,6 +419,8 @@
     const availableBlocks = @json($availableBlocks);
     const systemBlocks = @json($systemBlocks);
     let currentTab = 'faculty';
+    let currentBlock = ''; // '' = all blocks, '__none__' = students with no block
+    const BLOCK_COLUMN_INDEX = 3;
 
     function toggleCreateBlockField() {
         const role = document.getElementById('createUserRole')?.value;
@@ -434,7 +466,7 @@
             }
         });
 
-        // Custom filter by data-role (Role column was replaced by Block)
+        // Custom filter by data-role, plus data-block while the Students tab is open
         $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
             if (!usersTable || settings.nTable !== usersTable.table().node()) {
                 return true;
@@ -442,7 +474,11 @@
             const row = usersTable.row(dataIndex).node();
             if (!row) return true;
             const role = (row.getAttribute('data-role') || '').toLowerCase();
-            return role === currentTab;
+            if (role !== currentTab) return false;
+            if (currentTab !== 'student' || currentBlock === '') return true;
+
+            const block = (row.getAttribute('data-block') || '').toUpperCase();
+            return currentBlock === '__none__' ? block === '' : block === currentBlock;
         });
 
         syncSeenUserIds();
@@ -472,8 +508,43 @@
             addFacultyBtn.classList.toggle('hidden', role !== 'faculty');
         }
 
+        const blockBar = document.getElementById('blockTabBar');
+        if (blockBar) {
+            blockBar.classList.toggle('hidden', role !== 'student');
+            blockBar.classList.toggle('flex', role === 'student');
+        }
+
+        if (role === 'student') {
+            switchBlockTab(currentBlock);
+            return;
+        }
+
         if (!usersTable) return;
-        usersTable.draw();
+        // Block is a column for faculty, a tab for students.
+        usersTable.column(BLOCK_COLUMN_INDEX).visible(true, false);
+        usersTable.columns.adjust().draw();
+    }
+
+    function switchBlockTab(block) {
+        currentBlock = block || '';
+        document.querySelectorAll('.block-tab-btn').forEach(btn => {
+            const isActive = (btn.getAttribute('data-block-tab') || '') === currentBlock;
+            btn.classList.toggle('bg-brand', isActive);
+            btn.classList.toggle('text-white', isActive);
+            btn.classList.toggle('border-brand', isActive);
+            btn.classList.toggle('bg-white', !isActive);
+            btn.classList.toggle('text-slate-500', !isActive);
+            btn.classList.toggle('border-slate-200', !isActive);
+        });
+
+        if (!usersTable) return;
+        usersTable.column(BLOCK_COLUMN_INDEX).visible(false, false);
+        usersTable.columns.adjust().draw();
+    }
+
+    function revealUnassignedBlockTab() {
+        const btn = document.querySelector('.block-tab-btn[data-block-tab="__none__"]');
+        if (btn) btn.classList.remove('hidden');
     }
 
     function blockBadge(block, blockLabel) {
@@ -560,12 +631,32 @@
             return;
         }
 
+        const block = (user.block || '').toUpperCase();
         const rowNode = usersTable.row.add(buildUserRow(user)).draw(false).node();
         if (rowNode) {
             rowNode.setAttribute('data-user-id', String(id));
             rowNode.setAttribute('data-role', user.role || '');
+            rowNode.setAttribute('data-block', block);
+        }
+        if (user.role === 'student') {
+            block ? addBlockTabIfMissing(block) : revealUnassignedBlockTab();
         }
         seenUserIds.add(id);
+    }
+
+    function addBlockTabIfMissing(letter) {
+        const bar = document.getElementById('blockTabBar');
+        if (!bar || bar.querySelector(`.block-tab-btn[data-block-tab="${letter}"]`)) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('data-block-tab', letter);
+        btn.className = 'block-tab-btn px-3.5 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:text-brand transition';
+        btn.textContent = `Block ${letter}`;
+        btn.onclick = () => switchBlockTab(letter);
+
+        const unassigned = bar.querySelector('.block-tab-btn[data-block-tab="__none__"]');
+        bar.insertBefore(btn, unassigned);
     }
 
     async function pollLiveUsers() {
