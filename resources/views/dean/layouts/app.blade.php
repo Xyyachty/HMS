@@ -105,7 +105,7 @@
                     </li>
                     <li>
                         <a href="{{ route('dean.faculties') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white @yield('faculties_active')">
-                            <span class="font-medium text-sm">Manage Team</span>
+                            <span class="font-medium text-sm">Team Information</span>
                         </a>
                     </li>
                     <li>
@@ -194,7 +194,7 @@
             <ul class="space-y-1 px-4">
                 <li><a href="{{ route('dean.dashboard') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Dashboard</span></a></li>
                 <li><a href="{{ route('dean.users') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Manage User</span></a></li>
-                <li><a href="{{ route('dean.faculties') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Manage Team</span></a></li>
+                <li><a href="{{ route('dean.faculties') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Team Information</span></a></li>
                 <li><a href="{{ route('dean.reports') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Reports</span></a></li>
             </ul>
         </nav>
