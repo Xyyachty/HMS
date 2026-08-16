@@ -893,6 +893,7 @@ class FacultyController extends Controller
                 'taskCounts'      => [],
                 'roles'           => [],
                 'teamActivityByGroup' => [],
+                'conceptsByGroup' => collect(),
             ]);
         }
 
@@ -1051,6 +1052,12 @@ class FacultyController extends Controller
                 ->all();
         }
 
+        // Front Desk's hotel concept, so the teams list names the hotel each team is
+        // building. The full text and its edit history stay in the Team Details modal.
+        $conceptsByGroup = \App\Models\HotelConcept::where('faculty_id', $facultyId)
+            ->get()
+            ->keyBy('group_name');
+
         return view('faculty.pagerole', compact(
             'students',
             'allStudents',
@@ -1064,7 +1071,8 @@ class FacultyController extends Controller
             'rolesMeta',
             'tasksByRole',
             'taskCounts',
-            'teamActivityByGroup'
+            'teamActivityByGroup',
+            'conceptsByGroup'
         ));
     }
 

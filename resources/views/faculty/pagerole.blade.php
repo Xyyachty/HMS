@@ -59,10 +59,11 @@
     #teamsTable td {
         vertical-align: middle;
     }
-    #teamsTable .col-team { width: 18%; }
-    #teamsTable .col-count { width: 12%; }
-    #teamsTable .col-roles { width: 50%; }
-    #teamsTable .col-action { width: 20%; }
+    #teamsTable .col-team { width: 16%; }
+    #teamsTable .col-concept { width: 18%; }
+    #teamsTable .col-count { width: 10%; }
+    #teamsTable .col-roles { width: 38%; }
+    #teamsTable .col-action { width: 18%; }
     #teamsTable .truncate-cell {
         overflow: hidden;
         text-overflow: ellipsis;
@@ -159,6 +160,7 @@
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200">
                         <th class="col-team text-left px-3 py-2.5 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Team Name</th>
+                        <th class="col-concept text-left px-3 py-2.5 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Hotel Concept</th>
                         <th class="col-count text-left px-3 py-2.5 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Total Member</th>
                         <th class="col-roles text-left px-3 py-2.5 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Members &amp; Roles</th>
                         <th class="col-action text-center px-3 py-2.5 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Action</th>
@@ -189,6 +191,15 @@
                                 <span class="font-semibold text-slate-800 text-sm truncate-cell" title="{{ $groupName }}">{{ $groupName }}</span>
                                 @if($createdAt)
                                     <span class="text-[11px] text-slate-400 truncate-cell">{{ $createdAt }}</span>
+                                @endif
+                            </td>
+                            <td class="px-3 py-2.5">
+                                @php $concept = ($conceptsByGroup ?? collect())->get($groupName); @endphp
+                                @if($concept)
+                                    <span class="font-semibold text-slate-700 text-sm truncate-cell" title="{{ $concept->title }}">{{ $concept->title }}</span>
+                                    <span class="text-[11px] text-slate-400 truncate-cell">{{ $concept->hotel_type_label }}</span>
+                                @else
+                                    <span class="text-[11px] text-slate-400">Not proposed yet</span>
                                 @endif
                             </td>
                             <td class="px-3 py-2.5">
@@ -239,7 +250,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-5 py-12 text-center">
+                            <td colspan="5" class="px-5 py-12 text-center">
                                 <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
                                     <span class="iconify text-slate-300 text-2xl" data-icon="mdi:account-group-outline"></span>
                                 </div>
