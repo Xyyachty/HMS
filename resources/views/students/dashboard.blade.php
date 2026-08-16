@@ -518,6 +518,156 @@
                         </div>
                     @endif
                 </div>
+
+                {{-- ── Task 1 · Hotel Concept ──────────────────────────────────
+                     Front Desk proposes it; the whole team reads it and its history. --}}
+                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
+                        <div class="min-w-0">
+                            <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">Task 1 · Front Desk</p>
+                            <h3 class="text-sm font-bold text-slate-800">Hotel Concept</h3>
+                        </div>
+                        <span class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold
+                            {{ $hotelConcept ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
+                            <span class="iconify text-[11px]" data-icon="{{ $hotelConcept ? 'mdi:check-circle-outline' : 'mdi:clock-outline' }}"></span>
+                            {{ $hotelConcept ? 'Proposed' : 'Not proposed yet' }}
+                        </span>
+                    </div>
+
+                    @if (session('success'))
+                        <div class="mx-4 mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                            {{ session('success') }}
+                        </div>
+                    @endif
+                    @if ($errors->any())
+                        <div class="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                            {{ $errors->first() }}
+                        </div>
+                    @endif
+
+                    <div class="p-4 space-y-4">
+                        @if($hotelConcept)
+                            <div class="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                                <div class="flex items-start justify-between gap-3 flex-wrap">
+                                    <h4 class="text-base font-extrabold text-slate-800 min-w-0">{{ $hotelConcept->title }}</h4>
+                                    <span class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">
+                                        <span class="iconify text-[11px]" data-icon="mdi:office-building-outline"></span>
+                                        {{ $hotelConcept->hotel_type_label }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-600 leading-relaxed mt-2 whitespace-pre-line">{{ $hotelConcept->description }}</p>
+                                <p class="text-[11px] text-slate-400 mt-3">
+                                    Last updated
+                                    @if($hotelConcept->editor)
+                                        by <span class="font-semibold text-slate-500">{{ \App\Http\Controllers\HotelConceptController::displayName($hotelConcept->editor) }}</span>
+                                    @endif
+                                    on {{ optional($hotelConcept->updated_at)->format('M d, Y g:i A') }}
+                                </p>
+                            </div>
+                        @else
+                            <div class="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center">
+                                <span class="iconify text-3xl text-slate-300" data-icon="mdi:lightbulb-outline"></span>
+                                <p class="text-sm font-bold text-slate-400 mt-2">No hotel concept yet</p>
+                                <p class="text-xs text-slate-300 mt-1">
+                                    {{ $canEditHotelConcept
+                                        ? 'Propose the concept below — it is the first task for Front Desk.'
+                                        : 'The Front Desk members of this team propose it.' }}
+                                </p>
+                            </div>
+                        @endif
+
+                        @if($canEditHotelConcept)
+                            <div>
+                                <button type="button" onclick="toggleHotelConceptForm()"
+                                    id="hotelConceptFormToggle"
+                                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">
+                                    <span class="iconify text-sm" data-icon="{{ $hotelConcept ? 'mdi:pencil-outline' : 'mdi:plus' }}"></span>
+                                    {{ $hotelConcept ? 'Edit concept' : 'Propose concept' }}
+                                </button>
+
+                                <form id="hotelConceptForm" method="POST" action="{{ route('students.hotel-concept.store') }}"
+                                    class="{{ $errors->any() ? '' : 'hidden' }} mt-3 space-y-3 rounded-xl border border-slate-100 p-4">
+                                    @csrf
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Title</label>
+                                        <input name="title" type="text" required maxlength="150"
+                                            value="{{ old('title', $hotelConcept->title ?? '') }}"
+                                            placeholder="e.g. Seaside Serenity Resort"
+                                            class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Type</label>
+                                        <select name="hotel_type" required
+                                            class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
+                                            <option value="">Select hotel type</option>
+                                            @foreach(\App\Models\HotelConcept::HOTEL_TYPES as $typeKey => $typeLabel)
+                                                <option value="{{ $typeKey }}"
+                                                    {{ old('hotel_type', $hotelConcept->hotel_type ?? '') === $typeKey ? 'selected' : '' }}>
+                                                    {{ $typeLabel }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
+                                        <textarea name="description" required rows="4" maxlength="5000"
+                                            placeholder="What the hotel is, who it serves, what makes it different."
+                                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">{{ old('description', $hotelConcept->description ?? '') }}</textarea>
+                                    </div>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button type="button" onclick="toggleHotelConceptForm()"
+                                            class="px-3 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition">Cancel</button>
+                                        <button type="submit"
+                                            class="px-4 py-2 brand-gradient text-white rounded-xl text-xs font-bold shadow-md shadow-brand/20 hover:opacity-90 transition">
+                                            {{ $hotelConcept ? 'Save changes' : 'Submit concept' }}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        @endif
+
+                        {{-- Edit history: who, what changed, when. Visible to every member. --}}
+                        <div>
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Edit History</p>
+                                <span class="text-[10px] font-semibold text-slate-400">{{ $hotelConceptHistory->count() }} {{ \Illuminate\Support\Str::plural('entry', $hotelConceptHistory->count()) }}</span>
+                            </div>
+                            <div class="rounded-xl border border-slate-100 divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                                @forelse($hotelConceptHistory as $revision)
+                                    @php $entry = $revision->toPortalArray(); @endphp
+                                    <div class="px-3 py-2.5">
+                                        <div class="flex items-start justify-between gap-2 flex-wrap">
+                                            <p class="text-xs font-bold text-slate-700">
+                                                {{ $entry['editor'] }}
+                                                <span class="font-semibold text-slate-400">— {{ $entry['action_label'] }}</span>
+                                            </p>
+                                            <span class="text-[10px] text-slate-400 shrink-0">{{ $entry['created_at'] }} · {{ $entry['created_at_human'] }}</span>
+                                        </div>
+                                        @if($entry['changes'])
+                                            <ul class="mt-1.5 space-y-1">
+                                                @foreach($entry['changes'] as $change)
+                                                    <li class="text-[11px] text-slate-500">
+                                                        <span class="font-semibold text-slate-600">{{ $change['label'] }}:</span>
+                                                        <span class="line-through text-slate-400">{{ \Illuminate\Support\Str::limit($change['from'], 80) ?: '—' }}</span>
+                                                        <span class="text-slate-400">to</span>
+                                                        <span class="text-slate-700">{{ \Illuminate\Support\Str::limit($change['to'], 80) }}</span>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        @else
+                                            <p class="mt-1.5 text-[11px] text-slate-500">
+                                                <span class="font-semibold text-slate-600">{{ $entry['title'] }}</span>
+                                                · {{ $entry['hotel_type_label'] }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                @empty
+                                    <div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- ==================== TASKS SECTION ==================== -->
@@ -976,6 +1126,32 @@
                 }
                 history.replaceState(null, '', url);
             } catch (e) { /* ignore */ }
+        }
+
+        /* The concept form posts and redirects back here, so the section the
+           student was reading has to survive the round trip. */
+        (function restoreSection() {
+            let section = null;
+            try {
+                section = new URL(window.location.href).searchParams.get('section');
+            } catch (e) { /* ignore */ }
+
+            @if (session('success') || $errors->any())
+                section = 'group';
+            @endif
+
+            if (section && document.getElementById(section + '-section')) {
+                document.addEventListener('DOMContentLoaded', () => showSection(section));
+            }
+        })();
+
+        function toggleHotelConceptForm() {
+            const form = document.getElementById('hotelConceptForm');
+            if (!form) return;
+            form.classList.toggle('hidden');
+            if (!form.classList.contains('hidden')) {
+                form.querySelector('input[name="title"]')?.focus();
+            }
         }
 
         /* Teammate activity — reads the centralized activity_logs table. The endpoint

@@ -59,6 +59,8 @@ class ActivityLog extends Model
     public const TABLE_CLOSED = 'table_closed';
     public const ROOM_INSPECTED = 'room_inspected';
     public const ROOM_READY = 'room_ready';
+    public const CONCEPT_CREATED = 'concept_created';
+    public const CONCEPT_UPDATED = 'concept_updated';
 
     /** Human labels for the portals' activity tables. */
     public const LABELS = [
@@ -88,6 +90,8 @@ class ActivityLog extends Model
         self::TABLE_CLOSED => 'Table Closed',
         self::ROOM_INSPECTED => 'Room Inspected',
         self::ROOM_READY => 'Room Ready',
+        self::CONCEPT_CREATED => 'Hotel Concept Created',
+        self::CONCEPT_UPDATED => 'Hotel Concept Updated',
     ];
 
     public function user()

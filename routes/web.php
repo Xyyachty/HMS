@@ -5,6 +5,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\FacultyController;
 use App\Http\Controllers\DeanController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\HotelConceptController;
 use App\Http\Controllers\HotelTemplateController;
 use App\Http\Controllers\NotificationController;
 use App\Models\ActivityLog;
@@ -98,6 +99,10 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     Route::get('/activity', [FacultyController::class, 'activityLogs'])->name('activity');
     // Same centralized log; faculty only sees students they manage
     Route::get('/activity/user/{user}', [ActivityLogController::class, 'forUser'])->name('activity.user');
+
+    // Front Desk's hotel concept for one of this faculty's own teams, with its edit history.
+    Route::get('/teams/{groupName}/hotel-concept', [HotelConceptController::class, 'facultyHistory'])
+        ->name('teams.hotel-concept');
 
     Route::get('/templates/grants', [HotelTemplateController::class, 'facultyGrants'])->name('templates.grants');
     Route::post('/templates/grants', [HotelTemplateController::class, 'facultyGrantStore'])->name('templates.grants.store');
@@ -308,16 +313,32 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $studentClass = $student?->facultyClass;
 
+        // Front Desk's first task. Read by the whole team in My Team; only Front
+        // Desk members get the form (HotelConceptController enforces that too).
+        $conceptTeam = HotelConceptController::forTeam(
+            $groupMembership?->group_name,
+            $facultyId ? (int) $facultyId : null
+        );
+        $hotelConcept = $conceptTeam['concept'];
+        $hotelConceptHistory = $conceptTeam['history'];
+        $canEditHotelConcept = in_array(HotelConceptController::OWNING_ROLE, $studentRoles, true);
+
         return view('students.dashboard', compact(
             'membersByRole', 'group', 'groupMembers',
             'tasksByRole', 'taskCounts', 'totalTasks',
             'studentRoles', 'myRoleTasks', 'completedTasksCount',
             'pendingTasksCount', 'completionRate', 'recentTasks',
             'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
-            'myActivityLogs',
+            'myActivityLogs', 'hotelConcept', 'hotelConceptHistory',
+            'canEditHotelConcept',
             'studentDisplayName', 'studentClass'
         ));
     })->name('dashboard');
+
+    // Front Desk's first task: the team's hotel concept. Every member reads it,
+    // Front Desk members write it — the controller enforces that.
+    Route::post('/hotel-concept', [HotelConceptController::class, 'store'])->name('hotel-concept.store');
+    Route::get('/hotel-concept/history', [HotelConceptController::class, 'history'])->name('hotel-concept.history');
 
     // My Activity — students read their own centralized log and nobody else's.
     Route::get('/activity/mine', [ActivityLogController::class, 'mine'])->name('activity.mine');

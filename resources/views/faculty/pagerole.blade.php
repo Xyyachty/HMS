@@ -288,6 +288,10 @@
                 class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
                 <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:clipboard-text-clock-outline"></span>Team Task Activity
             </button>
+            <button type="button" onclick="switchTeamModalTab('concept')" id="team-tab-concept"
+                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
+                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:lightbulb-outline"></span>Hotel Concept
+            </button>
         </div>
 
         <!-- Modal Body -->
@@ -325,6 +329,13 @@
                     <div class="border border-brand/20 bg-brand-soft/30 rounded-lg overflow-hidden">
                         <div id="memberActivityPanelBody" class="max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Front Desk's hotel concept + its edit history (loaded when the modal opens) -->
+            <div id="team-panel-concept" class="hidden">
+                <div id="teamModalConceptBody" class="space-y-4">
+                    <div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>
                 </div>
             </div>
 
@@ -1547,24 +1558,99 @@ function submitTaskFeedback(decision) {
 
 /* Team Details modal: Members & Roles / Team Task Activity */
 function switchTeamModalTab(tabId) {
-    const onMembers = tabId !== 'tasks';
-
-    document.getElementById('team-panel-members')?.classList.toggle('hidden', !onMembers);
-    document.getElementById('team-panel-tasks')?.classList.toggle('hidden', onMembers);
-
-    const membersBtn = document.getElementById('team-tab-members');
-    const tasksBtn = document.getElementById('team-tab-tasks');
+    const tabs = ['members', 'tasks', 'concept'];
+    const current = tabs.includes(tabId) ? tabId : 'members';
     const active = ['border-rose-500', 'text-rose-600'];
     const idle = ['border-transparent', 'text-slate-400'];
 
-    if (membersBtn && tasksBtn) {
-        const on = onMembers ? membersBtn : tasksBtn;
-        const off = onMembers ? tasksBtn : membersBtn;
-        on.classList.add(...active);
-        on.classList.remove(...idle);
-        off.classList.add(...idle);
-        off.classList.remove(...active);
-    }
+    tabs.forEach(function (tab) {
+        document.getElementById('team-panel-' + tab)?.classList.toggle('hidden', tab !== current);
+
+        const btn = document.getElementById('team-tab-' + tab);
+        if (!btn) return;
+        const isOn = tab === current;
+        btn.classList.toggle('border-rose-500', isOn);
+        btn.classList.toggle('text-rose-600', isOn);
+        btn.classList.toggle('border-transparent', !isOn);
+        btn.classList.toggle('text-slate-400', !isOn);
+    });
+}
+
+/* Front Desk's hotel concept for the open team — the same rows the students read,
+   fetched by group name so this giant page does not carry every team's history. */
+const TEAM_CONCEPT_URL = @json(route('faculty.teams.hotel-concept', ['groupName' => '__GROUP__']));
+
+function loadTeamHotelConcept(groupName) {
+    const body = document.getElementById('teamModalConceptBody');
+    if (!body) return;
+
+    body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>';
+
+    fetch(TEAM_CONCEPT_URL.replace('__GROUP__', encodeURIComponent(groupName || '')), {
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
+        .then(res => res.json().then(data => {
+            if (!res.ok) throw new Error(data.error || 'Could not load the hotel concept.');
+            return data;
+        }))
+        .then(data => { body.innerHTML = renderTeamHotelConcept(data); })
+        .catch(err => {
+            body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
+                + escHtml(err.message || 'Could not load the hotel concept.') + '</div>';
+        });
+}
+
+function renderTeamHotelConcept(data) {
+    const concept = data.concept;
+    const history = Array.isArray(data.history) ? data.history : [];
+
+    const conceptBlock = concept
+        ? '<div class="rounded-lg border border-slate-200 bg-slate-50/70 p-3">' +
+            '<div class="flex items-start justify-between gap-2 flex-wrap">' +
+                '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>' +
+                '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
+                    + escHtml(concept.hotel_type_label) + '</span>' +
+            '</div>' +
+            '<p class="text-xs text-slate-600 mt-2 whitespace-pre-line">' + escHtml(concept.description) + '</p>' +
+            '<p class="text-[10px] text-slate-400 mt-2">Last updated'
+                + (concept.updated_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.updated_by) + '</span>' : '')
+                + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : '') + '</p>' +
+          '</div>'
+        : '<div class="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center">' +
+            '<p class="text-xs font-bold text-slate-400">This team has not proposed a hotel concept yet.</p>' +
+          '</div>';
+
+    const historyRows = history.length
+        ? history.map(function (entry) {
+            const changes = (entry.changes || []).map(function (change) {
+                return '<li class="text-[11px] text-slate-500">' +
+                    '<span class="font-semibold text-slate-600">' + escHtml(change.label) + ':</span> ' +
+                    '<span class="line-through text-slate-400">' + (escHtml(change.from) || '—') + '</span> ' +
+                    '<span class="text-slate-400">to</span> ' +
+                    '<span class="text-slate-700">' + escHtml(change.to) + '</span>' +
+                '</li>';
+            }).join('');
+
+            return '<div class="px-3 py-2.5">' +
+                '<div class="flex items-start justify-between gap-2 flex-wrap">' +
+                    '<p class="text-xs font-bold text-slate-700">' + escHtml(entry.editor) +
+                        ' <span class="font-semibold text-slate-400">— ' + escHtml(entry.action_label) + '</span></p>' +
+                    '<span class="text-[10px] text-slate-400">' + escHtml(entry.created_at) + ' · ' + escHtml(entry.created_at_human) + '</span>' +
+                '</div>' +
+                (changes
+                    ? '<ul class="mt-1.5 space-y-1">' + changes + '</ul>'
+                    : '<p class="mt-1.5 text-[11px] text-slate-500"><span class="font-semibold text-slate-600">'
+                        + escHtml(entry.title) + '</span> · ' + escHtml(entry.hotel_type_label) + '</p>') +
+            '</div>';
+        }).join('')
+        : '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>';
+
+    return conceptBlock +
+        '<div>' +
+            '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Edit History</p>' +
+            '<div class="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-72 overflow-y-auto">' + historyRows + '</div>' +
+        '</div>';
 }
 
 function switchCreateModalTab(tabId) {
@@ -2550,6 +2636,7 @@ function openTeamModal(groupName, members, createdAt, activityLogs) {
 
     // Always open on Members so the modal never reappears on the other tab.
     switchTeamModalTab('members');
+    loadTeamHotelConcept(groupName);
 
     document.getElementById('teamInfoModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
