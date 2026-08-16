@@ -438,34 +438,44 @@
                         </div>
                     </div>
 
-                    {{-- The hotel the team is building heads the member list, and Front Desk
-                         edits it from here. Rewritten in place after a save, so it always
-                         carries the stored concept. The edit history stays with the task below. --}}
-                    <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
-                        <div class="min-w-0">
-                            <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">Hotel Concept</p>
-                            <h3 id="teamHeaderConceptTitle" class="text-sm font-bold text-slate-800 truncate">
-                                {{ $hotelConcept->title ?? 'No hotel concept yet' }}
-                            </h3>
-                            <p id="teamHeaderConceptType"
-                                class="text-[11px] font-semibold text-slate-500 {{ $hotelConcept ? '' : 'hidden' }}">
-                                {{ $hotelConcept->hotel_type_label ?? '' }}
-                            </p>
-                        </div>
-                        <div class="flex items-center gap-3 shrink-0">
+                    {{-- The hotel the team is building heads the member list: title, type and
+                         a short read of the description, with Front Desk's edit button beside
+                         it. Rewritten in place after a save. The edit history sits below the
+                         members, where a long list belongs. --}}
+                    <div class="px-4 py-4 border-b border-slate-100 bg-slate-50/50">
+                        <div class="flex items-start justify-between gap-4 flex-wrap">
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">Hotel Concept</p>
+                                <h3 id="teamHeaderConceptTitle" class="text-base font-extrabold text-slate-800 mt-0.5">
+                                    {{ $hotelConcept->title ?? 'No hotel concept yet' }}
+                                </h3>
+                                <p id="teamHeaderConceptType"
+                                    class="text-[11px] font-bold text-slate-500 {{ $hotelConcept ? '' : 'hidden' }}">
+                                    {{ $hotelConcept->hotel_type_label ?? '' }}
+                                </p>
+                                <p id="teamHeaderConceptDescription"
+                                    class="text-xs text-slate-500 leading-relaxed mt-1.5 max-w-2xl {{ $hotelConcept ? '' : 'hidden' }}">
+                                    {{ $hotelConcept?->description }}
+                                </p>
+                                @unless($canEditHotelConcept)
+                                    @unless($hotelConcept)
+                                        <p class="text-xs text-slate-400 mt-1">The Front Desk members of this team propose it.</p>
+                                    @endunless
+                                @endunless
+                            </div>
                             @if($canEditHotelConcept)
                                 <button type="button" onclick="openHotelConceptModal()"
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">
-                                    <span class="iconify text-[12px]" data-icon="mdi:pencil-outline"></span>
-                                    <span id="teamHeaderConceptEditLabel">{{ $hotelConcept ? 'Edit concept' : 'Propose concept' }}</span>
+                                    class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">
+                                    <span class="iconify text-[13px]" data-icon="mdi:pencil-outline"></span>
+                                    <span id="teamHeaderConceptEditLabel">{{ $hotelConcept ? 'Edit Concept' : 'Propose Concept' }}</span>
                                 </button>
-                                <span class="w-px h-6 bg-slate-200"></span>
                             @endif
-                            <div class="text-right">
-                                <p class="text-[9px] font-bold uppercase tracking-wider text-slate-400">All Members</p>
-                                <p class="text-sm font-bold text-brand leading-none">{{ ($groupMembers ?? collect())->count() }}</p>
-                            </div>
                         </div>
+                    </div>
+
+                    <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-800">All Members</h3>
+                        <span class="text-xs font-bold text-brand">{{ ($groupMembers ?? collect())->count() }}</span>
                     </div>
 
                     @if(isset($groupMembers) && $groupMembers->count() > 0)
@@ -544,18 +554,16 @@
                     @endif
                 </div>
 
-                {{-- ── Task 1 · Hotel Concept ──────────────────────────────────
-                     Front Desk proposes it; the whole team reads it and its history. --}}
+                {{-- Concept edit history: who created or changed it, what moved, when.
+                     Visible to every member; the concept itself lives in the header. --}}
                 <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                     <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
                         <div class="min-w-0">
-                            <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">Task 1 · Front Desk</p>
-                            <h3 class="text-sm font-bold text-slate-800">Hotel Concept</h3>
+                            <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">Hotel Concept</p>
+                            <h3 class="text-sm font-bold text-slate-800">Edit History</h3>
                         </div>
-                        <span id="conceptStatusBadge" class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold
-                            {{ $hotelConcept ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
-                            <span class="iconify text-[11px]" data-icon="{{ $hotelConcept ? 'mdi:check-circle-outline' : 'mdi:clock-outline' }}"></span>
-                            {{ $hotelConcept ? 'Proposed' : 'Not proposed yet' }}
+                        <span id="conceptHistoryCount" class="shrink-0 text-[10px] font-semibold text-slate-400">
+                            {{ $hotelConceptHistory->count() }} {{ \Illuminate\Support\Str::plural('entry', $hotelConceptHistory->count()) }}
                         </span>
                     </div>
 
@@ -570,52 +578,8 @@
                         </div>
                     @endif
 
-                    <div class="p-4 space-y-4">
-                        {{-- Rewritten in place after a save, so the task never disagrees with the header. --}}
-                        <div id="conceptDisplay" class="rounded-xl border border-slate-100 bg-slate-50/60 p-4 {{ $hotelConcept ? '' : 'hidden' }}">
-                            <div class="flex items-start justify-between gap-3 flex-wrap">
-                                <h4 id="conceptCardTitle" class="text-base font-extrabold text-slate-800 min-w-0">{{ $hotelConcept->title ?? '' }}</h4>
-                                <span class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">
-                                    <span class="iconify text-[11px]" data-icon="mdi:office-building-outline"></span>
-                                    <span id="conceptCardType">{{ $hotelConcept->hotel_type_label ?? '' }}</span>
-                                </span>
-                            </div>
-                            <p id="conceptCardDescription" class="text-xs text-slate-600 leading-relaxed mt-2 whitespace-pre-line">{{ $hotelConcept->description ?? '' }}</p>
-                            <p id="conceptCardMeta" class="text-[11px] text-slate-400 mt-3">
-                                @if($hotelConcept)
-                                    Last updated
-                                    @if($hotelConcept->editor)
-                                        by <span class="font-semibold text-slate-500">{{ \App\Http\Controllers\HotelConceptController::displayName($hotelConcept->editor) }}</span>
-                                    @endif
-                                    on {{ optional($hotelConcept->updated_at)->format('M d, Y g:i A') }}
-                                @endif
-                            </p>
-                        </div>
-
-                        <div id="conceptEmpty" class="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center {{ $hotelConcept ? 'hidden' : '' }}">
-                            <span class="iconify text-3xl text-slate-300" data-icon="mdi:lightbulb-outline"></span>
-                            <p class="text-sm font-bold text-slate-400 mt-2">No hotel concept yet</p>
-                            <p class="text-xs text-slate-300 mt-1">
-                                {{ $canEditHotelConcept
-                                    ? 'Propose it from the team header above — it is the first task for Front Desk.'
-                                    : 'The Front Desk members of this team propose it.' }}
-                            </p>
-                        </div>
-
-                        @if($canEditHotelConcept)
-                            <button type="button" onclick="openHotelConceptModal()"
-                                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">
-                                <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span>
-                                <span id="conceptCardEditLabel">{{ $hotelConcept ? 'Edit concept' : 'Propose concept' }}</span>
-                            </button>
-                        @endif
-
-                        {{-- Edit history: who, what changed, when. Visible to every member. --}}
+                    <div class="p-4">
                         <div>
-                            <div class="flex items-center justify-between gap-2 mb-2">
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Edit History</p>
-                                <span id="conceptHistoryCount" class="text-[10px] font-semibold text-slate-400">{{ $hotelConceptHistory->count() }} {{ \Illuminate\Support\Str::plural('entry', $hotelConceptHistory->count()) }}</span>
-                            </div>
                             <div id="conceptHistoryList" class="rounded-xl border border-slate-100 divide-y divide-slate-100 max-h-72 overflow-y-auto">
                                 @forelse($hotelConceptHistory as $revision)
                                     @php $entry = $revision->toPortalArray(); @endphp
@@ -1250,49 +1214,27 @@
                 .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        /* Header, task card and history all read from one saved payload. */
+        /* The header shows the concept; the card below shows its history. Both are
+           repainted from one saved payload, so an edit lands everywhere at once. */
         function paintHotelConcept(concept, history) {
             savedConcept = concept;
 
             const headerTitle = document.getElementById('teamHeaderConceptTitle');
             const headerType = document.getElementById('teamHeaderConceptType');
+            const headerDescription = document.getElementById('teamHeaderConceptDescription');
+
             if (headerTitle) headerTitle.textContent = concept ? concept.title : 'No hotel concept yet';
             if (headerType) {
                 headerType.textContent = concept ? concept.hotel_type_label : '';
                 headerType.classList.toggle('hidden', !concept);
             }
-
-            const cardTitle = document.getElementById('conceptCardTitle');
-            const cardType = document.getElementById('conceptCardType');
-            const cardDescription = document.getElementById('conceptCardDescription');
-            const cardMeta = document.getElementById('conceptCardMeta');
-            if (cardTitle) cardTitle.textContent = concept ? concept.title : '';
-            if (cardType) cardType.textContent = concept ? concept.hotel_type_label : '';
-            if (cardDescription) cardDescription.textContent = concept ? concept.description : '';
-            if (cardMeta && concept) {
-                cardMeta.textContent = 'Last updated'
-                    + (concept.updated_by ? ' by ' + concept.updated_by : '')
-                    + (concept.updated_at ? ' on ' + concept.updated_at : '');
+            if (headerDescription) {
+                headerDescription.textContent = concept ? concept.description : '';
+                headerDescription.classList.toggle('hidden', !concept);
             }
 
-            document.getElementById('conceptDisplay')?.classList.toggle('hidden', !concept);
-            document.getElementById('conceptEmpty')?.classList.toggle('hidden', !!concept);
-
-            const badge = document.getElementById('conceptStatusBadge');
-            if (badge) {
-                badge.innerHTML = '<span class="iconify text-[11px]" data-icon="'
-                    + (concept ? 'mdi:check-circle-outline' : 'mdi:clock-outline') + '"></span>'
-                    + (concept ? 'Proposed' : 'Not proposed yet');
-                badge.className = 'shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold '
-                    + (concept
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200');
-            }
-
-            ['teamHeaderConceptEditLabel', 'conceptCardEditLabel'].forEach(function (id) {
-                const label = document.getElementById(id);
-                if (label) label.textContent = concept ? 'Edit concept' : 'Propose concept';
-            });
+            const editLabel = document.getElementById('teamHeaderConceptEditLabel');
+            if (editLabel) editLabel.textContent = concept ? 'Edit Concept' : 'Propose Concept';
 
             if (Array.isArray(history)) paintHotelConceptHistory(history);
         }
