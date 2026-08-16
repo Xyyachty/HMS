@@ -58,12 +58,12 @@ class HotelConceptController extends Controller
             : null;
 
         if (!$membership) {
-            return back()->withErrors(['hotel_concept' => 'You are not on a team yet, so there is no concept to propose.']);
+            return $this->refuse($request, 'You are not on a team yet, so there is no concept to propose.');
         }
 
         $roles = $membership->roles->pluck('role')->all();
         if (!in_array(self::OWNING_ROLE, $roles, true)) {
-            return back()->withErrors(['hotel_concept' => 'Only the Front Desk team can propose or edit the hotel concept.']);
+            return $this->refuse($request, 'Only the Front Desk team can propose or edit the hotel concept.');
         }
 
         $validated = $request->validate([
@@ -118,7 +118,7 @@ class HotelConceptController extends Controller
                 'user_id' => $authUser->user_id,
                 'editor_name' => self::displayName($authUser),
                 'action' => $isNew ? HotelConceptRevision::CREATED : HotelConceptRevision::UPDATED,
-                'changes' => $changes,
+                'field_changes' => $changes,
                 'title' => $concept->title,
                 'description' => $concept->description,
                 'hotel_type' => $concept->hotel_type,
@@ -140,9 +140,30 @@ class HotelConceptController extends Controller
             return true;
         });
 
-        return back()->with('success', $saved
+        $message = $saved
             ? 'Hotel concept saved.'
-            : 'No changes to save — the concept is already up to date.');
+            : 'No changes to save — the concept is already up to date.';
+
+        // The dashboard saves over fetch and repaints the header, the task card and
+        // the history from this payload, so it hands back stored rows, not input.
+        if ($request->expectsJson()) {
+            return response()->json(array_merge(
+                self::payload(self::forTeam($membership->group_name, (int) $membership->faculty_id)),
+                ['saved' => $saved, 'message' => $message]
+            ));
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /** A refusal the dashboard can read either as JSON or as a flashed error. */
+    private function refuse(Request $request, string $message)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message], 403);
+        }
+
+        return back()->withErrors(['hotel_concept' => $message]);
     }
 
     /** The authenticated student's own team concept + history, as JSON. */

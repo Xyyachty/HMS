@@ -16,19 +16,23 @@ class HotelConceptRevision extends Model
     /** A revision is never updated. */
     public const UPDATED_AT = null;
 
+    /**
+     * The diff column is field_changes, not changes: Eloquent\Model already owns a
+     * $changes property, which shadows an attribute of that name on read.
+     */
     protected $fillable = [
         'hotel_concept_id',
         'user_id',
         'editor_name',
         'action',
-        'changes',
+        'field_changes',
         'title',
         'description',
         'hotel_type',
     ];
 
     protected $casts = [
-        'changes' => 'array',
+        'field_changes' => 'array',
         'created_at' => 'datetime',
     ];
 
@@ -65,7 +69,7 @@ class HotelConceptRevision extends Model
     public function toPortalArray(): array
     {
         $changes = [];
-        foreach ((array) ($this->changes ?? []) as $field => $change) {
+        foreach ((array) ($this->field_changes ?? []) as $field => $change) {
             $from = $change['from'] ?? null;
             $to = $change['to'] ?? null;
 

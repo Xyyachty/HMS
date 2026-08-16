@@ -56,8 +56,10 @@ return new class extends Migration
                 // created | updated — see HotelConceptRevision::ACTIONS.
                 $table->string('action');
                 // Field-by-field diff: { field: { from, to } }. Empty on creation,
-                // where the snapshot columns below are the whole story.
-                $table->json('changes')->nullable();
+                // where the snapshot columns below are the whole story. Not named
+                // "changes" — Eloquent\Model owns a property of that name, which
+                // shadows the attribute on read.
+                $table->json('field_changes')->nullable();
                 $table->string('title');
                 $table->text('description');
                 $table->string('hotel_type');
