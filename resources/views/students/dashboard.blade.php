@@ -1195,12 +1195,17 @@
            plus its history, so the header, the task card and the history list are
            rewritten from what the database actually holds — never from what was
            typed. Values the server rendered stay here so Cancel can restore them. */
-        let savedConcept = @json($hotelConcept ? [
-            'title' => $hotelConcept->title,
-            'description' => $hotelConcept->description,
-            'hotel_type' => $hotelConcept->hotel_type,
-            'hotel_type_label' => $hotelConcept->hotel_type_label,
-        ] : null);
+        @php
+            // Built here rather than inline: @json() cannot parse a multi-line array
+            // argument, and silently truncates it.
+            $savedConceptPayload = $hotelConcept ? [
+                'title' => $hotelConcept->title,
+                'description' => $hotelConcept->description,
+                'hotel_type' => $hotelConcept->hotel_type,
+                'hotel_type_label' => $hotelConcept->hotel_type_label,
+            ] : null;
+        @endphp
+        let savedConcept = @json($savedConceptPayload);
 
         function openHotelConceptModal() {
             const modal = document.getElementById('hotelConceptModal');
