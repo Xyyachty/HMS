@@ -203,7 +203,29 @@ class HotelConceptController extends Controller
         return response()->json(self::payload(self::forTeam($groupName, (int) $facultyId)));
     }
 
-    /** Wire shape shared by both JSON endpoints. */
+    /**
+     * Any team, for the dean.
+     *
+     * The dean oversees every faculty, so the team is addressed by faculty and
+     * group name together — group names repeat across faculty.
+     */
+    public function deanHistory(Request $request)
+    {
+        if (auth()->user()?->role !== 'dean') {
+            return response()->json(['error' => 'Only the dean can read this.'], 403);
+        }
+
+        $validated = $request->validate([
+            'faculty_id' => ['required', 'integer'],
+            'group_name' => ['required', 'string'],
+        ]);
+
+        return response()->json(self::payload(
+            self::forTeam($validated['group_name'], (int) $validated['faculty_id'])
+        ));
+    }
+
+    /** Wire shape shared by the JSON endpoints. */
     private static function payload(array $team): array
     {
         $concept = $team['concept'];

@@ -218,7 +218,21 @@ class DeanController extends Controller
             }
         }
 
-        return view('dean.faculties', compact('faculties', 'completedTasks', 'teamActivityByFacultyGroup', 'roleLabels', 'availableBlocks'));
+        // Front Desk's hotel concept per team, so the list names the hotel each one
+        // is building. Keyed by faculty then group: group names repeat across faculty.
+        $conceptsByFacultyGroup = [];
+        foreach (\App\Models\HotelConcept::all() as $concept) {
+            $conceptsByFacultyGroup[(int) $concept->faculty_id][$concept->group_name] = $concept;
+        }
+
+        return view('dean.faculties', compact(
+            'faculties',
+            'completedTasks',
+            'teamActivityByFacultyGroup',
+            'roleLabels',
+            'availableBlocks',
+            'conceptsByFacultyGroup'
+        ));
     }
 
     public function storeFaculty(Request $request)

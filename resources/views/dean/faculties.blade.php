@@ -46,6 +46,7 @@
                     <tr class="bg-slate-50 border-b border-slate-200">
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Faculty</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Team Name</th>
+                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Hotel Concept</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Members</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Created</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
@@ -104,6 +105,15 @@
                                     <span class="font-semibold text-slate-700">{{ $groupName }}</span>
                                 </td>
                                 <td class="px-5 py-3.5">
+                                    @php $concept = $conceptsByFacultyGroup[$faculty->faculty_id][$groupName] ?? null; @endphp
+                                    @if($concept)
+                                        <p class="font-semibold text-slate-700 text-sm">{{ $concept->title }}</p>
+                                        <p class="text-[11px] text-slate-400">{{ $concept->hotel_type_label }}</p>
+                                    @else
+                                        <span class="text-xs text-slate-400">Not proposed yet</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-3.5">
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-xs font-bold">
                                         <span class="iconify" data-icon="mdi:account-multiple-outline"></span>
                                         {{ $memberCount }} {{ Str::plural('member', $memberCount) }}
@@ -111,7 +121,7 @@
                                 </td>
                                 <td class="px-5 py-3.5 text-slate-500 text-sm">{{ $createdAt }}</td>
                                 <td class="px-5 py-3.5">
-                                    <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }})'
+                                    <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }}, {{ (int) $faculty->faculty_id }})'
                                         class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold hover:bg-rose-100 transition">
                                         <span class="iconify" data-icon="mdi:eye-outline"></span> View
                                     </button>
@@ -247,6 +257,14 @@
 
         <!-- Modal Body -->
         <div class="overflow-y-auto flex-1 p-4 space-y-4">
+            <!-- Front Desk's hotel concept + its edit history (loaded when the modal opens) -->
+            <div>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Hotel Concept</p>
+                <div id="teamModalConceptBody" class="space-y-3">
+                    <div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>
+                </div>
+            </div>
+
             <!-- Members Table -->
             <div>
                 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Team Members & Roles</p>
@@ -498,8 +516,9 @@
         if (nextBtn) nextBtn.disabled = teamModalActivityPage >= totalPages;
     }
 
-    function openTeamModal(groupName, members, createdAt, activityLogs) {
+    function openTeamModal(groupName, members, createdAt, activityLogs, facultyId) {
         const logs = Array.isArray(activityLogs) ? activityLogs : [];
+        loadTeamHotelConcept(facultyId, groupName);
         const nameSuffix = document.getElementById('modalTeamNameSuffix');
         if (nameSuffix) {
             nameSuffix.textContent = groupName ? ' — ' + groupName : '';
@@ -548,6 +567,87 @@
 
         document.getElementById('teamInfoModal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+    }
+
+    /* Front Desk's hotel concept for the open team. Fetched rather than inlined:
+       this page lists every faculty's teams, and each carries a full history. */
+    const TEAM_CONCEPT_URL = @json(route('dean.teams.hotel-concept'));
+
+    function loadTeamHotelConcept(facultyId, groupName) {
+        const body = document.getElementById('teamModalConceptBody');
+        if (!body) return;
+
+        body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>';
+
+        const url = TEAM_CONCEPT_URL
+            + '?faculty_id=' + encodeURIComponent(facultyId || '')
+            + '&group_name=' + encodeURIComponent(groupName || '');
+
+        fetch(url, {
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(res => res.json().then(data => {
+                if (!res.ok) throw new Error(data.error || 'Could not load the hotel concept.');
+                return data;
+            }))
+            .then(data => { body.innerHTML = renderTeamHotelConcept(data); })
+            .catch(err => {
+                body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
+                    + escHtml(err.message || 'Could not load the hotel concept.') + '</div>';
+            });
+    }
+
+    function renderTeamHotelConcept(data) {
+        const concept = data.concept;
+        const history = Array.isArray(data.history) ? data.history : [];
+
+        const conceptBlock = concept
+            ? '<div class="rounded-lg border border-slate-200 bg-slate-50/70 p-3">' +
+                '<div class="flex items-start justify-between gap-2 flex-wrap">' +
+                    '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>' +
+                    '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
+                        + escHtml(concept.hotel_type_label) + '</span>' +
+                '</div>' +
+                '<p class="text-xs text-slate-600 mt-2 whitespace-pre-line">' + escHtml(concept.description) + '</p>' +
+                '<p class="text-[10px] text-slate-400 mt-2">Last updated'
+                    + (concept.updated_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.updated_by) + '</span>' : '')
+                    + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : '') + '</p>' +
+              '</div>'
+            : '<div class="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center">' +
+                '<p class="text-xs font-bold text-slate-400">This team has not proposed a hotel concept yet.</p>' +
+              '</div>';
+
+        const historyRows = history.length
+            ? history.map(function (entry) {
+                const changes = (entry.changes || []).map(function (change) {
+                    return '<li class="text-[11px] text-slate-500">' +
+                        '<span class="font-semibold text-slate-600">' + escHtml(change.label) + ':</span> ' +
+                        '<span class="line-through text-slate-400">' + (escHtml(change.from) || '—') + '</span> ' +
+                        '<span class="text-slate-400">to</span> ' +
+                        '<span class="text-slate-700">' + escHtml(change.to) + '</span>' +
+                    '</li>';
+                }).join('');
+
+                return '<div class="px-3 py-2.5">' +
+                    '<div class="flex items-start justify-between gap-2 flex-wrap">' +
+                        '<p class="text-xs font-bold text-slate-700">' + escHtml(entry.editor) +
+                            ' <span class="font-semibold text-slate-400">— ' + escHtml(entry.action_label) + '</span></p>' +
+                        '<span class="text-[10px] text-slate-400">' + escHtml(entry.created_at) + ' · ' + escHtml(entry.created_at_human) + '</span>' +
+                    '</div>' +
+                    (changes
+                        ? '<ul class="mt-1.5 space-y-1">' + changes + '</ul>'
+                        : '<p class="mt-1.5 text-[11px] text-slate-500"><span class="font-semibold text-slate-600">'
+                            + escHtml(entry.title) + '</span> · ' + escHtml(entry.hotel_type_label) + '</p>') +
+                '</div>';
+            }).join('')
+            : '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>';
+
+        return conceptBlock +
+            '<div>' +
+                '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Concept Edit History</p>' +
+                '<div class="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-60 overflow-y-auto">' + historyRows + '</div>' +
+            '</div>';
     }
 
     /* Centralized activity log — same table and endpoint the faculty portal reads. */

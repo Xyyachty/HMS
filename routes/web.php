@@ -69,6 +69,9 @@ Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
     Route::post('/faculties', [DeanController::class, 'storeFaculty'])->name('faculties.store');
     Route::get('/reports', [DeanController::class, 'reports'])->name('reports');
     Route::get('/activity', [DeanController::class, 'activityLogs'])->name('activity');
+
+    // Front Desk's hotel concept for any team, with its edit history.
+    Route::get('/teams/hotel-concept', [HotelConceptController::class, 'deanHistory'])->name('teams.hotel-concept');
     // Centralized activity log — one member at a time, gated by ActivityLogAccess
     Route::get('/activity/user/{user}', [ActivityLogController::class, 'forUser'])->name('activity.user');
 });
