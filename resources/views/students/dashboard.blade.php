@@ -417,26 +417,8 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 @if($group)
-                                    {{-- The hotel the team is building leads the card; the team's own
-                                         name sits above it. Both are rewritten in place after a save,
-                                         so the header always carries the latest concept. --}}
-                                    <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">
-                                        {{ $group->name }} · Hotel Management Simulation
-                                    </p>
-                                    <h3 id="teamHeaderConceptTitle" class="text-lg font-extrabold text-white leading-tight truncate">
-                                        {{ $hotelConcept->title ?? 'No hotel concept yet' }}
-                                    </h3>
-                                    <p id="teamHeaderConceptType"
-                                        class="text-[11px] font-semibold text-white/70 {{ $hotelConcept ? '' : 'hidden' }}">
-                                        {{ $hotelConcept->hotel_type_label ?? '' }}
-                                    </p>
-                                    @if($canEditHotelConcept)
-                                        <button type="button" onclick="openHotelConceptModal()"
-                                            class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/15 border border-white/25 text-white text-[11px] font-bold hover:bg-white/25 transition">
-                                            <span class="iconify text-[12px]" data-icon="{{ $hotelConcept ? 'mdi:pencil-outline' : 'mdi:plus' }}"></span>
-                                            <span id="teamHeaderConceptEditLabel">{{ $hotelConcept ? 'Edit concept' : 'Propose concept' }}</span>
-                                        </button>
-                                    @endif
+                                    <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Hotel Management Simulation</p>
+                                    <h3 class="text-lg font-extrabold text-white leading-tight">{{ $group->name }}</h3>
                                 @else
                                     <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Team</p>
                                     <h3 class="text-base font-extrabold text-white">Not assigned yet</h3>
@@ -456,9 +438,34 @@
                         </div>
                     </div>
 
-                    <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                        <h3 class="text-sm font-bold text-slate-800">All Members</h3>
-                        <span class="text-xs font-bold text-brand">{{ ($groupMembers ?? collect())->count() }}</span>
+                    {{-- The hotel the team is building heads the member list, and Front Desk
+                         edits it from here. Rewritten in place after a save, so it always
+                         carries the stored concept. The edit history stays with the task below. --}}
+                    <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+                        <div class="min-w-0">
+                            <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">Hotel Concept</p>
+                            <h3 id="teamHeaderConceptTitle" class="text-sm font-bold text-slate-800 truncate">
+                                {{ $hotelConcept->title ?? 'No hotel concept yet' }}
+                            </h3>
+                            <p id="teamHeaderConceptType"
+                                class="text-[11px] font-semibold text-slate-500 {{ $hotelConcept ? '' : 'hidden' }}">
+                                {{ $hotelConcept->hotel_type_label ?? '' }}
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0">
+                            @if($canEditHotelConcept)
+                                <button type="button" onclick="openHotelConceptModal()"
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">
+                                    <span class="iconify text-[12px]" data-icon="mdi:pencil-outline"></span>
+                                    <span id="teamHeaderConceptEditLabel">{{ $hotelConcept ? 'Edit concept' : 'Propose concept' }}</span>
+                                </button>
+                                <span class="w-px h-6 bg-slate-200"></span>
+                            @endif
+                            <div class="text-right">
+                                <p class="text-[9px] font-bold uppercase tracking-wider text-slate-400">All Members</p>
+                                <p class="text-sm font-bold text-brand leading-none">{{ ($groupMembers ?? collect())->count() }}</p>
+                            </div>
+                        </div>
                     </div>
 
                     @if(isset($groupMembers) && $groupMembers->count() > 0)
