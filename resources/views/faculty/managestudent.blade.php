@@ -704,7 +704,7 @@
         const successMessage = @json(session('success'));
         Swal.fire({
             icon: 'success',
-            title: 'Student Created',
+            title: @json(session('success_title', 'Success')),
             html: `<p class="text-sm text-slate-500">${successMessage}</p>`,
             timer: 2500,
             showConfirmButton: false,

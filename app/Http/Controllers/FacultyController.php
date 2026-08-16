@@ -585,7 +585,8 @@ class FacultyController extends Controller
 
         return redirect()
             ->route('faculty.students', ['class' => $class->letter])
-            ->with('success', $message);
+            ->with('success', $message)
+            ->with('success_title', 'Student Created');
     }
 
     /**
@@ -641,7 +642,9 @@ class FacultyController extends Controller
             'Updated student account ' . ($user->name ?? $user->email) . ' — status set to ' . $validated['status'] . '.'
         );
 
-        return redirect()->route('faculty.students', ['class' => request('class')])->with('success', 'Student updated successfully.');
+        return redirect()->route('faculty.students', ['class' => request('class')])
+            ->with('success', 'Student updated successfully.')
+            ->with('success_title', 'Student Updated');
     }
 
     public function bulkImportStudents(Request $request)
