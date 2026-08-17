@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\HotelConceptDesk;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -21,8 +22,21 @@ class HotelConcept extends Model
         'title',
         'description',
         'hotel_type',
+        'status',
+        'submitted_at',
+        'submitted_by',
+        'reviewed_at',
+        'reviewed_by',
+        'faculty_feedback',
+        'revision_count',
         'created_by',
         'updated_by',
+    ];
+
+    protected $casts = [
+        'submitted_at' => 'datetime',
+        'reviewed_at' => 'datetime',
+        'revision_count' => 'integer',
     ];
 
     /** The dropdown on the student form, and the only accepted values. */
@@ -69,6 +83,30 @@ class HotelConcept extends Model
     public function editor()
     {
         return $this->belongsTo(User::class, 'updated_by', 'user_id');
+    }
+
+    public function submitter()
+    {
+        return $this->belongsTo(User::class, 'submitted_by', 'user_id');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by', 'user_id');
+    }
+
+    /** Waiting on faculty, or already settled by them. Either way, read-only. */
+    public function isLocked(): bool
+    {
+        return in_array($this->status, [
+            HotelConceptDesk::STATUS_SUBMITTED,
+            HotelConceptDesk::STATUS_APPROVED,
+        ], true);
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return HotelConceptDesk::statusLabel($this);
     }
 
     public static function typeLabel(?string $type): string

@@ -61,6 +61,8 @@ class ActivityLog extends Model
     public const ROOM_READY = 'room_ready';
     public const CONCEPT_CREATED = 'concept_created';
     public const CONCEPT_UPDATED = 'concept_updated';
+    public const CONCEPT_SUBMITTED = 'concept_submitted';
+    public const CONCEPT_REVIEWED = 'concept_reviewed';
 
     /** Human labels for the portals' activity tables. */
     public const LABELS = [
@@ -92,6 +94,8 @@ class ActivityLog extends Model
         self::ROOM_READY => 'Room Ready',
         self::CONCEPT_CREATED => 'Hotel Concept Created',
         self::CONCEPT_UPDATED => 'Hotel Concept Updated',
+        self::CONCEPT_SUBMITTED => 'Hotel Concept Submitted',
+        self::CONCEPT_REVIEWED => 'Hotel Concept Reviewed',
     ];
 
     public function user()

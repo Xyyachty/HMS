@@ -38,10 +38,21 @@ class HotelConceptRevision extends Model
 
     public const CREATED = 'created';
     public const UPDATED = 'updated';
+    public const SUBMITTED = 'submitted';
+    public const CHANGES_REQUESTED = 'changes_requested';
+    public const APPROVED = 'approved';
 
+    /**
+     * The workflow reads off this list too, not just the edits: submitting and the
+     * faculty verdict both leave a row here, so the history the team and their
+     * faculty already look at doubles as the review log.
+     */
     public const ACTIONS = [
         self::CREATED => 'Created the concept',
         self::UPDATED => 'Updated the concept',
+        self::SUBMITTED => 'Submitted to faculty',
+        self::CHANGES_REQUESTED => 'Faculty requested changes',
+        self::APPROVED => 'Approved by faculty',
     ];
 
     public function concept()

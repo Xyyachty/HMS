@@ -10,12 +10,14 @@ use App\Events\StudentCreated;
 use App\Models\ActivityLog;
 use App\Models\FacultyClass;
 use App\Models\Group;
+use App\Models\HotelConcept;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\StudentGroupRole;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\UserInformation;
+use App\Support\HotelConceptDesk;
 use App\Support\Notifier;
 use App\Support\StudentWelcomeMailer;
 use Illuminate\Validation\Rule;
@@ -162,6 +164,10 @@ class FacultyController extends Controller
                 ]);
             }
         }
+
+        // Every team starts with the same first task, so it is not on the faculty
+        // checklist — it is assigned the moment the team exists.
+        HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
 
         $memberCount = count($memberIds);
         $assignedRoles = collect($rolesByMember)->flatten()->unique()->values()->all();
@@ -999,6 +1005,8 @@ class FacultyController extends Controller
 
         $allTasks = Task::with('assignedTo')
             ->where('faculty_id', $facultyId)
+            // The hotel concept heads each team's list — it is their first task.
+            ->conceptFirst()
             ->orderByDesc('updated_at')
             ->limit(500)
             ->get();
@@ -1042,6 +1050,8 @@ class FacultyController extends Controller
                         'role_label' => $roleLabels[$task->role] ?? $task->role,
                         'priority' => strtolower($task->priority ?? 'medium'),
                         'status' => $task->status,
+                        // The concept task is not deletable and reviews differently.
+                        'is_hotel_concept' => $task->is_hotel_concept,
                         'has_feedback' => filled($task->feedback),
                         'student_name' => $studentName,
                         'submitted_at' => $task->status === 'archived'
@@ -1155,6 +1165,10 @@ class FacultyController extends Controller
             }
         }
 
+        // A reshuffle can hand Front Desk to somebody new, and they need the task.
+        // Existing rows are left alone, so a submitted concept stays submitted.
+        HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
+
         ActivityLog::recordFor(
             ActivityLog::TEAM_UPDATED,
             'Updated team "' . $groupName . '"'
@@ -1179,6 +1193,7 @@ class FacultyController extends Controller
 
         $tasksByRole = Task::where('faculty_id', $facultyId)
             ->where('status', 'active')
+            ->conceptFirst()
             ->orderBy('due_date')
             ->orderByPriority()
             ->get()
@@ -1297,14 +1312,14 @@ class FacultyController extends Controller
             : null;
 
         $previewUrl = null;
-        if ($membership) {
+        if ($membership && !$task->is_hotel_concept) {
             $previewUrl = route('faculty.teams.preview', [
                 'group' => $membership->group_name,
                 'role' => $task->role,
             ]);
         }
 
-        return response()->json([
+        $payload = [
             'id' => $task->task_id,
             'title' => $task->title,
             'description' => $task->description,
@@ -1313,6 +1328,7 @@ class FacultyController extends Controller
             'priority' => $task->priority,
             'status' => $task->status,
             'needs_revision' => $task->needs_revision,
+            'is_hotel_concept' => $task->is_hotel_concept,
             'student_name' => $name !== '' ? $name : ($u?->name ?? null),
             'group_name' => $membership?->group_name,
             'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
@@ -1324,7 +1340,17 @@ class FacultyController extends Controller
             'feedback_by' => $task->feedbackBy?->name,
             'revision_count' => (int) $task->revision_count,
             'preview_url' => $previewUrl,
-        ]);
+        ];
+
+        // The concept is text, not a page, so the review dialog reads it inline —
+        // with its edit history, which is how faculty sees who contributed what.
+        if ($task->is_hotel_concept && $membership) {
+            $payload += HotelConceptController::payload(
+                HotelConceptController::forTeam($membership->group_name, (int) $facultyId)
+            );
+        }
+
+        return response()->json($payload);
     }
 
     /**
@@ -1355,6 +1381,13 @@ class FacultyController extends Controller
 
         $revise = $data['decision'] === 'revise';
 
+        // The hotel concept is one row per team behind several task rows, so the
+        // verdict is recorded against the concept and fanned back out to all of
+        // them — see HotelConceptDesk::review().
+        if ($task->is_hotel_concept) {
+            return $this->storeConceptFeedback($task, $facultyUser, (int) $facultyId, $revise, $data['feedback'] ?? null);
+        }
+
         $task->fill([
             'feedback' => $data['feedback'] ?: null,
             'feedback_at' => now(),
@@ -1384,6 +1417,51 @@ class FacultyController extends Controller
             'message' => $revise
                 ? 'Sent back to the student with your feedback.'
                 : 'Task approved.',
+        ]);
+    }
+
+    /**
+     * The verdict on a team's hotel concept.
+     *
+     * Written against the concept rather than the task row that happened to be
+     * opened: the concept is team-level, and every Front Desk member holds a task
+     * row pointing at it. HotelConceptDesk moves both sides together.
+     */
+    private function storeConceptFeedback(Task $task, User $facultyUser, int $facultyId, bool $revise, ?string $feedback)
+    {
+        $membership = $task->student_id
+            ? StudentGroup::where('student_id', $task->student_id)
+                ->where('faculty_id', $facultyId)
+                ->first()
+            : null;
+
+        if (!$membership) {
+            return response()->json([
+                'error' => 'This concept task is not attached to one of your teams.',
+            ], 422);
+        }
+
+        $concept = HotelConcept::where('group_name', $membership->group_name)
+            ->where('faculty_id', $facultyId)
+            ->first();
+
+        if (!$concept || $concept->status !== HotelConceptDesk::STATUS_SUBMITTED) {
+            return response()->json([
+                'error' => 'This team has not submitted their hotel concept, so there is nothing to review.',
+            ], 422);
+        }
+
+        HotelConceptDesk::review($concept, $membership, $facultyUser, $revise, $feedback);
+
+        return response()->json([
+            'success' => true,
+            // 'active' again on a revise, so the dialog reads like any other task.
+            'status' => $revise ? 'active' : 'archived',
+            'concept_status' => $concept->status,
+            'revision_count' => (int) $concept->revision_count,
+            'message' => $revise
+                ? 'Sent back to the team with your feedback.'
+                : 'Hotel concept approved.',
         ]);
     }
 
@@ -1436,6 +1514,14 @@ class FacultyController extends Controller
         $facultyId = auth()->user()?->faculty?->user_information_id;
         if ($task->faculty_id !== $facultyId) {
             abort(403);
+        }
+
+        // Every team is assigned the hotel concept automatically, and the rest of
+        // their simulation is built on it, so it is not a task to hand back.
+        if ($task->is_hotel_concept) {
+            return back()->withErrors([
+                'task' => 'The hotel concept is assigned to every team automatically and cannot be deleted.',
+            ]);
         }
 
         $role = $task->role;

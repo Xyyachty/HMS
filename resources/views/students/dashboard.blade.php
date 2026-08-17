@@ -439,13 +439,35 @@
                     </div>
 
                     {{-- The hotel the team is building heads the member list: title, type and
-                         a short read of the description, with Front Desk's edit button beside
-                         it. Rewritten in place after a save. The edit history sits below the
-                         members, where a long list belongs. --}}
+                         a short read of the description, with the workflow's state beside it.
+                         Front Desk proposes the first version, then every member may improve
+                         it, then Front Desk submits it and it locks until faculty answers.
+                         Rewritten in place after a save or a submit. The edit history sits
+                         below the members, where a long list belongs. --}}
+                    @php
+                        $conceptStatus = \App\Support\HotelConceptDesk::status($hotelConcept);
+                        // Badge colour per state, so the team can read where they stand at a glance.
+                        $conceptBadgeClasses = [
+                            'draft' => 'bg-slate-100 text-slate-600 border-slate-200',
+                            'submitted' => 'bg-amber-50 text-amber-700 border-amber-200',
+                            'needs_revision' => 'bg-rose-50 text-rose-700 border-rose-200',
+                            'approved' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                        ];
+                    @endphp
                     <div class="px-4 py-4 border-b border-slate-100 bg-slate-50/50">
                         <div class="flex items-start justify-between gap-4 flex-wrap">
                             <div class="min-w-0 flex-1">
-                                <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">Hotel Concept</p>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">Hotel Concept</p>
+                                    <span id="teamHeaderConceptBadge"
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider {{ $conceptBadgeClasses[$conceptStatus] ?? $conceptBadgeClasses['draft'] }} {{ $hotelConcept ? '' : 'hidden' }}">
+                                        {{ \App\Support\HotelConceptDesk::statusLabel($hotelConcept) }}
+                                    </span>
+                                    <span id="teamHeaderConceptRevisions"
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold uppercase tracking-wider {{ ($hotelConcept->revision_count ?? 0) > 0 ? '' : 'hidden' }}">
+                                        Revision {{ $hotelConcept->revision_count ?? 0 }}
+                                    </span>
+                                </div>
                                 <h3 id="teamHeaderConceptTitle" class="text-base font-extrabold text-slate-800 mt-0.5">
                                     {{ $hotelConcept->title ?? 'No hotel concept yet' }}
                                 </h3>
@@ -457,19 +479,43 @@
                                     class="text-xs text-slate-500 leading-relaxed mt-1.5 max-w-2xl {{ $hotelConcept ? '' : 'hidden' }}">
                                     {{ $hotelConcept?->description }}
                                 </p>
-                                @unless($canEditHotelConcept)
-                                    @unless($hotelConcept)
+                                @unless($hotelConcept)
+                                    @unless($canEditHotelConcept)
                                         <p class="text-xs text-slate-400 mt-1">The Front Desk members of this team propose it.</p>
                                     @endunless
                                 @endunless
+
+                                {{-- What faculty said, and what it means for the team right now. --}}
+                                <div id="teamHeaderConceptNotice"
+                                    class="mt-2.5 rounded-xl border px-3 py-2 text-xs {{ in_array($conceptStatus, ['submitted', 'needs_revision', 'approved'], true) && $hotelConcept ? '' : 'hidden' }} {{ $conceptStatus === 'needs_revision' ? 'border-rose-200 bg-rose-50 text-rose-700' : ($conceptStatus === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700') }}">
+                                    <p id="teamHeaderConceptNoticeText" class="font-bold">
+                                        @if($conceptStatus === 'needs_revision')
+                                            Your faculty asked for changes.
+                                        @elseif($conceptStatus === 'approved')
+                                            Your faculty approved this concept. It is final and no longer editable.
+                                        @else
+                                            Submitted to your faculty. The concept is locked until they respond.
+                                        @endif
+                                    </p>
+                                    <p id="teamHeaderConceptFeedback"
+                                        class="mt-1 leading-relaxed {{ filled($hotelConcept->faculty_feedback ?? null) ? '' : 'hidden' }}">
+                                        {{ $hotelConcept->faculty_feedback ?? '' }}
+                                    </p>
+                                </div>
                             </div>
-                            @if($canEditHotelConcept)
-                                <button type="button" onclick="openHotelConceptModal()"
-                                    class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">
+                            <div class="shrink-0 flex items-center gap-2">
+                                <button type="button" id="teamHeaderConceptEditBtn" onclick="openHotelConceptModal()"
+                                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition {{ $canEditHotelConcept ? '' : 'hidden' }}">
                                     <span class="iconify text-[13px]" data-icon="mdi:pencil-outline"></span>
                                     <span id="teamHeaderConceptEditLabel">{{ $hotelConcept ? 'Edit Concept' : 'Propose Concept' }}</span>
                                 </button>
-                            @endif
+                                {{-- Front Desk owns the handover, even though anyone may have edited it. --}}
+                                <button type="button" id="teamHeaderConceptSubmitBtn" onclick="submitHotelConcept()"
+                                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60 {{ $canSubmitHotelConcept ? '' : 'hidden' }}">
+                                    <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
+                                    <span>Submit to Faculty</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -616,16 +662,21 @@
                     </div>
                 </div>
 
-                @if($canEditHotelConcept)
+                @if($group)
                     {{-- Edit dialog behind the header's Edit button. Saves over fetch so the
                          header, the task card and the history all move together, without
-                         throwing the member back to the top of the dashboard. --}}
+                         throwing the member back to the top of the dashboard.
+
+                         Rendered for every member of a team rather than gated on the edit
+                         right: a save or a faculty verdict can open editing up while the
+                         page is still open, and the button that reveals this dialog is
+                         repainted from that response. The controller is the real gate. --}}
                     <div id="hotelConceptModal" class="fixed inset-0 z-50 hidden">
                         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeHotelConceptModal()"></div>
                         <div class="relative top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100 w-[92vw] max-w-xl max-h-[90vh] overflow-y-auto">
                             <div class="brand-gradient px-5 py-4 flex items-center justify-between gap-3 sticky top-0 z-10">
                                 <div class="min-w-0">
-                                    <p class="text-white/60 text-[9px] font-bold uppercase tracking-[0.15em]">Task 1 · Front Desk</p>
+                                    <p class="text-white/60 text-[9px] font-bold uppercase tracking-[0.15em]">Task 1 · Your Team</p>
                                     <h4 id="hotelConceptModalTitle" class="text-base font-extrabold text-white">Hotel Concept</h4>
                                 </div>
                                 <button type="button" onclick="closeHotelConceptModal()"
@@ -766,7 +817,15 @@
                                                 </div>
                                             @endif
                                         </div>
-                                        @if($isMine)
+                                        @if($task->is_hotel_concept)
+                                            {{-- This one is not ticked off: it closes when Front Desk
+                                                 submits the concept itself, over in My Team. --}}
+                                            <button type="button" onclick="showSection('group')"
+                                                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">
+                                                <span class="iconify text-sm" data-icon="mdi:lightbulb-outline"></span>
+                                                Open Hotel Concept
+                                            </button>
+                                        @elseif($isMine)
                                             {{-- The real affordance; the circle above is too small to be the only target. --}}
                                             <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0">
                                                 @csrf
@@ -1213,9 +1272,33 @@
                 .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        /* The header shows the concept; the card below shows its history. Both are
-           repainted from one saved payload, so an edit lands everywhere at once. */
-        function paintHotelConcept(concept, history) {
+        /* Badge colour per workflow state. Mirrors the Blade map above — the header is
+           repainted from JSON after a save or a submit, so both have to agree. */
+        const CONCEPT_BADGE_CLASSES = {
+            draft: 'bg-slate-100 text-slate-600 border-slate-200',
+            submitted: 'bg-amber-50 text-amber-700 border-amber-200',
+            needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
+            approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        };
+
+        const CONCEPT_NOTICE_CLASSES = {
+            submitted: 'border-amber-200 bg-amber-50 text-amber-700',
+            needs_revision: 'border-rose-200 bg-rose-50 text-rose-700',
+            approved: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        };
+
+        const CONCEPT_NOTICE_TEXT = {
+            submitted: 'Submitted to your faculty. The concept is locked until they respond.',
+            needs_revision: 'Your faculty asked for changes.',
+            approved: 'Your faculty approved this concept. It is final and no longer editable.',
+        };
+
+        /* The header shows the concept and where it stands; the card below shows its
+           history. All of it is repainted from one server payload, so a save, a submit
+           or a faculty verdict lands everywhere at once — including which buttons the
+           member is allowed to see, which the server decides, not this script. */
+        function paintHotelConcept(data) {
+            const concept = data ? data.concept : null;
             savedConcept = concept;
 
             const headerTitle = document.getElementById('teamHeaderConceptTitle');
@@ -1232,10 +1315,85 @@
                 headerDescription.classList.toggle('hidden', !concept);
             }
 
+            const status = concept ? (concept.status || 'draft') : 'draft';
+
+            const badge = document.getElementById('teamHeaderConceptBadge');
+            if (badge) {
+                badge.textContent = concept ? concept.status_label : '';
+                badge.className = 'inline-flex items-center px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider '
+                    + (CONCEPT_BADGE_CLASSES[status] || CONCEPT_BADGE_CLASSES.draft)
+                    + (concept ? '' : ' hidden');
+            }
+
+            const revisions = document.getElementById('teamHeaderConceptRevisions');
+            if (revisions) {
+                const rounds = concept ? Number(concept.revision_count || 0) : 0;
+                revisions.textContent = 'Revision ' + rounds;
+                revisions.classList.toggle('hidden', rounds === 0);
+            }
+
+            const notice = document.getElementById('teamHeaderConceptNotice');
+            const noticeText = document.getElementById('teamHeaderConceptNoticeText');
+            const feedback = document.getElementById('teamHeaderConceptFeedback');
+            if (notice) {
+                const show = !!concept && !!CONCEPT_NOTICE_TEXT[status];
+                notice.className = 'mt-2.5 rounded-xl border px-3 py-2 text-xs '
+                    + (CONCEPT_NOTICE_CLASSES[status] || '')
+                    + (show ? '' : ' hidden');
+                if (noticeText) noticeText.textContent = CONCEPT_NOTICE_TEXT[status] || '';
+                if (feedback) {
+                    const words = concept ? (concept.faculty_feedback || '') : '';
+                    feedback.textContent = words;
+                    feedback.classList.toggle('hidden', words === '');
+                }
+            }
+
+            const editBtn = document.getElementById('teamHeaderConceptEditBtn');
+            if (editBtn) editBtn.classList.toggle('hidden', !(data && data.can_edit));
+
+            const submitBtn = document.getElementById('teamHeaderConceptSubmitBtn');
+            if (submitBtn) {
+                submitBtn.classList.toggle('hidden', !(data && data.can_submit));
+                submitBtn.disabled = false;
+            }
+
             const editLabel = document.getElementById('teamHeaderConceptEditLabel');
             if (editLabel) editLabel.textContent = concept ? 'Edit Concept' : 'Propose Concept';
 
-            if (Array.isArray(history)) paintHotelConceptHistory(history);
+            if (data && Array.isArray(data.history)) paintHotelConceptHistory(data.history);
+        }
+
+        /* Hand the concept to faculty. Confirmed first: submitting locks the concept
+           for the whole team until the faculty answers. */
+        async function submitHotelConcept() {
+            if (!confirm('Submit this hotel concept to your faculty?\n\nNobody on the team can edit it until they approve it or send it back.')) {
+                return;
+            }
+
+            const button = document.getElementById('teamHeaderConceptSubmitBtn');
+            if (button) button.disabled = true;
+
+            try {
+                const response = await fetch(@json(route('students.hotel-concept.submit')), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || '',
+                    },
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Could not submit the hotel concept.');
+                }
+
+                paintHotelConcept(data);
+            } catch (error) {
+                alert(error.message || 'Could not submit the hotel concept.');
+                if (button) button.disabled = false;
+            }
         }
 
         function paintHotelConceptHistory(history) {
@@ -1306,7 +1464,7 @@
                         throw new Error(firstError);
                     }
 
-                    paintHotelConcept(data.concept, data.history);
+                    paintHotelConcept(data);
                     closeHotelConceptModal();
                 } catch (error) {
                     showHotelConceptError(error.message || 'Could not save the hotel concept.');

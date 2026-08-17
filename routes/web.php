@@ -219,6 +219,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $allTasks = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->where('status', 'active')
+                // The hotel concept is Task 1 and gates everything else, so it heads
+                // the list regardless of the due date it does not have.
+                ->conceptFirst()
                 ->orderBy('due_date')
                 ->orderByPriority()
                 ->get();
@@ -316,15 +319,18 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $studentClass = $student?->facultyClass;
 
-        // Front Desk's first task. Read by the whole team in My Team; only Front
-        // Desk members get the form (HotelConceptController enforces that too).
+        // The team's first task. Read by the whole team in My Team; who may write it
+        // depends on what state it is in, so HotelConceptDesk decides — Front Desk
+        // proposes the first version, then everyone improves it, and it locks while
+        // faculty holds it. The controller enforces the same rules on write.
         $conceptTeam = HotelConceptController::forTeam(
             $groupMembership?->group_name,
             $facultyId ? (int) $facultyId : null
         );
         $hotelConcept = $conceptTeam['concept'];
         $hotelConceptHistory = $conceptTeam['history'];
-        $canEditHotelConcept = in_array(HotelConceptController::OWNING_ROLE, $studentRoles, true);
+        $canEditHotelConcept = \App\Support\HotelConceptDesk::canEdit($hotelConcept, $studentRoles);
+        $canSubmitHotelConcept = \App\Support\HotelConceptDesk::canSubmit($hotelConcept, $studentRoles);
 
         return view('students.dashboard', compact(
             'membersByRole', 'group', 'groupMembers',
@@ -333,14 +339,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'pendingTasksCount', 'completionRate', 'recentTasks',
             'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
             'myActivityLogs', 'hotelConcept', 'hotelConceptHistory',
-            'canEditHotelConcept',
+            'canEditHotelConcept', 'canSubmitHotelConcept',
             'studentDisplayName', 'studentClass'
         ));
     })->name('dashboard');
 
-    // Front Desk's first task: the team's hotel concept. Every member reads it,
-    // Front Desk members write it — the controller enforces that.
+    // The team's first task: the hotel concept. Every member reads it, and the
+    // controller decides who may save or submit at any given moment.
     Route::post('/hotel-concept', [HotelConceptController::class, 'store'])->name('hotel-concept.store');
+    Route::post('/hotel-concept/submit', [HotelConceptController::class, 'submit'])->name('hotel-concept.submit');
     Route::get('/hotel-concept/history', [HotelConceptController::class, 'history'])->name('hotel-concept.history');
 
     // My Activity — students read their own centralized log and nobody else's.
@@ -364,6 +371,14 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $studentRoles = $groupMembership->roles->pluck('role')->toArray();
         if (!in_array($task->role, $studentRoles, true)) {
             return back()->withErrors(['task' => 'This task is not assigned to your role.']);
+        }
+
+        // The hotel concept closes by submitting the concept itself, not by ticking
+        // the row — otherwise Front Desk could mark it done with nothing written.
+        if ($task->is_hotel_concept) {
+            return back()->withErrors([
+                'task' => 'Submit the hotel concept from My Team instead — that is what closes this task.',
+            ]);
         }
 
         // Tasks fan out one row per member, so a role match alone is not enough —

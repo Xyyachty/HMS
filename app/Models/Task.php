@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\HotelConceptDesk;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -16,6 +17,9 @@ class Task extends Model
         'student_id',
         'assigned_to',
         'role',
+        // null for an ordinary assignment; HotelConceptDesk::TASK_KIND for the
+        // seeded hotel concept task, which has its own submit and review path.
+        'kind',
         'title',
         'description',
         'due_date',
@@ -85,6 +89,27 @@ class Task extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    /** The one task that gates the rest of the simulation. */
+    public function getIsHotelConceptAttribute(): bool
+    {
+        return $this->kind === HotelConceptDesk::TASK_KIND;
+    }
+
+    /**
+     * The hotel concept heads every list — it is the team's first task.
+     *
+     * Priority alone would not do it: the orderings this is chained ahead of sort
+     * by due_date first, and the concept task has none, which sorts last in
+     * PostgreSQL.
+     */
+    public function scopeConceptFirst($query)
+    {
+        return $query->orderByRaw(
+            "CASE WHEN kind = ? THEN 0 ELSE 1 END",
+            [HotelConceptDesk::TASK_KIND]
+        );
     }
 
     /**

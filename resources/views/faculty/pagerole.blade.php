@@ -421,10 +421,11 @@
         </div>
 
         <div class="flex-1 min-h-0 flex flex-col lg:flex-row">
-            <!-- The work itself -->
+            <!-- The work itself: a site to look at for most tasks, the concept text
+                 itself for the hotel concept — that submission has no page to render. -->
             <div class="flex-1 min-h-0 bg-slate-100 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200">
                 <div class="px-3 py-2 flex items-center justify-between gap-2 bg-white border-b border-slate-100 flex-shrink-0">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">The team's live site</span>
+                    <span id="reviewWorkLabel" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">The team's live site</span>
                     <a id="reviewOpenTab" href="#" target="_blank" rel="noopener"
                        class="text-[10px] font-bold text-brand hover:underline hidden">Open in new tab ↗</a>
                 </div>
@@ -434,6 +435,7 @@
                     </div>
                     <iframe id="reviewPreviewFrame" src="" title="Team site preview"
                             class="w-full h-full border-0 bg-white hidden" style="min-height: 22rem;"></iframe>
+                    <div id="reviewConceptPane" class="absolute inset-0 overflow-y-auto bg-white p-4 hidden" style="min-height: 22rem;"></div>
                 </div>
             </div>
 
@@ -449,7 +451,7 @@
                     </div>
 
                     <div>
-                        <label for="reviewFeedback" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        <label id="reviewFeedbackLabel" for="reviewFeedback" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                             Feedback to the student
                         </label>
                         <textarea id="reviewFeedback" rows="6" maxlength="2000"
@@ -1450,10 +1452,15 @@ function openTaskReview(taskId) {
     const frame = document.getElementById('reviewPreviewFrame');
     const empty = document.getElementById('reviewPreviewEmpty');
     const openTab = document.getElementById('reviewOpenTab');
+    const conceptPane = document.getElementById('reviewConceptPane');
     frame.classList.add('hidden');
     frame.src = '';
     empty.classList.remove('hidden');
     openTab.classList.add('hidden');
+    conceptPane.classList.add('hidden');
+    conceptPane.innerHTML = '';
+    document.getElementById('reviewWorkLabel').textContent = "The team's live site";
+    document.getElementById('reviewFeedbackLabel').textContent = 'Feedback to the student';
 
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -1487,7 +1494,15 @@ function openTaskReview(taskId) {
                 document.getElementById('reviewPrevFeedbackWrap').classList.remove('hidden');
             }
 
-            if (d.preview_url) {
+            if (d.is_hotel_concept) {
+                // The concept is text, so it is read here rather than previewed.
+                document.getElementById('reviewWorkLabel').textContent = 'The proposed hotel concept';
+                // The whole team may have edited it, so the verdict goes to the team.
+                document.getElementById('reviewFeedbackLabel').textContent = 'Feedback to the team';
+                conceptPane.innerHTML = renderTeamHotelConcept(d);
+                conceptPane.classList.remove('hidden');
+                empty.classList.add('hidden');
+            } else if (d.preview_url) {
                 frame.src = d.preview_url;
                 frame.classList.remove('hidden');
                 empty.classList.add('hidden');
@@ -1612,21 +1627,62 @@ function loadTeamHotelConcept(groupName) {
         });
 }
 
+/* Where a concept stands in the workflow. Same colours the students see. */
+const CONCEPT_STATUS_CLASSES = {
+    draft: 'bg-slate-100 text-slate-600 border-slate-200',
+    submitted: 'bg-amber-50 text-amber-700 border-amber-200',
+    needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
+    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+};
+
+/* Renders a team's concept and its history. Shared by the Team Details modal and
+   the review dialog — a submitted concept is read, not previewed, so the review
+   pane needs exactly this. */
 function renderTeamHotelConcept(data) {
     const concept = data.concept;
     const history = Array.isArray(data.history) ? data.history : [];
+    const status = concept ? (concept.status || 'draft') : 'draft';
+
+    const statusBadge = concept
+        ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold '
+            + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">'
+            + escHtml(concept.status_label) + '</span>'
+        : '';
+
+    // Who handed it in, and what the last verdict on it was.
+    const trail = concept
+        ? (concept.submitted_at
+                ? '<p class="text-[10px] text-slate-400 mt-1">Submitted'
+                    + (concept.submitted_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.submitted_by) + '</span>' : '')
+                    + ' on ' + escHtml(concept.submitted_at) + '</p>'
+                : '')
+            + (concept.reviewed_at
+                ? '<p class="text-[10px] text-slate-400">Reviewed'
+                    + (concept.reviewed_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.reviewed_by) + '</span>' : '')
+                    + ' on ' + escHtml(concept.reviewed_at) + '</p>'
+                : '')
+            + (concept.faculty_feedback
+                ? '<div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">'
+                    + '<p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Your feedback</p>'
+                    + '<p class="text-[11px] text-amber-800 mt-0.5 whitespace-pre-line">' + escHtml(concept.faculty_feedback) + '</p>'
+                  + '</div>'
+                : '')
+        : '';
 
     const conceptBlock = concept
         ? '<div class="rounded-lg border border-slate-200 bg-slate-50/70 p-3">' +
             '<div class="flex items-start justify-between gap-2 flex-wrap">' +
                 '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>' +
-                '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
-                    + escHtml(concept.hotel_type_label) + '</span>' +
+                '<div class="flex items-center gap-1.5 flex-wrap">' + statusBadge +
+                    '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
+                        + escHtml(concept.hotel_type_label) + '</span>' +
+                '</div>' +
             '</div>' +
             '<p class="text-xs text-slate-600 mt-2 whitespace-pre-line">' + escHtml(concept.description) + '</p>' +
             '<p class="text-[10px] text-slate-400 mt-2">Last updated'
                 + (concept.updated_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.updated_by) + '</span>' : '')
                 + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : '') + '</p>' +
+            trail +
           '</div>'
         : '<div class="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center">' +
             '<p class="text-xs font-bold text-slate-400">This team has not proposed a hotel concept yet.</p>' +
@@ -2534,8 +2590,11 @@ function renderTeamModalActivityPage() {
 
     activityBody.innerHTML = pageLogs.map(function(log) {
         const isDone = log.status === 'archived';
+        // The concept is only "Completed" once it is approved, and approving stamps
+        // the feedback — so a submitted-but-unanswered concept says Submitted.
+        const doneLabel = (log.is_hotel_concept && !log.has_feedback) ? 'Submitted' : 'Completed';
         const statusBadge = isDone
-            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Completed</span>'
+            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>' + doneLabel + '</span>'
             : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Assigned</span>';
 
         // A task fans out one row per member, so the student tells identical titles apart.

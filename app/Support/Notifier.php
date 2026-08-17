@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\FacultyClass;
 use App\Models\HotelComplaint;
+use App\Models\HotelConcept;
 use App\Models\HotelDineInTable;
 use App\Models\HotelRoomInspection;
 use App\Models\Student;
@@ -355,6 +356,46 @@ class Notifier
             $revise
                 ? 'Feedback on "' . $task->title . '": ' . (string) $task->feedback
                 : '"' . $task->title . '" was approved by your faculty.',
+            route('students.dashboard'),
+            $actor
+        );
+    }
+
+    /**
+     * A team handed their hotel concept in. Faculty owns the verdict, so they are
+     * the audience — this is the inbound half of the concept workflow.
+     */
+    public static function conceptSubmitted(?User $actor, HotelConcept $concept, StudentGroup $membership): void
+    {
+        static::push(
+            array_filter([static::facultyUserId($membership->faculty_id)]),
+            UserNotification::CONCEPT_SUBMITTED,
+            'Hotel concept submitted for review',
+            'Team ' . $membership->group_name . ' submitted "' . $concept->title . '" for your review.',
+            route('faculty.role', ['tab' => 'teams']),
+            $actor
+        );
+    }
+
+    /**
+     * Faculty approved the concept or sent it back.
+     *
+     * The whole team hears it, not only the Front Desk member who submitted: every
+     * member may edit the concept, so a "needs revision" is work for all of them.
+     */
+    public static function conceptReviewed(
+        ?User $actor,
+        HotelConcept $concept,
+        StudentGroup $membership,
+        bool $revise
+    ): void {
+        static::push(
+            static::teamUserIds((string) $membership->group_name, (int) $membership->faculty_id),
+            UserNotification::CONCEPT_REVIEWED,
+            $revise ? 'Changes requested on your hotel concept' : 'Your hotel concept was approved',
+            $revise
+                ? 'Feedback on "' . $concept->title . '": ' . (string) $concept->faculty_feedback
+                : '"' . $concept->title . '" was approved by your faculty.',
             route('students.dashboard'),
             $actor
         );
