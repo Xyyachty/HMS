@@ -90,7 +90,7 @@
                                         'role_labels' => array_map(fn ($r) => $roleLabels[$r] ?? $r, $memberRoles),
                                     ];
                                 })->values()->toJson();
-                                $activityLogs = $teamActivityByFacultyGroup[$faculty->faculty_id][$groupName] ?? [];
+                                $activityLogs = $teamActivityByFacultyGroup[$faculty->user_information_id][$groupName] ?? [];
                             @endphp
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-3.5">
@@ -105,7 +105,7 @@
                                     <span class="font-semibold text-slate-700">{{ $groupName }}</span>
                                 </td>
                                 <td class="px-5 py-3.5">
-                                    @php $concept = $conceptsByFacultyGroup[$faculty->faculty_id][$groupName] ?? null; @endphp
+                                    @php $concept = $conceptsByFacultyGroup[$faculty->user_information_id][$groupName] ?? null; @endphp
                                     @if($concept)
                                         <p class="font-semibold text-slate-700 text-sm">{{ $concept->title }}</p>
                                         <p class="text-[11px] text-slate-400">{{ $concept->hotel_type_label }}</p>
@@ -121,7 +121,7 @@
                                 </td>
                                 <td class="px-5 py-3.5 text-slate-500 text-sm">{{ $createdAt }}</td>
                                 <td class="px-5 py-3.5">
-                                    <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }}, {{ (int) $faculty->faculty_id }})'
+                                    <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }}, {{ (int) $faculty->user_information_id }})'
                                         class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold hover:bg-rose-100 transition">
                                         <span class="iconify" data-icon="mdi:eye-outline"></span> View
                                     </button>

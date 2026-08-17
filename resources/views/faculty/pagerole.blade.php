@@ -598,7 +598,7 @@
                                         $u = $student->user;
                                         $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
-                                        $sk = $student->student_id;
+                                        $sk = $student->user_information_id;
                                         $selectedMembers = old('_form_source') === 'create_team' ? array_map('intval', old('members', [])) : [];
                                         $selectedRoles = old('_form_source') === 'create_team' ? old('member_roles.' . $sk, []) : [];
                                         if (!is_array($selectedRoles)) $selectedRoles = [$selectedRoles];
@@ -720,7 +720,7 @@
                                         $u = $student->user;
                                         $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
-                                        $sk = $student->student_id;
+                                        $sk = $student->user_information_id;
                                         $searchBlob = strtolower($dn . ' ' . $student->student_number);
                                     @endphp
                                     <div class="bulk-student-row rounded-xl bg-white border border-slate-200 p-3"
@@ -831,7 +831,7 @@
                                         $u = $student->user;
                                         $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
-                                        $sk = $student->student_id;
+                                        $sk = $student->user_information_id;
                                         $selectedMembers = array_map('intval', old('members', []));
                                         $selectedRoles = old('member_roles.' . $sk, []);
                                         if (!is_array($selectedRoles)) $selectedRoles = [$selectedRoles];
@@ -994,7 +994,7 @@
                                         $u = $student->user;
                                         $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
                                         $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
-                                        $sk = $student->student_id;
+                                        $sk = $student->user_information_id;
                                         $searchBlob = strtolower($dn . ' ' . $student->student_number);
                                         $teamNames = collect($studentTeamMap[$sk] ?? [])->values()->all();
                                     @endphp

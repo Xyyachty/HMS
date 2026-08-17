@@ -54,7 +54,7 @@ class HotelConceptController extends Controller
         $student = $authUser?->student;
 
         $membership = $student
-            ? StudentGroup::with('roles')->where('student_id', $student->student_id)->first()
+            ? StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first()
             : null;
 
         if (!$membership) {
@@ -171,7 +171,7 @@ class HotelConceptController extends Controller
     {
         $student = auth()->user()?->student;
         $membership = $student
-            ? StudentGroup::where('student_id', $student->student_id)->first()
+            ? StudentGroup::where('student_id', $student->user_information_id)->first()
             : null;
 
         if (!$membership) {
@@ -186,7 +186,7 @@ class HotelConceptController extends Controller
     /** One of the faculty's own teams — used by the Team Details modal. */
     public function facultyHistory(string $groupName)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return response()->json(['error' => 'Only faculty can read this.'], 403);
         }

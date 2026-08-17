@@ -94,7 +94,7 @@ class HotelSimulationAuth
         }
 
         $membership = StudentGroup::with('roles')
-            ->where('student_id', $student->student_id)
+            ->where('student_id', $student->user_information_id)
             ->where('group_name', $ctx['group_name'])
             ->where('faculty_id', $ctx['faculty_id'])
             ->first();
@@ -124,7 +124,7 @@ class HotelSimulationAuth
         $auth = [
             'type' => 'staff',
             'user_id' => $staffUser->user_id,
-            'student_id' => $student->student_id,
+            'student_id' => $student->user_information_id,
             'name' => $name,
             'email' => $staffUser->email,
             'editable_pages' => $editablePages,

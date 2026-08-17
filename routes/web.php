@@ -119,7 +119,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $groupMembership = $student
             ? StudentGroup::with('student.user')
-                ->where('student_id', $student->student_id)
+                ->where('student_id', $student->user_information_id)
                 ->first()
             : null;
 
@@ -259,7 +259,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->where($scopeToTeam)
                 ->where('status', 'archived')
                 ->where(function ($q) use ($student, $authUser, $studentRoles) {
-                    $q->where('student_id', $student->student_id)
+                    $q->where('student_id', $student->user_information_id)
                         ->orWhere('assigned_to', $authUser->user_id);
                     if (!empty($studentRoles)) {
                         $q->orWhereIn('role', $studentRoles);
@@ -281,7 +281,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->where($scopeToTeam)
                 ->where(function ($q) use ($student, $authUser, $studentRoles) {
                     // Only this user's own history
-                    $q->where('student_id', $student->student_id)
+                    $q->where('student_id', $student->user_information_id)
                         ->orWhere('assigned_to', $authUser->user_id);
 
                     // Still show active tasks for their roles so they can complete them
@@ -356,7 +356,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             abort(403);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
         if (!$groupMembership || (int) $task->faculty_id !== (int) $groupMembership->faculty_id) {
             abort(403);
         }
@@ -370,7 +370,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // without this a student could submit a teammate's row. Unclaimed rows
         // (no member held the role at assign time) stay open to the first submitter.
         $claimedByOther = ($task->assigned_to && (int) $task->assigned_to !== (int) $authUser->user_id)
-            || ($task->student_id && (int) $task->student_id !== (int) $student->student_id);
+            || ($task->student_id && (int) $task->student_id !== (int) $student->user_information_id);
         if ($claimedByOther) {
             return back()->withErrors(['task' => 'This task belongs to a teammate.']);
         }
@@ -381,7 +381,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $task->update([
             'status' => 'archived',
-            'student_id' => $student->student_id,
+            'student_id' => $student->user_information_id,
             'assigned_to' => $authUser->user_id,
         ]);
 
@@ -419,7 +419,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
 
         $student = $authUser->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
 
         \App\Support\StudentGroupSync::heartbeat($authUser, $membership);
 
@@ -482,7 +482,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::get('/frontdesk/template/sync', function () {
         $authUser = auth()->user();
         $student = $authUser?->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
         if (!$membership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -514,7 +514,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $builderRole = 'front_desk';
         }
         if ($student) {
-            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
             if ($groupMembership) {
                 if ($request->query('save') === '1') {
                     if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
@@ -551,7 +551,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $builderRole = 'front_desk';
         }
         if ($student) {
-            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
             if ($groupMembership) {
                 if ($request->query('save') === '1') {
                     if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
@@ -594,9 +594,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Student not found'], 404);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
         if (!$groupMembership) {
-            \Log::warning('Template select: group not found', ['student_id' => $student->student_id]);
+            \Log::warning('Template select: group not found', ['student_id' => $student->user_information_id]);
             return response()->json(['error' => 'Group not found'], 404);
         }
 
@@ -644,7 +644,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Student not found'], 404);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
         if (!$groupMembership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -697,7 +697,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Student not found'], 404);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
         if (!$groupMembership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -858,7 +858,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::post('/hotel/rooms', function (Request $request) {
         $authUser = auth()->user();
         $student  = $authUser?->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
         if (!$membership) {
             return response()->json(['error' => 'Group not found'], 404);
         }

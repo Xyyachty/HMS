@@ -30,7 +30,7 @@ class HotelOrderAccess
     {
         $student = auth()->user()?->student;
 
-        return StudentGroupSync::membershipForStudent($student?->student_id);
+        return StudentGroupSync::membershipForStudent($student?->user_information_id);
     }
 
     /**

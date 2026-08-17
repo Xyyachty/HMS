@@ -15,7 +15,7 @@ class DepartmentTemplatePage
     {
         $student = $authUser->student;
         $groupMembership = $student
-            ? StudentGroup::with(['student.user', 'roles'])->where('student_id', $student->student_id)->first()
+            ? StudentGroup::with(['student.user', 'roles'])->where('student_id', $student->user_information_id)->first()
             : null;
 
         $facultyId = $groupMembership?->faculty_id;

@@ -10,6 +10,7 @@ use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\UserInformation;
 use App\Models\UserNotification;
 use Illuminate\Support\Facades\DB;
 
@@ -90,14 +91,17 @@ class Notifier
             ->all();
     }
 
-    /** The user account behind a faculties.faculty_id, or null when unlinked. */
+    /** The user account behind a faculty's user_information_id, or null when unlinked. */
     public static function facultyUserId(?int $facultyId): ?int
     {
         if (!$facultyId) {
             return null;
         }
 
-        $userId = DB::table('faculties')->where('faculty_id', $facultyId)->value('user_id');
+        $userId = DB::table('user_information')
+            ->where('user_information_id', $facultyId)
+            ->where('user_type', UserInformation::TYPE_FACULTY)
+            ->value('user_id');
 
         return $userId ? (int) $userId : null;
     }
@@ -106,7 +110,7 @@ class Notifier
     public static function teamUserIds(string $groupName, int $facultyId): array
     {
         return Student::whereIn(
-            'student_id',
+            'user_information_id',
             StudentGroup::where('group_name', $groupName)
                 ->where('faculty_id', $facultyId)
                 ->pluck('student_id')
@@ -132,21 +136,21 @@ class Notifier
             ->whereHas('roles', fn ($query) => $query->whereIn('role', $roles))
             ->pluck('student_id');
 
-        return Student::whereIn('student_id', $studentIds)
+        return Student::whereIn('user_information_id', $studentIds)
             ->pluck('user_id')
             ->filter()
             ->map(fn ($id) => (int) $id)
             ->all();
     }
 
-    /** Student user ids from students.student_id values. */
+    /** Student user ids from user_information_id values. */
     public static function userIdsForStudents(array $studentIds): array
     {
         if ($studentIds === []) {
             return [];
         }
 
-        return Student::whereIn('student_id', $studentIds)
+        return Student::whereIn('user_information_id', $studentIds)
             ->pluck('user_id')
             ->filter()
             ->map(fn ($id) => (int) $id)

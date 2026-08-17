@@ -96,12 +96,14 @@ class BulkImportStudentsTest extends TestCase
         ]);
 
         // The spreadsheet header stays "student_id" — that is what faculty upload — but
-        // the school number now lands in the students.student_number column.
-        $this->assertDatabaseHas('students', [
+        // the school number now lands in user_information.student_number.
+        $this->assertDatabaseHas('user_information', [
+            'user_type' => 'student',
             'student_number' => '2024-009',
         ]);
 
-        $this->assertDatabaseHas('students', [
+        $this->assertDatabaseHas('user_information', [
+            'user_type' => 'student',
             'student_number' => '2024-010',
         ]);
 

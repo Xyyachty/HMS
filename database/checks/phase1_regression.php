@@ -98,14 +98,21 @@ $check('matchMenuItem falls back to name, any case',
     optional(App\Support\HotelOrderAccess::matchMenuItem($locked2, $legacy))->hotel_menu_item_id === $item->hotel_menu_item_id);
 
 echo "\nUser data (must never drift)\n";
+// students (44) + faculties (1) became user_information (45) — see the
+// 2026_08_18_000000 merge migration. The split is asserted separately below.
 $baseline = [
-    'users' => 46, 'students' => 44, 'tasks' => 22, 'student_groups' => 40,
-    'student_group_roles' => 41, 'faculties' => 1, 'faculty_classes' => 2,
+    'users' => 46, 'user_information' => 45, 'tasks' => 22, 'student_groups' => 40,
+    'student_group_roles' => 41, 'faculty_classes' => 2,
     'hotel_rooms' => 6, 'hotel_menu_items' => 14, 'hotel_customers' => 2,
 ];
 foreach ($baseline as $table => $expected) {
     $actual = Illuminate\Support\Facades\DB::table($table)->count();
     $check("$table unchanged", $actual === $expected, "expected $expected, got $actual");
+}
+
+foreach (['student' => 44, 'faculty' => 1] as $type => $expected) {
+    $actual = App\Models\UserInformation::where('user_type', $type)->count();
+    $check("user_information $type rows unchanged", $actual === $expected, "expected $expected, got $actual");
 }
 
 echo "\nLive template rows (version_id = 0)\n";

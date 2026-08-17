@@ -15,14 +15,16 @@ use App\Models\StudentGroup;
 use App\Models\StudentGroupRole;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\UserInformation;
 use App\Support\Notifier;
 use App\Support\StudentWelcomeMailer;
+use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 class FacultyController extends Controller
 {
     public function dashboard()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
 
         $totalStudents = $facultyId
             ? Student::where('faculty_id', $facultyId)->count()
@@ -65,7 +67,7 @@ class FacultyController extends Controller
 
     public function storeGroup(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return back()->withErrors(['group_name' => 'Faculty account not found for the current user.'])->withInput();
         }
@@ -79,7 +81,7 @@ class FacultyController extends Controller
         $validated = $request->validate([
             'group_name' => ['required', 'string', 'max:255'],
             'members' => ['required', 'array', 'min:1', 'max:4'],
-            'members.*' => ['integer', 'exists:students,student_id'],
+            'members.*' => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'member_roles' => ['nullable', 'array'],
         ]);
 
@@ -212,7 +214,7 @@ class FacultyController extends Controller
             'teams' => ['required', 'array', 'min:1'],
             'teams.*.group_name' => ['required', 'string', 'max:255'],
             'teams.*.members' => ['required', 'array', 'size:4'],
-            'teams.*.members.*' => ['integer', 'exists:students,student_id'],
+            'teams.*.members.*' => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'teams.*.member_roles' => ['nullable', 'array'],
         ]);
 
@@ -230,7 +232,7 @@ class FacultyController extends Controller
             ->all();
 
         $ownedStudentIds = Student::where('faculty_id', $facultyId)
-            ->pluck('student_id')
+            ->pluck('user_information_id')
             ->map(fn ($id) => (int) $id)
             ->all();
 
@@ -389,7 +391,7 @@ class FacultyController extends Controller
 
     public function students()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
 
         if (!$facultyId) {
             return view('faculty.managestudent', [
@@ -431,7 +433,7 @@ class FacultyController extends Controller
 
     public function studentsLive()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         $classLetter = strtoupper((string) request('class', ''));
 
         $query = Student::with(['user', 'facultyClass'])
@@ -473,7 +475,7 @@ class FacultyController extends Controller
 
     public function storeStudent(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return back()->withErrors(['error' => 'Faculty account not found.'])->withInput();
         }
@@ -481,7 +483,7 @@ class FacultyController extends Controller
         $validated = $request->validate([
             // Request field keeps its name — it is what the form and the bulk-upload
             // spreadsheet send. The column it validates against is student_number.
-            'student_id' => ['required', 'string', 'max:50', 'unique:students,student_number'],
+            'student_id' => ['required', 'string', 'max:50', 'unique:user_information,student_number'],
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
@@ -649,7 +651,7 @@ class FacultyController extends Controller
 
     public function bulkImportStudents(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return response()->json(['message' => 'Faculty account not found.'], 403);
         }
@@ -877,7 +879,7 @@ class FacultyController extends Controller
 
     public function role()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return view('faculty.pagerole', [
                 'students'        => collect(),
@@ -914,7 +916,7 @@ class FacultyController extends Controller
         // Unassigned students for Add Team / Insert — scoped to the active class tab
         $students = Student::with(['user', 'facultyClass'])
             ->where('faculty_id', $facultyId)
-            ->whereNotIn('student_id', $assignedStudentIds)
+            ->whereNotIn('user_information_id', $assignedStudentIds)
             ->when($activeClass, fn ($q) => $q->where('faculty_class_id', $activeClass->faculty_class_id))
             ->latest()
             ->get();
@@ -922,7 +924,7 @@ class FacultyController extends Controller
         // Update Team modal still needs all faculty students (then filtered to members in JS)
         $allStudents = Student::with(['user', 'facultyClass'])
             ->where('faculty_id', $facultyId)
-            ->orderByDesc('student_id')
+            ->orderByDesc('user_information_id')
             ->get();
 
         $studentTeamMap = StudentGroup::where('faculty_id', $facultyId)
@@ -1078,7 +1080,7 @@ class FacultyController extends Controller
 
     public function updateGroup(Request $request, $groupName)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return back()->withErrors(['group_name' => 'Faculty account not found.'])->withInput();
         }
@@ -1086,7 +1088,7 @@ class FacultyController extends Controller
         $validated = $request->validate([
             'group_name'    => ['required', 'string', 'max:255'],
             'members'       => ['required', 'array', 'min:1', 'max:4'],
-            'members.*'     => ['integer', 'exists:students,student_id'],
+            'members.*'     => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'member_roles'  => ['nullable', 'array'],
         ]);
 
@@ -1168,7 +1170,7 @@ class FacultyController extends Controller
 
     public function tasks()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return view('faculty.tasks', ['tasksByRole' => collect(), 'taskCounts' => []]);
         }
@@ -1192,7 +1194,7 @@ class FacultyController extends Controller
 
     public function storeTask(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return back()->withErrors(['title' => 'Faculty account not found.'])->withInput();
         }
@@ -1278,7 +1280,7 @@ class FacultyController extends Controller
     /** The task plus who did it and where their work can be seen. */
     public function reviewTask(Task $task)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId || (int) $task->faculty_id !== (int) $facultyId) {
             return response()->json(['error' => 'Not your task.'], 403);
         }
@@ -1333,7 +1335,7 @@ class FacultyController extends Controller
     public function storeTaskFeedback(Request $request, Task $task)
     {
         $facultyUser = auth()->user();
-        $facultyId = $facultyUser?->faculty?->faculty_id;
+        $facultyId = $facultyUser?->faculty?->user_information_id;
         if (!$facultyId || (int) $task->faculty_id !== (int) $facultyId) {
             return response()->json(['error' => 'Not your task.'], 403);
         }
@@ -1392,7 +1394,7 @@ class FacultyController extends Controller
      */
     public function previewTeamSite(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             abort(403);
         }
@@ -1431,7 +1433,7 @@ class FacultyController extends Controller
 
     public function destroyTask(Task $task)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if ($task->faculty_id !== $facultyId) {
             abort(403);
         }
@@ -1451,7 +1453,7 @@ class FacultyController extends Controller
 
     public function results()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             abort(403, 'Faculty account not found.');
         }
@@ -1479,7 +1481,7 @@ class FacultyController extends Controller
 
     public function reports()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             abort(403, 'Faculty account not found.');
         }
@@ -1516,7 +1518,7 @@ class FacultyController extends Controller
         foreach ($completedTasks as $task) {
             $studentId = $task->student_id ? (int) $task->student_id : null;
             if (!$studentId && $task->assigned_to) {
-                $studentId = Student::where('user_id', $task->assigned_to)->value('student_id');
+                $studentId = Student::where('user_id', $task->assigned_to)->value('user_information_id');
                 $studentId = $studentId ? (int) $studentId : null;
             }
 
@@ -1616,7 +1618,7 @@ class FacultyController extends Controller
 
     public function activityLogs(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             abort(403, 'Faculty account not found.');
         }

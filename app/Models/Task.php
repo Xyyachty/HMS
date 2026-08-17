@@ -51,12 +51,12 @@ class Task extends Model
 
     public function faculty()
     {
-        return $this->belongsTo(Faculty::class, 'faculty_id', 'faculty_id');
+        return $this->belongsTo(Faculty::class, 'faculty_id', 'user_information_id');
     }
 
     public function student()
     {
-        return $this->belongsTo(Student::class, 'student_id', 'student_id');
+        return $this->belongsTo(Student::class, 'student_id', 'user_information_id');
     }
 
     public function assignedTo()
@@ -67,13 +67,14 @@ class Task extends Model
     protected static function booted(): void
     {
         static::saving(function (Task $task) {
-            // Keep student_id in sync with assigned_to (users.user_id → students.student_id)
+            // Keep student_id in sync with assigned_to
+            // (users.user_id → user_information.user_information_id)
             if ($task->assigned_to && !$task->student_id) {
-                $task->student_id = Student::where('user_id', $task->assigned_to)->value('student_id');
+                $task->student_id = Student::where('user_id', $task->assigned_to)->value('user_information_id');
             }
 
             if ($task->student_id && !$task->assigned_to) {
-                $task->assigned_to = Student::where('student_id', $task->student_id)->value('user_id');
+                $task->assigned_to = Student::whereKey($task->student_id)->value('user_id');
             }
         });
     }
