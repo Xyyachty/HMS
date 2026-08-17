@@ -10,18 +10,23 @@ use App\Events\StudentCreated;
 use App\Models\ActivityLog;
 use App\Models\FacultyClass;
 use App\Models\Group;
+use App\Models\HotelConcept;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\StudentGroupRole;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\UserInformation;
+use App\Support\HotelConceptDesk;
 use App\Support\Notifier;
+use App\Support\StudentWelcomeMailer;
+use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 class FacultyController extends Controller
 {
     public function dashboard()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
 
         $totalStudents = $facultyId
             ? Student::where('faculty_id', $facultyId)->count()
@@ -64,7 +69,7 @@ class FacultyController extends Controller
 
     public function storeGroup(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return back()->withErrors(['group_name' => 'Faculty account not found for the current user.'])->withInput();
         }
@@ -78,7 +83,7 @@ class FacultyController extends Controller
         $validated = $request->validate([
             'group_name' => ['required', 'string', 'max:255'],
             'members' => ['required', 'array', 'min:1', 'max:4'],
-            'members.*' => ['integer', 'exists:students,student_id'],
+            'members.*' => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'member_roles' => ['nullable', 'array'],
         ]);
 
@@ -160,6 +165,10 @@ class FacultyController extends Controller
             }
         }
 
+        // Every team starts with the same first task, so it is not on the faculty
+        // checklist — it is assigned the moment the team exists.
+        HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
+
         $memberCount = count($memberIds);
         $assignedRoles = collect($rolesByMember)->flatten()->unique()->values()->all();
 
@@ -211,7 +220,7 @@ class FacultyController extends Controller
             'teams' => ['required', 'array', 'min:1'],
             'teams.*.group_name' => ['required', 'string', 'max:255'],
             'teams.*.members' => ['required', 'array', 'size:4'],
-            'teams.*.members.*' => ['integer', 'exists:students,student_id'],
+            'teams.*.members.*' => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'teams.*.member_roles' => ['nullable', 'array'],
         ]);
 
@@ -229,7 +238,7 @@ class FacultyController extends Controller
             ->all();
 
         $ownedStudentIds = Student::where('faculty_id', $facultyId)
-            ->pluck('student_id')
+            ->pluck('user_information_id')
             ->map(fn ($id) => (int) $id)
             ->all();
 
@@ -388,7 +397,7 @@ class FacultyController extends Controller
 
     public function students()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
 
         if (!$facultyId) {
             return view('faculty.managestudent', [
@@ -430,7 +439,7 @@ class FacultyController extends Controller
 
     public function studentsLive()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         $classLetter = strtoupper((string) request('class', ''));
 
         $query = Student::with(['user', 'facultyClass'])
@@ -472,7 +481,7 @@ class FacultyController extends Controller
 
     public function storeStudent(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return back()->withErrors(['error' => 'Faculty account not found.'])->withInput();
         }
@@ -480,22 +489,28 @@ class FacultyController extends Controller
         $validated = $request->validate([
             // Request field keeps its name — it is what the form and the bulk-upload
             // spreadsheet send. The column it validates against is student_number.
-            'student_id' => ['required', 'string', 'max:50', 'unique:students,student_number'],
+            'student_id' => ['required', 'string', 'max:50', 'unique:user_information,student_number'],
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'max:255'],
             'phone_number' => ['nullable', 'string', 'max:30'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $emailInput = trim($validated['email']);
-        $email = str_contains($emailInput, '@')
-            ? strtolower($emailInput)
-            : strtolower($emailInput . '@hms.edu');
+        // Generated rather than typed, same as the bulk upload. The only place it is
+        // ever readable is the student's own welcome email, so no faculty member holds
+        // a password that opens a student's account and no two students share one.
+        $plainPassword = StudentWelcomeMailer::generatePassword();
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return back()->withErrors(['email' => 'Please enter a valid email address.'])->withInput();
+        $email = strtolower(trim($validated['email']));
+
+        // No @hms.edu fallback on this form. The password now exists only in the
+        // welcome email, so an address that cannot receive mail leaves a student
+        // with an account and no way into it. Say so before the row is created.
+        if (!StudentWelcomeMailer::isDeliverable($email)) {
+            return back()->withErrors([
+                'email' => 'Enter a real email address the student can open — their password is only sent there.',
+            ])->withInput();
         }
 
         if (User::whereEmail($email)->exists()) {
@@ -515,7 +530,7 @@ class FacultyController extends Controller
             ->orderBy('sort_order')
             ->value('faculty_class_id');
 
-        [$user, $student, $class] = DB::transaction(function () use ($validated, $email, $fullName, $facultyId) {
+        [$user, $student, $class] = DB::transaction(function () use ($validated, $email, $fullName, $facultyId, $plainPassword) {
             $class = FacultyClass::claimSeat($facultyId);
 
             $user = User::create([
@@ -524,7 +539,7 @@ class FacultyController extends Controller
                 'middle_name' => User::cleanOptional($validated['middle_name'] ?? null),
                 'last_name' => $validated['last_name'],
                 'email' => $email,
-                'password' => Hash::make($validated['password']),
+                'password' => Hash::make($plainPassword),
                 'role' => 'student',
                 'status' => 'active',
                 'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
@@ -553,14 +568,33 @@ class FacultyController extends Controller
         Notifier::studentAdded(auth()->user(), $user, $fullName, $class, $facultyId);
         $this->notifyIfClassOpened($facultyId, $openClassIdBefore);
 
+        // Only now that the account exists. This is the last point the generated
+        // password is readable — the column holds a hash from here on, so a student
+        // whose email never arrives has to reset rather than be told.
+        $mailResult = StudentWelcomeMailer::send(
+            $user,
+            $plainPassword,
+            $class->name ?? null,
+            $validated['student_id']
+        );
+
         $message = 'Student account created successfully and added to ' . ($class->name ?? 'class') . '.';
         if ($class->status === 'closed') {
             $message .= ' ' . $class->name . ' is now full. A new class tab was opened.';
         }
 
+        // When the email did not go out, this banner is the only place the password
+        // is ever shown — the account is otherwise created with a password nobody
+        // knows. Shown once, on the faculty's own screen, and never stored in clear.
+        $message .= $mailResult['sent']
+            ? ' A welcome email with the sign-in details was sent to ' . $user->email . '.'
+            : ' Note: ' . $mailResult['reason'] . '. Their password is ' . $plainPassword
+                . ' — write it down now and give it to them, it is not shown again.';
+
         return redirect()
             ->route('faculty.students', ['class' => $class->letter])
-            ->with('success', $message);
+            ->with('success', $message)
+            ->with('success_title', 'Student Created');
     }
 
     /**
@@ -616,12 +650,14 @@ class FacultyController extends Controller
             'Updated student account ' . ($user->name ?? $user->email) . ' — status set to ' . $validated['status'] . '.'
         );
 
-        return redirect()->route('faculty.students', ['class' => request('class')])->with('success', 'Student updated successfully.');
+        return redirect()->route('faculty.students', ['class' => request('class')])
+            ->with('success', 'Student updated successfully.')
+            ->with('success_title', 'Student Updated');
     }
 
     public function bulkImportStudents(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return response()->json(['message' => 'Faculty account not found.'], 403);
         }
@@ -646,51 +682,54 @@ class FacultyController extends Controller
         $sheet     = $spreadsheet->getActiveSheet();
         $allRows   = $sheet->toArray(null, true, true, false);
 
-        if (empty($allRows) || count($allRows) < 2) {
+        if (empty($allRows)) {
             return response()->json(['message' => 'The file is empty or has no data rows.'], 422);
         }
 
-        // Normalize header row (row index 0)
-        $rawHeader = array_map(fn($h) => strtolower(trim((string) $h)), $allRows[0]);
+        // Takes both the template this app hands out and the registrar's official class
+        // list, which buries its header under a letterhead and writes the name as one
+        // "LAST, FIRST M." cell. See StudentRosterSheet.
+        $sheetData = \App\Support\StudentRosterSheet::parse($allRows);
 
-        $required = ['student_id', 'first_name', 'last_name', 'email'];
-        foreach ($required as $col) {
-            if (!in_array($col, $rawHeader, true)) {
-                return response()->json([
-                    'message' => "Missing required column: '{$col}'. Expected columns: student_id, first_name, last_name, email, middle_name (optional), phone_number (optional)"
-                ], 422);
-            }
+        if ($sheetData['header_row'] === null) {
+            return response()->json([
+                'message' => 'Could not find the column headings. The sheet needs a student number column and either a name column or first name and last name columns.'
+            ], 422);
+        }
+
+        if (empty($sheetData['students'])) {
+            return response()->json(['message' => 'The file is empty or has no data rows.'], 422);
         }
 
         $results   = [];
-        $rowNumber = 1;
         $classesOpened = [];
         $lastClassLetter = null;
 
-        foreach (array_slice($allRows, 1) as $row) {
-            $rowNumber++;
+        // Each welcome email is a round trip to Gmail, so a full class costs a minute
+        // or two. The default 30 seconds would cut the import in half — some students
+        // created and emailed, the rest silently not.
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
 
-            // Map values by header name
-            $data = array_combine($rawHeader, array_map(fn($v) => trim((string) ($v ?? '')), $row));
+        foreach ($sheetData['students'] as $entry) {
+            // The row number as it appears in Excel, so a failure can be found by eye.
+            $rowNumber = $entry['row'];
 
-            $studentId  = User::cleanOptional($data['student_id']   ?? '');
-            $firstName  = User::cleanOptional($data['first_name']   ?? '');
-            $lastName   = User::cleanOptional($data['last_name']    ?? '');
-            $middleName = User::cleanOptional($data['middle_name']  ?? '');
-            $emailRaw   = User::cleanOptional($data['email']        ?? '');
-            $phone      = User::cleanOptional($data['phone_number'] ?? '');
-
-            // Skip completely blank rows
-            if ($studentId === '' && $firstName === '' && $lastName === '' && $emailRaw === '') {
-                continue;
-            }
+            $studentId  = User::cleanOptional($entry['student_number']);
+            $firstName  = User::cleanOptional($entry['first_name']);
+            $lastName   = User::cleanOptional($entry['last_name']);
+            $middleName = User::cleanOptional($entry['middle_name']);
+            $emailRaw   = User::cleanOptional($entry['email']);
+            $phone      = User::cleanOptional($entry['phone_number']);
 
             // Basic validation
             $errors = [];
-            if ($studentId === '') $errors[] = 'student_id is required';
-            if ($firstName  === '') $errors[] = 'first_name is required';
-            if ($lastName   === '') $errors[] = 'last_name is required';
-            if ($emailRaw   === '') $errors[] = 'email is required';
+            if ($studentId === '') $errors[] = 'student number is required';
+            if ($firstName  === '') $errors[] = 'first name is required';
+            if ($lastName   === '') $errors[] = 'last name is required';
+            // Registrar lists carry "N/A" where a student never gave an address; the
+            // parser hands that over as blank rather than inventing one.
+            if ($emailRaw   === '') $errors[] = 'no email in the file — add it and re-upload, or add this student manually';
 
             $email = str_contains($emailRaw, '@')
                 ? strtolower($emailRaw)
@@ -718,8 +757,13 @@ class FacultyController extends Controller
                 continue;
             }
 
-            $fullName        = trim(implode(' ', array_filter([$firstName, $middleName, $lastName])));
-            $defaultPassword = Hash::make('password');
+            $fullName = trim(implode(' ', array_filter([$firstName, $middleName, $lastName])));
+
+            // One password per student rather than a shared default. These go out by
+            // email, and a password every student knows is one every student can use
+            // on any classmate's account.
+            $plainPassword   = StudentWelcomeMailer::generatePassword();
+            $defaultPassword = Hash::make($plainPassword);
 
             try {
                 [$user, $student, $classLetter] = DB::transaction(function () use (
@@ -765,6 +809,16 @@ class FacultyController extends Controller
                 }
                 $lastClassLetter = $classLetter;
 
+                // Sent only on this path, where the account is known to exist. A row
+                // that failed above never reaches here, so nobody is told an account
+                // is ready that was not created.
+                $mailResult = StudentWelcomeMailer::send(
+                    $user,
+                    $plainPassword,
+                    'Class ' . $classLetter,
+                    $studentId
+                );
+
                 $results[] = [
                     'row'        => $rowNumber,
                     'status'     => 'success',
@@ -772,6 +826,8 @@ class FacultyController extends Controller
                     'student_id' => $studentId,
                     'email'      => $email,
                     'class'      => $classLetter,
+                    'emailed'    => $mailResult['sent'],
+                    'reason'     => $mailResult['sent'] ? '' : $mailResult['reason'],
                 ];
             } catch (\Exception $e) {
                 $results[] = [
@@ -785,9 +841,15 @@ class FacultyController extends Controller
 
         $created = collect($results)->where('status', 'success')->count();
         $failed  = collect($results)->where('status', 'failed')->count();
+        $emailed = collect($results)->where('status', 'success')->where('emailed', true)->count();
+        $notEmailed = $created - $emailed;
         $openClass = FacultyClass::where('faculty_id', $facultyId)->where('status', 'open')->orderBy('sort_order')->first();
 
         $message = "{$created} student(s) imported successfully. {$failed} failed.";
+        if ($created > 0) {
+            $message .= " {$emailed} welcome email(s) sent"
+                . ($notEmailed > 0 ? ", {$notEmailed} could not be emailed" : '') . '.';
+        }
         if (!empty($classesOpened)) {
             $message .= ' New class tab(s) opened: Class ' . implode(', Class ', array_unique($classesOpened)) . '.';
         }
@@ -823,7 +885,7 @@ class FacultyController extends Controller
 
     public function role()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return view('faculty.pagerole', [
                 'students'        => collect(),
@@ -839,6 +901,7 @@ class FacultyController extends Controller
                 'taskCounts'      => [],
                 'roles'           => [],
                 'teamActivityByGroup' => [],
+                'conceptsByGroup' => collect(),
             ]);
         }
 
@@ -859,7 +922,7 @@ class FacultyController extends Controller
         // Unassigned students for Add Team / Insert — scoped to the active class tab
         $students = Student::with(['user', 'facultyClass'])
             ->where('faculty_id', $facultyId)
-            ->whereNotIn('student_id', $assignedStudentIds)
+            ->whereNotIn('user_information_id', $assignedStudentIds)
             ->when($activeClass, fn ($q) => $q->where('faculty_class_id', $activeClass->faculty_class_id))
             ->latest()
             ->get();
@@ -867,7 +930,7 @@ class FacultyController extends Controller
         // Update Team modal still needs all faculty students (then filtered to members in JS)
         $allStudents = Student::with(['user', 'facultyClass'])
             ->where('faculty_id', $facultyId)
-            ->orderByDesc('student_id')
+            ->orderByDesc('user_information_id')
             ->get();
 
         $studentTeamMap = StudentGroup::where('faculty_id', $facultyId)
@@ -942,6 +1005,8 @@ class FacultyController extends Controller
 
         $allTasks = Task::with('assignedTo')
             ->where('faculty_id', $facultyId)
+            // The hotel concept heads each team's list — it is their first task.
+            ->conceptFirst()
             ->orderByDesc('updated_at')
             ->limit(500)
             ->get();
@@ -985,6 +1050,8 @@ class FacultyController extends Controller
                         'role_label' => $roleLabels[$task->role] ?? $task->role,
                         'priority' => strtolower($task->priority ?? 'medium'),
                         'status' => $task->status,
+                        // The concept task is not deletable and reviews differently.
+                        'is_hotel_concept' => $task->is_hotel_concept,
                         'has_feedback' => filled($task->feedback),
                         'student_name' => $studentName,
                         'submitted_at' => $task->status === 'archived'
@@ -996,6 +1063,17 @@ class FacultyController extends Controller
                 })
                 ->all();
         }
+
+        // The hotel concepts, so the teams list names what each team proposed. Grouped
+        // rather than keyed: a team has two, and keyBy would silently keep one. The
+        // full text and the edit histories stay in the Team Details modal. Once a
+        // team has decided, only the winner is listed — the same rule payload()
+        // applies, kept in step so the table and the modal never disagree.
+        $conceptsByGroup = \App\Models\HotelConcept::where('faculty_id', $facultyId)
+            ->orderBy('slot')
+            ->get()
+            ->groupBy('group_name')
+            ->map(fn ($concepts) => \App\Support\HotelConceptDesk::visibleConcepts($concepts));
 
         return view('faculty.pagerole', compact(
             'students',
@@ -1010,13 +1088,14 @@ class FacultyController extends Controller
             'rolesMeta',
             'tasksByRole',
             'taskCounts',
-            'teamActivityByGroup'
+            'teamActivityByGroup',
+            'conceptsByGroup'
         ));
     }
 
     public function updateGroup(Request $request, $groupName)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return back()->withErrors(['group_name' => 'Faculty account not found.'])->withInput();
         }
@@ -1024,7 +1103,7 @@ class FacultyController extends Controller
         $validated = $request->validate([
             'group_name'    => ['required', 'string', 'max:255'],
             'members'       => ['required', 'array', 'min:1', 'max:4'],
-            'members.*'     => ['integer', 'exists:students,student_id'],
+            'members.*'     => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'member_roles'  => ['nullable', 'array'],
         ]);
 
@@ -1091,6 +1170,10 @@ class FacultyController extends Controller
             }
         }
 
+        // A reshuffle can hand Front Desk to somebody new, and they need the task.
+        // Existing rows are left alone, so a submitted concept stays submitted.
+        HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
+
         ActivityLog::recordFor(
             ActivityLog::TEAM_UPDATED,
             'Updated team "' . $groupName . '"'
@@ -1106,7 +1189,7 @@ class FacultyController extends Controller
 
     public function tasks()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return view('faculty.tasks', ['tasksByRole' => collect(), 'taskCounts' => []]);
         }
@@ -1115,6 +1198,7 @@ class FacultyController extends Controller
 
         $tasksByRole = Task::where('faculty_id', $facultyId)
             ->where('status', 'active')
+            ->conceptFirst()
             ->orderBy('due_date')
             ->orderByPriority()
             ->get()
@@ -1130,7 +1214,7 @@ class FacultyController extends Controller
 
     public function storeTask(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return back()->withErrors(['title' => 'Faculty account not found.'])->withInput();
         }
@@ -1216,7 +1300,7 @@ class FacultyController extends Controller
     /** The task plus who did it and where their work can be seen. */
     public function reviewTask(Task $task)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId || (int) $task->faculty_id !== (int) $facultyId) {
             return response()->json(['error' => 'Not your task.'], 403);
         }
@@ -1233,14 +1317,14 @@ class FacultyController extends Controller
             : null;
 
         $previewUrl = null;
-        if ($membership) {
+        if ($membership && !$task->is_hotel_concept) {
             $previewUrl = route('faculty.teams.preview', [
                 'group' => $membership->group_name,
                 'role' => $task->role,
             ]);
         }
 
-        return response()->json([
+        $payload = [
             'id' => $task->task_id,
             'title' => $task->title,
             'description' => $task->description,
@@ -1249,6 +1333,7 @@ class FacultyController extends Controller
             'priority' => $task->priority,
             'status' => $task->status,
             'needs_revision' => $task->needs_revision,
+            'is_hotel_concept' => $task->is_hotel_concept,
             'student_name' => $name !== '' ? $name : ($u?->name ?? null),
             'group_name' => $membership?->group_name,
             'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
@@ -1260,7 +1345,17 @@ class FacultyController extends Controller
             'feedback_by' => $task->feedbackBy?->name,
             'revision_count' => (int) $task->revision_count,
             'preview_url' => $previewUrl,
-        ]);
+        ];
+
+        // The concept is text, not a page, so the review dialog reads it inline —
+        // with its edit history, which is how faculty sees who contributed what.
+        if ($task->is_hotel_concept && $membership) {
+            $payload += HotelConceptController::payload(
+                HotelConceptController::forTeam($membership->group_name, (int) $facultyId)
+            );
+        }
+
+        return response()->json($payload);
     }
 
     /**
@@ -1271,7 +1366,7 @@ class FacultyController extends Controller
     public function storeTaskFeedback(Request $request, Task $task)
     {
         $facultyUser = auth()->user();
-        $facultyId = $facultyUser?->faculty?->faculty_id;
+        $facultyId = $facultyUser?->faculty?->user_information_id;
         if (!$facultyId || (int) $task->faculty_id !== (int) $facultyId) {
             return response()->json(['error' => 'Not your task.'], 403);
         }
@@ -1279,17 +1374,42 @@ class FacultyController extends Controller
         $data = $request->validate([
             'decision' => ['required', 'in:approve,revise'],
             'feedback' => ['nullable', 'string', 'max:2000', 'required_if:decision,revise'],
+            // Which of the team's two concepts this verdict is about. Required only
+            // for the concept task; every other task is a single piece of work.
+            'slot' => [
+                Rule::requiredIf(fn () => $task->is_hotel_concept),
+                'integer',
+                Rule::in(HotelConceptDesk::SLOTS),
+            ],
         ], [
             'feedback.required_if' => 'Tell the student what to change before sending it back.',
+            'slot.required' => 'Say which concept this verdict is about.',
         ]);
 
+        $revise = $data['decision'] === 'revise';
+
+        // The concepts are two rows per team behind several task rows, and faculty
+        // judges each separately, so the verdict is recorded against one concept and
+        // the task rows are re-derived from both — see HotelConceptDesk::review().
+        if ($task->is_hotel_concept) {
+            return $this->storeConceptFeedback(
+                $task,
+                $facultyUser,
+                (int) $facultyId,
+                (int) $data['slot'],
+                $revise,
+                $data['feedback'] ?? null
+            );
+        }
+
+        // A concept task can be reopened by one concept while the other is still
+        // with faculty, so this check belongs after the concept branch, which does
+        // its own per-concept version.
         if ($task->status !== 'archived') {
             return response()->json([
                 'error' => 'This task has not been submitted yet, so there is nothing to review.',
             ], 422);
         }
-
-        $revise = $data['decision'] === 'revise';
 
         $task->fill([
             'feedback' => $data['feedback'] ?: null,
@@ -1324,13 +1444,87 @@ class FacultyController extends Controller
     }
 
     /**
+     * The verdict on one of a team's two hotel concepts.
+     *
+     * Written against the concept rather than the task row that happened to be
+     * opened: the concepts are team-level, and every Front Desk member holds a task
+     * row covering both. One slot at a time, because the pair exists so each can be
+     * judged on its own merits — approve one, send the other back.
+     *
+     * The response carries the whole team back, so the dialog can redraw both cards
+     * and leave the other concept's Approve buttons where they belong.
+     */
+    private function storeConceptFeedback(
+        Task $task,
+        User $facultyUser,
+        int $facultyId,
+        int $slot,
+        bool $revise,
+        ?string $feedback
+    ) {
+        $membership = $task->student_id
+            ? StudentGroup::where('student_id', $task->student_id)
+                ->where('faculty_id', $facultyId)
+                ->first()
+            : null;
+
+        if (!$membership) {
+            return response()->json([
+                'error' => 'This concept task is not attached to one of your teams.',
+            ], 422);
+        }
+
+        $concept = HotelConcept::where('group_name', $membership->group_name)
+            ->where('faculty_id', $facultyId)
+            ->where('slot', $slot)
+            ->first();
+
+        if (!$concept) {
+            return response()->json([
+                'error' => 'This team has not proposed ' . HotelConceptDesk::slotLabel($slot) . ' yet.',
+            ], 422);
+        }
+
+        $teamConcepts = HotelConceptDesk::conceptsFor($membership->group_name, $facultyId);
+
+        if (!HotelConceptDesk::allSlotsFilled($teamConcepts)) {
+            return response()->json([
+                'error' => 'This team has not proposed both concepts yet.',
+            ], 422);
+        }
+
+        if (HotelConceptDesk::isDecided($teamConcepts)) {
+            return response()->json([
+                'error' => 'You already approved a concept for this team — that decision is final.',
+            ], 422);
+        }
+
+        HotelConceptDesk::review($concept, $membership, $facultyUser, $revise, $feedback);
+
+        $team = HotelConceptController::payload(
+            HotelConceptController::forTeam($membership->group_name, $facultyId)
+        );
+
+        return response()->json(array_merge($team, [
+            'success' => true,
+            // The task row is re-derived from both concepts, so read it back rather
+            // than assuming: one concept coming back reopens it, both settled closes it.
+            'status' => HotelConceptDesk::teamTasks((string) $membership->group_name, $facultyId)
+                ->first()?->status ?? 'archived',
+            'message' => $revise
+                ? 'Sent ' . HotelConceptDesk::slotLabel($slot) . ' back to the team with your feedback.'
+                : HotelConceptDesk::slotLabel($slot) . ' approved.',
+        ]));
+    }
+
+    /**
      * Render a team's site read-only so faculty can see the work itself.
      * Mirrors the student template route, but resolves the team from the
      * requested group instead of the viewer's own student profile.
      */
     public function previewTeamSite(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             abort(403);
         }
@@ -1369,9 +1563,17 @@ class FacultyController extends Controller
 
     public function destroyTask(Task $task)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if ($task->faculty_id !== $facultyId) {
             abort(403);
+        }
+
+        // Every team is assigned the hotel concept automatically, and the rest of
+        // their simulation is built on it, so it is not a task to hand back.
+        if ($task->is_hotel_concept) {
+            return back()->withErrors([
+                'task' => 'The hotel concept is assigned to every team automatically and cannot be deleted.',
+            ]);
         }
 
         $role = $task->role;
@@ -1389,7 +1591,7 @@ class FacultyController extends Controller
 
     public function results()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             abort(403, 'Faculty account not found.');
         }
@@ -1417,7 +1619,7 @@ class FacultyController extends Controller
 
     public function reports()
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             abort(403, 'Faculty account not found.');
         }
@@ -1454,7 +1656,7 @@ class FacultyController extends Controller
         foreach ($completedTasks as $task) {
             $studentId = $task->student_id ? (int) $task->student_id : null;
             if (!$studentId && $task->assigned_to) {
-                $studentId = Student::where('user_id', $task->assigned_to)->value('student_id');
+                $studentId = Student::where('user_id', $task->assigned_to)->value('user_information_id');
                 $studentId = $studentId ? (int) $studentId : null;
             }
 
@@ -1554,7 +1756,7 @@ class FacultyController extends Controller
 
     public function activityLogs(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->faculty_id;
+        $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             abort(403, 'Faculty account not found.');
         }

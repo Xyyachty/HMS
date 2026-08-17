@@ -172,7 +172,7 @@ class DeanController extends Controller
 
         $teamActivityByFacultyGroup = [];
         foreach ($faculties as $faculty) {
-            $facultyId = (int) $faculty->faculty_id;
+            $facultyId = (int) $faculty->user_information_id;
             $facultyTasks = $allTasks->get($facultyId, collect());
             $groups = $faculty->studentGroups
                 ? $faculty->studentGroups->groupBy('group_name')
@@ -218,7 +218,31 @@ class DeanController extends Controller
             }
         }
 
-        return view('dean.faculties', compact('faculties', 'completedTasks', 'teamActivityByFacultyGroup', 'roleLabels', 'availableBlocks'));
+        // The hotel concepts per team, so the list names what each one proposed. Keyed
+        // by faculty then group because group names repeat across faculty, and each
+        // entry is a list because a team proposes two — until one is decided, when
+        // it drops to the winner alone, same rule HotelConceptDesk::visibleConcepts()
+        // applies everywhere else.
+        $conceptsByFacultyGroup = [];
+        $rawConceptsByFacultyGroup = [];
+        foreach (\App\Models\HotelConcept::orderBy('slot')->get() as $concept) {
+            $rawConceptsByFacultyGroup[(int) $concept->faculty_id][$concept->group_name][] = $concept;
+        }
+        foreach ($rawConceptsByFacultyGroup as $facultyId => $groups) {
+            foreach ($groups as $groupName => $concepts) {
+                $conceptsByFacultyGroup[$facultyId][$groupName] =
+                    \App\Support\HotelConceptDesk::visibleConcepts(collect($concepts));
+            }
+        }
+
+        return view('dean.faculties', compact(
+            'faculties',
+            'completedTasks',
+            'teamActivityByFacultyGroup',
+            'roleLabels',
+            'availableBlocks',
+            'conceptsByFacultyGroup'
+        ));
     }
 
     public function storeFaculty(Request $request)
@@ -229,7 +253,7 @@ class DeanController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:30'],
-            'block' => ['required', 'string', 'in:' . implode(',', Faculty::existingClassLetters() ?: ['A']), 'unique:faculties,block'],
+            'block' => ['required', 'string', 'in:' . implode(',', Faculty::existingClassLetters() ?: ['A']), 'unique:user_information,block'],
             'status' => ['required', 'in:active,inactive'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
@@ -281,7 +305,7 @@ class DeanController extends Controller
                 'nullable',
                 'string',
                 'in:' . implode(',', Faculty::existingClassLetters() ?: ['A']),
-                'unique:faculties,block',
+                'unique:user_information,block',
                 'required_if:role,faculty',
             ],
             'status' => ['required', 'in:active,inactive'],
@@ -341,7 +365,7 @@ class DeanController extends Controller
 
         if ($user->role === 'faculty') {
             $selectable = Faculty::selectableBlocksForFaculty(
-                $user->faculty?->faculty_id,
+                $user->faculty?->user_information_id,
                 $user->faculty?->block
             );
             $rules['block'] = [
@@ -406,7 +430,7 @@ class DeanController extends Controller
         foreach ($completedTasks as $task) {
             $studentId = $task->student_id ? (int) $task->student_id : null;
             if (!$studentId && $task->assigned_to) {
-                $studentId = Student::where('user_id', $task->assigned_to)->value('student_id');
+                $studentId = Student::where('user_id', $task->assigned_to)->value('user_information_id');
                 $studentId = $studentId ? (int) $studentId : null;
             }
 

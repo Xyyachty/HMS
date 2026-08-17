@@ -61,10 +61,9 @@
   }
   .tb-available { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
   .tb-occupied  { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
-  .tb-pending   { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
   .tb-preparing { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .tb-ready     { background: rgba(56,189,248,0.18); color: #38bdf8; border-color: rgba(56,189,248,0.35); }
-  .tb-delivered { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .tb-delivering { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
   .tb-completed { background: rgba(20,148,80,0.18); color: #34d399; border-color: rgba(20,148,80,0.35); }
   .tb-cancelled { background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3); }
   .order-card {
@@ -511,22 +510,21 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
 }
 
 // Mirrors App\Models\HotelFoodOrder::STATUSES / ::FLOW. Cancelled sits off the flow.
-const ORDER_FLOW = ['Pending', 'Preparing', 'Ready', 'Delivered', 'Completed'];
+const ORDER_FLOW = ['Preparing', 'Ready', 'Delivering', 'Completed'];
 const ORDER_STATUSES = [...ORDER_FLOW, 'Cancelled'];
-const OPEN_ORDER_STATUSES = ['Pending', 'Preparing', 'Ready'];
+const OPEN_ORDER_STATUSES = ['Preparing', 'Ready'];
 
-/* The button the kitchen presses next, given where the order is now. Front Desk owns
-   the Ready -> Delivered hand-off, so the kitchen is not offered it. */
+/* The button the kitchen presses next, given where the order is now. Every step of
+   the flow is theirs, delivery included, so none of them is held back. */
 function nextKitchenStatus(status) {
   const at = ORDER_FLOW.indexOf(status);
   if (at < 0 || at >= ORDER_FLOW.length - 1) return null;
-  const next = ORDER_FLOW[at + 1];
-  return next === 'Delivered' ? null : next;
+  return ORDER_FLOW[at + 1];
 }
 
 const ORDER_ACTION_LABEL = {
-  Preparing: 'Accept Order',
   Ready: 'Mark Ready',
+  Delivering: 'Start Delivery',
   Completed: 'Complete Order',
 };
 
@@ -712,11 +710,13 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
 }
 
 /*
- * One ticket queue for the kitchen, split by order type. Front Desk places
- * room-service orders against a checked-in guest's stay and hands Ready ones to the
- * room; Restaurant Management places dine-in orders from Manage Tables and carries
- * the whole thing through themselves, table-side, so a dine-in card lets them jump
- * straight to any status instead of only offering "next".
+ * One ticket queue for the kitchen, split by order type. Restaurant Management runs
+ * both kinds end to end — Front Desk places a room-service order against a checked-in
+ * guest's stay and then only watches it, and dine-in orders are taken here from Manage
+ * Tables. A dine-in ticket is worked table-side, so it may jump straight to any status
+ * and it may still be cancelled. A room-service one steps through the flow one button
+ * at a time and has no cancel: it is already on the guest's bill, so it runs all the
+ * way to Completed with the runner carrying it up to the room.
  */
 function RoomServiceOrderCard({ order, onMove }) {
   const next = nextKitchenStatus(order.status);
@@ -743,23 +743,17 @@ function RoomServiceOrderCard({ order, onMove }) {
         </div>
       </dl>
 
-      {order.status === 'Ready' && (
+      {order.status === 'Delivering' && (
         <p style={{ margin: '0 0 0.6rem', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-          Waiting for Front Desk to deliver it to the room.
+          On the way to room {order.roomNumber || '—'}. Complete it once the guest has it.
         </p>
       )}
 
-      {!finished && (
+      {!finished && next && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {next && (
-            <button type="button" className="btn-primary" style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}
-              onClick={() => onMove(order, next)}>
-              {ORDER_ACTION_LABEL[next] || next}
-            </button>
-          )}
-          <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.45rem 0.9rem' }}
-            onClick={() => onMove(order, 'Cancelled')}>
-            Cancel
+          <button type="button" className="btn-primary" style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}
+            onClick={() => onMove(order, next)}>
+            {ORDER_ACTION_LABEL[next] || next}
           </button>
         </div>
       )}
@@ -898,14 +892,20 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gap: '0.4rem', maxHeight: 220, overflowY: 'auto', marginBottom: '0.85rem' }}>
+      <div style={{ display: 'grid', gap: '0.4rem', maxHeight: 340, overflowY: 'auto', marginBottom: '0.85rem' }}>
         {menuList.length === 0 && (
           <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem' }}>No menu items in this category.</p>
         )}
         {menuList.map(item => (
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem' }}>
+            {/* Whoever is taking the order picks the dish by sight, so the photo comes
+                before the name — same thumbnail the Manage Menu list uses. */}
+            <img src={menuFoodImg(item)} alt="" style={{ width: 52, height: 40, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: '#12110f' }} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ margin: 0, color: 'var(--fg)', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
+              {item.sub ? (
+                <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sub}</p>
+              ) : null}
               <p style={{ margin: 0, color: 'var(--accent-light)', fontSize: '0.74rem' }}>{formatPeso(item.price)}</p>
             </div>
             {item.stock <= 0 ? (
@@ -956,7 +956,9 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
   ));
 
   const openCount = typedOrders.filter(o => OPEN_ORDER_STATUSES.indexOf(o.status) !== -1).length;
-  const filters = ['Open', 'All', ...ORDER_FLOW.slice(1), 'Cancelled'];
+  // Only dine-in can be cancelled, so only the dine-in tab offers the filter — on
+  // room service it would never match anything.
+  const filters = ['Open', 'All', ...ORDER_FLOW, ...(orderType === 'dine_in' ? ['Cancelled'] : [])];
   const tableFor = (id) => (tables || []).find(t => t.id === id);
 
   // safePage rather than page: switching to a filter with fewer orders must not

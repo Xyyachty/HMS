@@ -34,11 +34,14 @@
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.frontdesk.verify-guest') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-user-check text-[13px] text-emerald-400"></i> Verify Guest
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'verify-guest'])
                 </a>
                 <a href="{{ route('students.frontdesk.complaints') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.frontdesk.complaints') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-comment-dots text-[13px] text-emerald-400"></i> Complaints
+                    {{-- Resolved by the department: the guest still has to be told. --}}
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'complaints'])
                 </a>
                 <a href="{{ route('students.frontdesk.dine-in') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
@@ -60,17 +63,27 @@
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.maintenance.complaints') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-screwdriver-wrench text-[13px] text-emerald-400"></i> Complaints / Concerns
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'complaints'])
                 </a>
                 @elseif(($builderRole ?? null) === 'housekeeping')
                 <a href="{{ route('students.housekeeping.inspections') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.housekeeping.inspections') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-broom text-[13px] text-emerald-400"></i> Room Inspections
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'inspections'])
+                </a>
+                <a href="{{ route('students.housekeeping.addons') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.housekeeping.addons') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-cart-flatbed text-[13px] text-emerald-400"></i> Add-ons
+                    {{-- Nothing left to lend until one comes back. --}}
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'addons'])
                 </a>
                 <a href="{{ route('students.housekeeping.complaints') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.housekeeping.complaints') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-comment-dots text-[13px] text-emerald-400"></i> Complaints / Concerns
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'complaints'])
                 </a>
                 @elseif(($builderRole ?? null) === 'room_management')
                 <a href="{{ route('students.roommanagement.manage', ['nav' => 'manage-room']) }}"
@@ -79,22 +92,23 @@
                          the retired ?nav=rooms, so this highlights for all of it. --}}
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.manage') && request()->query('nav') !== 'guest-details' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-bed text-[13px] text-emerald-400"></i> Manage Room
+                    {{-- Rooms sitting at Cleaning or Maintenance cannot be sold yet. --}}
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'manage-room'])
                 </a>
                 <a href="{{ route('students.roommanagement.manage', ['nav' => 'guest-details']) }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.manage') && request()->query('nav') === 'guest-details' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-user text-[13px] text-emerald-400"></i> Guest Details
-                    {{-- Guests registered but not checked in yet. Rendered from the server so
-                         it is right on first paint; syncGuestDetailsBadge() keeps it fresh. --}}
-                    @php $pendingGuests = (int) ($guestDetailsPending ?? 0); @endphp
-                    <span data-guest-details-badge
-                        class="{{ $pendingGuests > 0 ? '' : 'hidden' }} ml-auto min-w-[20px] h-[18px] px-1.5 flex items-center justify-center rounded-full bg-amber-400 text-zinc-950 text-[10px] font-bold leading-none">{{ $pendingGuests > 99 ? '99+' : $pendingGuests }}</span>
+                    {{-- Guests registered but not checked in yet. --}}
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'guest-details'])
                 </a>
                 @elseif(($builderRole ?? null) === 'restaurant_management')
                 <a href="{{ route('students.restaurant.manage', ['nav' => 'manage-menu']) }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.restaurant.manage') && request()->query('nav', 'manage-menu') === 'manage-menu' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-utensils text-[13px] text-emerald-400"></i> Manage Menu
+                    {{-- Dishes at zero stock: nobody can order them until restocked. --}}
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'manage-menu'])
                 </a>
                 <a href="{{ route('students.restaurant.manage', ['nav' => 'manage-tables']) }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
@@ -105,6 +119,7 @@
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.restaurant.manage') && request()->query('nav') === 'orders' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-receipt text-[13px] text-emerald-400"></i> Orders
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'orders'])
                 </a>
                 @endif
             </div>

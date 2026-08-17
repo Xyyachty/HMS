@@ -23,12 +23,12 @@ class StudentGroup extends Model
 
     public function student()
     {
-        return $this->belongsTo(Student::class, 'student_id', 'student_id');
+        return $this->belongsTo(Student::class, 'student_id', 'user_information_id');
     }
 
     public function faculty()
     {
-        return $this->belongsTo(Faculty::class, 'faculty_id', 'faculty_id');
+        return $this->belongsTo(Faculty::class, 'faculty_id', 'user_information_id');
     }
 
     public function group()

@@ -394,7 +394,7 @@
                 </div>
                 <div>
                     <h4 class="font-bold text-emerald-800 text-lg leading-none">Bulk Upload Students</h4>
-                    <p class="text-xs text-emerald-600 mt-0.5">Upload an Excel file (.xlsx) to add multiple students at once</p>
+                    <p class="text-xs text-emerald-600 mt-0.5">Upload the official class list, or the template, to add many students at once</p>
                 </div>
             </div>
             <button onclick="closeBulkModal()" class="text-slate-400 hover:text-red-500 hover:bg-red-50 w-8 h-8 rounded-full transition flex items-center justify-center">
@@ -428,11 +428,18 @@
                 <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 items-start">
                     <span class="iconify text-blue-500 text-xl mt-0.5 shrink-0" data-icon="mdi:microsoft-excel"></span>
                     <div class="text-xs text-blue-700 leading-relaxed">
-                        <p class="font-bold mb-1">Required Excel columns (Row 1 = headers):</p>
+                        <p class="font-bold mb-1">Upload the registrar's official class list as-is</p>
+                        <span>The letterhead, the <em>Female</em> / <em>Male</em> dividers and the trailing marker are skipped. Only four columns are read:</span>
+                        <code class="bg-blue-100 px-1 rounded">STUD NO.</code>
+                        <code class="bg-blue-100 px-1 rounded">NAME</code>
+                        <code class="bg-blue-100 px-1 rounded">EMAIL</code>
+                        <code class="bg-blue-100 px-1 rounded">CONTACT #</code>
+                        <span class="block mt-1">Course, year level, date enrolled and status are ignored. Names written <code class="bg-blue-100 px-1 rounded">LAST, FIRST M.</code> are split automatically.</span>
+                        <p class="font-bold mt-2 mb-1">Or use the template below:</p>
                         <code class="bg-blue-100 px-1 rounded">student_id, first_name, last_name, email</code>
                         <span class="mx-1 text-blue-400">+</span>
                         optional: <code class="bg-blue-100 px-1 rounded">middle_name, phone_number</code>
-                        <br><span class="text-blue-500 mt-1 block">Default password will be <strong>password</strong> for each student.</span>
+                        <br><span class="text-blue-500 mt-1 block">Each student gets their own generated password, emailed to them with their sign-in details.</span>
                     </div>
                 </div>
 
@@ -539,7 +546,7 @@
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <form method="POST" action="{{ route('faculty.students.store') }}" onsubmit="return validateStudentPasswords()">
+        <form method="POST" action="{{ route('faculty.students.store') }}">
             @csrf
             @if ($errors->any())
                 <div class="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -564,8 +571,9 @@
                     <input name="middle_name" type="text" placeholder="e.g. A." class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
-                    <input name="email" type="text" placeholder="username or user@hms.edu" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email <span class="text-emerald-600 normal-case tracking-normal font-semibold">(real address — the welcome is sent here)</span></label>
+                    <input name="email" type="email" placeholder="e.g. student@gmail.com" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    <p class="mt-1 text-[11px] text-slate-400">Their sign-in details are emailed here as soon as the account is created.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
@@ -574,25 +582,11 @@
                         <input name="phone_number" type="text" placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
-                    <div class="relative">
-                        <input id="createStudentPassword" name="password" type="password" placeholder="Min. 8 characters" required oninput="validateStudentPasswords()" class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                        <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                        </button>
+                <div class="md:col-span-2">
+                    <div class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                        <span class="iconify text-base text-slate-400 shrink-0 mt-0.5" data-icon="mdi:key-outline"></span>
+                        <span>A password is generated for this student and emailed to them with their sign-in details. Nobody types it, so no two students share one.</span>
                     </div>
-                    <p id="createStudentPasswordHelp" class="mt-1 text-[11px] text-red-500 hidden">Password must be at least 8 characters.</p>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm Password</label>
-                    <div class="relative">
-                        <input id="createStudentPasswordConfirm" name="password_confirmation" type="password" placeholder="Re-enter password" required oninput="validateStudentPasswords()" class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                        <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                        </button>
-                    </div>
-                    <p id="createStudentPasswordMatch" class="mt-1 text-[11px] text-red-500 hidden">Passwords do not match.</p>
                 </div>
             </div>
             <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0">
@@ -710,7 +704,7 @@
         const successMessage = @json(session('success'));
         Swal.fire({
             icon: 'success',
-            title: 'Student Created',
+            title: @json(session('success_title', 'Success')),
             html: `<p class="text-sm text-slate-500">${successMessage}</p>`,
             timer: 2500,
             showConfirmButton: false,
@@ -817,6 +811,126 @@
         bulkParsePreview(file);
     }
 
+    /*
+       Reads a class list out of a sheet, the same way App\Support\StudentRosterSheet
+       does on the server. Two shapes turn up: the template this app hands out, and the
+       registrar's official class list, whose header sits under a letterhead, whose name
+       is a single "LAST, FIRST M." cell, and whose students are split into Female and
+       Male blocks. Only student number, name, email and contact number are read.
+    */
+    const ROSTER_HEADINGS = {
+        student_number: ['stud no','student no','student number','studno','student id','studentid','student_id','id no','id number'],
+        name:           ['name','full name','student name','complete name'],
+        first_name:     ['first name','firstname','first_name','given name'],
+        middle_name:    ['middle name','middlename','middle_name','middle initial'],
+        last_name:      ['last name','lastname','last_name','surname','family name'],
+        email:          ['email','email address','e mail','email_address'],
+        phone_number:   ['contact','contact no','contact number','contact #','phone','phone no','phone number','phone_number','mobile','mobile no','mobile number','cellphone','cell no'],
+    };
+    const ROSTER_NOT_A_STUDENT = ['female','male','total','nothing follows'];
+
+    function rosterNormalize(value) {
+        return String(value ?? '').toLowerCase().trim()
+            .replace(/\*/g, '')
+            .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function rosterSplitName(name) {
+        const clean = String(name || '').replace(/\s+/g, ' ').trim();
+        if (!clean) return { first: '', middle: '', last: '' };
+
+        let last, rest;
+        if (clean.includes(',')) {
+            const at = clean.indexOf(',');
+            last = clean.slice(0, at).trim();
+            rest = clean.slice(at + 1).trim();
+        } else {
+            const parts = clean.split(' ');
+            last = parts.length > 1 ? parts.pop() : clean;
+            rest = parts.join(' ');
+        }
+
+        const parts = rest.split(' ').filter(p => p.trim() !== '' && p.trim() !== '.');
+        let middle = '';
+        if (parts.length > 1 && /^\p{L}\.?$/u.test(parts[parts.length - 1])) {
+            middle = parts.pop();
+        }
+
+        return { first: parts.join(' '), middle: middle, last: last };
+    }
+
+    function parseRosterRows(allRows) {
+        let headerRow = null;
+        let columns = {};
+
+        for (let i = 0; i < allRows.length && i <= 40; i++) {
+            const row = allRows[i] || [];
+            const found = {};
+            row.forEach((value, column) => {
+                const heading = rosterNormalize(value);
+                if (!heading) return;
+                for (const field in ROSTER_HEADINGS) {
+                    if (found[field] === undefined && ROSTER_HEADINGS[field].includes(heading)) {
+                        found[field] = column;
+                        break;
+                    }
+                }
+            });
+
+            const hasName = found.name !== undefined
+                || (found.first_name !== undefined && found.last_name !== undefined);
+
+            if (found.student_number !== undefined && hasName) {
+                headerRow = i;
+                columns = found;
+                break;
+            }
+        }
+
+        if (headerRow === null) return { headerRow: null, students: [] };
+
+        const cleanEmail = v => ['n/a','na','none','-'].includes(String(v || '').trim().toLowerCase()) ? '' : String(v || '').trim();
+        const cleanPhone = v => {
+            const text = String(v || '').trim();
+            if (!text) return '';
+            return (text.startsWith('+') ? '+' : '') + text.replace(/\D/g, '');
+        };
+
+        const students = [];
+        for (let i = headerRow + 1; i < allRows.length; i++) {
+            const row = allRows[i] || [];
+            const cell = f => columns[f] === undefined ? '' : String(row[columns[f]] ?? '').trim();
+
+            // Female / Male dividers and the trailing "NOTHING FOLLOWS" marker.
+            if (row.some(v => { const t = rosterNormalize(v); return t && ROSTER_NOT_A_STUDENT.includes(t); })) continue;
+
+            let first, middle, last;
+            if (columns.name !== undefined) {
+                ({ first, middle, last } = rosterSplitName(cell('name')));
+            } else {
+                first = cell('first_name'); middle = cell('middle_name'); last = cell('last_name');
+            }
+
+            const studentNumber = cell('student_number');
+            const email = cleanEmail(cell('email'));
+            if (!studentNumber && !first && !last && !email) continue;
+
+            students.push({
+                row: i + 1,
+                student_number: studentNumber,
+                first_name: first,
+                middle_name: middle,
+                last_name: last,
+                email: email,
+                phone_number: cleanPhone(cell('phone_number')),
+            });
+        }
+
+        return { headerRow: headerRow, students: students };
+    }
+
     function bulkParsePreview(file) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -827,54 +941,50 @@
                 const worksheet = workbook.Sheets[firstSheetName];
 
                 const allRows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""});
-                if (allRows.length < 2) {
+                if (!allRows.length) {
                     Swal.fire({icon:'warning', title:'Empty File', text:'The file has no data rows.', timer:2500, showConfirmButton:false,
                         iconColor:'#F59E0B', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
                     return;
                 }
 
-                const header = allRows[0].map(h => String(h || '').trim().toLowerCase());
-                const required = ['student_id','first_name','last_name','email'];
-                const missing = required.filter(r => !header.includes(r));
-                if (missing.length) {
-                    Swal.fire({icon:'error', title:'Missing Columns', html:`<p class="text-sm text-slate-500">Missing: <b>${missing.join(', ')}</b></p>`,
+                // Mirrors App\Support\StudentRosterSheet so the preview shows exactly what
+                // the server will import — both the app's own template and the registrar's
+                // official class list.
+                const parsed = parseRosterRows(allRows);
+
+                if (parsed.headerRow === null) {
+                    Swal.fire({icon:'error', title:'Columns Not Found',
+                        html:`<p class="text-sm text-slate-500">This sheet needs a student number column, and either a <b>Name</b> column or separate first and last name columns.</p>`,
                         confirmButtonText:'Okay', iconColor:'#EF4444',
                         customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800',
                             confirmButton:'mt-4 bg-brand text-white px-4 py-2 rounded-lg font-semibold'}, buttonsStyling:false });
                     return;
                 }
 
-                const dataRows = allRows.slice(1);
-                const nonEmpRows = dataRows.filter(row => {
-                    return row.some(cell => String(cell || '').trim() !== '');
-                });
-
-                if (nonEmpRows.length === 0) {
+                if (parsed.students.length === 0) {
                     Swal.fire({icon:'warning', title:'Empty File', text:'The file has no data rows.', timer:2500, showConfirmButton:false,
                         iconColor:'#F59E0B', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
                     return;
                 }
 
-                const preview  = nonEmpRows.slice(0, 10);
                 const tbody = document.getElementById('bulkPreviewBody');
                 tbody.innerHTML = '';
-                preview.forEach((row, i) => {
-                    const rowObj  = {};
-                    header.forEach((h, idx) => rowObj[h] = String(row[idx] ?? '').trim());
+                parsed.students.slice(0, 10).forEach(s => {
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-slate-50';
+                    const cell = v => String(v || '—').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
                     tr.innerHTML = `
-                        <td class="px-3 py-2 text-slate-400">${i+2}</td>
-                        <td class="px-3 py-2 font-mono text-slate-700">${rowObj.student_id||'—'}</td>
-                        <td class="px-3 py-2">${rowObj.last_name||'—'}</td>
-                        <td class="px-3 py-2">${rowObj.first_name||'—'}</td>
-                        <td class="px-3 py-2 text-slate-500">${rowObj.email||'—'}</td>
-                        <td class="px-3 py-2 text-slate-500">${rowObj.phone_number||'—'}</td>
+                        <td class="px-3 py-2 text-slate-400">${s.row}</td>
+                        <td class="px-3 py-2 font-mono text-slate-700">${cell(s.student_number)}</td>
+                        <td class="px-3 py-2">${cell(s.last_name)}</td>
+                        <td class="px-3 py-2">${cell(s.first_name)}</td>
+                        <td class="px-3 py-2 text-slate-500">${cell(s.email)}</td>
+                        <td class="px-3 py-2 text-slate-500">${cell(s.phone_number)}</td>
                     `;
                     tbody.appendChild(tr);
                 });
 
-                document.getElementById('bulkPreviewCount').textContent = `(${nonEmpRows.length} student${nonEmpRows.length!==1?'s':''})`;
+                document.getElementById('bulkPreviewCount').textContent = `(${parsed.students.length} student${parsed.students.length!==1?'s':''})`;
                 document.getElementById('bulkImportBtn').classList.remove('hidden');
                 bulkSetStep(2);
             } catch (err) {
@@ -919,15 +1029,26 @@
                 data.results.forEach(r => {
                     const ok = r.status === 'success';
                     const tr = document.createElement('tr');
+
+                    // Three outcomes, not two: created and emailed, created but the
+                    // email did not go, and not created at all.
+                    let statusCell;
+                    if (!ok) {
+                        statusCell = '<span class="inline-flex items-center gap-1 text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✗ Failed</span>';
+                    } else if (r.emailed) {
+                        statusCell = '<span class="inline-flex items-center gap-1 text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✓ Added &amp; emailed</span>';
+                    } else {
+                        statusCell = '<span class="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-bold">! Added, no email</span>';
+                    }
+
+                    const note = ok ? (r.emailed ? (r.email || '') : (r.reason || '')) : (r.reason || '');
+                    const esc = v => String(v || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
                     tr.innerHTML = `
                         <td class="px-3 py-2 text-slate-400">${r.row}</td>
-                        <td class="px-3 py-2 font-semibold text-slate-700">${r.name}</td>
-                        <td class="px-3 py-2">
-                            ${ok
-                                ? '<span class="inline-flex items-center gap-1 text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✓ Success</span>'
-                                : '<span class="inline-flex items-center gap-1 text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✗ Failed</span>'}
-                        </td>
-                        <td class="px-3 py-2 text-slate-400">${ok ? (r.email||'') : (r.reason||'')}</td>
+                        <td class="px-3 py-2 font-semibold text-slate-700">${esc(r.name)}</td>
+                        <td class="px-3 py-2">${statusCell}</td>
+                        <td class="px-3 py-2 text-slate-400">${esc(note)}</td>
                     `;
                     rb.appendChild(tr);
                 });
@@ -979,25 +1100,6 @@
         const isHidden = input.type === 'password';
         input.type = isHidden ? 'text' : 'password';
         icon.setAttribute('data-icon', isHidden ? 'mdi:eye-outline' : 'mdi:eye-off-outline');
-    }
-
-    function validateStudentPasswords() {
-        const password = document.getElementById('createStudentPassword');
-        const confirm = document.getElementById('createStudentPasswordConfirm');
-        const lengthHelp = document.getElementById('createStudentPasswordHelp');
-        const matchHelp = document.getElementById('createStudentPasswordMatch');
-
-        if (!password || !confirm) {
-            return true;
-        }
-
-        const tooShort = password.value.length > 0 && password.value.length < 8;
-        const mismatch = confirm.value.length > 0 && password.value !== confirm.value;
-
-        lengthHelp.classList.toggle('hidden', !tooShort);
-        matchHelp.classList.toggle('hidden', !mismatch);
-
-        return !(tooShort || mismatch);
     }
 
     function validateUpdatePasswords() {

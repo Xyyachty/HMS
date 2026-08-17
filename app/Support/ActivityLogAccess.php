@@ -53,21 +53,21 @@ class ActivityLogAccess
             return false;
         }
 
-        $membership = StudentGroup::where('student_id', $viewerStudent->student_id)->first();
+        $membership = StudentGroup::where('student_id', $viewerStudent->user_information_id)->first();
         if (!$membership) {
             return false;
         }
 
         return StudentGroup::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
-            ->where('student_id', $targetStudent->student_id)
+            ->where('student_id', $targetStudent->user_information_id)
             ->exists();
     }
 
     /** True when $target is a student enrolled under $viewer's faculty. */
     public static function facultyManages(User $viewer, User $target): bool
     {
-        $facultyId = $viewer->faculty?->faculty_id;
+        $facultyId = $viewer->faculty?->user_information_id;
         if (!$facultyId) {
             return false;
         }
@@ -83,7 +83,7 @@ class ActivityLogAccess
 
         // Also honour group membership, which is the faculty's real unit of work.
         return StudentGroup::where('faculty_id', $facultyId)
-            ->where('student_id', $student->student_id)
+            ->where('student_id', $student->user_information_id)
             ->exists();
     }
 
@@ -117,7 +117,7 @@ class ActivityLogAccess
      */
     public static function studentUserIdsForFaculty(User $viewer): array
     {
-        $facultyId = $viewer->faculty?->faculty_id;
+        $facultyId = $viewer->faculty?->user_information_id;
         if (!$facultyId) {
             return [];
         }

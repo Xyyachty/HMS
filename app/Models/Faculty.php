@@ -2,22 +2,34 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use App\Models\StudentGroup;
 
-class Faculty extends Model
+/**
+ * A faculty row of user_information. The primary key is user_information_id — students
+ * and faculty share one table and one key space. A column named faculty_id elsewhere
+ * (and on a student row of this same table) means "the faculty this row belongs to" and
+ * points at user_information_id; on a faculty row itself it is null.
+ */
+class Faculty extends UserInformation
 {
     use HasFactory;
 
-    protected $primaryKey = 'faculty_id';
+    protected static function booted(): void
+    {
+        static::addGlobalScope('faculty', function (Builder $query) {
+            // Qualified through the model rather than hardcoded: a self-referencing
+            // relation (Faculty::students) aliases the table, and getTable() follows it.
+            $query->where(
+                $query->getModel()->getTable() . '.user_type',
+                UserInformation::TYPE_FACULTY
+            );
+        });
 
-    protected $fillable = [
-        'user_id',
-        'phone_number',
-        'status',
-        'block',
-    ];
+        static::creating(function (Faculty $faculty) {
+            $faculty->user_type = UserInformation::TYPE_FACULTY;
+        });
+    }
 
     /**
      * Block options come from Faculty Manage Students classes (faculty_classes).
@@ -68,7 +80,7 @@ class Faculty extends Model
         $existing = static::existingClassLetters();
 
         $taken = static::query()
-            ->when($exceptFacultyId, fn ($q) => $q->where('faculty_id', '!=', $exceptFacultyId))
+            ->when($exceptFacultyId, fn ($q) => $q->where('user_information_id', '!=', $exceptFacultyId))
             ->whereNotNull('block')
             ->where('block', '!=', '')
             ->pluck('block')
@@ -96,23 +108,18 @@ class Faculty extends Model
         return array_values($options);
     }
 
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id', 'user_id');
-    }
-
     public function studentGroups()
     {
-        return $this->hasMany(StudentGroup::class, 'faculty_id', 'faculty_id');
+        return $this->hasMany(StudentGroup::class, 'faculty_id', 'user_information_id');
     }
 
     public function classes()
     {
-        return $this->hasMany(FacultyClass::class, 'faculty_id', 'faculty_id');
+        return $this->hasMany(FacultyClass::class, 'faculty_id', 'user_information_id');
     }
 
     public function students()
     {
-        return $this->hasMany(Student::class, 'faculty_id', 'faculty_id');
+        return $this->hasMany(Student::class, 'faculty_id', 'user_information_id');
     }
 }

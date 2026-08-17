@@ -7,8 +7,9 @@ use App\Models\StudentGroup;
 /**
  * Authorization for room-service food orders.
  *
- * Front Desk takes the order from the guest; Restaurant Services prepares and
- * delivers it. Everyone else on the team may read the list but not change it.
+ * Front Desk takes the order from the guest and then only watches it; Restaurant
+ * Services owns every step after that, cooking it and carrying it to the room.
+ * Everyone else on the team may read the list but not change it.
  */
 class HotelOrderAccess
 {
@@ -18,21 +19,18 @@ class HotelOrderAccess
      */
     public const PLACE_ROLES = ['front_desk', 'restaurant_management', 'administrator'];
 
-    /** Roles that may move an order along the kitchen flow, or cancel it. */
-    public const FULFILL_ROLES = ['restaurant_management', 'administrator'];
-
     /**
-     * Front Desk carries the tray to the room, so it is Front Desk — not the kitchen —
-     * that knows when a room-service order actually reached the guest. This is the one
-     * transition they may make, and only from Ready.
+     * Roles that may move an order along the flow, or cancel it. That is the whole
+     * flow — Restaurant Services delivers the order as well as cooks it, so there is
+     * no step anyone else owns.
      */
-    public const DELIVER_ROLES = ['front_desk', 'administrator'];
+    public const FULFILL_ROLES = ['restaurant_management', 'administrator'];
 
     public static function membership(): ?StudentGroup
     {
         $student = auth()->user()?->student;
 
-        return StudentGroupSync::membershipForStudent($student?->student_id);
+        return StudentGroupSync::membershipForStudent($student?->user_information_id);
     }
 
     /**
@@ -117,10 +115,5 @@ class HotelOrderAccess
     public static function canFulfill(StudentGroup $membership): bool
     {
         return count(array_intersect(self::roles($membership), self::FULFILL_ROLES)) > 0;
-    }
-
-    public static function canDeliver(StudentGroup $membership): bool
-    {
-        return count(array_intersect(self::roles($membership), self::DELIVER_ROLES)) > 0;
     }
 }

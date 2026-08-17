@@ -103,6 +103,13 @@ class HotelBooking extends Model
             ->orderBy('hotel_booking_charge_id');
     }
 
+    /** Housekeeping's add-ons lent to this stay — folding bed, extra towel. */
+    public function addons(): HasMany
+    {
+        return $this->hasMany(HotelBookingAddon::class, 'hotel_booking_id', 'hotel_booking_id')
+            ->orderBy('hotel_booking_addon_id');
+    }
+
     /** Bookings that still hold their room. */
     public function scopeOpen(Builder $query): Builder
     {
@@ -224,10 +231,19 @@ class HotelBooking extends Model
         return (float) $this->charges->sum('amount');
     }
 
-    /** Room + room service + extras — the figure the guest actually settles. */
+    /** Housekeeping add-ons on this stay, at the price they were lent for. */
+    public function addonsTotal(): float
+    {
+        return (float) $this->addons->sum(fn (HotelBookingAddon $addon) => $addon->lineTotal());
+    }
+
+    /** Room + room service + add-ons + extras — the figure the guest actually settles. */
     public function grandTotal(): float
     {
-        return $this->totalDue() + $this->roomServiceTotal() + $this->otherChargesTotal();
+        return $this->totalDue()
+            + $this->roomServiceTotal()
+            + $this->addonsTotal()
+            + $this->otherChargesTotal();
     }
 
     /** Still owed once everything paid so far is counted against the full bill. */
@@ -261,9 +277,11 @@ class HotelBooking extends Model
             'totalDue'      => $this->totalDue(),
             'amountPaid'    => $this->amountPaid(),
             'balance'       => max(0, $this->totalDue() - $this->amountPaid()),
-            // The final bill: room charge + room service + hand-added extras.
+            // The final bill: room charge + room service + add-ons + hand-added extras.
             'roomServiceTotal' => $this->roomServiceTotal(),
             'roomServiceCount' => $this->foodOrders->count(),
+            'addonsTotal'      => $this->addonsTotal(),
+            'addonsCount'      => $this->addons->count(),
             'otherCharges'     => $this->otherChargesTotal(),
             'grandTotal'       => $this->grandTotal(),
             'outstanding'      => $this->outstanding(),
@@ -332,6 +350,12 @@ class HotelBooking extends Model
                     ], $order->items ?? []),
                 ])->values()->all(),
                 'subtotal' => $this->roomServiceTotal(),
+            ],
+
+            // What Housekeeping lent the guest, priced as it was on the day it went out.
+            'addons' => [
+                'items'    => $this->addons->map->toTemplateArray()->values()->all(),
+                'subtotal' => $this->addonsTotal(),
             ],
 
             'otherCharges' => [

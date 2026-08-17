@@ -36,13 +36,13 @@ class HotelBookingDesk
     {
         $student = auth()->user()?->student;
 
-        return StudentGroupSync::membershipForStudent($student?->student_id);
+        return StudentGroupSync::membershipForStudent($student?->user_information_id);
     }
 
     /** Bookings a team may see, newest first, with everything the screens render. */
     public static function scopedQuery(StudentGroup $membership)
     {
-        return HotelBooking::with(['guest', 'payments', 'foodOrders', 'charges', 'room'])
+        return HotelBooking::with(['guest', 'payments', 'foodOrders', 'charges', 'addons', 'room'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderByDesc('hotel_booking_id');
@@ -61,17 +61,21 @@ class HotelBookingDesk
      * $guest keys: full_name, contact_no, email, id_number.
      * $stay  keys: check_in, check_in_time, check_out, booked_by, notes.
      * $payment (optional) keys: type, amount_paid, method, reference, payer_name, notes.
+     * $addons (optional) lines: [['addon_id' => int, 'qty' => int], ...]. Attaching them
+     * here rather than in a second request means a folding bed that ran out takes the
+     * whole booking down with it instead of leaving a stay half-equipped.
      */
     public static function reserve(
         StudentGroup $membership,
         HotelRoom $room,
         array $guest,
         array $stay,
-        ?array $payment = null
+        ?array $payment = null,
+        array $addons = []
     ): HotelBooking {
         $scope = self::scope($membership);
 
-        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment) {
+        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons) {
             $guestModel = HotelGuest::findOrCreateFor($scope, $guest);
 
             $booking = HotelBooking::create($scope + [
@@ -88,6 +92,13 @@ class HotelBookingDesk
                 'notes'          => $stay['notes'] ?? null,
             ]);
 
+            if ($addons) {
+                HotelAddonDesk::attachTo($booking, $addons);
+            }
+
+            // After the add-ons, and deliberately: addPayment() prices the receipt off
+            // totalDue(), which is the room alone. Add-ons settle at check-out the same
+            // way room service does.
             if ($payment !== null) {
                 self::addPayment($booking, $payment);
             }
@@ -96,7 +107,7 @@ class HotelBookingDesk
             // it. Whether the room is booked, and for which dates, is the calendar's
             // job (HotelRoom::toTemplateArray()'s bookedRanges), not hotel_rooms.status.
 
-            return $booking->fresh(['guest', 'payments']);
+            return $booking->fresh(['guest', 'payments', 'addons']);
         });
     }
 

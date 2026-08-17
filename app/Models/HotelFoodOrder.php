@@ -9,29 +9,34 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class HotelFoodOrder extends Model
 {
     /**
-     * Front Desk places an order as Pending and marks it Delivered once it reaches the
-     * guest's door; Restaurant Services moves it through the kitchen in between.
+     * Restaurant Services carries an order the whole way — they cook it and they walk
+     * it up to the room themselves. Front Desk only reads the status.
      *
-     *   Pending -> Preparing -> Ready -> Delivered -> Completed
+     *   Preparing -> Ready -> Delivering -> Completed
      *
-     * Delivered means the food is with the guest; Completed is the kitchen closing the
-     * ticket off afterwards. Cancelled is off to the side of that line and returns the
-     * portions to stock.
+     * An order starts at Preparing: it lands in the kitchen already accepted, so there
+     * is no queue in front of the stove to sit in. Delivering means a runner has left
+     * the kitchen with it; Completed is the guest having it in hand and the ticket
+     * closed.
+     *
+     * Cancelled is off to the side of that line and returns the portions to stock, but
+     * it is a dine-in exit only — a room-service order is billed to a stay as soon as
+     * it is placed, so it runs to Completed. The route enforces that; the flow itself
+     * is shared by both order types.
      */
     public const STATUSES = [
-        'Pending',
         'Preparing',
         'Ready',
-        'Delivered',
+        'Delivering',
         'Completed',
         'Cancelled',
     ];
 
     /** The kitchen pipeline in order, so a screen can offer "the next step". */
-    public const FLOW = ['Pending', 'Preparing', 'Ready', 'Delivered', 'Completed'];
+    public const FLOW = ['Preparing', 'Ready', 'Delivering', 'Completed'];
 
     /** Statuses that still owe the guest food. Anything else is finished. */
-    public const OPEN_STATUSES = ['Pending', 'Preparing', 'Ready'];
+    public const OPEN_STATUSES = ['Preparing', 'Ready'];
 
     protected $primaryKey = 'hotel_food_order_id';
 
@@ -93,7 +98,7 @@ class HotelFoodOrder extends Model
             }
         }
 
-        return 'Pending';
+        return 'Preparing';
     }
 
     public static function normalizeOrderType(?string $value): string
@@ -106,8 +111,8 @@ class HotelFoodOrder extends Model
     /**
      * Whether $to is a legal move from $from: forward through FLOW only, or
      * Cancelled as an exit from anywhere still open. Nothing moves once an order
-     * has reached Completed or Cancelled — those are the end of the line for every
-     * user, kitchen included, not just Front Desk.
+     * has reached Completed or Cancelled — those are the end of the line, for the
+     * kitchen that owns the flow as much as for anyone else.
      */
     public static function isForwardTransition(string $from, string $to): bool
     {

@@ -4,12 +4,14 @@ namespace App\Support;
 
 use App\Models\FacultyClass;
 use App\Models\HotelComplaint;
+use App\Models\HotelConcept;
 use App\Models\HotelDineInTable;
 use App\Models\HotelRoomInspection;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\UserInformation;
 use App\Models\UserNotification;
 use Illuminate\Support\Facades\DB;
 
@@ -90,14 +92,17 @@ class Notifier
             ->all();
     }
 
-    /** The user account behind a faculties.faculty_id, or null when unlinked. */
+    /** The user account behind a faculty's user_information_id, or null when unlinked. */
     public static function facultyUserId(?int $facultyId): ?int
     {
         if (!$facultyId) {
             return null;
         }
 
-        $userId = DB::table('faculties')->where('faculty_id', $facultyId)->value('user_id');
+        $userId = DB::table('user_information')
+            ->where('user_information_id', $facultyId)
+            ->where('user_type', UserInformation::TYPE_FACULTY)
+            ->value('user_id');
 
         return $userId ? (int) $userId : null;
     }
@@ -106,7 +111,7 @@ class Notifier
     public static function teamUserIds(string $groupName, int $facultyId): array
     {
         return Student::whereIn(
-            'student_id',
+            'user_information_id',
             StudentGroup::where('group_name', $groupName)
                 ->where('faculty_id', $facultyId)
                 ->pluck('student_id')
@@ -132,21 +137,21 @@ class Notifier
             ->whereHas('roles', fn ($query) => $query->whereIn('role', $roles))
             ->pluck('student_id');
 
-        return Student::whereIn('student_id', $studentIds)
+        return Student::whereIn('user_information_id', $studentIds)
             ->pluck('user_id')
             ->filter()
             ->map(fn ($id) => (int) $id)
             ->all();
     }
 
-    /** Student user ids from students.student_id values. */
+    /** Student user ids from user_information_id values. */
     public static function userIdsForStudents(array $studentIds): array
     {
         if ($studentIds === []) {
             return [];
         }
 
-        return Student::whereIn('student_id', $studentIds)
+        return Student::whereIn('user_information_id', $studentIds)
             ->pluck('user_id')
             ->filter()
             ->map(fn ($id) => (int) $id)
@@ -351,6 +356,72 @@ class Notifier
             $revise
                 ? 'Feedback on "' . $task->title . '": ' . (string) $task->feedback
                 : '"' . $task->title . '" was approved by your faculty.',
+            route('students.dashboard'),
+            $actor
+        );
+    }
+
+    /**
+     * A team handed their hotel concepts in. Faculty owns the verdict, so they are
+     * the audience — this is the inbound half of the concept workflow.
+     *
+     * One notification for the pair, not one each: they arrive together and are
+     * reviewed side by side, so two rows would just be noise in the bell.
+     *
+     * @param  \Illuminate\Support\Collection<int, HotelConcept>  $concepts
+     */
+    public static function conceptsSubmitted(?User $actor, $concepts, StudentGroup $membership): void
+    {
+        $titles = collect($concepts)
+            ->map(fn (HotelConcept $concept) => HotelConceptDesk::slotLabel($concept->slot) . ' "' . $concept->title . '"')
+            ->implode(' and ');
+
+        static::push(
+            array_filter([static::facultyUserId($membership->faculty_id)]),
+            UserNotification::CONCEPT_SUBMITTED,
+            count($concepts) === 1
+                ? 'Hotel concept submitted for review'
+                : 'Hotel concepts submitted for review',
+            'Team ' . $membership->group_name . ' submitted ' . $titles . ' for your review.',
+            route('faculty.role', ['tab' => 'teams']),
+            $actor
+        );
+    }
+
+    /**
+     * Faculty approved one concept or sent it back.
+     *
+     * The whole team hears it, not only the Front Desk member who submitted: every
+     * member may edit the concept, so a "needs revision" is work for all of them.
+     * Named by slot, because the other concept may have gone the other way.
+     *
+     * $notSelected is passed only on approval, when the decision also settled the
+     * sibling concept — the team is told the outcome of the choice, not just the
+     * one verdict.
+     */
+    public static function conceptReviewed(
+        ?User $actor,
+        HotelConcept $concept,
+        StudentGroup $membership,
+        bool $revise,
+        ?HotelConcept $notSelected = null
+    ): void {
+        $which = HotelConceptDesk::slotLabel($concept->slot) . ' "' . $concept->title . '"';
+
+        $body = $revise
+            ? 'Feedback on ' . $which . ': ' . (string) $concept->faculty_feedback
+            : $which . ' was approved by your faculty as your official hotel concept.'
+                . ($notSelected
+                    ? ' ' . HotelConceptDesk::slotLabel($notSelected->slot) . ' "' . $notSelected->title . '" was not selected.'
+                    : '');
+
+        static::push(
+            static::teamUserIds((string) $membership->group_name, (int) $membership->faculty_id),
+            UserNotification::CONCEPT_REVIEWED,
+            $revise
+                ? 'Changes requested on ' . HotelConceptDesk::slotLabel($concept->slot)
+                : HotelConceptDesk::slotLabel($concept->slot) . ' approved as your hotel concept',
+            $body,
             route('students.dashboard'),
             $actor
         );

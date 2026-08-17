@@ -25,6 +25,11 @@ yarn-error.log
 /*.xlsx
 !/test_students.xlsx
 
+# Real class lists used to try the bulk upload. These carry students' names, email
+# addresses and mobile numbers, so they stay on the machine that needs them.
+/public/*.xls
+/public/*.xlsx
+
 # Pre-migration database backups. Large, point-in-time, and kept outside the repo
 # at C:\Users\Xyron\hms_backups. The generated Postgres import (hms_pgsql.sql) IS
 # tracked, since it is a build artefact of the migration rather than a backup.

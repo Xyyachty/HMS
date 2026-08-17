@@ -118,7 +118,13 @@
 
             {{-- Main info --}}
             <div class="flex-1 min-w-0">
-                <p class="text-sm font-bold text-slate-800 truncate">{{ $task->title }}</p>
+                <p class="text-sm font-bold text-slate-800 truncate">
+                    {{ $task->title }}
+                    @if($task->is_hotel_concept)
+                        {{-- Assigned automatically to every team, so it is not editable here. --}}
+                        <span class="ml-1.5 align-middle inline-flex items-center px-1.5 py-0.5 rounded-full bg-brand-soft text-brand border border-brand/10 text-[9px] font-bold uppercase tracking-wider">Task 1 · Automatic</span>
+                    @endif
+                </p>
                 @if($task->description)
                     <p class="text-xs text-slate-400 mt-0.5 line-clamp-2">{{ $task->description }}</p>
                 @endif
@@ -142,15 +148,18 @@
                     {{ $task->created_at->diffForHumans() }}
                 </div>
 
-                {{-- Delete --}}
-                <form method="POST" action="{{ route('faculty.tasks.destroy', $task) }}"
-                      onsubmit="return confirm('Delete this task?')">
-                    @csrf @method('DELETE')
-                    <button type="submit"
-                        class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
-                        <span class="iconify text-base" data-icon="mdi:trash-can-outline"></span>
-                    </button>
-                </form>
+                {{-- Delete. Not offered for the hotel concept: every team is assigned
+                     it automatically and the rest of their work is built on it. --}}
+                @unless($task->is_hotel_concept)
+                    <form method="POST" action="{{ route('faculty.tasks.destroy', $task) }}"
+                          onsubmit="return confirm('Delete this task?')">
+                        @csrf @method('DELETE')
+                        <button type="submit"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
+                            <span class="iconify text-base" data-icon="mdi:trash-can-outline"></span>
+                        </button>
+                    </form>
+                @endunless
             </div>
         </div>
         @empty

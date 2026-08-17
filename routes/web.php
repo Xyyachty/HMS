@@ -5,6 +5,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\FacultyController;
 use App\Http\Controllers\DeanController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\HotelConceptController;
 use App\Http\Controllers\HotelTemplateController;
 use App\Http\Controllers\NotificationController;
 use App\Models\ActivityLog;
@@ -68,6 +69,9 @@ Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
     Route::post('/faculties', [DeanController::class, 'storeFaculty'])->name('faculties.store');
     Route::get('/reports', [DeanController::class, 'reports'])->name('reports');
     Route::get('/activity', [DeanController::class, 'activityLogs'])->name('activity');
+
+    // Front Desk's hotel concept for any team, with its edit history.
+    Route::get('/teams/hotel-concept', [HotelConceptController::class, 'deanHistory'])->name('teams.hotel-concept');
     // Centralized activity log — one member at a time, gated by ActivityLogAccess
     Route::get('/activity/user/{user}', [ActivityLogController::class, 'forUser'])->name('activity.user');
 });
@@ -99,6 +103,10 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     // Same centralized log; faculty only sees students they manage
     Route::get('/activity/user/{user}', [ActivityLogController::class, 'forUser'])->name('activity.user');
 
+    // Front Desk's hotel concept for one of this faculty's own teams, with its edit history.
+    Route::get('/teams/{groupName}/hotel-concept', [HotelConceptController::class, 'facultyHistory'])
+        ->name('teams.hotel-concept');
+
     Route::get('/templates/grants', [HotelTemplateController::class, 'facultyGrants'])->name('templates.grants');
     Route::post('/templates/grants', [HotelTemplateController::class, 'facultyGrantStore'])->name('templates.grants.store');
 });
@@ -111,7 +119,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $groupMembership = $student
             ? StudentGroup::with('student.user')
-                ->where('student_id', $student->student_id)
+                ->where('student_id', $student->user_information_id)
                 ->first()
             : null;
 
@@ -211,6 +219,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $allTasks = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->where('status', 'active')
+                // The hotel concept is Task 1 and gates everything else, so it heads
+                // the list regardless of the due date it does not have.
+                ->conceptFirst()
                 ->orderBy('due_date')
                 ->orderByPriority()
                 ->get();
@@ -251,7 +262,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->where($scopeToTeam)
                 ->where('status', 'archived')
                 ->where(function ($q) use ($student, $authUser, $studentRoles) {
-                    $q->where('student_id', $student->student_id)
+                    $q->where('student_id', $student->user_information_id)
                         ->orWhere('assigned_to', $authUser->user_id);
                     if (!empty($studentRoles)) {
                         $q->orWhereIn('role', $studentRoles);
@@ -273,7 +284,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->where($scopeToTeam)
                 ->where(function ($q) use ($student, $authUser, $studentRoles) {
                     // Only this user's own history
-                    $q->where('student_id', $student->student_id)
+                    $q->where('student_id', $student->user_information_id)
                         ->orWhere('assigned_to', $authUser->user_id);
 
                     // Still show active tasks for their roles so they can complete them
@@ -308,16 +319,39 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $studentClass = $student?->facultyClass;
 
+        // The team's first task: two hotel concepts. Read by the whole team in My
+        // Team; who may write each depends on what state that one is in, so
+        // HotelConceptDesk decides — Front Desk proposes each first version, then
+        // everyone improves them, and each locks while faculty holds it. The
+        // controller enforces the same rules on write.
+        //
+        // Handed to the view as one payload rather than loose variables per slot:
+        // the same shape the save and submit endpoints return, so the Blade and the
+        // JS that repaints it read identical keys.
+        $conceptPayload = HotelConceptController::payload(
+            HotelConceptController::forTeam(
+                $groupMembership?->group_name,
+                $facultyId ? (int) $facultyId : null
+            ),
+            $studentRoles
+        );
+
         return view('students.dashboard', compact(
             'membersByRole', 'group', 'groupMembers',
             'tasksByRole', 'taskCounts', 'totalTasks',
             'studentRoles', 'myRoleTasks', 'completedTasksCount',
             'pendingTasksCount', 'completionRate', 'recentTasks',
             'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
-            'myActivityLogs',
+            'myActivityLogs', 'conceptPayload',
             'studentDisplayName', 'studentClass'
         ));
     })->name('dashboard');
+
+    // The team's first task: the hotel concept. Every member reads it, and the
+    // controller decides who may save or submit at any given moment.
+    Route::post('/hotel-concept', [HotelConceptController::class, 'store'])->name('hotel-concept.store');
+    Route::post('/hotel-concept/submit', [HotelConceptController::class, 'submit'])->name('hotel-concept.submit');
+    Route::get('/hotel-concept/history', [HotelConceptController::class, 'history'])->name('hotel-concept.history');
 
     // My Activity — students read their own centralized log and nobody else's.
     Route::get('/activity/mine', [ActivityLogController::class, 'mine'])->name('activity.mine');
@@ -332,7 +366,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             abort(403);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
         if (!$groupMembership || (int) $task->faculty_id !== (int) $groupMembership->faculty_id) {
             abort(403);
         }
@@ -342,11 +376,19 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return back()->withErrors(['task' => 'This task is not assigned to your role.']);
         }
 
+        // The hotel concept closes by submitting the concept itself, not by ticking
+        // the row — otherwise Front Desk could mark it done with nothing written.
+        if ($task->is_hotel_concept) {
+            return back()->withErrors([
+                'task' => 'Submit the hotel concept from My Team instead — that is what closes this task.',
+            ]);
+        }
+
         // Tasks fan out one row per member, so a role match alone is not enough —
         // without this a student could submit a teammate's row. Unclaimed rows
         // (no member held the role at assign time) stay open to the first submitter.
         $claimedByOther = ($task->assigned_to && (int) $task->assigned_to !== (int) $authUser->user_id)
-            || ($task->student_id && (int) $task->student_id !== (int) $student->student_id);
+            || ($task->student_id && (int) $task->student_id !== (int) $student->user_information_id);
         if ($claimedByOther) {
             return back()->withErrors(['task' => 'This task belongs to a teammate.']);
         }
@@ -357,7 +399,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $task->update([
             'status' => 'archived',
-            'student_id' => $student->student_id,
+            'student_id' => $student->user_information_id,
             'assigned_to' => $authUser->user_id,
         ]);
 
@@ -395,7 +437,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
 
         $student = $authUser->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
 
         \App\Support\StudentGroupSync::heartbeat($authUser, $membership);
 
@@ -458,7 +500,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::get('/frontdesk/template/sync', function () {
         $authUser = auth()->user();
         $student = $authUser?->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
         if (!$membership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -490,7 +532,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $builderRole = 'front_desk';
         }
         if ($student) {
-            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
             if ($groupMembership) {
                 if ($request->query('save') === '1') {
                     if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
@@ -527,7 +569,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $builderRole = 'front_desk';
         }
         if ($student) {
-            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+            $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
             if ($groupMembership) {
                 if ($request->query('save') === '1') {
                     if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
@@ -570,9 +612,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Student not found'], 404);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
         if (!$groupMembership) {
-            \Log::warning('Template select: group not found', ['student_id' => $student->student_id]);
+            \Log::warning('Template select: group not found', ['student_id' => $student->user_information_id]);
             return response()->json(['error' => 'Group not found'], 404);
         }
 
@@ -620,7 +662,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Student not found'], 404);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
         if (!$groupMembership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -673,7 +715,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['error' => 'Student not found'], 404);
         }
 
-        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+        $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
         if (!$groupMembership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -734,7 +776,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // all, so a team that already built its own inventory is never touched.
         \App\Support\HotelRoomDefaults::ensureFor($membership);
 
-        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'openBookings'])
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
@@ -760,6 +802,20 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->count(),
         ]);
     })->name('hotel.guests.pending-count');
+
+    /**
+     * Counts behind the Staff Tools nav badges, for whichever role the sidebar was
+     * rendered for. The role comes from the query string rather than the session
+     * because a student may hold more than one, and the badge has to match the nav
+     * that is actually on screen.
+     */
+    Route::get('/hotel/nav-badges', function (Request $request) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+
+        return response()->json([
+            'badges' => \App\Support\HotelNavBadges::forRole($membership, $request->query('role')),
+        ]);
+    })->name('hotel.nav-badges');
 
     /**
      * Edits a room, and/or moves its status. Releasing a room (Available / Cleaning /
@@ -820,7 +876,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::post('/hotel/rooms', function (Request $request) {
         $authUser = auth()->user();
         $student  = $authUser?->student;
-        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->student_id);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
         if (!$membership) {
             return response()->json(['error' => 'Group not found'], 404);
         }
@@ -916,6 +972,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'payment.reference'  => 'nullable|string|max:255',
             'payment.payer_name' => 'nullable|string|max:255',
             'payment.notes'      => 'nullable|string|max:2000',
+            // Housekeeping add-ons Front Desk ticked while registering the guest.
+            'addons'             => 'nullable|array',
+            'addons.*.addon_id'  => 'required|integer',
+            'addons.*.qty'       => 'required|integer|min:1|max:99',
         ]);
 
         $room = HotelRoom::where('hotel_room_id', $data['room_id'])
@@ -938,19 +998,26 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
         }
 
-        $booking = \App\Support\HotelBookingDesk::reserve(
-            $membership,
-            $room,
-            $data['guest'],
-            [
-                'check_in'      => $data['check_in'],
-                'check_in_time' => $data['check_in_time'],
-                'check_out'     => $data['check_out'],
-                'booked_by'     => auth()->user()?->name,
-                'notes'         => $data['notes'] ?? null,
-            ],
-            $data['payment'] ?? null
-        );
+        try {
+            $booking = \App\Support\HotelBookingDesk::reserve(
+                $membership,
+                $room,
+                $data['guest'],
+                [
+                    'check_in'      => $data['check_in'],
+                    'check_in_time' => $data['check_in_time'],
+                    'check_out'     => $data['check_out'],
+                    'booked_by'     => auth()->user()?->name,
+                    'notes'         => $data['notes'] ?? null,
+                ],
+                $data['payment'] ?? null,
+                $data['addons'] ?? []
+            );
+        } catch (\RuntimeException $e) {
+            // An add-on ran out between the picker rendering and this request. The whole
+            // reservation rolled back, so there is no half-booked stay to clean up.
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json([
             'booking' => $booking->toReservationArray(),
@@ -1276,14 +1343,131 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
     /*
     |--------------------------------------------------------------------------
-    | Hotel room-service orders (Front Desk places, Restaurant Services fulfils)
+    | Room add-ons
+    |--------------------------------------------------------------------------
+    |
+    | Housekeeping owns this catalogue; Front Desk reads it to attach an add-on to a
+    | stay while registering a guest. There is deliberately no delete route — the
+    | Housekeeping table offers Update only, and deleting a row that stays are billed
+    | against would strand those lines.
+    |
+    | "available" is never stored. It is quantity minus whatever is out on open stays,
+    | so a guest checking out returns the folding bed with no reversal step.
+    */
+    Route::get('/hotel/addons', function () {
+        $membership = \App\Support\HotelAddonAccess::membership();
+        if (!$membership) {
+            return response()->json(['items' => [], 'can_manage' => false]);
+        }
+
+        // A team starts with a folding bed and an extra towel. No-ops once it has any
+        // add-ons at all, so a team that built its own list is never touched.
+        \App\Support\HotelAddonAccess::seedDefaults($membership);
+
+        $reserved = \App\Support\HotelAddonDesk::reservedFor($membership);
+
+        $items = \App\Models\HotelAddon::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_addon_id')
+            ->get()
+            ->map(fn (\App\Models\HotelAddon $addon) => $addon->toTemplateArray(
+                $reserved[$addon->hotel_addon_id] ?? 0
+            ));
+
+        return response()->json([
+            'items'      => $items,
+            'can_manage' => \App\Support\HotelAddonAccess::canManage($membership),
+        ]);
+    })->name('hotel.addons.index');
+
+    Route::post('/hotel/addons', function (Request $request) {
+        $membership = \App\Support\HotelAddonAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAddonAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can add add-ons.'], 403);
+        }
+
+        $data = $request->validate([
+            'name'     => 'required|string|max:120',
+            'price'    => 'required|integer|min:0|max:9999999',
+            'quantity' => 'required|integer|min:0|max:99999',
+            'image'    => 'nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        $addon = \App\Models\HotelAddon::create([
+            'group_name' => $membership->group_name,
+            'faculty_id' => $membership->faculty_id,
+            'group_id'   => $membership->group_id,
+            'name'       => trim($data['name']),
+            'price'      => (int) $data['price'],
+            'quantity'   => (int) $data['quantity'],
+            'image'      => \App\Support\HotelImageStore::persist(
+                $data['image'] ?? null,
+                $membership->faculty_id,
+                $membership->group_name
+            ),
+        ]);
+
+        // Nothing can be out on loan yet, so the fresh row's reserved count is zero.
+        return response()->json(['item' => $addon->toTemplateArray(0)], 201);
+    })->name('hotel.addons.store');
+
+    Route::patch('/hotel/addons/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelAddonAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAddonAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can edit add-ons.'], 403);
+        }
+
+        $addon = \App\Models\HotelAddon::where('hotel_addon_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'name'     => 'sometimes|string|max:120',
+            'price'    => 'sometimes|integer|min:0|max:9999999',
+            'quantity' => 'sometimes|integer|min:0|max:99999',
+            'image'    => 'sometimes|nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        if (array_key_exists('name', $data))     $addon->name     = trim($data['name']);
+        if (array_key_exists('price', $data))    $addon->price    = (int) $data['price'];
+        if (array_key_exists('quantity', $data)) $addon->quantity = (int) $data['quantity'];
+        if (array_key_exists('image', $data))    $addon->image    = \App\Support\HotelImageStore::persist(
+            $data['image'],
+            $membership->faculty_id,
+            $membership->group_name
+        );
+        $addon->save();
+
+        // Lowering quantity below what is already lent out is allowed — the stays that
+        // hold those add-ons are real. availability floors at 0 until they end.
+        $reserved = \App\Support\HotelAddonDesk::reservedFor($membership);
+
+        return response()->json([
+            'item' => $addon->toTemplateArray($reserved[$addon->hotel_addon_id] ?? 0),
+        ]);
+    })->name('hotel.addons.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Hotel room-service orders (Front Desk places, Restaurant Services cooks and delivers)
     |--------------------------------------------------------------------------
     */
 
     Route::get('/hotel/orders', function (Request $request) {
         $membership = \App\Support\HotelOrderAccess::membership();
         if (!$membership) {
-            return response()->json(['orders' => [], 'can_place' => false, 'can_fulfill' => false, 'can_deliver' => false]);
+            return response()->json(['orders' => [], 'can_place' => false, 'can_fulfill' => false]);
         }
 
         $orders = HotelFoodOrder::where('group_name', $membership->group_name)
@@ -1297,7 +1481,6 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'orders'      => $orders,
             'can_place'   => \App\Support\HotelOrderAccess::canPlace($membership),
             'can_fulfill' => \App\Support\HotelOrderAccess::canFulfill($membership),
-            'can_deliver' => \App\Support\HotelOrderAccess::canDeliver($membership),
         ]);
     })->name('hotel.orders.index');
 
@@ -1406,7 +1589,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     'guest_name'       => trim($data['guest_name'] ?? $table?->guest_name ?? ''),
                     'items'            => $items,
                     'total'            => HotelFoodOrder::totalFor($items),
-                    'status'           => 'Pending',
+                    // Straight to the stove: Restaurant Services owns the order from
+                    // the moment it is placed, so there is nothing to accept first.
+                    'status'           => 'Preparing',
                     'placed_by'        => auth()->user()?->name,
                 ]);
             });
@@ -1433,19 +1618,21 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $next = HotelFoodOrder::normalizeStatus($data['status']);
 
-        // The kitchen owns the whole flow; Front Desk owns exactly one step of it —
-        // marking a Ready order Delivered, which is the moment they hand it to the
-        // guest. Anything else from them is refused rather than silently ignored.
+        // The kitchen owns every step, delivery included. Front Desk reads the status
+        // and nothing more, so any write from them is refused rather than ignored.
         if (!\App\Support\HotelOrderAccess::canFulfill($membership)) {
-            $isFrontDeskHandover = $next === 'Delivered'
-                && $order->status === 'Ready'
-                && \App\Support\HotelOrderAccess::canDeliver($membership);
+            return response()->json([
+                'message' => 'Only Restaurant Services staff can update an order.',
+            ], 403);
+        }
 
-            if (!$isFrontDeskHandover) {
-                return response()->json([
-                    'message' => 'Only Restaurant Services staff can update an order. Front Desk can mark a Ready order as Delivered.',
-                ], 403);
-            }
+        // A room-service order is billed to a stay the moment it is placed, so there
+        // is no cancelling it — it runs to Completed. Dine-in keeps the exit: nothing
+        // is charged to a room there, and a table can change its mind.
+        if ($next === 'Cancelled' && $order->order_type !== 'dine_in') {
+            return response()->json([
+                'message' => 'A room-service order cannot be cancelled. See it through to Completed.',
+            ], 422);
         }
 
         // Status only ever moves forward, for every role — the kitchen included.
@@ -1883,11 +2070,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
 
             $openOrder = HotelFoodOrder::where('dine_in_table_id', $table->hotel_dine_in_table_id)
-                ->whereIn('status', ['Pending', 'Preparing'])
+                ->whereIn('status', ['Preparing'])
                 ->exists();
             if ($openOrder) {
                 return response()->json([
-                    'message' => 'This table still has an order in progress — mark it Delivered or Cancelled first.',
+                    'message' => 'This table still has an order in the kitchen — mark it Ready or Cancelled first.',
                 ], 422);
             }
 
@@ -2016,5 +2203,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.housekeeping.inspections', $data);
     })->name('housekeeping.inspections');
+
+    Route::get('/housekeeping/addons', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
+        return view('students.housekeeping.addons', $data);
+    })->name('housekeeping.addons');
 });
 

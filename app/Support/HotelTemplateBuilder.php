@@ -170,7 +170,7 @@ class HotelTemplateBuilder
             return null;
         }
 
-        return StudentGroup::with('roles')->where('student_id', $student->student_id)->first();
+        return StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
     }
 
     public static function studentRoleKeys(StudentGroup $membership): array
@@ -192,7 +192,7 @@ class HotelTemplateBuilder
             return true;
         }
 
-        $studentId = $user->student?->student_id;
+        $studentId = $user->student?->user_information_id;
         if (!$studentId) {
             return false;
         }
@@ -212,7 +212,7 @@ class HotelTemplateBuilder
         }
 
         // Any authenticated teammate (same faculty + group membership) can view
-        return (int) ($user->student?->student_id) > 0
+        return (int) ($user->student?->user_information_id) > 0
             && (int) $membership->faculty_id > 0
             && $membership->group_name !== '';
     }
@@ -807,7 +807,7 @@ class HotelTemplateBuilder
             [
                 'faculty_id' => $membership->faculty_id,
                 'group_name' => $membership->group_name,
-                'student_id' => $student->student_id,
+                'student_id' => $student->user_information_id,
                 'role' => $role,
             ],
             ['granted_by' => $facultyUser->user_id, 'group_id' => $membership->group_id]
@@ -818,7 +818,7 @@ class HotelTemplateBuilder
     {
         TeamTemplateEditGrant::where('faculty_id', $membership->faculty_id)
             ->where('group_name', $membership->group_name)
-            ->where('student_id', $student->student_id)
+            ->where('student_id', $student->user_information_id)
             ->where('role', $role)
             ->delete();
     }

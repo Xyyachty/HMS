@@ -15,7 +15,7 @@ class Group extends Model
 
     public function faculty()
     {
-        return $this->belongsTo(Faculty::class, 'faculty_id', 'faculty_id');
+        return $this->belongsTo(Faculty::class, 'faculty_id', 'user_information_id');
     }
 
     public function studentGroups()
