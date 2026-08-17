@@ -319,18 +319,22 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $studentClass = $student?->facultyClass;
 
-        // The team's first task. Read by the whole team in My Team; who may write it
-        // depends on what state it is in, so HotelConceptDesk decides — Front Desk
-        // proposes the first version, then everyone improves it, and it locks while
-        // faculty holds it. The controller enforces the same rules on write.
-        $conceptTeam = HotelConceptController::forTeam(
-            $groupMembership?->group_name,
-            $facultyId ? (int) $facultyId : null
+        // The team's first task: two hotel concepts. Read by the whole team in My
+        // Team; who may write each depends on what state that one is in, so
+        // HotelConceptDesk decides — Front Desk proposes each first version, then
+        // everyone improves them, and each locks while faculty holds it. The
+        // controller enforces the same rules on write.
+        //
+        // Handed to the view as one payload rather than loose variables per slot:
+        // the same shape the save and submit endpoints return, so the Blade and the
+        // JS that repaints it read identical keys.
+        $conceptPayload = HotelConceptController::payload(
+            HotelConceptController::forTeam(
+                $groupMembership?->group_name,
+                $facultyId ? (int) $facultyId : null
+            ),
+            $studentRoles
         );
-        $hotelConcept = $conceptTeam['concept'];
-        $hotelConceptHistory = $conceptTeam['history'];
-        $canEditHotelConcept = \App\Support\HotelConceptDesk::canEdit($hotelConcept, $studentRoles);
-        $canSubmitHotelConcept = \App\Support\HotelConceptDesk::canSubmit($hotelConcept, $studentRoles);
 
         return view('students.dashboard', compact(
             'membersByRole', 'group', 'groupMembers',
@@ -338,8 +342,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'studentRoles', 'myRoleTasks', 'completedTasksCount',
             'pendingTasksCount', 'completionRate', 'recentTasks',
             'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
-            'myActivityLogs', 'hotelConcept', 'hotelConceptHistory',
-            'canEditHotelConcept', 'canSubmitHotelConcept',
+            'myActivityLogs', 'conceptPayload',
             'studentDisplayName', 'studentClass'
         ));
     })->name('dashboard');

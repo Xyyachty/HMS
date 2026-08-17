@@ -105,13 +105,20 @@
                                     <span class="font-semibold text-slate-700">{{ $groupName }}</span>
                                 </td>
                                 <td class="px-5 py-3.5">
-                                    @php $concept = $conceptsByFacultyGroup[$faculty->user_information_id][$groupName] ?? null; @endphp
-                                    @if($concept)
-                                        <p class="font-semibold text-slate-700 text-sm">{{ $concept->title }}</p>
-                                        <p class="text-[11px] text-slate-400">{{ $concept->hotel_type_label }}</p>
-                                    @else
+                                    {{-- A team proposes two, so both are named by slot. --}}
+                                    @php $teamConcepts = $conceptsByFacultyGroup[$faculty->user_information_id][$groupName] ?? []; @endphp
+                                    @forelse($teamConcepts as $concept)
+                                        <div class="{{ !$loop->first ? 'mt-1.5 pt-1.5 border-t border-slate-100' : '' }}">
+                                            <p class="font-semibold text-slate-700 text-sm">
+                                                {{ \App\Support\HotelConceptDesk::slotLabel($concept->slot) }}: {{ $concept->title }}
+                                            </p>
+                                            <p class="text-[11px] text-slate-400">
+                                                {{ $concept->hotel_type_label }} · {{ \App\Support\HotelConceptDesk::statusLabel($concept) }}
+                                            </p>
+                                        </div>
+                                    @empty
                                         <span class="text-xs text-slate-400">Not proposed yet</span>
-                                    @endif
+                                    @endforelse
                                 </td>
                                 <td class="px-5 py-3.5">
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-xs font-bold">
@@ -591,31 +598,67 @@
                 if (!res.ok) throw new Error(data.error || 'Could not load the hotel concept.');
                 return data;
             }))
-            .then(data => { body.innerHTML = renderTeamHotelConcept(data); })
+            .then(data => { body.innerHTML = renderTeamConceptSlots(data); })
             .catch(err => {
                 body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
                     + escHtml(err.message || 'Could not load the hotel concept.') + '</div>';
             });
     }
 
+    /* Where a concept stands in the workflow. Same colours the students and their
+       faculty see. */
+    const CONCEPT_STATUS_CLASSES = {
+        draft: 'bg-slate-100 text-slate-600 border-slate-200',
+        submitted: 'bg-amber-50 text-amber-700 border-amber-200',
+        needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
+        approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
+    };
+
+    /* Both of a team's concepts, each with its own history. Read-only: the dean
+       oversees the work, the team's own faculty gives the verdict. */
+    function renderTeamConceptSlots(data) {
+        return (data.slots || []).map(function (entry) {
+            return '<div class="mb-4">'
+                + '<p class="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-500 mb-1">' + escHtml(entry.slot_label) + '</p>'
+                + renderTeamHotelConcept(entry)
+            + '</div>';
+        }).join('') || '<div class="px-3 py-6 text-center text-xs text-slate-400">This team has no hotel concepts yet.</div>';
+    }
+
     function renderTeamHotelConcept(data) {
         const concept = data.concept;
         const history = Array.isArray(data.history) ? data.history : [];
+        const status = concept ? (concept.status || 'draft') : 'draft';
+
+        const statusBadge = concept
+            ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold '
+                + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">'
+                + escHtml(concept.status_label) + '</span>'
+            : '';
 
         const conceptBlock = concept
             ? '<div class="rounded-lg border border-slate-200 bg-slate-50/70 p-3">' +
                 '<div class="flex items-start justify-between gap-2 flex-wrap">' +
                     '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>' +
-                    '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
-                        + escHtml(concept.hotel_type_label) + '</span>' +
+                    '<div class="flex items-center gap-1.5 flex-wrap">' + statusBadge +
+                        '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
+                            + escHtml(concept.hotel_type_label) + '</span>' +
+                    '</div>' +
                 '</div>' +
                 '<p class="text-xs text-slate-600 mt-2 whitespace-pre-line">' + escHtml(concept.description) + '</p>' +
                 '<p class="text-[10px] text-slate-400 mt-2">Last updated'
                     + (concept.updated_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.updated_by) + '</span>' : '')
                     + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : '') + '</p>' +
+                (concept.faculty_feedback
+                    ? '<div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">'
+                        + '<p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Faculty feedback</p>'
+                        + '<p class="text-[11px] text-amber-800 mt-0.5 whitespace-pre-line">' + escHtml(concept.faculty_feedback) + '</p>'
+                      + '</div>'
+                    : '') +
               '</div>'
             : '<div class="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center">' +
-                '<p class="text-xs font-bold text-slate-400">This team has not proposed a hotel concept yet.</p>' +
+                '<p class="text-xs font-bold text-slate-400">Not proposed yet.</p>' +
               '</div>';
 
         const historyRows = history.length

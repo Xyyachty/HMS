@@ -13,12 +13,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
- * Front Desk's first task: propose the hotel's concept.
+ * Front Desk's first task: propose the team's two hotel concepts.
  *
- * The concept belongs to the team, not to the member who typed it. Front Desk
- * proposes the first version, then every member may improve it, and Front Desk
- * hands it to faculty. Each save leaves a revision behind, so the team and their
- * faculty can see who changed what, and when.
+ * The concepts belong to the team, not to the member who typed them. Front Desk
+ * proposes each first version, then every member may improve either, and Front
+ * Desk hands both to faculty at once. Every save leaves a revision behind, so the
+ * team and their faculty can see who changed what, and when.
  *
  * Who may write at any moment is decided by HotelConceptDesk, which also owns
  * every status change; this controller owns the reads and the edit history.
@@ -28,36 +28,47 @@ class HotelConceptController extends Controller
     /** The role that owns this task. Kept as an alias for existing callers. */
     public const OWNING_ROLE = HotelConceptDesk::OWNING_ROLE;
 
+    /** History rows kept per concept. */
+    private const HISTORY_LIMIT = 50;
+
     /**
-     * The concept for one team, with its history newest-first.
+     * A team's concepts, each with its own history newest-first.
      *
-     * Shared by the student dashboard, the student history endpoint and the
-     * faculty modal so all three read the same rows the same way.
+     * Shared by the student dashboard, the student history endpoint, the faculty
+     * review dialog and the dean modal, so all four read the same rows the same
+     * way. The histories are loaded per concept because that is how they are read —
+     * each concept's card shows its own.
      */
-    public static function forTeam(?string $groupName, ?int $facultyId, int $historyLimit = 50): array
+    public static function forTeam(?string $groupName, ?int $facultyId, int $historyLimit = self::HISTORY_LIMIT): array
     {
-        if (!$groupName || !$facultyId) {
-            return ['concept' => null, 'history' => collect()];
+        $concepts = HotelConceptDesk::conceptsFor($groupName, $facultyId);
+
+        $histories = [];
+        foreach ($concepts as $concept) {
+            $histories[(int) $concept->slot] = $concept->revisions()
+                ->with('user')
+                ->latest('created_at')
+                ->latest('hotel_concept_revision_id')
+                ->take($historyLimit)
+                ->get();
         }
 
-        $concept = HotelConcept::with(['creator', 'editor', 'submitter', 'reviewer'])
-            ->where('group_name', $groupName)
-            ->where('faculty_id', $facultyId)
-            ->first();
+        return ['concepts' => $concepts, 'histories' => $histories];
+    }
 
-        $history = $concept
-            ? $concept->revisions()->with('user')->latest('created_at')->latest('hotel_concept_revision_id')->take($historyLimit)->get()
-            : collect();
-
-        return ['concept' => $concept, 'history' => $history];
+    /** One slot's concept, or null when nobody has written it yet. */
+    public static function conceptAt(array $team, int $slot): ?HotelConcept
+    {
+        return $team['concepts']->firstWhere('slot', $slot);
     }
 
     /**
-     * Create or update the authenticated student's team concept.
+     * Create or update one of the authenticated student's team concepts.
      *
-     * The gate reads the stored concept first, because who may write depends on
-     * what state it is in: Front Desk alone proposes the first version, the whole
-     * team improves it afterwards, and nobody edits it while faculty holds it.
+     * The slot says which of the two is being written. The gate reads that slot's
+     * stored concept first, because who may write depends on what state it is in:
+     * Front Desk alone proposes each first version, the whole team improves it
+     * afterwards, and nobody edits it while faculty holds it.
      */
     public function store(Request $request)
     {
@@ -72,24 +83,30 @@ class HotelConceptController extends Controller
             return $this->refuse($request, 'You are not on a team yet, so there is no concept to propose.');
         }
 
-        $roles = $membership->roles->pluck('role')->all();
-        $existing = self::forTeam($membership->group_name, (int) $membership->faculty_id, 1)['concept'];
-
-        if (!HotelConceptDesk::canEdit($existing, $roles)) {
-            return $this->refuse($request, HotelConceptDesk::editRefusal($existing, $roles));
-        }
-
         $validated = $request->validate([
+            'slot' => ['required', 'integer', Rule::in(HotelConceptDesk::SLOTS)],
             'title' => ['required', 'string', 'max:150'],
             'description' => ['required', 'string', 'max:5000'],
             'hotel_type' => ['required', Rule::in(array_keys(HotelConcept::HOTEL_TYPES))],
         ]);
 
-        $saved = DB::transaction(function () use ($validated, $membership, $authUser, $roles) {
-            // Locked for the length of the save: two Front Desk members hitting
-            // Save at once must not both read "no concept yet" and insert one.
+        $slot = (int) $validated['slot'];
+        $roles = $membership->roles->pluck('role')->all();
+        $existing = self::conceptAt(
+            self::forTeam($membership->group_name, (int) $membership->faculty_id, 1),
+            $slot
+        );
+
+        if (!HotelConceptDesk::canEdit($existing, $roles)) {
+            return $this->refuse($request, HotelConceptDesk::editRefusal($existing, $roles));
+        }
+
+        $saved = DB::transaction(function () use ($validated, $slot, $membership, $authUser, $roles) {
+            // Locked for the length of the save: two Front Desk members hitting Save
+            // on the same slot must not both read "nothing here yet" and insert.
             $concept = HotelConcept::where('group_name', $membership->group_name)
                 ->where('faculty_id', $membership->faculty_id)
+                ->where('slot', $slot)
                 ->lockForUpdate()
                 ->first();
 
@@ -108,6 +125,7 @@ class HotelConceptController extends Controller
                     'group_name' => $membership->group_name,
                     'faculty_id' => $membership->faculty_id,
                     'group_id' => $membership->group_id,
+                    'slot' => $slot,
                     'created_by' => $authUser->user_id,
                 ]);
             } else {
@@ -147,7 +165,8 @@ class HotelConceptController extends Controller
             ActivityLog::record(
                 $authUser,
                 $isNew ? ActivityLog::CONCEPT_CREATED : ActivityLog::CONCEPT_UPDATED,
-                ($isNew ? 'Proposed the hotel concept "' : 'Updated the hotel concept "')
+                ($isNew ? 'Proposed ' : 'Updated ')
+                    . HotelConceptDesk::slotLabel($slot) . ' "'
                     . $concept->title . '" for team "' . $membership->group_name . '"'
                     . ($isNew
                         ? '.'
@@ -169,8 +188,8 @@ class HotelConceptController extends Controller
         }
 
         $message = $saved
-            ? 'Hotel concept saved.'
-            : 'No changes to save — the concept is already up to date.';
+            ? HotelConceptDesk::slotLabel($slot) . ' saved.'
+            : 'No changes to save — ' . HotelConceptDesk::slotLabel($slot) . ' is already up to date.';
 
         // The dashboard saves over fetch and repaints the header, the task card and
         // the history from this payload, so it hands back stored rows, not input.
@@ -185,10 +204,12 @@ class HotelConceptController extends Controller
     }
 
     /**
-     * Hand the team's concept to faculty for review.
+     * Hand both of the team's concepts to faculty for review.
      *
      * Front Desk owns this step — they own the task — even though every member may
-     * have edited what is being handed in.
+     * have edited what is being handed in. Both go at once, because the two exist
+     * so faculty can weigh them against each other; a concept already approved is
+     * left where it is.
      */
     public function submit(Request $request)
     {
@@ -208,35 +229,29 @@ class HotelConceptController extends Controller
         // Locked for the same reason as the save: two members hitting Submit at
         // once must not both write a submission revision.
         $result = DB::transaction(function () use ($membership, $authUser, $roles) {
-            $concept = HotelConcept::where('group_name', $membership->group_name)
+            $concepts = HotelConcept::where('group_name', $membership->group_name)
                 ->where('faculty_id', $membership->faculty_id)
+                ->orderBy('slot')
                 ->lockForUpdate()
-                ->first();
+                ->get();
 
-            if (!HotelConceptDesk::canSubmit($concept, $roles)) {
-                if (!$concept) {
-                    return 'There is no hotel concept yet — propose one before submitting it.';
-                }
-
-                if (!in_array(HotelConceptDesk::OWNING_ROLE, $roles, true)) {
-                    return 'Only the Front Desk members of this team can submit the concept to your faculty.';
-                }
-
-                return HotelConceptDesk::status($concept) === HotelConceptDesk::STATUS_APPROVED
-                    ? 'Your faculty already approved this concept.'
-                    : 'This concept is already with your faculty for review.';
+            if (!HotelConceptDesk::canSubmit($concepts, $roles)) {
+                return HotelConceptDesk::submitRefusal($concepts, $roles);
             }
 
-            HotelConceptDesk::submit($concept, $membership, $authUser);
+            $count = HotelConceptDesk::submittableConcepts($concepts)->count();
+            HotelConceptDesk::submit($concepts, $membership, $authUser);
 
-            return true;
+            return $count;
         });
 
-        if ($result !== true) {
+        if (!is_int($result)) {
             return $this->refuse($request, (string) $result);
         }
 
-        $message = 'Hotel concept submitted to your faculty for review.';
+        $message = $result === 1
+            ? 'Hotel concept submitted to your faculty for review.'
+            : 'Both hotel concepts submitted to your faculty for review.';
 
         if ($request->expectsJson()) {
             return response()->json(array_merge(
@@ -258,7 +273,7 @@ class HotelConceptController extends Controller
         return back()->withErrors(['hotel_concept' => $message]);
     }
 
-    /** The authenticated student's own team concept + history, as JSON. */
+    /** The authenticated student's own team concepts + histories, as JSON. */
     public function history()
     {
         $student = auth()->user()?->student;
@@ -267,12 +282,7 @@ class HotelConceptController extends Controller
             : null;
 
         if (!$membership) {
-            return response()->json([
-                'concept' => null,
-                'can_edit' => false,
-                'can_submit' => false,
-                'history' => [],
-            ]);
+            return response()->json(self::payload(['concepts' => collect(), 'histories' => []]));
         }
 
         return response()->json(self::payload(
@@ -298,7 +308,14 @@ class HotelConceptController extends Controller
             return response()->json(['error' => 'That team is not yours.'], 403);
         }
 
-        return response()->json(self::payload(self::forTeam($groupName, (int) $facultyId)));
+        // The Team Details tab posts verdicts through the existing task-feedback
+        // route, so it needs the concept task's id alongside the concepts.
+        $taskId = HotelConceptDesk::teamTasks($groupName, (int) $facultyId)->first()?->task_id;
+
+        return response()->json(array_merge(
+            self::payload(self::forTeam($groupName, (int) $facultyId)),
+            ['task_id' => $taskId]
+        ));
     }
 
     /**
@@ -326,36 +343,60 @@ class HotelConceptController extends Controller
     /**
      * Wire shape shared by the JSON endpoints.
      *
+     * One entry per slot, always both of them, whether or not a concept has been
+     * written there — the portals render the empty slot as an invitation to fill
+     * it, so they need to be told it exists.
+     *
      * $viewerRoles is the team roles of whoever is asking, so the student dashboard
-     * can repaint its Edit and Submit buttons from the same response that repaints
-     * the concept. Faculty and the dean pass nothing: they never edit it, and both
-     * flags come back false.
+     * can repaint each slot's Edit button and the shared Submit button from the same
+     * response that repaints the concepts. Faculty and the dean pass nothing: they
+     * never edit, and every flag comes back false.
      */
     public static function payload(array $team, array $viewerRoles = []): array
     {
-        $concept = $team['concept'];
+        $concepts = $team['concepts'] ?? collect();
+        $histories = $team['histories'] ?? [];
+
+        $slots = [];
+        foreach (HotelConceptDesk::SLOTS as $slot) {
+            $concept = $concepts->firstWhere('slot', $slot);
+            $history = $histories[$slot] ?? collect();
+
+            $slots[] = [
+                'slot' => $slot,
+                'slot_label' => HotelConceptDesk::slotLabel($slot),
+                'concept' => $concept ? [
+                    'title' => $concept->title,
+                    'description' => $concept->description,
+                    'hotel_type' => $concept->hotel_type,
+                    'hotel_type_label' => $concept->hotel_type_label,
+                    'status' => HotelConceptDesk::status($concept),
+                    'status_label' => HotelConceptDesk::statusLabel($concept),
+                    'revision_count' => (int) $concept->revision_count,
+                    'faculty_feedback' => $concept->faculty_feedback,
+                    'submitted_at' => optional($concept->submitted_at)->format('M d, Y g:i A'),
+                    'submitted_by' => $concept->submitter ? self::displayName($concept->submitter) : null,
+                    'reviewed_at' => optional($concept->reviewed_at)->format('M d, Y g:i A'),
+                    'reviewed_by' => $concept->reviewer ? self::displayName($concept->reviewer) : null,
+                    'updated_at' => optional($concept->updated_at)->format('M d, Y g:i A'),
+                    'updated_by' => $concept->editor ? self::displayName($concept->editor) : null,
+                    'created_by' => $concept->creator ? self::displayName($concept->creator) : null,
+                ] : null,
+                'can_edit' => HotelConceptDesk::canEdit($concept, $viewerRoles),
+                // Faculty state, not viewer state — true for any caller once both
+                // slots exist and nobody has been chosen yet.
+                'can_review' => HotelConceptDesk::canReview($concepts, $slot),
+                'history' => collect($history)->map->toPortalArray()->values(),
+            ];
+        }
 
         return [
-            'concept' => $concept ? [
-                'title' => $concept->title,
-                'description' => $concept->description,
-                'hotel_type' => $concept->hotel_type,
-                'hotel_type_label' => $concept->hotel_type_label,
-                'status' => HotelConceptDesk::status($concept),
-                'status_label' => HotelConceptDesk::statusLabel($concept),
-                'revision_count' => (int) $concept->revision_count,
-                'faculty_feedback' => $concept->faculty_feedback,
-                'submitted_at' => optional($concept->submitted_at)->format('M d, Y g:i A'),
-                'submitted_by' => $concept->submitter ? self::displayName($concept->submitter) : null,
-                'reviewed_at' => optional($concept->reviewed_at)->format('M d, Y g:i A'),
-                'reviewed_by' => $concept->reviewer ? self::displayName($concept->reviewer) : null,
-                'updated_at' => optional($concept->updated_at)->format('M d, Y g:i A'),
-                'updated_by' => $concept->editor ? self::displayName($concept->editor) : null,
-                'created_by' => $concept->creator ? self::displayName($concept->creator) : null,
-            ] : null,
-            'can_edit' => HotelConceptDesk::canEdit($concept, $viewerRoles),
-            'can_submit' => HotelConceptDesk::canSubmit($concept, $viewerRoles),
-            'history' => $team['history']->map->toPortalArray()->values(),
+            'slots' => $slots,
+            // One button for the pair: they are handed in together.
+            'can_submit' => HotelConceptDesk::canSubmit($concepts, $viewerRoles),
+            'all_slots_filled' => HotelConceptDesk::allSlotsFilled($concepts),
+            'decided' => HotelConceptDesk::isDecided($concepts),
+            'approved_slot' => HotelConceptDesk::approvedConcept($concepts)?->slot,
         ];
     }
 

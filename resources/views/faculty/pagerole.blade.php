@@ -194,13 +194,21 @@
                                 @endif
                             </td>
                             <td class="px-3 py-2.5">
-                                @php $concept = ($conceptsByGroup ?? collect())->get($groupName); @endphp
-                                @if($concept)
-                                    <span class="font-semibold text-slate-700 text-sm truncate-cell" title="{{ $concept->title }}">{{ $concept->title }}</span>
-                                    <span class="text-[11px] text-slate-400 truncate-cell">{{ $concept->hotel_type_label }}</span>
-                                @else
+                                {{-- Both concepts, named by slot, so the column says which
+                                     of the two each title is. --}}
+                                @php $teamConcepts = ($conceptsByGroup ?? collect())->get($groupName, collect()); @endphp
+                                @forelse($teamConcepts as $concept)
+                                    <div class="{{ !$loop->first ? 'mt-1.5 pt-1.5 border-t border-slate-100' : '' }}">
+                                        <span class="font-semibold text-slate-700 text-sm truncate-cell" title="{{ $concept->title }}">
+                                            {{ \App\Support\HotelConceptDesk::slotLabel($concept->slot) }}: {{ $concept->title }}
+                                        </span>
+                                        <span class="text-[11px] text-slate-400 truncate-cell">
+                                            {{ $concept->hotel_type_label }} · {{ \App\Support\HotelConceptDesk::statusLabel($concept) }}
+                                        </span>
+                                    </div>
+                                @empty
                                     <span class="text-[11px] text-slate-400">Not proposed yet</span>
-                                @endif
+                                @endforelse
                             </td>
                             <td class="px-3 py-2.5">
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-[11px] font-bold whitespace-nowrap">
@@ -345,6 +353,7 @@
 
             <!-- Front Desk's hotel concept + its edit history (loaded when the modal opens) -->
             <div id="team-panel-concept" class="hidden">
+                <div id="teamConceptError" class="hidden mb-3 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-600"></div>
                 <div id="teamModalConceptBody" class="space-y-4">
                     <div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>
                 </div>
@@ -450,28 +459,38 @@
                         <p id="reviewPrevFeedbackMeta" class="text-[10px] text-amber-600 mt-1"></p>
                     </div>
 
-                    <div>
-                        <label id="reviewFeedbackLabel" for="reviewFeedback" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                            Feedback to the student
-                        </label>
-                        <textarea id="reviewFeedback" rows="6" maxlength="2000"
-                            placeholder="What did they do well? What should change?"
-                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
-                        <p class="text-[10px] text-slate-400 mt-1">Required when sending back for revision.</p>
+                    {{-- One verdict for the whole task. The hotel concept is judged one
+                         concept at a time instead, so this block hides and each concept
+                         card in the left pane carries its own controls. --}}
+                    <div id="reviewDecisionBlock" class="space-y-3">
+                        <div>
+                            <label id="reviewFeedbackLabel" for="reviewFeedback" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                Feedback to the student
+                            </label>
+                            <textarea id="reviewFeedback" rows="6" maxlength="2000"
+                                placeholder="What did they do well? What should change?"
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
+                            <p class="text-[10px] text-slate-400 mt-1">Required when sending back for revision.</p>
+                        </div>
+
+                        <div class="flex flex-col gap-2 pt-1">
+                            <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')"
+                                class="w-full px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">
+                                <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve
+                            </button>
+                            <button type="button" id="reviewReviseBtn" onclick="submitTaskFeedback('revise')"
+                                class="w-full px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">
+                                <span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back for revision
+                            </button>
+                        </div>
                     </div>
+
+                    <p id="reviewConceptHint" class="hidden text-[11px] text-slate-500 leading-relaxed">
+                        This team proposed two concepts. Approve or send back each one on its
+                        own card — your verdict on one does not touch the other.
+                    </p>
 
                     <p id="reviewError" class="hidden text-[11px] font-semibold text-rose-600"></p>
-
-                    <div class="flex flex-col gap-2 pt-1">
-                        <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')"
-                            class="w-full px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">
-                            <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve
-                        </button>
-                        <button type="button" id="reviewReviseBtn" onclick="submitTaskFeedback('revise')"
-                            class="w-full px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">
-                            <span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back for revision
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1460,7 +1479,8 @@ function openTaskReview(taskId) {
     conceptPane.classList.add('hidden');
     conceptPane.innerHTML = '';
     document.getElementById('reviewWorkLabel').textContent = "The team's live site";
-    document.getElementById('reviewFeedbackLabel').textContent = 'Feedback to the student';
+    document.getElementById('reviewDecisionBlock').classList.remove('hidden');
+    document.getElementById('reviewConceptHint').classList.add('hidden');
 
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -1495,14 +1515,19 @@ function openTaskReview(taskId) {
             }
 
             if (d.is_hotel_concept) {
-                // The concept is text, so it is read here rather than previewed.
-                document.getElementById('reviewWorkLabel').textContent = 'The proposed hotel concept';
-                // The whole team may have edited it, so the verdict goes to the team.
-                document.getElementById('reviewFeedbackLabel').textContent = 'Feedback to the team';
-                conceptPane.innerHTML = renderTeamHotelConcept(d);
+                // Concepts are text, so they are read here rather than previewed, and
+                // each carries its own verdict controls — the shared ones would only
+                // let one decision cover both.
+                document.getElementById('reviewWorkLabel').textContent = 'The two proposed hotel concepts';
+                document.getElementById('reviewDecisionBlock').classList.add('hidden');
+                document.getElementById('reviewConceptHint').classList.remove('hidden');
+                paintReviewConcepts(d);
                 conceptPane.classList.remove('hidden');
                 empty.classList.add('hidden');
-            } else if (d.preview_url) {
+                return;
+            }
+
+            if (d.preview_url) {
                 frame.src = d.preview_url;
                 frame.classList.remove('hidden');
                 empty.classList.add('hidden');
@@ -1551,7 +1576,106 @@ function submitTaskFeedback(decision) {
     const revise = document.getElementById('reviewReviseBtn');
     approve.disabled = true; revise.disabled = true;
 
-    fetch(TASK_FEEDBACK_URL.replace('__ID__', encodeURIComponent(reviewTaskId)), {
+    postTaskFeedback({ decision: decision, feedback: feedback }, decision, 'Task approved')
+        .catch(() => { approve.disabled = false; revise.disabled = false; });
+}
+
+/* Draw both concept cards into the review pane, each with its own verdict
+   controls. Rebuilt from the payload after every verdict, so approving one concept
+   leaves the other's buttons exactly where they were. */
+function paintReviewConcepts(data) {
+    const pane = document.getElementById('reviewConceptPane');
+    if (!pane) return;
+
+    pane.innerHTML = '<div class="space-y-3">'
+        + (data.slots || []).map((entry) => renderReviewConceptCard(entry, data)).join('')
+        + '</div>';
+}
+
+function renderReviewConceptCard(entry, data) {
+    const concept = entry.concept;
+    const slot = Number(entry.slot);
+
+    if (!concept) {
+        return '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-5 text-center">'
+            + '<p class="text-xs font-bold text-slate-400">' + escHtml(entry.slot_label) + ' has not been proposed yet.</p>'
+            + '</div>';
+    }
+
+    // Both concepts have to exist and nobody chosen yet — the same rule the Team
+    // Details tab uses, so both surfaces show the same buttons at the same time.
+    const awaiting = entry.can_review === true;
+
+    const controls = awaiting
+        ? '<div class="mt-2.5 pt-2.5 border-t border-slate-200">'
+            + '<label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5" for="reviewFeedback' + slot + '">'
+                + 'Feedback on ' + escHtml(entry.slot_label) + '</label>'
+            + '<textarea id="reviewFeedback' + slot + '" rows="3" maxlength="2000"'
+                + ' placeholder="What works here? What should change?"'
+                + ' class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>'
+            + '<p class="text-[10px] text-slate-400 mt-1">Required when sending back for revision.</p>'
+            + '<div class="flex flex-wrap gap-2 mt-2">'
+                + '<button type="button" data-concept-action="' + slot + '" onclick="submitConceptFeedback(' + slot + ', \'approve\')"'
+                    + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">'
+                    + '<span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve ' + escHtml(entry.slot_label)
+                + '</button>'
+                + '<button type="button" data-concept-action="' + slot + '" onclick="submitConceptFeedback(' + slot + ', \'revise\')"'
+                    + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">'
+                    + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back'
+                + '</button>'
+            + '</div>'
+          + '</div>'
+        : '<p class="mt-2.5 pt-2.5 border-t border-slate-200 text-[11px] font-semibold text-slate-400">'
+            + escHtml(concept.status === 'approved'
+                ? 'Official hotel concept.'
+                : (data && data.decided)
+                    ? 'Not selected.'
+                    : 'Waiting for the other concept to be proposed before you can review either one.')
+          + '</p>';
+
+    return '<div class="rounded-xl border border-slate-200 bg-white p-3">'
+        + '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-rose-500">' + escHtml(entry.slot_label) + '</p>'
+        + renderTeamHotelConcept({ concept: concept, history: entry.history, embedded: true })
+        + controls
+        + '</div>';
+}
+
+/* The verdict on one concept. The other one is untouched, so the dialog is redrawn
+   from the response instead of reloading the page. */
+function submitConceptFeedback(slot, decision) {
+    if (!reviewTaskId) return;
+
+    const box = document.getElementById('reviewFeedback' + slot);
+    const feedback = box ? box.value.trim() : '';
+    if (decision === 'revise' && !feedback) {
+        showReviewError('Tell the team what to change before sending it back.');
+        return;
+    }
+    document.getElementById('reviewError').classList.add('hidden');
+
+    const buttons = Array.from(document.querySelectorAll('[data-concept-action="' + slot + '"]'));
+    buttons.forEach((b) => { b.disabled = true; });
+
+    postTaskFeedback(
+        { decision: decision, feedback: feedback, slot: slot },
+        decision,
+        'Concept approved',
+        // Redraw in place: the second concept may still need a verdict, and a page
+        // reload would close the dialog the faculty is working in.
+        (d) => { if (Array.isArray(d.slots)) paintReviewConcepts(d); }
+    ).catch(() => buttons.forEach((b) => { b.disabled = false; }));
+}
+
+/* Shared POST for every verdict path — the review dialog's task and concept
+   verdicts, and the Team Details tab's concept verdicts. Resolves on success,
+   rejects on failure so the caller can put its own buttons back. taskId and
+   onError default to the review dialog's globals so its two callers need no
+   change; the Team Details tab passes its own task id and error box instead. */
+function postTaskFeedback(body, decision, approvedTitle, onSuccess, taskId, onError) {
+    taskId = taskId || reviewTaskId;
+    onError = onError || showReviewError;
+
+    return fetch(TASK_FEEDBACK_URL.replace('__ID__', encodeURIComponent(taskId)), {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
@@ -1560,25 +1684,39 @@ function submitTaskFeedback(decision) {
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
         },
-        body: JSON.stringify({ decision: decision, feedback: feedback })
+        body: JSON.stringify(body)
     })
-        .then((res) => res.json().then((d) => { if (!res.ok) throw new Error(d.error || d.message || 'Could not save feedback.'); return d; }))
+        .then((res) => res.json().then((d) => {
+            if (!res.ok) {
+                // 422 carries our own message; Laravel's validation bag carries errors.
+                const first = d.errors ? Object.values(d.errors)[0][0] : null;
+                throw new Error(d.error || first || d.message || 'Could not save feedback.');
+            }
+            return d;
+        }))
         .then((d) => {
-            closeTaskReview();
+            if (!onSuccess) closeTaskReview();
+
             Swal.fire({
                 icon: 'success',
-                title: decision === 'revise' ? 'Sent back for revision' : 'Task approved',
+                title: decision === 'revise' ? 'Sent back for revision' : approvedTitle,
                 html: `<p class="text-sm text-slate-500">${d.message || 'The student has been notified.'}</p>`,
                 timer: 2200,
                 showConfirmButton: false,
                 iconColor: decision === 'revise' ? '#D97706' : '#059669',
                 customClass: { popup: 'rounded-2xl p-6 bg-white shadow-2xl', title: 'text-lg font-bold text-slate-800' },
                 buttonsStyling: false,
-            }).then(() => window.location.reload());
+            }).then(() => {
+                if (onSuccess) {
+                    onSuccess(d);
+                } else {
+                    window.location.reload();
+                }
+            });
         })
         .catch((err) => {
-            approve.disabled = false; revise.disabled = false;
-            showReviewError(err.message || 'Could not save feedback.');
+            onError(err.message || 'Could not save feedback.');
+            throw err;
         });
 }
 
@@ -1606,10 +1744,15 @@ function switchTeamModalTab(tabId) {
    fetched by group name so this giant page does not carry every team's history. */
 const TEAM_CONCEPT_URL = @json(route('faculty.teams.hotel-concept', ['groupName' => '__GROUP__']));
 
+// The concept task backing whichever team's tab is open — the Approve / Send back
+// buttons here post through the same task-feedback route the review dialog uses.
+let teamConceptTaskId = null;
+
 function loadTeamHotelConcept(groupName) {
     const body = document.getElementById('teamModalConceptBody');
     if (!body) return;
 
+    document.getElementById('teamConceptError')?.classList.add('hidden');
     body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>';
 
     fetch(TEAM_CONCEPT_URL.replace('__GROUP__', encodeURIComponent(groupName || '')), {
@@ -1620,11 +1763,104 @@ function loadTeamHotelConcept(groupName) {
             if (!res.ok) throw new Error(data.error || 'Could not load the hotel concept.');
             return data;
         }))
-        .then(data => { body.innerHTML = renderTeamHotelConcept(data); })
+        .then(data => {
+            teamConceptTaskId = data.task_id || null;
+            body.innerHTML = renderTeamConceptSlots(data);
+        })
         .catch(err => {
             body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
                 + escHtml(err.message || 'Could not load the hotel concept.') + '</div>';
         });
+}
+
+function showTeamConceptError(msg) {
+    const el = document.getElementById('teamConceptError');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+/* Both of a team's concepts for the Team Details modal — each with its own verdict
+   controls when faculty can still choose, or a note on why not. */
+function renderTeamConceptSlots(data) {
+    const rows = (data.slots || []).map(function (entry) {
+        return '<div class="mb-4">'
+            + '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-rose-500 mb-1">' + escHtml(entry.slot_label) + '</p>'
+            + (entry.concept
+                ? renderTeamHotelConcept({ concept: entry.concept, history: entry.history })
+                    + renderTeamConceptControls(entry, data)
+                : '<div class="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center">'
+                    + '<p class="text-xs font-bold text-slate-400">Not proposed yet.</p></div>')
+        + '</div>';
+    }).join('') || '<div class="px-3 py-6 text-center text-xs text-slate-400">This team has no hotel concepts yet.</div>';
+
+    if (!data.all_slots_filled) {
+        return rows + '<p class="text-xs font-semibold text-slate-400 text-center">'
+            + 'Waiting for the team to propose both concepts before you can choose one.</p>';
+    }
+
+    return rows;
+}
+
+/* Approve / Send back for one concept, or the reason those are not shown — decided
+   already, or this concept simply is not the one that lost. */
+function renderTeamConceptControls(entry, data) {
+    if (entry.can_review) {
+        const slot = Number(entry.slot);
+        return '<div class="mt-2 rounded-lg border border-slate-200 bg-white p-3">'
+            + '<label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5" for="teamConceptFeedback' + slot + '">'
+                + 'Feedback on ' + escHtml(entry.slot_label) + '</label>'
+            + '<textarea id="teamConceptFeedback' + slot + '" rows="3" maxlength="2000"'
+                + ' placeholder="What works here? What should change?"'
+                + ' class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>'
+            + '<p class="text-[10px] text-slate-400 mt-1">Required when sending back for revision.</p>'
+            + '<div class="flex flex-wrap gap-2 mt-2">'
+                + '<button type="button" data-team-concept-action="' + slot + '" onclick="submitTeamConceptFeedback(' + slot + ', \'approve\')"'
+                    + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">'
+                    + '<span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve ' + escHtml(entry.slot_label)
+                + '</button>'
+                + '<button type="button" data-team-concept-action="' + slot + '" onclick="submitTeamConceptFeedback(' + slot + ', \'revise\')"'
+                    + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">'
+                    + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back'
+                + '</button>'
+            + '</div>'
+        + '</div>';
+    }
+
+    if (data.decided) {
+        return Number(entry.slot) === Number(data.approved_slot)
+            ? '<p class="mt-2 text-[11px] font-bold text-emerald-600">Official hotel concept.</p>'
+            : '<p class="mt-2 text-[11px] font-semibold text-slate-400">Not selected.</p>';
+    }
+
+    return '';
+}
+
+/* The verdict on one concept, from the Team Details tab. Mirrors
+   submitConceptFeedback below, but targets this team's task id and this tab's
+   error box instead of the review dialog's globals. */
+function submitTeamConceptFeedback(slot, decision) {
+    if (!teamConceptTaskId) return;
+
+    const box = document.getElementById('teamConceptFeedback' + slot);
+    const feedback = box ? box.value.trim() : '';
+    if (decision === 'revise' && !feedback) {
+        showTeamConceptError('Tell the team what to change before sending it back.');
+        return;
+    }
+    document.getElementById('teamConceptError')?.classList.add('hidden');
+
+    const buttons = Array.from(document.querySelectorAll('[data-team-concept-action="' + slot + '"]'));
+    buttons.forEach((b) => { b.disabled = true; });
+
+    postTaskFeedback(
+        { decision: decision, feedback: feedback, slot: slot },
+        decision,
+        'Concept approved',
+        (d) => { document.getElementById('teamModalConceptBody').innerHTML = renderTeamConceptSlots(d); },
+        teamConceptTaskId,
+        showTeamConceptError
+    ).catch(() => buttons.forEach((b) => { b.disabled = false; }));
 }
 
 /* Where a concept stands in the workflow. Same colours the students see. */
@@ -1633,11 +1869,13 @@ const CONCEPT_STATUS_CLASSES = {
     submitted: 'bg-amber-50 text-amber-700 border-amber-200',
     needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
     approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
 };
 
-/* Renders a team's concept and its history. Shared by the Team Details modal and
-   the review dialog — a submitted concept is read, not previewed, so the review
-   pane needs exactly this. */
+/* Renders ONE concept and its history. Shared by the Team Details modal and the
+   review dialog — a submitted concept is read, not previewed, so the review pane
+   needs exactly this. Callers pass a single slot's { concept, history }; pass
+   embedded: true to drop the outer card when it already sits inside one. */
 function renderTeamHotelConcept(data) {
     const concept = data.concept;
     const history = Array.isArray(data.history) ? data.history : [];
@@ -1669,8 +1907,11 @@ function renderTeamHotelConcept(data) {
                 : '')
         : '';
 
+    // Inside the review dialog this already sits in a card, so the frame comes off.
+    const frame = data.embedded ? '' : 'rounded-lg border border-slate-200 bg-slate-50/70 p-3';
+
     const conceptBlock = concept
-        ? '<div class="rounded-lg border border-slate-200 bg-slate-50/70 p-3">' +
+        ? '<div class="' + frame + '">' +
             '<div class="flex items-start justify-between gap-2 flex-wrap">' +
                 '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>' +
                 '<div class="flex items-center gap-1.5 flex-wrap">' + statusBadge +
@@ -1685,7 +1926,7 @@ function renderTeamHotelConcept(data) {
             trail +
           '</div>'
         : '<div class="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center">' +
-            '<p class="text-xs font-bold text-slate-400">This team has not proposed a hotel concept yet.</p>' +
+            '<p class="text-xs font-bold text-slate-400">Not proposed yet.</p>' +
           '</div>';
 
     const historyRows = history.length

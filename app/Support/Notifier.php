@@ -362,40 +362,66 @@ class Notifier
     }
 
     /**
-     * A team handed their hotel concept in. Faculty owns the verdict, so they are
+     * A team handed their hotel concepts in. Faculty owns the verdict, so they are
      * the audience — this is the inbound half of the concept workflow.
+     *
+     * One notification for the pair, not one each: they arrive together and are
+     * reviewed side by side, so two rows would just be noise in the bell.
+     *
+     * @param  \Illuminate\Support\Collection<int, HotelConcept>  $concepts
      */
-    public static function conceptSubmitted(?User $actor, HotelConcept $concept, StudentGroup $membership): void
+    public static function conceptsSubmitted(?User $actor, $concepts, StudentGroup $membership): void
     {
+        $titles = collect($concepts)
+            ->map(fn (HotelConcept $concept) => HotelConceptDesk::slotLabel($concept->slot) . ' "' . $concept->title . '"')
+            ->implode(' and ');
+
         static::push(
             array_filter([static::facultyUserId($membership->faculty_id)]),
             UserNotification::CONCEPT_SUBMITTED,
-            'Hotel concept submitted for review',
-            'Team ' . $membership->group_name . ' submitted "' . $concept->title . '" for your review.',
+            count($concepts) === 1
+                ? 'Hotel concept submitted for review'
+                : 'Hotel concepts submitted for review',
+            'Team ' . $membership->group_name . ' submitted ' . $titles . ' for your review.',
             route('faculty.role', ['tab' => 'teams']),
             $actor
         );
     }
 
     /**
-     * Faculty approved the concept or sent it back.
+     * Faculty approved one concept or sent it back.
      *
      * The whole team hears it, not only the Front Desk member who submitted: every
      * member may edit the concept, so a "needs revision" is work for all of them.
+     * Named by slot, because the other concept may have gone the other way.
+     *
+     * $notSelected is passed only on approval, when the decision also settled the
+     * sibling concept — the team is told the outcome of the choice, not just the
+     * one verdict.
      */
     public static function conceptReviewed(
         ?User $actor,
         HotelConcept $concept,
         StudentGroup $membership,
-        bool $revise
+        bool $revise,
+        ?HotelConcept $notSelected = null
     ): void {
+        $which = HotelConceptDesk::slotLabel($concept->slot) . ' "' . $concept->title . '"';
+
+        $body = $revise
+            ? 'Feedback on ' . $which . ': ' . (string) $concept->faculty_feedback
+            : $which . ' was approved by your faculty as your official hotel concept.'
+                . ($notSelected
+                    ? ' ' . HotelConceptDesk::slotLabel($notSelected->slot) . ' "' . $notSelected->title . '" was not selected.'
+                    : '');
+
         static::push(
             static::teamUserIds((string) $membership->group_name, (int) $membership->faculty_id),
             UserNotification::CONCEPT_REVIEWED,
-            $revise ? 'Changes requested on your hotel concept' : 'Your hotel concept was approved',
             $revise
-                ? 'Feedback on "' . $concept->title . '": ' . (string) $concept->faculty_feedback
-                : '"' . $concept->title . '" was approved by your faculty.',
+                ? 'Changes requested on ' . HotelConceptDesk::slotLabel($concept->slot)
+                : HotelConceptDesk::slotLabel($concept->slot) . ' approved as your hotel concept',
+            $body,
             route('students.dashboard'),
             $actor
         );

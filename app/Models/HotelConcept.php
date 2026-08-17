@@ -19,6 +19,8 @@ class HotelConcept extends Model
         'group_name',
         'faculty_id',
         'group_id',
+        // Which of the team's two concepts this is — see HotelConceptDesk::SLOTS.
+        'slot',
         'title',
         'description',
         'hotel_type',
@@ -34,6 +36,7 @@ class HotelConcept extends Model
     ];
 
     protected $casts = [
+        'slot' => 'integer',
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
         'revision_count' => 'integer',
@@ -95,13 +98,10 @@ class HotelConcept extends Model
         return $this->belongsTo(User::class, 'reviewed_by', 'user_id');
     }
 
-    /** Waiting on faculty, or already settled by them. Either way, read-only. */
+    /** Faculty's final choice for the team. The only status that is read-only. */
     public function isLocked(): bool
     {
-        return in_array($this->status, [
-            HotelConceptDesk::STATUS_SUBMITTED,
-            HotelConceptDesk::STATUS_APPROVED,
-        ], true);
+        return $this->status === HotelConceptDesk::STATUS_APPROVED;
     }
 
     public function getStatusLabelAttribute(): string

@@ -218,11 +218,12 @@ class DeanController extends Controller
             }
         }
 
-        // Front Desk's hotel concept per team, so the list names the hotel each one
-        // is building. Keyed by faculty then group: group names repeat across faculty.
+        // The hotel concepts per team, so the list names what each one proposed. Keyed
+        // by faculty then group because group names repeat across faculty, and each
+        // entry is a list because a team proposes two.
         $conceptsByFacultyGroup = [];
-        foreach (\App\Models\HotelConcept::all() as $concept) {
-            $conceptsByFacultyGroup[(int) $concept->faculty_id][$concept->group_name] = $concept;
+        foreach (\App\Models\HotelConcept::orderBy('slot')->get() as $concept) {
+            $conceptsByFacultyGroup[(int) $concept->faculty_id][$concept->group_name][] = $concept;
         }
 
         return view('dean.faculties', compact(

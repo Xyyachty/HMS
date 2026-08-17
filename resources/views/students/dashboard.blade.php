@@ -438,86 +438,10 @@
                         </div>
                     </div>
 
-                    {{-- The hotel the team is building heads the member list: title, type and
-                         a short read of the description, with the workflow's state beside it.
-                         Front Desk proposes the first version, then every member may improve
-                         it, then Front Desk submits it and it locks until faculty answers.
-                         Rewritten in place after a save or a submit. The edit history sits
-                         below the members, where a long list belongs. --}}
-                    @php
-                        $conceptStatus = \App\Support\HotelConceptDesk::status($hotelConcept);
-                        // Badge colour per state, so the team can read where they stand at a glance.
-                        $conceptBadgeClasses = [
-                            'draft' => 'bg-slate-100 text-slate-600 border-slate-200',
-                            'submitted' => 'bg-amber-50 text-amber-700 border-amber-200',
-                            'needs_revision' => 'bg-rose-50 text-rose-700 border-rose-200',
-                            'approved' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                        ];
-                    @endphp
-                    <div class="px-4 py-4 border-b border-slate-100 bg-slate-50/50">
-                        <div class="flex items-start justify-between gap-4 flex-wrap">
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">Hotel Concept</p>
-                                    <span id="teamHeaderConceptBadge"
-                                        class="inline-flex items-center px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider {{ $conceptBadgeClasses[$conceptStatus] ?? $conceptBadgeClasses['draft'] }} {{ $hotelConcept ? '' : 'hidden' }}">
-                                        {{ \App\Support\HotelConceptDesk::statusLabel($hotelConcept) }}
-                                    </span>
-                                    <span id="teamHeaderConceptRevisions"
-                                        class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold uppercase tracking-wider {{ ($hotelConcept->revision_count ?? 0) > 0 ? '' : 'hidden' }}">
-                                        Revision {{ $hotelConcept->revision_count ?? 0 }}
-                                    </span>
-                                </div>
-                                <h3 id="teamHeaderConceptTitle" class="text-base font-extrabold text-slate-800 mt-0.5">
-                                    {{ $hotelConcept->title ?? 'No hotel concept yet' }}
-                                </h3>
-                                <p id="teamHeaderConceptType"
-                                    class="text-[11px] font-bold text-slate-500 {{ $hotelConcept ? '' : 'hidden' }}">
-                                    {{ $hotelConcept->hotel_type_label ?? '' }}
-                                </p>
-                                <p id="teamHeaderConceptDescription"
-                                    class="text-xs text-slate-500 leading-relaxed mt-1.5 max-w-2xl {{ $hotelConcept ? '' : 'hidden' }}">
-                                    {{ $hotelConcept?->description }}
-                                </p>
-                                @unless($hotelConcept)
-                                    @unless($canEditHotelConcept)
-                                        <p class="text-xs text-slate-400 mt-1">The Front Desk members of this team propose it.</p>
-                                    @endunless
-                                @endunless
-
-                                {{-- What faculty said, and what it means for the team right now. --}}
-                                <div id="teamHeaderConceptNotice"
-                                    class="mt-2.5 rounded-xl border px-3 py-2 text-xs {{ in_array($conceptStatus, ['submitted', 'needs_revision', 'approved'], true) && $hotelConcept ? '' : 'hidden' }} {{ $conceptStatus === 'needs_revision' ? 'border-rose-200 bg-rose-50 text-rose-700' : ($conceptStatus === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700') }}">
-                                    <p id="teamHeaderConceptNoticeText" class="font-bold">
-                                        @if($conceptStatus === 'needs_revision')
-                                            Your faculty asked for changes.
-                                        @elseif($conceptStatus === 'approved')
-                                            Your faculty approved this concept. It is final and no longer editable.
-                                        @else
-                                            Submitted to your faculty. The concept is locked until they respond.
-                                        @endif
-                                    </p>
-                                    <p id="teamHeaderConceptFeedback"
-                                        class="mt-1 leading-relaxed {{ filled($hotelConcept->faculty_feedback ?? null) ? '' : 'hidden' }}">
-                                        {{ $hotelConcept->faculty_feedback ?? '' }}
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="shrink-0 flex items-center gap-2">
-                                <button type="button" id="teamHeaderConceptEditBtn" onclick="openHotelConceptModal()"
-                                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition {{ $canEditHotelConcept ? '' : 'hidden' }}">
-                                    <span class="iconify text-[13px]" data-icon="mdi:pencil-outline"></span>
-                                    <span id="teamHeaderConceptEditLabel">{{ $hotelConcept ? 'Edit Concept' : 'Propose Concept' }}</span>
-                                </button>
-                                {{-- Front Desk owns the handover, even though anyone may have edited it. --}}
-                                <button type="button" id="teamHeaderConceptSubmitBtn" onclick="submitHotelConcept()"
-                                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60 {{ $canSubmitHotelConcept ? '' : 'hidden' }}">
-                                    <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
-                                    <span>Submit to Faculty</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    {{-- The concepts used to head this panel. They outgrew it once there
+                         were two of them, each with its own state, feedback and history,
+                         so they have their own panel below and this one is about members
+                         again. --}}
 
                     <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
                         <h3 class="text-sm font-bold text-slate-800">All Members</h3>
@@ -600,16 +524,27 @@
                     @endif
                 </div>
 
-                {{-- Concept edit history: who created or changed it, what moved, when.
-                     Visible to every member; the concept itself lives in the header. --}}
+                {{-- The team's two hotel concepts, side by side.
+                     Faculty judges each separately, so each card carries its own state,
+                     its own feedback and its own edit history. Front Desk proposes each
+                     first version; every member may then improve either one; Front Desk
+                     hands both in with the single button in this header, because the pair
+                     exists so faculty can weigh them against each other.
+
+                     The whole panel is rendered from #conceptPanel by the same JS that
+                     repaints it after a save or a submit, so there is one description of
+                     this markup rather than a server copy and a client copy that drift. --}}
                 <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                     <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
                         <div class="min-w-0">
-                            <h3 class="text-sm font-bold text-slate-800">Edit History</h3>
+                            <h3 class="text-sm font-bold text-slate-800">Hotel Concepts</h3>
+                            <p class="text-[11px] text-slate-400">Two proposals for your faculty to review.</p>
                         </div>
-                        <span id="conceptHistoryCount" class="shrink-0 text-[10px] font-semibold text-slate-400">
-                            {{ $hotelConceptHistory->count() }} {{ \Illuminate\Support\Str::plural('entry', $hotelConceptHistory->count()) }}
-                        </span>
+                        <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
+                            class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60 hidden">
+                            <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
+                            <span>Submit both to Faculty</span>
+                        </button>
                     </div>
 
                     @if (session('success'))
@@ -623,43 +558,7 @@
                         </div>
                     @endif
 
-                    <div class="p-4">
-                        <div>
-                            <div id="conceptHistoryList" class="rounded-xl border border-slate-100 divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                                @forelse($hotelConceptHistory as $revision)
-                                    @php $entry = $revision->toPortalArray(); @endphp
-                                    <div class="px-3 py-2.5">
-                                        <div class="flex items-start justify-between gap-2 flex-wrap">
-                                            <p class="text-xs font-bold text-slate-700">
-                                                {{ $entry['editor'] }}
-                                                <span class="font-semibold text-slate-400">— {{ $entry['action_label'] }}</span>
-                                            </p>
-                                            <span class="text-[10px] text-slate-400 shrink-0">{{ $entry['created_at'] }} · {{ $entry['created_at_human'] }}</span>
-                                        </div>
-                                        @if($entry['changes'])
-                                            <ul class="mt-1.5 space-y-1">
-                                                @foreach($entry['changes'] as $change)
-                                                    <li class="text-[11px] text-slate-500">
-                                                        <span class="font-semibold text-slate-600">{{ $change['label'] }}:</span>
-                                                        <span class="line-through text-slate-400">{{ \Illuminate\Support\Str::limit($change['from'], 80) ?: '—' }}</span>
-                                                        <span class="text-slate-400">to</span>
-                                                        <span class="text-slate-700">{{ \Illuminate\Support\Str::limit($change['to'], 80) }}</span>
-                                                    </li>
-                                                @endforeach
-                                            </ul>
-                                        @else
-                                            <p class="mt-1.5 text-[11px] text-slate-500">
-                                                <span class="font-semibold text-slate-600">{{ $entry['title'] }}</span>
-                                                · {{ $entry['hotel_type_label'] }}
-                                            </p>
-                                        @endif
-                                    </div>
-                                @empty
-                                    <div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>
-                                @endforelse
-                            </div>
-                        </div>
-                    </div>
+                    <div id="conceptPanel" class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
                 </div>
 
                 @if($group)
@@ -685,14 +584,16 @@
                                 </button>
                             </div>
 
+                            {{-- One dialog serves both concepts; the slot says which one is
+                                 open, and openHotelConceptModal() fills the fields from it. --}}
                             <form id="hotelConceptForm" method="POST" action="{{ route('students.hotel-concept.store') }}" class="p-5 space-y-4">
                                 @csrf
+                                <input type="hidden" name="slot" value="">
                                 <div id="hotelConceptFormError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"></div>
 
                                 <div>
                                     <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Title</label>
                                     <input name="title" type="text" required maxlength="150"
-                                        value="{{ $hotelConcept->title ?? '' }}"
                                         placeholder="e.g. Seaside Serenity Resort"
                                         class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                                 </div>
@@ -702,9 +603,7 @@
                                         class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
                                         <option value="">Select hotel type</option>
                                         @foreach(\App\Models\HotelConcept::HOTEL_TYPES as $typeKey => $typeLabel)
-                                            <option value="{{ $typeKey }}" {{ ($hotelConcept->hotel_type ?? '') === $typeKey ? 'selected' : '' }}>
-                                                {{ $typeLabel }}
-                                            </option>
+                                            <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -712,7 +611,7 @@
                                     <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
                                     <textarea name="description" required rows="5" maxlength="5000"
                                         placeholder="What the hotel is, who it serves, what makes it different."
-                                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">{{ $hotelConcept->description ?? '' }}</textarea>
+                                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
                                 </div>
 
                                 <div class="flex items-center justify-end gap-2 pt-1">
@@ -1212,35 +1111,49 @@
             }
         })();
 
-        /* ── Hotel concept: header is the source of truth on screen ──────────
-           The dialog saves over fetch and the response carries the stored concept
-           plus its history, so the header, the task card and the history list are
-           rewritten from what the database actually holds — never from what was
-           typed. Values the server rendered stay here so Cancel can restore them. */
-        @php
-            // Built here rather than inline: @json() cannot parse a multi-line array
-            // argument, and silently truncates it.
-            $savedConceptPayload = $hotelConcept ? [
-                'title' => $hotelConcept->title,
-                'description' => $hotelConcept->description,
-                'hotel_type' => $hotelConcept->hotel_type,
-                'hotel_type_label' => $hotelConcept->hotel_type_label,
-            ] : null;
-        @endphp
-        let savedConcept = @json($savedConceptPayload);
+        /* ── Hotel concepts: the panel is the source of truth on screen ──────
+           A team owes two concepts. Saving one, or handing both in, returns the whole
+           team payload — both slots, both histories, and which buttons this member is
+           allowed to see — so the panel is rebuilt from what the database actually
+           holds rather than from what was typed. The server decides the permissions;
+           this script only draws them.
 
-        function openHotelConceptModal() {
+           The initial payload is the same shape the endpoints return, so there is one
+           renderer instead of a server copy of this markup and a client copy that
+           drift apart. */
+        @php
+            // Built here rather than inline: @json() cannot parse a multi-line
+            // expression, and silently truncates it.
+            $conceptPayloadJson = $conceptPayload;
+        @endphp
+        let conceptState = @json($conceptPayloadJson);
+
+        /** The slot currently open in the dialog. */
+        let editingSlot = null;
+
+        function conceptSlot(slot) {
+            return (conceptState?.slots || []).find((entry) => Number(entry.slot) === Number(slot)) || null;
+        }
+
+        function openHotelConceptModal(slot) {
             const modal = document.getElementById('hotelConceptModal');
             const form = document.getElementById('hotelConceptForm');
-            if (!modal || !form) return;
+            const entry = conceptSlot(slot);
+            if (!modal || !form || !entry) return;
+
+            editingSlot = Number(slot);
+            const concept = entry.concept;
 
             // Always open on the stored concept, not on a half-typed abandoned edit.
-            form.querySelector('input[name="title"]').value = savedConcept?.title ?? '';
-            form.querySelector('select[name="hotel_type"]').value = savedConcept?.hotel_type ?? '';
-            form.querySelector('textarea[name="description"]').value = savedConcept?.description ?? '';
+            form.querySelector('input[name="slot"]').value = editingSlot;
+            form.querySelector('input[name="title"]').value = concept?.title ?? '';
+            form.querySelector('select[name="hotel_type"]').value = concept?.hotel_type ?? '';
+            form.querySelector('textarea[name="description"]').value = concept?.description ?? '';
 
             const title = document.getElementById('hotelConceptModalTitle');
-            if (title) title.textContent = savedConcept ? 'Edit Hotel Concept' : 'Propose Hotel Concept';
+            if (title) {
+                title.textContent = (concept ? 'Edit ' : 'Propose ') + entry.slot_label;
+            }
             hideHotelConceptError();
 
             modal.classList.remove('hidden');
@@ -1272,142 +1185,130 @@
                 .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
-        /* Badge colour per workflow state. Mirrors the Blade map above — the header is
-           repainted from JSON after a save or a submit, so both have to agree. */
+        /* Badge colour per workflow state, so a member can read where each concept
+           stands at a glance. */
         const CONCEPT_BADGE_CLASSES = {
             draft: 'bg-slate-100 text-slate-600 border-slate-200',
             submitted: 'bg-amber-50 text-amber-700 border-amber-200',
             needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
             approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
         };
 
         const CONCEPT_NOTICE_CLASSES = {
             submitted: 'border-amber-200 bg-amber-50 text-amber-700',
             needs_revision: 'border-rose-200 bg-rose-50 text-rose-700',
             approved: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+            not_selected: 'border-slate-200 bg-slate-50 text-slate-500',
         };
 
         const CONCEPT_NOTICE_TEXT = {
-            submitted: 'Submitted to your faculty. The concept is locked until they respond.',
+            submitted: 'Submitted to your faculty. You can still improve it until they choose.',
             needs_revision: 'Your faculty asked for changes.',
-            approved: 'Your faculty approved this concept. It is final and no longer editable.',
+            approved: 'Your faculty approved this concept. It is your official hotel concept and is no longer editable.',
+            not_selected: 'Your faculty chose the other concept. You can still refine this one.',
         };
 
-        /* The header shows the concept and where it stands; the card below shows its
-           history. All of it is repainted from one server payload, so a save, a submit
-           or a faculty verdict lands everywhere at once — including which buttons the
-           member is allowed to see, which the server decides, not this script. */
-        function paintHotelConcept(data) {
-            const concept = data ? data.concept : null;
-            savedConcept = concept;
+        /* Redraw both slots and the shared Submit button from a server payload. Every
+           write returns the whole team, so a save on one concept also refreshes the
+           other's lock state and the button that hands the pair in. */
+        function paintHotelConcepts(data) {
+            if (data && Array.isArray(data.slots)) conceptState = data;
 
-            const headerTitle = document.getElementById('teamHeaderConceptTitle');
-            const headerType = document.getElementById('teamHeaderConceptType');
-            const headerDescription = document.getElementById('teamHeaderConceptDescription');
-
-            if (headerTitle) headerTitle.textContent = concept ? concept.title : 'No hotel concept yet';
-            if (headerType) {
-                headerType.textContent = concept ? concept.hotel_type_label : '';
-                headerType.classList.toggle('hidden', !concept);
-            }
-            if (headerDescription) {
-                headerDescription.textContent = concept ? concept.description : '';
-                headerDescription.classList.toggle('hidden', !concept);
+            const panel = document.getElementById('conceptPanel');
+            if (panel) {
+                panel.innerHTML = (conceptState?.slots || []).map(renderConceptSlot).join('');
             }
 
-            const status = concept ? (concept.status || 'draft') : 'draft';
-
-            const badge = document.getElementById('teamHeaderConceptBadge');
-            if (badge) {
-                badge.textContent = concept ? concept.status_label : '';
-                badge.className = 'inline-flex items-center px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider '
-                    + (CONCEPT_BADGE_CLASSES[status] || CONCEPT_BADGE_CLASSES.draft)
-                    + (concept ? '' : ' hidden');
-            }
-
-            const revisions = document.getElementById('teamHeaderConceptRevisions');
-            if (revisions) {
-                const rounds = concept ? Number(concept.revision_count || 0) : 0;
-                revisions.textContent = 'Revision ' + rounds;
-                revisions.classList.toggle('hidden', rounds === 0);
-            }
-
-            const notice = document.getElementById('teamHeaderConceptNotice');
-            const noticeText = document.getElementById('teamHeaderConceptNoticeText');
-            const feedback = document.getElementById('teamHeaderConceptFeedback');
-            if (notice) {
-                const show = !!concept && !!CONCEPT_NOTICE_TEXT[status];
-                notice.className = 'mt-2.5 rounded-xl border px-3 py-2 text-xs '
-                    + (CONCEPT_NOTICE_CLASSES[status] || '')
-                    + (show ? '' : ' hidden');
-                if (noticeText) noticeText.textContent = CONCEPT_NOTICE_TEXT[status] || '';
-                if (feedback) {
-                    const words = concept ? (concept.faculty_feedback || '') : '';
-                    feedback.textContent = words;
-                    feedback.classList.toggle('hidden', words === '');
-                }
-            }
-
-            const editBtn = document.getElementById('teamHeaderConceptEditBtn');
-            if (editBtn) editBtn.classList.toggle('hidden', !(data && data.can_edit));
-
-            const submitBtn = document.getElementById('teamHeaderConceptSubmitBtn');
+            const submitBtn = document.getElementById('conceptSubmitAllBtn');
             if (submitBtn) {
-                submitBtn.classList.toggle('hidden', !(data && data.can_submit));
+                submitBtn.classList.toggle('hidden', !conceptState?.can_submit);
                 submitBtn.disabled = false;
             }
-
-            const editLabel = document.getElementById('teamHeaderConceptEditLabel');
-            if (editLabel) editLabel.textContent = concept ? 'Edit Concept' : 'Propose Concept';
-
-            if (data && Array.isArray(data.history)) paintHotelConceptHistory(data.history);
         }
 
-        /* Hand the concept to faculty. Confirmed first: submitting locks the concept
-           for the whole team until the faculty answers. */
-        async function submitHotelConcept() {
-            if (!confirm('Submit this hotel concept to your faculty?\n\nNobody on the team can edit it until they approve it or send it back.')) {
-                return;
-            }
+        /* One concept card: where it stands, what it says, what faculty said about it,
+           its own edit history, and — when this member is allowed — its Edit button. */
+        function renderConceptSlot(entry) {
+            const concept = entry.concept;
+            const status = concept ? (concept.status || 'draft') : 'draft';
 
-            const button = document.getElementById('teamHeaderConceptSubmitBtn');
-            if (button) button.disabled = true;
+            const badge = concept
+                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider '
+                    + (CONCEPT_BADGE_CLASSES[status] || CONCEPT_BADGE_CLASSES.draft) + '">'
+                    + conceptEscape(concept.status_label) + '</span>'
+                : '<span class="inline-flex items-center px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-400 text-[9px] font-bold uppercase tracking-wider">Empty</span>';
 
-            try {
-                const response = await fetch(@json(route('students.hotel-concept.submit')), {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || '',
-                    },
-                });
-                const data = await response.json();
+            const rounds = concept ? Number(concept.revision_count || 0) : 0;
+            const revisionBadge = rounds > 0
+                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold uppercase tracking-wider">Revision '
+                    + rounds + '</span>'
+                : '';
 
-                if (!response.ok) {
-                    throw new Error(data.message || 'Could not submit the hotel concept.');
-                }
+            const editButton = entry.can_edit
+                ? '<button type="button" onclick="openHotelConceptModal(' + Number(entry.slot) + ')"'
+                    + ' class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">'
+                    + '<span class="iconify text-[13px]" data-icon="mdi:pencil-outline"></span>'
+                    + (concept ? 'Edit' : 'Propose')
+                  + '</button>'
+                : '';
 
-                paintHotelConcept(data);
-            } catch (error) {
-                alert(error.message || 'Could not submit the hotel concept.');
-                if (button) button.disabled = false;
-            }
+            const officialRibbon = concept && status === 'approved'
+                ? '<p class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.15em] text-emerald-600 mt-1.5">'
+                    + '<span class="iconify text-[12px]" data-icon="mdi:star-circle"></span> Official Hotel Concept</p>'
+                : '';
+
+            const body = concept
+                ? officialRibbon
+                    + '<h4 class="text-sm font-extrabold text-slate-800 mt-1">' + conceptEscape(concept.title) + '</h4>'
+                    + '<p class="text-[11px] font-bold text-slate-500">' + conceptEscape(concept.hotel_type_label) + '</p>'
+                    + '<p class="text-xs text-slate-500 leading-relaxed mt-1.5 whitespace-pre-line">' + conceptEscape(concept.description) + '</p>'
+                : '<p class="text-sm font-bold text-slate-400 mt-1">Not proposed yet</p>'
+                    + '<p class="text-xs text-slate-400 mt-1">'
+                    + (entry.can_edit
+                        ? 'Write this one to complete the pair.'
+                        : 'The Front Desk members of this team propose it.')
+                    + '</p>';
+
+            const notice = (concept && CONCEPT_NOTICE_TEXT[status])
+                ? '<div class="mt-2.5 rounded-xl border px-3 py-2 text-xs ' + (CONCEPT_NOTICE_CLASSES[status] || '') + '">'
+                    + '<p class="font-bold">' + conceptEscape(CONCEPT_NOTICE_TEXT[status]) + '</p>'
+                    + (concept.faculty_feedback
+                        ? '<p class="mt-1 leading-relaxed whitespace-pre-line">' + conceptEscape(concept.faculty_feedback) + '</p>'
+                        : '')
+                  + '</div>'
+                : '';
+
+            const history = Array.isArray(entry.history) ? entry.history : [];
+
+            return '<div class="rounded-2xl border border-slate-200 bg-slate-50/50 p-3.5 flex flex-col">' +
+                '<div class="flex items-start justify-between gap-2">' +
+                    '<div class="min-w-0">' +
+                        '<div class="flex items-center gap-1.5 flex-wrap">' +
+                            '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">' + conceptEscape(entry.slot_label) + '</p>' +
+                            badge + revisionBadge +
+                        '</div>' +
+                        body +
+                    '</div>' +
+                    editButton +
+                '</div>' +
+                notice +
+                '<div class="mt-3">' +
+                    '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Edit History · '
+                        + history.length + ' ' + (history.length === 1 ? 'entry' : 'entries') + '</p>' +
+                    '<div class="rounded-xl border border-slate-100 bg-white divide-y divide-slate-100 max-h-56 overflow-y-auto">'
+                        + renderConceptHistory(history) +
+                    '</div>' +
+                '</div>' +
+            '</div>';
         }
 
-        function paintHotelConceptHistory(history) {
-            const list = document.getElementById('conceptHistoryList');
-            const count = document.getElementById('conceptHistoryCount');
-            if (count) count.textContent = history.length + ' ' + (history.length === 1 ? 'entry' : 'entries');
-            if (!list) return;
-
+        function renderConceptHistory(history) {
             if (history.length === 0) {
-                list.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>';
-                return;
+                return '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>';
             }
 
-            list.innerHTML = history.map(function (entry) {
+            return history.map(function (entry) {
                 const changes = (entry.changes || []).map(function (change) {
                     return '<li class="text-[11px] text-slate-500">' +
                         '<span class="font-semibold text-slate-600">' + conceptEscape(change.label) + ':</span> ' +
@@ -1432,8 +1333,45 @@
             }).join('');
         }
 
+        /* Hand both concepts to faculty. The team can keep improving either one
+           afterward — submitting only starts the review, it does not lock anything. */
+        async function submitHotelConcepts() {
+            if (!confirm('Submit your hotel concepts to your faculty?\n\nYour team can keep improving either concept until your faculty approves one.')) {
+                return;
+            }
+
+            const button = document.getElementById('conceptSubmitAllBtn');
+            if (button) button.disabled = true;
+
+            try {
+                const response = await fetch(@json(route('students.hotel-concept.submit')), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || '',
+                    },
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Could not submit the hotel concepts.');
+                }
+
+                paintHotelConcepts(data);
+            } catch (error) {
+                alert(error.message || 'Could not submit the hotel concepts.');
+                if (button) button.disabled = false;
+            }
+        }
+
         (function wireHotelConceptForm() {
             const form = document.getElementById('hotelConceptForm');
+
+            // Draw the panel from the payload the server rendered with the page.
+            paintHotelConcepts(null);
+
             if (!form) return;
 
             form.addEventListener('submit', async function (event) {
@@ -1464,7 +1402,7 @@
                         throw new Error(firstError);
                     }
 
-                    paintHotelConcept(data);
+                    paintHotelConcepts(data);
                     closeHotelConceptModal();
                 } catch (error) {
                     showHotelConceptError(error.message || 'Could not save the hotel concept.');

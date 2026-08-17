@@ -41,6 +41,7 @@ class HotelConceptRevision extends Model
     public const SUBMITTED = 'submitted';
     public const CHANGES_REQUESTED = 'changes_requested';
     public const APPROVED = 'approved';
+    public const NOT_SELECTED = 'not_selected';
 
     /**
      * The workflow reads off this list too, not just the edits: submitting and the
@@ -53,6 +54,7 @@ class HotelConceptRevision extends Model
         self::SUBMITTED => 'Submitted to faculty',
         self::CHANGES_REQUESTED => 'Faculty requested changes',
         self::APPROVED => 'Approved by faculty',
+        self::NOT_SELECTED => 'Not selected by faculty',
     ];
 
     public function concept()

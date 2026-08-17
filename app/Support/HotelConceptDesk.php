@@ -13,52 +13,89 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The hotel concept's lifecycle: who may write it, and every state change.
+ * The hotel concept lifecycle: who may write, and every state change.
  *
- * The concept is the team's first assignment, and it moves through four states:
+ * A team proposes two concepts, and each one moves through states of its own:
  *
- *   draft          Front Desk proposed it; the whole team improves it
- *   submitted      handed to faculty; nobody edits until they answer
+ *   draft          proposed; the whole team improves it
+ *   submitted      handed to faculty; the team keeps improving it while they read
  *   needs_revision sent back with feedback; the whole team edits again
- *   approved       final, read-only
+ *   approved       the team's official concept, final and read-only
+ *   not_selected   the other one, once faculty picked; still editable, never official
+ *
+ * Everything except approved stays open, because the team is asked to keep
+ * improving both proposals right up until faculty chooses between them. Approval
+ * is the one irreversible step: it settles which concept the team builds.
+ *
+ * The states are per concept because faculty judges each one separately — one can
+ * come back for another round while the other waits. What is shared is the
+ * handover: Front Desk submits the pair in one action, because the point of two
+ * concepts is that faculty compares them, and the choice itself, which lands on
+ * both concepts at once.
  *
  * This class exists because each transition touches two places at once — the
- * concept row and the team's task rows — and three unrelated callers need the
- * same transition: the student submit endpoint, the faculty feedback endpoint,
- * and the team-creation hooks that seed the task. Splitting that across them is
- * how the concept's status and the task's status would drift apart.
+ * concept rows and the team's task rows — and three unrelated callers need the
+ * same transition: the student submit endpoint, the faculty feedback endpoint, and
+ * the team-creation hooks that seed the task. Splitting that across them is how
+ * the concepts' statuses and the task's status would drift apart.
  *
  * Reads and the create/update path stay in HotelConceptController, which owns the
  * revision history.
  */
 class HotelConceptDesk
 {
-    /** The role that proposes the concept and submits it. */
+    /** The role that proposes the concepts and submits them. */
     public const OWNING_ROLE = 'front_desk';
+
+    /**
+     * The two concepts every team owes, addressed by slot.
+     *
+     * Slots rather than insertion order: "Concept 2 needs revision" has to keep
+     * meaning the same row after either one is edited.
+     */
+    public const SLOTS = [1, 2];
 
     /**
      * Marks the seeded task row. Ordinary assignments leave tasks.kind null; a
      * marker column rather than a title match, because titles are free text.
      */
     public const TASK_KIND = 'hotel_concept';
-    public const TASK_TITLE = 'Propose a Hotel Concept';
-    public const TASK_DESCRIPTION = 'Propose the hotel your team will build: its name, its type and what makes it different. Front Desk writes the first version, then the whole team can improve it before Front Desk submits it to your faculty.';
+    public const TASK_TITLE = 'Propose Two Hotel Concepts';
+    public const TASK_DESCRIPTION = 'Propose two hotel concepts your team could build: for each one, its name, its type and what makes it different. Front Desk writes the first version of each, then the whole team can improve them before Front Desk submits both to your faculty, who reviews each concept separately.';
 
     public const STATUS_DRAFT = 'draft';
     public const STATUS_SUBMITTED = 'submitted';
     public const STATUS_NEEDS_REVISION = 'needs_revision';
     public const STATUS_APPROVED = 'approved';
+    public const STATUS_NOT_SELECTED = 'not_selected';
 
     /** The badge each state prints, and the only accepted values. */
     public const STATUSES = [
         self::STATUS_DRAFT => 'Draft',
-        self::STATUS_SUBMITTED => 'Awaiting faculty review',
+        self::STATUS_SUBMITTED => 'With faculty for review',
         self::STATUS_NEEDS_REVISION => 'Needs revision',
         self::STATUS_APPROVED => 'Approved',
+        self::STATUS_NOT_SELECTED => 'Not selected',
     ];
 
-    /** States in which the concept is open for edits. */
-    private const EDITABLE_STATUSES = [self::STATUS_DRAFT, self::STATUS_NEEDS_REVISION];
+    /**
+     * States in which a concept is open for edits.
+     *
+     * Everything but approved: the team keeps improving a concept while it sits
+     * with faculty, after it comes back for revision, and even after it loses to
+     * the other one — only the choice itself, approval, closes the door.
+     */
+    private const EDITABLE_STATUSES = [
+        self::STATUS_DRAFT,
+        self::STATUS_SUBMITTED,
+        self::STATUS_NEEDS_REVISION,
+        self::STATUS_NOT_SELECTED,
+    ];
+
+    public static function isValidSlot($slot): bool
+    {
+        return in_array((int) $slot, self::SLOTS, true);
+    }
 
     public static function status(?HotelConcept $concept): string
     {
@@ -70,13 +107,20 @@ class HotelConceptDesk
         return self::STATUSES[self::status($concept)] ?? self::STATUSES[self::STATUS_DRAFT];
     }
 
+    /** "Concept 1", the name the portals print and the review dialog labels. */
+    public static function slotLabel($slot): string
+    {
+        return 'Concept ' . (int) $slot;
+    }
+
     /**
-     * Who may write the concept.
+     * Who may write a concept.
      *
-     * Front Desk alone proposes the first version — that is their task. Once it
-     * exists the concept belongs to the team, so every member may improve it,
-     * which is the point of the workflow. Submitting closes it to everyone until
-     * faculty answers, so they review a version that cannot move under them.
+     * Front Desk alone proposes each first version — that is their task. Once a
+     * concept exists it belongs to the team, so every member may improve it, which
+     * is the point of the workflow. That stays true while it sits with faculty,
+     * after it comes back for revision, and even after it loses to the other one —
+     * approval is the only thing that closes a concept to further edits.
      */
     public static function canEdit(?HotelConcept $concept, array $roleKeys): bool
     {
@@ -87,24 +131,137 @@ class HotelConceptDesk
         return in_array(self::status($concept), self::EDITABLE_STATUSES, true);
     }
 
-    /** Front Desk owns the handover, and only an open concept can be handed over. */
-    public static function canSubmit(?HotelConcept $concept, array $roleKeys): bool
+    /**
+     * Whether the team can hand their concepts in.
+     *
+     * Both slots have to be filled: faculty is being asked to weigh two proposals
+     * against each other, and one is not a choice. Beyond that there has to be
+     * something new to hand in — a pair already sitting with faculty and untouched
+     * since, or a pair already decided, submits nothing.
+     */
+    public static function canSubmit(Collection $concepts, array $roleKeys): bool
     {
-        return $concept
-            && in_array(self::OWNING_ROLE, $roleKeys, true)
-            && in_array(self::status($concept), self::EDITABLE_STATUSES, true);
+        if (!in_array(self::OWNING_ROLE, $roleKeys, true)) {
+            return false;
+        }
+
+        if (!self::allSlotsFilled($concepts) || self::isDecided($concepts)) {
+            return false;
+        }
+
+        return self::submittableConcepts($concepts)->isNotEmpty();
+    }
+
+    /** Every slot has a concept in it. */
+    public static function allSlotsFilled(Collection $concepts): bool
+    {
+        foreach (self::SLOTS as $slot) {
+            if (!$concepts->firstWhere('slot', $slot)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** The team's official concept, once faculty has chosen one. */
+    public static function approvedConcept(Collection $concepts): ?HotelConcept
+    {
+        return $concepts->firstWhere('status', self::STATUS_APPROVED);
+    }
+
+    /** Whether faculty has already chosen — the point past which nothing about the pair can move. */
+    public static function isDecided(Collection $concepts): bool
+    {
+        return self::approvedConcept($concepts) !== null;
+    }
+
+    /**
+     * Whether faculty can act on this slot right now.
+     *
+     * Both proposals have to exist — faculty is choosing between two, not judging
+     * one in isolation — and nobody has chosen yet. Once a concept is approved,
+     * every verdict control disappears on both slots: the decision is final.
+     */
+    public static function canReview(Collection $concepts, int $slot): bool
+    {
+        if (!self::allSlotsFilled($concepts) || self::isDecided($concepts)) {
+            return false;
+        }
+
+        return (bool) $concepts->firstWhere('slot', $slot);
+    }
+
+    /** The concepts still open for edits — everything but the approved one. */
+    public static function editableConcepts(Collection $concepts): Collection
+    {
+        return $concepts->filter(
+            fn (HotelConcept $concept) => in_array(self::status($concept), self::EDITABLE_STATUSES, true)
+        )->values();
+    }
+
+    /**
+     * The concepts a submit would actually hand in.
+     *
+     * Narrower than editableConcepts(): a concept already sitting with faculty is
+     * still open for edits, but resubmitting it untouched would only reset its
+     * timestamps and write a hollow "submitted" entry. Submit moves only what
+     * genuinely needs faculty's attention again — new work, or a concept coming
+     * back from a revision request. (not_selected never appears here: it only
+     * exists once a concept has been chosen, and choosing ends submitting for
+     * the pair — see isDecided().)
+     */
+    public static function submittableConcepts(Collection $concepts): Collection
+    {
+        return $concepts->filter(fn (HotelConcept $c) => in_array(self::status($c), [
+            self::STATUS_DRAFT,
+            self::STATUS_NEEDS_REVISION,
+        ], true))->values();
     }
 
     /** Why an edit was refused, so the dashboard can say something useful. */
     public static function editRefusal(?HotelConcept $concept, array $roleKeys): string
     {
         if (!$concept) {
-            return 'Only the Front Desk members of this team can propose the hotel concept.';
+            return 'Only the Front Desk members of this team can propose a hotel concept.';
         }
 
-        return self::status($concept) === self::STATUS_APPROVED
-            ? 'Your faculty approved this concept, so it is final and can no longer be edited.'
-            : 'This concept is with your faculty for review, so it is locked until they respond.';
+        return 'Your faculty approved this concept, so it is final and can no longer be edited.';
+    }
+
+    /** Why a submit was refused. */
+    public static function submitRefusal(Collection $concepts, array $roleKeys): string
+    {
+        if (!in_array(self::OWNING_ROLE, $roleKeys, true)) {
+            return 'Only the Front Desk members of this team can submit the concepts to your faculty.';
+        }
+
+        if (!self::allSlotsFilled($concepts)) {
+            $missing = collect(self::SLOTS)
+                ->reject(fn ($slot) => (bool) $concepts->firstWhere('slot', $slot))
+                ->map(fn ($slot) => self::slotLabel($slot));
+
+            return 'Propose both concepts before submitting — still empty: '
+                . $missing->implode(', ') . '.';
+        }
+
+        return self::isDecided($concepts)
+            ? 'Your faculty has already chosen a concept for this team.'
+            : 'Your concepts are already with your faculty for review.';
+    }
+
+    /** A team's concepts, in slot order. */
+    public static function conceptsFor(?string $groupName, ?int $facultyId): Collection
+    {
+        if (!$groupName || !$facultyId) {
+            return collect();
+        }
+
+        return HotelConcept::with(['creator', 'editor', 'submitter', 'reviewer'])
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->orderBy('slot')
+            ->get();
     }
 
     /**
@@ -149,11 +306,20 @@ class HotelConceptDesk
             return;
         }
 
-        $exists = Task::where('kind', self::TASK_KIND)
+        $existing = Task::where('kind', self::TASK_KIND)
             ->where('student_id', $membership->student_id)
-            ->exists();
+            ->first();
 
-        if ($exists) {
+        if ($existing) {
+            // The task was seeded when a team owed one concept; the wording has to
+            // catch up or the card asks for the wrong thing.
+            if ($existing->title !== self::TASK_TITLE || $existing->description !== self::TASK_DESCRIPTION) {
+                $existing->forceFill([
+                    'title' => self::TASK_TITLE,
+                    'description' => self::TASK_DESCRIPTION,
+                ])->save();
+            }
+
             return;
         }
 
@@ -187,62 +353,63 @@ class HotelConceptDesk
     }
 
     /**
-     * Hand the concept to faculty.
+     * Hand every open concept to faculty, in one action.
      *
-     * The revision written here snapshots the exact text faculty will judge, so
-     * the history says what was submitted even after a later revision changes it.
+     * The revision written per concept snapshots the exact text faculty will
+     * judge, so the history says what was submitted even after a later round
+     * changes it.
      */
-    public static function submit(HotelConcept $concept, StudentGroup $membership, User $actor): void
+    public static function submit(Collection $concepts, StudentGroup $membership, User $actor): void
     {
-        DB::transaction(function () use ($concept, $membership, $actor) {
-            $concept->fill([
-                'status' => self::STATUS_SUBMITTED,
-                'submitted_at' => now(),
-                'submitted_by' => $actor->user_id,
-                // A verdict from the previous round no longer applies.
-                'faculty_feedback' => null,
-                'reviewed_at' => null,
-                'reviewed_by' => null,
-            ])->save();
+        $submitting = self::submittableConcepts($concepts);
 
-            HotelConceptRevision::create([
-                'hotel_concept_id' => $concept->hotel_concept_id,
-                'user_id' => $actor->user_id,
-                'editor_name' => \App\Http\Controllers\HotelConceptController::displayName($actor),
-                'action' => HotelConceptRevision::SUBMITTED,
-                'field_changes' => [],
-                'title' => $concept->title,
-                'description' => $concept->description,
-                'hotel_type' => $concept->hotel_type,
-            ]);
+        DB::transaction(function () use ($submitting, $membership, $actor) {
+            foreach ($submitting as $concept) {
+                $concept->fill([
+                    'status' => self::STATUS_SUBMITTED,
+                    'submitted_at' => now(),
+                    'submitted_by' => $actor->user_id,
+                    // A verdict from the previous round no longer applies.
+                    'faculty_feedback' => null,
+                    'reviewed_at' => null,
+                    'reviewed_by' => null,
+                ])->save();
 
-            // The whole team's rows close together: one concept, one submission.
-            self::teamTasks((string) $membership->group_name, (int) $membership->faculty_id)
-                ->each(function (Task $task) {
-                    $task->status = 'archived';
-                    // Feedback from the last round would otherwise render as
-                    // "needs revision" on a row that has just been submitted.
-                    $task->feedback = null;
-                    $task->save();
-                });
+                HotelConceptRevision::create([
+                    'hotel_concept_id' => $concept->hotel_concept_id,
+                    'user_id' => $actor->user_id,
+                    'editor_name' => \App\Http\Controllers\HotelConceptController::displayName($actor),
+                    'action' => HotelConceptRevision::SUBMITTED,
+                    'field_changes' => [],
+                    'title' => $concept->title,
+                    'description' => $concept->description,
+                    'hotel_type' => $concept->hotel_type,
+                ]);
+            }
+
+            self::syncTeamTasks($membership, $actor, false);
 
             ActivityLog::record(
                 $actor,
                 ActivityLog::CONCEPT_SUBMITTED,
-                'Submitted the hotel concept "' . $concept->title . '" of team "'
-                    . $membership->group_name . '" to faculty for review.'
+                'Submitted ' . $submitting
+                    ->map(fn (HotelConcept $c) => self::slotLabel($c->slot) . ' "' . $c->title . '"')
+                    ->implode(' and ')
+                    . ' of team "' . $membership->group_name . '" to faculty for review.'
             );
         });
 
-        Notifier::conceptSubmitted($actor, $concept, $membership);
+        Notifier::conceptsSubmitted($actor, $submitting, $membership);
     }
 
     /**
-     * Record the faculty verdict.
+     * Record the faculty verdict on one concept.
      *
-     * Approving leaves the task archived and the concept read-only. Sending it
-     * back reopens both, and counts the round on each side so the team's card and
-     * the faculty's review dialog agree on how many times it has come back.
+     * One concept at a time by design: the team proposed two so that faculty could
+     * take each on its own merits, approving one and sending the other back. But
+     * approval is a choice between the two, not a verdict on one in isolation — so
+     * approving a slot also settles its sibling as not selected, in the same
+     * transaction, rather than leaving it to a verdict that may never come.
      */
     public static function review(
         HotelConcept $concept,
@@ -251,7 +418,9 @@ class HotelConceptDesk
         bool $revise,
         ?string $feedback
     ): void {
-        DB::transaction(function () use ($concept, $membership, $faculty, $revise, $feedback) {
+        $notSelected = null;
+
+        DB::transaction(function () use ($concept, $membership, $faculty, $revise, $feedback, &$notSelected) {
             $concept->fill([
                 'status' => $revise ? self::STATUS_NEEDS_REVISION : self::STATUS_APPROVED,
                 'faculty_feedback' => $feedback ?: null,
@@ -278,36 +447,88 @@ class HotelConceptDesk
                 'hotel_type' => $concept->hotel_type,
             ]);
 
-            // Stamp every member's row, not just the one faculty happened to open:
-            // the verdict is on the team's concept, and each Front Desk member's
-            // task card has to read the same way.
-            self::teamTasks((string) $membership->group_name, (int) $membership->faculty_id)
-                ->each(function (Task $task) use ($faculty, $feedback, $revise) {
-                    $task->fill([
-                        'feedback' => $feedback ?: null,
-                        'feedback_at' => now(),
-                        'feedback_by' => $faculty->user_id,
+            if (!$revise) {
+                $notSelected = self::conceptsFor((string) $membership->group_name, (int) $membership->faculty_id)
+                    ->reject(fn (HotelConcept $c) => $c->hotel_concept_id === $concept->hotel_concept_id)
+                    ->first();
+
+                if ($notSelected) {
+                    $notSelected->fill([
+                        'status' => self::STATUS_NOT_SELECTED,
+                        'reviewed_at' => now(),
+                        'reviewed_by' => $faculty->user_id,
+                    ])->save();
+
+                    HotelConceptRevision::create([
+                        'hotel_concept_id' => $notSelected->hotel_concept_id,
+                        'user_id' => $faculty->user_id,
+                        'editor_name' => \App\Http\Controllers\HotelConceptController::displayName($faculty),
+                        'action' => HotelConceptRevision::NOT_SELECTED,
+                        'field_changes' => [],
+                        'title' => $notSelected->title,
+                        'description' => $notSelected->description,
+                        'hotel_type' => $notSelected->hotel_type,
                     ]);
+                }
+            }
 
-                    if ($revise) {
-                        // 'active' with feedback is how this app spells "needs
-                        // revision" — see Task::getNeedsRevisionAttribute().
-                        $task->status = 'active';
-                        $task->revision_count = (int) $task->revision_count + 1;
-                    }
-
-                    $task->save();
-                });
+            self::syncTeamTasks($membership, $faculty, true);
 
             ActivityLog::record(
                 $faculty,
                 ActivityLog::CONCEPT_REVIEWED,
                 ($revise ? 'Requested changes on' : 'Approved')
-                    . ' the hotel concept "' . $concept->title . '" of team "'
-                    . $membership->group_name . '".'
+                    . ' ' . self::slotLabel($concept->slot) . ' "' . $concept->title
+                    . '" of team "' . $membership->group_name . '"'
+                    . ($notSelected
+                        ? ' as the official concept; ' . self::slotLabel($notSelected->slot) . ' not selected.'
+                        : '.')
             );
         });
 
-        Notifier::conceptReviewed($faculty, $concept, $membership, $revise);
+        Notifier::conceptReviewed($faculty, $concept, $membership, $revise, $notSelected);
+    }
+
+    /**
+     * Point the team's task rows at where the concepts actually stand.
+     *
+     * The task is open until faculty has decided and closed once they have — being
+     * editable no longer means there is something to do, since the not-selected
+     * concept stays editable too. A decision, not an open slot, is what closes it.
+     *
+     * Every member's row is stamped, not just the one a faculty happened to open —
+     * the concepts belong to the team, and each Front Desk member's card has to
+     * read the same way.
+     */
+    private static function syncTeamTasks(StudentGroup $membership, User $actor, bool $isVerdict): void
+    {
+        $concepts = self::conceptsFor((string) $membership->group_name, (int) $membership->faculty_id);
+        $decided = self::isDecided($concepts);
+
+        // Feedback is named per concept: "revise Concept 2" is useless on a card
+        // that cannot say which of the two it means.
+        $notes = $concepts
+            ->filter(fn (HotelConcept $c) => filled($c->faculty_feedback))
+            ->map(fn (HotelConcept $c) => self::slotLabel($c->slot) . ' — '
+                . self::statusLabel($c) . ': ' . $c->faculty_feedback)
+            ->implode("\n\n");
+
+        foreach (self::teamTasks((string) $membership->group_name, (int) $membership->faculty_id) as $task) {
+            // 'active' with feedback is how this app spells "needs revision" — see
+            // Task::getNeedsRevisionAttribute().
+            $task->status = $decided ? 'archived' : 'active';
+            $task->feedback = $notes !== '' ? $notes : null;
+
+            if ($isVerdict) {
+                $task->feedback_at = now();
+                $task->feedback_by = $actor->user_id;
+            }
+
+            // Counts rounds the team was sent back, across both concepts, so the
+            // card's "revision N" matches what actually happened.
+            $task->revision_count = (int) $concepts->sum(fn (HotelConcept $c) => (int) $c->revision_count);
+
+            $task->save();
+        }
     }
 }

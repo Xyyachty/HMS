@@ -1064,11 +1064,13 @@ class FacultyController extends Controller
                 ->all();
         }
 
-        // Front Desk's hotel concept, so the teams list names the hotel each team is
-        // building. The full text and its edit history stay in the Team Details modal.
+        // The hotel concepts, so the teams list names what each team proposed. Grouped
+        // rather than keyed: a team has two, and keyBy would silently keep one. The
+        // full text and the edit histories stay in the Team Details modal.
         $conceptsByGroup = \App\Models\HotelConcept::where('faculty_id', $facultyId)
+            ->orderBy('slot')
             ->get()
-            ->keyBy('group_name');
+            ->groupBy('group_name');
 
         return view('faculty.pagerole', compact(
             'students',
@@ -1369,23 +1371,41 @@ class FacultyController extends Controller
         $data = $request->validate([
             'decision' => ['required', 'in:approve,revise'],
             'feedback' => ['nullable', 'string', 'max:2000', 'required_if:decision,revise'],
+            // Which of the team's two concepts this verdict is about. Required only
+            // for the concept task; every other task is a single piece of work.
+            'slot' => [
+                Rule::requiredIf(fn () => $task->is_hotel_concept),
+                'integer',
+                Rule::in(HotelConceptDesk::SLOTS),
+            ],
         ], [
             'feedback.required_if' => 'Tell the student what to change before sending it back.',
+            'slot.required' => 'Say which concept this verdict is about.',
         ]);
 
+        $revise = $data['decision'] === 'revise';
+
+        // The concepts are two rows per team behind several task rows, and faculty
+        // judges each separately, so the verdict is recorded against one concept and
+        // the task rows are re-derived from both — see HotelConceptDesk::review().
+        if ($task->is_hotel_concept) {
+            return $this->storeConceptFeedback(
+                $task,
+                $facultyUser,
+                (int) $facultyId,
+                (int) $data['slot'],
+                $revise,
+                $data['feedback'] ?? null
+            );
+        }
+
+        // A concept task can be reopened by one concept while the other is still
+        // with faculty, so this check belongs after the concept branch, which does
+        // its own per-concept version.
         if ($task->status !== 'archived') {
             return response()->json([
                 'error' => 'This task has not been submitted yet, so there is nothing to review.',
             ], 422);
-        }
-
-        $revise = $data['decision'] === 'revise';
-
-        // The hotel concept is one row per team behind several task rows, so the
-        // verdict is recorded against the concept and fanned back out to all of
-        // them — see HotelConceptDesk::review().
-        if ($task->is_hotel_concept) {
-            return $this->storeConceptFeedback($task, $facultyUser, (int) $facultyId, $revise, $data['feedback'] ?? null);
         }
 
         $task->fill([
@@ -1421,14 +1441,24 @@ class FacultyController extends Controller
     }
 
     /**
-     * The verdict on a team's hotel concept.
+     * The verdict on one of a team's two hotel concepts.
      *
      * Written against the concept rather than the task row that happened to be
-     * opened: the concept is team-level, and every Front Desk member holds a task
-     * row pointing at it. HotelConceptDesk moves both sides together.
+     * opened: the concepts are team-level, and every Front Desk member holds a task
+     * row covering both. One slot at a time, because the pair exists so each can be
+     * judged on its own merits — approve one, send the other back.
+     *
+     * The response carries the whole team back, so the dialog can redraw both cards
+     * and leave the other concept's Approve buttons where they belong.
      */
-    private function storeConceptFeedback(Task $task, User $facultyUser, int $facultyId, bool $revise, ?string $feedback)
-    {
+    private function storeConceptFeedback(
+        Task $task,
+        User $facultyUser,
+        int $facultyId,
+        int $slot,
+        bool $revise,
+        ?string $feedback
+    ) {
         $membership = $task->student_id
             ? StudentGroup::where('student_id', $task->student_id)
                 ->where('faculty_id', $facultyId)
@@ -1443,26 +1473,45 @@ class FacultyController extends Controller
 
         $concept = HotelConcept::where('group_name', $membership->group_name)
             ->where('faculty_id', $facultyId)
+            ->where('slot', $slot)
             ->first();
 
-        if (!$concept || $concept->status !== HotelConceptDesk::STATUS_SUBMITTED) {
+        if (!$concept) {
             return response()->json([
-                'error' => 'This team has not submitted their hotel concept, so there is nothing to review.',
+                'error' => 'This team has not proposed ' . HotelConceptDesk::slotLabel($slot) . ' yet.',
+            ], 422);
+        }
+
+        $teamConcepts = HotelConceptDesk::conceptsFor($membership->group_name, $facultyId);
+
+        if (!HotelConceptDesk::allSlotsFilled($teamConcepts)) {
+            return response()->json([
+                'error' => 'This team has not proposed both concepts yet.',
+            ], 422);
+        }
+
+        if (HotelConceptDesk::isDecided($teamConcepts)) {
+            return response()->json([
+                'error' => 'You already approved a concept for this team — that decision is final.',
             ], 422);
         }
 
         HotelConceptDesk::review($concept, $membership, $facultyUser, $revise, $feedback);
 
-        return response()->json([
+        $team = HotelConceptController::payload(
+            HotelConceptController::forTeam($membership->group_name, $facultyId)
+        );
+
+        return response()->json(array_merge($team, [
             'success' => true,
-            // 'active' again on a revise, so the dialog reads like any other task.
-            'status' => $revise ? 'active' : 'archived',
-            'concept_status' => $concept->status,
-            'revision_count' => (int) $concept->revision_count,
+            // The task row is re-derived from both concepts, so read it back rather
+            // than assuming: one concept coming back reopens it, both settled closes it.
+            'status' => HotelConceptDesk::teamTasks((string) $membership->group_name, $facultyId)
+                ->first()?->status ?? 'archived',
             'message' => $revise
-                ? 'Sent back to the team with your feedback.'
-                : 'Hotel concept approved.',
-        ]);
+                ? 'Sent ' . HotelConceptDesk::slotLabel($slot) . ' back to the team with your feedback.'
+                : HotelConceptDesk::slotLabel($slot) . ' approved.',
+        ]));
     }
 
     /**
