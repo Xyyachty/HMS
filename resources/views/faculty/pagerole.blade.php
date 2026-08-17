@@ -1781,18 +1781,12 @@ function showTeamConceptError(msg) {
 }
 
 /* Both of a team's concepts for the Team Details modal — each with its own verdict
-   controls when faculty can still choose, or a note on why not. */
+   controls when faculty can still choose, or a note on why not. One self-contained
+   card per concept, no edit history: this tab is for deciding, not auditing —
+   the trail of who-changed-what stays in the review dialog. */
 function renderTeamConceptSlots(data) {
-    const rows = (data.slots || []).map(function (entry) {
-        return '<div class="mb-4">'
-            + '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-rose-500 mb-1">' + escHtml(entry.slot_label) + '</p>'
-            + (entry.concept
-                ? renderTeamHotelConcept({ concept: entry.concept, history: entry.history })
-                    + renderTeamConceptControls(entry, data)
-                : '<div class="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center">'
-                    + '<p class="text-xs font-bold text-slate-400">Not proposed yet.</p></div>')
-        + '</div>';
-    }).join('') || '<div class="px-3 py-6 text-center text-xs text-slate-400">This team has no hotel concepts yet.</div>';
+    const rows = (data.slots || []).map((entry) => renderTeamConceptCard(entry, data)).join('')
+        || '<div class="px-3 py-6 text-center text-xs text-slate-400">This team has no hotel concepts yet.</div>';
 
     if (!data.all_slots_filled) {
         return rows + '<p class="text-xs font-semibold text-slate-400 text-center">'
@@ -1802,38 +1796,133 @@ function renderTeamConceptSlots(data) {
     return rows;
 }
 
+/* One concept, as a single card: slot + status up top, the content in the
+   middle, the decision (or its outcome) as a footer — everything about this
+   concept in one place instead of stacked separate blocks. */
+function renderTeamConceptCard(entry, data) {
+    const concept = entry.concept;
+
+    if (!concept) {
+        return '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3.5 py-6 text-center mb-3">'
+            + '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-1">' + escHtml(entry.slot_label) + '</p>'
+            + '<p class="text-xs font-bold text-slate-400">Not proposed yet.</p>'
+        + '</div>';
+    }
+
+    const status = concept.status || 'draft';
+    const statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold '
+        + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">' + escHtml(concept.status_label) + '</span>';
+
+    // Who touched it last and when, as one line instead of a stack of paragraphs.
+    const metaParts = [];
+    if (concept.updated_by || concept.updated_at) {
+        metaParts.push('Updated'
+            + (concept.updated_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.updated_by) + '</span>' : '')
+            + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : ''));
+    }
+    if (concept.submitted_at) {
+        metaParts.push('Submitted'
+            + (concept.submitted_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.submitted_by) + '</span>' : '')
+            + ' on ' + escHtml(concept.submitted_at));
+    }
+    if (concept.reviewed_at) {
+        metaParts.push('Reviewed'
+            + (concept.reviewed_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.reviewed_by) + '</span>' : '')
+            + ' on ' + escHtml(concept.reviewed_at));
+    }
+    const meta = metaParts.length
+        ? '<p class="text-[10px] text-slate-400 mt-2.5 leading-relaxed">' + metaParts.join(' <span class="text-slate-300">·</span> ') + '</p>'
+        : '';
+
+    const feedback = concept.faculty_feedback
+        ? '<div class="mt-2.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">'
+            + '<p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Your feedback</p>'
+            + '<p class="text-[11px] text-amber-800 mt-0.5 whitespace-pre-line">' + escHtml(concept.faculty_feedback) + '</p>'
+          + '</div>'
+        : '';
+
+    return '<div class="rounded-xl border border-slate-200 bg-white overflow-hidden mb-3">'
+        + '<div class="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">'
+            + '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-rose-500">' + escHtml(entry.slot_label) + '</p>'
+            + '<div class="flex items-center gap-1.5 flex-wrap">' + statusBadge
+                + '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
+                    + escHtml(concept.hotel_type_label) + '</span>'
+            + '</div>'
+        + '</div>'
+        + '<div class="p-3.5">'
+            + '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>'
+            + '<p class="text-xs text-slate-600 mt-1.5 leading-relaxed whitespace-pre-line">' + escHtml(concept.description) + '</p>'
+            + meta
+            + feedback
+            + renderTeamConceptControls(entry, data)
+        + '</div>'
+    + '</div>';
+}
+
 /* Approve / Send back for one concept, or the reason those are not shown — decided
-   already, or this concept simply is not the one that lost. */
+   already, or this concept simply is not the one that lost.
+   Approve fires immediately — there is nothing more to say. Send back needs
+   feedback first, so that field only appears once the faculty asks for it, kept
+   in a hidden panel rather than shown up front. */
 function renderTeamConceptControls(entry, data) {
     if (entry.can_review) {
         const slot = Number(entry.slot);
-        return '<div class="mt-2 rounded-lg border border-slate-200 bg-white p-3">'
-            + '<label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5" for="teamConceptFeedback' + slot + '">'
-                + 'Feedback on ' + escHtml(entry.slot_label) + '</label>'
-            + '<textarea id="teamConceptFeedback' + slot + '" rows="3" maxlength="2000"'
-                + ' placeholder="What works here? What should change?"'
-                + ' class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>'
-            + '<p class="text-[10px] text-slate-400 mt-1">Required when sending back for revision.</p>'
-            + '<div class="flex flex-wrap gap-2 mt-2">'
+        return '<div class="mt-3 pt-3 border-t border-slate-200">'
+            + '<div class="flex flex-wrap gap-2" id="teamConceptButtons' + slot + '">'
                 + '<button type="button" data-team-concept-action="' + slot + '" onclick="submitTeamConceptFeedback(' + slot + ', \'approve\')"'
                     + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">'
                     + '<span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve ' + escHtml(entry.slot_label)
                 + '</button>'
-                + '<button type="button" data-team-concept-action="' + slot + '" onclick="submitTeamConceptFeedback(' + slot + ', \'revise\')"'
+                + '<button type="button" data-team-concept-action="' + slot + '" onclick="showTeamConceptRevisionForm(' + slot + ')"'
                     + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">'
                     + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back'
                 + '</button>'
+            + '</div>'
+            + '<div id="teamConceptRevisionForm' + slot + '" class="hidden mt-3 pt-3 border-t border-dashed border-slate-200">'
+                + '<label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5" for="teamConceptFeedback' + slot + '">'
+                    + 'Feedback on ' + escHtml(entry.slot_label) + '</label>'
+                + '<textarea id="teamConceptFeedback' + slot + '" rows="3" maxlength="2000"'
+                    + ' placeholder="What works here? What should change?"'
+                    + ' class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>'
+                + '<p class="text-[10px] text-slate-400 mt-1">Required before sending back.</p>'
+                + '<div class="flex flex-wrap gap-2 mt-2">'
+                    + '<button type="button" data-team-concept-action="' + slot + '" onclick="submitTeamConceptFeedback(' + slot + ', \'revise\')"'
+                        + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">'
+                        + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Confirm send back'
+                    + '</button>'
+                    + '<button type="button" onclick="hideTeamConceptRevisionForm(' + slot + ')"'
+                        + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-white text-slate-500 border border-slate-200 text-xs font-bold hover:bg-slate-50 transition">'
+                        + 'Cancel'
+                    + '</button>'
+                + '</div>'
             + '</div>'
         + '</div>';
     }
 
     if (data.decided) {
-        return Number(entry.slot) === Number(data.approved_slot)
-            ? '<p class="mt-2 text-[11px] font-bold text-emerald-600">Official hotel concept.</p>'
-            : '<p class="mt-2 text-[11px] font-semibold text-slate-400">Not selected.</p>';
+        return '<div class="mt-3 pt-3 border-t border-slate-200">'
+            + (Number(entry.slot) === Number(data.approved_slot)
+                ? '<p class="text-[11px] font-bold text-emerald-600 inline-flex items-center gap-1">'
+                    + '<span class="iconify text-sm" data-icon="mdi:check-decagram"></span> Official hotel concept</p>'
+                : '<p class="text-[11px] font-semibold text-slate-400">Not selected</p>')
+        + '</div>';
     }
 
     return '';
+}
+
+/* Reveal the feedback field only once the faculty has actually chosen to send
+   the concept back — Approve stays a single click with nothing to fill in. */
+function showTeamConceptRevisionForm(slot) {
+    document.getElementById('teamConceptButtons' + slot)?.classList.add('hidden');
+    const form = document.getElementById('teamConceptRevisionForm' + slot);
+    form?.classList.remove('hidden');
+    document.getElementById('teamConceptFeedback' + slot)?.focus();
+}
+
+function hideTeamConceptRevisionForm(slot) {
+    document.getElementById('teamConceptRevisionForm' + slot)?.classList.add('hidden');
+    document.getElementById('teamConceptButtons' + slot)?.classList.remove('hidden');
 }
 
 /* The verdict on one concept, from the Team Details tab. Mirrors
