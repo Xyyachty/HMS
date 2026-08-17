@@ -1066,11 +1066,14 @@ class FacultyController extends Controller
 
         // The hotel concepts, so the teams list names what each team proposed. Grouped
         // rather than keyed: a team has two, and keyBy would silently keep one. The
-        // full text and the edit histories stay in the Team Details modal.
+        // full text and the edit histories stay in the Team Details modal. Once a
+        // team has decided, only the winner is listed — the same rule payload()
+        // applies, kept in step so the table and the modal never disagree.
         $conceptsByGroup = \App\Models\HotelConcept::where('faculty_id', $facultyId)
             ->orderBy('slot')
             ->get()
-            ->groupBy('group_name');
+            ->groupBy('group_name')
+            ->map(fn ($concepts) => \App\Support\HotelConceptDesk::visibleConcepts($concepts));
 
         return view('faculty.pagerole', compact(
             'students',

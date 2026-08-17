@@ -1588,11 +1588,11 @@ function paintReviewConcepts(data) {
     if (!pane) return;
 
     pane.innerHTML = '<div class="space-y-3">'
-        + (data.slots || []).map((entry) => renderReviewConceptCard(entry, data)).join('')
+        + (data.slots || []).map(renderReviewConceptCard).join('')
         + '</div>';
 }
 
-function renderReviewConceptCard(entry, data) {
+function renderReviewConceptCard(entry) {
     const concept = entry.concept;
     const slot = Number(entry.slot);
 
@@ -1628,9 +1628,7 @@ function renderReviewConceptCard(entry, data) {
         : '<p class="mt-2.5 pt-2.5 border-t border-slate-200 text-[11px] font-semibold text-slate-400">'
             + escHtml(concept.status === 'approved'
                 ? 'Official hotel concept.'
-                : (data && data.decided)
-                    ? 'Not selected.'
-                    : 'Waiting for the other concept to be proposed before you can review either one.')
+                : 'Waiting for the other concept to be proposed before you can review either one.')
           + '</p>';
 
     return '<div class="rounded-xl border border-slate-200 bg-white p-3">'
@@ -1899,12 +1897,12 @@ function renderTeamConceptControls(entry, data) {
         + '</div>';
     }
 
+    // Decided, and this entry made it into the payload at all — the losing
+    // concept never does once a decision exists, so this is always the winner.
     if (data.decided) {
         return '<div class="mt-3 pt-3 border-t border-slate-200">'
-            + (Number(entry.slot) === Number(data.approved_slot)
-                ? '<p class="text-[11px] font-bold text-emerald-600 inline-flex items-center gap-1">'
-                    + '<span class="iconify text-sm" data-icon="mdi:check-decagram"></span> Official hotel concept</p>'
-                : '<p class="text-[11px] font-semibold text-slate-400">Not selected</p>')
+            + '<p class="text-[11px] font-bold text-emerald-600 inline-flex items-center gap-1">'
+                + '<span class="iconify text-sm" data-icon="mdi:check-decagram"></span> Official hotel concept</p>'
         + '</div>';
     }
 

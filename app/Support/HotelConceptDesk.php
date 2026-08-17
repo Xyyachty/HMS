@@ -81,15 +81,14 @@ class HotelConceptDesk
     /**
      * States in which a concept is open for edits.
      *
-     * Everything but approved: the team keeps improving a concept while it sits
-     * with faculty, after it comes back for revision, and even after it loses to
-     * the other one — only the choice itself, approval, closes the door.
+     * The team keeps improving a concept while it sits with faculty and after it
+     * comes back for revision. The choice closes both concepts at once: the
+     * approved one because it is final, the other because it is out of the run.
      */
     private const EDITABLE_STATUSES = [
         self::STATUS_DRAFT,
         self::STATUS_SUBMITTED,
         self::STATUS_NEEDS_REVISION,
-        self::STATUS_NOT_SELECTED,
     ];
 
     public static function isValidSlot($slot): bool
@@ -118,9 +117,9 @@ class HotelConceptDesk
      *
      * Front Desk alone proposes each first version — that is their task. Once a
      * concept exists it belongs to the team, so every member may improve it, which
-     * is the point of the workflow. That stays true while it sits with faculty,
-     * after it comes back for revision, and even after it loses to the other one —
-     * approval is the only thing that closes a concept to further edits.
+     * is the point of the workflow. That stays true while it sits with faculty and
+     * after it comes back for revision. Faculty's choice ends it either way: the
+     * approved concept is final, the other is out of the run.
      */
     public static function canEdit(?HotelConcept $concept, array $roleKeys): bool
     {
@@ -177,6 +176,22 @@ class HotelConceptDesk
     }
 
     /**
+     * The concepts a portal should show.
+     *
+     * Before a decision, both — the point is to weigh them against each other.
+     * After one, only the approved concept: the other stops being a proposal the
+     * moment it loses, and leaving it on screen reads as if it were still in
+     * play. The row itself is kept, history and all; this is only about what the
+     * portals draw.
+     */
+    public static function visibleConcepts(Collection $concepts): Collection
+    {
+        $approved = self::approvedConcept($concepts);
+
+        return $approved ? collect([$approved]) : $concepts->values();
+    }
+
+    /**
      * Whether faculty can act on this slot right now.
      *
      * Both proposals have to exist — faculty is choosing between two, not judging
@@ -192,24 +207,16 @@ class HotelConceptDesk
         return (bool) $concepts->firstWhere('slot', $slot);
     }
 
-    /** The concepts still open for edits — everything but the approved one. */
-    public static function editableConcepts(Collection $concepts): Collection
-    {
-        return $concepts->filter(
-            fn (HotelConcept $concept) => in_array(self::status($concept), self::EDITABLE_STATUSES, true)
-        )->values();
-    }
-
     /**
      * The concepts a submit would actually hand in.
      *
-     * Narrower than editableConcepts(): a concept already sitting with faculty is
-     * still open for edits, but resubmitting it untouched would only reset its
-     * timestamps and write a hollow "submitted" entry. Submit moves only what
-     * genuinely needs faculty's attention again — new work, or a concept coming
-     * back from a revision request. (not_selected never appears here: it only
-     * exists once a concept has been chosen, and choosing ends submitting for
-     * the pair — see isDecided().)
+     * A concept already sitting with faculty is still open for edits, but
+     * resubmitting it untouched would only reset its timestamps and write a
+     * hollow "submitted" entry. Submit moves only what genuinely needs faculty's
+     * attention again — new work, or a concept coming back from a revision
+     * request. (not_selected never appears here: it only exists once a concept
+     * has been chosen, and choosing ends submitting for the pair — see
+     * isDecided().)
      */
     public static function submittableConcepts(Collection $concepts): Collection
     {
@@ -226,7 +233,9 @@ class HotelConceptDesk
             return 'Only the Front Desk members of this team can propose a hotel concept.';
         }
 
-        return 'Your faculty approved this concept, so it is final and can no longer be edited.';
+        return self::status($concept) === self::STATUS_NOT_SELECTED
+            ? 'Your faculty chose the other concept, so this one is closed.'
+            : 'Your faculty approved this concept, so it is final and can no longer be edited.';
     }
 
     /** Why a submit was refused. */

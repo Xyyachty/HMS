@@ -343,9 +343,12 @@ class HotelConceptController extends Controller
     /**
      * Wire shape shared by the JSON endpoints.
      *
-     * One entry per slot, always both of them, whether or not a concept has been
-     * written there — the portals render the empty slot as an invitation to fill
-     * it, so they need to be told it exists.
+     * One entry per slot that is still worth showing. Before a decision that is
+     * both slots, always, whether or not a concept has been written there — the
+     * portals render the empty slot as an invitation to fill it, so they need to
+     * be told it exists. After a decision it is the approved slot alone: the
+     * losing concept stops being a proposal, and an empty-looking slot there
+     * would read as an invitation to write one, which is exactly what it is not.
      *
      * $viewerRoles is the team roles of whoever is asking, so the student dashboard
      * can repaint each slot's Edit button and the shared Submit button from the same
@@ -356,10 +359,18 @@ class HotelConceptController extends Controller
     {
         $concepts = $team['concepts'] ?? collect();
         $histories = $team['histories'] ?? [];
+        $decided = HotelConceptDesk::isDecided($concepts);
+        $visible = HotelConceptDesk::visibleConcepts($concepts);
 
         $slots = [];
         foreach (HotelConceptDesk::SLOTS as $slot) {
-            $concept = $concepts->firstWhere('slot', $slot);
+            $concept = $visible->firstWhere('slot', $slot);
+
+            // Decided and not the winner: this slot is not drawn at all.
+            if ($decided && !$concept) {
+                continue;
+            }
+
             $history = $histories[$slot] ?? collect();
 
             $slots[] = [

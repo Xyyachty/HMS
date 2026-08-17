@@ -436,6 +436,15 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- The concept faculty chose. It stops being a proposal at that point
+                             and becomes what this team is building, so it sits with the team's
+                             name rather than in the panel about proposals below — which is why
+                             that panel disappears once this fills in. Painted from the same
+                             payload as that panel, by paintTeamHeaderConcept(), so there is one
+                             description of "what the team's concept is" rather than a server
+                             copy and a client copy that can drift. --}}
+                        <div id="teamHeaderConcept" class="hidden mt-4 pt-4 border-t border-white/15"></div>
                     </div>
 
                     {{-- The concepts used to head this panel. They outgrew it once there
@@ -524,17 +533,21 @@
                     @endif
                 </div>
 
-                {{-- The team's two hotel concepts, side by side.
-                     Faculty judges each separately, so each card carries its own state,
-                     its own feedback and its own edit history. Front Desk proposes each
-                     first version; every member may then improve either one; Front Desk
-                     hands both in with the single button in this header, because the pair
-                     exists so faculty can weigh them against each other.
+                {{-- The team's two hotel concepts, side by side, while faculty is still
+                     choosing. Faculty judges each separately, so each card carries its own
+                     state, its own feedback and its own edit history. Front Desk proposes
+                     each first version; every member may then improve either one; Front
+                     Desk hands both in with the single button in this header, because the
+                     pair exists so faculty can weigh them against each other.
+
+                     Once faculty decides, this whole card hides — paintTeamHeaderConcept()
+                     toggles it — because there is nothing left to propose or compare; the
+                     winner has already moved up into the team header above.
 
                      The whole panel is rendered from #conceptPanel by the same JS that
                      repaints it after a save or a submit, so there is one description of
                      this markup rather than a server copy and a client copy that drift. --}}
-                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                <div id="conceptPanelCard" class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                     <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
                         <div class="min-w-0">
                             <h3 class="text-sm font-bold text-slate-800">Hotel Concepts</h3>
@@ -1206,12 +1219,13 @@
             submitted: 'Submitted to your faculty. You can still improve it until they choose.',
             needs_revision: 'Your faculty asked for changes.',
             approved: 'Your faculty approved this concept. It is your official hotel concept and is no longer editable.',
-            not_selected: 'Your faculty chose the other concept. You can still refine this one.',
         };
 
         /* Redraw both slots and the shared Submit button from a server payload. Every
            write returns the whole team, so a save on one concept also refreshes the
-           other's lock state and the button that hands the pair in. */
+           other's lock state and the button that hands the pair in. Also repaints
+           the header, since the same payload is what says whether a decision has
+           been made. */
         function paintHotelConcepts(data) {
             if (data && Array.isArray(data.slots)) conceptState = data;
 
@@ -1225,6 +1239,58 @@
                 submitBtn.classList.toggle('hidden', !conceptState?.can_submit);
                 submitBtn.disabled = false;
             }
+
+            paintTeamHeaderConcept();
+        }
+
+        /* The concept faculty chose, in the team header. Once one slot's payload
+           comes back approved, that is the team's identity now — the proposals
+           panel below has nothing left to do, so it hides and this fills in. */
+        function paintTeamHeaderConcept() {
+            const container = document.getElementById('teamHeaderConcept');
+            const panelCard = document.getElementById('conceptPanelCard');
+            if (!container) return;
+
+            const approved = (conceptState?.slots || [])
+                .map((entry) => entry.concept)
+                .find((concept) => concept && concept.status === 'approved');
+
+            if (panelCard) panelCard.classList.toggle('hidden', !!approved);
+
+            if (!approved) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+
+            // Descriptions run up to 5000 characters and the panel that used to hold
+            // the full text is gone, so long ones clamp with a way to still read them.
+            const description = approved.description || '';
+            const isLong = description.length > 180;
+
+            container.innerHTML =
+                '<div class="flex items-start justify-between gap-3 flex-wrap">'
+                    + '<div class="min-w-0">'
+                        + '<p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Official Hotel Concept</p>'
+                        + '<h4 class="text-base font-extrabold text-white leading-tight mt-0.5">' + conceptEscape(approved.title) + '</h4>'
+                    + '</div>'
+                    + '<span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full bg-white/15 border border-white/20 text-[10px] font-bold text-white">'
+                        + conceptEscape(approved.hotel_type_label) + '</span>'
+                + '</div>'
+                + '<p id="teamHeaderConceptDesc" class="text-[11px] text-white/70 leading-relaxed mt-2 whitespace-pre-line' + (isLong ? ' line-clamp-3' : '') + '">'
+                    + conceptEscape(description) + '</p>'
+                + (isLong
+                    ? '<button type="button" onclick="toggleTeamHeaderConceptDesc(this)" class="mt-1.5 text-[10px] font-bold text-white/80 hover:text-white underline underline-offset-2">Show more</button>'
+                    : '');
+
+            container.classList.remove('hidden');
+        }
+
+        function toggleTeamHeaderConceptDesc(button) {
+            const desc = document.getElementById('teamHeaderConceptDesc');
+            if (!desc) return;
+            const stillClamped = desc.classList.toggle('line-clamp-3');
+            button.textContent = stillClamped ? 'Show more' : 'Show less';
         }
 
         /* One concept card: where it stands, what it says, what faculty said about it,

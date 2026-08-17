@@ -220,10 +220,19 @@ class DeanController extends Controller
 
         // The hotel concepts per team, so the list names what each one proposed. Keyed
         // by faculty then group because group names repeat across faculty, and each
-        // entry is a list because a team proposes two.
+        // entry is a list because a team proposes two — until one is decided, when
+        // it drops to the winner alone, same rule HotelConceptDesk::visibleConcepts()
+        // applies everywhere else.
         $conceptsByFacultyGroup = [];
+        $rawConceptsByFacultyGroup = [];
         foreach (\App\Models\HotelConcept::orderBy('slot')->get() as $concept) {
-            $conceptsByFacultyGroup[(int) $concept->faculty_id][$concept->group_name][] = $concept;
+            $rawConceptsByFacultyGroup[(int) $concept->faculty_id][$concept->group_name][] = $concept;
+        }
+        foreach ($rawConceptsByFacultyGroup as $facultyId => $groups) {
+            foreach ($groups as $groupName => $concepts) {
+                $conceptsByFacultyGroup[$facultyId][$groupName] =
+                    \App\Support\HotelConceptDesk::visibleConcepts(collect($concepts));
+            }
         }
 
         return view('dean.faculties', compact(
