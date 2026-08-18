@@ -8,6 +8,7 @@
     <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -1402,7 +1403,17 @@
         /* Hand both concepts to faculty. The team can keep improving either one
            afterward — submitting only starts the review, it does not lock anything. */
         async function submitHotelConcepts() {
-            if (!confirm('Submit your hotel concepts to your faculty?\n\nYour team can keep improving either concept until your faculty approves one.')) {
+            const confirmed = await Swal.fire({
+                icon: 'question',
+                title: 'Submit your hotel concepts?',
+                text: 'Submit your hotel concepts to your faculty? Your team can keep improving either concept until your faculty approves one.',
+                showCancelButton: true,
+                confirmButtonText: 'Submit',
+                confirmButtonColor: '#DB2777',
+                cancelButtonText: 'Cancel',
+            }).then(result => result.isConfirmed);
+
+            if (!confirmed) {
                 return;
             }
 
@@ -1426,8 +1437,9 @@
                 }
 
                 paintHotelConcepts(data);
+                Swal.fire({ icon: 'success', title: 'Submitted', text: 'Your hotel concepts were sent to your faculty.', confirmButtonColor: '#DB2777' });
             } catch (error) {
-                alert(error.message || 'Could not submit the hotel concepts.');
+                Swal.fire({ icon: 'error', title: 'Could not submit', text: error.message || 'Could not submit the hotel concepts.', confirmButtonColor: '#DB2777' });
                 if (button) button.disabled = false;
             }
         }
