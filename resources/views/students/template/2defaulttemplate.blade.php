@@ -671,7 +671,7 @@ function MobileMenu({ open, onClose, onNav, links }) {
 }
 
 function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav }) {
-  const PAGE_OPTIONS = ['home', 'rooms', 'restaurant', 'experience', 'amenities', 'booking'];
+  const PAGE_OPTIONS = ['home', 'rooms', 'restaurant', 'amenities', 'experience', 'booking'];
   const handleAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1266,9 +1266,6 @@ function AmenitiesPage({ onNav, addons }) {
             })}
           </div>
         )}
-        <div style={{ textAlign: 'center', paddingBottom: '5rem', paddingTop: items.length ? '3rem' : 0 }}>
-          <button className="btn-warm" onClick={() => onNav('booking')}>Book Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i></button>
-        </div>
       </section>
     </>
   );
@@ -1462,8 +1459,8 @@ function App() {
       { id: 'nav-home', key: 'home', label: 'Home' },
       { id: 'nav-rooms', key: 'rooms', label: 'Rooms' },
       { id: 'nav-restaurant', key: 'restaurant', label: 'Restaurant' },
-      { id: 'nav-experience', key: 'experience', label: 'Experience' },
       { id: 'nav-amenities', key: 'amenities', label: 'Amenities' },
+      { id: 'nav-experience', key: 'experience', label: 'Experience' },
     ]
   ));
   const [rooms, setRooms] = useState(() => (
