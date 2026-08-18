@@ -1470,12 +1470,56 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['orders' => [], 'can_place' => false, 'can_fulfill' => false]);
         }
 
-        $orders = HotelFoodOrder::where('group_name', $membership->group_name)
-            ->where('faculty_id', $membership->faculty_id)
-            ->orderByDesc('hotel_food_order_id')
-            ->limit(200)
-            ->get()
-            ->map(fn ($order) => $order->toTemplateArray());
+        // Tenancy is the base of the query, never one of the optional filters below —
+        // nothing they do can widen it, only narrow it further.
+        $query = HotelFoodOrder::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id);
+
+        // Each filter is ignored unless it is well-formed, so a junk query string can
+        // never quietly change the answer. Note the strict in_array on type rather than
+        // normalizeOrderType(), which defaults anything it does not recognise to
+        // room_service — ?type=bogus has to mean "no type filter", not "room service".
+        $filtered = false;
+
+        $status = trim((string) $request->query('status', ''));
+        if ($status !== '' && in_array($status, HotelFoodOrder::STATUSES, true)) {
+            $query->where('status', $status);
+            $filtered = true;
+        }
+
+        $type = trim((string) $request->query('type', ''));
+        if ($type !== '' && in_array($type, HotelFoodOrder::ORDER_TYPES, true)) {
+            $query->where('order_type', $type);
+            $filtered = true;
+        }
+
+        // created_at is a timestamp and these bounds are bare YYYY-MM-DD, so
+        // "created_at <= '2026-08-19'" would read as 2026-08-19 00:00:00 and drop that
+        // whole day. The upper bound is half-open against the next midnight instead,
+        // which covers the day and still uses the index. Both bounds are UTC, matching
+        // how the column is stored.
+        $from = (string) $request->query('from', '');
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+            $query->where('created_at', '>=', $from . ' 00:00:00');
+            $filtered = true;
+        }
+
+        $to = (string) $request->query('to', '');
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+            $query->where('created_at', '<', date('Y-m-d', strtotime($to . ' +1 day')) . ' 00:00:00');
+            $filtered = true;
+        }
+
+        $query->orderByDesc('hotel_food_order_id');
+
+        // The two live order boards ask unfiltered and want the most recent 200 tickets,
+        // which is what they have always had. A report asks a narrower question and must
+        // not have its answer silently truncated, so a filtered read is uncapped.
+        if (!$filtered) {
+            $query->limit(200);
+        }
+
+        $orders = $query->get()->map(fn ($order) => $order->toTemplateArray());
 
         return response()->json([
             'orders'      => $orders,
