@@ -1240,6 +1240,13 @@ function AmenitiesPage({ onNav, addons }) {
               const available = item.status === 'Available';
               return (
                 <div key={item.id} className="exp-card">
+                  {item.img ? (
+                    <img src={item.img} alt={item.name} style={{ width: '100%', height: 140, objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(27,67,50,0.06)' }}>
+                      <i className="fa-solid fa-concierge-bell" style={{ color: 'var(--warm)', fontSize: '1.2rem' }}></i>
+                    </div>
+                  )}
                   <div style={{ padding: '1.25rem' }}>
                     <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(27,67,50,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
                       <i className="fa-solid fa-concierge-bell" style={{ color: 'var(--warm)', fontSize: '0.85rem' }}></i>
