@@ -131,15 +131,16 @@ class FacultyController extends Controller
         }
 
         $allowedRoles = $this->teamRoleKeys();
-        $rolesByMember = $this->resolveMemberRoles(
+        $roleResult = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
             $allowedRoles
         );
 
-        if ($rolesByMember === null) {
-            return back()->withErrors(['member_roles' => 'Please select valid roles for each selected member.'])->withInput();
+        if ($roleResult['error'] !== null) {
+            return back()->withErrors(['member_roles' => $roleResult['error']])->withInput();
         }
+        $rolesByMember = $roleResult['roles'];
 
         $group = Group::firstOrCreate([
             'group_name' => $validated['group_name'],
@@ -279,21 +280,21 @@ class FacultyController extends Controller
                 $seenMembers[] = $studentId;
             }
 
-            $rolesByMember = $this->resolveMemberRoles(
+            $roleResult = $this->resolveMemberRoles(
                 $memberIds,
                 $team['member_roles'] ?? [],
                 $allowedRoles
             );
 
-            if ($rolesByMember === null) {
-                return back()->withErrors(["teams.{$index}.member_roles" => "Invalid roles for team \"{$name}\"."])->withInput();
+            if ($roleResult['error'] !== null) {
+                return back()->withErrors(["teams.{$index}.member_roles" => "Team \"{$name}\": {$roleResult['error']}"])->withInput();
             }
 
             $seenNames[] = $nameKey;
             $normalizedTeams[] = [
                 'group_name' => $name,
                 'members' => $memberIds,
-                'roles_by_member' => $rolesByMember,
+                'roles_by_member' => $roleResult['roles'],
             ];
         }
 
@@ -345,29 +346,40 @@ class FacultyController extends Controller
             : "{$count} teams created successfully.");
     }
 
-    /** @return list<string> */
-    private function teamRoleKeys(): array
+    /** @return array<string, string> role key => display label */
+    private function teamRoleLabels(): array
     {
         return [
-            'front_desk',
-            'restaurant_management',
-            'room_management',
-            'maintenance',
-            'housekeeping',
+            'front_desk'            => 'Front Desk',
+            'restaurant_management' => 'Restaurant Management',
+            'room_management'       => 'Room Management',
+            'maintenance'           => 'Maintenance',
+            'housekeeping'          => 'Housekeeping Services',
         ];
     }
 
+    /** @return list<string> */
+    private function teamRoleKeys(): array
+    {
+        return array_keys($this->teamRoleLabels());
+    }
+
     /**
-     * Build per-member roles. Missing selections get rotating default hotel roles.
+     * Build per-member roles for one team. A role may be held by at most one member —
+     * a duplicate pick returns a message naming the role. Missing selections still get
+     * an auto-assigned default, but only from roles the team hasn't used yet (always
+     * possible: teams top out at 4 members against 5 roles).
      *
      * @param  list<int|string>  $memberIds
      * @param  array<int|string, mixed>  $memberRoles
      * @param  list<string>  $allowedRoles
-     * @return array<int, list<string>>|null  null when an explicit role is invalid
+     * @return array{roles: array<int, list<string>>|null, error: string|null}
      */
-    private function resolveMemberRoles(array $memberIds, array $memberRoles, array $allowedRoles): ?array
+    private function resolveMemberRoles(array $memberIds, array $memberRoles, array $allowedRoles): array
     {
+        $labels = $this->teamRoleLabels();
         $resolved = [];
+        $usedRoles = []; // role => true, claimed by an earlier member in this same save
         $index = 0;
 
         foreach ($memberIds as $studentId) {
@@ -378,21 +390,31 @@ class FacultyController extends Controller
 
             $roles = array_values(array_unique(array_filter($roles, fn ($r) => $r !== null && $r !== '')));
 
+            foreach ($roles as $role) {
+                if (!in_array($role, $allowedRoles, true)) {
+                    return ['roles' => null, 'error' => 'Please select valid roles for each selected member.'];
+                }
+                if (isset($usedRoles[$role])) {
+                    $label = $labels[$role] ?? $role;
+                    return ['roles' => null, 'error' => "\"{$label}\" is already assigned to another member on this team."];
+                }
+            }
+
             if ($roles === []) {
-                $roles = [$allowedRoles[$index % count($allowedRoles)]];
+                $free = array_values(array_diff($allowedRoles, array_keys($usedRoles)));
+                // Always non-empty: teams top out at 4 members against 5 roles.
+                $roles = [$free[$index % count($free)]];
             }
 
             foreach ($roles as $role) {
-                if (!in_array($role, $allowedRoles, true)) {
-                    return null;
-                }
+                $usedRoles[$role] = true;
             }
 
             $resolved[(int) $studentId] = $roles;
             $index++;
         }
 
-        return $resolved;
+        return ['roles' => $resolved, 'error' => null];
     }
 
     public function students()
@@ -1112,15 +1134,16 @@ class FacultyController extends Controller
         if (count($memberIds) > 4) {
             return back()->withErrors(['members' => 'A team cannot have more than 4 members.'])->withInput();
         }
-        $rolesByMember = $this->resolveMemberRoles(
+        $roleResult = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
             $allowedRoles
         );
 
-        if ($rolesByMember === null) {
-            return back()->withErrors(['member_roles' => 'Please select valid roles for each selected member.'])->withInput();
+        if ($roleResult['error'] !== null) {
+            return back()->withErrors(['member_roles' => $roleResult['error']])->withInput();
         }
+        $rolesByMember = $roleResult['roles'];
 
         // Rename the canonical group in place (id-stable) — the delete+recreate below
         // only handles student_groups membership rows, so without this the other 8

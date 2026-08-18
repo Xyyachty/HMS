@@ -533,7 +533,14 @@
                 'maintenance' => 'Maintenance',
                 'housekeeping' => 'Housekeeping',
             ];
+            // Roles each existing team already has assigned, used by the Insert tab so a
+            // role already taken on the target team is disabled before the faculty even
+            // picks it for the new member.
+            $groupRolesMap = ($groups ?? collect())->mapWithKeys(fn ($members, $groupName) => [
+                $groupName => $members->flatMap(fn ($m) => $m->roles->pluck('role'))->unique()->values(),
+            ]);
         @endphp
+        <script>window.EXISTING_TEAM_ROLES = @json($groupRolesMap);</script>
 
         <!-- Tab Panel: Add Team (single or multiple) -->
         <div id="modal-panel-add_team" class="flex-1 min-h-0 overflow-y-auto">
@@ -650,7 +657,8 @@
                                                 <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="create-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
-                                                        {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}>
+                                                        {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}
+                                                        onchange="refreshRoleAvailability('create')">
                                                     <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
                                                     <span class="truncate">{{ $rl }}</span>
                                                 </label>
@@ -811,7 +819,7 @@
                 <div class="p-6 space-y-5">
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Existing Team <span class="text-red-400">*</span></label>
-                        <select name="group_name"
+                        <select name="group_name" onchange="refreshRoleAvailability('insert')"
                             class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
                             <option value="">Select a team...</option>
                             @foreach($groups ?? [] as $groupName => $members)
@@ -883,7 +891,8 @@
                                                 <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="insert-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
-                                                        {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}>
+                                                        {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}
+                                                        onchange="refreshRoleAvailability('insert')">
                                                     <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
                                                     <span class="truncate">{{ $rl }}</span>
                                                 </label>
@@ -1047,7 +1056,8 @@
                                                 <label class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="update-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
-                                                        data-student-id="{{ $sk }}">
+                                                        data-student-id="{{ $sk }}"
+                                                        onchange="refreshRoleAvailability('update')">
                                                     {{ $rl }}
                                                 </label>
                                             @endforeach
@@ -2272,6 +2282,18 @@ function refreshBulkTeamPreviews() {
         });
     });
 
+    // A role may be held by at most one member of the SAME team (bucket index) — a
+    // student assigned to a different team can freely reuse it.
+    const usedRolesByTeam = buckets.map((members) => new Set(members.flatMap((m) => m.roles)));
+    document.querySelectorAll('.bulk-student-row').forEach((row) => {
+        const select = row.querySelector('.bulk-team-select');
+        const teamIndex = select?.value === '' ? -1 : parseInt(select.value, 10);
+        const used = teamIndex >= 0 ? (usedRolesByTeam[teamIndex] || new Set()) : new Set();
+        row.querySelectorAll('.bulk-role-checkbox').forEach((roleCb) => {
+            roleCb.disabled = !roleCb.checked && used.has(roleCb.value);
+        });
+    });
+
     document.querySelectorAll('.bulk-team-slot').forEach((slot, index) => {
         const countEl = slot.querySelector('.bulk-team-count');
         const previewEl = slot.querySelector('.bulk-team-preview');
@@ -2481,6 +2503,11 @@ function nextDefaultRoleIndex(mode) {
         (mode === 'insert' ? '.insert-student-checkbox' : '.create-student-checkbox') + ':checked'
     );
     const used = new Set();
+    if (mode === 'insert') {
+        const select = document.querySelector('#insertStudentForm select[name="group_name"]');
+        const existing = (window.EXISTING_TEAM_ROLES || {})[select ? select.value : ''] || [];
+        existing.forEach(r => used.add(r));
+    }
     checked.forEach(cb => {
         const card = cb.closest('.team-student-card');
         if (!card) return;
@@ -2492,6 +2519,39 @@ function nextDefaultRoleIndex(mode) {
         if (!used.has(TEAM_DEFAULT_ROLES[i])) return i;
     }
     return checked.length % TEAM_DEFAULT_ROLES.length;
+}
+
+// A role may be held by at most one member. Scans whichever list is active (create,
+// insert, or update) and disables any role checkbox already checked on another member
+// of the same team, so the faculty sees it grey out instead of discovering the clash
+// on submit. Checked boxes stay enabled so their own owner can still uncheck them.
+function refreshRoleAvailability(mode) {
+    const config = {
+        create: { checkbox: '.create-student-checkbox', card: '.create-student-card' },
+        insert: { checkbox: '.insert-student-checkbox', card: '.insert-student-card' },
+        update: { checkbox: '.update-student-checkbox', card: '.update-student-row' },
+    }[mode];
+    if (!config) return;
+
+    const used = new Set();
+
+    if (mode === 'insert') {
+        const select = document.querySelector('#insertStudentForm select[name="group_name"]');
+        const existing = (window.EXISTING_TEAM_ROLES || {})[select ? select.value : ''] || [];
+        existing.forEach(r => used.add(r));
+    }
+
+    document.querySelectorAll(config.checkbox + ':checked').forEach(memberCb => {
+        const card = memberCb.closest(config.card);
+        if (!card) return;
+        card.querySelectorAll('input[type="checkbox"][name^="member_roles"]:checked').forEach(r => used.add(r.value));
+    });
+
+    document.querySelectorAll(config.card).forEach(card => {
+        card.querySelectorAll('input[type="checkbox"][name^="member_roles"]').forEach(roleCb => {
+            roleCb.disabled = !roleCb.checked && used.has(roleCb.value);
+        });
+    });
 }
 
 function onTeamMemberToggle(checkbox, mode) {
@@ -2506,6 +2566,7 @@ function onTeamMemberToggle(checkbox, mode) {
         }
     }
     updateTeamSelectedCount(mode);
+    refreshRoleAvailability(mode);
 }
 
 function onSingleTeamMemberToggle(checkbox) {
@@ -2647,6 +2708,8 @@ function openUpdateModal(groupName, memberData) {
     const grantStatus = document.getElementById('grantStatus');
     if (grantStatus) grantStatus.textContent = '';
 
+    refreshRoleAvailability('update');
+
     document.getElementById('updateTeamModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
@@ -2715,6 +2778,7 @@ function onUpdateMemberToggle(checkbox) {
     if (!checkbox.checked) {
         card.querySelectorAll('.update-role-checkbox').forEach(cb => { cb.checked = false; });
     }
+    refreshRoleAvailability('update');
 }
 
 // ── Task Assignment Wizard ─────────────────────
@@ -2868,6 +2932,9 @@ document.addEventListener('change', function(e) {
         @if(old('_form_source') === 'insert_student')
             switchCreateModalTab('insert');
         @endif
+        // Reflect the roles old() restored into the form as already-taken.
+        refreshRoleAvailability('create');
+        refreshRoleAvailability('insert');
     @endif
     // Open from Activity Logs "Add Team" (or ?create=1)
     @if(request()->boolean('create'))
@@ -2877,6 +2944,17 @@ document.addEventListener('change', function(e) {
         history.replaceState(null, '', url);
     @endif
 })();
+
+@if ($errors->any() && old('_form_source') === 'update_team')
+window.addEventListener('load', function () {
+    Swal.fire({
+        icon: 'error',
+        title: 'Could not save team',
+        text: @json($errors->first()),
+        confirmButtonColor: '#DB2777',
+    });
+});
+@endif
 
 // ── Team Info Modal ────────────────────────────
 let teamModalActivityLogs = [];
