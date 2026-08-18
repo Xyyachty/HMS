@@ -18,6 +18,7 @@
     { id: 'nav-rooms', key: 'rooms', label: 'Rooms' },
     { id: 'nav-restaurant', key: 'restaurant', label: 'Restaurant' },
     { id: 'nav-experience', key: 'experience', label: 'Experience' },
+    { id: 'nav-amenities', key: 'amenities', label: 'Amenities' },
   ];
 
   const DEFAULT_MENUS = [
