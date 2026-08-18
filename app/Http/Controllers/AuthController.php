@@ -43,7 +43,20 @@ class AuthController extends Controller
 
                 return back()->withErrors([
                     'email' => 'Your account is pending dean approval.',
-                ])->onlyInput('email');
+                ])->with('error_title', 'Account Pending')->onlyInput('email');
+            }
+
+            // Dean/faculty can deactivate a student's account; block the sign-in here.
+            // (An already-open session is caught on the next request by
+            // EnsureStudentIsActive middleware.)
+            if ($user && $user->role === 'student' && ($user->status ?? 'active') === 'inactive') {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()->withErrors([
+                    'email' => 'Your account has been deactivated. Contact your instructor or the dean.',
+                ])->with('error_title', 'Account Deactivated')->onlyInput('email');
             }
             if ($user) {
                 ActivityLog::record($user, ActivityLog::LOGIN, 'Signed in to the portal.');
@@ -79,7 +92,7 @@ class AuthController extends Controller
 
         return back()->withErrors([
             'email' => 'The provided credentials do not match our records.',
-        ])->onlyInput('email');
+        ])->with('error_title', 'Login Failed')->onlyInput('email');
     }
 
     public function forgotPassword()
