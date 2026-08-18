@@ -1054,9 +1054,9 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, ca
     { key: 'home', label: 'Home' },
     { key: 'rooms', label: 'Rooms' },
     { key: 'restaurant', label: 'Restaurant' },
-    { key: 'experience', label: 'Experience' },
     { key: 'amenities', label: 'Amenities' },
-    { key: 'booking', label: 'Book Now' },
+    { key: 'experience', label: 'Experience' },
+    
   ];
 
   /* Asks which page the link opens as a numbered menu. Typing a raw key by hand
@@ -2679,12 +2679,6 @@ function AmenitiesPage({ onNavigate, addons }) {
             })}
           </div>
         )}
-
-        <div style={{ textAlign: 'center', marginTop: items.length ? '3rem' : 0 }}>
-          <button className="btn-primary" onClick={() => onNavigate('booking')}>
-            Book Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
-          </button>
-        </div>
       </section>
     </>
   );
@@ -2879,8 +2873,8 @@ function App() {
       { id: 'nav-home', key: 'home', label: 'Home' },
       { id: 'nav-rooms', key: 'rooms', label: 'Rooms' },
       { id: 'nav-restaurant', key: 'restaurant', label: 'Restaurant' },
-      { id: 'nav-experience', key: 'experience', label: 'Experience' },
       { id: 'nav-amenities', key: 'amenities', label: 'Amenities' },
+      { id: 'nav-experience', key: 'experience', label: 'Experience' },
     ]
   ));
   const [rooms, setRooms] = useState([]);
