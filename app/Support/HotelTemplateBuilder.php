@@ -33,7 +33,9 @@ class HotelTemplateBuilder
         'front_desk' => ['home'],
         'room_management' => ['rooms'],
         'restaurant_management' => ['restaurant'],
-        'housekeeping' => ['experience'],
+        // Housekeeping also owns the add-ons catalogue the Amenities page lists,
+        // so it is the one that page's static copy belongs to as well.
+        'housekeeping' => ['experience', 'amenities'],
         'maintenance' => [],
     ];
 

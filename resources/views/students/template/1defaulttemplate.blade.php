@@ -1049,6 +1049,7 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, ca
     { key: 'rooms', label: 'Rooms' },
     { key: 'restaurant', label: 'Restaurant' },
     { key: 'experience', label: 'Experience' },
+    { key: 'amenities', label: 'Amenities' },
     { key: 'booking', label: 'Book Now' },
   ];
 
@@ -2620,6 +2621,54 @@ function ExperiencePage({ onNavigate }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• BOOKING PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+function AmenitiesPage({ onNavigate, addons }) {
+  const items = addons || [];
+
+  return (
+    <>
+      <div className="page-header">
+        <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Beyond the Stay</p>
+        <h1 className="font-display">Hotel Amenities</h1>
+        <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
+      </div>
+      <section style={{ padding: '0 1.5rem 4rem', maxWidth: 1200, margin: '0 auto' }}>
+        {items.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--fg-muted)' }}>
+            <i className="fa-solid fa-concierge-bell" style={{ fontSize: '1.6rem', color: 'var(--accent)', marginBottom: '1rem', display: 'block' }}></i>
+            <p style={{ fontSize: '0.85rem' }}>No amenities listed yet.</p>
+          </div>
+        ) : (
+          <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1.25rem' }}>
+            {items.map(item => {
+              const available = item.status === 'Available';
+              return (
+                <div key={item.id} className="exp-item">
+                  <i className="fa-solid fa-concierge-bell" style={{ fontSize: '1.4rem', color: 'var(--accent)', marginBottom: '0.85rem', display: 'block' }}></i>
+                  <h4 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.35rem' }}>{item.name}</h4>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', fontWeight: 300, lineHeight: 1.55, marginBottom: '0.5rem' }}>{formatPeso(item.price)}</p>
+                  <span style={{
+                    display: 'inline-block', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.05em',
+                    textTransform: 'uppercase', padding: '0.25rem 0.6rem', borderRadius: '999px',
+                    color: available ? '#2f7a4d' : '#a33',
+                    background: available ? 'rgba(47,122,77,0.1)' : 'rgba(170,51,51,0.1)',
+                  }}>{item.status}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{ textAlign: 'center', marginTop: items.length ? '3rem' : 0 }}>
+          <button className="btn-primary" onClick={() => onNavigate('booking')}>
+            Book Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+          </button>
+        </div>
+      </section>
+    </>
+  );
+}
+
+
 function BookingPage({ onToast, rooms }) {
   const roomList = rooms && rooms.length ? rooms : [];
   const [form, setForm] = useState({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
@@ -2809,6 +2858,7 @@ function App() {
       { id: 'nav-rooms', key: 'rooms', label: 'Rooms' },
       { id: 'nav-restaurant', key: 'restaurant', label: 'Restaurant' },
       { id: 'nav-experience', key: 'experience', label: 'Experience' },
+      { id: 'nav-amenities', key: 'amenities', label: 'Amenities' },
     ]
   ));
   const [rooms, setRooms] = useState([]);
@@ -3164,6 +3214,7 @@ function App() {
       />
     ),
     experience: <ExperiencePage onNavigate={navigateTo} />,
+    amenities: <AmenitiesPage onNavigate={navigateTo} addons={addons} />,
     booking: <BookingPage onToast={showToast} rooms={rooms} />,
   };
 

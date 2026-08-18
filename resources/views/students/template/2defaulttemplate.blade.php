@@ -665,7 +665,7 @@ function MobileMenu({ open, onClose, onNav, links }) {
 }
 
 function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav }) {
-  const PAGE_OPTIONS = ['home', 'rooms', 'restaurant', 'experience', 'booking'];
+  const PAGE_OPTIONS = ['home', 'rooms', 'restaurant', 'experience', 'amenities', 'booking'];
   const handleAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1218,6 +1218,55 @@ function addDays(dateStr, n) {
   return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
 }
 
+function AmenitiesPage({ onNav, addons }) {
+  const items = addons || [];
+
+  return (
+    <>
+      <div className="page-header">
+        <span className="section-num">Beyond the Stay</span>
+        <h1 className="font-display">Hotel Amenities</h1>
+        <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
+      </div>
+      <section style={{ padding: '0 1.5rem 4rem', maxWidth: 1100, margin: '0 auto' }}>
+        {items.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--fg-muted)' }}>
+            <i className="fa-solid fa-concierge-bell" style={{ fontSize: '1.6rem', color: 'var(--warm)', marginBottom: '1rem', display: 'block' }}></i>
+            <p style={{ fontSize: '0.85rem' }}>No amenities listed yet.</p>
+          </div>
+        ) : (
+          <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1.25rem' }}>
+            {items.map(item => {
+              const available = item.status === 'Available';
+              return (
+                <div key={item.id} className="exp-card">
+                  <div style={{ padding: '1.25rem' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(27,67,50,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                      <i className="fa-solid fa-concierge-bell" style={{ color: 'var(--warm)', fontSize: '0.85rem' }}></i>
+                    </div>
+                    <h4 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{item.name}</h4>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', fontWeight: 400, lineHeight: 1.5, marginBottom: '0.5rem' }}>{'₱' + Number(item.price || 0).toLocaleString()}</p>
+                    <span style={{
+                      display: 'inline-block', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.05em',
+                      textTransform: 'uppercase', padding: '0.25rem 0.6rem', borderRadius: '999px',
+                      color: available ? '#2f7a4d' : '#a33',
+                      background: available ? 'rgba(47,122,77,0.1)' : 'rgba(170,51,51,0.1)',
+                    }}>{item.status}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ textAlign: 'center', paddingBottom: '5rem', paddingTop: items.length ? '3rem' : 0 }}>
+          <button className="btn-warm" onClick={() => onNav('booking')}>Book Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i></button>
+        </div>
+      </section>
+    </>
+  );
+}
+
+
 function BookingPage({ onToast, rooms }) {
   const roomList = rooms && rooms.length ? rooms : ROOMS;
   const [form, setForm] = useState({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
@@ -1406,6 +1455,7 @@ function App() {
       { id: 'nav-rooms', key: 'rooms', label: 'Rooms' },
       { id: 'nav-restaurant', key: 'restaurant', label: 'Restaurant' },
       { id: 'nav-experience', key: 'experience', label: 'Experience' },
+      { id: 'nav-amenities', key: 'amenities', label: 'Amenities' },
     ]
   ));
   const [rooms, setRooms] = useState(() => (
@@ -1421,6 +1471,17 @@ function App() {
   const [cardImages, setCardImages] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getCardImages ? window.HMSSiteContent.getCardImages() : {}
   ));
+  // Housekeeping's add-ons catalogue, for the Amenities page. Unlike rooms/menus
+  // this is not template content — it lives in the database, so it is read from
+  // the same endpoint the Rooms add-on picker uses rather than HMSSiteContent.
+  // A one-shot fetch on mount is enough: nothing on this page writes to it.
+  const [addons, setAddons] = useState([]);
+  useEffect(() => {
+    fetch('/students/hotel/addons', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data.items)) setAddons(data.items); })
+      .catch(() => {});
+  }, []);
 
   const syncSiteContent = useCallback(() => {
     if (!window.HMSSiteContent) return;
@@ -1499,6 +1560,7 @@ function App() {
     ),
     restaurant: <RestaurantPage onNav={navigateTo} onToast={showToast} menus={menus} canEditMenus={canEditMenus} cardImages={cardImages} />,
     experience: <ExperiencePage onNav={navigateTo} onToast={showToast} canEdit={canEditExperiences} cardImages={cardImages} />,
+    amenities: <AmenitiesPage onNav={navigateTo} addons={addons} />,
     booking: <BookingPage onToast={showToast} rooms={rooms} />,
   };
 
