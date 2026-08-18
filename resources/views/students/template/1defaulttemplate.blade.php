@@ -2643,7 +2643,13 @@ function AmenitiesPage({ onNavigate, addons }) {
               const available = item.status === 'Available';
               return (
                 <div key={item.id} className="exp-item">
-                  <i className="fa-solid fa-concierge-bell" style={{ fontSize: '1.4rem', color: 'var(--accent)', marginBottom: '0.85rem', display: 'block' }}></i>
+                  {item.img ? (
+                    <img src={item.img} alt={item.name} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 8, marginBottom: '0.85rem' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: 140, borderRadius: 8, marginBottom: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.04)' }}>
+                      <i className="fa-solid fa-concierge-bell" style={{ fontSize: '1.4rem', color: 'var(--accent)' }}></i>
+                    </div>
+                  )}
                   <h4 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.35rem' }}>{item.name}</h4>
                   <p style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', fontWeight: 300, lineHeight: 1.55, marginBottom: '0.5rem' }}>{formatPeso(item.price)}</p>
                   <span style={{
