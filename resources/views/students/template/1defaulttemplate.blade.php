@@ -682,6 +682,12 @@ function menuFoodImg(item) {
   return 'https://picsum.photos/seed/' + seed + '/800/600.jpg';
 }
 
+function amenityImg(item) {
+  if (item && item.img) return item.img;
+  const seed = encodeURIComponent((item && (item.id || item.name)) || 'amenity');
+  return 'https://picsum.photos/seed/' + seed + '/800/600.jpg';
+}
+
 /* A room with no photo of its own — every seeded room starts that way — would render
    <img src=""> and leave a blank hole where its neighbours show a picture. Same
    stand-in the menu uses, seeded by the room so each one keeps the same photo
@@ -2638,26 +2644,36 @@ function AmenitiesPage({ onNavigate, addons }) {
             <p style={{ fontSize: '0.85rem' }}>No amenities listed yet.</p>
           </div>
         ) : (
-          <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}>
             {items.map(item => {
               const available = item.status === 'Available';
               return (
-                <div key={item.id} className="exp-item">
-                  {item.img ? (
-                    <img src={item.img} alt={item.name} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 8, marginBottom: '0.85rem' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: 140, borderRadius: 8, marginBottom: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.04)' }}>
-                      <i className="fa-solid fa-concierge-bell" style={{ fontSize: '1.4rem', color: 'var(--accent)' }}></i>
+                <div key={item.id} className="menu-food-card">
+                  <div className="menu-food-img">
+                    <img
+                      src={amenityImg(item)}
+                      alt={item.name}
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                    <div className="menu-food-img-fallback" style={{ display: 'none' }}>
+                      <i className="fa-solid fa-concierge-bell" style={{ fontSize: '1.6rem', color: 'var(--accent)' }}></i>
                     </div>
-                  )}
-                  <h4 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.35rem' }}>{item.name}</h4>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', fontWeight: 300, lineHeight: 1.55, marginBottom: '0.5rem' }}>{formatPeso(item.price)}</p>
-                  <span style={{
-                    display: 'inline-block', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.05em',
-                    textTransform: 'uppercase', padding: '0.25rem 0.6rem', borderRadius: '999px',
-                    color: available ? '#2f7a4d' : '#a33',
-                    background: available ? 'rgba(47,122,77,0.1)' : 'rgba(170,51,51,0.1)',
-                  }}>{item.status}</span>
+                    <div className="menu-food-price">{formatPeso(item.price)}</div>
+                  </div>
+                  <div className="menu-food-body">
+                    <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 0.5rem' }}>{item.name}</h3>
+                    <span style={{
+                      display: 'inline-block', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.05em',
+                      textTransform: 'uppercase', padding: '0.25rem 0.6rem', borderRadius: '999px',
+                      color: available ? '#2f7a4d' : '#a33',
+                      background: available ? 'rgba(47,122,77,0.1)' : 'rgba(170,51,51,0.1)',
+                    }}>{item.status}</span>
+                  </div>
                 </div>
               );
             })}

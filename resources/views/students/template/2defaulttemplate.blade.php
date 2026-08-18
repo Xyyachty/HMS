@@ -590,6 +590,12 @@ function pickImageFile(onPicked) {
   input.click();
 }
 
+function amenityImg(item) {
+  if (item && item.img) return item.img;
+  const seed = encodeURIComponent((item && (item.id || item.name)) || 'amenity');
+  return 'https://picsum.photos/seed/' + seed + '/800/600.jpg';
+}
+
 function resolveCardImg(kind, id, fallback) {
   if (window.HMSSiteContent && typeof window.HMSSiteContent.getCardImage === 'function') {
     return window.HMSSiteContent.getCardImage(kind, id, fallback) || fallback;
@@ -1235,30 +1241,25 @@ function AmenitiesPage({ onNav, addons }) {
             <p style={{ fontSize: '0.85rem' }}>No amenities listed yet.</p>
           </div>
         ) : (
-          <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1.25rem' }}>
+          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1.25rem' }}>
             {items.map(item => {
               const available = item.status === 'Available';
               return (
-                <div key={item.id} className="exp-card">
-                  {item.img ? (
-                    <img src={item.img} alt={item.name} style={{ width: '100%', height: 140, objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(27,67,50,0.06)' }}>
-                      <i className="fa-solid fa-concierge-bell" style={{ color: 'var(--warm)', fontSize: '1.2rem' }}></i>
-                    </div>
-                  )}
+                <div key={item.id} className="rest-card">
+                  <div className="rest-card-img">
+                    <img src={amenityImg(item)} alt={item.name} loading="lazy" />
+                  </div>
                   <div style={{ padding: '1.25rem' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(27,67,50,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                      <i className="fa-solid fa-concierge-bell" style={{ color: 'var(--warm)', fontSize: '0.85rem' }}></i>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{item.name}</h3>
+                      <span style={{
+                        display: 'inline-block', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.05em',
+                        textTransform: 'uppercase', padding: '0.25rem 0.6rem', borderRadius: '999px',
+                        color: available ? '#2f7a4d' : '#a33',
+                        background: available ? 'rgba(47,122,77,0.1)' : 'rgba(170,51,51,0.1)',
+                      }}>{item.status}</span>
                     </div>
-                    <h4 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{item.name}</h4>
-                    <p style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', fontWeight: 400, lineHeight: 1.5, marginBottom: '0.5rem' }}>{'₱' + Number(item.price || 0).toLocaleString()}</p>
-                    <span style={{
-                      display: 'inline-block', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.05em',
-                      textTransform: 'uppercase', padding: '0.25rem 0.6rem', borderRadius: '999px',
-                      color: available ? '#2f7a4d' : '#a33',
-                      background: available ? 'rgba(47,122,77,0.1)' : 'rgba(170,51,51,0.1)',
-                    }}>{item.status}</span>
+                    <p style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.9rem', margin: 0 }}>{'₱' + Number(item.price || 0).toLocaleString()}</p>
                   </div>
                 </div>
               );
