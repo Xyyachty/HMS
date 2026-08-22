@@ -435,8 +435,18 @@
             <div class="flex-1 min-h-0 bg-slate-100 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200">
                 <div class="px-3 py-2 flex items-center justify-between gap-2 bg-white border-b border-slate-100 flex-shrink-0">
                     <span id="reviewWorkLabel" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">The team's live site</span>
-                    <a id="reviewOpenTab" href="#" target="_blank" rel="noopener"
-                       class="text-[10px] font-bold text-brand hover:underline hidden">Open in new tab ↗</a>
+                    <div class="flex items-center gap-3">
+                        {{-- Only rendered once a task has been sent back before, so there is
+                             an earlier save to compare this submission against. --}}
+                        <div id="reviewCompareToggle" class="hidden inline-flex rounded-lg bg-slate-100 p-0.5">
+                            <button type="button" data-compare="before"
+                                class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 transition">Before</button>
+                            <button type="button" data-compare="after"
+                                class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-white text-slate-800 shadow-sm transition">After</button>
+                        </div>
+                        <a id="reviewOpenTab" href="#" target="_blank" rel="noopener"
+                           class="text-[10px] font-bold text-brand hover:underline hidden">Open in new tab ↗</a>
+                    </div>
                 </div>
                 <div class="flex-1 min-h-0 relative">
                     <div id="reviewPreviewEmpty" class="absolute inset-0 flex items-center justify-center text-center px-6">
@@ -463,25 +473,41 @@
                          concept at a time instead, so this block hides and each concept
                          card in the left pane carries its own controls. --}}
                     <div id="reviewDecisionBlock" class="space-y-3">
-                        <div>
-                            <label id="reviewFeedbackLabel" for="reviewFeedback" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                Feedback to the student
-                            </label>
-                            <textarea id="reviewFeedback" rows="6" maxlength="2000"
-                                placeholder="What did they do well? What should change?"
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
-                            <p class="text-[10px] text-slate-400 mt-1">Required when sending back for revision.</p>
-                        </div>
-
-                        <div class="flex flex-col gap-2 pt-1">
+                        {{-- Step 1: pick a verdict. The feedback box only belongs to
+                             Revise, so it stays out of the way until that is chosen. --}}
+                        <div id="reviewChoiceStep" class="flex flex-col gap-2 pt-1">
                             <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')"
                                 class="w-full px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">
                                 <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve
                             </button>
-                            <button type="button" id="reviewReviseBtn" onclick="submitTaskFeedback('revise')"
+                            <button type="button" id="reviewReviseBtn" onclick="showReviseStep()"
                                 class="w-full px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">
-                                <span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back for revision
+                                <span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Revise
                             </button>
+                        </div>
+
+                        {{-- Step 2: revise only. --}}
+                        <div id="reviewReviseStep" class="hidden space-y-3">
+                            <div>
+                                <label id="reviewFeedbackLabel" for="reviewFeedback" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                    Feedback to the student
+                                </label>
+                                <textarea id="reviewFeedback" rows="6" maxlength="2000"
+                                    placeholder="What did they do well? What should change?"
+                                    class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
+                                <p class="text-[10px] text-slate-400 mt-1">Required — this is what the student will see.</p>
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <button type="button" id="reviewSendFeedbackBtn" onclick="submitTaskFeedback('revise')"
+                                    class="w-full px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">
+                                    <span class="iconify text-sm" data-icon="mdi:send-outline"></span> Send feedback
+                                </button>
+                                <button type="button" onclick="hideReviseStep()"
+                                    class="w-full px-3 py-2 rounded-xl bg-white text-slate-500 border border-slate-200 text-xs font-bold hover:bg-slate-50 transition">
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1458,6 +1484,48 @@ let currentModalTab = 'add_team';
 const TASK_REVIEW_URL = @json(route('faculty.tasks.review', ['task' => '__ID__']));
 const TASK_FEEDBACK_URL = @json(route('faculty.tasks.feedback', ['task' => '__ID__']));
 let reviewTaskId = null;
+// The two sides of the Before/After comparison for the open task.
+let reviewPreviewUrls = { before: null, after: null };
+
+/* The feedback box belongs to Revise alone, so it is revealed only on demand. */
+function showReviseStep() {
+    document.getElementById('reviewChoiceStep').classList.add('hidden');
+    document.getElementById('reviewReviseStep').classList.remove('hidden');
+    document.getElementById('reviewError').classList.add('hidden');
+    document.getElementById('reviewFeedback').focus();
+}
+
+function hideReviseStep() {
+    document.getElementById('reviewChoiceStep').classList.remove('hidden');
+    document.getElementById('reviewReviseStep').classList.add('hidden');
+    document.getElementById('reviewFeedback').value = '';
+    document.getElementById('reviewError').classList.add('hidden');
+}
+
+/* Before/After share one iframe: a full hotel site needs the width. */
+function setReviewCompareSide(side) {
+    const url = reviewPreviewUrls[side];
+    if (!url) return;
+    const frame = document.getElementById('reviewPreviewFrame');
+    frame.src = url;
+    document.getElementById('reviewOpenTab').href = url;
+    document.querySelectorAll('#reviewCompareToggle [data-compare]').forEach(function (btn) {
+        const on = btn.getAttribute('data-compare') === side;
+        btn.classList.toggle('bg-white', on);
+        btn.classList.toggle('text-slate-800', on);
+        btn.classList.toggle('shadow-sm', on);
+        btn.classList.toggle('text-slate-500', !on);
+    });
+    document.getElementById('reviewWorkLabel').textContent = side === 'before'
+        ? 'Before — at your last feedback'
+        : 'After — what they submitted now';
+}
+
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest ? e.target.closest('#reviewCompareToggle [data-compare]') : null;
+    if (!btn) return;
+    setReviewCompareSide(btn.getAttribute('data-compare'));
+});
 
 // Rows are rebuilt every time the modal opens, so delegate.
 document.addEventListener('click', function (e) {
@@ -1491,6 +1559,9 @@ function openTaskReview(taskId) {
     document.getElementById('reviewWorkLabel').textContent = "The team's live site";
     document.getElementById('reviewDecisionBlock').classList.remove('hidden');
     document.getElementById('reviewConceptHint').classList.add('hidden');
+    hideReviseStep();
+    reviewPreviewUrls = { before: null, after: null };
+    document.getElementById('reviewCompareToggle').classList.add('hidden');
 
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -1543,6 +1614,12 @@ function openTaskReview(taskId) {
                 empty.classList.add('hidden');
                 openTab.href = d.preview_url;
                 openTab.classList.remove('hidden');
+
+                reviewPreviewUrls = { before: d.before_preview_url || null, after: d.preview_url };
+                if (d.before_preview_url) {
+                    document.getElementById('reviewCompareToggle').classList.remove('hidden');
+                    setReviewCompareSide('after');
+                }
             }
 
             // Only a submitted task can be acted on.
@@ -1582,12 +1659,15 @@ function submitTaskFeedback(decision) {
     }
     document.getElementById('reviewError').classList.add('hidden');
 
-    const approve = document.getElementById('reviewApproveBtn');
-    const revise = document.getElementById('reviewReviseBtn');
-    approve.disabled = true; revise.disabled = true;
+    const buttons = [
+        document.getElementById('reviewApproveBtn'),
+        document.getElementById('reviewReviseBtn'),
+        document.getElementById('reviewSendFeedbackBtn'),
+    ].filter(Boolean);
+    buttons.forEach((b) => { b.disabled = true; });
 
     postTaskFeedback({ decision: decision, feedback: feedback }, decision, 'Task approved')
-        .catch(() => { approve.disabled = false; revise.disabled = false; });
+        .catch(() => { buttons.forEach((b) => { b.disabled = false; }); });
 }
 
 /* Draw both concept cards into the review pane, each with its own verdict

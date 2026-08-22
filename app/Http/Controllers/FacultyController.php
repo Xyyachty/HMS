@@ -15,6 +15,8 @@ use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\StudentGroupRole;
 use App\Models\Task;
+use App\Models\TeamRoleTemplate;
+use App\Models\TeamRoleTemplateVersion;
 use App\Models\User;
 use App\Models\UserInformation;
 use App\Support\HotelConceptDesk;
@@ -1045,6 +1047,12 @@ class FacultyController extends Controller
 
             $teamActivityByGroup[$groupName] = $allTasks
                 ->filter(function (Task $task) use ($memberStudentIds, $memberRoles) {
+                    // The hotel concept has its own "Hotel Concept" tab in this same
+                    // modal — it should not also clutter Team Task Activity.
+                    if ($task->is_hotel_concept) {
+                        return false;
+                    }
+
                     // A claimed row belongs to exactly one student, so show it only to
                     // that student's team. Falling through to the role match here listed
                     // every team's rows under every team holding the same role.
@@ -1340,11 +1348,37 @@ class FacultyController extends Controller
             : null;
 
         $previewUrl = null;
+        $beforePreviewUrl = null;
         if ($membership && !$task->is_hotel_concept) {
             $previewUrl = route('faculty.teams.preview', [
                 'group' => $membership->group_name,
                 'role' => $task->role,
             ]);
+
+            // "Before" only exists once faculty has sent this task back at least
+            // once: it is the newest save snapshot from on or before that verdict,
+            // so the comparison shows exactly what the student changed since.
+            if ((int) $task->revision_count > 0 && $task->feedback_at) {
+                $templateId = TeamRoleTemplate::where('group_name', $membership->group_name)
+                    ->where('faculty_id', $membership->faculty_id)
+                    ->where('role', $task->role)
+                    ->value('team_role_template_id');
+
+                $beforeVersionId = $templateId
+                    ? TeamRoleTemplateVersion::where('team_role_template_id', $templateId)
+                        ->where('created_at', '<=', $task->feedback_at)
+                        ->orderByDesc('version')
+                        ->value('team_role_template_version_id')
+                    : null;
+
+                if ($beforeVersionId) {
+                    $beforePreviewUrl = route('faculty.teams.preview', [
+                        'group' => $membership->group_name,
+                        'role' => $task->role,
+                        'before_version' => $beforeVersionId,
+                    ]);
+                }
+            }
         }
 
         $payload = [
@@ -1368,6 +1402,7 @@ class FacultyController extends Controller
             'feedback_by' => $task->feedbackBy?->name,
             'revision_count' => (int) $task->revision_count,
             'preview_url' => $previewUrl,
+            'before_preview_url' => $beforePreviewUrl,
         ];
 
         // The concept is text, not a page, so the review dialog reads it inline —
@@ -1555,6 +1590,9 @@ class FacultyController extends Controller
         $data = $request->validate([
             'group' => ['required', 'string', 'max:255'],
             'role' => ['nullable', 'string'],
+            // A version snapshot row id — renders the "Before" half of the
+            // faculty review comparison instead of the live site.
+            'before_version' => ['nullable', 'integer'],
         ]);
 
         $membership = StudentGroup::where('faculty_id', $facultyId)
@@ -1564,9 +1602,24 @@ class FacultyController extends Controller
             abort(404, 'That team does not belong to you.');
         }
 
+        $versionOverrides = [];
+        if (!empty($data['before_version'])) {
+            $role = $data['role'] ?? 'front_desk';
+            $ownsVersion = TeamRoleTemplateVersion::where('team_role_template_version_id', $data['before_version'])
+                ->whereHas('template', function ($q) use ($membership) {
+                    $q->where('group_name', $membership->group_name)
+                        ->where('faculty_id', $membership->faculty_id);
+                })
+                ->exists();
+            if ($ownsVersion) {
+                $versionOverrides[$role] = (int) $data['before_version'];
+            }
+        }
+
         $customizations = \App\Support\HotelTemplateBuilder::mergeTeamCustomizations(
             (string) $membership->group_name,
-            (int) $membership->faculty_id
+            (int) $membership->faculty_id,
+            $versionOverrides
         );
 
         $selected = \App\Models\GroupSettings::where('group_name', $membership->group_name)

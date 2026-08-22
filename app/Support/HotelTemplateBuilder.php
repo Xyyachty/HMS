@@ -264,8 +264,12 @@ class HotelTemplateBuilder
     /**
      * Merge every role's customizations into one hotel site preview.
      * Later roles overwrite same selector keys; user elements are concatenated.
+     *
+     * $versionOverrides lets a caller ask for one role's chunk as it looked at
+     * a past version instead of live — used by the faculty Before/After review
+     * preview. Every other caller passes nothing and gets today's exact result.
      */
-    public static function mergeTeamCustomizations(string $groupName, int $facultyId): array
+    public static function mergeTeamCustomizations(string $groupName, int $facultyId, array $versionOverrides = []): array
     {
         $order = array_flip(array_keys(self::ROLES));
         $rows = TeamRoleTemplate::where('group_name', $groupName)
@@ -280,7 +284,12 @@ class HotelTemplateBuilder
         ];
 
         foreach ($rows as $row) {
-            $chunk = is_array($row->customizations) ? $row->customizations : [];
+            $chunk = isset($versionOverrides[$row->role])
+                ? TemplateCustomizationStore::readCustomizations(
+                    (int) $row->team_role_template_id,
+                    (int) $versionOverrides[$row->role]
+                )
+                : (is_array($row->customizations) ? $row->customizations : []);
             foreach ($chunk as $key => $value) {
                 if ($key === self::USER_ELEMENTS_KEY) {
                     if (is_array($value)) {
