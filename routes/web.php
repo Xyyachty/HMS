@@ -411,7 +411,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'status' => 'archived',
             'student_id' => $student->user_information_id,
             'assigned_to' => $authUser->user_id,
-            'previous_version_id' => $task->submitted_version_id,
+            // A resubmission always follows a "send back", which already froze the
+            // state the feedback was written against — that is the truer Before, so
+            // it wins. The last submission is only the fallback.
+            'previous_version_id' => $task->previous_version_id ?: $task->submitted_version_id,
             'submitted_version_id' => $snapshotId ?: $task->submitted_version_id,
         ]);
 

@@ -1475,6 +1475,28 @@ class FacultyController extends Controller
         if ($revise) {
             $task->status = 'active';
             $task->revision_count = (int) $task->revision_count + 1;
+
+            // Freeze the work as it stands at the moment changes are asked for. This
+            // is the "Before" the next submission is judged against, and it is the
+            // honest one: what the student was looking at when the feedback landed.
+            // Anchoring here rather than only at submit time also means a single
+            // revise/resubmit round is enough to have something to compare.
+            $membership = $task->student_id
+                ? StudentGroup::where('student_id', $task->student_id)
+                    ->where('faculty_id', $facultyId)
+                    ->first()
+                : null;
+
+            if ($membership) {
+                $beforeId = \App\Support\HotelTemplateBuilder::snapshotForReview(
+                    \App\Support\HotelTemplateBuilder::ensureTemplate($membership, $task->role),
+                    $facultyUser,
+                    'Sent back: ' . $task->title
+                );
+                if ($beforeId) {
+                    $task->previous_version_id = $beforeId;
+                }
+            }
         }
 
         $task->save();
