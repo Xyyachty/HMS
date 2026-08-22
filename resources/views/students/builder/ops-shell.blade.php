@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-ops-theme="{{ ($selectedTemplate ?? null) === '2' ? '2' : '1' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -61,6 +61,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -216,6 +217,69 @@
         }
         .topbar-actions #profileWrapper { margin-left: 2px; flex-shrink: 0; }
         .topbar-actions .avatar { width: 26px; height: 26px; font-size: 10px; }
+
+        /* ── Template 2 shell theme (cream / forest green / Cormorant + DM Sans) ──
+           Scoped entirely under the [data-ops-theme="2"] attribute set on <html>
+           above, so a Template 1 team (or one that hasn't chosen yet) renders
+           exactly as before — nothing here touches the rules above. */
+        html[data-ops-theme="2"] body { background: #f7f4ef; color: #1a1a1a; }
+        html[data-ops-theme="2"] .topbar {
+            background: rgba(247, 244, 239, 0.9);
+            border-bottom: 1px solid #e2ddd5;
+        }
+        html[data-ops-theme="2"] .hms-logo-text {
+            background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        html[data-ops-theme="2"] .w-px.h-5.bg-zinc-800 { background: #e2ddd5; }
+        html[data-ops-theme="2"] #opsPageTitleBadge {
+            background: rgba(27,67,50,0.08) !important;
+            border-color: rgba(27,67,50,0.18) !important;
+            color: #1b4332 !important;
+        }
+        html[data-ops-theme="2"] .content-bg {
+            background: #f7f4ef;
+            background-image: radial-gradient(rgba(27,67,50,0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        html[data-ops-theme="2"] .hdr-btn.btn-secondary {
+            background: #ffffff; color: #1a1a1a; border: 1px solid #e2ddd5;
+        }
+        html[data-ops-theme="2"] .hdr-btn.btn-secondary:hover { background: #efe9e0; color: #1b4332; }
+        html[data-ops-theme="2"] .profile-dropdown {
+            background: #ffffff; border: 1px solid #e2ddd5; box-shadow: 0 10px 40px rgba(26,26,26,0.12);
+        }
+        html[data-ops-theme="2"] .dd-item { color: #4a4642; }
+        html[data-ops-theme="2"] .dd-item:hover { background: #efe9e0; color: #1a1a1a; }
+        html[data-ops-theme="2"] .dd-item i { color: #7a7570; }
+        html[data-ops-theme="2"] .dd-divider { background: #e2ddd5; }
+        html[data-ops-theme="2"] #toast {
+            background: #1a1a1a; border: 1px solid #2d2d2d; color: #f7f4ef;
+        }
+        html[data-ops-theme="2"] .status-bar { background: #efe9e0; border-top: 1px solid #e2ddd5; color: #7a7570; }
+
+        /* Shared left-sidebar partial (also used by the site editor, which never
+           sets data-ops-theme) — overridden here by descendant selector only,
+           the partial file itself is never edited. */
+        html[data-ops-theme="2"] #leftSidebar { background: #ffffff; border-color: #e2ddd5 !important; }
+        html[data-ops-theme="2"] #leftSidebar .text-white { color: #1a1a1a; }
+        html[data-ops-theme="2"] #leftSidebar .text-zinc-200 { color: #4a4642; }
+        html[data-ops-theme="2"] #leftSidebar .text-zinc-500,
+        html[data-ops-theme="2"] #leftSidebar .text-zinc-600 { color: #7a7570; }
+        html[data-ops-theme="2"] #leftSidebar .border-zinc-800 { border-color: #e2ddd5; }
+        html[data-ops-theme="2"] #leftSidebar .bg-zinc-800 { background: #f7f4ef; }
+        html[data-ops-theme="2"] #leftSidebar .border-zinc-700 { border-color: #e2ddd5; }
+        html[data-ops-theme="2"] #leftSidebar a.hover\:border-emerald-500\/50:hover { border-color: #2d6a4f !important; color: #1a1a1a !important; }
+        html[data-ops-theme="2"] #leftSidebar .border-emerald-500\/50 { border-color: #2d6a4f !important; }
+        html[data-ops-theme="2"] #leftSidebar .text-emerald-400 { color: #1b4332; }
+        html[data-ops-theme="2"] #leftSidebar .text-cyan-400 { color: #c17849; }
+        html[data-ops-theme="2"] #leftSidebar .bg-zinc-950\/80 { background: #efe9e0; }
+        html[data-ops-theme="2"] #leftSidebar #backToTasksBtn {
+            background: #ffffff; color: #1a1a1a; border-color: #e2ddd5;
+        }
+        html[data-ops-theme="2"] #leftSidebar #backToTasksBtn:hover {
+            background: #efe9e0; border-color: #2d6a4f; color: #1b4332;
+        }
     </style>
     @yield('head-extra')
 </head>
@@ -254,7 +318,7 @@
             @else
                 <span class="module-badge shrink-0">{{ $moduleLabel }}</span>
             @endif
-            <span class="module-badge shrink-0" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.1); color:#d4d4d8;">@yield('page-title', 'Staff Tool')</span>
+            <span class="module-badge shrink-0" id="opsPageTitleBadge" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.1); color:#d4d4d8;">@yield('page-title', 'Staff Tool')</span>
         </div>
 
         <div class="topbar-mid"></div>

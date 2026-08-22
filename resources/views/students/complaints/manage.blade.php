@@ -14,23 +14,23 @@
     --bg: #0c0b09; --bg-warm: #111110; --fg: #f5f0e8; --fg-muted: #9e978b;
     --accent: #c9a84c; --accent-light: #e2cc7a; --card: #181714; --border: #2a2621;
   }
-  #opsContentWrap { font-family: 'Outfit', sans-serif; }
-  .font-display { font-family: 'Playfair Display', serif; }
+  #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
+  .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
   .cx-badge {
     padding: 0.25rem 0.7rem; border-radius: 4px;
     font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent; display: inline-block;
   }
-  .cx-open        { background: rgba(244,63,94,0.18);  color: #fb7185; border-color: rgba(244,63,94,0.35); }
+  .cx-open        { background: rgba(244,63,94,0.18);  color: var(--danger, #fb7185); border-color: rgba(244,63,94,0.35); }
   .cx-in-progress { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
-  .cx-resolved    { background: rgba(34,197,94,0.18);  color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .cx-resolved    { background: rgba(34,197,94,0.18);  color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
   .cx-cancelled   { background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3); }
   .cx-maintenance { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .cx-housekeeping{ background: rgba(16,185,129,0.18); color: #34d399; border-color: rgba(16,185,129,0.35); }
   .btn-outline {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: transparent; color: var(--accent);
-    font-family: 'Outfit', sans-serif; font-weight: 500;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
     font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
     cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
@@ -41,7 +41,7 @@
   .btn-solid {
     display: inline-flex; align-items: center; gap: 0.45rem;
     background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
-    font-family: 'Outfit', sans-serif; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 600;
     font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
     padding: 0.55rem 1.1rem; border-radius: 6px; cursor: pointer;
     transition: filter 0.2s;
@@ -51,12 +51,12 @@
   .booking-input, .booking-select {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
     border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
-    font-family: 'Outfit', sans-serif; font-size: 0.85rem;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; width: 100%;
   }
   .booking-input:focus, .booking-select:focus { border-color: var(--accent); }
   .booking-input::placeholder { color: var(--fg-muted); opacity: 0.5; }
-  .booking-select option { background: #181714; color: var(--fg); }
+  .booking-select option { background: var(--card, #181714); color: var(--fg); }
   .cx-field-label {
     display: block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--fg-muted); margin-bottom: 0.4rem;
@@ -64,7 +64,7 @@
   .cx-tab {
     padding: 0.4rem 0.9rem; border-radius: 999px; border: 1px solid var(--border);
     background: transparent; color: var(--fg-muted); cursor: pointer;
-    font-family: 'Outfit', sans-serif; font-size: 0.72rem; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.72rem; font-weight: 600;
     letter-spacing: 0.06em; transition: all 0.15s;
   }
   .cx-tab:hover { color: var(--fg); }
@@ -73,6 +73,24 @@
     background: var(--card); border: 1px solid var(--border);
     border-radius: 12px; padding: 1.1rem 1.2rem;
   }
+
+  /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──
+     Additive only — nothing above this block is touched, so a Template 1
+     team (or one that hasn't chosen a template yet) renders unchanged. */
+  :root[data-ops-theme="2"] {
+    --bg: #f7f4ef; --bg-warm: #efe9e0; --fg: #1a1a1a; --fg-muted: #7a7570;
+    --accent: #1b4332; --accent-light: #2d6a4f; --card: #ffffff; --border: #e2ddd5;
+    --font-body: 'DM Sans', sans-serif; --font-display: 'Cormorant Garamond', serif;
+    --danger: #e11d48; --success: #15803d;
+  }
+  :root[data-ops-theme="2"] .cx-open { background: #ffe4e6; color: #be123c; border-color: #fecdd3; }
+  :root[data-ops-theme="2"] .cx-in-progress { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+  :root[data-ops-theme="2"] .cx-resolved { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+  :root[data-ops-theme="2"] .cx-cancelled { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+  :root[data-ops-theme="2"] .cx-maintenance { background: #f3e8ff; color: #7e22ce; border-color: #e9d5ff; }
+  :root[data-ops-theme="2"] .cx-housekeeping { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+  :root[data-ops-theme="2"] .booking-input,
+  :root[data-ops-theme="2"] .booking-select { background: rgba(27,67,50,0.03); }
 </style>
 @endsection
 
@@ -262,7 +280,7 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
       </div>
 
       {error && (
-        <p style={{ margin: '0.75rem 0 0', color: '#fb7185', fontSize: '0.8rem' }}>{error}</p>
+        <p style={{ margin: '0.75rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.8rem' }}>{error}</p>
       )}
 
       <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
@@ -316,7 +334,7 @@ function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
 
       {complaint.resolutionNote && (
         <div style={{ marginTop: '0.75rem', padding: '0.65rem 0.8rem', borderRadius: 8, background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)' }}>
-          <span style={{ display: 'block', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4ade80', marginBottom: 4 }}>Resolution</span>
+          <span style={{ display: 'block', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--success, #4ade80)', marginBottom: 4 }}>Resolution</span>
           <span style={{ fontSize: '0.82rem', color: 'var(--fg)' }}>{complaint.resolutionNote}</span>
         </div>
       )}

@@ -10,12 +10,12 @@
     --bg: #0c0b09; --bg-warm: #111110; --fg: #f5f0e8; --fg-muted: #9e978b;
     --accent: #c9a84c; --accent-light: #e2cc7a; --card: #181714; --border: #2a2621;
   }
-  #opsContentWrap { font-family: 'Outfit', sans-serif; }
-  .font-display { font-family: 'Playfair Display', serif; }
+  #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
+  .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
   .btn-outline {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: transparent; color: var(--accent);
-    font-family: 'Outfit', sans-serif; font-weight: 500;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
     font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
     cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
@@ -25,7 +25,7 @@
   .btn-solid {
     display: inline-flex; align-items: center; gap: 0.45rem;
     background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
-    font-family: 'Outfit', sans-serif; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 600;
     font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
     padding: 0.55rem 1.1rem; border-radius: 6px; cursor: pointer;
     transition: filter 0.2s;
@@ -39,13 +39,13 @@
   }
   .rs-preparing { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .rs-ready     { background: rgba(56,189,248,0.18); color: #38bdf8; border-color: rgba(56,189,248,0.35); }
-  .rs-delivering { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .rs-delivering { background: rgba(34,197,94,0.18); color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
   .rs-completed { background: rgba(20,148,80,0.18); color: #34d399; border-color: rgba(20,148,80,0.35); }
   .rs-cancelled { background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3); }
   .rs-tab {
     padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px solid var(--border);
     background: transparent; color: var(--fg-muted); cursor: pointer;
-    font-family: 'Outfit', sans-serif; font-size: 0.68rem; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.68rem; font-weight: 600;
     letter-spacing: 0.06em; transition: all 0.15s;
   }
   .rs-tab:hover { color: var(--fg); }
@@ -59,12 +59,28 @@
     gap: 0.75rem; margin-bottom: 0.75rem;
   }
   .rs-card-id {
-    font-family: 'Playfair Display', serif; font-size: 1.05rem;
+    font-family: var(--font-display, 'Playfair Display', serif); font-size: 1.05rem;
     font-weight: 700; color: var(--fg);
   }
   .rs-field { display: flex; gap: 0.5rem; font-size: 0.82rem; margin-bottom: 0.3rem; }
   .rs-field dt { color: var(--fg-muted); min-width: 58px; flex-shrink: 0; }
   .rs-field dd { color: var(--fg); margin: 0; }
+
+  /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──
+     Additive only — nothing above this block is touched, so a Template 1
+     team (or one that hasn't chosen a template yet) renders unchanged. */
+  :root[data-ops-theme="2"] {
+    --bg: #f7f4ef; --bg-warm: #efe9e0; --fg: #1a1a1a; --fg-muted: #7a7570;
+    --accent: #1b4332; --accent-light: #2d6a4f; --card: #ffffff; --border: #e2ddd5;
+    --font-body: 'DM Sans', sans-serif; --font-display: 'Cormorant Garamond', serif;
+    --danger: #e11d48; --success: #15803d;
+  }
+  :root[data-ops-theme="2"] .rs-preparing { background: #f3e8ff; color: #7e22ce; border-color: #e9d5ff; }
+  :root[data-ops-theme="2"] .rs-ready { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+  :root[data-ops-theme="2"] .rs-delivering { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+  :root[data-ops-theme="2"] .rs-completed { background: #d1fae5; color: #047857; border-color: #a7f3d0; }
+  :root[data-ops-theme="2"] .rs-cancelled { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+  :root[data-ops-theme="2"] .rs-card { background: rgba(27,67,50,0.03); }
 </style>
 @endsection
 

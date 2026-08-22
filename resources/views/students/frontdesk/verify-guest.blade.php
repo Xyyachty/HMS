@@ -10,22 +10,22 @@
     --bg: #0c0b09; --bg-warm: #111110; --fg: #f5f0e8; --fg-muted: #9e978b;
     --accent: #c9a84c; --accent-light: #e2cc7a; --card: #181714; --border: #2a2621;
   }
-  #opsContentWrap { font-family: 'Outfit', sans-serif; }
-  .font-display { font-family: 'Playfair Display', serif; }
+  #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
+  .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
   .room-status-badge {
     padding: 0.25rem 0.7rem; border-radius: 4px;
     font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent;
   }
-  .room-status-badge.status-available { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .room-status-badge.status-available { background: rgba(34,197,94,0.18); color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
   .room-status-badge.status-reserved { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .room-status-badge.status-occupied { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
   .room-status-badge.status-cleaning { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
-  .room-status-badge.status-maintenance { background: rgba(244,63,94,0.18); color: #fb7185; border-color: rgba(244,63,94,0.35); }
+  .room-status-badge.status-maintenance { background: rgba(244,63,94,0.18); color: var(--danger, #fb7185); border-color: rgba(244,63,94,0.35); }
   .btn-outline {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: transparent; color: var(--accent);
-    font-family: 'Outfit', sans-serif; font-weight: 500;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
     font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
     cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
@@ -35,7 +35,7 @@
   .booking-input {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
     border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
-    font-family: 'Outfit', sans-serif; font-size: 0.85rem;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; width: 100%;
   }
   .booking-input:focus { border-color: var(--accent); }
@@ -45,7 +45,7 @@
   .btn-solid {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
     background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
-    font-family: 'Outfit', sans-serif; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 600;
     font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
     padding: 0.65rem 1.2rem; border-radius: 6px; cursor: pointer;
     transition: filter 0.2s;
@@ -89,9 +89,9 @@
     font-size: 1rem; color: var(--fg); font-weight: 700;
   }
   .bill-line.is-total .bill-amt {
-    color: var(--accent-light); font-family: 'Playfair Display', serif; font-size: 1.15rem;
+    color: var(--accent-light); font-family: var(--font-display, 'Playfair Display', serif); font-size: 1.15rem;
   }
-  .bill-line.is-balance .bill-amt { color: #fb7185; font-weight: 700; }
+  .bill-line.is-balance .bill-amt { color: var(--danger, #fb7185); font-weight: 700; }
   .bill-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.55rem 1rem; }
   .bill-meta dt {
     font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
@@ -99,6 +99,23 @@
   }
   .bill-meta dd { margin: 0; color: var(--fg); font-size: 0.85rem; }
   @media (max-width: 520px) { .bill-meta { grid-template-columns: 1fr; } }
+
+  /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──
+     Additive only — nothing above this block is touched, so a Template 1
+     team (or one that hasn't chosen a template yet) renders unchanged. */
+  :root[data-ops-theme="2"] {
+    --bg: #f7f4ef; --bg-warm: #efe9e0; --fg: #1a1a1a; --fg-muted: #7a7570;
+    --accent: #1b4332; --accent-light: #2d6a4f; --card: #ffffff; --border: #e2ddd5;
+    --font-body: 'DM Sans', sans-serif; --font-display: 'Cormorant Garamond', serif;
+    --danger: #e11d48; --success: #15803d;
+  }
+  :root[data-ops-theme="2"] select.booking-input { color-scheme: light; }
+  :root[data-ops-theme="2"] .room-status-badge.status-available { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+  :root[data-ops-theme="2"] .room-status-badge.status-reserved { background: #f3e8ff; color: #7e22ce; border-color: #e9d5ff; }
+  :root[data-ops-theme="2"] .room-status-badge.status-occupied { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+  :root[data-ops-theme="2"] .room-status-badge.status-cleaning { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+  :root[data-ops-theme="2"] .room-status-badge.status-maintenance { background: #ffe4e6; color: #be123c; border-color: #fecdd3; }
+  :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
 </style>
 @endsection
 
@@ -237,7 +254,7 @@ function remainingStay(reservation, now) {
   return { text: `${hours}h ${minutes}m`, tone: hours < 2 ? 'soon' : 'ok' };
 }
 
-const STAY_TONE_COLORS = { ok: 'var(--fg)', soon: '#fbbf24', over: '#fb7185', idle: 'var(--fg-muted)' };
+const STAY_TONE_COLORS = { ok: 'var(--fg)', soon: '#fbbf24', over: 'var(--danger, #fb7185)', idle: 'var(--fg-muted)' };
 
 /* A one-second tick. Aligned to the next whole second so every row flips
    together, and repainted on visibilitychange because a backgrounded tab
@@ -357,7 +374,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
           {loading ? (
             <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', margin: 0 }}>Loading the bill…</p>
           ) : error ? (
-            <p style={{ color: '#fb7185', fontSize: '0.85rem', margin: 0 }}>{error}</p>
+            <p style={{ color: 'var(--danger, #fb7185)', fontSize: '0.85rem', margin: 0 }}>{error}</p>
           ) : !bill ? null : (
             <>
               <dl className="bill-meta">
@@ -425,7 +442,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                       <span>
                         {charge.description}
                         <button type="button" onClick={() => onRemoveCharge(charge.id)} disabled={busy} title="Remove this charge"
-                          style={{ background: 'none', border: 'none', color: '#fb7185', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.72rem', padding: '0 0 0 0.45rem' }}>
+                          style={{ background: 'none', border: 'none', color: 'var(--danger, #fb7185)', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.72rem', padding: '0 0 0 0.45rem' }}>
                           <i className="fa-solid fa-xmark"></i>
                         </button>
                       </span>
@@ -451,7 +468,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                 </form>
               ) : (
                 <button type="button" onClick={() => setShowChargeForm(true)} disabled={busy}
-                  style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.75rem', padding: '0.5rem 0 0', fontFamily: 'Outfit, sans-serif' }}>
+                  style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.75rem', padding: '0.5rem 0 0', fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
                   <i className="fa-solid fa-plus" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Add charge
                 </button>
               )}
@@ -502,7 +519,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                       value={reference} onChange={e => setReference(e.target.value)} />
                   </div>
                 )}
-                <p style={{ margin: '0.65rem 0 0', fontSize: '0.76rem', color: remainingAfter > 0 ? '#fb7185' : '#4ade80' }}>
+                <p style={{ margin: '0.65rem 0 0', fontSize: '0.76rem', color: remainingAfter > 0 ? 'var(--danger, #fb7185)' : 'var(--success, #4ade80)' }}>
                   {remainingAfter > 0
                     ? `${formatPeso(remainingAfter)} will still be unpaid.`
                     : 'This settles the bill in full.'}
@@ -726,7 +743,7 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
   const rowBtn = {
     display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
     padding: '0.35rem 0.65rem', borderRadius: 6, cursor: 'pointer',
-    fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem', fontWeight: 600,
+    fontFamily: 'var(--font-body, Outfit, sans-serif)', fontSize: '0.68rem', fontWeight: 600,
     letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
   };
 
@@ -763,8 +780,8 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
 
           {allReservations.length === 0 ? (
             <div style={{ border: '1px solid rgba(244,63,94,0.35)', background: 'rgba(244,63,94,0.08)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>
-              <i className="fa-solid fa-door-open" style={{ fontSize: '1.8rem', color: '#fb7185', opacity: 0.45, display: 'block', marginBottom: '0.65rem' }}></i>
-              <p style={{ margin: 0, color: '#fb7185', fontWeight: 600, fontSize: '0.9rem' }}>No reservations found</p>
+              <i className="fa-solid fa-door-open" style={{ fontSize: '1.8rem', color: 'var(--danger, #fb7185)', opacity: 0.45, display: 'block', marginBottom: '0.65rem' }}></i>
+              <p style={{ margin: 0, color: 'var(--danger, #fb7185)', fontWeight: 600, fontSize: '0.9rem' }}>No reservations found</p>
               <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.8rem' }}>No guests have been registered yet.</p>
             </div>
           ) : filtered.length === 0 ? (
@@ -775,7 +792,7 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
           ) : (
             <>
               <div style={{ borderRadius: 10, border: '1px solid var(--border)' }}>
-                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif' }}>
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
                   <thead>
                     <tr>
                       <th style={{ ...thStyle, width: '17%' }}>Guest Name</th>

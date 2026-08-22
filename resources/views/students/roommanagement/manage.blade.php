@@ -10,8 +10,8 @@
     --bg: #0c0b09; --bg-warm: #111110; --fg: #f5f0e8; --fg-muted: #9e978b;
     --accent: #c9a84c; --accent-light: #e2cc7a; --card: #181714; --border: #2a2621;
   }
-  #opsContentWrap { font-family: 'Outfit', sans-serif; }
-  .font-display { font-family: 'Playfair Display', serif; }
+  #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
+  .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
   .room-status-badge {
     padding: 0.25rem 0.7rem; border-radius: 4px;
     font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
@@ -20,7 +20,7 @@
   /* Only the two booking-lifecycle tones are used now — see bookingStatusClass(). */
   .room-status-badge.status-reserved { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .room-status-badge.status-occupied { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
-  .rm-table { width: 100%; border-collapse: collapse; font-family: 'Outfit', sans-serif; }
+  .rm-table { width: 100%; border-collapse: collapse; font-family: var(--font-body, 'Outfit', sans-serif); }
   .rm-table th {
     padding: 0.6rem 0.85rem; font-size: 0.62rem; font-weight: 700;
     letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted);
@@ -35,7 +35,7 @@
   .btn-primary {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: var(--accent); color: var(--bg);
-    font-family: 'Outfit', sans-serif; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 600;
     font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase;
     padding: 0.8rem 1.8rem; border: none; border-radius: 6px;
     cursor: pointer; transition: background 0.2s, transform 0.2s;
@@ -44,7 +44,7 @@
   .btn-outline {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: transparent; color: var(--accent);
-    font-family: 'Outfit', sans-serif; font-weight: 500;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
     font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
     cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
@@ -54,7 +54,7 @@
   .booking-input {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
     border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
-    font-family: 'Outfit', sans-serif; font-size: 0.85rem;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; width: 100%;
   }
   .booking-input:focus { border-color: var(--accent); }
@@ -66,7 +66,7 @@
   }
   .rm-content { flex: 1; min-width: 0; padding: 1.25rem 1.6rem; position: relative; color: var(--fg); }
   .rm-panel { max-width: 520px; }
-  .rm-panel h3 { font-family: 'Playfair Display', serif; font-size: 1.35rem; font-weight: 700; margin: 0 0 0.35rem; color: var(--fg); }
+  .rm-panel h3 { font-family: var(--font-display, 'Playfair Display', serif); font-size: 1.35rem; font-weight: 700; margin: 0 0 0.35rem; color: var(--fg); }
   .rm-panel-desc { color: var(--fg-muted); font-size: 0.82rem; margin: 0 0 1.35rem; line-height: 1.5; }
   .rm-form-grid { display: grid; gap: 0.95rem; }
   .rm-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
@@ -78,14 +78,14 @@
   /* Room Availability tab — card grid + detail modal, same look as the hotel
      site's Rooms page so the calendar reads the same way in both places. */
   .room-card-tab {
-    font-family: 'Outfit', sans-serif; font-size: 0.74rem; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.74rem; font-weight: 600;
     letter-spacing: 0.06em; text-transform: uppercase;
     padding: 0.5rem 0.9rem; border-radius: 100px;
     border: 1.5px solid var(--border); background: transparent;
     color: var(--fg-muted); cursor: pointer; transition: all 0.15s;
   }
   .room-card-tab:hover { border-color: var(--accent); color: var(--accent); }
-  .room-card-tab.active { background: var(--accent); border-color: var(--accent); color: #0c0b09; }
+  .room-card-tab.active { background: var(--accent); border-color: var(--accent); color: var(--bg, #0c0b09); }
   .room-browse-card {
     text-align: left; border: 1px solid var(--border); border-radius: 10px;
     overflow: hidden; background: var(--bg-warm); cursor: pointer; padding: 0;
@@ -119,7 +119,7 @@
     margin-bottom: 0.75rem;
   }
   .room-cal-title {
-    font-family: 'Outfit', sans-serif; font-size: 0.82rem; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.82rem; font-weight: 600;
     color: var(--fg);
   }
   .room-cal-nav {
@@ -140,20 +140,39 @@
   .room-cal-day {
     aspect-ratio: 1; border-radius: 8px; border: 1px solid transparent;
     background: rgba(255,255,255,0.02); color: var(--fg);
-    font-family: 'Outfit', sans-serif; font-size: 0.74rem; cursor: default;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.74rem; cursor: default;
     display: flex; align-items: center; justify-content: center;
   }
   .room-cal-day.is-blank { visibility: hidden; }
   .room-cal-day.is-past { color: var(--fg-muted); opacity: 0.35; }
-  .room-cal-day.is-booked { background: rgba(244,63,94,0.14); color: #fb7185; }
+  .room-cal-day.is-booked { background: rgba(244,63,94,0.14); color: var(--danger, #fb7185); }
   .room-cal-legend { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.75rem; }
   .room-cal-legend span {
     display: inline-flex; align-items: center; gap: 0.35rem;
     font-size: 0.68rem; color: var(--fg-muted);
   }
   .room-cal-swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; background: rgba(255,255,255,0.08); }
-  .room-cal-swatch.is-booked { background: #fb7185; }
+  .room-cal-swatch.is-booked { background: var(--danger, #fb7185); }
   .room-cal-swatch.is-past { background: var(--fg-muted); opacity: 0.5; }
+
+  /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──
+     Additive only — nothing above this block is touched, so a Template 1
+     team (or one that hasn't chosen a template yet) renders unchanged. */
+  :root[data-ops-theme="2"] {
+    --bg: #f7f4ef; --bg-warm: #efe9e0; --fg: #1a1a1a; --fg-muted: #7a7570;
+    --accent: #1b4332; --accent-light: #2d6a4f; --card: #ffffff; --border: #e2ddd5;
+    --font-body: 'DM Sans', sans-serif; --font-display: 'Cormorant Garamond', serif;
+    --danger: #e11d48; --success: #15803d;
+  }
+  :root[data-ops-theme="2"] .room-status-badge.status-reserved { background: #f3e8ff; color: #7e22ce; border-color: #e9d5ff; }
+  :root[data-ops-theme="2"] .room-status-badge.status-occupied { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+  :root[data-ops-theme="2"] .rm-table th { background: rgba(27,67,50,0.04); }
+  :root[data-ops-theme="2"] .rm-table td { border-bottom-color: var(--border); }
+  :root[data-ops-theme="2"] .booking-input,
+  :root[data-ops-theme="2"] .room-cal { background: rgba(27,67,50,0.03); }
+  :root[data-ops-theme="2"] .room-cal-day { background: rgba(27,67,50,0.035); }
+  :root[data-ops-theme="2"] .room-cal-day.is-booked { background: rgba(225,29,72,0.1); }
+  :root[data-ops-theme="2"] .room-cal-swatch { background: rgba(27,67,50,0.12); }
 </style>
 @endsection
 
@@ -364,7 +383,7 @@ function remainingStay(reservation, now) {
   return { text: `${hours}h ${minutes}m`, tone: hours < 2 ? 'soon' : 'ok' };
 }
 
-const STAY_TONE_COLORS = { ok: 'var(--fg)', soon: '#fbbf24', over: '#fb7185', idle: 'var(--fg-muted)' };
+const STAY_TONE_COLORS = { ok: 'var(--fg)', soon: '#fbbf24', over: 'var(--danger, #fb7185)', idle: 'var(--fg-muted)' };
 
 /* A one-second tick. Aligned to the next whole second so every row flips
    together, and repainted on visibilitychange because a backgrounded tab
@@ -567,10 +586,10 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
             icon: 'success',
             title: 'Room Added!',
             text: data.room.name + ' has been added to the inventory.',
-            background: '#181714',
-            color: '#f5f0e8',
-            iconColor: '#4ade80',
-            confirmButtonColor: '#c9a84c',
+            background: 'var(--card, #181714)',
+            color: 'var(--fg, #f5f0e8)',
+            iconColor: 'var(--success, #4ade80)',
+            confirmButtonColor: 'var(--accent, #c9a84c)',
             confirmButtonText: 'Great!',
             timer: 3000,
             timerProgressBar: true,
@@ -584,7 +603,7 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
         if (window.Swal) {
           window.Swal.fire({
             icon: 'error', title: 'Error', text: msg,
-            background: '#181714', color: '#f5f0e8', iconColor: '#fb7185', confirmButtonColor: '#c9a84c',
+            background: 'var(--card, #181714)', color: 'var(--fg, #f5f0e8)', iconColor: 'var(--danger, #fb7185)', confirmButtonColor: 'var(--accent, #c9a84c)',
           });
         } else {
           // Category, not name: the add form has no name field to show it under.
@@ -606,7 +625,7 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
 
   const errorText = (key) => (
     errors[key]
-      ? <p style={{ margin: '0.35rem 0 0', color: '#fb7185', fontSize: '0.72rem' }}>{errors[key]}</p>
+      ? <p style={{ margin: '0.35rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.72rem' }}>{errors[key]}</p>
       : null
   );
 
@@ -636,15 +655,15 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
               className="booking-input" value={form.category} onChange={e => update('category', e.target.value)}
               style={Object.assign({ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: form.category ? 'var(--fg)' : 'var(--fg-muted)' }, errors.category ? { borderColor: '#f43f5e' } : {})}
             >
-              <option value="" style={{ background: '#181714', color: 'var(--fg-muted)' }}>Select category</option>
-              {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: '#181714', color: 'var(--fg)' }}>{c}</option>)}
+              <option value="" style={{ background: 'var(--card, #181714)', color: 'var(--fg-muted)' }}>Select category</option>
+              {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>)}
             </select>
             {errorText('category')}
           </div>
           <div>
             <label style={fieldLabel}>Status</label>
-            <div className="booking-input" style={{ color: '#4ade80', fontWeight: 600, cursor: 'default', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block', flexShrink: 0 }}></span>
+            <div className="booking-input" style={{ color: 'var(--success, #4ade80)', fontWeight: 600, cursor: 'default', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success, #4ade80)', display: 'inline-block', flexShrink: 0 }}></span>
               Available
             </div>
           </div>
@@ -688,7 +707,7 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
           </div>
           {imgPreview && (
             <button type="button" onClick={() => { update('img', ''); setImgPreview(''); }}
-              style={{ marginTop: '0.4rem', background: 'none', border: 'none', color: '#fb7185', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'Outfit, sans-serif' }}>
+              style={{ marginTop: '0.4rem', background: 'none', border: 'none', color: 'var(--danger, #fb7185)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
               <i className="fa-solid fa-xmark" style={{ marginRight: 4 }}></i>Remove image
             </button>
           )}
@@ -740,12 +759,12 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
                       <img
                         src={roomCardImg(room)}
                         alt={room.name}
-                        style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 6, display: 'block', background: '#12110f' }}
+                        style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 6, display: 'block', background: 'var(--bg-warm, #12110f)' }}
                       />
                     </td>
                     <td>
                       <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 600 }}>{room.name}</span>
-                      <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '0.82rem', marginTop: 2 }}>
+                      <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'var(--font-display, Playfair Display, serif)', fontSize: '0.82rem', marginTop: 2 }}>
                         {formatPeso(room.price)}
                       </span>
                     </td>
@@ -878,8 +897,8 @@ function EditRoomModal({ room, onClose, onSaved }) {
             icon: 'success',
             title: 'Room Updated!',
             text: data.room.name + ' has been saved.',
-            background: '#181714', color: '#f5f0e8', iconColor: '#4ade80',
-            confirmButtonColor: '#c9a84c', confirmButtonText: 'Great!',
+            background: 'var(--card, #181714)', color: 'var(--fg, #f5f0e8)', iconColor: 'var(--success, #4ade80)',
+            confirmButtonColor: 'var(--accent, #c9a84c)', confirmButtonText: 'Great!',
             timer: 3000, timerProgressBar: true,
           });
         }
@@ -889,7 +908,7 @@ function EditRoomModal({ room, onClose, onSaved }) {
         if (window.Swal) {
           window.Swal.fire({
             icon: 'error', title: 'Error', text: msg,
-            background: '#181714', color: '#f5f0e8', iconColor: '#fb7185', confirmButtonColor: '#c9a84c',
+            background: 'var(--card, #181714)', color: 'var(--fg, #f5f0e8)', iconColor: 'var(--danger, #fb7185)', confirmButtonColor: 'var(--accent, #c9a84c)',
           });
         } else {
           setErrors({ name: msg });
@@ -900,7 +919,7 @@ function EditRoomModal({ room, onClose, onSaved }) {
 
   const errorText = (key) => (
     errors[key]
-      ? <p style={{ margin: '0.35rem 0 0', color: '#fb7185', fontSize: '0.72rem' }}>{errors[key]}</p>
+      ? <p style={{ margin: '0.35rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.72rem' }}>{errors[key]}</p>
       : null
   );
 
@@ -937,8 +956,8 @@ function EditRoomModal({ room, onClose, onSaved }) {
                   className="booking-input" value={form.category} onChange={e => update('category', e.target.value)}
                   style={Object.assign({ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }, errors.category ? { borderColor: '#f43f5e' } : {})}
                 >
-                  <option value="" style={{ background: '#181714', color: 'var(--fg-muted)' }}>Select category</option>
-                  {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: '#181714', color: 'var(--fg)' }}>{c}</option>)}
+                  <option value="" style={{ background: 'var(--card, #181714)', color: 'var(--fg-muted)' }}>Select category</option>
+                  {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>)}
                 </select>
                 {errorText('category')}
               </div>
@@ -1099,12 +1118,12 @@ function GuestDetailsModal({ room, onClose }) {
           <div style={line}><span>Other charges</span><span style={amt}>{formatPeso(extras)}</span></div>
           <div style={{ ...line, borderTop: '2px solid var(--accent)', marginTop: '0.6rem', paddingTop: '0.6rem', color: 'var(--fg)', fontWeight: 700 }}>
             <span>Total</span>
-            <span style={{ ...amt, color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.1rem' }}>{formatPeso(grand)}</span>
+            <span style={{ ...amt, color: 'var(--accent-light)', fontFamily: 'var(--font-display, Playfair Display, serif)', fontSize: '1.1rem' }}>{formatPeso(grand)}</span>
           </div>
           <div style={{ ...line, color: 'var(--fg)', fontWeight: 600 }}><span>Paid</span><span style={amt}>{formatPeso(paid)}</span></div>
           <div style={line}>
             <span>Balance</span>
-            <span style={{ ...amt, color: outstanding > 0 ? '#fb7185' : 'var(--fg)', fontWeight: 700 }}>{formatPeso(outstanding)}</span>
+            <span style={{ ...amt, color: outstanding > 0 ? 'var(--danger, #fb7185)' : 'var(--fg)', fontWeight: 700 }}>{formatPeso(outstanding)}</span>
           </div>
 
           <p style={sectionTitle}>Payments</p>
@@ -1170,7 +1189,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   const rowBtn = {
     display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
     padding: '0.35rem 0.65rem', borderRadius: 6, cursor: 'pointer',
-    fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem', fontWeight: 600,
+    fontFamily: 'var(--font-body, Outfit, sans-serif)', fontSize: '0.68rem', fontWeight: 600,
     letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
   };
 
@@ -1199,7 +1218,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
         {awaitingCheckIn > 0 ? ` · ${awaitingCheckIn} awaiting check-in` : ''}.
       </p>
       <div style={{ borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif' }}>
+        <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
           <thead>
             <tr>
               <th style={{ ...thStyle, width: '16%' }}>Guest Name</th>
