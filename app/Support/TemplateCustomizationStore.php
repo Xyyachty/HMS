@@ -241,9 +241,23 @@ class TemplateCustomizationStore
             ->limit($keep)
             ->pluck('team_role_template_version_id');
 
+        // Snapshots a task's review comparison is built on are not history to age
+        // out — pruning one would silently empty the faculty's Before/After.
+        $pinnedIds = \App\Models\Task::query()
+            ->where(function ($q) {
+                $q->whereNotNull('submitted_version_id')->orWhereNotNull('previous_version_id');
+            })
+            ->get(['submitted_version_id', 'previous_version_id'])
+            ->flatMap(fn ($task) => [$task->submitted_version_id, $task->previous_version_id])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique();
+
+        $protectedIds = $keepIds->map(fn ($id) => (int) $id)->merge($pinnedIds)->unique();
+
         $old = \App\Models\TeamRoleTemplateVersion::query()
             ->where('team_role_template_id', $templateId)
-            ->when($keepIds->isNotEmpty(), fn ($q) => $q->whereNotIn('team_role_template_version_id', $keepIds))
+            ->when($protectedIds->isNotEmpty(), fn ($q) => $q->whereNotIn('team_role_template_version_id', $protectedIds))
             ->get();
 
         foreach ($old as $version) {

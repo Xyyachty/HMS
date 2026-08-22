@@ -29,6 +29,10 @@ class Task extends Model
         'feedback_at',
         'feedback_by',
         'revision_count',
+        // Template snapshots bracketing this task's last two submissions — the
+        // Before/After sides of the faculty review comparison.
+        'submitted_version_id',
+        'previous_version_id',
     ];
 
     protected $casts = [

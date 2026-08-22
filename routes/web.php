@@ -397,10 +397,22 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return back()->withErrors(['task' => 'This task has already been submitted.']);
         }
 
+        // Freeze the work as handed in, so the faculty review can show what changed
+        // between this submission and the last one. The previous anchor slides down
+        // to become the "Before" side.
+        $roleTemplate = \App\Support\HotelTemplateBuilder::ensureTemplate($groupMembership, $task->role);
+        $snapshotId = \App\Support\HotelTemplateBuilder::snapshotForReview(
+            $roleTemplate,
+            $authUser,
+            'Submitted: ' . $task->title
+        );
+
         $task->update([
             'status' => 'archived',
             'student_id' => $student->user_information_id,
             'assigned_to' => $authUser->user_id,
+            'previous_version_id' => $task->submitted_version_id,
+            'submitted_version_id' => $snapshotId ?: $task->submitted_version_id,
         ]);
 
         ActivityLog::record(

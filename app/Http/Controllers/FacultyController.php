@@ -15,7 +15,6 @@ use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\StudentGroupRole;
 use App\Models\Task;
-use App\Models\TeamRoleTemplate;
 use App\Models\TeamRoleTemplateVersion;
 use App\Models\User;
 use App\Models\UserInformation;
@@ -1355,27 +1354,25 @@ class FacultyController extends Controller
                 'role' => $task->role,
             ]);
 
-            // "Before" only exists once faculty has sent this task back at least
-            // once: it is the newest save snapshot from on or before that verdict,
-            // so the comparison shows exactly what the student changed since.
-            if ((int) $task->revision_count > 0 && $task->feedback_at) {
-                $templateId = TeamRoleTemplate::where('group_name', $membership->group_name)
-                    ->where('faculty_id', $membership->faculty_id)
-                    ->where('role', $task->role)
-                    ->value('team_role_template_id');
+            // Both sides come from snapshots taken at submission time, so the
+            // comparison is exactly "last time they handed this in" against "this
+            // time" — it does not depend on whether anyone pressed Ctrl+S. There is
+            // nothing to compare on a first submission, so the toggle stays hidden.
+            if ($task->previous_version_id && TeamRoleTemplateVersion::whereKey($task->previous_version_id)->exists()) {
+                $beforePreviewUrl = route('faculty.teams.preview', [
+                    'group' => $membership->group_name,
+                    'role' => $task->role,
+                    'before_version' => $task->previous_version_id,
+                ]);
 
-                $beforeVersionId = $templateId
-                    ? TeamRoleTemplateVersion::where('team_role_template_id', $templateId)
-                        ->where('created_at', '<=', $task->feedback_at)
-                        ->orderByDesc('version')
-                        ->value('team_role_template_version_id')
-                    : null;
-
-                if ($beforeVersionId) {
-                    $beforePreviewUrl = route('faculty.teams.preview', [
+                // Pin "After" to the submitted snapshot too: the team keeps working
+                // while the task sits in the queue, and the live site would quietly
+                // drift away from what was actually handed in.
+                if ($task->submitted_version_id && TeamRoleTemplateVersion::whereKey($task->submitted_version_id)->exists()) {
+                    $previewUrl = route('faculty.teams.preview', [
                         'group' => $membership->group_name,
                         'role' => $task->role,
-                        'before_version' => $beforeVersionId,
+                        'before_version' => $task->submitted_version_id,
                     ]);
                 }
             }
@@ -1602,17 +1599,22 @@ class FacultyController extends Controller
             abort(404, 'That team does not belong to you.');
         }
 
+        // The snapshot names the role it belongs to, so the override is keyed off the
+        // version row itself rather than the request's role — a mismatched pair would
+        // otherwise render one role's history under another's chunk. Loading it
+        // through this faculty's own team also keeps it from reading another team's.
         $versionOverrides = [];
         if (!empty($data['before_version'])) {
-            $role = $data['role'] ?? 'front_desk';
-            $ownsVersion = TeamRoleTemplateVersion::where('team_role_template_version_id', $data['before_version'])
+            $version = TeamRoleTemplateVersion::with('template')
+                ->whereKey($data['before_version'])
                 ->whereHas('template', function ($q) use ($membership) {
                     $q->where('group_name', $membership->group_name)
                         ->where('faculty_id', $membership->faculty_id);
                 })
-                ->exists();
-            if ($ownsVersion) {
-                $versionOverrides[$role] = (int) $data['before_version'];
+                ->first();
+
+            if ($version && $version->template) {
+                $versionOverrides[$version->template->role] = (int) $version->team_role_template_version_id;
             }
         }
 

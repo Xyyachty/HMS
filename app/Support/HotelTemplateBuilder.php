@@ -251,6 +251,48 @@ class HotelTemplateBuilder
         return $template;
     }
 
+    /**
+     * Freeze a role's template exactly as it stands right now and return the
+     * snapshot's row id.
+     *
+     * Taken when a student submits a task, so the faculty review always has a real
+     * "this is what they handed in" anchor. save() only snapshots on a manual save
+     * or publish — the builder's 7s autosave deliberately does not — so relying on
+     * that history left teams who never pressed Ctrl+S with nothing to compare.
+     *
+     * The version counter is not bumped: this records the work, it is not another
+     * edit to it.
+     *
+     * Returns null rather than throwing — a failed snapshot costs the comparison,
+     * and must never cost the student their submission.
+     */
+    public static function snapshotForReview(TeamRoleTemplate $template, ?User $user = null, string $label = 'Submitted'): ?int
+    {
+        try {
+            return DB::transaction(function () use ($template, $user, $label) {
+                $versionRow = TeamRoleTemplateVersion::create([
+                    'team_role_template_id' => $template->team_role_template_id,
+                    'version' => (int) $template->version,
+                    'selected_template' => $template->selected_template,
+                    'is_published' => $template->is_published,
+                    'label' => $label,
+                    'created_by' => $user?->user_id,
+                ]);
+
+                TemplateCustomizationStore::snapshotToVersion(
+                    $template,
+                    (int) $versionRow->team_role_template_version_id
+                );
+
+                return (int) $versionRow->team_role_template_version_id;
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
+    }
+
     /** Max updated_at across the team's role templates — drives live sync for everyone. */
     public static function teamSyncVersion(string $groupName, int $facultyId): int
     {
