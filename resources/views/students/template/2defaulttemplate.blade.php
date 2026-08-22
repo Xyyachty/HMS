@@ -129,6 +129,30 @@
     object-fit: cover;
     display: block;
   }
+  .hero-slide-img {
+    position: absolute; inset: 0;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+  }
+  .hero-slide-img.is-active { opacity: 1; }
+  .hero-dots {
+    position: absolute; left: 0; right: 0; bottom: 1.5rem; z-index: 3;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  }
+  .hero-dot {
+    width: 8px; height: 8px; border-radius: 50%; border: none; padding: 0;
+    background: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.2s;
+  }
+  .hero-dot.is-active { background: var(--accent); width: 22px; border-radius: 4px; }
+  .hero-edit-btn {
+    position: absolute; right: 1.25rem; bottom: 1.4rem; z-index: 3;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: rgba(26,26,26,0.65); color: #fff;
+    border: 1px solid rgba(255,255,255,0.3); border-radius: 999px;
+    padding: 0.4rem 0.9rem; font-size: 0.68rem; letter-spacing: 0.04em;
+    cursor: pointer; backdrop-filter: blur(4px);
+  }
+  .hero-edit-btn:hover { border-color: var(--accent); }
   .hero-content {
     flex: 1;
     display: flex;
@@ -911,6 +935,16 @@ function toolBtnStyle(kind) {
    changing it anywhere changes it everywhere. */
 const DEFAULT_LOGO = window.HMS_DEFAULT_LOGO || '/images/hotel-logo-default.svg';
 const LOGO_ID = 'logo';
+
+/* Five-slide hero. Front Desk owns Home, so these follow the exact __navLinks
+   pattern — page:'home', fixed count, per-slide image replace only. */
+const DEFAULT_HERO_SLIDES = [
+  { id: 'hero-slide-1', img: 'https://picsum.photos/seed/resortlux/1200/900.jpg' },
+  { id: 'hero-slide-2', img: 'https://picsum.photos/seed/resortlobby/1200/900.jpg' },
+  { id: 'hero-slide-3', img: 'https://picsum.photos/seed/resortpool/1200/900.jpg' },
+  { id: 'hero-slide-4', img: 'https://picsum.photos/seed/resortsuite/1200/900.jpg' },
+  { id: 'hero-slide-5', img: 'https://picsum.photos/seed/resortdining/1200/900.jpg' },
+];
 const LEGACY_LOGO_IDS = ['logo-home', 'logo-rooms', 'logo-restaurant'];
 
 function resolveLogo() {
@@ -2004,7 +2038,55 @@ function EmptyState({ text }) {
 
 
 /* â•â•â•â•â•â•â• HOME â•â•â•â•â•â•â• */
-function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom }) {
+function HeroSlider({ slides, canEdit }) {
+  const list = slides && slides.length ? slides : DEFAULT_HERO_SLIDES;
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (list.length < 2) return undefined;
+    const id = setInterval(() => setActive((i) => (i + 1) % list.length), 6000);
+    return () => clearInterval(id);
+  }, [list.length]);
+
+  const handleChangeImage = () => {
+    if (!window.HMSSiteContent) return;
+    window.HMSSiteContent.pickImageFile((url) => {
+      if (!url) return;
+      window.HMSSiteContent.updateHeroSlide(list[active].id, { img: url }, DEFAULT_HERO_SLIDES);
+    });
+  };
+
+  return (
+    <>
+      {list.map((slide, i) => (
+        <img
+          key={slide.id}
+          className={`hero-slide-img${i === active ? ' is-active' : ''}`}
+          src={slide.img}
+          alt="SPC Hotel"
+        />
+      ))}
+      <div className="hero-dots" data-hms-no-edit="1">
+        {list.map((slide, i) => (
+          <button
+            key={slide.id}
+            type="button"
+            className={`hero-dot${i === active ? ' is-active' : ''}`}
+            aria-label={'Slide ' + (i + 1)}
+            onClick={() => setActive(i)}
+          ></button>
+        ))}
+      </div>
+      {canEdit && (
+        <button type="button" className="hero-edit-btn" data-hms-no-edit="1" onClick={handleChangeImage}>
+          <i className="fa-solid fa-image" style={{ fontSize: 10 }}></i> Change image
+        </button>
+      )}
+    </>
+  );
+}
+
+function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides }) {
   const roomList = rooms && rooms.length ? rooms : [];
   const menuList = menus || [];
 
@@ -2041,7 +2123,7 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
     <>
       <div className="hero-split" data-hms-section="hero">
         <div className="hero-img" data-hms-bg-target="1">
-          <img src="https://picsum.photos/seed/resortlux/1200/900.jpg" alt="SPC Hotel" />
+          <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} />
         </div>
         <div className="hero-content">
           <span className="section-num">Est. 1923</span>
@@ -2936,6 +3018,10 @@ function App() {
   const [cardImages, setCardImages] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getCardImages ? window.HMSSiteContent.getCardImages() : {}
   ));
+  const [heroSlides, setHeroSlidesState] = useState(() => (
+    window.HMSSiteContent ? window.HMSSiteContent.getHeroSlides(DEFAULT_HERO_SLIDES) : DEFAULT_HERO_SLIDES
+  ));
+  const [canEditHeroSlides, setCanEditHeroSlides] = useState(false);
 
   // In-flight room writes — a poll that lands mid-write would show stale data.
   const pendingWrites = useRef(0);
@@ -2999,6 +3085,12 @@ function App() {
     setNavLinks(window.HMSSiteContent.getNav());
     // Rooms and menus come from the DB API — do NOT overwrite with customizations
     if (window.HMSSiteContent.getCardImages) setCardImages(window.HMSSiteContent.getCardImages());
+    setHeroSlidesState(window.HMSSiteContent.getHeroSlides(DEFAULT_HERO_SLIDES));
+    setCanEditHeroSlides(
+      typeof window.HMSSiteContent.canEditHeroSlides === 'function'
+        ? window.HMSSiteContent.canEditHeroSlides()
+        : false
+    );
     setCanEditNav(window.HMSSiteContent.canEditNav());
     setCanEditRooms(window.HMSSiteContent.canEditRooms());
     setCanManageRooms(
@@ -3259,6 +3351,8 @@ function App() {
         rooms={rooms}
         menus={menus}
         canEditRooms={canEditRooms}
+        heroSlides={heroSlides}
+        canEditHeroSlides={canEditHeroSlides}
         onAddRoom={addRoom}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}

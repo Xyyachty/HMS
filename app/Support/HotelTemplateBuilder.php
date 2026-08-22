@@ -54,6 +54,7 @@ class HotelTemplateBuilder
     public const ROOMS_KEY = '__rooms';
     public const MENUS_KEY = '__menus';
     public const CARD_IMAGES_KEY = '__cardImages';
+    public const HERO_SLIDES_KEY = '__heroSlides';
 
     /**
      * Site-content keys more than one role may write. Unlike element entries

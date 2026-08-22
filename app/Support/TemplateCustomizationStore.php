@@ -24,6 +24,7 @@ class TemplateCustomizationStore
         HotelTemplateBuilder::ROOMS_KEY => 'rooms',
         HotelTemplateBuilder::MENUS_KEY => 'menus',
         HotelTemplateBuilder::CARD_IMAGES_KEY => 'cardImages',
+        HotelTemplateBuilder::HERO_SLIDES_KEY => 'heroSlides',
     ];
 
     /** Editor customization key => DB column on template_elements */
@@ -628,6 +629,7 @@ class TemplateCustomizationStore
             'menus' => HotelTemplateBuilder::MENUS_KEY,
             'navLinks' => HotelTemplateBuilder::NAV_LINKS_KEY,
             'cardImages' => HotelTemplateBuilder::CARD_IMAGES_KEY,
+            'heroSlides' => HotelTemplateBuilder::HERO_SLIDES_KEY,
         ] as $collection => $jsonKey) {
             $meta = $byCollection->get($collection . '_meta', collect())->first();
             $payload = $meta ? self::fieldsMap($meta) : [];
