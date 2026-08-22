@@ -453,68 +453,30 @@ class Notifier
     }
 
     /**
-     * The Front Desk recorded a guest complaint. Only the department it was routed
-     * to hears about it — the whole team can already see the list, and a complaint
-     * about one room is not news to the other four roles.
+     * Complaints are part of the hotel simulation's own workflow (the department
+     * list already shows them) and must not raise a dashboard notification.
      */
     public static function complaintFiled(?User $actor, HotelComplaint $complaint): void
     {
-        $role = HotelComplaintAccess::DEPARTMENT_ROLES[$complaint->department] ?? null;
-        if (!$role) {
-            return;
-        }
-
-        static::push(
-            static::teamRoleUserIds($complaint->group_name, (int) $complaint->faculty_id, [$role]),
-            UserNotification::COMPLAINT_FILED,
-            'New complaint · Room ' . $complaint->room_number,
-            $complaint->category . ' — ' . $complaint->details,
-            route('students.' . $complaint->department . '.complaints'),
-            $actor
-        );
+        // Intentionally no-op.
     }
 
     /**
-     * A department closed a complaint out. The Front Desk took it from the guest, so
-     * they are the ones who need to know the answer to give back.
+     * Complaints are part of the hotel simulation's own workflow (the department
+     * list already shows them) and must not raise a dashboard notification.
      */
     public static function complaintResolved(?User $actor, HotelComplaint $complaint): void
     {
-        $resolved = $complaint->status === 'Resolved';
-
-        static::push(
-            static::teamRoleUserIds($complaint->group_name, (int) $complaint->faculty_id, ['front_desk']),
-            UserNotification::COMPLAINT_UPDATED,
-            ($resolved ? 'Complaint resolved · ' : 'Complaint cancelled · ') . 'Room ' . $complaint->room_number,
-            $complaint->departmentLabel() . ' marked "' . $complaint->category . '" as '
-                . $complaint->status . '.'
-                . ($complaint->resolution_note ? ' Note: ' . $complaint->resolution_note : ''),
-            route('students.frontdesk.complaints'),
-            $actor
-        );
+        // Intentionally no-op.
     }
 
     /**
-     * A mis-routed complaint was handed to the other department. Told to the new
-     * owners only; the ones who passed it on already know.
+     * Complaints are part of the hotel simulation's own workflow (the department
+     * list already shows them) and must not raise a dashboard notification.
      */
     public static function complaintReassigned(?User $actor, HotelComplaint $complaint, string $from): void
     {
-        $role = HotelComplaintAccess::DEPARTMENT_ROLES[$complaint->department] ?? null;
-        if (!$role) {
-            return;
-        }
-
-        $fromLabel = HotelComplaint::DEPARTMENTS[$from] ?? ucfirst($from);
-
-        static::push(
-            static::teamRoleUserIds($complaint->group_name, (int) $complaint->faculty_id, [$role]),
-            UserNotification::COMPLAINT_FILED,
-            'Complaint reassigned · Room ' . $complaint->room_number,
-            $fromLabel . ' passed "' . $complaint->category . '" to your department.',
-            route('students.' . $complaint->department . '.complaints'),
-            $actor
-        );
+        // Intentionally no-op.
     }
 
     /**
