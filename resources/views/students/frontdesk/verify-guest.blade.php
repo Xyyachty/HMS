@@ -2,7 +2,7 @@
 
 @php $backRoute = 'students.frontdesk'; @endphp
 
-@section('page-title', 'Verify Guest')
+@section('page-title', 'Guest Information')
 
 @section('head-extra')
 <style>
@@ -752,7 +752,7 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Front Desk</p>
-          <h1 className="font-display" style={{ fontSize: '1.9rem', margin: 0, color: 'var(--fg)' }}>Verify Guest</h1>
+          <h1 className="font-display" style={{ fontSize: '1.9rem', margin: 0, color: 'var(--fg)' }}>Guest Information</h1>
         </div>
         <button type="button" className="btn-outline" onClick={onBack} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
           <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.75rem' }}></i> Back to Front Desk
