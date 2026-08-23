@@ -4,6 +4,7 @@
     $hmsCanEdit = (bool) ($canEditTemplate ?? false);
     $hmsEditablePages = $editablePages ?? [];
     $hmsBuilderRole = $builderRole ?? null;
+    $hmsReviewHighlight = $reviewHighlight ?? null;
 @endphp
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <script>
@@ -24,6 +25,8 @@
         window.__HMS_EDITABLE_PAGES__ = [];
     }
     window.__HMS_CURRENT_PAGE__ = 'home';
+    // Set only on the faculty Before/After preview — drives hms-review-highlight.js.
+    window.__HMS_REVIEW_HIGHLIGHT__ = @json($hmsReviewHighlight);
     window.__HMS_CSRF__ = @json(csrf_token());
     window.__HMS_MEDIA_UPLOAD_URL__ = @json(route('students.frontdesk.template.media'));
     window.__HMS_HOTEL_AUTH_ROUTES__ = {
@@ -37,3 +40,6 @@
 <script src="{{ asset('js/hms-hotel-auth.js') }}"></script>
 <script src="{{ asset('js/hms-template-editor.js') }}?v={{ filemtime(public_path('js/hms-template-editor.js')) }}"></script>
 <script src="{{ asset('js/hms-site-content.js') }}?v={{ filemtime(public_path('js/hms-site-content.js')) }}"></script>
+@if ($hmsReviewHighlight)
+<script src="{{ asset('js/hms-review-highlight.js') }}?v={{ filemtime(public_path('js/hms-review-highlight.js')) }}"></script>
+@endif

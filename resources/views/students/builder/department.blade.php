@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-ops-theme="{{ ($selectedTemplate ?? null) === '2' ? '2' : '1' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -81,6 +81,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #050507; color: #fff; }
@@ -583,6 +584,96 @@
         @media (max-width: 900px) {
             #fsToggleLabel { display: none; }
         }
+
+        /* ── Template 2 shell theme (cream / forest green / Cormorant + DM Sans) ──
+           Scoped entirely under [data-ops-theme="2"] on <html> above, so a
+           Template 1 team (or one that hasn't chosen yet) renders exactly as
+           before. The canvas/dropzone itself (the live site preview) is left
+           alone — it already renders the real published page. */
+        html[data-ops-theme="2"] body { background: #f7f4ef; color: #1a1a1a; }
+        html[data-ops-theme="2"] .topbar {
+            background: rgba(247, 244, 239, 0.9);
+            border-bottom: 1px solid #e2ddd5;
+        }
+        html[data-ops-theme="2"] .hms-logo-text {
+            background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        html[data-ops-theme="2"] .w-px.h-5.bg-zinc-800 { background: #e2ddd5; }
+        html[data-ops-theme="2"] .template-chip {
+            color: #b45309; background: rgba(180,83,9,0.1); border-color: rgba(180,83,9,0.25);
+        }
+        html[data-ops-theme="2"] .sidebar-base { background: #ffffff; border-color: #e2ddd5; }
+        html[data-ops-theme="2"] .canvas-bg {
+            background: #f7f4ef;
+            background-image: radial-gradient(rgba(27,67,50,0.05) 1px, transparent 1px);
+        }
+        html[data-ops-theme="2"] .tool-card:hover { background: rgba(27,67,50,0.05); border-color: #e2ddd5; }
+        html[data-ops-theme="2"] .hdr-btn.btn-secondary { background: #ffffff; color: #1a1a1a; border: 1px solid #e2ddd5; }
+        html[data-ops-theme="2"] .hdr-btn.btn-secondary:hover { background: #efe9e0; color: #1b4332; }
+        html[data-ops-theme="2"] .profile-dropdown,
+        html[data-ops-theme="2"] .module-menu {
+            background: #ffffff; border: 1px solid #e2ddd5; box-shadow: 0 10px 40px rgba(26,26,26,0.12);
+        }
+        html[data-ops-theme="2"] .dd-item,
+        html[data-ops-theme="2"] .module-menu a { color: #4a4642; }
+        html[data-ops-theme="2"] .dd-item:hover,
+        html[data-ops-theme="2"] .module-menu a:hover { background: #efe9e0; color: #1a1a1a; }
+        html[data-ops-theme="2"] .dd-item i { color: #7a7570; }
+        html[data-ops-theme="2"] .dd-divider { background: #e2ddd5; }
+        html[data-ops-theme="2"] .module-menu-label { color: #9a958e; }
+        html[data-ops-theme="2"] #toast { background: #1a1a1a; border: 1px solid #2d2d2d; color: #f7f4ef; }
+        html[data-ops-theme="2"] .status-bar { background: #efe9e0; border-top: 1px solid #e2ddd5; color: #7a7570; }
+        html[data-ops-theme="2"] #editorModeTabs { background: rgba(27,67,50,0.05) !important; border-color: #e2ddd5 !important; }
+        html[data-ops-theme="2"] .mode-tab { color: #7a7570 !important; }
+        html[data-ops-theme="2"] .mode-tab.active-tab {
+            background: #ffffff !important; border: 1px solid #e2ddd5 !important; color: #1b4332 !important;
+        }
+
+        /* Right-panel design controls */
+        html[data-ops-theme="2"] .settings-card { background: rgba(27,67,50,0.03); border-color: #e2ddd5; }
+        html[data-ops-theme="2"] .settings-label { color: #9a958e; }
+        html[data-ops-theme="2"] .settings-input,
+        html[data-ops-theme="2"] .settings-select,
+        html[data-ops-theme="2"] .style-input {
+            background: #ffffff; border-color: #e2ddd5; color: #1a1a1a;
+        }
+        html[data-ops-theme="2"] .settings-input:focus,
+        html[data-ops-theme="2"] .style-input:focus { border-color: #2d6a4f; }
+        html[data-ops-theme="2"] .style-input option { background: #ffffff; color: #1a1a1a; }
+        html[data-ops-theme="2"] .color-swatch.active { border-color: #1a1a1a; box-shadow: 0 0 0 2px #2d6a4f; }
+        html[data-ops-theme="2"] #hbLayoutList > div,
+        html[data-ops-theme="2"] #hbVersionList > div {
+            background: rgba(27,67,50,0.03) !important; border-color: #e2ddd5 !important;
+        }
+        html[data-ops-theme="2"] #hbLayoutList .text-zinc-300,
+        html[data-ops-theme="2"] #hbVersionList .text-zinc-200 { color: #1a1a1a !important; }
+        html[data-ops-theme="2"] #hbLayoutList p.text-zinc-600,
+        html[data-ops-theme="2"] #hbVersionList p.text-zinc-600,
+        html[data-ops-theme="2"] #hbVersionList p.text-\[10px\] { color: #9a958e !important; }
+        html[data-ops-theme="2"] #hbLayoutList button.text-zinc-500,
+        html[data-ops-theme="2"] #hbVersionList button.text-zinc-500 { color: #9a958e !important; }
+        html[data-ops-theme="2"] #hbLayoutList button.hover\:text-white:hover { color: #1a1a1a !important; }
+        html[data-ops-theme="2"] #hbLayoutList button.hover\:text-cyan-400:hover,
+        html[data-ops-theme="2"] #hbVersionList .text-cyan-400 { color: #1b4332 !important; }
+        html[data-ops-theme="2"] #hbLayoutList button.hover\:text-rose-400:hover { color: #be123c !important; }
+
+        /* Shared left-sidebar partial (member list + Staff Tools nav) — the
+           partial file itself is never edited, only overridden here. */
+        html[data-ops-theme="2"] #leftSidebar .text-white { color: #1a1a1a; }
+        html[data-ops-theme="2"] #leftSidebar .text-zinc-200 { color: #4a4642; }
+        html[data-ops-theme="2"] #leftSidebar .text-zinc-500,
+        html[data-ops-theme="2"] #leftSidebar .text-zinc-600 { color: #7a7570; }
+        html[data-ops-theme="2"] #leftSidebar .border-zinc-800 { border-color: #e2ddd5; }
+        html[data-ops-theme="2"] #leftSidebar .bg-zinc-800 { background: #f7f4ef; }
+        html[data-ops-theme="2"] #leftSidebar .border-zinc-700 { border-color: #e2ddd5; }
+        html[data-ops-theme="2"] #leftSidebar a.hover\:border-emerald-500\/50:hover { border-color: #2d6a4f !important; color: #1a1a1a !important; }
+        html[data-ops-theme="2"] #leftSidebar .border-emerald-500\/50 { border-color: #2d6a4f !important; }
+        html[data-ops-theme="2"] #leftSidebar .text-emerald-400 { color: #1b4332; }
+        html[data-ops-theme="2"] #leftSidebar .text-cyan-400 { color: #c17849; }
+        html[data-ops-theme="2"] #leftSidebar .bg-zinc-950\/80 { background: #efe9e0; }
+        html[data-ops-theme="2"] #leftSidebar #backToTasksBtn { background: #ffffff; color: #1a1a1a; border-color: #e2ddd5; }
+        html[data-ops-theme="2"] #leftSidebar #backToTasksBtn:hover { background: #efe9e0; border-color: #2d6a4f; color: #1b4332; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">

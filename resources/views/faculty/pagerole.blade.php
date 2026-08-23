@@ -435,8 +435,19 @@
             <div class="flex-1 min-h-0 bg-slate-100 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200">
                 <div class="px-3 py-2 flex items-center justify-between gap-2 bg-white border-b border-slate-100 flex-shrink-0">
                     <span id="reviewWorkLabel" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">The team's live site</span>
-                    <a id="reviewOpenTab" href="#" target="_blank" rel="noopener"
-                       class="text-[10px] font-bold text-brand hover:underline hidden">Open in new tab ↗</a>
+                    <div class="flex items-center gap-3">
+                        {{-- Only rendered once this task has a submission to anchor "After" to. --}}
+                        <div id="reviewCompareToggle" class="hidden inline-flex rounded-lg bg-slate-100 p-0.5">
+                            <button type="button" data-compare="before"
+                                class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 transition">Before</button>
+                            <button type="button" data-compare="after"
+                                class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-white text-slate-800 shadow-sm transition">After</button>
+                            <button type="button" data-compare="changes"
+                                class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 transition">Changes <span id="reviewChangesCount"></span></button>
+                        </div>
+                        <a id="reviewOpenTab" href="#" target="_blank" rel="noopener"
+                           class="text-[10px] font-bold text-brand hover:underline hidden">Open in new tab ↗</a>
+                    </div>
                 </div>
                 <div class="flex-1 min-h-0 relative">
                     <div id="reviewPreviewEmpty" class="absolute inset-0 flex items-center justify-center text-center px-6">
@@ -445,6 +456,7 @@
                     <iframe id="reviewPreviewFrame" src="" title="Team site preview"
                             class="w-full h-full border-0 bg-white hidden" style="min-height: 22rem;"></iframe>
                     <div id="reviewConceptPane" class="absolute inset-0 overflow-y-auto bg-white p-4 hidden" style="min-height: 22rem;"></div>
+                    <div id="reviewChangesPane" class="absolute inset-0 overflow-y-auto bg-white p-3 hidden" style="min-height: 22rem;"></div>
                 </div>
             </div>
 
@@ -463,25 +475,41 @@
                          concept at a time instead, so this block hides and each concept
                          card in the left pane carries its own controls. --}}
                     <div id="reviewDecisionBlock" class="space-y-3">
-                        <div>
-                            <label id="reviewFeedbackLabel" for="reviewFeedback" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                Feedback to the student
-                            </label>
-                            <textarea id="reviewFeedback" rows="6" maxlength="2000"
-                                placeholder="What did they do well? What should change?"
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
-                            <p class="text-[10px] text-slate-400 mt-1">Required when sending back for revision.</p>
-                        </div>
-
-                        <div class="flex flex-col gap-2 pt-1">
+                        {{-- Step 1: pick a verdict. The feedback box only belongs to
+                             Revise, so it stays out of the way until that is chosen. --}}
+                        <div id="reviewChoiceStep" class="flex flex-col gap-2 pt-1">
                             <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')"
                                 class="w-full px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">
                                 <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve
                             </button>
-                            <button type="button" id="reviewReviseBtn" onclick="submitTaskFeedback('revise')"
+                            <button type="button" id="reviewReviseBtn" onclick="showReviseStep()"
                                 class="w-full px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">
-                                <span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back for revision
+                                <span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Revise
                             </button>
+                        </div>
+
+                        {{-- Step 2: revise only. --}}
+                        <div id="reviewReviseStep" class="hidden space-y-3">
+                            <div>
+                                <label id="reviewFeedbackLabel" for="reviewFeedback" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                    Feedback to the student
+                                </label>
+                                <textarea id="reviewFeedback" rows="6" maxlength="2000"
+                                    placeholder="What did they do well? What should change?"
+                                    class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
+                                <p class="text-[10px] text-slate-400 mt-1">Required — this is what the student will see.</p>
+                            </div>
+
+                            <div class="flex flex-col gap-2">
+                                <button type="button" id="reviewSendFeedbackBtn" onclick="submitTaskFeedback('revise')"
+                                    class="w-full px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">
+                                    <span class="iconify text-sm" data-icon="mdi:send-outline"></span> Send feedback
+                                </button>
+                                <button type="button" onclick="hideReviseStep()"
+                                    class="w-full px-3 py-2 rounded-xl bg-white text-slate-500 border border-slate-200 text-xs font-bold hover:bg-slate-50 transition">
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -533,7 +561,14 @@
                 'maintenance' => 'Maintenance',
                 'housekeeping' => 'Housekeeping',
             ];
+            // Roles each existing team already has assigned, used by the Insert tab so a
+            // role already taken on the target team is disabled before the faculty even
+            // picks it for the new member.
+            $groupRolesMap = ($groups ?? collect())->mapWithKeys(fn ($members, $groupName) => [
+                $groupName => $members->flatMap(fn ($m) => $m->roles->pluck('role'))->unique()->values(),
+            ]);
         @endphp
+        <script>window.EXISTING_TEAM_ROLES = @json($groupRolesMap);</script>
 
         <!-- Tab Panel: Add Team (single or multiple) -->
         <div id="modal-panel-add_team" class="flex-1 min-h-0 overflow-y-auto">
@@ -650,7 +685,8 @@
                                                 <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="create-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
-                                                        {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}>
+                                                        {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}
+                                                        onchange="refreshRoleAvailability('create')">
                                                     <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
                                                     <span class="truncate">{{ $rl }}</span>
                                                 </label>
@@ -811,7 +847,7 @@
                 <div class="p-6 space-y-5">
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Existing Team <span class="text-red-400">*</span></label>
-                        <select name="group_name"
+                        <select name="group_name" onchange="refreshRoleAvailability('insert')"
                             class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
                             <option value="">Select a team...</option>
                             @foreach($groups ?? [] as $groupName => $members)
@@ -883,7 +919,8 @@
                                                 <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="insert-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
-                                                        {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}>
+                                                        {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}
+                                                        onchange="refreshRoleAvailability('insert')">
                                                     <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
                                                     <span class="truncate">{{ $rl }}</span>
                                                 </label>
@@ -1047,7 +1084,8 @@
                                                 <label class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="update-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
-                                                        data-student-id="{{ $sk }}">
+                                                        data-student-id="{{ $sk }}"
+                                                        onchange="refreshRoleAvailability('update')">
                                                     {{ $rl }}
                                                 </label>
                                             @endforeach
@@ -1448,6 +1486,125 @@ let currentModalTab = 'add_team';
 const TASK_REVIEW_URL = @json(route('faculty.tasks.review', ['task' => '__ID__']));
 const TASK_FEEDBACK_URL = @json(route('faculty.tasks.feedback', ['task' => '__ID__']));
 let reviewTaskId = null;
+// The two sides of the Before/After comparison for the open task.
+let reviewPreviewUrls = { before: null, after: null };
+// The Changes list for the open task — rendered into #reviewChangesPane.
+let reviewChanges = [];
+
+const REVIEW_CHANGE_STYLES = {
+    added: { border: 'border-emerald-400', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Added' },
+    modified: { border: 'border-amber-400', chip: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Changed' },
+    removed: { border: 'border-rose-400', chip: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Removed' },
+};
+
+/* One row per change, grouped by page. Clicking a row jumps the After preview
+   to that element and pulses it — see the postMessage listener below and the
+   'hms-diff-focus' handler in hms-review-highlight.js. */
+function renderReviewChanges(changes) {
+    const pane = document.getElementById('reviewChangesPane');
+    if (!changes.length) {
+        pane.innerHTML = '<p class="text-xs text-slate-400 text-center py-8">No changes to show for this submission.</p>';
+        return;
+    }
+
+    const byPage = {};
+    changes.forEach(function (c) {
+        const page = c.page || 'home';
+        (byPage[page] = byPage[page] || []).push(c);
+    });
+
+    let html = '';
+    Object.keys(byPage).forEach(function (page) {
+        html += '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-3 mb-1.5 first:mt-0">' + escHtml(page) + '</p>';
+        byPage[page].forEach(function (c) {
+            const style = REVIEW_CHANGE_STYLES[c.type] || REVIEW_CHANGE_STYLES.modified;
+            const clickableAttr = c.key ? ' data-review-change-key="' + escHtml(c.key) + '"' : '';
+            const clickableClass = c.key ? ' cursor-pointer hover:bg-slate-50' : '';
+            html += '<div class="border-l-2 ' + style.border + ' rounded-r-lg bg-white px-2.5 py-2 mb-1.5' + clickableClass + '"' + clickableAttr + '>'
+                + '<div class="flex items-center justify-between gap-2">'
+                + '<span class="text-xs font-semibold text-slate-700 truncate">' + escHtml(c.label || '') + '</span>'
+                + '<span class="shrink-0 px-1.5 py-0.5 rounded-full border text-[9px] font-bold ' + style.chip + '">' + style.label + '</span>'
+                + '</div>';
+            (c.fields || []).forEach(function (f) {
+                html += '<p class="text-[11px] text-slate-500 mt-1"><span class="font-semibold text-slate-600">' + escHtml(f.label) + ':</span> ';
+                if (f.from != null && f.to != null) {
+                    html += '<span class="line-through text-slate-400">' + escHtml(f.from) + '</span> <span class="text-slate-400">to</span> <span class="text-slate-700">' + escHtml(f.to) + '</span>';
+                } else if (f.to != null) {
+                    html += '<span class="text-slate-700">' + escHtml(f.to) + '</span>';
+                } else if (f.from != null) {
+                    html += '<span class="line-through text-slate-400">' + escHtml(f.from) + '</span>';
+                }
+                html += '</p>';
+            });
+            html += '</div>';
+        });
+    });
+    pane.innerHTML = html;
+}
+
+document.addEventListener('click', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-review-change-key]') : null;
+    if (!row) return;
+    const key = row.getAttribute('data-review-change-key');
+    setReviewCompareSide('after');
+    const frame = document.getElementById('reviewPreviewFrame');
+    try {
+        frame.contentWindow.postMessage({ type: 'hms-diff-focus', key: key }, '*');
+    } catch (err) { /* ignore */ }
+});
+
+/* The feedback box belongs to Revise alone, so it is revealed only on demand. */
+function showReviseStep() {
+    document.getElementById('reviewChoiceStep').classList.add('hidden');
+    document.getElementById('reviewReviseStep').classList.remove('hidden');
+    document.getElementById('reviewError').classList.add('hidden');
+    document.getElementById('reviewFeedback').focus();
+}
+
+function hideReviseStep() {
+    document.getElementById('reviewChoiceStep').classList.remove('hidden');
+    document.getElementById('reviewReviseStep').classList.add('hidden');
+    document.getElementById('reviewFeedback').value = '';
+    document.getElementById('reviewError').classList.add('hidden');
+}
+
+/* Before/After share one iframe: a full hotel site needs the width. Changes
+   swaps to the list pane instead — there is nothing to render for it. */
+function setReviewCompareSide(side) {
+    document.querySelectorAll('#reviewCompareToggle [data-compare]').forEach(function (btn) {
+        const on = btn.getAttribute('data-compare') === side;
+        btn.classList.toggle('bg-white', on);
+        btn.classList.toggle('text-slate-800', on);
+        btn.classList.toggle('shadow-sm', on);
+        btn.classList.toggle('text-slate-500', !on);
+    });
+
+    const frame = document.getElementById('reviewPreviewFrame');
+    const changesPane = document.getElementById('reviewChangesPane');
+
+    if (side === 'changes') {
+        frame.classList.add('hidden');
+        changesPane.classList.remove('hidden');
+        document.getElementById('reviewWorkLabel').textContent = 'Highlighted changes';
+        return;
+    }
+
+    const url = reviewPreviewUrls[side];
+    if (!url) return;
+    changesPane.classList.add('hidden');
+    frame.classList.remove('hidden');
+    frame.src = url;
+    document.getElementById('reviewOpenTab').href = url;
+    document.getElementById('reviewWorkLabel').textContent = side === 'before'
+        ? 'Before — when this task was assigned'
+        : 'After — what they submitted';
+}
+
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest ? e.target.closest('#reviewCompareToggle [data-compare]') : null;
+    if (!btn) return;
+    setReviewCompareSide(btn.getAttribute('data-compare'));
+});
 
 // Rows are rebuilt every time the modal opens, so delegate.
 document.addEventListener('click', function (e) {
@@ -1472,15 +1629,23 @@ function openTaskReview(taskId) {
     const empty = document.getElementById('reviewPreviewEmpty');
     const openTab = document.getElementById('reviewOpenTab');
     const conceptPane = document.getElementById('reviewConceptPane');
+    const changesPane = document.getElementById('reviewChangesPane');
     frame.classList.add('hidden');
     frame.src = '';
     empty.classList.remove('hidden');
     openTab.classList.add('hidden');
     conceptPane.classList.add('hidden');
     conceptPane.innerHTML = '';
+    changesPane.classList.add('hidden');
+    changesPane.innerHTML = '';
+    document.getElementById('reviewChangesCount').textContent = '';
     document.getElementById('reviewWorkLabel').textContent = "The team's live site";
     document.getElementById('reviewDecisionBlock').classList.remove('hidden');
     document.getElementById('reviewConceptHint').classList.add('hidden');
+    hideReviseStep();
+    reviewPreviewUrls = { before: null, after: null };
+    reviewChanges = [];
+    document.getElementById('reviewCompareToggle').classList.add('hidden');
 
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -1533,6 +1698,16 @@ function openTaskReview(taskId) {
                 empty.classList.add('hidden');
                 openTab.href = d.preview_url;
                 openTab.classList.remove('hidden');
+
+                reviewPreviewUrls = { before: d.before_preview_url || null, after: d.preview_url };
+                reviewChanges = Array.isArray(d.changes) ? d.changes : [];
+                renderReviewChanges(reviewChanges);
+                document.getElementById('reviewChangesCount').textContent = reviewChanges.length ? '(' + reviewChanges.length + ')' : '';
+
+                if (d.before_preview_url) {
+                    document.getElementById('reviewCompareToggle').classList.remove('hidden');
+                    setReviewCompareSide('after');
+                }
             }
 
             // Only a submitted task can be acted on.
@@ -1572,12 +1747,15 @@ function submitTaskFeedback(decision) {
     }
     document.getElementById('reviewError').classList.add('hidden');
 
-    const approve = document.getElementById('reviewApproveBtn');
-    const revise = document.getElementById('reviewReviseBtn');
-    approve.disabled = true; revise.disabled = true;
+    const buttons = [
+        document.getElementById('reviewApproveBtn'),
+        document.getElementById('reviewReviseBtn'),
+        document.getElementById('reviewSendFeedbackBtn'),
+    ].filter(Boolean);
+    buttons.forEach((b) => { b.disabled = true; });
 
     postTaskFeedback({ decision: decision, feedback: feedback }, decision, 'Task approved')
-        .catch(() => { approve.disabled = false; revise.disabled = false; });
+        .catch(() => { buttons.forEach((b) => { b.disabled = false; }); });
 }
 
 /* Draw both concept cards into the review pane, each with its own verdict
@@ -2272,6 +2450,18 @@ function refreshBulkTeamPreviews() {
         });
     });
 
+    // A role may be held by at most one member of the SAME team (bucket index) — a
+    // student assigned to a different team can freely reuse it.
+    const usedRolesByTeam = buckets.map((members) => new Set(members.flatMap((m) => m.roles)));
+    document.querySelectorAll('.bulk-student-row').forEach((row) => {
+        const select = row.querySelector('.bulk-team-select');
+        const teamIndex = select?.value === '' ? -1 : parseInt(select.value, 10);
+        const used = teamIndex >= 0 ? (usedRolesByTeam[teamIndex] || new Set()) : new Set();
+        row.querySelectorAll('.bulk-role-checkbox').forEach((roleCb) => {
+            roleCb.disabled = !roleCb.checked && used.has(roleCb.value);
+        });
+    });
+
     document.querySelectorAll('.bulk-team-slot').forEach((slot, index) => {
         const countEl = slot.querySelector('.bulk-team-count');
         const previewEl = slot.querySelector('.bulk-team-preview');
@@ -2481,6 +2671,11 @@ function nextDefaultRoleIndex(mode) {
         (mode === 'insert' ? '.insert-student-checkbox' : '.create-student-checkbox') + ':checked'
     );
     const used = new Set();
+    if (mode === 'insert') {
+        const select = document.querySelector('#insertStudentForm select[name="group_name"]');
+        const existing = (window.EXISTING_TEAM_ROLES || {})[select ? select.value : ''] || [];
+        existing.forEach(r => used.add(r));
+    }
     checked.forEach(cb => {
         const card = cb.closest('.team-student-card');
         if (!card) return;
@@ -2492,6 +2687,39 @@ function nextDefaultRoleIndex(mode) {
         if (!used.has(TEAM_DEFAULT_ROLES[i])) return i;
     }
     return checked.length % TEAM_DEFAULT_ROLES.length;
+}
+
+// A role may be held by at most one member. Scans whichever list is active (create,
+// insert, or update) and disables any role checkbox already checked on another member
+// of the same team, so the faculty sees it grey out instead of discovering the clash
+// on submit. Checked boxes stay enabled so their own owner can still uncheck them.
+function refreshRoleAvailability(mode) {
+    const config = {
+        create: { checkbox: '.create-student-checkbox', card: '.create-student-card' },
+        insert: { checkbox: '.insert-student-checkbox', card: '.insert-student-card' },
+        update: { checkbox: '.update-student-checkbox', card: '.update-student-row' },
+    }[mode];
+    if (!config) return;
+
+    const used = new Set();
+
+    if (mode === 'insert') {
+        const select = document.querySelector('#insertStudentForm select[name="group_name"]');
+        const existing = (window.EXISTING_TEAM_ROLES || {})[select ? select.value : ''] || [];
+        existing.forEach(r => used.add(r));
+    }
+
+    document.querySelectorAll(config.checkbox + ':checked').forEach(memberCb => {
+        const card = memberCb.closest(config.card);
+        if (!card) return;
+        card.querySelectorAll('input[type="checkbox"][name^="member_roles"]:checked').forEach(r => used.add(r.value));
+    });
+
+    document.querySelectorAll(config.card).forEach(card => {
+        card.querySelectorAll('input[type="checkbox"][name^="member_roles"]').forEach(roleCb => {
+            roleCb.disabled = !roleCb.checked && used.has(roleCb.value);
+        });
+    });
 }
 
 function onTeamMemberToggle(checkbox, mode) {
@@ -2506,6 +2734,7 @@ function onTeamMemberToggle(checkbox, mode) {
         }
     }
     updateTeamSelectedCount(mode);
+    refreshRoleAvailability(mode);
 }
 
 function onSingleTeamMemberToggle(checkbox) {
@@ -2647,6 +2876,8 @@ function openUpdateModal(groupName, memberData) {
     const grantStatus = document.getElementById('grantStatus');
     if (grantStatus) grantStatus.textContent = '';
 
+    refreshRoleAvailability('update');
+
     document.getElementById('updateTeamModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
@@ -2715,6 +2946,7 @@ function onUpdateMemberToggle(checkbox) {
     if (!checkbox.checked) {
         card.querySelectorAll('.update-role-checkbox').forEach(cb => { cb.checked = false; });
     }
+    refreshRoleAvailability('update');
 }
 
 // ── Task Assignment Wizard ─────────────────────
@@ -2868,6 +3100,9 @@ document.addEventListener('change', function(e) {
         @if(old('_form_source') === 'insert_student')
             switchCreateModalTab('insert');
         @endif
+        // Reflect the roles old() restored into the form as already-taken.
+        refreshRoleAvailability('create');
+        refreshRoleAvailability('insert');
     @endif
     // Open from Activity Logs "Add Team" (or ?create=1)
     @if(request()->boolean('create'))
@@ -2877,6 +3112,17 @@ document.addEventListener('change', function(e) {
         history.replaceState(null, '', url);
     @endif
 })();
+
+@if ($errors->any() && old('_form_source') === 'update_team')
+window.addEventListener('load', function () {
+    Swal.fire({
+        icon: 'error',
+        title: 'Could not save team',
+        text: @json($errors->first()),
+        confirmButtonColor: '#DB2777',
+    });
+});
+@endif
 
 // ── Team Info Modal ────────────────────────────
 let teamModalActivityLogs = [];

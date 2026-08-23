@@ -10,12 +10,12 @@
     --bg: #0c0b09; --bg-warm: #111110; --fg: #f5f0e8; --fg-muted: #9e978b;
     --accent: #c9a84c; --accent-light: #e2cc7a; --card: #181714; --border: #2a2621;
   }
-  #opsContentWrap { font-family: 'Outfit', sans-serif; }
-  .font-display { font-family: 'Playfair Display', serif; }
+  #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
+  .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
   .btn-primary {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: var(--accent); color: var(--bg);
-    font-family: 'Outfit', sans-serif; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 600;
     font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase;
     padding: 0.8rem 1.8rem; border: none; border-radius: 6px;
     cursor: pointer; transition: background 0.2s, transform 0.2s;
@@ -24,7 +24,7 @@
   .btn-outline {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: transparent; color: var(--accent);
-    font-family: 'Outfit', sans-serif; font-weight: 500;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
     font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
     cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
@@ -34,7 +34,7 @@
   .booking-input {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
     border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
-    font-family: 'Outfit', sans-serif; font-size: 0.85rem;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; width: 100%;
   }
   .booking-input:focus { border-color: var(--accent); }
@@ -46,7 +46,7 @@
   }
   .rm-content { flex: 1; min-width: 0; padding: 1.25rem 1.6rem; position: relative; color: var(--fg); }
   .rm-panel { max-width: 520px; }
-  .rm-panel h3 { font-family: 'Playfair Display', serif; font-size: 1.35rem; font-weight: 700; margin: 0 0 0.35rem; color: var(--fg); }
+  .rm-panel h3 { font-family: var(--font-display, 'Playfair Display', serif); font-size: 1.35rem; font-weight: 700; margin: 0 0 0.35rem; color: var(--fg); }
   .rm-panel-desc { color: var(--fg-muted); font-size: 0.82rem; margin: 0 0 1.35rem; line-height: 1.5; }
   .rm-form-grid { display: grid; gap: 0.95rem; }
   .rm-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
@@ -59,11 +59,11 @@
     font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent; display: inline-block;
   }
-  .tb-available { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .tb-available { background: rgba(34,197,94,0.18); color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
   .tb-occupied  { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
   .tb-preparing { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .tb-ready     { background: rgba(56,189,248,0.18); color: #38bdf8; border-color: rgba(56,189,248,0.35); }
-  .tb-delivering { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .tb-delivering { background: rgba(34,197,94,0.18); color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
   .tb-completed { background: rgba(20,148,80,0.18); color: #34d399; border-color: rgba(20,148,80,0.35); }
   .tb-cancelled { background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3); }
   .order-card {
@@ -75,7 +75,7 @@
     gap: 0.75rem; margin-bottom: 0.75rem;
   }
   .order-card-id {
-    font-family: 'Playfair Display', serif; font-size: 1.05rem;
+    font-family: var(--font-display, 'Playfair Display', serif); font-size: 1.05rem;
     font-weight: 700; color: var(--fg);
   }
   .order-field { display: flex; gap: 0.5rem; font-size: 0.82rem; margin-bottom: 0.3rem; }
@@ -84,12 +84,31 @@
   .tb-tab {
     padding: 0.35rem 0.8rem; border-radius: 999px; border: 1px solid var(--border);
     background: transparent; color: var(--fg-muted); cursor: pointer;
-    font-family: 'Outfit', sans-serif; font-size: 0.68rem; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.68rem; font-weight: 600;
     letter-spacing: 0.06em; transition: all 0.15s;
   }
   .tb-tab:hover { color: var(--fg); }
   .tb-tab.is-active { border-color: var(--accent); background: var(--accent); color: var(--bg); }
   .tb-tab:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──
+     Additive only — nothing above this block is touched, so a Template 1
+     team (or one that hasn't chosen a template yet) renders unchanged. */
+  :root[data-ops-theme="2"] {
+    --bg: #f7f4ef; --bg-warm: #efe9e0; --fg: #1a1a1a; --fg-muted: #7a7570;
+    --accent: #1b4332; --accent-light: #2d6a4f; --card: #ffffff; --border: #e2ddd5;
+    --font-body: 'DM Sans', sans-serif; --font-display: 'Cormorant Garamond', serif;
+    --danger: #e11d48; --success: #15803d;
+  }
+  :root[data-ops-theme="2"] .tb-available,
+  :root[data-ops-theme="2"] .tb-delivering { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+  :root[data-ops-theme="2"] .tb-occupied { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+  :root[data-ops-theme="2"] .tb-preparing { background: #f3e8ff; color: #7e22ce; border-color: #e9d5ff; }
+  :root[data-ops-theme="2"] .tb-ready { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+  :root[data-ops-theme="2"] .tb-completed { background: #d1fae5; color: #047857; border-color: #a7f3d0; }
+  :root[data-ops-theme="2"] .tb-cancelled { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+  :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
+  :root[data-ops-theme="2"] .order-card { background: rgba(27,67,50,0.03); }
 </style>
 @endsection
 
@@ -289,7 +308,7 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
 
   const errorText = (key) => (
     errors[key]
-      ? <p style={{ margin: '0.35rem 0 0', color: '#fb7185', fontSize: '0.72rem' }}>{errors[key]}</p>
+      ? <p style={{ margin: '0.35rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.72rem' }}>{errors[key]}</p>
       : null
   );
 
@@ -332,7 +351,7 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
               style={{ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}
             >
               {MENU_CATEGORIES.map(c => (
-                <option key={c} value={c} style={{ background: '#181714', color: 'var(--fg)' }}>{c}</option>
+                <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>
               ))}
             </select>
           </div>
@@ -385,13 +404,13 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
           </div>
           {form.img && (
             <button type="button" onClick={() => update('img', '')}
-              style={{ marginTop: '0.4rem', background: 'none', border: 'none', color: '#fb7185', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'Outfit, sans-serif' }}>
+              style={{ marginTop: '0.4rem', background: 'none', border: 'none', color: 'var(--danger, #fb7185)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
               <i className="fa-solid fa-xmark" style={{ marginRight: 4 }}></i>Remove image
             </button>
           )}
         </div>
 
-        {errors.form && <p style={{ margin: 0, color: '#fb7185', fontSize: '0.78rem' }}>{errors.form}</p>}
+        {errors.form && <p style={{ margin: 0, color: 'var(--danger, #fb7185)', fontSize: '0.78rem' }}>{errors.form}</p>}
 
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
           <button type="submit" className="btn-primary" disabled={saving}>
@@ -412,9 +431,9 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
             className="booking-input" value={filter} onChange={e => { setFilter(e.target.value); setPage(1); }}
             style={{ width: 'auto', minWidth: 150, colorScheme: 'dark', fontSize: '0.78rem', padding: '0.45rem 0.7rem' }}
           >
-            <option value="All" style={{ background: '#181714' }}>All categories</option>
+            <option value="All" style={{ background: 'var(--card, #181714)' }}>All categories</option>
             {MENU_CATEGORIES.map(c => (
-              <option key={c} value={c} style={{ background: '#181714' }}>{c}</option>
+              <option key={c} value={c} style={{ background: 'var(--card, #181714)' }}>{c}</option>
             ))}
           </select>
         </div>
@@ -432,7 +451,7 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
                 borderRadius: 10, padding: '0.6rem 0.75rem',
                 background: editingId === item.id ? 'rgba(201,168,76,0.06)' : 'transparent',
               }}>
-                <img src={menuFoodImg(item)} alt="" style={{ width: 52, height: 40, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: '#12110f' }} />
+                <img src={menuFoodImg(item)} alt="" style={{ width: 52, height: 40, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--bg-warm, #12110f)' }} />
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <p style={{ margin: 0, fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)' }}>
                     {normalizeMenuCategory(item.category)}
@@ -446,12 +465,12 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
                     </p>
                   )}
                 </div>
-                <span style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                <span style={{ color: 'var(--accent-light)', fontFamily: 'var(--font-display, Playfair Display, serif)', fontWeight: 700, whiteSpace: 'nowrap' }}>
                   {typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}
                 </span>
                 <span style={{
                   fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap', padding: '3px 8px', borderRadius: 999,
-                  color: item.stock > 0 ? 'var(--fg-muted)' : '#fb7185',
+                  color: item.stock > 0 ? 'var(--fg-muted)' : 'var(--danger, #fb7185)',
                   background: item.stock > 0 ? 'rgba(255,255,255,0.05)' : 'rgba(244,63,94,0.12)',
                 }}>
                   {item.stock > 0 ? `${item.stock} in stock` : 'Out of stock'}
@@ -623,7 +642,7 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
               value={form.name} onChange={e => setForm(p => Object.assign({}, p, { name: e.target.value }))}
               style={errors.name ? { borderColor: '#f43f5e' } : undefined}
             />
-            {errors.name && <p style={{ margin: '0.35rem 0 0', color: '#fb7185', fontSize: '0.72rem' }}>{errors.name}</p>}
+            {errors.name && <p style={{ margin: '0.35rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.72rem' }}>{errors.name}</p>}
           </div>
           <div>
             <label style={fieldLabel}>Seats *</label>
@@ -632,10 +651,10 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
               value={form.capacity} onChange={e => setForm(p => Object.assign({}, p, { capacity: e.target.value }))}
               style={errors.capacity ? { borderColor: '#f43f5e' } : undefined}
             />
-            {errors.capacity && <p style={{ margin: '0.35rem 0 0', color: '#fb7185', fontSize: '0.72rem' }}>{errors.capacity}</p>}
+            {errors.capacity && <p style={{ margin: '0.35rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.72rem' }}>{errors.capacity}</p>}
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
-            {errors.form && <p style={{ margin: '0 0 0.6rem', color: '#fb7185', fontSize: '0.78rem' }}>{errors.form}</p>}
+            {errors.form && <p style={{ margin: '0 0 0.6rem', color: 'var(--danger, #fb7185)', fontSize: '0.78rem' }}>{errors.form}</p>}
             <button type="submit" className="btn-primary" disabled={saving}>
               <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem' }}></i> {saving ? 'Adding…' : 'Add Table'}
             </button>
@@ -859,7 +878,7 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
 
   return (
     <div className="order-card" style={{ marginBottom: '1.2rem' }}>
-      <h4 style={{ margin: '0 0 0.85rem', fontFamily: 'Playfair Display, serif', fontSize: '1rem', color: 'var(--fg)' }}>
+      <h4 style={{ margin: '0 0 0.85rem', fontFamily: 'var(--font-display, Playfair Display, serif)', fontSize: '1rem', color: 'var(--fg)' }}>
         New Dine-In Order
       </h4>
 
@@ -869,11 +888,11 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
           className="booking-input" value={tableId} onChange={e => setTableId(e.target.value)}
           style={{ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}
         >
-          <option value="" style={{ background: '#181714' }}>Select an occupied table…</option>
+          <option value="" style={{ background: 'var(--card, #181714)' }}>Select an occupied table…</option>
           {/* The guest's name, not assignedBy — whoever is taking this order needs to
               know which customer they are ordering for, not which staffer seated them. */}
           {occupiedTables.map(t => (
-            <option key={t.id} value={t.id} style={{ background: '#181714' }}>
+            <option key={t.id} value={t.id} style={{ background: 'var(--card, #181714)' }}>
               {t.name}{t.guestName ? ` — ${t.guestName}` : ''}
             </option>
           ))}
@@ -900,7 +919,7 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
           <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem' }}>
             {/* Whoever is taking the order picks the dish by sight, so the photo comes
                 before the name — same thumbnail the Manage Menu list uses. */}
-            <img src={menuFoodImg(item)} alt="" style={{ width: 52, height: 40, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: '#12110f' }} />
+            <img src={menuFoodImg(item)} alt="" style={{ width: 52, height: 40, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--bg-warm, #12110f)' }} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ margin: 0, color: 'var(--fg)', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
               {item.sub ? (
@@ -909,7 +928,7 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
               <p style={{ margin: 0, color: 'var(--accent-light)', fontSize: '0.74rem' }}>{formatPeso(item.price)}</p>
             </div>
             {item.stock <= 0 ? (
-              <span style={{ fontSize: '0.68rem', color: '#fb7185' }}>Out of stock</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--danger, #fb7185)' }}>Out of stock</span>
             ) : cart[item.id] ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <button type="button" onClick={() => removeFromCart(item.id)} style={toolBtnStyle('edit')}>−</button>

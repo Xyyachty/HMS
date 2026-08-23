@@ -171,7 +171,7 @@
 
 
         <!-- ==================== MAIN CONTENT ==================== -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col min-w-0">
 
             <!-- Top Header -->
             <header class="glass-header h-20 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10 shrink-0">

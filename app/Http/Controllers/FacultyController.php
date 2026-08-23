@@ -15,6 +15,7 @@ use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\StudentGroupRole;
 use App\Models\Task;
+use App\Models\TeamRoleTemplateVersion;
 use App\Models\User;
 use App\Models\UserInformation;
 use App\Support\HotelConceptDesk;
@@ -131,15 +132,16 @@ class FacultyController extends Controller
         }
 
         $allowedRoles = $this->teamRoleKeys();
-        $rolesByMember = $this->resolveMemberRoles(
+        $roleResult = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
             $allowedRoles
         );
 
-        if ($rolesByMember === null) {
-            return back()->withErrors(['member_roles' => 'Please select valid roles for each selected member.'])->withInput();
+        if ($roleResult['error'] !== null) {
+            return back()->withErrors(['member_roles' => $roleResult['error']])->withInput();
         }
+        $rolesByMember = $roleResult['roles'];
 
         $group = Group::firstOrCreate([
             'group_name' => $validated['group_name'],
@@ -279,21 +281,21 @@ class FacultyController extends Controller
                 $seenMembers[] = $studentId;
             }
 
-            $rolesByMember = $this->resolveMemberRoles(
+            $roleResult = $this->resolveMemberRoles(
                 $memberIds,
                 $team['member_roles'] ?? [],
                 $allowedRoles
             );
 
-            if ($rolesByMember === null) {
-                return back()->withErrors(["teams.{$index}.member_roles" => "Invalid roles for team \"{$name}\"."])->withInput();
+            if ($roleResult['error'] !== null) {
+                return back()->withErrors(["teams.{$index}.member_roles" => "Team \"{$name}\": {$roleResult['error']}"])->withInput();
             }
 
             $seenNames[] = $nameKey;
             $normalizedTeams[] = [
                 'group_name' => $name,
                 'members' => $memberIds,
-                'roles_by_member' => $rolesByMember,
+                'roles_by_member' => $roleResult['roles'],
             ];
         }
 
@@ -345,29 +347,40 @@ class FacultyController extends Controller
             : "{$count} teams created successfully.");
     }
 
-    /** @return list<string> */
-    private function teamRoleKeys(): array
+    /** @return array<string, string> role key => display label */
+    private function teamRoleLabels(): array
     {
         return [
-            'front_desk',
-            'restaurant_management',
-            'room_management',
-            'maintenance',
-            'housekeeping',
+            'front_desk'            => 'Front Desk',
+            'restaurant_management' => 'Restaurant Management',
+            'room_management'       => 'Room Management',
+            'maintenance'           => 'Maintenance',
+            'housekeeping'          => 'Housekeeping Services',
         ];
     }
 
+    /** @return list<string> */
+    private function teamRoleKeys(): array
+    {
+        return array_keys($this->teamRoleLabels());
+    }
+
     /**
-     * Build per-member roles. Missing selections get rotating default hotel roles.
+     * Build per-member roles for one team. A role may be held by at most one member —
+     * a duplicate pick returns a message naming the role. Missing selections still get
+     * an auto-assigned default, but only from roles the team hasn't used yet (always
+     * possible: teams top out at 4 members against 5 roles).
      *
      * @param  list<int|string>  $memberIds
      * @param  array<int|string, mixed>  $memberRoles
      * @param  list<string>  $allowedRoles
-     * @return array<int, list<string>>|null  null when an explicit role is invalid
+     * @return array{roles: array<int, list<string>>|null, error: string|null}
      */
-    private function resolveMemberRoles(array $memberIds, array $memberRoles, array $allowedRoles): ?array
+    private function resolveMemberRoles(array $memberIds, array $memberRoles, array $allowedRoles): array
     {
+        $labels = $this->teamRoleLabels();
         $resolved = [];
+        $usedRoles = []; // role => true, claimed by an earlier member in this same save
         $index = 0;
 
         foreach ($memberIds as $studentId) {
@@ -378,21 +391,31 @@ class FacultyController extends Controller
 
             $roles = array_values(array_unique(array_filter($roles, fn ($r) => $r !== null && $r !== '')));
 
+            foreach ($roles as $role) {
+                if (!in_array($role, $allowedRoles, true)) {
+                    return ['roles' => null, 'error' => 'Please select valid roles for each selected member.'];
+                }
+                if (isset($usedRoles[$role])) {
+                    $label = $labels[$role] ?? $role;
+                    return ['roles' => null, 'error' => "\"{$label}\" is already assigned to another member on this team."];
+                }
+            }
+
             if ($roles === []) {
-                $roles = [$allowedRoles[$index % count($allowedRoles)]];
+                $free = array_values(array_diff($allowedRoles, array_keys($usedRoles)));
+                // Always non-empty: teams top out at 4 members against 5 roles.
+                $roles = [$free[$index % count($free)]];
             }
 
             foreach ($roles as $role) {
-                if (!in_array($role, $allowedRoles, true)) {
-                    return null;
-                }
+                $usedRoles[$role] = true;
             }
 
             $resolved[(int) $studentId] = $roles;
             $index++;
         }
 
-        return $resolved;
+        return ['roles' => $resolved, 'error' => null];
     }
 
     public function students()
@@ -1023,6 +1046,12 @@ class FacultyController extends Controller
 
             $teamActivityByGroup[$groupName] = $allTasks
                 ->filter(function (Task $task) use ($memberStudentIds, $memberRoles) {
+                    // The hotel concept has its own "Hotel Concept" tab in this same
+                    // modal — it should not also clutter Team Task Activity.
+                    if ($task->is_hotel_concept) {
+                        return false;
+                    }
+
                     // A claimed row belongs to exactly one student, so show it only to
                     // that student's team. Falling through to the role match here listed
                     // every team's rows under every team holding the same role.
@@ -1112,15 +1141,16 @@ class FacultyController extends Controller
         if (count($memberIds) > 4) {
             return back()->withErrors(['members' => 'A team cannot have more than 4 members.'])->withInput();
         }
-        $rolesByMember = $this->resolveMemberRoles(
+        $roleResult = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
             $allowedRoles
         );
 
-        if ($rolesByMember === null) {
-            return back()->withErrors(['member_roles' => 'Please select valid roles for each selected member.'])->withInput();
+        if ($roleResult['error'] !== null) {
+            return back()->withErrors(['member_roles' => $roleResult['error']])->withInput();
         }
+        $rolesByMember = $roleResult['roles'];
 
         // Rename the canonical group in place (id-stable) — the delete+recreate below
         // only handles student_groups membership rows, so without this the other 8
@@ -1233,16 +1263,24 @@ class FacultyController extends Controller
         // users.id => how many task rows landed on them, so each student gets one
         // "3 new tasks" notification rather than one per row.
         $assignedCounts = [];
+        $facultyUser = auth()->user();
+
+        // Site work has no "Before" without a snapshot of what the team's role
+        // template looked like the moment the task was handed out — otherwise a
+        // first submission has nothing to compare against. One snapshot covers
+        // every member of a (group, role), so it is taken once and reused rather
+        // than once per task row.
+        $baselineVersionIds = [];
 
         if (!empty($validated['tasks']) && is_array($validated['tasks'])) {
             foreach ($validated['tasks'] as $role => $taskIndices) {
                 if (!is_array($taskIndices)) continue;
-                
+
                 foreach ($taskIndices as $index) {
                     $title = $validated['task_titles'][$role][$index] ?? null;
                     $description = $validated['task_descriptions'][$role][$index] ?? null;
                     $priority = $validated['task_priorities'][$role][$index] ?? 'medium';
-                    
+
                     if ($title) {
                         $members = StudentGroup::with('student')
                             ->where('faculty_id', $facultyId)
@@ -1266,9 +1304,19 @@ class FacultyController extends Controller
                             foreach ($members as $member) {
                                 $assigneeUserId = $member->student?->user_id;
 
+                                $baselineKey = $member->group_name . '|' . $role;
+                                if (!array_key_exists($baselineKey, $baselineVersionIds)) {
+                                    $baselineVersionIds[$baselineKey] = \App\Support\HotelTemplateBuilder::snapshotForReview(
+                                        \App\Support\HotelTemplateBuilder::ensureTemplate($member, $role),
+                                        $facultyUser,
+                                        'Assigned'
+                                    );
+                                }
+
                                 Task::create(array_merge($payload, [
                                     'student_id'  => $member->student_id,
                                     'assigned_to' => $assigneeUserId,
+                                    'previous_version_id' => $baselineVersionIds[$baselineKey],
                                 ]));
                                 $tasksCreated++;
 
@@ -1317,11 +1365,51 @@ class FacultyController extends Controller
             : null;
 
         $previewUrl = null;
+        $beforePreviewUrl = null;
+        $changes = [];
+        $changeSummary = ['added' => 0, 'modified' => 0, 'removed' => 0];
         if ($membership && !$task->is_hotel_concept) {
             $previewUrl = route('faculty.teams.preview', [
                 'group' => $membership->group_name,
                 'role' => $task->role,
             ]);
+
+            // Both sides come from snapshots taken at submission time, so the
+            // comparison is exactly "what this task looked like when assigned (or
+            // last sent back)" against "this submission" — it does not depend on
+            // whether anyone pressed Ctrl+S. Before/After/Changes only exist once
+            // there is something submitted to anchor "After" to.
+            if ($task->submitted_version_id && TeamRoleTemplateVersion::whereKey($task->submitted_version_id)->exists()) {
+                $afterVersionId = (int) $task->submitted_version_id;
+
+                // Pin "After" to the submitted snapshot: the team keeps working
+                // while the task sits in the queue, and the live site would
+                // quietly drift away from what was actually handed in.
+                $previewUrl = route('faculty.teams.preview', [
+                    'group' => $membership->group_name,
+                    'role' => $task->role,
+                    'before_version' => $afterVersionId,
+                    'highlight_task' => $task->task_id,
+                ]);
+
+                $beforeVersionId = ($task->previous_version_id && TeamRoleTemplateVersion::whereKey($task->previous_version_id)->exists())
+                    ? (int) $task->previous_version_id
+                    : null;
+
+                // No earlier snapshot (e.g. a task predating this feature) renders
+                // Before as the pristine template rather than hiding the toggle —
+                // every customization then correctly reads as "added".
+                $beforePreviewUrl = route('faculty.teams.preview', [
+                    'group' => $membership->group_name,
+                    'role' => $task->role,
+                    'before_version' => $beforeVersionId ?? 'baseline',
+                ]);
+
+                $roleTemplate = \App\Support\HotelTemplateBuilder::ensureTemplate($membership, $task->role);
+                $diff = \App\Support\TemplateDiff::between($roleTemplate, $beforeVersionId, $afterVersionId);
+                $changes = $diff['changes'];
+                $changeSummary = $diff['summary'];
+            }
         }
 
         $payload = [
@@ -1345,6 +1433,9 @@ class FacultyController extends Controller
             'feedback_by' => $task->feedbackBy?->name,
             'revision_count' => (int) $task->revision_count,
             'preview_url' => $previewUrl,
+            'before_preview_url' => $beforePreviewUrl,
+            'changes' => $changes,
+            'change_summary' => $changeSummary,
         ];
 
         // The concept is text, not a page, so the review dialog reads it inline —
@@ -1420,6 +1511,28 @@ class FacultyController extends Controller
         if ($revise) {
             $task->status = 'active';
             $task->revision_count = (int) $task->revision_count + 1;
+
+            // Freeze the work as it stands at the moment changes are asked for. This
+            // is the "Before" the next submission is judged against, and it is the
+            // honest one: what the student was looking at when the feedback landed.
+            // Anchoring here rather than only at submit time also means a single
+            // revise/resubmit round is enough to have something to compare.
+            $membership = $task->student_id
+                ? StudentGroup::where('student_id', $task->student_id)
+                    ->where('faculty_id', $facultyId)
+                    ->first()
+                : null;
+
+            if ($membership) {
+                $beforeId = \App\Support\HotelTemplateBuilder::snapshotForReview(
+                    \App\Support\HotelTemplateBuilder::ensureTemplate($membership, $task->role),
+                    $facultyUser,
+                    'Sent back: ' . $task->title
+                );
+                if ($beforeId) {
+                    $task->previous_version_id = $beforeId;
+                }
+            }
         }
 
         $task->save();
@@ -1532,6 +1645,16 @@ class FacultyController extends Controller
         $data = $request->validate([
             'group' => ['required', 'string', 'max:255'],
             'role' => ['nullable', 'string'],
+            // A version snapshot row id, or the literal "baseline" — renders the
+            // "Before" half of the faculty review comparison (a real earlier
+            // snapshot, or the pristine template when none exists) instead of
+            // the live site.
+            'before_version' => ['nullable', 'regex:/^(baseline|\d+)$/'],
+            // Which task's Changes to outline on this render. Only takes effect
+            // when before_version is exactly that task's submitted snapshot —
+            // it must not paint "changed" badges onto the Before side, or onto
+            // some other task's snapshot reached by editing the URL by hand.
+            'highlight_task' => ['nullable', 'integer'],
         ]);
 
         $membership = StudentGroup::where('faculty_id', $facultyId)
@@ -1541,9 +1664,35 @@ class FacultyController extends Controller
             abort(404, 'That team does not belong to you.');
         }
 
+        $isBaseline = ($data['before_version'] ?? null) === 'baseline';
+
+        // The snapshot names the role it belongs to, so the override is keyed off the
+        // version row itself rather than the request's role — a mismatched pair would
+        // otherwise render one role's history under another's chunk. Loading it
+        // through this faculty's own team also keeps it from reading another team's.
+        $versionOverrides = [];
+        if ($isBaseline) {
+            if (!empty($data['role']) && \App\Support\HotelTemplateBuilder::isValidRole($data['role'])) {
+                $versionOverrides[$data['role']] = 'baseline';
+            }
+        } elseif (!empty($data['before_version'])) {
+            $version = TeamRoleTemplateVersion::with('template')
+                ->whereKey($data['before_version'])
+                ->whereHas('template', function ($q) use ($membership) {
+                    $q->where('group_name', $membership->group_name)
+                        ->where('faculty_id', $membership->faculty_id);
+                })
+                ->first();
+
+            if ($version && $version->template) {
+                $versionOverrides[$version->template->role] = (int) $version->team_role_template_version_id;
+            }
+        }
+
         $customizations = \App\Support\HotelTemplateBuilder::mergeTeamCustomizations(
             (string) $membership->group_name,
-            (int) $membership->faculty_id
+            (int) $membership->faculty_id,
+            $versionOverrides
         );
 
         $selected = \App\Models\GroupSettings::where('group_name', $membership->group_name)
@@ -1552,12 +1701,36 @@ class FacultyController extends Controller
 
         $selected = in_array((string) $selected, ['1', '2'], true) ? (string) $selected : '1';
 
+        // Outline what changed, but only on the exact render this task's "After"
+        // link points at — never on the Before side, and never when the URL was
+        // hand-edited to point highlight_task at a different snapshot.
+        $reviewHighlight = null;
+        if (!empty($data['highlight_task']) && !$isBaseline && !empty($data['before_version'])) {
+            $task = Task::find($data['highlight_task']);
+            if ($task
+                && (int) $task->faculty_id === $facultyId
+                && $task->submitted_version_id
+                && (int) $data['before_version'] === (int) $task->submitted_version_id
+            ) {
+                $roleTemplate = \App\Support\HotelTemplateBuilder::ensureTemplate($membership, $task->role);
+                $beforeVersionId = ($task->previous_version_id && TeamRoleTemplateVersion::whereKey($task->previous_version_id)->exists())
+                    ? (int) $task->previous_version_id
+                    : null;
+                $reviewHighlight = \App\Support\TemplateDiff::between(
+                    $roleTemplate,
+                    $beforeVersionId,
+                    (int) $task->submitted_version_id
+                )['highlight'];
+            }
+        }
+
         // Read-only: no edit permission, no editable pages.
         return view('students.template.' . $selected . 'defaulttemplate', [
             'customizations' => $customizations,
             'canEditTemplate' => false,
             'editablePages' => [],
             'builderRole' => $data['role'] ?? 'front_desk',
+            'reviewHighlight' => $reviewHighlight,
         ]);
     }
 

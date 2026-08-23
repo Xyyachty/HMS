@@ -9,9 +9,10 @@
   const ROOMS_KEY = '__rooms';
   const MENUS_KEY = '__menus';
   const CARD_IMAGES_KEY = '__cardImages';
+  const HERO_SLIDES_KEY = '__heroSlides';
   const RESERVATION_NOTIFICATIONS_KEY = '__reservationNotifications';
   const ROOM_RESERVATIONS_KEY = '__roomReservations';
-  const CONTENT_KEYS = [NAV_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const CONTENT_KEYS = [NAV_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   const DEFAULT_NAV = [
     { id: 'nav-home', key: 'home', label: 'Home' },
@@ -165,6 +166,10 @@
     return canEdit() && editablePages().indexOf('home') !== -1;
   }
 
+  function canEditHeroSlides() {
+    return canEdit() && editablePages().indexOf('home') !== -1;
+  }
+
   function canEditRooms() {
     // Room Management owns the Rooms page; Front Desk can also manage
     // room cards from the Home "Available Rooms" section.
@@ -214,6 +219,33 @@
       })),
     });
     return true;
+  }
+
+  function getHeroSlides(fallback) {
+    const c = getCustomizations();
+    const entry = c[HERO_SLIDES_KEY];
+    if (entry && Array.isArray(entry.items) && entry.items.length) {
+      return entry.items.map((item) => Object.assign({}, item));
+    }
+    return (fallback || []).map((item) => Object.assign({}, item));
+  }
+
+  function setHeroSlides(items) {
+    if (!canEditHeroSlides()) return false;
+    patch(HERO_SLIDES_KEY, {
+      page: 'home',
+      items: (items || []).map((item) => Object.assign({}, item, {
+        id: item.id || uid('slide'),
+      })),
+    });
+    return true;
+  }
+
+  function updateHeroSlide(id, patchData, fallbackDefaults) {
+    const list = getHeroSlides(fallbackDefaults).map((item) => (
+      item.id === id ? Object.assign({}, item, patchData) : item
+    ));
+    setHeroSlides(list);
   }
 
   function getRooms(fallback) {
@@ -769,6 +801,10 @@
     addRoom,
     updateRoom,
     removeRoom,
+    getHeroSlides,
+    setHeroSlides,
+    updateHeroSlide,
+    canEditHeroSlides,
     getReservationNotifications,
     recordReservationNotification,
     acknowledgeReservationNotification,

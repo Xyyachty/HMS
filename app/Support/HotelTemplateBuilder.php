@@ -54,6 +54,7 @@ class HotelTemplateBuilder
     public const ROOMS_KEY = '__rooms';
     public const MENUS_KEY = '__menus';
     public const CARD_IMAGES_KEY = '__cardImages';
+    public const HERO_SLIDES_KEY = '__heroSlides';
 
     /**
      * Site-content keys more than one role may write. Unlike element entries
@@ -250,6 +251,48 @@ class HotelTemplateBuilder
         return $template;
     }
 
+    /**
+     * Freeze a role's template exactly as it stands right now and return the
+     * snapshot's row id.
+     *
+     * Taken when a student submits a task, so the faculty review always has a real
+     * "this is what they handed in" anchor. save() only snapshots on a manual save
+     * or publish — the builder's 7s autosave deliberately does not — so relying on
+     * that history left teams who never pressed Ctrl+S with nothing to compare.
+     *
+     * The version counter is not bumped: this records the work, it is not another
+     * edit to it.
+     *
+     * Returns null rather than throwing — a failed snapshot costs the comparison,
+     * and must never cost the student their submission.
+     */
+    public static function snapshotForReview(TeamRoleTemplate $template, ?User $user = null, string $label = 'Submitted'): ?int
+    {
+        try {
+            return DB::transaction(function () use ($template, $user, $label) {
+                $versionRow = TeamRoleTemplateVersion::create([
+                    'team_role_template_id' => $template->team_role_template_id,
+                    'version' => (int) $template->version,
+                    'selected_template' => $template->selected_template,
+                    'is_published' => $template->is_published,
+                    'label' => $label,
+                    'created_by' => $user?->user_id,
+                ]);
+
+                TemplateCustomizationStore::snapshotToVersion(
+                    $template,
+                    (int) $versionRow->team_role_template_version_id
+                );
+
+                return (int) $versionRow->team_role_template_version_id;
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
+    }
+
     /** Max updated_at across the team's role templates — drives live sync for everyone. */
     public static function teamSyncVersion(string $groupName, int $facultyId): int
     {
@@ -263,8 +306,15 @@ class HotelTemplateBuilder
     /**
      * Merge every role's customizations into one hotel site preview.
      * Later roles overwrite same selector keys; user elements are concatenated.
+     *
+     * $versionOverrides lets a caller ask for one role's chunk as it looked at
+     * a past version instead of live — used by the faculty Before/After review
+     * preview. Every other caller passes nothing and gets today's exact result.
+     * The literal string 'baseline' instead of a version id renders that role's
+     * chunk as empty (a first submission has no earlier snapshot to fall back
+     * on, so "Before" is the pristine template with nothing customized yet).
      */
-    public static function mergeTeamCustomizations(string $groupName, int $facultyId): array
+    public static function mergeTeamCustomizations(string $groupName, int $facultyId, array $versionOverrides = []): array
     {
         $order = array_flip(array_keys(self::ROLES));
         $rows = TeamRoleTemplate::where('group_name', $groupName)
@@ -279,7 +329,17 @@ class HotelTemplateBuilder
         ];
 
         foreach ($rows as $row) {
-            $chunk = is_array($row->customizations) ? $row->customizations : [];
+            $override = $versionOverrides[$row->role] ?? null;
+            if ($override === 'baseline') {
+                $chunk = [self::USER_ELEMENTS_KEY => [], self::DELETED_KEY => []];
+            } elseif ($override !== null) {
+                $chunk = TemplateCustomizationStore::readCustomizations(
+                    (int) $row->team_role_template_id,
+                    (int) $override
+                );
+            } else {
+                $chunk = is_array($row->customizations) ? $row->customizations : [];
+            }
             foreach ($chunk as $key => $value) {
                 if ($key === self::USER_ELEMENTS_KEY) {
                     if (is_array($value)) {

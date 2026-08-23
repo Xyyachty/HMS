@@ -172,8 +172,9 @@
         function open() {
             panel.classList.remove('hidden');
             toggle.setAttribute('aria-expanded', 'true');
-            // Always refresh on open — the feed is cheap and staleness is worse.
-            load();
+            // Opening the bell clears the badge — mark everything read, then
+            // refresh so the list reflects it too.
+            postJson(ENDPOINTS.readAll).catch(() => {}).finally(load);
         }
 
         function close() {

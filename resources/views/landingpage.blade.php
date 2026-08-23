@@ -7,6 +7,7 @@
   <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}" />
   <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     @keyframes fadeInUp {
@@ -339,12 +340,6 @@
       <form method="POST" action="{{ route('login.submit') }}" class="space-y-4">
         @csrf
 
-        @if ($errors->any())
-          <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {{ $errors->first() }}
-          </div>
-        @endif
-
         <div>
           <label for="landingLoginEmail" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email Address</label>
           <div class="relative">
@@ -441,6 +436,23 @@
         }
       }
     });
+
+    @if ($errors->any())
+    window.addEventListener('load', function () {
+      Swal.fire({
+        icon: 'error',
+        title: @json(session('error_title', 'Login Failed')),
+        text: @json($errors->first()),
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#DB2777',
+        iconColor: '#EF4444',
+        backdrop: 'rgba(15, 23, 42, 0.35)',
+        customClass: {
+          popup: 'rounded-2xl',
+        },
+      });
+    });
+    @endif
 
     // Mobile menu toggle
     const menuToggle = document.getElementById('menuToggle');

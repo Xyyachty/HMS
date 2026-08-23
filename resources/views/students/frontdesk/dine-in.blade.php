@@ -10,19 +10,19 @@
     --bg: #0c0b09; --bg-warm: #111110; --fg: #f5f0e8; --fg-muted: #9e978b;
     --accent: #c9a84c; --accent-light: #e2cc7a; --card: #181714; --border: #2a2621;
   }
-  #opsContentWrap { font-family: 'Outfit', sans-serif; }
-  .font-display { font-family: 'Playfair Display', serif; }
+  #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
+  .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
   .dn-badge {
     padding: 0.25rem 0.7rem; border-radius: 4px;
     font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent; display: inline-block;
   }
-  .dn-available { background: rgba(34,197,94,0.18); color: #4ade80; border-color: rgba(34,197,94,0.35); }
+  .dn-available { background: rgba(34,197,94,0.18); color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
   .dn-occupied  { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
   .btn-outline {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: transparent; color: var(--accent);
-    font-family: 'Outfit', sans-serif; font-weight: 500;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
     font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
     cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
@@ -33,7 +33,7 @@
   .btn-solid {
     display: inline-flex; align-items: center; gap: 0.45rem;
     background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
-    font-family: 'Outfit', sans-serif; font-weight: 600;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 600;
     font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
     padding: 0.55rem 1.1rem; border-radius: 6px; cursor: pointer;
     transition: filter 0.2s;
@@ -43,7 +43,7 @@
   .booking-input {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
     border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
-    font-family: 'Outfit', sans-serif; font-size: 0.85rem;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; width: 100%;
   }
   .booking-input:focus { border-color: var(--accent); }
@@ -59,6 +59,19 @@
     display: block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--fg-muted); margin-bottom: 0.35rem;
   }
+
+  /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──
+     Additive only — nothing above this block is touched, so a Template 1
+     team (or one that hasn't chosen a template yet) renders unchanged. */
+  :root[data-ops-theme="2"] {
+    --bg: #f7f4ef; --bg-warm: #efe9e0; --fg: #1a1a1a; --fg-muted: #7a7570;
+    --accent: #1b4332; --accent-light: #2d6a4f; --card: #ffffff; --border: #e2ddd5;
+    --font-body: 'DM Sans', sans-serif; --font-display: 'Cormorant Garamond', serif;
+    --danger: #e11d48; --success: #15803d;
+  }
+  :root[data-ops-theme="2"] .dn-available { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+  :root[data-ops-theme="2"] .dn-occupied { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+  :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
 </style>
 @endsection
 
@@ -135,7 +148,7 @@ function AssignForm({ table, onAssign, onCancel, busy }) {
           disabled={partySize >= table.capacity}
           onClick={() => setPartySize(n => Math.min(table.capacity, n + 1))}>+</button>
       </div>
-      {error && <p style={{ margin: '0 0 0.6rem', color: '#fb7185', fontSize: '0.78rem' }}>{error}</p>}
+      {error && <p style={{ margin: '0 0 0.6rem', color: 'var(--danger, #fb7185)', fontSize: '0.78rem' }}>{error}</p>}
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button type="submit" className="btn-solid" disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>
           {busy ? 'Seating…' : 'Assign Table'}
