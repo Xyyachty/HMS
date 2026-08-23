@@ -523,27 +523,17 @@ class TemplateDiff
 
     private static function diffCollectionMap(string $jsonName, array $beforeMap, array $afterMap, array &$changes): void
     {
-        $label = self::COLLECTION_LABELS[$jsonName] ?? ucfirst($jsonName);
-
         foreach ($afterMap as $ref => $url) {
             if (array_key_exists($ref, $beforeMap)) {
                 continue;
             }
-            $changes[] = [
-                'type' => 'added', 'scope' => 'collection_map', 'key' => null, 'hms_id' => null, 'page' => 'home',
-                'label' => $label . ' image: ' . $ref,
-                'fields' => [['property' => 'src', 'label' => 'Image', 'from' => null, 'to' => self::formatValue('src', $url)]],
-            ];
+            $changes[] = self::mapChange('added', $jsonName, (string) $ref, null, $url);
         }
         foreach ($beforeMap as $ref => $url) {
             if (array_key_exists($ref, $afterMap)) {
                 continue;
             }
-            $changes[] = [
-                'type' => 'removed', 'scope' => 'collection_map', 'key' => null, 'hms_id' => null, 'page' => 'home',
-                'label' => $label . ' image: ' . $ref,
-                'fields' => [['property' => 'src', 'label' => 'Image', 'from' => self::formatValue('src', $url), 'to' => null]],
-            ];
+            $changes[] = self::mapChange('removed', $jsonName, (string) $ref, $url, null);
         }
         foreach ($afterMap as $ref => $afterUrl) {
             if (!array_key_exists($ref, $beforeMap)) {
@@ -553,12 +543,67 @@ class TemplateDiff
             if (self::normalizeScalar($beforeUrl) === self::normalizeScalar($afterUrl)) {
                 continue;
             }
-            $changes[] = [
-                'type' => 'modified', 'scope' => 'collection_map', 'key' => null, 'hms_id' => null, 'page' => 'home',
-                'label' => $label . ' image: ' . $ref,
-                'fields' => [['property' => 'src', 'label' => 'Image', 'from' => self::formatValue('src', $beforeUrl), 'to' => self::formatValue('src', $afterUrl)]],
-            ];
+            $changes[] = self::mapChange('modified', $jsonName, (string) $ref, $beforeUrl, $afterUrl);
         }
+    }
+
+    /**
+     * A card-image map entry, keyed "kind:id" (e.g. "brand:logo"). The template
+     * renders these with data-hms-content-kind / data-hms-content-id, so unlike
+     * the rest of the collections they resolve to a real node and can carry a
+     * highlight key — the site logo is the common case, and it is the one thing
+     * every "change the logo" task turns on.
+     */
+    private static function mapChange(string $type, string $jsonName, string $ref, mixed $from, mixed $to): array
+    {
+        [$kind, $id] = array_pad(explode(':', $ref, 2), 2, '');
+        $isLogo = $kind === 'brand';
+
+        $fromLabel = $from === null ? null : self::formatValue('src', $from);
+        $toLabel = $to === null ? null : self::formatValue('src', $to);
+
+        // The site ships with a stock logo that is a template fallback, not a
+        // stored row, so the first time a student replaces it there is nothing
+        // on the Before side and the raw diff calls it an addition. To the
+        // faculty reading this it plainly changed, so say so — and name what it
+        // changed from, which is what the Before preview is actually showing.
+        if ($isLogo && $type === 'added') {
+            $type = 'modified';
+            $fromLabel = 'Default logo';
+        } elseif ($isLogo && $type === 'removed') {
+            $type = 'modified';
+            $toLabel = 'Default logo';
+        }
+
+        return [
+            'type' => $type,
+            'scope' => 'collection_map',
+            'key' => ($kind !== '' && $id !== '')
+                ? '[data-hms-content-kind="' . $kind . '"][data-hms-content-id="' . $id . '"]'
+                : null,
+            'hms_id' => null,
+            'page' => 'home',
+            'label' => self::mapLabel($jsonName, $kind, $id, $ref),
+            'fields' => [[
+                'property' => 'src',
+                'label' => 'Image',
+                'from' => $fromLabel,
+                'to' => $toLabel,
+            ]],
+        ];
+    }
+
+    private static function mapLabel(string $jsonName, string $kind, string $id, string $ref): string
+    {
+        if ($kind === 'brand') {
+            return $id === HotelTemplateBuilder::LOGO_IMAGE_ID
+                ? 'Site logo'
+                : 'Logo (' . str_replace('logo-', '', $id) . ')';
+        }
+
+        $label = self::COLLECTION_LABELS[$jsonName] ?? ucfirst($jsonName);
+
+        return $label . ' image: ' . ($id !== '' ? $id : $ref);
     }
 
     /** Section show/hide toggles and reorders. */

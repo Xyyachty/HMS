@@ -1,59 +1,51 @@
 /**
- * Faculty review overlay: outlines elements the student added or changed in
- * the "After" preview iframe. Read-only — never touches customizations, only
- * decorates whatever hms-template-editor.js / hms-site-content.js already
- * rendered. Loaded only when window.__HMS_REVIEW_HIGHLIGHT__ is set (see
- * editor-bridge.blade.php), which is only true inside the faculty Before/
- * After preview, never on a real student/customer visit.
+ * Faculty review overlay: outlines what the student added or changed in the
+ * "After" preview iframe. Loaded only when window.__HMS_REVIEW_HIGHLIGHT__ is
+ * set (see editor-bridge.blade.php), which is only true inside the faculty
+ * Before/After preview, never on a real student or customer visit.
+ *
+ * Nothing here touches the site's own DOM. The boxes are drawn in a separate
+ * overlay layer positioned over each element's bounding rect, because the
+ * templates render through React: classes set on a managed node are dropped on
+ * the next re-render, injected children are wiped (and an <img> — the site
+ * logo, the single most common task — cannot hold children at all), and either
+ * mutation would feed straight back into the observer below.
  */
 (function () {
   const data = window.__HMS_REVIEW_HIGHLIGHT__;
-  if (!data || (!data.added || !data.added.length) && (!data.modified || !data.modified.length)) return;
+  if (!data) return;
 
-  const STYLE_ID = 'hms-review-highlight-style';
+  const added = data.added || [];
+  const modified = data.modified || [];
+  if (!added.length && !modified.length) return;
+
+  const LAYER_ID = 'hms-review-highlight-layer';
   const LEGEND_ID = 'hms-review-highlight-legend';
+  const COLORS = { added: '#22c55e', modified: '#f59e0b' };
+  const BADGES = { added: 'added', modified: 'changed' };
 
-  function ensureStyle() {
-    if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
-    style.textContent = [
-      '.hms-diff-added, .hms-diff-modified { position: relative !important; }',
-      '.hms-diff-added { outline: 2px solid #22c55e !important; outline-offset: 2px !important; }',
-      '.hms-diff-modified { outline: 2px solid #f59e0b !important; outline-offset: 2px !important; }',
-      '.hms-diff-pulse { animation: hms-diff-pulse 1.1s ease-out 2; }',
-      '@keyframes hms-diff-pulse { 0% { outline-color: #6366f1; } 50% { outline-color: transparent; } 100% { outline-color: inherit; } }',
-      '.hms-diff-badge {',
-      '  position: absolute; top: -0.6rem; left: -0.4rem; z-index: 2147483000;',
-      '  font: 700 9px/1.6 system-ui, sans-serif; letter-spacing: .02em; text-transform: uppercase;',
-      '  padding: 0 5px; border-radius: 999px; color: #fff; pointer-events: none;',
-      '  box-shadow: 0 1px 2px rgba(0,0,0,.25);',
-      '}',
-      '.hms-diff-badge.added { background: #16a34a; }',
-      '.hms-diff-badge.modified { background: #d97706; }',
-      '#' + LEGEND_ID + ' {',
-      '  position: fixed; right: 10px; bottom: 10px; z-index: 2147483000;',
-      '  font: 600 11px/1.4 system-ui, sans-serif; background: rgba(15,23,42,.92); color: #fff;',
-      '  padding: 6px 10px; border-radius: 8px; display: flex; gap: 10px; pointer-events: none;',
-      '}',
-      '#' + LEGEND_ID + ' span { display: inline-flex; align-items: center; gap: 4px; }',
-      '#' + LEGEND_ID + ' i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }',
-    ].join('\n');
-    document.head.appendChild(style);
+  let layer = null;
+  let legend = null;
+  let focusKey = null;
+
+  function ensureLayer() {
+    if (layer && document.body.contains(layer)) return layer;
+    layer = document.createElement('div');
+    layer.id = LAYER_ID;
+    layer.style.cssText = 'position:absolute;top:0;left:0;width:0;height:0;z-index:2147483000;pointer-events:none;';
+    document.body.appendChild(layer);
+    return layer;
   }
 
-  function ensureLegend(counts) {
-    let el = document.getElementById(LEGEND_ID);
-    if (!el) {
-      el = document.createElement('div');
-      el.id = LEGEND_ID;
-      document.body.appendChild(el);
-    }
-    const parts = [];
-    if (counts.added) parts.push('<span><i style="background:#22c55e"></i>' + counts.added + ' added</span>');
-    if (counts.modified) parts.push('<span><i style="background:#f59e0b"></i>' + counts.modified + ' changed</span>');
-    el.innerHTML = parts.join('');
-    el.style.display = parts.length ? 'flex' : 'none';
+  function ensureLegend() {
+    if (legend && document.body.contains(legend)) return legend;
+    legend = document.createElement('div');
+    legend.id = LEGEND_ID;
+    legend.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:2147483001;'
+      + 'font:600 11px/1.4 system-ui,sans-serif;background:rgba(15,23,42,.92);color:#fff;'
+      + 'padding:6px 10px;border-radius:8px;display:flex;gap:10px;pointer-events:none;';
+    document.body.appendChild(legend);
+    return legend;
   }
 
   function currentPage() {
@@ -65,103 +57,148 @@
     return String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
   }
 
-  function resolveElement(entry) {
+  function queryAll(selector) {
+    try {
+      const found = document.querySelectorAll(selector);
+      return found.length ? Array.prototype.slice.call(found) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /**
+   * All nodes this change applies to, not just the first. The site logo is one
+   * stored value painted in the header, the footer and the mobile menu, so a
+   * single match would leave the other copies looking untouched.
+   */
+  function resolveElements(entry) {
     if (entry.key) {
-      try {
-        const el = document.querySelector('[data-edit-id="' + entry.key.replace(/"/g, '\\"') + '"]');
-        if (el) return el;
-      } catch (e) { /* ignore */ }
-      try {
-        const el = document.querySelector(entry.key);
-        if (el) return el;
-      } catch (e) { /* ignore */ }
+      let els = queryAll('[data-edit-id="' + entry.key.replace(/"/g, '\\"') + '"]');
+      if (els.length) return els;
+      els = queryAll(entry.key);
+      if (els.length) return els;
     }
     if (entry.hms_id) {
-      try {
-        const el = document.querySelector('[data-hms-id="' + cssEscapeSafe(entry.hms_id) + '"]');
-        if (el) return el;
-      } catch (e) { /* ignore */ }
+      const els = queryAll('[data-hms-id="' + cssEscapeSafe(entry.hms_id) + '"]');
+      if (els.length) return els;
     }
-    return null;
+    return [];
   }
 
-  function clearDecorations() {
-    document.querySelectorAll('.hms-diff-added, .hms-diff-modified').forEach(function (el) {
-      el.classList.remove('hms-diff-added', 'hms-diff-modified');
-      const badge = el.querySelector(':scope > .hms-diff-badge');
-      if (badge) badge.remove();
-    });
+  function isVisible(el) {
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   }
 
-  function decorate(el, type) {
-    if (!el || el.__hmsDiffDone) return;
-    el.classList.add(type === 'added' ? 'hms-diff-added' : 'hms-diff-modified');
+  function drawBox(el, type, key) {
+    const rect = el.getBoundingClientRect();
+    const top = rect.top + window.scrollY;
+    const left = rect.left + window.scrollX;
+    const color = COLORS[type];
+
+    const box = document.createElement('div');
+    box.style.cssText = 'position:absolute;box-sizing:border-box;pointer-events:none;border-radius:3px;'
+      + 'outline:2px solid ' + color + ';outline-offset:2px;'
+      + 'top:' + top + 'px;left:' + left + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;';
+    if (key && key === focusKey) {
+      box.style.boxShadow = '0 0 0 4px rgba(99,102,241,.55)';
+      box.style.background = 'rgba(99,102,241,.12)';
+    }
+
     const badge = document.createElement('span');
-    badge.className = 'hms-diff-badge ' + type;
-    badge.textContent = type === 'added' ? 'added' : 'changed';
-    el.appendChild(badge);
-    el.__hmsDiffDone = true;
+    badge.textContent = BADGES[type];
+    badge.style.cssText = 'position:absolute;top:-9px;left:-4px;white-space:nowrap;'
+      + 'font:700 9px/1.6 system-ui,sans-serif;letter-spacing:.02em;text-transform:uppercase;'
+      + 'padding:0 5px;border-radius:999px;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);'
+      + 'background:' + color + ';';
+    box.appendChild(badge);
+
+    ensureLayer().appendChild(box);
   }
 
   function run() {
-    clearDecorations();
-    document.querySelectorAll('.hms-diff-added, .hms-diff-modified').forEach(function (el) {
-      el.__hmsDiffDone = false;
-    });
+    const host = ensureLayer();
+    host.innerHTML = '';
 
     const page = currentPage();
-    let added = 0;
-    let modified = 0;
+    let addedCount = 0;
+    let modifiedCount = 0;
 
-    (data.added || []).forEach(function (entry) {
-      if (entry.page && entry.page !== page) return;
-      const el = resolveElement(entry);
-      if (el) {
-        decorate(el, 'added');
-        added++;
-      }
-    });
-    (data.modified || []).forEach(function (entry) {
-      if (entry.page && entry.page !== page) return;
-      const el = resolveElement(entry);
-      if (el) {
-        decorate(el, 'modified');
-        modified++;
-      }
-    });
+    function paint(entry, type) {
+      if (entry.page && entry.page !== page) return false;
+      let drew = false;
+      resolveElements(entry).forEach(function (el) {
+        if (!isVisible(el)) return;
+        drawBox(el, type, entry.key);
+        drew = true;
+      });
+      return drew;
+    }
 
-    ensureLegend({ added: added, modified: modified });
+    added.forEach(function (entry) { if (paint(entry, 'added')) addedCount++; });
+    modified.forEach(function (entry) { if (paint(entry, 'modified')) modifiedCount++; });
+
+    const parts = [];
+    if (addedCount) parts.push('<span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COLORS.added + '"></i> ' + addedCount + ' added</span>');
+    if (modifiedCount) parts.push('<span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COLORS.modified + '"></i> ' + modifiedCount + ' changed</span>');
+    const bar = ensureLegend();
+    bar.innerHTML = parts.join('');
+    bar.style.display = parts.length ? 'flex' : 'none';
   }
 
+  let timer = null;
   function scheduleRun() {
-    clearTimeout(scheduleRun._t);
-    scheduleRun._t = setTimeout(run, 200);
+    clearTimeout(timer);
+    timer = setTimeout(run, 150);
   }
 
   function focusEntry(key) {
-    if (!key) return;
-    let el = null;
-    try {
-      el = document.querySelector('[data-edit-id="' + key.replace(/"/g, '\\"') + '"]') || document.querySelector(key);
-    } catch (e) { /* ignore */ }
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.classList.add('hms-diff-pulse');
-    setTimeout(function () { el.classList.remove('hms-diff-pulse'); }, 2400);
+    focusKey = key;
+    const all = added.concat(modified);
+    let target = null;
+    for (let i = 0; i < all.length && !target; i++) {
+      if (all[i].key === key) target = resolveElements(all[i])[0] || null;
+    }
+    if (!target) target = queryAll(key)[0] || null;
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    run();
+    setTimeout(function () { focusKey = null; run(); }, 2600);
   }
 
   window.addEventListener('message', function (e) {
     const msg = e.data;
-    if (msg && msg.type === 'hms-diff-focus') {
-      focusEntry(msg.key);
-    }
+    if (msg && msg.type === 'hms-diff-focus') focusEntry(msg.key);
   });
 
+  /** Our own boxes land in document.body too — reacting to them would spin forever. */
+  function isOurs(node) {
+    return node && node.nodeType === 1
+      && (node.id === LAYER_ID || node.id === LEGEND_ID
+        || (layer && layer.contains(node)) || (legend && legend.contains(node)));
+  }
+
+  function onMutations(records) {
+    for (let i = 0; i < records.length; i++) {
+      const r = records[i];
+      if (isOurs(r.target)) continue;
+      let ownAdded = r.addedNodes.length > 0;
+      for (let j = 0; j < r.addedNodes.length; j++) {
+        if (!isOurs(r.addedNodes[j])) { ownAdded = false; break; }
+      }
+      if (ownAdded) continue;
+      scheduleRun();
+      return;
+    }
+  }
+
   function boot() {
-    ensureStyle();
     run();
-    const observer = new MutationObserver(scheduleRun);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+    // The templates paint through React after first paint, and images resize the
+    // boxes as they load, so the overlay is redrawn on anything that moves.
+    new MutationObserver(onMutations).observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('scroll', scheduleRun, { passive: true });
+    window.addEventListener('resize', scheduleRun);
+    window.addEventListener('load', scheduleRun);
   }
 
   if (document.readyState === 'loading') {
