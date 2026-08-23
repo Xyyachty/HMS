@@ -922,6 +922,7 @@ class FacultyController extends Controller
                 'teamCountsByClass' => [],
                 'tasksByRole'     => collect(),
                 'taskCounts'      => [],
+                'taskChecklist'   => [],
                 'roles'           => [],
                 'teamActivityByGroup' => [],
                 'conceptsByGroup' => collect(),
@@ -1017,6 +1018,11 @@ class FacultyController extends Controller
         foreach (array_keys($rolesMeta) as $roleKey) {
             $taskCounts[$roleKey] = $tasksByRole->get($roleKey, collect())->count();
         }
+
+        // What faculty can tick to assign. Named apart from $tasksByRole above,
+        // which is the tasks that already exist — the view used to redefine that
+        // one for the checklist and lose the real rows for the rest of the page.
+        $taskChecklist = \App\Support\TaskChecklist::all();
 
         $roleLabels = [
             'front_desk'            => 'Front Desk',
@@ -1117,6 +1123,7 @@ class FacultyController extends Controller
             'rolesMeta',
             'tasksByRole',
             'taskCounts',
+            'taskChecklist',
             'teamActivityByGroup',
             'conceptsByGroup'
         ));

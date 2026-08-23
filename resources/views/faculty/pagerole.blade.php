@@ -1154,31 +1154,10 @@
             @endif
 
             <div class="p-6 space-y-6">
-                @php
-                    /*
-                     * The assignable checklist. Only the three roles that own a page of
-                     * the hotel site carry tasks for now — each gets the same two, aimed
-                     * at the part of the site that role is allowed to edit. Maintenance
-                     * and Housekeeping are deliberately empty rather than removed, so the
-                     * departments still appear and can be given tasks later.
-                     */
-                    $tasksByRole = [
-                        'front_desk' => [
-                            ['title' => 'Change Logo', 'description' => 'Replace the default logo on the Home page header and footer with your own', 'priority' => 'medium'],
-                            ['title' => 'Name Your Hotel', 'description' => 'Replace the placeholder hotel name on the Home page with your team\'s hotel name', 'priority' => 'medium'],
-                        ],
-                        'room_management' => [
-                            ['title' => 'Change Logo', 'description' => 'Replace the default logo on the Rooms page header and footer with your own', 'priority' => 'medium'],
-                            ['title' => 'Name Your Hotel', 'description' => 'Replace the placeholder hotel name on the Rooms page with your team\'s hotel name', 'priority' => 'medium'],
-                        ],
-                        'restaurant_management' => [
-                            ['title' => 'Change Logo', 'description' => 'Replace the default logo on the Restaurant page header and footer with your own', 'priority' => 'medium'],
-                            ['title' => 'Name Your Hotel', 'description' => 'Replace the placeholder hotel name on the Restaurant page with your team\'s hotel name', 'priority' => 'medium'],
-                        ],
-                        'maintenance' => [],
-                        'housekeeping' => [],
-                    ];
-                @endphp
+                {{-- The assignable checklist comes from App\Support\TaskChecklist and is
+                     passed in as $taskChecklist. It used to be declared here as
+                     $tasksByRole, which shadowed the controller's real task rows for
+                     everything below it. --}}
 
                 {{-- ═══════ STEP INDICATORS ═══════ --}}
                 <div class="flex items-center justify-center gap-2">
@@ -1216,7 +1195,7 @@
                                 class="task-dept-btn group p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-brand/40 hover:shadow-md transition-all text-center">
                                 <span class="iconify text-2xl {{ $rMeta['color'] }} group-hover:scale-110 transition-transform" data-icon="{{ $rMeta['icon'] }}"></span>
                                 <p class="text-xs font-bold text-slate-700 mt-2">{{ $rMeta['label'] }}</p>
-                                <p class="text-[10px] text-slate-400 mt-0.5">{{ count($tasksByRole[$rKey] ?? []) }} tasks</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">{{ count($taskChecklist[$rKey] ?? []) }} tasks</p>
                             </button>
                         @endforeach
                     </div>
@@ -1241,7 +1220,7 @@
 
                     @foreach($rolesMeta ?? [] as $rKey => $rMeta)
                         <div id="taskPanel-{{ $rKey }}" class="task-checklist-panel hidden">
-                            @if(empty($tasksByRole[$rKey]))
+                            @if(empty($taskChecklist[$rKey]))
                                 <div class="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
                                     <span class="iconify text-3xl text-slate-300" data-icon="mdi:clipboard-off-outline"></span>
                                     <p class="text-sm font-bold text-slate-500 mt-2">No tasks for {{ $rMeta['label'] }} yet</p>
@@ -1249,12 +1228,21 @@
                                 </div>
                             @endif
                             <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1">
-                                @foreach($tasksByRole[$rKey] ?? [] as $index => $task)
+                                @foreach($taskChecklist[$rKey] ?? [] as $index => $task)
                                     <label class="task-checkbox-card flex items-start gap-3 p-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl hover:bg-{{ $rMeta['color'] }}-50/50 hover:border-{{ $rMeta['color'] }}-200 transition cursor-pointer has-[:checked]:border-{{ $rMeta['color'] }}-400 has-[:checked]:bg-{{ $rMeta['color'] }}-50">
                                         <input type="checkbox" name="tasks[{{ $rKey }}][]" value="{{ $index }}"
                                             class="task-checkbox-{{ $rKey }} mt-0.5 rounded border-slate-300 text-{{ $rMeta['color'] }}-500 focus:ring-{{ $rMeta['color'] }}-500/30 task-check">
                                         <div class="flex-1 min-w-0">
-                                            <div class="text-sm font-bold text-slate-800">{{ $task['title'] }}</div>
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="text-sm font-bold text-slate-800">{{ $task['title'] }}</span>
+                                                {{-- Website work shows a Before/After in the review; staff-tool work
+                                                     changes no page, so it is judged by opening the department. --}}
+                                                @php $isOps = ($task['scope'] ?? 'site') === \App\Support\TaskChecklist::SCOPE_OPS; @endphp
+                                                <span class="shrink-0 px-1.5 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wide
+                                                    {{ $isOps ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200' }}">
+                                                    {{ \App\Support\TaskChecklist::scopeLabel($task['scope'] ?? 'site') }}
+                                                </span>
+                                            </div>
                                             <p class="text-xs text-slate-500 mt-0.5">{{ $task['description'] }}</p>
                                         </div>
                                         <input type="hidden" name="task_titles[{{ $rKey }}][{{ $index }}]" value="{{ $task['title'] }}">
