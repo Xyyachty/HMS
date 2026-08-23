@@ -436,13 +436,14 @@
                 <div class="px-3 py-2 flex items-center justify-between gap-2 bg-white border-b border-slate-100 flex-shrink-0">
                     <span id="reviewWorkLabel" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">The team's live site</span>
                     <div class="flex items-center gap-3">
-                        {{-- Only rendered once a task has been sent back before, so there is
-                             an earlier save to compare this submission against. --}}
+                        {{-- Only rendered once this task has a submission to anchor "After" to. --}}
                         <div id="reviewCompareToggle" class="hidden inline-flex rounded-lg bg-slate-100 p-0.5">
                             <button type="button" data-compare="before"
                                 class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 transition">Before</button>
                             <button type="button" data-compare="after"
                                 class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-white text-slate-800 shadow-sm transition">After</button>
+                            <button type="button" data-compare="changes"
+                                class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 transition">Changes <span id="reviewChangesCount"></span></button>
                         </div>
                         <a id="reviewOpenTab" href="#" target="_blank" rel="noopener"
                            class="text-[10px] font-bold text-brand hover:underline hidden">Open in new tab ↗</a>
@@ -455,6 +456,7 @@
                     <iframe id="reviewPreviewFrame" src="" title="Team site preview"
                             class="w-full h-full border-0 bg-white hidden" style="min-height: 22rem;"></iframe>
                     <div id="reviewConceptPane" class="absolute inset-0 overflow-y-auto bg-white p-4 hidden" style="min-height: 22rem;"></div>
+                    <div id="reviewChangesPane" class="absolute inset-0 overflow-y-auto bg-white p-3 hidden" style="min-height: 22rem;"></div>
                 </div>
             </div>
 
@@ -1486,6 +1488,70 @@ const TASK_FEEDBACK_URL = @json(route('faculty.tasks.feedback', ['task' => '__ID
 let reviewTaskId = null;
 // The two sides of the Before/After comparison for the open task.
 let reviewPreviewUrls = { before: null, after: null };
+// The Changes list for the open task — rendered into #reviewChangesPane.
+let reviewChanges = [];
+
+const REVIEW_CHANGE_STYLES = {
+    added: { border: 'border-emerald-400', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Added' },
+    modified: { border: 'border-amber-400', chip: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Changed' },
+    removed: { border: 'border-rose-400', chip: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Removed' },
+};
+
+/* One row per change, grouped by page. Clicking a row jumps the After preview
+   to that element and pulses it — see the postMessage listener below and the
+   'hms-diff-focus' handler in hms-review-highlight.js. */
+function renderReviewChanges(changes) {
+    const pane = document.getElementById('reviewChangesPane');
+    if (!changes.length) {
+        pane.innerHTML = '<p class="text-xs text-slate-400 text-center py-8">No changes to show for this submission.</p>';
+        return;
+    }
+
+    const byPage = {};
+    changes.forEach(function (c) {
+        const page = c.page || 'home';
+        (byPage[page] = byPage[page] || []).push(c);
+    });
+
+    let html = '';
+    Object.keys(byPage).forEach(function (page) {
+        html += '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-3 mb-1.5 first:mt-0">' + escHtml(page) + '</p>';
+        byPage[page].forEach(function (c) {
+            const style = REVIEW_CHANGE_STYLES[c.type] || REVIEW_CHANGE_STYLES.modified;
+            const clickableAttr = c.key ? ' data-review-change-key="' + escHtml(c.key) + '"' : '';
+            const clickableClass = c.key ? ' cursor-pointer hover:bg-slate-50' : '';
+            html += '<div class="border-l-2 ' + style.border + ' rounded-r-lg bg-white px-2.5 py-2 mb-1.5' + clickableClass + '"' + clickableAttr + '>'
+                + '<div class="flex items-center justify-between gap-2">'
+                + '<span class="text-xs font-semibold text-slate-700 truncate">' + escHtml(c.label || '') + '</span>'
+                + '<span class="shrink-0 px-1.5 py-0.5 rounded-full border text-[9px] font-bold ' + style.chip + '">' + style.label + '</span>'
+                + '</div>';
+            (c.fields || []).forEach(function (f) {
+                html += '<p class="text-[11px] text-slate-500 mt-1"><span class="font-semibold text-slate-600">' + escHtml(f.label) + ':</span> ';
+                if (f.from != null && f.to != null) {
+                    html += '<span class="line-through text-slate-400">' + escHtml(f.from) + '</span> <span class="text-slate-400">to</span> <span class="text-slate-700">' + escHtml(f.to) + '</span>';
+                } else if (f.to != null) {
+                    html += '<span class="text-slate-700">' + escHtml(f.to) + '</span>';
+                } else if (f.from != null) {
+                    html += '<span class="line-through text-slate-400">' + escHtml(f.from) + '</span>';
+                }
+                html += '</p>';
+            });
+            html += '</div>';
+        });
+    });
+    pane.innerHTML = html;
+}
+
+document.addEventListener('click', function (e) {
+    const row = e.target.closest ? e.target.closest('[data-review-change-key]') : null;
+    if (!row) return;
+    const key = row.getAttribute('data-review-change-key');
+    setReviewCompareSide('after');
+    const frame = document.getElementById('reviewPreviewFrame');
+    try {
+        frame.contentWindow.postMessage({ type: 'hms-diff-focus', key: key }, '*');
+    } catch (err) { /* ignore */ }
+});
 
 /* The feedback box belongs to Revise alone, so it is revealed only on demand. */
 function showReviseStep() {
@@ -1502,13 +1568,9 @@ function hideReviseStep() {
     document.getElementById('reviewError').classList.add('hidden');
 }
 
-/* Before/After share one iframe: a full hotel site needs the width. */
+/* Before/After share one iframe: a full hotel site needs the width. Changes
+   swaps to the list pane instead — there is nothing to render for it. */
 function setReviewCompareSide(side) {
-    const url = reviewPreviewUrls[side];
-    if (!url) return;
-    const frame = document.getElementById('reviewPreviewFrame');
-    frame.src = url;
-    document.getElementById('reviewOpenTab').href = url;
     document.querySelectorAll('#reviewCompareToggle [data-compare]').forEach(function (btn) {
         const on = btn.getAttribute('data-compare') === side;
         btn.classList.toggle('bg-white', on);
@@ -1516,9 +1578,26 @@ function setReviewCompareSide(side) {
         btn.classList.toggle('shadow-sm', on);
         btn.classList.toggle('text-slate-500', !on);
     });
+
+    const frame = document.getElementById('reviewPreviewFrame');
+    const changesPane = document.getElementById('reviewChangesPane');
+
+    if (side === 'changes') {
+        frame.classList.add('hidden');
+        changesPane.classList.remove('hidden');
+        document.getElementById('reviewWorkLabel').textContent = 'Highlighted changes';
+        return;
+    }
+
+    const url = reviewPreviewUrls[side];
+    if (!url) return;
+    changesPane.classList.add('hidden');
+    frame.classList.remove('hidden');
+    frame.src = url;
+    document.getElementById('reviewOpenTab').href = url;
     document.getElementById('reviewWorkLabel').textContent = side === 'before'
-        ? 'Before — at your last feedback'
-        : 'After — what they submitted now';
+        ? 'Before — when this task was assigned'
+        : 'After — what they submitted';
 }
 
 document.addEventListener('click', function (e) {
@@ -1550,17 +1629,22 @@ function openTaskReview(taskId) {
     const empty = document.getElementById('reviewPreviewEmpty');
     const openTab = document.getElementById('reviewOpenTab');
     const conceptPane = document.getElementById('reviewConceptPane');
+    const changesPane = document.getElementById('reviewChangesPane');
     frame.classList.add('hidden');
     frame.src = '';
     empty.classList.remove('hidden');
     openTab.classList.add('hidden');
     conceptPane.classList.add('hidden');
     conceptPane.innerHTML = '';
+    changesPane.classList.add('hidden');
+    changesPane.innerHTML = '';
+    document.getElementById('reviewChangesCount').textContent = '';
     document.getElementById('reviewWorkLabel').textContent = "The team's live site";
     document.getElementById('reviewDecisionBlock').classList.remove('hidden');
     document.getElementById('reviewConceptHint').classList.add('hidden');
     hideReviseStep();
     reviewPreviewUrls = { before: null, after: null };
+    reviewChanges = [];
     document.getElementById('reviewCompareToggle').classList.add('hidden');
 
     modal.classList.remove('hidden');
@@ -1616,6 +1700,10 @@ function openTaskReview(taskId) {
                 openTab.classList.remove('hidden');
 
                 reviewPreviewUrls = { before: d.before_preview_url || null, after: d.preview_url };
+                reviewChanges = Array.isArray(d.changes) ? d.changes : [];
+                renderReviewChanges(reviewChanges);
+                document.getElementById('reviewChangesCount').textContent = reviewChanges.length ? '(' + reviewChanges.length + ')' : '';
+
                 if (d.before_preview_url) {
                     document.getElementById('reviewCompareToggle').classList.remove('hidden');
                     setReviewCompareSide('after');

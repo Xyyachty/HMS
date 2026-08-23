@@ -310,6 +310,9 @@ class HotelTemplateBuilder
      * $versionOverrides lets a caller ask for one role's chunk as it looked at
      * a past version instead of live — used by the faculty Before/After review
      * preview. Every other caller passes nothing and gets today's exact result.
+     * The literal string 'baseline' instead of a version id renders that role's
+     * chunk as empty (a first submission has no earlier snapshot to fall back
+     * on, so "Before" is the pristine template with nothing customized yet).
      */
     public static function mergeTeamCustomizations(string $groupName, int $facultyId, array $versionOverrides = []): array
     {
@@ -326,12 +329,17 @@ class HotelTemplateBuilder
         ];
 
         foreach ($rows as $row) {
-            $chunk = isset($versionOverrides[$row->role])
-                ? TemplateCustomizationStore::readCustomizations(
+            $override = $versionOverrides[$row->role] ?? null;
+            if ($override === 'baseline') {
+                $chunk = [self::USER_ELEMENTS_KEY => [], self::DELETED_KEY => []];
+            } elseif ($override !== null) {
+                $chunk = TemplateCustomizationStore::readCustomizations(
                     (int) $row->team_role_template_id,
-                    (int) $versionOverrides[$row->role]
-                )
-                : (is_array($row->customizations) ? $row->customizations : []);
+                    (int) $override
+                );
+            } else {
+                $chunk = is_array($row->customizations) ? $row->customizations : [];
+            }
             foreach ($chunk as $key => $value) {
                 if ($key === self::USER_ELEMENTS_KEY) {
                     if (is_array($value)) {

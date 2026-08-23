@@ -407,14 +407,25 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'Submitted: ' . $task->title
         );
 
+        // "Before" resolves in order: the anchor already on the task (set at
+        // assignment, or at the last send-back), then the last submission (a
+        // plain resubmit compares against what was last handed in), then the
+        // newest snapshot that exists for this template — covers tasks created
+        // before baseline snapshots existed. Null only if none of those exist.
+        $previousVersionId = $task->previous_version_id
+            ?: $task->submitted_version_id
+            ?: \App\Models\TeamRoleTemplateVersion::where('team_role_template_id', $roleTemplate->team_role_template_id)
+                // Exclude the snapshot just taken above — it is this submission's
+                // own "After", not something to compare it against.
+                ->when($snapshotId, fn ($q) => $q->where('team_role_template_version_id', '!=', $snapshotId))
+                ->orderByDesc('team_role_template_version_id')
+                ->value('team_role_template_version_id');
+
         $task->update([
             'status' => 'archived',
             'student_id' => $student->user_information_id,
             'assigned_to' => $authUser->user_id,
-            // A resubmission always follows a "send back", which already froze the
-            // state the feedback was written against — that is the truer Before, so
-            // it wins. The last submission is only the fallback.
-            'previous_version_id' => $task->previous_version_id ?: $task->submitted_version_id,
+            'previous_version_id' => $previousVersionId,
             'submitted_version_id' => $snapshotId ?: $task->submitted_version_id,
         ]);
 

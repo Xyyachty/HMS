@@ -1263,16 +1263,24 @@ class FacultyController extends Controller
         // users.id => how many task rows landed on them, so each student gets one
         // "3 new tasks" notification rather than one per row.
         $assignedCounts = [];
+        $facultyUser = auth()->user();
+
+        // Site work has no "Before" without a snapshot of what the team's role
+        // template looked like the moment the task was handed out — otherwise a
+        // first submission has nothing to compare against. One snapshot covers
+        // every member of a (group, role), so it is taken once and reused rather
+        // than once per task row.
+        $baselineVersionIds = [];
 
         if (!empty($validated['tasks']) && is_array($validated['tasks'])) {
             foreach ($validated['tasks'] as $role => $taskIndices) {
                 if (!is_array($taskIndices)) continue;
-                
+
                 foreach ($taskIndices as $index) {
                     $title = $validated['task_titles'][$role][$index] ?? null;
                     $description = $validated['task_descriptions'][$role][$index] ?? null;
                     $priority = $validated['task_priorities'][$role][$index] ?? 'medium';
-                    
+
                     if ($title) {
                         $members = StudentGroup::with('student')
                             ->where('faculty_id', $facultyId)
@@ -1296,9 +1304,19 @@ class FacultyController extends Controller
                             foreach ($members as $member) {
                                 $assigneeUserId = $member->student?->user_id;
 
+                                $baselineKey = $member->group_name . '|' . $role;
+                                if (!array_key_exists($baselineKey, $baselineVersionIds)) {
+                                    $baselineVersionIds[$baselineKey] = \App\Support\HotelTemplateBuilder::snapshotForReview(
+                                        \App\Support\HotelTemplateBuilder::ensureTemplate($member, $role),
+                                        $facultyUser,
+                                        'Assigned'
+                                    );
+                                }
+
                                 Task::create(array_merge($payload, [
                                     'student_id'  => $member->student_id,
                                     'assigned_to' => $assigneeUserId,
+                                    'previous_version_id' => $baselineVersionIds[$baselineKey],
                                 ]));
                                 $tasksCreated++;
 
@@ -1348,6 +1366,8 @@ class FacultyController extends Controller
 
         $previewUrl = null;
         $beforePreviewUrl = null;
+        $changes = [];
+        $changeSummary = ['added' => 0, 'modified' => 0, 'removed' => 0];
         if ($membership && !$task->is_hotel_concept) {
             $previewUrl = route('faculty.teams.preview', [
                 'group' => $membership->group_name,
@@ -1355,26 +1375,40 @@ class FacultyController extends Controller
             ]);
 
             // Both sides come from snapshots taken at submission time, so the
-            // comparison is exactly "last time they handed this in" against "this
-            // time" — it does not depend on whether anyone pressed Ctrl+S. There is
-            // nothing to compare on a first submission, so the toggle stays hidden.
-            if ($task->previous_version_id && TeamRoleTemplateVersion::whereKey($task->previous_version_id)->exists()) {
+            // comparison is exactly "what this task looked like when assigned (or
+            // last sent back)" against "this submission" — it does not depend on
+            // whether anyone pressed Ctrl+S. Before/After/Changes only exist once
+            // there is something submitted to anchor "After" to.
+            if ($task->submitted_version_id && TeamRoleTemplateVersion::whereKey($task->submitted_version_id)->exists()) {
+                $afterVersionId = (int) $task->submitted_version_id;
+
+                // Pin "After" to the submitted snapshot: the team keeps working
+                // while the task sits in the queue, and the live site would
+                // quietly drift away from what was actually handed in.
+                $previewUrl = route('faculty.teams.preview', [
+                    'group' => $membership->group_name,
+                    'role' => $task->role,
+                    'before_version' => $afterVersionId,
+                    'highlight_task' => $task->task_id,
+                ]);
+
+                $beforeVersionId = ($task->previous_version_id && TeamRoleTemplateVersion::whereKey($task->previous_version_id)->exists())
+                    ? (int) $task->previous_version_id
+                    : null;
+
+                // No earlier snapshot (e.g. a task predating this feature) renders
+                // Before as the pristine template rather than hiding the toggle —
+                // every customization then correctly reads as "added".
                 $beforePreviewUrl = route('faculty.teams.preview', [
                     'group' => $membership->group_name,
                     'role' => $task->role,
-                    'before_version' => $task->previous_version_id,
+                    'before_version' => $beforeVersionId ?? 'baseline',
                 ]);
 
-                // Pin "After" to the submitted snapshot too: the team keeps working
-                // while the task sits in the queue, and the live site would quietly
-                // drift away from what was actually handed in.
-                if ($task->submitted_version_id && TeamRoleTemplateVersion::whereKey($task->submitted_version_id)->exists()) {
-                    $previewUrl = route('faculty.teams.preview', [
-                        'group' => $membership->group_name,
-                        'role' => $task->role,
-                        'before_version' => $task->submitted_version_id,
-                    ]);
-                }
+                $roleTemplate = \App\Support\HotelTemplateBuilder::ensureTemplate($membership, $task->role);
+                $diff = \App\Support\TemplateDiff::between($roleTemplate, $beforeVersionId, $afterVersionId);
+                $changes = $diff['changes'];
+                $changeSummary = $diff['summary'];
             }
         }
 
@@ -1400,6 +1434,8 @@ class FacultyController extends Controller
             'revision_count' => (int) $task->revision_count,
             'preview_url' => $previewUrl,
             'before_preview_url' => $beforePreviewUrl,
+            'changes' => $changes,
+            'change_summary' => $changeSummary,
         ];
 
         // The concept is text, not a page, so the review dialog reads it inline —
@@ -1609,9 +1645,16 @@ class FacultyController extends Controller
         $data = $request->validate([
             'group' => ['required', 'string', 'max:255'],
             'role' => ['nullable', 'string'],
-            // A version snapshot row id — renders the "Before" half of the
-            // faculty review comparison instead of the live site.
-            'before_version' => ['nullable', 'integer'],
+            // A version snapshot row id, or the literal "baseline" — renders the
+            // "Before" half of the faculty review comparison (a real earlier
+            // snapshot, or the pristine template when none exists) instead of
+            // the live site.
+            'before_version' => ['nullable', 'regex:/^(baseline|\d+)$/'],
+            // Which task's Changes to outline on this render. Only takes effect
+            // when before_version is exactly that task's submitted snapshot —
+            // it must not paint "changed" badges onto the Before side, or onto
+            // some other task's snapshot reached by editing the URL by hand.
+            'highlight_task' => ['nullable', 'integer'],
         ]);
 
         $membership = StudentGroup::where('faculty_id', $facultyId)
@@ -1621,12 +1664,18 @@ class FacultyController extends Controller
             abort(404, 'That team does not belong to you.');
         }
 
+        $isBaseline = ($data['before_version'] ?? null) === 'baseline';
+
         // The snapshot names the role it belongs to, so the override is keyed off the
         // version row itself rather than the request's role — a mismatched pair would
         // otherwise render one role's history under another's chunk. Loading it
         // through this faculty's own team also keeps it from reading another team's.
         $versionOverrides = [];
-        if (!empty($data['before_version'])) {
+        if ($isBaseline) {
+            if (!empty($data['role']) && \App\Support\HotelTemplateBuilder::isValidRole($data['role'])) {
+                $versionOverrides[$data['role']] = 'baseline';
+            }
+        } elseif (!empty($data['before_version'])) {
             $version = TeamRoleTemplateVersion::with('template')
                 ->whereKey($data['before_version'])
                 ->whereHas('template', function ($q) use ($membership) {
@@ -1652,12 +1701,36 @@ class FacultyController extends Controller
 
         $selected = in_array((string) $selected, ['1', '2'], true) ? (string) $selected : '1';
 
+        // Outline what changed, but only on the exact render this task's "After"
+        // link points at — never on the Before side, and never when the URL was
+        // hand-edited to point highlight_task at a different snapshot.
+        $reviewHighlight = null;
+        if (!empty($data['highlight_task']) && !$isBaseline && !empty($data['before_version'])) {
+            $task = Task::find($data['highlight_task']);
+            if ($task
+                && (int) $task->faculty_id === $facultyId
+                && $task->submitted_version_id
+                && (int) $data['before_version'] === (int) $task->submitted_version_id
+            ) {
+                $roleTemplate = \App\Support\HotelTemplateBuilder::ensureTemplate($membership, $task->role);
+                $beforeVersionId = ($task->previous_version_id && TeamRoleTemplateVersion::whereKey($task->previous_version_id)->exists())
+                    ? (int) $task->previous_version_id
+                    : null;
+                $reviewHighlight = \App\Support\TemplateDiff::between(
+                    $roleTemplate,
+                    $beforeVersionId,
+                    (int) $task->submitted_version_id
+                )['highlight'];
+            }
+        }
+
         // Read-only: no edit permission, no editable pages.
         return view('students.template.' . $selected . 'defaulttemplate', [
             'customizations' => $customizations,
             'canEditTemplate' => false,
             'editablePages' => [],
             'builderRole' => $data['role'] ?? 'front_desk',
+            'reviewHighlight' => $reviewHighlight,
         ]);
     }
 
