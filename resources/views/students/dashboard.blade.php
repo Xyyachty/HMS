@@ -1150,9 +1150,12 @@
                         <dl class="divide-y divide-slate-50">
                             @foreach ([
                                 ['Student number', $student?->student_number],
-                                ['Block', $student?->block],
+                                // The block is the class row this student sits in.
+                                // user_information.block is the faculty's own block
+                                // letter and is never set on a student, so reading it
+                                // here only ever produced a dash.
+                                ['Block', $studentClass?->name],
                                 ['Status', $student?->status ? ucfirst($student->status) : null],
-                                ['Class', $studentClass?->name],
                                 ['Adviser', $pAdviser?->name],
                                 ['Team', $group?->name],
                             ] as [$label, $value])

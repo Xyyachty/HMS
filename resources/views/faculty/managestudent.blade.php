@@ -101,7 +101,7 @@
 @section('content')
 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
 
-    <!-- Class tabs + toolbar: [Search icon] [Bulk] [Add Student] -->
+    <!-- Block tabs + toolbar: [Search icon] [Bulk] [Add Student] -->
     <div class="px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2 min-w-0">
             @forelse(($classes ?? collect()) as $classTab)
@@ -127,7 +127,7 @@
                 </a>
             @empty
                 <p class="text-sm text-slate-500 pb-1">
-                    Classes hold up to {{ $classCapacity ?? 40 }} students.
+                    Blocks hold up to {{ $classCapacity ?? 40 }} students.
                 </p>
             @endforelse
         </div>
@@ -321,7 +321,7 @@
                                 <span class="iconify text-5xl text-slate-300" data-icon="mdi:account-group-outline"></span>
 
                                 <p class="font-semibold text-slate-500">
-                                    No students in {{ $activeClass->name ?? 'this class' }} yet
+                                    No students in {{ $activeClass->name ?? 'this block' }} yet
                                 </p>
 
                                 <p class="text-xs text-slate-400">
@@ -394,7 +394,7 @@
                 </div>
                 <div>
                     <h4 class="font-bold text-emerald-800 text-lg leading-none">Bulk Upload Students</h4>
-                    <p class="text-xs text-emerald-600 mt-0.5">Upload the official class list, or the template, to add many students at once</p>
+                    <p class="text-xs text-emerald-600 mt-0.5">Upload the official block list, or the template, to add many students at once</p>
                 </div>
             </div>
             <button onclick="closeBulkModal()" class="text-slate-400 hover:text-red-500 hover:bg-red-50 w-8 h-8 rounded-full transition flex items-center justify-center">
@@ -428,7 +428,7 @@
                 <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 items-start">
                     <span class="iconify text-blue-500 text-xl mt-0.5 shrink-0" data-icon="mdi:microsoft-excel"></span>
                     <div class="text-xs text-blue-700 leading-relaxed">
-                        <p class="font-bold mb-1">Upload the registrar's official class list as-is</p>
+                        <p class="font-bold mb-1">Upload the registrar's official block list as-is</p>
                         <span>The letterhead, the <em>Female</em> / <em>Male</em> dividers and the trailing marker are skipped. Only four columns are read:</span>
                         <code class="bg-blue-100 px-1 rounded">STUD NO.</code>
                         <code class="bg-blue-100 px-1 rounded">NAME</code>

@@ -585,7 +585,7 @@ class FacultyController extends Controller
 
         ActivityLog::recordFor(
             ActivityLog::ACCOUNT_CREATED,
-            'Created student account ' . $fullName . ' (' . $validated['student_id'] . ') in ' . ($class->name ?? 'class') . '.'
+            'Created student account ' . $fullName . ' (' . $validated['student_id'] . ') in ' . ($class->name ?? 'their block') . '.'
         );
 
         Notifier::studentAdded(auth()->user(), $user, $fullName, $class, $facultyId);
@@ -601,9 +601,9 @@ class FacultyController extends Controller
             $validated['student_id']
         );
 
-        $message = 'Student account created successfully and added to ' . ($class->name ?? 'class') . '.';
+        $message = 'Student account created successfully and added to ' . ($class->name ?? 'their block') . '.';
         if ($class->status === 'closed') {
-            $message .= ' ' . $class->name . ' is now full. A new class tab was opened.';
+            $message .= ' ' . $class->name . ' is now full. A new block tab was opened.';
         }
 
         // When the email did not go out, this banner is the only place the password
@@ -825,7 +825,7 @@ class FacultyController extends Controller
 
                 // Only the student's own welcome here — faculty and dean get one
                 // summary after the loop instead of a row per imported student.
-                Notifier::studentWelcomed(auth()->user(), $user, 'Class ' . $classLetter);
+                Notifier::studentWelcomed(auth()->user(), $user, 'Block ' . $classLetter);
 
                 if ($lastClassLetter !== null && $classLetter !== $lastClassLetter) {
                     $classesOpened[] = $classLetter;
@@ -838,7 +838,7 @@ class FacultyController extends Controller
                 $mailResult = StudentWelcomeMailer::send(
                     $user,
                     $plainPassword,
-                    'Class ' . $classLetter,
+                    'Block ' . $classLetter,
                     $studentId
                 );
 
@@ -874,7 +874,7 @@ class FacultyController extends Controller
                 . ($notEmailed > 0 ? ", {$notEmailed} could not be emailed" : '') . '.';
         }
         if (!empty($classesOpened)) {
-            $message .= ' New class tab(s) opened: Class ' . implode(', Class ', array_unique($classesOpened)) . '.';
+            $message .= ' New block tab(s) opened: Block ' . implode(', Block ', array_unique($classesOpened)) . '.';
         }
 
         if ($created > 0) {

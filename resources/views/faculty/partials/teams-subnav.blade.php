@@ -1,4 +1,4 @@
-{{-- Shared Teams chrome (matches Teams list): Class tabs + Set Task + Add Team --}}
+{{-- Shared Teams chrome (matches Teams list): Block tabs + Set Task + Add Team --}}
 @php
     $teamsSubTab = $teamsSubTab ?? request('tab', 'teams');
     $classes = $classes ?? collect();
@@ -45,7 +45,7 @@
                 @endif
             </a>
         @empty
-            <p class="text-sm text-slate-500 pb-3">No classes yet.</p>
+            <p class="text-sm text-slate-500 pb-3">No blocks yet.</p>
         @endforelse
     </div>
 

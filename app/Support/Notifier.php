@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\DB;
  * at event time — the bell then only ever reads its own user's rows.
  *
  * Audience model:
- *   Dean    — org-level events only (enrollment, a class opening, teams formed).
+ *   Dean    — org-level events only (enrollment, a block opening, teams formed).
  *             Never per-task chatter, which would drown the feed.
  *   Faculty — everything inside their own faculty.
  *   Student — what is addressed to them or to their team.
@@ -163,7 +163,7 @@ class Notifier
     /** The new student's own welcome. Split out so bulk imports can reuse it. */
     public static function studentWelcomed(?User $actor, User $studentUser, ?string $className): void
     {
-        $className = $className ?: 'a class';
+        $className = $className ?: 'a block';
 
         static::push(
             [$studentUser->user_id],
@@ -215,7 +215,7 @@ class Notifier
         );
     }
 
-    /** A student account was created and seated in a class. */
+    /** A student account was created and seated in a block. */
     public static function studentAdded(
         ?User $actor,
         User $studentUser,
@@ -223,7 +223,7 @@ class Notifier
         ?FacultyClass $class,
         int $facultyId
     ): void {
-        $className = $class?->name ?? 'a class';
+        $className = $class?->name ?? 'a block';
 
         static::studentWelcomed($actor, $studentUser, $className);
 
@@ -251,7 +251,7 @@ class Notifier
             ),
             UserNotification::CLASS_OPENED,
             $class->name . ' is now open',
-            'The previous class reached capacity, so ' . $class->name
+            'The previous block reached capacity, so ' . $class->name
                 . ' was opened and will receive new students.',
             route('faculty.students', array_filter(['class' => $class->letter])),
             // No actor filter: whoever enrolled the last student still wants to know.

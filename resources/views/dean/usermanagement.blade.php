@@ -137,7 +137,7 @@
                         if ($user->role === 'faculty') {
                             $block = $user->faculty->block ?? null;
                         } elseif ($user->role === 'student') {
-                            // Student's block = their class tab (Class B → Block B), not faculty's assigned block
+                            // A student's block is the block row they sit in, not the faculty's own block letter.
                             $block = $user->student?->facultyClass?->letter ?? null;
                         }
                         $blockLabel = \App\Models\Faculty::blockLabel($block);

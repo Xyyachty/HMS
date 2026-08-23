@@ -224,7 +224,10 @@ class FacultyClass extends Model
 
         return static::create([
             'faculty_id' => $facultyId,
-            'name' => 'Class ' . $nextLetter,
+            // "Block", matching Faculty::blockLabel(). The grouping had two names
+            // for one thing: a faculty's block letter and this row's class letter
+            // were always the same letter.
+            'name' => 'Block ' . $nextLetter,
             'letter' => $nextLetter,
             'capacity' => self::CAPACITY,
             'status' => 'open',
