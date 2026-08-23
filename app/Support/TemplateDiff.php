@@ -85,12 +85,31 @@ class TemplateDiff
     {
         $templateId = (int) $template->team_role_template_id;
 
-        $before = $beforeVersionId !== null
-            ? TemplateCustomizationStore::readCustomizations($templateId, $beforeVersionId)
-            : self::emptyCustomizations();
-        $after = $afterVersionId !== null
-            ? TemplateCustomizationStore::readCustomizations($templateId, $afterVersionId)
-            : self::emptyCustomizations();
+        // Compare the merged site on both sides, not this role's chunk alone —
+        // the same thing the Before and After previews render.
+        //
+        // A role's chunk is not the site. Shared keys move between roles as they
+        // are saved (claimSharedContentKeys / claimSharedLogo hand ownership to
+        // the newest writer), so a key leaving this role's row reads as a deletion
+        // even though nothing on the site moved: reviewing a "Change Hotel Name"
+        // task reported the logo as reset to default, purely because some other
+        // role had since claimed it. Every other role contributes identically to
+        // both sides here, so anything they own cancels out and only what this
+        // role actually did between the two snapshots survives.
+        $groupName = (string) $template->group_name;
+        $facultyId = (int) $template->faculty_id;
+        $role = (string) $template->role;
+
+        $before = HotelTemplateBuilder::mergeTeamCustomizations(
+            $groupName,
+            $facultyId,
+            [$role => $beforeVersionId !== null ? $beforeVersionId : 'baseline']
+        );
+        $after = HotelTemplateBuilder::mergeTeamCustomizations(
+            $groupName,
+            $facultyId,
+            [$role => $afterVersionId !== null ? $afterVersionId : 'baseline']
+        );
 
         $changes = [];
         self::diffElements($before, $after, $changes);
@@ -160,7 +179,9 @@ class TemplateDiff
                 'key' => $key,
                 'hms_id' => $afterEntry['hmsId'] ?? $beforeEntry['hmsId'] ?? null,
                 'page' => $afterEntry['page'] ?? $beforeEntry['page'] ?? 'home',
-                'label' => self::describeKey($key),
+                // Name it by what it was, so a renamed heading still reads as the
+                // heading the faculty remembers rather than its new text.
+                'label' => self::describeKey($key, $beforeEntry ?: $afterEntry),
                 'fields' => $fields,
             ];
         }
@@ -204,7 +225,7 @@ class TemplateDiff
             'key' => $key,
             'hms_id' => $entry['hmsId'] ?? null,
             'page' => $entry['page'] ?? 'home',
-            'label' => self::describeKey($key),
+            'label' => self::describeKey($key, $entry),
             'fields' => $fields,
         ];
     }
@@ -262,14 +283,50 @@ class TemplateDiff
         return mb_strlen($value) > 120 ? mb_substr($value, 0, 117) . '…' : $value;
     }
 
-    /** Selector keys are CSS paths or [data-hms-id="…"] — surface something short and recognizable. */
-    private static function describeKey(string $key): string
+    /** What the last tag in a structural selector is, in words. */
+    private const TAG_LABELS = [
+        'h1' => 'Heading', 'h2' => 'Heading', 'h3' => 'Subheading', 'h4' => 'Subheading',
+        'h5' => 'Subheading', 'h6' => 'Subheading',
+        'p' => 'Paragraph', 'span' => 'Text', 'a' => 'Link', 'button' => 'Button',
+        'li' => 'List item', 'label' => 'Label', 'img' => 'Image', 'nav' => 'Navigation bar',
+        'header' => 'Header', 'footer' => 'Footer', 'section' => 'Section', 'div' => 'Block',
+        'input' => 'Input', 'textarea' => 'Text box', 'i' => 'Icon',
+    ];
+
+    /**
+     * Name an element the way the faculty sees it, not the way it is stored.
+     * The keys are raw structural selectors ("#root > main > div > h1") or a
+     * data-hms-id, neither of which means anything to someone reviewing a task,
+     * so lead with the kind of element and let the caller add its text.
+     */
+    private static function describeKey(string $key, array $entry = []): string
     {
+        $name = null;
+
         if (preg_match('/data-(?:hms-id|edit-id)="([^"]+)"/', $key, $m)) {
-            return 'Element ' . $m[1];
+            $name = 'Element';
+        } else {
+            // Trailing tag of the selector path, minus any :nth-of-type() suffix.
+            $last = trim((string) array_slice(explode('>', $key), -1)[0]);
+            $last = strtolower(trim((string) preg_replace('/[:\[].*$/', '', $last)));
+            if ($last !== '' && isset(self::TAG_LABELS[$last])) {
+                $name = self::TAG_LABELS[$last];
+            }
         }
 
-        return mb_strlen($key) > 60 ? mb_substr($key, 0, 57) . '…' : $key;
+        $name = $name ?? 'Element';
+
+        // The copy itself is the most recognizable handle there is.
+        $text = trim((string) ($entry['text'] ?? $entry['value'] ?? ''));
+        if ($text !== '') {
+            if (mb_strlen($text) > 40) {
+                $text = mb_substr($text, 0, 37) . '…';
+            }
+
+            return $name . ' — “' . $text . '”';
+        }
+
+        return $name;
     }
 
     /** __userElements: freeform elements the student added, matched by their own id. */
