@@ -8,6 +8,15 @@
     Accent colours are applied as inline styles rather than Tailwind classes —
     the class names are built in JS, and inline styles avoid depending on the
     CDN's runtime scan picking them up.
+
+    For the same reason the layout below is carried by the scoped stylesheet in
+    this file rather than by its utility classes. The dean and student portals
+    load Tailwind from the CDN, which generates whatever it sees, but the
+    faculty portal is served a stylesheet that was built before this partial
+    existed — so w-[22rem], max-h-96, min-w-[18px], ring-slate-900/5 and
+    bg-sky-50/60 simply had no rules there and the bell rendered unstyled. The
+    utility classes are kept for readability; these rules are what make the
+    three portals agree.
 --}}
 <div class="hms-notify relative" data-notify-root>
     <button type="button"
@@ -48,6 +57,84 @@
 {{-- Inline rather than @push('scripts'): not every layout that needs the bell
      declares a @stack, and the markup above is already in the DOM by here. --}}
 @once
+<style>
+    /* Values mirror the utility classes on the markup above, so a portal that
+       does generate them sees no change. Scoped to .hms-notify throughout. */
+    .hms-notify { position: relative; }
+
+    .hms-notify [data-notify-toggle] {
+        position: relative; width: 2.5rem; height: 2.5rem;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 0.75rem; background: transparent; border: 0;
+        cursor: pointer; transition: background-color .15s ease;
+    }
+    .hms-notify [data-notify-toggle]:hover { background: #f1f5f9; }
+    .hms-notify [data-notify-toggle] > .iconify { font-size: 1.25rem; color: #64748b; }
+
+    .hms-notify [data-notify-badge] {
+        position: absolute; top: -0.125rem; right: -0.125rem;
+        min-width: 18px; height: 18px; padding: 0 0.25rem;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 9999px; background: #f43f5e; color: #fff;
+        font-size: 10px; font-weight: 700; line-height: 1;
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / .05);
+    }
+
+    .hms-notify [data-notify-panel] {
+        position: absolute; right: 0; top: 100%; margin-top: 0.5rem;
+        width: 22rem; max-width: calc(100vw - 2rem); z-index: 50;
+        background: #fff; border-radius: 1rem; overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgb(0 0 0 / .25), 0 0 0 1px rgb(15 23 42 / .05);
+    }
+    @media (min-width: 640px) { .hms-notify [data-notify-panel] { width: 24rem; } }
+
+    /* Must outrank the layout rules above — .hidden is how the JS closes it. */
+    .hms-notify [data-notify-panel].hidden,
+    .hms-notify [data-notify-badge].hidden,
+    .hms-notify [data-notify-unread-pill].hidden { display: none; }
+
+    .hms-notify [data-notify-panel] > div:first-child {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9;
+    }
+    .hms-notify [data-notify-panel] h3 {
+        font-size: 0.875rem; font-weight: 700; color: #0f172a; margin: 0;
+    }
+    .hms-notify [data-notify-unread-pill] {
+        padding: 0.125rem 0.375rem; border-radius: 9999px;
+        background: #fff1f2; color: #e11d48; font-size: 10px; font-weight: 700;
+    }
+    .hms-notify [data-notify-mark-all] {
+        background: none; border: 0; cursor: pointer;
+        font-size: 0.75rem; font-weight: 600; color: #64748b;
+        transition: color .15s ease;
+    }
+    .hms-notify [data-notify-mark-all]:hover { color: #0f172a; }
+    .hms-notify [data-notify-mark-all]:disabled { opacity: .4; cursor: not-allowed; }
+
+    .hms-notify [data-notify-list] { max-height: 24rem; overflow-y: auto; }
+    .hms-notify [data-notify-item] {
+        width: 100%; text-align: left; display: flex; gap: 0.75rem;
+        padding: 0.75rem 1rem; background: #fff; border: 0;
+        border-top: 1px solid #f1f5f9; cursor: pointer;
+        transition: background-color .15s ease;
+    }
+    .hms-notify [data-notify-list] > [data-notify-item]:first-child { border-top: 0; }
+    .hms-notify [data-notify-item][data-read="0"] { background: rgb(240 249 255 / .6); }
+    .hms-notify [data-notify-item]:hover { background: #f8fafc; }
+    .hms-notify [data-notify-item] > span:first-child {
+        flex-shrink: 0; width: 2.25rem; height: 2.25rem; border-radius: 0.75rem;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .hms-notify [data-notify-item] > span:nth-child(2) { min-width: 0; flex: 1 1 0%; }
+    .hms-notify [data-notify-item] > span:nth-child(2) > span { line-height: 1.375; }
+
+    /* The unread dot: last child, and only ever rendered on an unread row. */
+    .hms-notify [data-notify-item][data-read="0"] > span:last-child {
+        flex-shrink: 0; margin-top: 0.375rem; width: 0.5rem; height: 0.5rem;
+        border-radius: 9999px; background: #0ea5e9;
+    }
+</style>
 <script>
 (function () {
     // Layouts may include the partial twice (desktop + mobile header); bind once per root.
