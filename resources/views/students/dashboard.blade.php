@@ -216,7 +216,7 @@
                     <span class="iconify text-white text-sm transition-transform" data-icon="mdi:chevron-up" id="profileChevron"></span>
                 </button>
                 <div class="absolute bottom-full left-0 mb-2 w-full rounded-xl border border-white/10 bg-sidebar-hover shadow-2xl p-1.5 hidden" id="studentProfileDropdown" role="menu">
-                    <a href="#group" onclick="showSection('group'); closeStudentProfileMenu(); closeMobileSidebar();" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-white hover:bg-white/[0.06] transition-colors" role="menuitem">
+                    <a href="#profile" onclick="showSection('profile'); closeStudentProfileMenu(); closeMobileSidebar();" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-white hover:bg-white/[0.06] transition-colors" role="menuitem">
                         <span class="iconify text-base" data-icon="mdi:account-outline"></span>
                         My Profile
                     </a>
@@ -1048,6 +1048,136 @@
                 </div>
             </div>
 
+            {{-- ═══════ MY PROFILE ═══════
+                 What the student may change is what describes them. Their student
+                 number, block, adviser, class, team and roles are the school's
+                 record and their faculty's to set, so they are shown read-only. --}}
+            <div id="profile-section" class="section-content hidden fade-in space-y-4">
+                @php
+                    $pUser = auth()->user();
+                    $pAdviser = $student?->faculty?->user;
+                @endphp
+
+                <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">My Profile</h2>
+
+                @if (session('success'))
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-2">
+                        <span class="iconify text-emerald-600 text-lg" data-icon="mdi:check-circle-outline"></span>
+                        <p class="text-sm font-semibold text-emerald-800">{{ session('success') }}</p>
+                    </div>
+                @endif
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {{-- Editable --}}
+                    <form method="POST" action="{{ route('students.profile.update') }}" enctype="multipart/form-data"
+                          class="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        @csrf
+                        @method('PUT')
+
+                        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+                            <h3 class="text-sm font-bold text-slate-800">Account Details</h3>
+                            <p class="text-[11px] text-slate-400 mt-0.5">This is how your name appears to your team and your faculty.</p>
+                        </div>
+
+                        <div class="p-5 space-y-4">
+                            <div class="flex items-center gap-4">
+                                <img src="{{ $pUser?->avatar_url }}" alt="{{ $studentDisplayName }}"
+                                     class="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0">
+                                <div class="min-w-0">
+                                    <label for="studentAvatar" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer">
+                                        <span class="iconify text-sm" data-icon="mdi:camera-outline"></span> Change photo
+                                    </label>
+                                    <input id="studentAvatar" type="file" name="avatar" accept="image/*" class="hidden">
+                                    <p class="text-[11px] text-slate-400 mt-1">JPG, PNG, WEBP or GIF · up to 2 MB</p>
+                                    @if ($pUser?->avatar)
+                                        <label class="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-600 cursor-pointer">
+                                            <input type="checkbox" name="remove_avatar" value="1" class="rounded border-slate-300 text-rose-500">
+                                            Remove current photo
+                                        </label>
+                                    @endif
+                                    @error('avatar')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                @foreach ([
+                                    ['first_name', 'First name', $pUser?->first_name, true],
+                                    ['middle_name', 'Middle name', $pUser?->middle_name, false],
+                                    ['last_name', 'Last name', $pUser?->last_name, true],
+                                ] as [$field, $label, $value, $required])
+                                    <div>
+                                        <label for="student_{{ $field }}" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                            {{ $label }} @if(!$required)<span class="text-slate-300 normal-case font-semibold">(optional)</span>@endif
+                                        </label>
+                                        <input id="student_{{ $field }}" type="text" name="{{ $field }}" value="{{ old($field, $value) }}" @if($required) required @endif
+                                               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                                        @error($field)<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label for="student_email" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
+                                    <input id="student_email" type="email" name="email" value="{{ old('email', $pUser?->email) }}" required
+                                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                                    @error('email')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                </div>
+                                <div>
+                                    <label for="student_phone" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Phone <span class="text-slate-300 normal-case font-semibold">(optional)</span>
+                                    </label>
+                                    <input id="student_phone" type="text" name="phone_number" value="{{ old('phone_number', $pUser?->phone_number ?? $student?->phone_number) }}"
+                                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                                    @error('phone_number')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-5 py-3 border-t border-slate-100 bg-slate-50/60 flex justify-end">
+                            <button type="submit" class="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center gap-1.5">
+                                <span class="iconify text-sm" data-icon="mdi:content-save-outline"></span> Save changes
+                            </button>
+                        </div>
+                    </form>
+
+                    {{-- Read-only school record --}}
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden self-start">
+                        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+                            <h3 class="text-sm font-bold text-slate-800">School Record</h3>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Set by your faculty — ask them if something is wrong.</p>
+                        </div>
+                        <dl class="divide-y divide-slate-50">
+                            @foreach ([
+                                ['Student number', $student?->student_number],
+                                ['Block', $student?->block],
+                                ['Status', $student?->status ? ucfirst($student->status) : null],
+                                ['Class', $studentClass?->name],
+                                ['Adviser', $pAdviser?->name],
+                                ['Team', $group?->name],
+                            ] as [$label, $value])
+                                <div class="px-5 py-2.5 flex items-center justify-between gap-3">
+                                    <dt class="text-[11px] font-semibold text-slate-400">{{ $label }}</dt>
+                                    <dd class="text-xs font-bold text-slate-700 text-right truncate">{{ $value ?: '—' }}</dd>
+                                </div>
+                            @endforeach
+                            <div class="px-5 py-2.5">
+                                <dt class="text-[11px] font-semibold text-slate-400 mb-1.5">Roles</dt>
+                                <dd class="flex flex-wrap gap-1.5">
+                                    @forelse ($studentRoles ?? [] as $role)
+                                        <span class="px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[10px] font-bold">
+                                            {{ \App\Support\HotelTemplateBuilder::ROLES[$role] ?? $role }}
+                                        </span>
+                                    @empty
+                                        <span class="text-xs text-slate-400">No role assigned yet</span>
+                                    @endforelse
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -1094,7 +1224,7 @@
             }
 
             // Update breadcrumb
-            const labels = { home: 'Dashboard', group: 'My Group', tasks: 'Tasks', activity: 'Activity Logs', reports: 'Reports' };
+            const labels = { home: 'Dashboard', group: 'My Group', tasks: 'Tasks', activity: 'Activity Logs', reports: 'Reports', profile: 'My Profile' };
             document.getElementById('breadcrumb-current').textContent = labels[section] || 'Dashboard';
 
             try {
@@ -1116,8 +1246,19 @@
                 section = new URL(window.location.href).searchParams.get('section');
             } catch (e) { /* ignore */ }
 
-            @if (session('success') || $errors->any())
-                section = 'group';
+            @php
+                // Which fields failed says which form the student was in, so a
+                // rejected profile save reopens Profile rather than the concept
+                // panel the group default assumes.
+                $profileFields = ['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'avatar'];
+                $profileHasErrors = collect($profileFields)->contains(fn ($f) => $errors->has($f));
+            @endphp
+            @if ($profileHasErrors)
+                section = 'profile';
+            @elseif (session('success') || $errors->any())
+                // Only when the URL did not already name one — the profile save
+                // redirects with ?section=profile and must keep it.
+                if (!section) section = 'group';
             @endif
 
             if (section && document.getElementById(section + '-section')) {

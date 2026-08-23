@@ -343,7 +343,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'pendingTasksCount', 'completionRate', 'recentTasks',
             'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
             'myActivityLogs', 'conceptPayload',
-            'studentDisplayName', 'studentClass'
+            'studentDisplayName', 'studentClass', 'student'
         ));
     })->name('dashboard');
 
@@ -352,6 +352,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::post('/hotel-concept', [HotelConceptController::class, 'store'])->name('hotel-concept.store');
     Route::post('/hotel-concept/submit', [HotelConceptController::class, 'submit'])->name('hotel-concept.submit');
     Route::get('/hotel-concept/history', [HotelConceptController::class, 'history'])->name('hotel-concept.history');
+
+    // The student's own account details. Read on the dashboard's Profile section,
+    // so there is no GET here — only the write.
+    Route::put('/profile', [\App\Http\Controllers\StudentController::class, 'updateProfile'])->name('profile.update');
 
     // My Activity — students read their own centralized log and nobody else's.
     Route::get('/activity/mine', [ActivityLogController::class, 'mine'])->name('activity.mine');
