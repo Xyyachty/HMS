@@ -32,7 +32,7 @@
     if (layer && document.body.contains(layer)) return layer;
     layer = document.createElement('div');
     layer.id = LAYER_ID;
-    layer.style.cssText = 'position:absolute;top:0;left:0;width:0;height:0;z-index:2147483000;pointer-events:none;';
+    layer.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483000;pointer-events:none;';
     document.body.appendChild(layer);
     return layer;
   }
@@ -85,21 +85,41 @@
     return [];
   }
 
-  function isVisible(el) {
+  /**
+   * Laid out, on screen, and actually painted. A collapsed or hidden copy of an
+   * element — the same logo inside a closed mobile menu, say — has to be skipped
+   * or it draws a box over empty space.
+   */
+  function isPaintable(el) {
     const rect = el.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
+    if (rect.width <= 0 || rect.height <= 0) return false;
+
+    const style = window.getComputedStyle(el);
+    if (style.visibility === 'hidden' || style.display === 'none' || parseFloat(style.opacity) === 0) {
+      return false;
+    }
+
+    // Off-screen entirely: boxes are drawn in viewport space, so there is
+    // nothing to show until it scrolls in.
+    return rect.bottom > 0 && rect.right > 0
+      && rect.top < (window.innerHeight || 0) && rect.left < (window.innerWidth || 0);
   }
 
+  /**
+   * Boxes are positioned in viewport coordinates, straight from the rect, with
+   * no scroll offset added. Mapping back to document space breaks the moment an
+   * element is fixed or sticky — a pinned header keeps a viewport-relative rect,
+   * so adding scrollY pushed its box down the page by exactly the scroll amount,
+   * which is how the site logo ended up boxed below the navbar it sits in.
+   */
   function drawBox(el, type, key) {
     const rect = el.getBoundingClientRect();
-    const top = rect.top + window.scrollY;
-    const left = rect.left + window.scrollX;
     const color = COLORS[type];
 
     const box = document.createElement('div');
-    box.style.cssText = 'position:absolute;box-sizing:border-box;pointer-events:none;border-radius:3px;'
+    box.style.cssText = 'position:fixed;box-sizing:border-box;pointer-events:none;border-radius:3px;'
       + 'outline:2px solid ' + color + ';outline-offset:2px;'
-      + 'top:' + top + 'px;left:' + left + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;';
+      + 'top:' + rect.top + 'px;left:' + rect.left + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;';
     if (key && key === focusKey) {
       box.style.boxShadow = '0 0 0 4px rgba(99,102,241,.55)';
       box.style.background = 'rgba(99,102,241,.12)';
@@ -124,15 +144,16 @@
     let addedCount = 0;
     let modifiedCount = 0;
 
+    // Counted on presence, drawn on visibility: the tally is what this page
+    // contains, so it does not tick up and down as the preview is scrolled.
     function paint(entry, type) {
       if (entry.page && entry.page !== page) return false;
-      let drew = false;
-      resolveElements(entry).forEach(function (el) {
-        if (!isVisible(el)) return;
-        drawBox(el, type, entry.key);
-        drew = true;
+      const els = resolveElements(entry);
+      if (!els.length) return false;
+      els.forEach(function (el) {
+        if (isPaintable(el)) drawBox(el, type, entry.key);
       });
-      return drew;
+      return true;
     }
 
     added.forEach(function (entry) { if (paint(entry, 'added')) addedCount++; });
@@ -196,7 +217,9 @@
     // The templates paint through React after first paint, and images resize the
     // boxes as they load, so the overlay is redrawn on anything that moves.
     new MutationObserver(onMutations).observe(document.body, { childList: true, subtree: true });
-    window.addEventListener('scroll', scheduleRun, { passive: true });
+    // Capture phase: the hero and the page body scroll in their own containers,
+    // and a scroll event on those does not bubble to window.
+    window.addEventListener('scroll', scheduleRun, { passive: true, capture: true });
     window.addEventListener('resize', scheduleRun);
     window.addEventListener('load', scheduleRun);
   }
