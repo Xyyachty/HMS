@@ -1828,7 +1828,9 @@
         setInterval(syncStudentPresence, 5000);
 
         (function openSectionFromQuery() {
-            const allowed = ['home', 'group', 'tasks', 'activity', 'reports'];
+            // Every section id the page defines. A section missing here is simply
+            // ignored on load, so it must be added whenever one is added above.
+            const allowed = ['home', 'group', 'tasks', 'activity', 'reports', 'profile'];
             let section = null;
             try {
                 section = new URLSearchParams(window.location.search).get('section');
