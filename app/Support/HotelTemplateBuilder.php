@@ -260,8 +260,13 @@ class HotelTemplateBuilder
      * or publish — the builder's 7s autosave deliberately does not — so relying on
      * that history left teams who never pressed Ctrl+S with nothing to compare.
      *
-     * The version counter is not bumped: this records the work, it is not another
-     * edit to it.
+     * The template's own version counter is not bumped: this records the work, it
+     * is not another edit to it. The snapshot row still needs a version number of
+     * its own, though — (team_role_template_id, version) is unique, so reusing the
+     * template's current number collides with whatever save-snapshot already holds
+     * it, and every snapshot after the first would fail. Numbering from the highest
+     * this template has ever used keeps the row unique and still sorts it newest,
+     * which is the order pruneOldVersions() keeps by.
      *
      * Returns null rather than throwing — a failed snapshot costs the comparison,
      * and must never cost the student their submission.
@@ -270,9 +275,15 @@ class HotelTemplateBuilder
     {
         try {
             return DB::transaction(function () use ($template, $user, $label) {
+                $nextVersion = 1 + (int) max(
+                    (int) TeamRoleTemplateVersion::where('team_role_template_id', $template->team_role_template_id)
+                        ->max('version'),
+                    (int) $template->version
+                );
+
                 $versionRow = TeamRoleTemplateVersion::create([
                     'team_role_template_id' => $template->team_role_template_id,
-                    'version' => (int) $template->version,
+                    'version' => $nextVersion,
                     'selected_template' => $template->selected_template,
                     'is_published' => $template->is_published,
                     'label' => $label,
@@ -650,7 +661,18 @@ class HotelTemplateBuilder
             }
 
             $template->updated_by = $user->user_id;
-            $template->version = ((int) $template->version) + ($snapshot ? 1 : 0);
+            if ($snapshot) {
+                // Step past every version row this template already has, not just
+                // past the counter: review snapshots take numbers of their own
+                // (see snapshotForReview), and (team_role_template_id, version) is
+                // unique, so counting blindly would eventually land on one and
+                // abort the save — costing the student the work they just saved.
+                $template->version = 1 + (int) max(
+                    (int) TeamRoleTemplateVersion::where('team_role_template_id', $template->team_role_template_id)
+                        ->max('version'),
+                    (int) $template->version
+                );
+            }
             if ($template->version < 1) {
                 $template->version = 1;
             }
