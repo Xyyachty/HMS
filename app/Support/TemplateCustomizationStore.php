@@ -743,12 +743,10 @@ class TemplateCustomizationStore
             return $path;
         }
 
-        // Convert absolute /storage/... or full asset URL to relative storage path when possible
-        if (preg_match('#/storage/(.+)$#', $value, $m)) {
-            return $m[1];
-        }
-
-        return $value;
+        // Collapse an absolute URL on our own media disk back to the stored path.
+        // Shared with HotelImageStore so both spell it the same way — see the note
+        // there for why a bare "/storage/" strip corrupts Supabase URLs.
+        return HotelImageStore::relativize($value);
     }
 
     public static function publicUrlIfNeeded(string $path): string
@@ -756,13 +754,17 @@ class TemplateCustomizationStore
         if ($path === '') {
             return $path;
         }
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, 'data:')) {
+        if (str_starts_with($path, 'data:')) {
             return $path;
         }
-        if (str_starts_with($path, '/storage/')) {
+
+        // Normalise before prefixing, so a value stored with a doubled prefix by
+        // the older code still resolves to the real object instead of a 404.
+        $path = HotelImageStore::relativize($path);
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
             return $path;
         }
-        // Relative storage path
         if (!str_contains($path, '://')) {
             return Storage::disk(HotelImageStore::disk())->url(ltrim($path, '/'));
         }
