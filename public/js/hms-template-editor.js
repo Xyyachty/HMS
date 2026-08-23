@@ -205,6 +205,14 @@
     }
     if (el.classList.contains('nav-bar') || el.classList.contains('hero-bg')) return el;
 
+    // An element that declares its own text is already the unit being edited, so
+    // never widen past it. The hotel name is a bare <span> sitting in .nav-bar but
+    // outside .nav-links-desktop, which the brand branch below collapses to the
+    // whole <nav> — so renaming the hotel wrote the new name onto the navigation
+    // bar itself, wiping what it contained and keying the change to the wrong
+    // element in the faculty review.
+    if (el.getAttribute('data-hms-text') === '1') return el;
+
     // Prefer whole header/nav when clicking brand or nav links.
     const nav = el.closest && el.closest('.nav-bar');
     if (nav && (el.tagName === 'SPAN' || el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'I')) {

@@ -1992,7 +1992,7 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, canEditNav, o
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <button onClick={() => onNav('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <BrandLogo size={34} />
-            <span style={{ color: 'var(--accent)', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
+            <span data-hms-text="1" data-hms-brand-name="1" style={{ color: 'var(--accent)', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
           </button>
           {canEditThisLogo && <ChangeLogoButton onToast={onToast} />}
         </div>
@@ -2933,7 +2933,7 @@ function Footer({ onNav, cardImages, page }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.85rem' }}>
               <BrandLogo size={30} />
-              <span style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#fff' }}>SPC HOTEL</span>
+              <span data-hms-text="1" data-hms-brand-name="1" style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#fff' }}>SPC HOTEL</span>
             </div>
             <p style={{ fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem', color: 'rgba(247,244,239,0.6)' }}>A sanctuary of refined hospitality. Where every guest becomes part of our story.</p>
             <div style={{ display: 'flex', gap: '0.65rem' }}>
