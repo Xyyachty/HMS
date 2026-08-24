@@ -597,6 +597,15 @@ function formatOrderTime(iso) {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+/* When the customer is due. Carries the date as well as the clock, because a
+   reservation taken today can be for tomorrow. */
+function formatBookedFor(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 function createEmptyTableForm() {
   return { name: '', capacity: '2' };
 }
@@ -676,6 +685,7 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
             <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>Final Bill · {table.name}</h2>
             <p style={{ margin: '0.3rem 0 0', color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
               {table.guestName || 'Guest'} · party of {table.partySize || '—'}
+              {table.contactNo ? ` · ${table.contactNo}` : ''}
             </p>
           </div>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
@@ -897,6 +907,13 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                         Seats {table.capacity}
                         {occupied && table.guestName ? ` · ${table.guestName}, party of ${table.partySize || '—'}` : ''}
                       </p>
+                      {occupied && (table.contactNo || table.reservedFor) && (
+                        <p style={{ margin: '0.2rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem' }}>
+                          {table.contactNo ? table.contactNo : ''}
+                          {table.contactNo && table.reservedFor ? ' · ' : ''}
+                          {table.reservedFor ? 'booked for ' + formatBookedFor(table.reservedFor) : ''}
+                        </p>
+                      )}
                     </div>
                     {canManage && (
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>

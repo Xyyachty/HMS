@@ -2133,7 +2133,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'capacity'    => 'sometimes|integer|min:1|max:50',
             'close'       => 'sometimes|boolean',
             'guest_name'  => 'sometimes|nullable|string|max:255',
+            'contact_no'  => 'sometimes|nullable|string|max:50',
             'party_size'  => 'sometimes|integer|min:1|max:50',
+            // When the customer is due. Sent as an ISO local datetime by the desk.
+            'reserved_for' => 'sometimes|nullable|date',
         ]);
 
         $assignedNow = false;
@@ -2155,11 +2158,14 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
             $table->status = 'Available';
             $table->guest_name = null;
+            $table->contact_no = null;
             $table->party_size = null;
+            $table->reserved_for = null;
             $table->assigned_by = null;
             $table->assigned_at = null;
             $closedNow = true;
-        } elseif (array_key_exists('guest_name', $data) || array_key_exists('party_size', $data)) {
+        } elseif (array_key_exists('guest_name', $data) || array_key_exists('party_size', $data)
+            || array_key_exists('contact_no', $data) || array_key_exists('reserved_for', $data)) {
             if (!$assigns) {
                 return response()->json(['message' => 'Only Front Desk staff can reserve a table for a guest.'], 403);
             }
@@ -2178,7 +2184,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
             $table->status = 'Occupied';
             $table->guest_name = isset($data['guest_name']) ? trim($data['guest_name']) : null;
+            $table->contact_no = isset($data['contact_no']) ? trim($data['contact_no']) : null;
             $table->party_size = $partySize;
+            // assigned_at is when the desk wrote this down; reserved_for is when the
+            // customer is due, which is the one the restaurant reads off the floor.
+            $table->reserved_for = !empty($data['reserved_for']) ? \Carbon\Carbon::parse($data['reserved_for']) : null;
             $table->assigned_by = auth()->user()?->name;
             $table->assigned_at = now();
             $assignedNow = true;
@@ -2308,7 +2318,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
             $table->status = 'Available';
             $table->guest_name = null;
+            $table->contact_no = null;
             $table->party_size = null;
+            $table->reserved_for = null;
             $table->assigned_by = null;
             $table->assigned_at = null;
             $table->save();

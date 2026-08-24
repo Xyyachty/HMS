@@ -55,6 +55,7 @@
     background: var(--card); border: 1px solid var(--border);
     border-radius: 12px; padding: 1.1rem 1.2rem;
   }
+  .dn-when { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
   .dn-field-label {
     display: block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--fg-muted); margin-bottom: 0.35rem;
@@ -97,6 +98,21 @@ function csrfToken() {
   return meta ? meta.getAttribute('content') : '';
 }
 
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function defaultReserveDate() {
+  const d = new Date();
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+
+/* The next whole hour, so the prefilled time is never one already gone. */
+function defaultReserveTime() {
+  const d = new Date();
+  d.setMinutes(0, 0, 0);
+  d.setHours(d.getHours() + 1);
+  return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
+
 function formatWhen(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -109,6 +125,11 @@ function formatWhen(iso) {
    it ends there — the customer orders at the restaurant, not here. */
 function ReserveForm({ table, onReserve, onCancel, busy }) {
   const [guestName, setGuestName] = useState('');
+  const [contactNo, setContactNo] = useState('');
+  // Defaults to today at the next whole hour: most reservations the desk takes are
+  // for later the same day, so that is one less field to fill in than a blank one.
+  const [onDate, setOnDate] = useState(() => defaultReserveDate());
+  const [atTime, setAtTime] = useState(() => defaultReserveTime());
   const [partySize, setPartySize] = useState(Math.min(2, table.capacity));
   const [error, setError] = useState('');
   const partyStepBtn = {
@@ -120,12 +141,20 @@ function ReserveForm({ table, onReserve, onCancel, busy }) {
   const submit = (e) => {
     e.preventDefault();
     if (!guestName.trim()) { setError('Enter the customer’s name.'); return; }
+    if (!contactNo.trim()) { setError('Enter a contact number for the customer.'); return; }
+    if (!onDate || !atTime) { setError('Pick the date and time they are booked for.'); return; }
     if (partySize < 1 || partySize > table.capacity) {
       setError(`Party size must be between 1 and ${table.capacity}.`);
       return;
     }
     setError('');
-    onReserve(table.id, { guest_name: guestName.trim(), party_size: partySize });
+    onReserve(table.id, {
+      guest_name: guestName.trim(),
+      contact_no: contactNo.trim(),
+      // Local wall-clock, no timezone suffix — the server parses it in app time.
+      reserved_for: `${onDate} ${atTime}:00`,
+      party_size: partySize,
+    });
   };
 
   return (
@@ -139,7 +168,29 @@ function ReserveForm({ table, onReserve, onCancel, busy }) {
         onChange={e => setGuestName(e.target.value)}
         style={{ marginBottom: '0.6rem' }}
       />
-      <label className="dn-field-label">Party size (seats {table.capacity})</label>
+      <label className="dn-field-label">Contact number</label>
+      <input
+        type="tel"
+        className="booking-input"
+        placeholder="09XX XXX XXXX"
+        value={contactNo}
+        onChange={e => setContactNo(e.target.value)}
+        style={{ marginBottom: '0.6rem' }}
+      />
+      <div className="dn-when">
+        <div>
+          <label className="dn-field-label">Date</label>
+          <input type="date" className="booking-input" value={onDate}
+            min={defaultReserveDate()}
+            onChange={e => setOnDate(e.target.value)} style={{ colorScheme: 'dark' }} />
+        </div>
+        <div>
+          <label className="dn-field-label">Time</label>
+          <input type="time" className="booking-input" value={atTime}
+            onChange={e => setAtTime(e.target.value)} style={{ colorScheme: 'dark' }} />
+        </div>
+      </div>
+      <label className="dn-field-label" style={{ marginTop: '0.6rem' }}>Party size (seats {table.capacity})</label>
       {/* Stepper rather than a number input, matching the menu's quantity control —
           and it cannot be typed past the table's own capacity. */}
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
@@ -181,8 +232,19 @@ function TableCard({ table, canReserve, onReserve, busy }) {
       {!available && (
         <div style={{ marginTop: '0.85rem', fontSize: '0.8rem', color: 'var(--fg)' }}>
           <p style={{ margin: 0 }}>{table.guestName || 'Guest'} · party of {table.partySize || '—'}</p>
+          {table.contactNo && (
+            <p style={{ margin: '0.2rem 0 0', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
+              <i className="fa-solid fa-phone" style={{ fontSize: '0.66rem', marginRight: 5 }}></i>{table.contactNo}
+            </p>
+          )}
+          {/* When they are due, which is what the floor needs. Falls back to when the
+              desk wrote it down, for a table reserved before that was recorded. */}
+          <p style={{ margin: '0.2rem 0 0', color: 'var(--accent-light)', fontSize: '0.74rem' }}>
+            <i className="fa-solid fa-clock" style={{ fontSize: '0.66rem', marginRight: 5 }}></i>
+            {table.reservedFor ? `Booked for ${formatWhen(table.reservedFor)}` : `Booked ${formatWhen(table.assignedAt)}`}
+          </p>
           <p style={{ margin: '0.25rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem' }}>
-            Reserved {formatWhen(table.assignedAt)}{table.assignedBy ? ` by ${table.assignedBy}` : ''}
+            Taken {formatWhen(table.assignedAt)}{table.assignedBy ? ` by ${table.assignedBy}` : ''}
           </p>
         </div>
       )}
@@ -269,7 +331,7 @@ function App() {
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return tables;
-    return tables.filter(t => [t.name, t.guestName].some(field => String(field || '').toLowerCase().includes(q)));
+    return tables.filter(t => [t.name, t.guestName, t.contactNo].some(field => String(field || '').toLowerCase().includes(q)));
   }, [tables, search]);
 
   const availableCount = tables.filter(t => t.status === 'Available').length;
@@ -297,7 +359,7 @@ function App() {
           <input
             type="text"
             className="booking-input"
-            placeholder="Search by table or customer…"
+            placeholder="Search by table, customer or contact…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{ paddingLeft: '2.1rem' }}

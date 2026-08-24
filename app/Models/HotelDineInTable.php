@@ -6,8 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * A physical dining table: Restaurant Management adds and removes them, Front Desk
- * seats a guest at an Available one, Restaurant Management closes it out when the
- * guest leaves.
+ * reserves an Available one for a customer — name, contact, when they are due and
+ * how many are coming — and Restaurant Management bills and closes it out once they
+ * have eaten.
  */
 class HotelDineInTable extends Model
 {
@@ -26,7 +27,9 @@ class HotelDineInTable extends Model
         'capacity',
         'status',
         'guest_name',
+        'contact_no',
         'party_size',
+        'reserved_for',
         'assigned_by',
         'assigned_at',
     ];
@@ -34,6 +37,9 @@ class HotelDineInTable extends Model
     protected $casts = [
         'capacity' => 'integer',
         'party_size' => 'integer',
+        // When the customer is due, as opposed to assigned_at — when the desk wrote
+        // the reservation down.
+        'reserved_for' => 'datetime',
         'assigned_at' => 'datetime',
     ];
 
@@ -60,7 +66,9 @@ class HotelDineInTable extends Model
             'capacity' => (int) $this->capacity,
             'status' => $this->status,
             'guestName' => $this->guest_name ?? '',
+            'contactNo' => $this->contact_no ?? '',
             'partySize' => $this->party_size,
+            'reservedFor' => optional($this->reserved_for)->toIso8601String(),
             'assignedBy' => $this->assigned_by ?? '',
             'assignedAt' => optional($this->assigned_at)->toIso8601String(),
             'updatedAt' => optional($this->updated_at)->toIso8601String(),
