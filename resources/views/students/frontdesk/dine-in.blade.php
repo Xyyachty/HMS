@@ -19,6 +19,8 @@
   }
   .dn-available { background: rgba(34,197,94,0.18); color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
   .dn-occupied  { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
+  /* Held, nobody at it yet — amber reads as "pending" against Occupied's blue. */
+  .dn-reserved  { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
   .btn-outline {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: transparent; color: var(--accent);
@@ -180,6 +182,7 @@
   }
   :root[data-ops-theme="2"] .dn-available { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
   :root[data-ops-theme="2"] .dn-occupied { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+  :root[data-ops-theme="2"] .dn-reserved { background: #fef3c7; color: #b45309; border-color: #fde68a; }
   :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
   :root[data-ops-theme="2"] .dn-step,
   :root[data-ops-theme="2"] .dn-party,
@@ -362,8 +365,9 @@ function ReserveModal({ table, onReserve, onClose, busy }) {
   );
 }
 
-function TableCard({ table, canReserve, onOpenReserve }) {
+function TableCard({ table, canReserve, onOpenReserve, onSeat, busy }) {
   const available = table.status === 'Available';
+  const reserved = table.status === 'Reserved';
 
   return (
     <div className="dn-card">
@@ -372,7 +376,9 @@ function TableCard({ table, canReserve, onOpenReserve }) {
           <p className="dn-card-name">{table.name}</p>
           <p className="dn-card-seats">Seats {table.capacity}</p>
         </div>
-        <span className={`dn-badge dn-${table.status.toLowerCase()}`}>{available ? 'Available' : 'Reserved'}</span>
+        {/* The real status, not a relabel: Reserved means the desk is holding it,
+            Occupied means the customer is actually sitting there. */}
+        <span className={`dn-badge dn-${table.status.toLowerCase()}`}>{table.status}</span>
       </div>
 
       {!available && (
@@ -387,9 +393,20 @@ function TableCard({ table, canReserve, onOpenReserve }) {
             <dt>Party</dt><dd>{table.partySize || '—'}</dd>
           </dl>
           <p className="dn-card-note">
-            Taken {formatClock(table.assignedAt)}{table.assignedBy ? ` by ${table.assignedBy}` : ''}
+            {reserved ? 'Reserved' : 'Seated'} {formatClock(table.assignedAt)}{table.assignedBy ? ` by ${table.assignedBy}` : ''}
           </p>
         </>
+      )}
+
+      {reserved && canReserve && (
+        <div className="dn-card-foot">
+          {/* The desk greets the customer as often as the restaurant does, so it can
+              seat them too — and nothing can be ordered until someone has. */}
+          <button type="button" className="btn-solid" disabled={busy} onClick={() => onSeat(table)}
+            style={{ width: '100%', justifyContent: 'center' }}>
+            <i className="fa-solid fa-user-check" style={{ fontSize: '0.7rem' }}></i> Customer Arrived
+          </button>
+        </div>
       )}
 
       {available && canReserve && (
@@ -434,7 +451,7 @@ function App() {
     return () => { clearInterval(id); window.removeEventListener('focus', load); };
   }, [load]);
 
-  const reserveTable = (id, payload) => {
+  const patchTable = (id, payload, fallbackError, onDone) => {
     setBusy(true);
     pendingWrites.current += 1;
     fetch(`${CFG.tablesUrl}/${id}`, {
@@ -445,15 +462,12 @@ function App() {
     })
       .then(async r => {
         const data = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(data.message || 'Could not reserve this table.');
+        if (!r.ok) throw new Error(data.message || fallbackError);
         return data;
       })
       .then(data => {
-        if (data.table) {
-          setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
-          if (window.toast) window.toast(`Reserved ${data.table.name} for ${data.table.guestName}`);
-        }
-        setReservingId(null);
+        if (data.table) setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
+        if (onDone) onDone(data.table);
       })
       .catch(e => { if (window.toast) window.toast(e.message); })
       .finally(() => {
@@ -462,14 +476,23 @@ function App() {
       });
   };
 
+  const reserveTable = (id, payload) => patchTable(id, payload, 'Could not reserve this table.', (table) => {
+    if (table && window.toast) window.toast(`Reserved ${table.name} for ${table.guestName}`);
+    setReservingId(null);
+  });
+
+  const seatTable = (table) => patchTable(table.id, { arrive: true }, 'Could not seat this customer.', (updated) => {
+    if (updated && window.toast) window.toast(`${updated.guestName || 'The customer'} is seated at ${updated.name}.`);
+  });
+
   const availableCount = tables.filter(t => t.status === 'Available').length;
-  const reservedCount = tables.length - availableCount;
+  const reservedCount = tables.filter(t => t.status === 'Reserved').length;
+  const seatedCount = tables.filter(t => t.status === 'Occupied').length;
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tables.filter(t => {
-      if (filter === 'Available' && t.status !== 'Available') return false;
-      if (filter === 'Reserved' && t.status === 'Available') return false;
+      if (filter !== 'All' && t.status !== filter) return false;
       if (!q) return true;
       return [t.name, t.guestName, t.contactNo].some(field => String(field || '').toLowerCase().includes(q));
     });
@@ -482,6 +505,7 @@ function App() {
     { key: 'All', count: tables.length },
     { key: 'Available', count: availableCount },
     { key: 'Reserved', count: reservedCount },
+    { key: 'Occupied', count: seatedCount },
   ];
 
   return (
@@ -506,6 +530,7 @@ function App() {
             <span className="dn-stat"><b>{tables.length}</b><span>Tables</span></span>
             <span className="dn-stat"><b>{availableCount}</b><span>Available</span></span>
             <span className="dn-stat"><b>{reservedCount}</b><span>Reserved</span></span>
+            <span className="dn-stat"><b>{seatedCount}</b><span>Seated</span></span>
           </div>
 
           <div className="dn-toolbar">
@@ -545,7 +570,8 @@ function App() {
       ) : (
         <div className="dn-grid">
           {visible.map(table => (
-            <TableCard key={table.id} table={table} canReserve={canReserve} onOpenReserve={t => setReservingId(t.id)} />
+            <TableCard key={table.id} table={table} canReserve={canReserve} busy={busy}
+              onOpenReserve={t => setReservingId(t.id)} onSeat={seatTable} />
           ))}
         </div>
       )}

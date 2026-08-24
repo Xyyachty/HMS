@@ -7,13 +7,22 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * A physical dining table: Restaurant Management adds and removes them, Front Desk
  * reserves an Available one for a customer — name, contact, when they are due and
- * how many are coming — and Restaurant Management bills and closes it out once they
- * have eaten.
+ * how many are coming — it goes Occupied when that customer actually turns up, and
+ * Restaurant Management bills and closes it out once they have eaten.
+ *
+ * Reserved and Occupied are deliberately not the same thing: a held table is not a
+ * table with anyone at it, and only a table with someone at it can be ordered at.
  */
 class HotelDineInTable extends Model
 {
+    /**
+     * Available  nobody has claimed it
+     * Reserved   Front Desk is holding it for a customer who has not arrived yet
+     * Occupied   the customer is sitting at it, so it can be ordered at and billed
+     */
     public const STATUSES = [
         'Available',
+        'Reserved',
         'Occupied',
     ];
 

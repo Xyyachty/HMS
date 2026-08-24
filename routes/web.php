@@ -1600,7 +1600,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 return response()->json(['message' => 'That table was not found.'], 404);
             }
             if ($table->status !== 'Occupied') {
-                return response()->json(['message' => 'Seat a guest at this table before ordering.'], 422);
+                return response()->json([
+                    'message' => 'Mark the customer as arrived before taking their order.',
+                ], 422);
             }
         } else {
             // Room service is charged to a stay, so it has to resolve to one. The room
@@ -2132,6 +2134,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'name'        => 'sometimes|string|max:100',
             'capacity'    => 'sometimes|integer|min:1|max:50',
             'close'       => 'sometimes|boolean',
+            // The reserved customer has turned up and sat down.
+            'arrive'      => 'sometimes|boolean',
             'guest_name'  => 'sometimes|nullable|string|max:255',
             'contact_no'  => 'sometimes|nullable|string|max:50',
             'party_size'  => 'sometimes|integer|min:1|max:50',
@@ -2141,6 +2145,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $assignedNow = false;
         $closedNow = false;
+        $arrivedNow = false;
 
         if ($request->boolean('close')) {
             if (!$manages) {
@@ -2164,13 +2169,33 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $table->assigned_by = null;
             $table->assigned_at = null;
             $closedNow = true;
+        } elseif ($request->boolean('arrive')) {
+            // Either desk can seat the customer: they may announce themselves at the
+            // front desk or walk straight into the restaurant.
+            if (!$assigns && !$manages) {
+                return response()->json(['message' => 'Only Front Desk or Restaurant Services staff can seat a customer.'], 403);
+            }
+            if ($table->status !== 'Reserved') {
+                return response()->json([
+                    'message' => $table->status === 'Occupied'
+                        ? 'This customer is already seated.'
+                        : 'This table has no reservation to seat.',
+                ], 422);
+            }
+
+            $table->status = 'Occupied';
+            $arrivedNow = true;
         } elseif (array_key_exists('guest_name', $data) || array_key_exists('party_size', $data)
             || array_key_exists('contact_no', $data) || array_key_exists('reserved_for', $data)) {
             if (!$assigns) {
                 return response()->json(['message' => 'Only Front Desk staff can reserve a table for a guest.'], 403);
             }
             if ($table->status !== 'Available') {
-                return response()->json(['message' => 'This table is already occupied.'], 422);
+                return response()->json([
+                    'message' => $table->status === 'Reserved'
+                        ? 'This table is already reserved for someone else.'
+                        : 'This table already has a customer at it.',
+                ], 422);
             }
             $partySize = (int) ($data['party_size'] ?? 0);
             if ($partySize < 1) {
@@ -2182,7 +2207,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ], 422);
             }
 
-            $table->status = 'Occupied';
+            // Reserved, not Occupied: the desk is holding the table, and nobody is
+            // sitting at it until they walk in — see the 'arrive' branch above.
+            $table->status = 'Reserved';
             $table->guest_name = isset($data['guest_name']) ? trim($data['guest_name']) : null;
             $table->contact_no = isset($data['contact_no']) ? trim($data['contact_no']) : null;
             $table->party_size = $partySize;
@@ -2195,6 +2222,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         } else {
             if (!$manages) {
                 return response()->json(['message' => 'Only Restaurant Management staff can edit a table.'], 403);
+            }
+            if ($table->status !== 'Available') {
+                return response()->json(['message' => 'Free this table before renaming or resizing it.'], 422);
             }
             if (array_key_exists('name', $data)) {
                 $table->name = trim($data['name']);
@@ -2214,6 +2244,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ActivityLog::TABLE_ASSIGNED,
                 'Seated ' . ($table->guest_name ?: 'a guest') . ' (party of ' . $table->party_size
                     . ') at ' . $table->name . '.'
+            );
+        }
+        if ($arrivedNow) {
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::TABLE_ASSIGNED,
+                ($table->guest_name ?: 'A customer') . ' arrived and was seated at ' . $table->name . '.'
             );
         }
         if ($closedNow) {
@@ -2266,7 +2303,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ->firstOrFail();
 
         if ($table->status !== 'Occupied') {
-            return response()->json(['message' => 'This table has nobody at it to bill.'], 422);
+            return response()->json([
+                'message' => $table->status === 'Reserved'
+                    ? 'This customer has not been seated yet, so there is nothing to bill.'
+                    : 'This table has nobody at it to bill.',
+            ], 422);
         }
 
         $data = $request->validate([

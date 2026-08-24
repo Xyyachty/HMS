@@ -61,6 +61,8 @@
   }
   .tb-available { background: rgba(34,197,94,0.18); color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
   .tb-occupied  { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
+  /* Held, nobody at it yet — amber reads as "pending" against Occupied's blue. */
+  .tb-reserved  { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
   .tb-preparing { background: rgba(168,85,247,0.18); color: #c084fc; border-color: rgba(168,85,247,0.35); }
   .tb-ready     { background: rgba(56,189,248,0.18); color: #38bdf8; border-color: rgba(56,189,248,0.35); }
   .tb-delivering { background: rgba(34,197,94,0.18); color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
@@ -136,6 +138,7 @@
   :root[data-ops-theme="2"] .tb-available,
   :root[data-ops-theme="2"] .tb-delivering { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
   :root[data-ops-theme="2"] .tb-occupied { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+  :root[data-ops-theme="2"] .tb-reserved { background: #fef3c7; color: #b45309; border-color: #fde68a; }
   :root[data-ops-theme="2"] .tb-preparing { background: #f3e8ff; color: #7e22ce; border-color: #e9d5ff; }
   :root[data-ops-theme="2"] .tb-ready { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
   :root[data-ops-theme="2"] .tb-completed { background: #d1fae5; color: #047857; border-color: #a7f3d0; }
@@ -773,7 +776,7 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
   );
 }
 
-function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable, onCloseTable, onRemoveTable, onFetchBill, onSettleTable, onToast }) {
+function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable, onCloseTable, onRemoveTable, onSeatTable, onFetchBill, onSettleTable, onToast }) {
   const [form, setForm] = useState(createEmptyTableForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -813,8 +816,17 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not update this table.'); });
   };
 
+  const seatTable = (table) => {
+    Promise.resolve(onSeatTable(table.id))
+      .then(() => { if (onToast) onToast(`${table.guestName || 'The customer'} is seated at ${table.name}.`); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not seat this table.'); });
+  };
+
   const closeTable = (table) => {
-    if (!hmsConfirm(`Close ${table.name} and free it up?`)) return;
+    const held = table.status === 'Reserved';
+    if (!hmsConfirm(held
+      ? `Cancel the reservation on ${table.name} and free it up?`
+      : `Close ${table.name} and free it up?`)) return;
     Promise.resolve(onCloseTable(table.id))
       .then(() => { if (onToast) onToast(`${table.name} is now available.`); })
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not close this table.'); });
@@ -837,9 +849,10 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
       <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Dine-in</p>
       <h3>Manage Tables</h3>
       <p className="rm-panel-desc">
-        Add tables for Front Desk to reserve for a customer, and track whether each
-        one is Available or Occupied. Orders are taken from the Dine-In tab in Orders;
-        bill an occupied table here once the customer has been served.
+        Add tables for Front Desk to reserve for a customer. A Reserved table is being
+        held for someone who has not arrived yet — seat them here when they do, which
+        is what lets the Dine-In tab in Orders take their order. Bill the table here
+        once they have been served.
       </p>
 
       {canManage && (
@@ -878,6 +891,9 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
           {list.map(table => {
             const isEditing = editingId === table.id;
             const occupied = table.status === 'Occupied';
+            const reserved = table.status === 'Reserved';
+            // Both hold a party, so both show its details and neither can be edited.
+            const taken = occupied || reserved;
 
             return (
               <div key={table.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem 0.9rem' }}>
@@ -905,9 +921,9 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                       </div>
                       <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.76rem' }}>
                         Seats {table.capacity}
-                        {occupied && table.guestName ? ` · ${table.guestName}, party of ${table.partySize || '—'}` : ''}
+                        {taken && table.guestName ? ` · ${table.guestName}, party of ${table.partySize || '—'}` : ''}
                       </p>
-                      {occupied && (table.contactNo || table.reservedFor) && (
+                      {taken && (table.contactNo || table.reservedFor) && (
                         <p style={{ margin: '0.2rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem' }}>
                           {table.contactNo ? table.contactNo : ''}
                           {table.contactNo && table.reservedFor ? ' · ' : ''}
@@ -917,7 +933,21 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                     </div>
                     {canManage && (
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        {occupied ? (
+                        {reserved ? (
+                          <>
+                            {/* Nothing can be ordered at a held table until the
+                                customer is actually sitting at it. */}
+                            <button type="button" className="btn-primary"
+                              style={{ fontSize: '0.66rem', padding: '0.4rem 0.75rem' }}
+                              onClick={() => seatTable(table)}>
+                              <i className="fa-solid fa-chair" style={{ fontSize: '0.66rem' }}></i> Seat
+                            </button>
+                            <button type="button" title="Cancel reservation and free the table"
+                              onClick={() => closeTable(table)} style={toolBtnStyle('danger')}>
+                              <i className="fa-solid fa-door-closed" style={{ fontSize: 11 }}></i>
+                            </button>
+                          </>
+                        ) : occupied ? (
                           <>
                             {/* Billing is the way an occupied table normally ends —
                                 closing it out without one is for a party that never
@@ -1125,7 +1155,7 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
           className="booking-input" value={tableId} onChange={e => setTableId(e.target.value)}
           style={{ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}
         >
-          <option value="" style={{ background: 'var(--card, #181714)' }}>Select an occupied table…</option>
+          <option value="" style={{ background: 'var(--card, #181714)' }}>Select a seated table…</option>
           {/* The guest's name, not assignedBy — whoever is taking this order needs to
               know which customer they are ordering for, not which staffer seated them. */}
           {occupiedTables.map(t => (
@@ -1136,7 +1166,7 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
         </select>
         {occupiedTables.length === 0 && (
           <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-            No occupied tables right now — seat a guest first.
+            No customer is seated right now — seat a reserved table in Manage Tables first.
           </p>
         )}
       </div>
@@ -1319,7 +1349,7 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
 function RestaurantManagementPage({
   initialNav, menus, tables, orders, canManageTables,
   onBack, onAddMenu, onEditMenu, onRemoveMenu,
-  onAddTable, onEditTable, onCloseTable, onRemoveTable, onFetchBill, onSettleTable,
+  onAddTable, onEditTable, onCloseTable, onRemoveTable, onSeatTable, onFetchBill, onSettleTable,
   onPlaceOrder, onUpdateOrderStatus,
   onToast,
 }) {
@@ -1358,6 +1388,7 @@ function RestaurantManagementPage({
               onEditTable={onEditTable}
               onCloseTable={onCloseTable}
               onRemoveTable={onRemoveTable}
+              onSeatTable={onSeatTable}
               onFetchBill={onFetchBill}
               onSettleTable={onSettleTable}
               onToast={onToast}
@@ -1486,6 +1517,13 @@ function App() {
     })
   ), [menuRequest]);
 
+  const seatTable = useCallback((id) => (
+    menuRequest('/students/hotel/tables/' + id, 'PATCH', { arrive: true }).then(data => {
+      if (data && data.table) setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
+      return data && data.table;
+    })
+  ), [menuRequest]);
+
   const fetchTableBill = useCallback((id) => (
     menuRequest('/students/hotel/tables/' + id + '/bill', 'GET').then(data => data && data.bill)
   ), [menuRequest]);
@@ -1533,6 +1571,7 @@ function App() {
       onEditTable={editTable}
       onCloseTable={closeTable}
       onRemoveTable={removeTable}
+      onSeatTable={seatTable}
       onFetchBill={fetchTableBill}
       onSettleTable={settleTable}
       onPlaceOrder={placeDineInOrder}
