@@ -92,6 +92,8 @@
     color: var(--accent-light); font-family: var(--font-display, 'Playfair Display', serif); font-size: 1.15rem;
   }
   .bill-line.is-balance .bill-amt { color: var(--danger, #fb7185); font-weight: 700; }
+  .bill-section-note { font-size: 0.7rem; color: var(--fg-muted); margin: -0.25rem 0 0.6rem; }
+  .bill-subnote { font-size: 0.7rem; color: var(--fg-muted); margin: -0.05rem 0 0.4rem; }
   .bill-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.55rem 1rem; }
   .bill-meta dt {
     font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
@@ -473,28 +475,40 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                 </button>
               )}
 
+              {/* What the guest settled before today, itemised: the amount reads in
+                  the money column with every other line, and the method and date sit
+                  under it rather than being folded into the label. */}
+              <p className="bill-section-title">Previous Payments</p>
+              <p className="bill-section-note">Already paid by the guest before checkout.</p>
+              {bill.payments.length === 0 ? (
+                <div className="bill-line"><span style={{ opacity: 0.6 }}>None</span><span className="bill-amt">− {formatPeso(0)}</span></div>
+              ) : (
+                bill.payments.map(p => (
+                  <div key={p.id}>
+                    <div className="bill-line">
+                      <span>{p.type} payment</span>
+                      <span className="bill-amt">− {formatPeso(p.amountPaid)}</span>
+                    </div>
+                    <p className="bill-subnote">{[p.method, formatBillStamp(p.paidAt)].filter(Boolean).join(' · ')}</p>
+                  </div>
+                ))
+              )}
+              <div className="bill-line is-subtotal">
+                <span>Total Previously Paid</span>
+                <span className="bill-amt">− {formatPeso(bill.amountPaid)}</span>
+              </div>
+              {/* The money to collect right now. Red only when something is actually
+                  owed — a settled stay showing ₱0 in red reads as a problem. */}
+              <div className={'bill-line is-subtotal' + (balance > 0 ? ' is-balance' : '')}>
+                <span>Amount Due at Checkout</span>
+                <span className="bill-amt" style={balance > 0 ? undefined : { color: 'var(--success, #4ade80)', fontWeight: 700 }}>
+                  {formatPeso(balance)}
+                </span>
+              </div>
+
               <div className="bill-line is-total">
                 <span>Total Bill</span>
                 <span className="bill-amt">{formatPeso(bill.total)}</span>
-              </div>
-
-              {bill.payments.length > 0 && (
-                <div style={{ marginTop: '0.5rem' }}>
-                  {bill.payments.map(p => (
-                    <div className="bill-line" key={p.id}>
-                      <span>{p.type} payment · {p.method}</span>
-                      <span className="bill-amt">− {formatPeso(p.amountPaid)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="bill-line is-subtotal">
-                <span>Previous Payments</span>
-                <span className="bill-amt">− {formatPeso(bill.amountPaid)}</span>
-              </div>
-              <div className="bill-line is-subtotal is-balance">
-                <span>Remaining Balance</span>
-                <span className="bill-amt">{formatPeso(balance)}</span>
               </div>
 
               <form onSubmit={settle} style={{ marginTop: '1.4rem' }}>
