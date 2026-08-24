@@ -511,36 +511,23 @@ function validateRoomForm(form, requireName = true) {
   return errors;
 }
 
-function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdated }) {
+/* Adding a room is the rare move; looking one up is the common one — so the form
+   lives in a modal and the page leads with the inventory table. Same POST, same
+   validation the inline form used: only where it renders changed. */
+function AddRoomModal({ rooms, onClose, onAdded }) {
   const [form, setForm] = useState(createEmptyRoomForm);
   const [errors, setErrors] = useState({});
   const [imgPreview, setImgPreview] = useState('');
   const [saving, setSaving] = useState(false);
-  // The inventory list that used to be its own Room Availability section. Adding a
-  // room and looking one up are the same job, so they share a screen now.
-  const [tab, setTab] = useState('All');
-  const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const [page, setPage] = useState(1);
 
-  const list = rooms || [];
-  const tabs = ['All', ...ROOM_CATEGORIES];
-  const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
-  const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
   // Preview only — HotelRoomDefaults::nextNameFor() decides the real one on save.
-  const nextRoomName = form.category ? nextRoomNameFor(list, form.category) : '';
-
-  // Fifty rooms is a long scroll, so the table pages. safePage rather than page so
-  // switching to a shorter category tab cannot strand the view past the last page.
-  const PER_PAGE = 5;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const pageRooms = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const nextRoomName = form.category ? nextRoomNameFor(rooms || [], form.category) : '';
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') setSelectedRoomId(null); };
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  }, [onClose]);
 
   const fieldLabel = {
     fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -578,10 +565,10 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
     })
       .then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e)))
       .then(data => {
-        if (data.room && typeof onSubmit === 'function') onSubmit(data.room);
+        if (data.room && typeof onAdded === 'function') onAdded(data.room);
         resetForm();
+        onClose();
         if (window.Swal) {
-          if (typeof onCloseModal === 'function') onCloseModal();
           window.Swal.fire({
             icon: 'success',
             title: 'Room Added!',
@@ -594,8 +581,6 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
             timer: 3000,
             timerProgressBar: true,
           });
-        } else if (typeof onCloseModal === 'function') {
-          onCloseModal();
         }
       })
       .catch((err) => {
@@ -613,7 +598,8 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
       .finally(() => setSaving(false));
   };
 
-  const handleCancel = () => { resetForm(); if (typeof onCancel === 'function') onCancel(); };
+  // Reset before closing so reopening never shows a stale draft.
+  const handleCancel = () => { resetForm(); onClose(); };
 
   const handleImagePick = () => {
     pickImageFile((url) => {
@@ -630,201 +616,255 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
   );
 
   return (
-    <div className="rm-panel" style={{ maxWidth: '100%' }}>
-      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Inventory</p>
-      <h3>Manage Room</h3>
-      <p className="rm-panel-desc">Add a new room to the hotel inventory, and browse every room already in it.</p>
-
-      <form onSubmit={handleSubmit} className="rm-form-grid" noValidate style={{ maxWidth: 520 }}>
-        <div>
-          <label style={fieldLabel}>Room Name</label>
-          {/* Not typed: the server numbers a new room from its category. This only
-              previews what it will be called, so the name cannot drift from the
-              sequence. The server recomputes it on save either way. */}
-          <div className="booking-input" style={{ color: form.category ? 'var(--fg)' : 'var(--fg-muted)', cursor: 'default', display: 'flex', alignItems: 'center', gap: 8 }}>
-            {form.category
-              ? <><i className="fa-solid fa-hashtag" style={{ fontSize: '0.7rem', color: 'var(--accent)' }}></i>{nextRoomName}</>
-              : 'Pick a category to see the room number'}
-          </div>
-        </div>
-
-        <div className="rm-form-row">
-          <div>
-            <label style={fieldLabel}>Room Category *</label>
-            <select
-              className="booking-input" value={form.category} onChange={e => update('category', e.target.value)}
-              style={Object.assign({ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: form.category ? 'var(--fg)' : 'var(--fg-muted)' }, errors.category ? { borderColor: '#f43f5e' } : {})}
-            >
-              <option value="" style={{ background: 'var(--card, #181714)', color: 'var(--fg-muted)' }}>Select category</option>
-              {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>)}
-            </select>
-            {errorText('category')}
-          </div>
-          <div>
-            <label style={fieldLabel}>Status</label>
-            <div className="booking-input" style={{ color: 'var(--success, #4ade80)', fontWeight: 600, cursor: 'default', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success, #4ade80)', display: 'inline-block', flexShrink: 0 }}></span>
-              Available
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label style={fieldLabel}>Price *</label>
-          <input
-            type="number" min="1" step="1" className="booking-input" placeholder="e.g. 4500"
-            value={form.price} onChange={e => update('price', e.target.value)}
-            style={errors.price ? { borderColor: '#f43f5e' } : undefined}
-          />
-          {errorText('price')}
-        </div>
-
-        <div>
-          <label style={fieldLabel}>Description</label>
-          <textarea
-            className="booking-input" rows={3} placeholder="Short description of the room..."
-            value={form.desc} onChange={e => update('desc', e.target.value)}
-            style={{ resize: 'vertical', minHeight: 88 }}
-          />
-        </div>
-
-        <div>
-          <label style={fieldLabel}>Room Image</label>
-          <div
-            onClick={handleImagePick}
-            style={{ border: '1.5px dashed var(--border)', borderRadius: 8, cursor: 'pointer', overflow: 'hidden', background: 'rgba(255,255,255,0.02)', transition: 'border-color 0.2s' }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-          >
-            {imgPreview ? (
-              <img src={imgPreview} alt="Room preview" style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
-            ) : (
-              <div style={{ height: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--fg-muted)' }}>
-                <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '1.4rem', color: 'var(--accent)', opacity: 0.7 }}></i>
-                <span style={{ fontSize: '0.75rem' }}>Click to upload image</span>
-              </div>
-            )}
-          </div>
-          {imgPreview && (
-            <button type="button" onClick={() => { update('img', ''); setImgPreview(''); }}
-              style={{ marginTop: '0.4rem', background: 'none', border: 'none', color: 'var(--danger, #fb7185)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
-              <i className="fa-solid fa-xmark" style={{ marginRight: 4 }}></i>Remove image
-            </button>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-          <button type="submit" className="btn-primary" disabled={saving}>
-            <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem' }}></i> {saving ? 'Saving…' : 'Add Room'}
+    <div className="room-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+      {/* Wider than the shared 480px: the two-column row and the upload box are
+          cramped at that width. */}
+      <div className="room-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '1.5rem', position: 'relative' }}>
+          <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close">
+            <i className="fa-solid fa-xmark"></i>
           </button>
-          <button type="button" className="btn-outline" onClick={handleCancel} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>Cancel</button>
-        </div>
-      </form>
+          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Inventory</p>
+          <h2 className="font-display" style={{ fontSize: '1.5rem', margin: '0 0 0.35rem', color: 'var(--fg)' }}>Add Room</h2>
+          <p className="rm-panel-desc">A new room joins the inventory as soon as you save it.</p>
 
-      <div style={{ marginTop: '2.25rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
-        <h3 style={{ margin: '0 0 0.35rem' }}>All Rooms</h3>
-        <p className="rm-panel-desc">Every room in the hotel. Update one to edit its details or check its booked dates.</p>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.15rem' }}>
-          {tabs.map(t => {
-            const count = t === 'All' ? list.length : list.filter(r => normalizeRoomCategory(r.category || r.label) === t).length;
-            return (
-              <button key={t} type="button" onClick={() => { setTab(t); setPage(1); }} className={`room-card-tab${tab === t ? ' active' : ''}`}>
-                {t} ({count})
-              </button>
-            );
-          })}
-        </div>
-
-        {filtered.length === 0 ? (
-          <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', padding: '1.5rem 0', textAlign: 'center' }}>
-            {list.length === 0 ? 'No rooms yet. Add the first one above.' : 'No rooms in this category yet.'}
-          </p>
-        ) : (
-          <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-            <table className="rm-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 92 }}>Image</th>
-                  <th>Room</th>
-                  <th>Room Category</th>
-                  <th>Description</th>
-                  <th style={{ width: 110 }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageRooms.map(room => (
-                  <tr key={room.id}>
-                    <td>
-                      <img
-                        src={roomCardImg(room)}
-                        alt={room.name}
-                        style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 6, display: 'block', background: 'var(--bg-warm, #12110f)' }}
-                      />
-                    </td>
-                    <td>
-                      <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 600 }}>{room.name}</span>
-                      <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'var(--font-display, Playfair Display, serif)', fontSize: '0.82rem', marginTop: 2 }}>
-                        {formatPeso(room.price)}
-                      </span>
-                    </td>
-                    <td>{room.label || room.category}</td>
-                    <td style={{ whiteSpace: 'normal', minWidth: 220, maxWidth: 380 }}>
-                      {room.desc || <span style={{ opacity: 0.45 }}>No description yet.</span>}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn-outline"
-                        style={{ fontSize: '0.68rem', padding: '0.4rem 0.8rem' }}
-                        onClick={() => setSelectedRoomId(room.id)}
-                      >
-                        <i className="fa-solid fa-pen" style={{ fontSize: '0.65rem' }}></i> Update
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.85rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--fg-muted)' }}>
-              Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, filtered.length)} of {filtered.length}
-            </span>
-            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={safePage === 1}
-                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === 1 ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === 1 ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === 1 ? 0.4 : 1 }}
-              >
-                <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setPage(n)}
-                  style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid ' + (n === safePage ? 'var(--accent)' : 'var(--border)'), background: n === safePage ? 'var(--accent)' : 'transparent', color: n === safePage ? 'var(--bg)' : 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: n === safePage ? 700 : 400 }}
-                >
-                  {n}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={safePage === totalPages}
-                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === totalPages ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === totalPages ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === totalPages ? 0.4 : 1 }}
-              >
-                <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
-              </button>
+          <form onSubmit={handleSubmit} className="rm-form-grid" noValidate>
+            <div>
+              <label style={fieldLabel}>Room Name</label>
+              {/* Not typed: the server numbers a new room from its category. This only
+                  previews what it will be called, so the name cannot drift from the
+                  sequence. The server recomputes it on save either way. */}
+              <div className="booking-input" style={{ color: form.category ? 'var(--fg)' : 'var(--fg-muted)', cursor: 'default', display: 'flex', alignItems: 'center', gap: 8 }}>
+                {form.category
+                  ? <><i className="fa-solid fa-hashtag" style={{ fontSize: '0.7rem', color: 'var(--accent)' }}></i>{nextRoomName}</>
+                  : 'Pick a category to see the room number'}
+              </div>
             </div>
-          </div>
-        )}
+
+            <div className="rm-form-row">
+              <div>
+                <label style={fieldLabel}>Room Category *</label>
+                <select
+                  className="booking-input" value={form.category} onChange={e => update('category', e.target.value)}
+                  style={Object.assign({ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: form.category ? 'var(--fg)' : 'var(--fg-muted)' }, errors.category ? { borderColor: '#f43f5e' } : {})}
+                >
+                  <option value="" style={{ background: 'var(--card, #181714)', color: 'var(--fg-muted)' }}>Select category</option>
+                  {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>)}
+                </select>
+                {errorText('category')}
+              </div>
+              <div>
+                <label style={fieldLabel}>Status</label>
+                <div className="booking-input" style={{ color: 'var(--success, #4ade80)', fontWeight: 600, cursor: 'default', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success, #4ade80)', display: 'inline-block', flexShrink: 0 }}></span>
+                  Available
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label style={fieldLabel}>Price *</label>
+              <input
+                type="number" min="1" step="1" className="booking-input" placeholder="e.g. 4500"
+                value={form.price} onChange={e => update('price', e.target.value)}
+                style={errors.price ? { borderColor: '#f43f5e' } : undefined}
+              />
+              {errorText('price')}
+            </div>
+
+            <div>
+              <label style={fieldLabel}>Description</label>
+              <textarea
+                className="booking-input" rows={3} placeholder="Short description of the room..."
+                value={form.desc} onChange={e => update('desc', e.target.value)}
+                style={{ resize: 'vertical', minHeight: 88 }}
+              />
+            </div>
+
+            <div>
+              <label style={fieldLabel}>Room Image</label>
+              <div
+                onClick={handleImagePick}
+                style={{ border: '1.5px dashed var(--border)', borderRadius: 8, cursor: 'pointer', overflow: 'hidden', background: 'rgba(255,255,255,0.02)', transition: 'border-color 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+              >
+                {imgPreview ? (
+                  <img src={imgPreview} alt="Room preview" style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
+                ) : (
+                  <div style={{ height: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--fg-muted)' }}>
+                    <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '1.4rem', color: 'var(--accent)', opacity: 0.7 }}></i>
+                    <span style={{ fontSize: '0.75rem' }}>Click to upload image</span>
+                  </div>
+                )}
+              </div>
+              {imgPreview && (
+                <button type="button" onClick={() => { update('img', ''); setImgPreview(''); }}
+                  style={{ marginTop: '0.4rem', background: 'none', border: 'none', color: 'var(--danger, #fb7185)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
+                  <i className="fa-solid fa-xmark" style={{ marginRight: 4 }}></i>Remove image
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+              <button type="submit" className="btn-primary" disabled={saving}>
+                <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem' }}></i> {saving ? 'Saving…' : 'Add Room'}
+              </button>
+              <button type="button" className="btn-outline" onClick={handleCancel} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>Cancel</button>
+            </div>
+          </form>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function ManageRoomPanel({ rooms, onSubmit, onRoomUpdated }) {
+  // The inventory list that used to be its own Room Availability section. Adding a
+  // room and looking one up are the same job, so they share a screen now.
+  const [tab, setTab] = useState('All');
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [addOpen, setAddOpen] = useState(false);
+
+  const list = rooms || [];
+  const tabs = ['All', ...ROOM_CATEGORIES];
+  const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
+  const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
+
+  // Fifty rooms is a long scroll, so the table pages. safePage rather than page so
+  // switching to a shorter category tab cannot strand the view past the last page.
+  const PER_PAGE = 5;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const pageRooms = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setSelectedRoomId(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  return (
+    <div className="rm-panel" style={{ maxWidth: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+        <div>
+          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Inventory</p>
+          <h3>Manage Room</h3>
+          <p className="rm-panel-desc">Every room in the hotel. Add one, or update a room to edit its details and check its booked dates.</p>
+        </div>
+        <button type="button" className="btn-primary" onClick={() => setAddOpen(true)}>
+          <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem' }}></i> Add Room
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.15rem' }}>
+        {tabs.map(t => {
+          const count = t === 'All' ? list.length : list.filter(r => normalizeRoomCategory(r.category || r.label) === t).length;
+          return (
+            <button key={t} type="button" onClick={() => { setTab(t); setPage(1); }} className={`room-card-tab${tab === t ? ' active' : ''}`}>
+              {t} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {filtered.length === 0 ? (
+        <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', padding: '1.5rem 0', textAlign: 'center' }}>
+          {list.length === 0 ? 'No rooms yet. Use Add Room to create the first one.' : 'No rooms in this category yet.'}
+        </p>
+      ) : (
+        <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
+          <table className="rm-table">
+            <thead>
+              <tr>
+                <th style={{ width: 92 }}>Image</th>
+                <th>Room</th>
+                <th>Room Category</th>
+                <th>Description</th>
+                <th style={{ width: 110 }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageRooms.map(room => (
+                <tr key={room.id}>
+                  <td>
+                    <img
+                      src={roomCardImg(room)}
+                      alt={room.name}
+                      style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 6, display: 'block', background: 'var(--bg-warm, #12110f)' }}
+                    />
+                  </td>
+                  <td>
+                    <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 600 }}>{room.name}</span>
+                    <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'var(--font-display, Playfair Display, serif)', fontSize: '0.82rem', marginTop: 2 }}>
+                      {formatPeso(room.price)}
+                    </span>
+                  </td>
+                  <td>{room.label || room.category}</td>
+                  <td style={{ whiteSpace: 'normal', minWidth: 220, maxWidth: 380 }}>
+                    {room.desc || <span style={{ opacity: 0.45 }}>No description yet.</span>}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ fontSize: '0.68rem', padding: '0.4rem 0.8rem' }}
+                      onClick={() => setSelectedRoomId(room.id)}
+                    >
+                      <i className="fa-solid fa-pen" style={{ fontSize: '0.65rem' }}></i> Update
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.85rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--fg-muted)' }}>
+            Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, filtered.length)} of {filtered.length}
+          </span>
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+              style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === 1 ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === 1 ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === 1 ? 0.4 : 1 }}
+            >
+              <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setPage(n)}
+                style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid ' + (n === safePage ? 'var(--accent)' : 'var(--border)'), background: n === safePage ? 'var(--accent)' : 'transparent', color: n === safePage ? 'var(--bg)' : 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: n === safePage ? 700 : 400 }}
+              >
+                {n}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+              style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === totalPages ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === totalPages ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === totalPages ? 0.4 : 1 }}
+            >
+              <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {addOpen && (
+        <AddRoomModal
+          rooms={list}
+          onClose={() => setAddOpen(false)}
+          onAdded={onSubmit}
+        />
+      )}
 
       {selectedRoom && (
         <EditRoomModal
@@ -1329,7 +1369,7 @@ function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onRoomUpdate
             // Manage Room is the fallback: ?nav=rooms was the old Room Availability
             // section, whose room list lives here now, so an old link still lands
             // somewhere sensible instead of on a blank panel.
-            <ManageRoomPanel rooms={rooms} onSubmit={handleAddRoom} onCancel={onBack} onCloseModal={() => {}} onRoomUpdated={onRoomUpdated} />
+            <ManageRoomPanel rooms={rooms} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} />
           )}
         </div>
       </div>
