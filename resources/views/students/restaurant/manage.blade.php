@@ -91,6 +91,39 @@
   .tb-tab.is-active { border-color: var(--accent); background: var(--accent); color: var(--bg); }
   .tb-tab:disabled { opacity: 0.4; cursor: not-allowed; }
 
+  .tb-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 2rem 1.5rem; z-index: 300; overflow-y: auto;
+  }
+  .tb-modal {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    width: 100%; max-width: 520px; margin: auto;
+  }
+  .tb-modal-head {
+    padding: 1.3rem 1.5rem 1rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  }
+  .tb-modal-body { padding: 1.2rem 1.5rem 1.5rem; }
+  .tb-bill-title {
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent);
+    margin: 1.15rem 0 0.5rem; padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .tb-bill-line {
+    display: flex; justify-content: space-between; gap: 1rem;
+    font-size: 0.83rem; color: var(--fg-muted); padding: 0.22rem 0;
+  }
+  .tb-bill-line .tb-bill-amt { color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tb-bill-line.is-total {
+    border-top: 2px solid var(--accent); margin-top: 0.6rem; padding-top: 0.6rem;
+    font-size: 1rem; color: var(--fg); font-weight: 700;
+  }
+  .tb-bill-line.is-total .tb-bill-amt {
+    color: var(--accent-light); font-family: var(--font-display, 'Playfair Display', serif); font-size: 1.15rem;
+  }
+
   /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──
      Additive only — nothing above this block is touched, so a Template 1
      team (or one that hasn't chosen a template yet) renders unchanged. */
@@ -568,12 +601,175 @@ function createEmptyTableForm() {
   return { name: '', capacity: '2' };
 }
 
-function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable, onCloseTable, onRemoveTable, onToast }) {
+const BILL_METHODS = ['Cash', 'GCash', 'Card', 'Other'];
+
+/*
+ * The last two steps of the dine-in flow: present the bill, take the money.
+ *
+ * Priced by the server (HotelDineInBill) rather than added up here, so what the
+ * customer is charged cannot drift from what gets written down. Settling frees the
+ * table in the same call — a table left Occupied after the customer has paid and
+ * walked out is a table nobody can reserve.
+ */
+function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
+  const [bill, setBill] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [method, setMethod] = useState('Cash');
+  const [amount, setAmount] = useState('');
+  const [reference, setReference] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    Promise.resolve(onFetchBill(table.id))
+      .then(data => {
+        if (!alive) return;
+        setBill(data);
+        // Settling in full is the common case; the field stays editable for a
+        // customer handing over something else.
+        setAmount(String(data && data.total != null ? data.total : ''));
+      })
+      .catch(err => { if (alive) setError((err && err.message) || 'Could not load this bill.'); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [table.id, onFetchBill]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, busy]);
+
+  const total = bill ? Number(bill.total) || 0 : 0;
+  const paid = Math.max(0, parseFloat(amount) || 0);
+  const shortBy = Math.max(0, total - paid);
+  const unserved = (bill && bill.unserved) || [];
+
+  const settle = (e) => {
+    e.preventDefault();
+    if (shortBy > 0 && !window.confirm(
+      `${formatPeso(shortBy)} of this bill will go uncollected. Close the table anyway?`
+    )) return;
+    setBusy(true);
+    Promise.resolve(onSettle(table.id, { amount_paid: paid, method, reference: reference.trim() }))
+      .then(() => {
+        if (onToast) onToast(`${table.name} settled — ${formatPeso(paid)} by ${method}.`);
+        onClose();
+      })
+      .catch(err => setError((err && err.message) || 'Could not settle this table.'))
+      .finally(() => setBusy(false));
+  };
+
+  const fieldLabel = {
+    fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase',
+    color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem',
+  };
+
+  return (
+    <div className="tb-modal-overlay" onClick={() => { if (!busy) onClose(); }} role="dialog" aria-modal="true">
+      <div className="tb-modal" onClick={e => e.stopPropagation()}>
+        <div className="tb-modal-head">
+          <div>
+            <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Dine-in</p>
+            <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>Final Bill · {table.name}</h2>
+            <p style={{ margin: '0.3rem 0 0', color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
+              {table.guestName || 'Guest'} · party of {table.partySize || '—'}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
+            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div className="tb-modal-body">
+          {loading ? (
+            <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', margin: 0 }}>Loading the bill…</p>
+          ) : !bill ? (
+            <p style={{ color: 'var(--danger, #fb7185)', fontSize: '0.85rem', margin: 0 }}>{error || 'No bill to show.'}</p>
+          ) : (
+            <>
+              {bill.items.length === 0 ? (
+                <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', margin: '0 0 1rem' }}>
+                  Nothing has been ordered at this table yet. Close it out instead of billing it.
+                </p>
+              ) : (
+                <>
+                  <p className="tb-bill-title">Ordered</p>
+                  {bill.items.map((line, i) => (
+                    <div className="tb-bill-line" key={line.orderId + '-' + i}>
+                      <span>{line.name} × {line.qty} <span style={{ opacity: 0.55 }}>· #{line.orderId}</span></span>
+                      <span className="tb-bill-amt">{formatPeso(line.line)}</span>
+                    </div>
+                  ))}
+                  <div className="tb-bill-line is-total">
+                    <span>Total Bill</span>
+                    <span className="tb-bill-amt">{formatPeso(total)}</span>
+                  </div>
+                </>
+              )}
+
+              {unserved.length > 0 && (
+                <p style={{ margin: '0.9rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.78rem' }}>
+                  <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: 6, fontSize: '0.72rem' }}></i>
+                  {unserved.map(o => '#' + o.orderId + ' (' + o.status + ')').join(', ')} still with the kitchen —
+                  serve the customer before billing the table.
+                </p>
+              )}
+
+              {bill.items.length > 0 && unserved.length === 0 && (
+                <form onSubmit={settle} style={{ marginTop: '1.3rem' }}>
+                  <p className="tb-bill-title" style={{ marginTop: 0 }}>Payment</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
+                    <div>
+                      <label style={fieldLabel}>Payment Method</label>
+                      <select className="booking-input" value={method} onChange={e => setMethod(e.target.value)}
+                        style={{ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}>
+                        {BILL_METHODS.map(m => <option key={m} value={m} style={{ background: 'var(--card, #181714)' }}>{m}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={fieldLabel}>Amount Paid</label>
+                      <input type="number" className="booking-input" min="0" step="0.01" value={amount}
+                        onChange={e => setAmount(e.target.value)} />
+                    </div>
+                  </div>
+                  {method !== 'Cash' && (
+                    <div style={{ marginTop: '0.7rem' }}>
+                      <label style={fieldLabel}>Reference</label>
+                      <input type="text" className="booking-input" placeholder="Receipt no., card last 4, or ref #"
+                        value={reference} onChange={e => setReference(e.target.value)} />
+                    </div>
+                  )}
+                  <p style={{ margin: '0.65rem 0 0', fontSize: '0.76rem', color: shortBy > 0 ? 'var(--danger, #fb7185)' : 'var(--success, #4ade80)' }}>
+                    {shortBy > 0
+                      ? `${formatPeso(shortBy)} of this bill will go uncollected.`
+                      : 'This settles the bill in full.'}
+                  </p>
+                  {error && <p style={{ margin: '0.55rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.78rem' }}>{error}</p>}
+                  <button type="submit" className="btn-primary" disabled={busy} style={{ width: '100%', marginTop: '1rem', justifyContent: 'center' }}>
+                    <i className="fa-solid fa-cash-register" style={{ fontSize: '0.7rem' }}></i>
+                    {busy ? 'Settling…' : 'Mark Paid & Close Table'}
+                  </button>
+                </form>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable, onCloseTable, onRemoveTable, onFetchBill, onSettleTable, onToast }) {
   const [form, setForm] = useState(createEmptyTableForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
+  const [billingTableId, setBillingTableId] = useState(null);
 
   const fieldLabel = {
     fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -623,14 +819,17 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
 
   const list = tables || [];
   const hasOpenOrder = (table) => (orders || []).some(o => o.tableId === table.id && OPEN_ORDER_STATUSES.includes(o.status));
+  // Re-read from state so the modal follows a refresh rather than freezing at open time.
+  const billingTable = billingTableId ? (list.find(t => t.id === billingTableId) || null) : null;
 
   return (
     <div className="rm-panel" style={{ maxWidth: '100%' }}>
       <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Dine-in</p>
       <h3>Manage Tables</h3>
       <p className="rm-panel-desc">
-        Add tables for Front Desk to seat guests at, and track whether each one is
-        Available or Occupied. Orders are taken from the Dine-In tab in Orders.
+        Add tables for Front Desk to reserve for a customer, and track whether each
+        one is Available or Occupied. Orders are taken from the Dine-In tab in Orders;
+        bill an occupied table here once the customer has been served.
       </p>
 
       {canManage && (
@@ -696,15 +895,26 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                       </div>
                       <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.76rem' }}>
                         Seats {table.capacity}
+                        {occupied && table.guestName ? ` · ${table.guestName}, party of ${table.partySize || '—'}` : ''}
                       </p>
                     </div>
                     {canManage && (
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                         {occupied ? (
-                          <button type="button" title="Close table" disabled={hasOpenOrder(table)}
-                            onClick={() => closeTable(table)} style={toolBtnStyle('danger')}>
-                            <i className="fa-solid fa-door-closed" style={{ fontSize: 11 }}></i>
-                          </button>
+                          <>
+                            {/* Billing is the way an occupied table normally ends —
+                                closing it out without one is for a party that never
+                                ordered, or a ticket written off. */}
+                            <button type="button" className="btn-primary"
+                              style={{ fontSize: '0.66rem', padding: '0.4rem 0.75rem' }}
+                              onClick={() => setBillingTableId(table.id)}>
+                              <i className="fa-solid fa-receipt" style={{ fontSize: '0.66rem' }}></i> Bill
+                            </button>
+                            <button type="button" title="Close table without billing" disabled={hasOpenOrder(table)}
+                              onClick={() => closeTable(table)} style={toolBtnStyle('danger')}>
+                              <i className="fa-solid fa-door-closed" style={{ fontSize: 11 }}></i>
+                            </button>
+                          </>
                         ) : (
                           <>
                             <button type="button" title="Edit table" onClick={() => { setEditingId(table.id); setEditForm({ name: table.name, capacity: String(table.capacity) }); }} style={toolBtnStyle('edit')}>
@@ -723,6 +933,16 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
             );
           })}
         </div>
+      )}
+
+      {billingTable && (
+        <DineInBillModal
+          table={billingTable}
+          onFetchBill={onFetchBill}
+          onSettle={onSettleTable}
+          onClose={() => setBillingTableId(null)}
+          onToast={onToast}
+        />
       )}
     </div>
   );
@@ -1082,7 +1302,8 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
 function RestaurantManagementPage({
   initialNav, menus, tables, orders, canManageTables,
   onBack, onAddMenu, onEditMenu, onRemoveMenu,
-  onAddTable, onEditTable, onCloseTable, onRemoveTable, onPlaceOrder, onUpdateOrderStatus,
+  onAddTable, onEditTable, onCloseTable, onRemoveTable, onFetchBill, onSettleTable,
+  onPlaceOrder, onUpdateOrderStatus,
   onToast,
 }) {
   const activeNav = initialNav || 'manage-menu';
@@ -1120,6 +1341,8 @@ function RestaurantManagementPage({
               onEditTable={onEditTable}
               onCloseTable={onCloseTable}
               onRemoveTable={onRemoveTable}
+              onFetchBill={onFetchBill}
+              onSettleTable={onSettleTable}
               onToast={onToast}
             />
           )}
@@ -1246,6 +1469,21 @@ function App() {
     })
   ), [menuRequest]);
 
+  const fetchTableBill = useCallback((id) => (
+    menuRequest('/students/hotel/tables/' + id + '/bill', 'GET').then(data => data && data.bill)
+  ), [menuRequest]);
+
+  /* Settling frees the table server-side, so the row that comes back is already
+     Available. The orders it billed are refetched rather than patched: the ticket
+     list is what the bill was built from and must not be guessed at here. */
+  const settleTable = useCallback((id, payload) => (
+    menuRequest('/students/hotel/tables/' + id + '/settle', 'POST', payload).then(data => {
+      if (data && data.table) setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
+      fetchOrders();
+      return data && data.payment;
+    })
+  ), [menuRequest, fetchOrders]);
+
   const placeDineInOrder = useCallback((tableId, items) => (
     menuRequest('/students/hotel/orders', 'POST', { order_type: 'dine_in', dine_in_table_id: tableId, items }).then(data => {
       if (data && data.order) setOrders(prev => [data.order, ...prev]);
@@ -1278,6 +1516,8 @@ function App() {
       onEditTable={editTable}
       onCloseTable={closeTable}
       onRemoveTable={removeTable}
+      onFetchBill={fetchTableBill}
+      onSettleTable={settleTable}
       onPlaceOrder={placeDineInOrder}
       onUpdateOrderStatus={updateOrderStatus}
       onToast={(msg) => window.toast && window.toast(msg)}

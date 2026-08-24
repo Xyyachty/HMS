@@ -2217,6 +2217,118 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         return response()->json(['table' => $table->toTemplateArray()]);
     })->name('hotel.tables.update');
 
+    /*
+     * The dine-in final bill, and the one call that closes a table out properly.
+     *
+     * Front Desk reserved the table and Restaurant Services fed the customer; this is
+     * the last two steps of that flow — present the bill, take the money. Restaurant
+     * Management owns both, the same role that owns closing a table.
+     */
+    Route::get('/hotel/tables/{id}/bill', function (Request $request, $id) {
+        $membership = \App\Support\HotelTableAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant Services staff can bill a table.'], 403);
+        }
+
+        $table = HotelDineInTable::where('hotel_dine_in_table_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        return response()->json(['bill' => \App\Support\HotelDineInBill::for($table)]);
+    })->name('hotel.tables.bill');
+
+    Route::post('/hotel/tables/{id}/settle', function (Request $request, $id) {
+        $membership = \App\Support\HotelTableAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant Services staff can settle a table.'], 403);
+        }
+
+        $table = HotelDineInTable::where('hotel_dine_in_table_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        if ($table->status !== 'Occupied') {
+            return response()->json(['message' => 'This table has nobody at it to bill.'], 422);
+        }
+
+        $data = $request->validate([
+            'amount_paid' => 'required|numeric|min:0',
+            'method'      => 'required|string|max:50',
+            'reference'   => 'nullable|string|max:255',
+        ]);
+
+        $bill = \App\Support\HotelDineInBill::for($table);
+
+        if ($bill['unserved']) {
+            $ids = implode(', #', array_column($bill['unserved'], 'orderId'));
+
+            return response()->json([
+                'message' => 'Order #' . $ids . ' has not been served yet — finish it before billing the table.',
+            ], 422);
+        }
+
+        if (!$bill['orderIds']) {
+            return response()->json([
+                'message' => 'This table has no orders to bill. Close it out instead.',
+            ], 422);
+        }
+
+        $total = (float) $bill['total'];
+        $paid = round((float) $data['amount_paid'], 2);
+
+        // Settling and freeing the table are one move: a table left Occupied after the
+        // customer has paid and walked out is a table nobody can reserve.
+        $payment = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $table, $bill, $total, $paid, $data) {
+            $payment = \App\Models\HotelDineInPayment::create([
+                'group_name'             => $membership->group_name,
+                'faculty_id'             => $membership->faculty_id,
+                'group_id'               => $membership->group_id,
+                'hotel_dine_in_table_id' => $table->hotel_dine_in_table_id,
+                'table_name'             => $table->name,
+                'guest_name'             => $table->guest_name,
+                'party_size'             => $table->party_size,
+                'total_due'              => $total,
+                'amount_paid'            => $paid,
+                'balance'                => max(0, round($total - $paid, 2)),
+                'method'                 => \App\Models\HotelDineInPayment::normalizeMethod($data['method']),
+                'reference'              => isset($data['reference']) ? trim($data['reference']) : null,
+                'items'                  => $bill['items'],
+                'order_ids'              => $bill['orderIds'],
+                'collected_by'           => auth()->user()?->name,
+                'paid_at'                => now(),
+            ]);
+
+            $table->status = 'Available';
+            $table->guest_name = null;
+            $table->party_size = null;
+            $table->assigned_by = null;
+            $table->assigned_at = null;
+            $table->save();
+
+            return $payment;
+        });
+
+        ActivityLog::record(
+            auth()->user(),
+            ActivityLog::TABLE_CLOSED,
+            'Settled ' . $payment->table_name . ' for '
+                . number_format($payment->amount_paid, 2) . ' (' . $payment->method . ') and freed it.'
+        );
+
+        return response()->json([
+            'payment' => $payment->toTemplateArray(),
+            'table'   => $table->fresh()->toTemplateArray(),
+        ], 201);
+    })->name('hotel.tables.settle');
+
     Route::delete('/hotel/tables/{id}', function (Request $request, $id) {
         $membership = \App\Support\HotelTableAccess::membership();
         if (!$membership) {
