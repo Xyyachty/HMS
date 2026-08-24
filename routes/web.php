@@ -1487,14 +1487,16 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
     /*
     |--------------------------------------------------------------------------
-    | Hotel room-service orders (Front Desk places, Restaurant Services cooks and delivers)
+    | Hotel food orders — room service and dine-in. Front Desk places both (room
+    | service for a stay, dine-in for a table it reserved), Restaurant Services
+    | may also take a dine-in order tableside, and cooks and delivers every one.
     |--------------------------------------------------------------------------
     */
 
     Route::get('/hotel/orders', function (Request $request) {
         $membership = \App\Support\HotelOrderAccess::membership();
         if (!$membership) {
-            return response()->json(['orders' => [], 'can_place' => false, 'can_fulfill' => false]);
+            return response()->json(['orders' => [], 'can_place' => false, 'can_fulfill' => false, 'can_place_dine_in' => false]);
         }
 
         // Tenancy is the base of the query, never one of the optional filters below —
@@ -1552,6 +1554,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'orders'      => $orders,
             'can_place'   => \App\Support\HotelOrderAccess::canPlace($membership),
             'can_fulfill' => \App\Support\HotelOrderAccess::canFulfill($membership),
+            // Front Desk orders for the table it reserved, so this is not can_place.
+            'can_place_dine_in' => \App\Support\HotelOrderAccess::canPlaceDineIn($membership),
         ]);
     })->name('hotel.orders.index');
 
@@ -1568,7 +1572,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         if ($isDineIn) {
             if (!\App\Support\HotelOrderAccess::canPlaceDineIn($membership)) {
-                return response()->json(['message' => 'Only Restaurant Services staff can take a dine-in order.'], 403);
+                return response()->json(['message' => 'Only Front Desk or Restaurant Services staff can take a dine-in order.'], 403);
             }
         } elseif (!\App\Support\HotelOrderAccess::canPlace($membership)) {
             return response()->json(['message' => 'Only Front Desk staff can place room-service orders.'], 403);
@@ -2061,7 +2065,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
     /*
     |--------------------------------------------------------------------------
-    | Dine-in tables (Restaurant Management manages, Front Desk seats guests)
+    | Dine-in tables (Restaurant Management manages, Front Desk reserves one for a
+    | customer and then orders at it)
     |--------------------------------------------------------------------------
     */
 
@@ -2157,7 +2162,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $closedNow = true;
         } elseif (array_key_exists('guest_name', $data) || array_key_exists('party_size', $data)) {
             if (!$assigns) {
-                return response()->json(['message' => 'Only Front Desk staff can seat a guest.'], 403);
+                return response()->json(['message' => 'Only Front Desk staff can reserve a table for a guest.'], 403);
             }
             if ($table->status !== 'Available') {
                 return response()->json(['message' => 'This table is already occupied.'], 422);

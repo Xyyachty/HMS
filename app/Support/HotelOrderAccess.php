@@ -26,6 +26,14 @@ class HotelOrderAccess
      */
     public const FULFILL_ROLES = ['restaurant_management', 'administrator'];
 
+    /**
+     * Roles that may take a dine-in order. Front Desk reserves the table for the
+     * customer and orders at it on their behalf; Restaurant Services takes one
+     * tableside. Kept apart from PLACE_ROLES because the two answer different
+     * questions and the room-service set may yet widen on its own.
+     */
+    public const DINE_IN_ROLES = ['front_desk', 'restaurant_management', 'administrator'];
+
     public static function membership(): ?StudentGroup
     {
         $student = auth()->user()?->student;
@@ -102,14 +110,13 @@ class HotelOrderAccess
     }
 
     /**
-     * A dine-in order is taken tableside by Restaurant Management, not handed off by
-     * Front Desk the way a room-service order is — Front Desk's part ends at seating
-     * the guest. Same role set as canFulfill(), kept as its own method because the
-     * two checks answer different questions and may yet diverge.
+     * Front Desk reserves the table and orders for the customer sitting at it, and
+     * Restaurant Management takes orders tableside — so both may open a dine-in
+     * ticket. Moving that ticket through the kitchen is still canFulfill() only.
      */
     public static function canPlaceDineIn(StudentGroup $membership): bool
     {
-        return self::canFulfill($membership);
+        return count(array_intersect(self::roles($membership), self::DINE_IN_ROLES)) > 0;
     }
 
     public static function canFulfill(StudentGroup $membership): bool
