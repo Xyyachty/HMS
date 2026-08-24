@@ -106,9 +106,6 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     // Front Desk's hotel concept for one of this faculty's own teams, with its edit history.
     Route::get('/teams/{groupName}/hotel-concept', [HotelConceptController::class, 'facultyHistory'])
         ->name('teams.hotel-concept');
-
-    Route::get('/templates/grants', [HotelTemplateController::class, 'facultyGrants'])->name('templates.grants');
-    Route::post('/templates/grants', [HotelTemplateController::class, 'facultyGrantStore'])->name('templates.grants.store');
 });
 
 // Student Routes

@@ -3,11 +3,9 @@
 namespace App\Support;
 
 use App\Models\GroupSettings;
-use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\TeamRoleTemplate;
 use App\Models\TeamRoleTemplateVersion;
-use App\Models\TeamTemplateEditGrant;
 use App\Models\TemplateContentItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -183,7 +181,8 @@ class HotelTemplateBuilder
 
     /**
      * Can this student edit this role's template?
-     * True if they own the role OR faculty granted a cross-role edit grant.
+     * True only if they own the role. Faculty-issued cross-role edit grants
+     * were removed; a member edits their own section and nothing else.
      */
     public static function canEdit(User $user, StudentGroup $membership, string $role): bool
     {
@@ -191,21 +190,7 @@ class HotelTemplateBuilder
             return false;
         }
 
-        if (in_array($role, self::studentRoleKeys($membership), true)) {
-            return true;
-        }
-
-        $studentId = $user->student?->user_information_id;
-        if (!$studentId) {
-            return false;
-        }
-
-        return TeamTemplateEditGrant::query()
-            ->where('faculty_id', $membership->faculty_id)
-            ->where('group_name', $membership->group_name)
-            ->where('student_id', $studentId)
-            ->where('role', $role)
-            ->exists();
+        return in_array($role, self::studentRoleKeys($membership), true);
     }
 
     public static function canView(User $user, StudentGroup $membership, string $role): bool
@@ -883,27 +868,5 @@ class HotelTemplateBuilder
             'layout' => $version->layout ?? self::defaultLayout(),
             'selected_template' => $version->selected_template,
         ], $user, false, true, 'Restored v' . $versionNumber);
-    }
-
-    public static function grantEdit(StudentGroup $membership, Student $student, string $role, User $facultyUser): TeamTemplateEditGrant
-    {
-        return TeamTemplateEditGrant::updateOrCreate(
-            [
-                'faculty_id' => $membership->faculty_id,
-                'group_name' => $membership->group_name,
-                'student_id' => $student->user_information_id,
-                'role' => $role,
-            ],
-            ['granted_by' => $facultyUser->user_id, 'group_id' => $membership->group_id]
-        );
-    }
-
-    public static function revokeEdit(StudentGroup $membership, Student $student, string $role): void
-    {
-        TeamTemplateEditGrant::where('faculty_id', $membership->faculty_id)
-            ->where('group_name', $membership->group_name)
-            ->where('student_id', $student->user_information_id)
-            ->where('role', $role)
-            ->delete();
     }
 }

@@ -1007,31 +1007,6 @@
                         </div>
                     </div>
 
-                    {{-- Template edit permissions (faculty grants) --}}
-                    <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                        <div class="flex items-center justify-between gap-2 mb-2">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Template edit permissions</p>
-                                <p class="text-[11px] text-slate-400 mt-0.5">Grant a member access to edit another role’s hotel website section.</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-2 mb-3">
-                            <select id="grantStudentSelect" class="flex-1 h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm">
-                                <option value="">Select member…</option>
-                            </select>
-                            <select id="grantRoleSelect" class="h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm">
-                                @foreach(\App\Support\HotelTemplateBuilder::ROLES as $rk => $rl)
-                                    <option value="{{ $rk }}">{{ $rl }}</option>
-                                @endforeach
-                            </select>
-                            <button type="button" id="grantEditBtn"
-                                class="h-10 px-4 rounded-xl bg-brand text-white text-xs font-bold hover:opacity-90">Grant</button>
-                            <button type="button" id="revokeEditBtn"
-                                class="h-10 px-4 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">Revoke</button>
-                        </div>
-                        <div id="grantStatus" class="text-[11px] text-slate-400"></div>
-                    </div>
-
                     {{-- Members & Roles --}}
                     <div>
                         <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
@@ -2850,62 +2825,11 @@ function openUpdateModal(groupName, memberData) {
     const emptyNote = document.getElementById('updateNoMembersNote');
     if (emptyNote) emptyNote.classList.toggle('hidden', memberCount > 0);
 
-    // Template grant picker
-    const grantSelect = document.getElementById('grantStudentSelect');
-    if (grantSelect) {
-        grantSelect.innerHTML = '<option value="">Select member…</option>';
-        (memberData || []).forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m.student_id;
-            opt.textContent = m.name || ('Student #' + m.student_id);
-            grantSelect.appendChild(opt);
-        });
-    }
-    const grantStatus = document.getElementById('grantStatus');
-    if (grantStatus) grantStatus.textContent = '';
-
     refreshRoleAvailability('update');
 
     document.getElementById('updateTeamModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
-
-async function facultyTemplateGrant(grant) {
-    const groupName = document.getElementById('updateGroupNameInput')?.value;
-    const studentId = document.getElementById('grantStudentSelect')?.value;
-    const role = document.getElementById('grantRoleSelect')?.value;
-    const status = document.getElementById('grantStatus');
-    if (!groupName || !studentId || !role) {
-        if (status) status.textContent = 'Pick a member and a role template first.';
-        return;
-    }
-    try {
-        const res = await fetch(@json(route('faculty.templates.grants.store')), {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: JSON.stringify({
-                group_name: groupName,
-                student_id: parseInt(studentId, 10),
-                role: role,
-                grant: !!grant
-            })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Request failed');
-        if (status) status.textContent = (grant ? 'Granted' : 'Revoked') + ' edit access for ' + role.replace(/_/g, ' ') + '.';
-    } catch (e) {
-        if (status) status.textContent = e.message || 'Could not update permission.';
-    }
-}
-
-document.getElementById('grantEditBtn')?.addEventListener('click', () => facultyTemplateGrant(true));
-document.getElementById('revokeEditBtn')?.addEventListener('click', () => facultyTemplateGrant(false));
 
 function closeUpdateModal() {
     document.getElementById('updateTeamModal').classList.add('hidden');

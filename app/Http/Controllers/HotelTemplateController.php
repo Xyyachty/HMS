@@ -3,15 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
-use App\Models\Student;
-use App\Models\StudentGroup;
 use App\Models\TeamRoleTemplateVersion;
-use App\Models\UserInformation;
 use App\Support\HotelTemplateBuilder;
 use App\Support\Notifier;
 use App\Support\StudentGroupSync;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class HotelTemplateController extends Controller
 {
@@ -63,7 +59,7 @@ class HotelTemplateController extends Controller
 
         if (!HotelTemplateBuilder::canEdit($user, $membership, $role)) {
             return response()->json([
-                'error' => 'You can only edit your assigned role template unless faculty grants permission.',
+                'error' => 'You can only edit your own assigned role template.',
             ], 403);
         }
 
@@ -193,99 +189,5 @@ class HotelTemplateController extends Controller
             'success' => true,
             'template' => HotelTemplateBuilder::payload($restored, true),
         ]);
-    }
-
-    /** Faculty: list / toggle cross-role edit grants for a team member. */
-    public function facultyGrants(Request $request)
-    {
-        $faculty = $request->user()?->faculty;
-        if (!$faculty) {
-            return response()->json(['error' => 'Faculty only'], 403);
-        }
-
-        $data = $request->validate([
-            'group_name' => ['required', 'string', 'max:255'],
-            'student_id' => ['required', 'integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
-        ]);
-
-        $student = Student::whereKey($data['student_id'])
-            ->where('faculty_id', $faculty->user_information_id)
-            ->firstOrFail();
-
-        $membership = StudentGroup::where('faculty_id', $faculty->user_information_id)
-            ->where('group_name', $data['group_name'])
-            ->where('student_id', $student->user_information_id)
-            ->first();
-
-        if (!$membership) {
-            return response()->json(['error' => 'Student is not on that team'], 422);
-        }
-
-        $grants = \App\Models\TeamTemplateEditGrant::where('faculty_id', $faculty->user_information_id)
-            ->where('group_name', $data['group_name'])
-            ->where('student_id', $student->user_information_id)
-            ->pluck('role')
-            ->all();
-
-        return response()->json([
-            'roles' => HotelTemplateBuilder::ROLES,
-            'granted' => $grants,
-            'owned' => $membership->roles()->pluck('role')->all(),
-        ]);
-    }
-
-    public function facultyGrantStore(Request $request)
-    {
-        $faculty = $request->user()?->faculty;
-        if (!$faculty) {
-            return response()->json(['error' => 'Faculty only'], 403);
-        }
-
-        $data = $request->validate([
-            'group_name' => ['required', 'string', 'max:255'],
-            'student_id' => ['required', 'integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
-            'role' => ['required', 'string'],
-            'grant' => ['required', 'boolean'],
-        ]);
-
-        if (!HotelTemplateBuilder::isValidRole($data['role'])) {
-            return response()->json(['error' => 'Invalid role'], 422);
-        }
-
-        $student = Student::whereKey($data['student_id'])
-            ->where('faculty_id', $faculty->user_information_id)
-            ->firstOrFail();
-
-        $membership = StudentGroup::where('faculty_id', $faculty->user_information_id)
-            ->where('group_name', $data['group_name'])
-            ->where('student_id', $student->user_information_id)
-            ->first();
-
-        if (!$membership) {
-            return response()->json(['error' => 'Student is not on that team'], 422);
-        }
-
-        // Dummy membership object for grant helpers (needs faculty_id + group_name + group_id)
-        $ctx = new StudentGroup([
-            'faculty_id' => $faculty->user_information_id,
-            'group_name' => $data['group_name'],
-            'student_id' => $student->user_information_id,
-            'group_id' => $membership->group_id,
-        ]);
-
-        if ($data['grant']) {
-            HotelTemplateBuilder::grantEdit($ctx, $student, $data['role'], $request->user());
-        } else {
-            HotelTemplateBuilder::revokeEdit($ctx, $student, $data['role']);
-        }
-
-        ActivityLog::record(
-            $request->user(),
-            ActivityLog::PERMISSION_GRANTED,
-            ($data['grant'] ? 'Granted' : 'Revoked') . ' ' . $data['role']
-                . ' edit access for a member of team "' . $data['group_name'] . '".'
-        );
-
-        return response()->json(['success' => true]);
     }
 }
