@@ -48,17 +48,125 @@
   }
   .booking-input:focus { border-color: var(--accent); }
   .booking-input::placeholder { color: var(--fg-muted); opacity: 0.5; }
+  /* Cards sit on an even grid and stretch to the tallest in their row, so a
+     reserved card's extra detail cannot leave its neighbours ragged. */
   .dn-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.9rem;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1rem;
+    align-items: stretch;
   }
   .dn-card {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1.1rem 1.2rem;
+    border-radius: 14px; padding: 1.1rem 1.2rem 1.2rem;
+    display: flex; flex-direction: column; gap: 0.85rem;
+    transition: border-color 0.15s;
   }
-  .dn-when { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .dn-card:hover { border-color: rgba(201,168,76,0.4); }
+  .dn-card-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem;
+  }
+  .dn-card-name { margin: 0; color: var(--fg); font-weight: 700; font-size: 1.05rem; line-height: 1.2; }
+  .dn-card-seats { margin: 0.2rem 0 0; color: var(--fg-muted); font-size: 0.74rem; }
+  /* Pins the action to the bottom of the card whatever the body above it holds. */
+  .dn-card-foot { margin-top: auto; }
+
+  /* Reserved detail. A label/value grid rather than a stack of sentences: the
+     desk scans down the values, and the labels stay out of the way. */
+  .dn-meta {
+    display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.7rem;
+    margin: 0; padding: 0.8rem 0 0; border-top: 1px solid var(--border);
+  }
+  .dn-meta dt {
+    font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--fg-muted); white-space: nowrap; padding-top: 0.15rem;
+  }
+  .dn-meta dd { margin: 0; color: var(--fg); font-size: 0.8rem; overflow-wrap: anywhere; }
+  .dn-meta dd.is-when { color: var(--accent-light); font-weight: 600; }
+  .dn-card-note {
+    margin: 0; color: var(--fg-muted); font-size: 0.7rem;
+    padding-top: 0.7rem; border-top: 1px solid var(--border);
+  }
+
+  /* Counts above the grid, so "how full is the floor" is one glance. */
+  .dn-stats { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .dn-stat {
+    display: inline-flex; align-items: baseline; gap: 0.4rem;
+    border: 1px solid var(--border); border-radius: 100px;
+    padding: 0.3rem 0.85rem; background: var(--card);
+  }
+  .dn-stat b { color: var(--fg); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+  .dn-stat span { color: var(--fg-muted); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .dn-filters { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .dn-filter {
+    font-family: var(--font-body, 'Outfit', sans-serif);
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.42rem 0.9rem; border-radius: 100px; border: 1.5px solid var(--border);
+    background: transparent; color: var(--fg-muted); cursor: pointer; transition: all 0.15s;
+  }
+  .dn-filter:hover { border-color: var(--accent); color: var(--accent); }
+  .dn-filter.is-active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+  .dn-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem;
+  }
+  .dn-search { position: relative; flex: 1 1 240px; max-width: 340px; }
+  .dn-search i {
+    position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%);
+    color: var(--fg-muted); font-size: 0.75rem; pointer-events: none;
+  }
+  .dn-search .booking-input { padding-left: 2.2rem; }
+
+  .dn-empty {
+    border: 1px dashed var(--border); border-radius: 14px;
+    padding: 2.75rem 1.5rem; text-align: center;
+  }
+
+  /* The reservation form. It has five fields and two of them are a date and a
+     time picker, which is more than a card in a 270px grid column can hold —
+     so it opens over the page instead of expanding in place. */
+  .dn-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 2rem 1.5rem; z-index: 300; overflow-y: auto;
+  }
+  .dn-modal {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    width: 100%; max-width: 460px; margin: auto;
+  }
+  .dn-modal-head {
+    padding: 1.3rem 1.5rem 1rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  }
+  .dn-modal-body { padding: 1.25rem 1.5rem 1.5rem; }
+  .dn-modal-close {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03); color: var(--fg); cursor: pointer; flex-shrink: 0;
+  }
+  /* Set here rather than inline so the Template 2 override below can win — the
+     native pickers render their own controls from this. */
+  input[type="date"].booking-input,
+  input[type="time"].booking-input { color-scheme: dark; }
+  .dn-form { display: grid; gap: 0.9rem; }
+  .dn-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
   .dn-field-label {
-    display: block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
+    display: block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--fg-muted); margin-bottom: 0.35rem;
+  }
+  .dn-step {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03); color: var(--fg); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;
+  }
+  .dn-step:disabled { opacity: 0.35; cursor: not-allowed; }
+  .dn-party {
+    display: flex; align-items: center; gap: 0.6rem;
+    border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.45rem;
+    background: rgba(255,255,255,0.03); width: fit-content;
+  }
+  .dn-party output { color: var(--fg); min-width: 28px; text-align: center; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  @media (max-width: 420px) {
+    .dn-form-row { grid-template-columns: 1fr; }
   }
 
   /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──
@@ -73,6 +181,12 @@
   :root[data-ops-theme="2"] .dn-available { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
   :root[data-ops-theme="2"] .dn-occupied { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
   :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
+  :root[data-ops-theme="2"] .dn-step,
+  :root[data-ops-theme="2"] .dn-party,
+  :root[data-ops-theme="2"] .dn-modal-close { background: rgba(27,67,50,0.03); }
+  :root[data-ops-theme="2"] .dn-card:hover { border-color: rgba(27,67,50,0.35); }
+  :root[data-ops-theme="2"] input[type="date"].booking-input,
+  :root[data-ops-theme="2"] input[type="time"].booking-input { color-scheme: light; }
 </style>
 @endsection
 
@@ -120,23 +234,38 @@ function formatWhen(iso) {
   return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-/* Holding a table for a customer. The server calls this seating the guest and
-   flips the table to Occupied; from the desk's side it is the reservation, and
-   it ends there — the customer orders at the restaurant, not here. */
-function ReserveForm({ table, onReserve, onCancel, busy }) {
+/* Clock only. Used for "taken at", where the date is almost always today and
+   spelling it out just crowds the card. */
+function formatClock(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+/*
+ * Holding a table for a customer: who they are, how to reach them, when they are
+ * due and how many are coming.
+ *
+ * A modal rather than a panel inside the table card — five fields, two of them
+ * date and time pickers, do not fit in a 270px grid column without the pickers
+ * being clipped to uselessness.
+ */
+function ReserveModal({ table, onReserve, onClose, busy }) {
   const [guestName, setGuestName] = useState('');
   const [contactNo, setContactNo] = useState('');
-  // Defaults to today at the next whole hour: most reservations the desk takes are
-  // for later the same day, so that is one less field to fill in than a blank one.
-  const [onDate, setOnDate] = useState(() => defaultReserveDate());
-  const [atTime, setAtTime] = useState(() => defaultReserveTime());
+  // Today at the next whole hour: most reservations the desk takes are for later
+  // the same day, so that is two fewer fields to think about than blank ones.
+  const [onDate, setOnDate] = useState(defaultReserveDate);
+  const [atTime, setAtTime] = useState(defaultReserveTime);
   const [partySize, setPartySize] = useState(Math.min(2, table.capacity));
   const [error, setError] = useState('');
-  const partyStepBtn = {
-    width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)',
-    background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer',
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem',
-  };
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, busy]);
 
   const submit = (e) => {
     e.preventDefault();
@@ -158,115 +287,118 @@ function ReserveForm({ table, onReserve, onCancel, busy }) {
   };
 
   return (
-    <form onSubmit={submit} style={{ marginTop: '0.9rem', paddingTop: '0.9rem', borderTop: '1px solid var(--border)' }}>
-      <label className="dn-field-label">Customer name</label>
-      <input
-        type="text"
-        className="booking-input"
-        placeholder="Who's dining?"
-        value={guestName}
-        onChange={e => setGuestName(e.target.value)}
-        style={{ marginBottom: '0.6rem' }}
-      />
-      <label className="dn-field-label">Contact number</label>
-      <input
-        type="tel"
-        className="booking-input"
-        placeholder="09XX XXX XXXX"
-        value={contactNo}
-        onChange={e => setContactNo(e.target.value)}
-        style={{ marginBottom: '0.6rem' }}
-      />
-      <div className="dn-when">
-        <div>
-          <label className="dn-field-label">Date</label>
-          <input type="date" className="booking-input" value={onDate}
-            min={defaultReserveDate()}
-            onChange={e => setOnDate(e.target.value)} style={{ colorScheme: 'dark' }} />
+    <div className="dn-modal-overlay" onClick={() => { if (!busy) onClose(); }} role="dialog" aria-modal="true">
+      <div className="dn-modal" onClick={e => e.stopPropagation()}>
+        <div className="dn-modal-head">
+          <div>
+            <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
+            <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>Reserve {table.name}</h2>
+            <p style={{ margin: '0.3rem 0 0', color: 'var(--fg-muted)', fontSize: '0.76rem' }}>
+              Seats {table.capacity} · holds the table only, the restaurant takes the order
+            </p>
+          </div>
+          <button type="button" className="dn-modal-close" onClick={onClose} disabled={busy} aria-label="Close">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
         </div>
-        <div>
-          <label className="dn-field-label">Time</label>
-          <input type="time" className="booking-input" value={atTime}
-            onChange={e => setAtTime(e.target.value)} style={{ colorScheme: 'dark' }} />
+
+        <div className="dn-modal-body">
+          <form onSubmit={submit} className="dn-form" noValidate>
+            <div>
+              <label className="dn-field-label">Customer name</label>
+              <input type="text" className="booking-input" placeholder="Who's dining?"
+                value={guestName} onChange={e => setGuestName(e.target.value)} autoFocus />
+            </div>
+
+            <div>
+              <label className="dn-field-label">Contact number</label>
+              <input type="tel" className="booking-input" placeholder="09XX XXX XXXX"
+                value={contactNo} onChange={e => setContactNo(e.target.value)} />
+            </div>
+
+            <div className="dn-form-row">
+              <div>
+                <label className="dn-field-label">Date</label>
+                <input type="date" className="booking-input" value={onDate}
+                  min={defaultReserveDate()} onChange={e => setOnDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="dn-field-label">Time</label>
+                <input type="time" className="booking-input" value={atTime}
+                  onChange={e => setAtTime(e.target.value)} />
+              </div>
+            </div>
+
+            <div>
+              <label className="dn-field-label">Party size · seats {table.capacity}</label>
+              {/* Stepper rather than a number input, so it cannot be typed past
+                  the table's own capacity. */}
+              <div className="dn-party">
+                <button type="button" className="dn-step" aria-label="Fewer guests"
+                  disabled={partySize <= 1}
+                  onClick={() => setPartySize(n => Math.max(1, n - 1))}>−</button>
+                <output>{partySize}</output>
+                <button type="button" className="dn-step" aria-label="More guests"
+                  disabled={partySize >= table.capacity}
+                  onClick={() => setPartySize(n => Math.min(table.capacity, n + 1))}>+</button>
+              </div>
+            </div>
+
+            {error && <p style={{ margin: 0, color: 'var(--danger, #fb7185)', fontSize: '0.78rem' }}>{error}</p>}
+
+            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.2rem' }}>
+              <button type="submit" className="btn-solid" disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>
+                <i className="fa-solid fa-chair" style={{ fontSize: '0.7rem' }}></i>
+                {busy ? 'Reserving…' : 'Reserve Table'}
+              </button>
+              <button type="button" className="btn-outline" onClick={onClose} disabled={busy} style={{ padding: '0.55rem 1.1rem' }}>
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
       </div>
-      <label className="dn-field-label" style={{ marginTop: '0.6rem' }}>Party size (seats {table.capacity})</label>
-      {/* Stepper rather than a number input, matching the menu's quantity control —
-          and it cannot be typed past the table's own capacity. */}
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
-        <button type="button" style={partyStepBtn} aria-label="Fewer guests"
-          disabled={partySize <= 1}
-          onClick={() => setPartySize(n => Math.max(1, n - 1))}>−</button>
-        <span style={{ color: 'var(--fg)', minWidth: 24, textAlign: 'center', fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }}>{partySize}</span>
-        <button type="button" style={partyStepBtn} aria-label="More guests"
-          disabled={partySize >= table.capacity}
-          onClick={() => setPartySize(n => Math.min(table.capacity, n + 1))}>+</button>
-      </div>
-      {error && <p style={{ margin: '0 0 0.6rem', color: 'var(--danger, #fb7185)', fontSize: '0.78rem' }}>{error}</p>}
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <button type="submit" className="btn-solid" disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>
-          {busy ? 'Reserving…' : 'Reserve Table'}
-        </button>
-        <button type="button" className="btn-outline" onClick={onCancel} style={{ padding: '0.55rem 1rem' }}>
-          Cancel
-        </button>
-      </div>
-    </form>
+    </div>
   );
 }
 
-function TableCard({ table, canReserve, onReserve, busy }) {
-  const [reserving, setReserving] = useState(false);
+function TableCard({ table, canReserve, onOpenReserve }) {
   const available = table.status === 'Available';
 
   return (
     <div className="dn-card">
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
-        <div>
-          <p style={{ margin: 0, color: 'var(--fg)', fontWeight: 700, fontSize: '1rem' }}>{table.name}</p>
-          <p style={{ margin: '0.25rem 0 0', color: 'var(--fg-muted)', fontSize: '0.75rem' }}>Seats {table.capacity}</p>
+      <div className="dn-card-head">
+        <div style={{ minWidth: 0 }}>
+          <p className="dn-card-name">{table.name}</p>
+          <p className="dn-card-seats">Seats {table.capacity}</p>
         </div>
         <span className={`dn-badge dn-${table.status.toLowerCase()}`}>{available ? 'Available' : 'Reserved'}</span>
       </div>
 
       {!available && (
-        <div style={{ marginTop: '0.85rem', fontSize: '0.8rem', color: 'var(--fg)' }}>
-          <p style={{ margin: 0 }}>{table.guestName || 'Guest'} · party of {table.partySize || '—'}</p>
-          {table.contactNo && (
-            <p style={{ margin: '0.2rem 0 0', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-              <i className="fa-solid fa-phone" style={{ fontSize: '0.66rem', marginRight: 5 }}></i>{table.contactNo}
-            </p>
-          )}
-          {/* When they are due, which is what the floor needs. Falls back to when the
-              desk wrote it down, for a table reserved before that was recorded. */}
-          <p style={{ margin: '0.2rem 0 0', color: 'var(--accent-light)', fontSize: '0.74rem' }}>
-            <i className="fa-solid fa-clock" style={{ fontSize: '0.66rem', marginRight: 5 }}></i>
-            {table.reservedFor ? `Booked for ${formatWhen(table.reservedFor)}` : `Booked ${formatWhen(table.assignedAt)}`}
+        <>
+          <dl className="dn-meta">
+            <dt>Guest</dt><dd>{table.guestName || 'Guest'}</dd>
+            {table.contactNo ? (<><dt>Contact</dt><dd>{table.contactNo}</dd></>) : null}
+            {/* When they are due, which is what the floor needs. Falls back to when
+                the desk wrote it down, for a table reserved before that was kept. */}
+            <dt>Booked</dt>
+            <dd className="is-when">{formatWhen(table.reservedFor || table.assignedAt)}</dd>
+            <dt>Party</dt><dd>{table.partySize || '—'}</dd>
+          </dl>
+          <p className="dn-card-note">
+            Taken {formatClock(table.assignedAt)}{table.assignedBy ? ` by ${table.assignedBy}` : ''}
           </p>
-          <p style={{ margin: '0.25rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem' }}>
-            Taken {formatWhen(table.assignedAt)}{table.assignedBy ? ` by ${table.assignedBy}` : ''}
-          </p>
+        </>
+      )}
+
+      {available && canReserve && (
+        <div className="dn-card-foot">
+          <button type="button" className="btn-outline" onClick={() => onOpenReserve(table)}
+            style={{ width: '100%', justifyContent: 'center', fontSize: '0.7rem', padding: '0.55rem' }}>
+            <i className="fa-solid fa-chair" style={{ fontSize: '0.7rem' }}></i> Reserve Table
+          </button>
         </div>
-      )}
-
-      {available && canReserve && !reserving && (
-        <button
-          type="button"
-          className="btn-outline"
-          onClick={() => setReserving(true)}
-          style={{ marginTop: '0.9rem', width: '100%', justifyContent: 'center', fontSize: '0.7rem', padding: '0.5rem' }}
-        >
-          <i className="fa-solid fa-chair" style={{ fontSize: '0.7rem' }}></i> Reserve Table
-        </button>
-      )}
-
-      {available && canReserve && reserving && (
-        <ReserveForm
-          table={table}
-          busy={busy}
-          onCancel={() => setReserving(false)}
-          onReserve={(id, payload) => onReserve(id, payload, () => setReserving(false))}
-        />
       )}
     </div>
   );
@@ -276,8 +408,10 @@ function App() {
   const [tables, setTables] = useState([]);
   const [canReserve, setCanReserve] = useState(false);
   const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('All');
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [reservingId, setReservingId] = useState(null);
   const pendingWrites = useRef(0);
 
   const load = useCallback(() => {
@@ -300,7 +434,7 @@ function App() {
     return () => { clearInterval(id); window.removeEventListener('focus', load); };
   }, [load]);
 
-  const reserveTable = (id, payload, done) => {
+  const reserveTable = (id, payload) => {
     setBusy(true);
     pendingWrites.current += 1;
     fetch(`${CFG.tablesUrl}/${id}`, {
@@ -319,7 +453,7 @@ function App() {
           setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
           if (window.toast) window.toast(`Reserved ${data.table.name} for ${data.table.guestName}`);
         }
-        if (done) done();
+        setReservingId(null);
       })
       .catch(e => { if (window.toast) window.toast(e.message); })
       .finally(() => {
@@ -328,24 +462,37 @@ function App() {
       });
   };
 
+  const availableCount = tables.filter(t => t.status === 'Available').length;
+  const reservedCount = tables.length - availableCount;
+
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return tables;
-    return tables.filter(t => [t.name, t.guestName, t.contactNo].some(field => String(field || '').toLowerCase().includes(q)));
-  }, [tables, search]);
+    return tables.filter(t => {
+      if (filter === 'Available' && t.status !== 'Available') return false;
+      if (filter === 'Reserved' && t.status === 'Available') return false;
+      if (!q) return true;
+      return [t.name, t.guestName, t.contactNo].some(field => String(field || '').toLowerCase().includes(q));
+    });
+  }, [tables, search, filter]);
 
-  const availableCount = tables.filter(t => t.status === 'Available').length;
+  // Re-read from state so the modal follows a refresh rather than freezing at open time.
+  const reservingTable = reservingId ? (tables.find(t => t.id === reservingId) || null) : null;
+
+  const filters = [
+    { key: 'All', count: tables.length },
+    { key: 'Available', count: availableCount },
+    { key: 'Reserved', count: reservedCount },
+  ];
 
   return (
     <div data-hms-no-edit="1" style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.35rem' }}>
         <div>
           <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Front Desk</p>
           <h1 className="font-display" style={{ fontSize: '1.9rem', margin: 0, color: 'var(--fg)' }}>Dine-in Tables</h1>
-          <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.82rem' }}>
-            {tables.length === 0
-              ? 'No tables set up yet.'
-              : `${availableCount} of ${tables.length} available · reserving holds the table only — the restaurant takes the order when the customer arrives`}
+          <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.82rem', maxWidth: 460 }}>
+            Reserving holds the table only — the restaurant takes the order and settles
+            the bill once the customer arrives.
           </p>
         </div>
         <a href={CFG.backUrl} className="btn-outline" style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
@@ -354,40 +501,62 @@ function App() {
       </div>
 
       {tables.length > 0 && (
-        <div style={{ position: 'relative', marginBottom: '1.1rem' }}>
-          <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--fg-muted)', fontSize: '0.75rem', pointerEvents: 'none' }}></i>
-          <input
-            type="text"
-            className="booking-input"
-            placeholder="Search by table, customer or contact…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ paddingLeft: '2.1rem' }}
-          />
-        </div>
+        <>
+          <div className="dn-stats" style={{ marginBottom: '1.1rem' }}>
+            <span className="dn-stat"><b>{tables.length}</b><span>Tables</span></span>
+            <span className="dn-stat"><b>{availableCount}</b><span>Available</span></span>
+            <span className="dn-stat"><b>{reservedCount}</b><span>Reserved</span></span>
+          </div>
+
+          <div className="dn-toolbar">
+            <div className="dn-filters">
+              {filters.map(f => (
+                <button key={f.key} type="button"
+                  className={`dn-filter${filter === f.key ? ' is-active' : ''}`}
+                  onClick={() => setFilter(f.key)}>
+                  {f.key} ({f.count})
+                </button>
+              ))}
+            </div>
+            <div className="dn-search">
+              <i className="fa-solid fa-magnifying-glass"></i>
+              <input type="text" className="booking-input" placeholder="Search table, customer or contact…"
+                value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+          </div>
+        </>
       )}
 
       {!loaded ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center', color: 'var(--fg-muted)', fontSize: '0.85rem' }}>
-          Loading tables…
-        </div>
+        <div className="dn-empty" style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>Loading tables…</div>
       ) : tables.length === 0 ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2.5rem', textAlign: 'center' }}>
+        <div className="dn-empty">
           <i className="fa-solid fa-utensils" style={{ fontSize: '1.8rem', color: 'var(--fg-muted)', opacity: 0.35, display: 'block', marginBottom: '0.7rem' }}></i>
           <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.88rem' }}>
             Restaurant Management hasn't added any tables yet.
           </p>
         </div>
       ) : visible.length === 0 ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>
-          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.88rem' }}>No tables match "{search}"</p>
+        <div className="dn-empty">
+          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.88rem' }}>
+            {search.trim() ? `No tables match "${search}"` : `No ${filter.toLowerCase()} tables right now.`}
+          </p>
         </div>
       ) : (
         <div className="dn-grid">
           {visible.map(table => (
-            <TableCard key={table.id} table={table} canReserve={canReserve} onReserve={reserveTable} busy={busy} />
+            <TableCard key={table.id} table={table} canReserve={canReserve} onOpenReserve={t => setReservingId(t.id)} />
           ))}
         </div>
+      )}
+
+      {reservingTable && (
+        <ReserveModal
+          table={reservingTable}
+          busy={busy}
+          onReserve={reserveTable}
+          onClose={() => setReservingId(null)}
+        />
       )}
     </div>
   );
