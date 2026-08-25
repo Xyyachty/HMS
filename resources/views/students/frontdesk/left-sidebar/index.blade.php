@@ -121,6 +121,11 @@
                     <i class="fas fa-receipt text-[13px] text-emerald-400"></i> Orders
                     @include('students.frontdesk.left-sidebar.badge', ['key' => 'orders'])
                 </a>
+                <a href="{{ route('students.restaurant.reports') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.restaurant.reports') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-chart-line text-[13px] text-emerald-400"></i> Reports
+                </a>
                 @endif
             </div>
         </div>

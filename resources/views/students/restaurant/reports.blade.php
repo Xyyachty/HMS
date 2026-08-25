@@ -1,6 +1,6 @@
 @extends('students.builder.ops-shell')
 
-@php $backRoute = 'students.frontdesk'; @endphp
+@php $backRoute = 'students.restaurant'; @endphp
 
 @section('page-title', 'Reports')
 
@@ -16,9 +16,11 @@
 <script>
   window.HMS_REPORTS = {
     backUrl: @json(route($backRoute)),
-    bookingsUrl: @json(route('students.hotel.bookings.index')),
     ordersUrl: @json(route('students.hotel.orders.index')),
     tablesUrl: @json(route('students.hotel.tables.index')),
+    // Only to tell a stay that was cancelled from one that is still running:
+    // a room-service order billed to a cancelled stay never earned anything.
+    bookingsUrl: @json(route('students.hotel.bookings.index')),
   };
 </script>
 @verbatim
@@ -26,7 +28,6 @@
 const { useState, useEffect, useCallback, useMemo } = React;
 
 const CFG = window.HMS_REPORTS;
-const BLOCK_HOURS = 12;
 const PER_PAGE = 5;
 
 function formatPeso(amount) {
@@ -56,21 +57,9 @@ function formatRange(from, to) {
   return `${from ? formatDate(from) : 'the start'} – ${to ? formatDate(to) : 'now'}`;
 }
 
-/* Charged 12-hour blocks, the same maths HotelBooking::stayBlocks() uses. Only a
-   fallback for a payload that predates the server sending totals. */
-function stayBlocks(checkIn, checkOut, checkInTime) {
-  if (!checkIn || !checkOut) return 1;
-  const clock = /^\d{1,2}:\d{2}/.test(String(checkInTime || '')) ? checkInTime : '00:00';
-  const start = new Date(`${checkIn}T${clock}`);
-  const end = new Date(`${checkOut}T${clock}`);
-  const hours = (end - start) / 3600000;
-  if (!Number.isFinite(hours) || hours <= 0) return 1;
-  return Math.max(1, Math.ceil(hours / BLOCK_HOURS));
-}
-
 /* A local YYYY-MM-DD. Never toISOString(): that renders the UTC day, so in Manila
    anything before 08:00 comes back as yesterday and "Today" quietly loses the whole
-   morning. Built from the local getters, which is what the staff's wall clock, the
+   morning. Built from the local getters, which is what the kitchen's wall clock, the
    date inputs on this page, and formatWhen() all already agree on. */
 function ymd(date) {
   const y = date.getFullYear();
@@ -83,9 +72,9 @@ function ymd(date) {
    the range with empty days and make "This Week" and "Today" disagree about their
    upper bound for no reason.
 
-   The week is Monday-to-today. A hotel week is read against a work week, and a Sunday
-   start would split the weekend across two reports. getDay() returns 0 for Sunday,
-   which is day 7 of the week that just ended, not day 1 of the next one. */
+   The week is Monday-to-today. A service week is read against a work week, and a
+   Sunday start would split the weekend across two reports. getDay() returns 0 for
+   Sunday, which is day 7 of the week that just ended, not day 1 of the next one. */
 function presetRange(preset, now = new Date()) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -104,10 +93,8 @@ function presetRange(preset, now = new Date()) {
   return null; // 'custom' keeps whatever the two date inputs already hold
 }
 
-/* The one date rule for every row on this page. A timestamp is bucketed by the day it
-   reads as on a local clock — the same day formatWhen() prints beside it — and a bare
-   YYYY-MM-DD (checkOut carries no time) already is that day, so it passes straight
-   through rather than going through Date and getting shifted. */
+/* An order is bucketed by the day it reads as on a local clock — the same day
+   formatWhen() prints beside it. */
 function localDayKey(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -131,11 +118,11 @@ function itemsSummary(items) {
   return { count, title };
 }
 
-function Tile({ label, value, sub, tone, grand }) {
+function Tile({ label, value, sub, grand }) {
   return (
     <div className={'rp-tile' + (grand ? ' rp-tile-grand' : '')}>
       <span className="rp-tile-label">{label}</span>
-      <span className="rp-tile-value" style={tone ? { color: tone } : undefined}>{value}</span>
+      <span className="rp-tile-value">{value}</span>
       {sub ? <span className="rp-tile-sub">{sub}</span> : null}
     </div>
   );
@@ -189,10 +176,10 @@ function Pager({ page, totalPages, total, perPage, onPage }) {
   );
 }
 
+/* The two kinds of order this department serves. Front Desk's report adds room
+   stays on top of these; the kitchen only ever cooked these two. */
 function TabBar({ tab, onTab, counts }) {
   const tabs = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'room', label: 'Room', count: counts.room },
     { key: 'dinein', label: 'Dine-In', count: counts.dinein },
     { key: 'roomsvc', label: 'Room Service', count: counts.roomsvc },
   ];
@@ -206,7 +193,7 @@ function TabBar({ tab, onTab, counts }) {
           onClick={() => onTab(t.key)}
         >
           {t.label}
-          {typeof t.count === 'number' && <span className="rp-tab-count">({t.count})</span>}
+          <span className="rp-tab-count">({t.count})</span>
         </button>
       ))}
     </div>
@@ -221,7 +208,7 @@ function PresetBar({ preset, from, to, onPreset, onFrom, onTo }) {
     { key: 'custom', label: 'Custom' },
   ];
   return (
-    <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+    <>
       <div>
         <label className="rp-tile-label">Period</label>
         <div className="rp-presets">
@@ -237,152 +224,14 @@ function PresetBar({ preset, from, to, onPreset, onFrom, onTo }) {
           ))}
         </div>
       </div>
-      <div style={{ minWidth: 150 }}>
+      <div>
         <label className="rp-tile-label">From</label>
-        <input type="date" className="booking-input" value={from} onChange={e => onFrom(e.target.value)} style={{ colorScheme: 'dark' }} />
+        <input type="date" className="booking-input" value={from} onChange={e => onFrom(e.target.value)} style={{ minWidth: 150 }} />
       </div>
-      <div style={{ minWidth: 150 }}>
+      <div>
         <label className="rp-tile-label">To</label>
-        <input type="date" className="booking-input" value={to} onChange={e => onTo(e.target.value)} style={{ colorScheme: 'dark' }} />
+        <input type="date" className="booking-input" value={to} onChange={e => onTo(e.target.value)} style={{ minWidth: 150 }} />
       </div>
-    </div>
-  );
-}
-
-function OverviewPanel({ totals, counts, rangeLabel }) {
-  const share = (n) => totals.grand > 0 ? Math.round((n / totals.grand) * 100) + '%' : '—';
-  const categories = [
-    { key: 'room', label: 'Room Revenue', cls: 'rp-cat-room', value: totals.room, count: counts.room },
-    { key: 'dinein', label: 'Dine-In Revenue', cls: 'rp-cat-dinein', value: totals.dineIn, count: counts.dinein },
-    { key: 'roomsvc', label: 'Room Service Revenue', cls: 'rp-cat-service', value: totals.roomService, count: counts.roomsvc },
-  ];
-
-  return (
-    <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '0.9rem' }}>
-        <Tile label="Room Revenue" value={formatPeso(totals.room)} sub={share(totals.room) + ' of total'} />
-        <Tile label="Dine-In Revenue" value={formatPeso(totals.dineIn)} sub={share(totals.dineIn) + ' of total'} />
-        <Tile label="Room Service Revenue" value={formatPeso(totals.roomService)} sub={share(totals.roomService) + ' of total'} />
-        <Tile label="Total Revenue" value={formatPeso(totals.grand)} grand={true} sub={rangeLabel} />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1.35rem' }}>
-        <Tile label="Stays Completed" value={counts.room} />
-        <Tile label="Dine-In Orders" value={counts.dinein} />
-        <Tile label="Room Service Orders" value={counts.roomsvc} />
-        <Tile label="Room Bills Collected" value={formatPeso(totals.collected)} tone="var(--accent-light)" />
-        {totals.outstanding > 0 && <Tile label="Room Bills Outstanding" value={formatPeso(totals.outstanding)} tone="var(--danger, #fb7185)" />}
-      </div>
-
-      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table className="rp-table">
-          <thead>
-            <tr>
-              <th>Category</th>
-              <th className="rp-num">Count</th>
-              <th className="rp-num">Revenue</th>
-              <th className="rp-num">Share</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categories.map(c => (
-              <tr key={c.key}>
-                <td><span className={'rp-badge ' + c.cls}>{c.label}</span></td>
-                <td className="rp-num">{c.count}</td>
-                <td className="rp-num rp-money">{formatPeso(c.value)}</td>
-                <td className="rp-num">{share(c.value)}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td>Total Revenue</td>
-              <td className="rp-num">{counts.room + counts.dinein + counts.roomsvc}</td>
-              <td className="rp-num rp-money">{formatPeso(totals.grand)}</td>
-              <td className="rp-num">100%</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-      {totals.svcOnOpenStay > 0 && (
-        <p className="rp-note">{formatPeso(totals.svcOnOpenStay)} of Room Service revenue is on stays that have not checked out yet.</p>
-      )}
-    </>
-  );
-}
-
-function RoomTable({ rows, totals, page, onPage, rangeLabel, noCloseCount }) {
-  const totalPages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = rows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
-
-  if (rows.length === 0) {
-    return <EmptyState icon="fa-bed" message={`No stays were checked out between ${rangeLabel}.`} />;
-  }
-
-  return (
-    <>
-      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table className="rp-table">
-          <thead>
-            <tr>
-              <th>Guest</th>
-              <th>Room</th>
-              <th>Check-In</th>
-              <th>Check-Out</th>
-              <th className="rp-num">Blocks</th>
-              <th className="rp-num">Room Charge</th>
-              <th className="rp-num">Add-ons</th>
-              <th className="rp-num">Other</th>
-              <th className="rp-num">Room Revenue</th>
-              <th className="rp-num" title="Billed to the stay, counted under Room Service — not included in Room Revenue.">Room Svc (excl.)</th>
-              <th className="rp-num">Paid</th>
-              <th>Closed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.map(b => {
-              const roomCharge = Number(b.totalDue) || 0;
-              const addons = Number(b.addonsTotal) || 0;
-              const extras = Number(b.otherCharges) || 0;
-              const service = Number(b.roomServiceTotal) || 0;
-              const paid = Number(b.amountPaid) || 0;
-              return (
-                <tr key={b.bookingId}>
-                  <td className="rp-strong">{b.fullName || '—'}</td>
-                  <td>{b.roomName || '—'}</td>
-                  <td>{formatDate(b.checkIn)}{b.checkInTime ? ` · ${b.checkInTime}` : ''}</td>
-                  <td>{formatDate(b.checkOut)}</td>
-                  <td className="rp-num">{stayBlocks(b.checkIn, b.checkOut, b.checkInTime)}</td>
-                  <td className="rp-num">{formatPeso(roomCharge)}</td>
-                  <td className="rp-num">{addons > 0 ? formatPeso(addons) : '—'}</td>
-                  <td className="rp-num">{extras > 0 ? formatPeso(extras) : '—'}</td>
-                  <td className="rp-num rp-money">{formatPeso(b.revenue)}</td>
-                  <td className="rp-num rp-muted-money">{service > 0 ? formatPeso(service) : '—'}</td>
-                  <td className="rp-num">{formatPeso(paid)}</td>
-                  <td>{formatWhen(b.checkedOutAt)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={5}>{rows.length} stay{rows.length === 1 ? '' : 's'}</td>
-              <td className="rp-num">{formatPeso(totals.roomCharge)}</td>
-              <td className="rp-num">{formatPeso(totals.addons)}</td>
-              <td className="rp-num">{formatPeso(totals.extras)}</td>
-              <td className="rp-num rp-money">{formatPeso(totals.room)}</td>
-              <td className="rp-num"></td>
-              <td className="rp-num rp-money">{formatPeso(totals.collected)}</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-      {noCloseCount > 0 && (
-        <p className="rp-note">{noCloseCount} checked-out stay{noCloseCount === 1 ? '' : 's'} have no closing date and are not included in any range.</p>
-      )}
-      <Pager page={safePage} totalPages={totalPages} total={rows.length} perPage={PER_PAGE} onPage={onPage} />
     </>
   );
 }
@@ -458,7 +307,6 @@ function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal
             <tr>
               <th>Order #</th>
               <th>Room</th>
-              <th>Booking #</th>
               <th>Guest</th>
               <th className="rp-num">Items</th>
               <th className="rp-num">Total</th>
@@ -472,9 +320,8 @@ function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal
               return (
                 <tr key={o.id}>
                   <td className="rp-strong">#{o.id}</td>
-                  <td>{o.roomNumber || '—'}</td>
                   <td>
-                    {o.bookingId ? `#${o.bookingId}` : '—'}
+                    {o.roomNumber || '—'}
                     {o.stayOpen && <span className="rp-badge rp-cat-room" style={{ marginLeft: '0.4rem' }}>Open stay</span>}
                   </td>
                   <td>{o.guestName || '—'}</td>
@@ -488,7 +335,7 @@ function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={5}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
+              <td colSpan={4}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
               <td className="rp-num rp-money">{formatPeso(total)}</td>
               <td colSpan={2}></td>
             </tr>
@@ -504,26 +351,23 @@ function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal
 }
 
 function App() {
-  const [bookings, setBookings] = useState([]);
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
-  const [loadedBookings, setLoadedBookings] = useState(false);
+  const [bookings, setBookings] = useState([]);
   const [loadedOrders, setLoadedOrders] = useState(false);
   const [loadedTables, setLoadedTables] = useState(false);
+  const [loadedBookings, setLoadedBookings] = useState(false);
 
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState('dinein');
   const [preset, setPreset] = useState('month');
   const [from, setFrom] = useState(() => presetRange('month').from);
   const [to, setTo] = useState(() => presetRange('month').to);
   const [search, setSearch] = useState('');
-  const [pages, setPages] = useState({ room: 1, dinein: 1, roomsvc: 1 });
+  const [pages, setPages] = useState({ dinein: 1, roomsvc: 1 });
 
   const load = useCallback(() => {
-    fetch(CFG.bookingsUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
-      .then(r => (r.ok ? r.json() : {}))
-      .then(data => { setBookings(Array.isArray(data.bookings) ? data.bookings : []); setLoadedBookings(true); })
-      .catch(() => setLoadedBookings(true));
-
+    // Asked for Completed only: this page reports what the kitchen finished, not
+    // what is still on the pass.
     fetch(CFG.ordersUrl + '?status=Completed', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => (r.ok ? r.json() : {}))
       .then(data => { setOrders(Array.isArray(data.orders) ? data.orders : []); setLoadedOrders(true); })
@@ -533,6 +377,11 @@ function App() {
       .then(r => (r.ok ? r.json() : {}))
       .then(data => { setTables(Array.isArray(data.tables) ? data.tables : []); setLoadedTables(true); })
       .catch(() => setLoadedTables(true));
+
+    fetch(CFG.bookingsUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => (r.ok ? r.json() : {}))
+      .then(data => { setBookings(Array.isArray(data.bookings) ? data.bookings : []); setLoadedBookings(true); })
+      .catch(() => setLoadedBookings(true));
 
     // A screen left open across a shift should not keep reporting yesterday's
     // "Today". Only touches state when the computed range actually differs, so
@@ -556,7 +405,7 @@ function App() {
     return () => { clearInterval(id); window.removeEventListener('focus', load); };
   }, [load]);
 
-  const resetPages = () => setPages({ room: 1, dinein: 1, roomsvc: 1 });
+  const resetPages = () => setPages({ dinein: 1, roomsvc: 1 });
 
   const applyPreset = (p) => {
     setPreset(p);
@@ -568,39 +417,21 @@ function App() {
   const applyTo = (v) => { setTo(v); setPreset('custom'); resetPages(); };
   const applySearch = (v) => { setSearch(v); resetPages(); };
 
-  // Completed room-service is billed to the stay, but the room side excludes it
-  // (see roomAll below) so it is counted exactly once, in this category. A
-  // cancelled stay never happened and never billed anything.
+  // A cancelled stay never happened and never billed anything, so the food
+  // charged to it is not revenue however finished the order was.
   const cancelledIds = useMemo(() => {
     const s = new Set();
     bookings.forEach(b => { if (b.status === 'Cancelled') s.add(b.bookingId); });
     return s;
   }, [bookings]);
 
-  // Stays still holding a room, keyed by id — a Completed room-service order on
-  // one of these is real revenue already, just not settled into a final bill yet.
+  // Stays still holding a room. A Completed order on one of these is real money
+  // already, just not settled into a final bill yet — worth flagging, not excluding.
   const openStayIds = useMemo(() => {
     const s = new Set();
     bookings.forEach(b => { if (b.status && b.status !== 'Checked Out' && b.status !== 'Cancelled') s.add(b.bookingId); });
     return s;
   }, [bookings]);
-
-  const roomAll = useMemo(() => bookings
-    .filter(b => b.status === 'Checked Out')
-    .map(b => {
-      const roomCharge = Number(b.totalDue) || 0;
-      const addons = Number(b.addonsTotal) || 0;
-      const extras = Number(b.otherCharges) || 0;
-      return {
-        ...b,
-        day: localDayKey(b.checkedOutAt || b.checkOut),
-        // Room + add-ons + hand-added extras only — room service is billed to the
-        // same stay but counted once, under its own category, not here.
-        revenue: roomCharge + addons + extras,
-      };
-    }), [bookings]);
-
-  const noCloseCount = useMemo(() => roomAll.filter(b => !b.day).length, [roomAll]);
 
   // Orders only carry the raw dine_in_table_id — there is no relation from a food
   // order to its table, so the name is joined here from the separate tables read.
@@ -610,6 +441,8 @@ function App() {
     return map;
   }, [tables]);
 
+  // Belt and braces: the endpoint is already asked for Completed, and this keeps
+  // the page honest if that filter ever loosens.
   const foodAll = useMemo(() => orders
     .filter(o => o.status === 'Completed')
     .map(o => ({ ...o, day: localDayKey(o.placedAt), stayOpen: !!o.bookingId && openStayIds.has(o.bookingId) })),
@@ -617,12 +450,6 @@ function App() {
 
   const q = search.trim().toLowerCase();
   const matches = (fields) => !q || fields.some(f => String(f || '').toLowerCase().includes(q));
-
-  const roomRows = useMemo(() => roomAll
-    .filter(b => inWindow(b.day, from, to))
-    .filter(b => matches([b.fullName, b.roomName, b.bookedBy, b.contactNo, b.email, b.idNumber]))
-    .sort((a, b) => (a.bookingId < b.bookingId ? 1 : -1)),
-    [roomAll, from, to, q]);
 
   const dineRows = useMemo(() => foodAll
     .filter(o => o.orderType === 'dine_in')
@@ -635,58 +462,42 @@ function App() {
     .filter(o => o.orderType === 'room_service')
     .filter(o => !cancelledIds.has(o.bookingId))
     .filter(o => inWindow(o.day, from, to))
-    .filter(o => matches([o.id, o.roomNumber, o.bookingId, o.guestName, o.placedBy, ...(Array.isArray(o.items) ? o.items.map(it => it.name) : [])]))
+    .filter(o => matches([o.id, o.roomNumber, o.guestName, o.placedBy, ...(Array.isArray(o.items) ? o.items.map(it => it.name) : [])]))
     .sort((a, b) => (a.id < b.id ? 1 : -1)),
     [foodAll, cancelledIds, from, to, q]);
 
   const totals = useMemo(() => {
-    const room = roomRows.reduce((acc, b) => ({
-      roomCharge: acc.roomCharge + (Number(b.totalDue) || 0),
-      addons: acc.addons + (Number(b.addonsTotal) || 0),
-      extras: acc.extras + (Number(b.otherCharges) || 0),
-      revenue: acc.revenue + b.revenue,
-      collected: acc.collected + (Number(b.amountPaid) || 0),
-      outstanding: acc.outstanding + Math.max(0, b.revenue - (Number(b.amountPaid) || 0)),
-    }), { roomCharge: 0, addons: 0, extras: 0, revenue: 0, collected: 0, outstanding: 0 });
-
     const dineIn = dineRows.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
     const roomService = svcRows.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
     const svcOnOpenStay = svcRows.filter(o => o.stayOpen).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    return { dineIn, roomService, svcOnOpenStay, grand: dineIn + roomService };
+  }, [dineRows, svcRows]);
 
-    return {
-      roomCharge: room.roomCharge,
-      addons: room.addons,
-      extras: room.extras,
-      room: room.revenue,
-      collected: room.collected,
-      outstanding: room.outstanding,
-      dineIn,
-      roomService,
-      svcOnOpenStay,
-      grand: room.revenue + dineIn + roomService,
-    };
-  }, [roomRows, dineRows, svcRows]);
-
-  const counts = { room: roomRows.length, dinein: dineRows.length, roomsvc: svcRows.length };
+  const counts = { dinein: dineRows.length, roomsvc: svcRows.length };
   const rangeLabel = formatRange(from, to);
   const narrowed = !!search || preset === 'custom';
-  const loaded = loadedBookings && loadedOrders;
-  const svcLoaded = tab !== 'roomsvc' || (loadedBookings && loadedOrders);
-  const dineLoaded = tab !== 'dinein' || loadedTables;
+  const loaded = loadedOrders && loadedTables && loadedBookings;
+  const orderCount = counts.dinein + counts.roomsvc;
 
   return (
     <div data-hms-no-edit="1" style={{ padding: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
-          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Front Desk</p>
+          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Restaurant</p>
           <h1 className="font-display" style={{ fontSize: '1.9rem', margin: 0, color: 'var(--fg)' }}>Reports</h1>
           <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.82rem' }}>
-            Completed transactions and revenue — room stays, dine-in, and room service.
+            Orders the kitchen has completed — dine-in and room service.
           </p>
         </div>
         <a href={CFG.backUrl} className="btn-outline" style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
           <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.75rem' }}></i> Back
         </a>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.7rem', marginBottom: '1.2rem' }}>
+        <Tile label="Dine-In Revenue" value={formatPeso(totals.dineIn)} sub={`${counts.dinein} order${counts.dinein === 1 ? '' : 's'}`} />
+        <Tile label="Room Service Revenue" value={formatPeso(totals.roomService)} sub={`${counts.roomsvc} order${counts.roomsvc === 1 ? '' : 's'}`} />
+        <Tile label="Total Completed" value={formatPeso(totals.grand)} sub={`${orderCount} order${orderCount === 1 ? '' : 's'} · ${rangeLabel}`} grand />
       </div>
 
       <TabBar tab={tab} onTab={setTab} counts={counts} />
@@ -699,7 +510,7 @@ function App() {
             <input
               type="text"
               className="booking-input"
-              placeholder="Search by guest, room, order, or who handled it…"
+              placeholder="Search by order, table, room, guest, dish, or who placed it…"
               value={search}
               onChange={e => applySearch(e.target.value)}
               style={{ paddingLeft: '2.1rem' }}
@@ -713,25 +524,6 @@ function App() {
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center', color: 'var(--fg-muted)', fontSize: '0.85rem' }}>
           Loading reports…
         </div>
-      ) : !svcLoaded ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center', color: 'var(--fg-muted)', fontSize: '0.85rem' }}>
-          Loading room service…
-        </div>
-      ) : !dineLoaded ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center', color: 'var(--fg-muted)', fontSize: '0.85rem' }}>
-          Loading dine-in…
-        </div>
-      ) : tab === 'overview' ? (
-        <OverviewPanel totals={totals} counts={counts} rangeLabel={rangeLabel} />
-      ) : tab === 'room' ? (
-        <RoomTable
-          rows={roomRows}
-          totals={totals}
-          page={pages.room}
-          onPage={n => setPages(p => ({ ...p, room: n }))}
-          rangeLabel={rangeLabel}
-          noCloseCount={noCloseCount}
-        />
       ) : tab === 'dinein' ? (
         <DineInTable
           rows={dineRows}
@@ -752,7 +544,7 @@ function App() {
         />
       )}
 
-      {loaded && narrowed && tab !== 'overview' && (
+      {loaded && narrowed && (
         <p className="rp-note">Filtered — {rangeLabel}{search ? `, matching "${search}"` : ''}.</p>
       )}
     </div>

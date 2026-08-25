@@ -2418,6 +2418,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');
         return view('students.restaurant.manage', $data);
     })->name('restaurant.manage');
+
+    // Read-only: the orders this department has completed, drawn from the same
+    // orders endpoint the board uses. No new state.
+    Route::get('/restaurant/reports', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');
+        return view('students.restaurant.reports', $data);
+    })->name('restaurant.reports');
     Route::get('/maintenance', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'maintenance');
         return view('students.maintenance', $data);
