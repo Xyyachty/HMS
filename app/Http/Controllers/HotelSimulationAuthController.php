@@ -34,17 +34,20 @@ class HotelSimulationAuthController extends Controller
     public function customerSignup(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'last_name' => ['required', 'string', 'max:60'],
+            'first_name' => ['required', 'string', 'max:60'],
             'email' => ['required', 'email', 'max:255'],
-            'password' => ['required', 'string', 'min:4', 'max:100'],
+            // Loose on format on purpose: the simulation is run with made-up
+            // numbers, and a strict pattern would reject them for no gain.
+            'contact_number' => ['required', 'string', 'max:32'],
+            // 'confirmed' pairs this with password_confirmation, so the two
+            // fields are checked here rather than trusted from the browser.
+            'password' => ['required', 'string', 'min:4', 'max:100', 'confirmed'],
+        ], [
+            'password.confirmed' => 'The passwords do not match.',
         ]);
 
-        $result = HotelSimulationAuth::signupCustomer(
-            $request->user(),
-            $data['name'],
-            $data['email'],
-            $data['password']
-        );
+        $result = HotelSimulationAuth::signupCustomer($request->user(), $data);
 
         if (!($result['ok'] ?? false)) {
             return response()->json(['error' => $result['error']], $result['status'] ?? 422);

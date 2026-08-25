@@ -579,6 +579,93 @@
   }
   .auth-swap button:hover { text-decoration: underline; }
 
+  /* ── Sign-up page ──
+     This template signs a guest up on its own page rather than in a modal. Two
+     columns on a desktop — the hotel's pitch beside the form — collapsing to the
+     form alone on a phone, where the pitch is scrolling the reader past the thing
+     they came to do. */
+  .signup-page {
+    min-height: 100vh;
+    display: grid; grid-template-columns: 1fr 1fr;
+    /* Clears the fixed .nav-bar, which is 64px tall. */
+    padding-top: 64px;
+  }
+  .signup-aside {
+    background: var(--accent); color: var(--bg);
+    padding: 4rem 3.5rem; display: flex; flex-direction: column; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .signup-aside::after {
+    content: ''; position: absolute; right: -80px; bottom: -80px;
+    width: 260px; height: 260px; border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .signup-aside .section-num { color: var(--warm-light); }
+  .signup-aside h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.1rem, 3.6vw, 3rem); font-weight: 600;
+    line-height: 1.12; margin-bottom: 1rem;
+  }
+  .signup-aside p {
+    color: rgba(255,255,255,0.72); font-size: 0.92rem; max-width: 38ch;
+  }
+  .signup-points {
+    list-style: none; margin: 2.25rem 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 0.9rem;
+  }
+  .signup-points li {
+    display: flex; align-items: flex-start; gap: 0.7rem;
+    font-size: 0.86rem; color: rgba(255,255,255,0.82);
+  }
+  .signup-points i { color: var(--warm-light); margin-top: 0.25rem; font-size: 0.78rem; }
+
+  .signup-main {
+    background: var(--bg);
+    padding: 4rem 3.5rem; display: flex; align-items: center; justify-content: center;
+  }
+  .signup-form-wrap { width: 100%; max-width: 460px; }
+  .signup-form-wrap > h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem; font-weight: 600; margin-bottom: 0.35rem; color: var(--fg);
+  }
+  .signup-form-wrap > .signup-lede {
+    color: var(--fg-muted); font-size: 0.88rem; margin-bottom: 2rem;
+  }
+  /* Two names sit side by side; everything else runs the full width. */
+  .signup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
+  .signup-submit {
+    width: 100%; margin-top: 0.4rem;
+    padding: 0.85rem; font-size: 0.74rem;
+  }
+  .signup-foot {
+    margin-top: 1.4rem; text-align: center;
+    color: var(--fg-muted); font-size: 0.8rem;
+  }
+  .signup-foot button {
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: var(--accent); font-family: inherit; font-size: 0.8rem; font-weight: 600;
+  }
+  .signup-foot button:hover { text-decoration: underline; }
+  .signup-done {
+    text-align: center; padding: 1rem 0;
+  }
+  .signup-done i {
+    font-size: 2.4rem; color: var(--accent); margin-bottom: 1rem; display: block;
+  }
+
+  @media (max-width: 900px) {
+    .signup-page { grid-template-columns: 1fr; min-height: auto; }
+    /* The pitch would push the form below the fold on a phone, so it goes under it. */
+    .signup-aside { order: 2; padding: 3rem 1.5rem; }
+    .signup-aside h1 { font-size: 1.9rem; }
+    .signup-main { order: 1; padding: 3rem 1.5rem; }
+  }
+  @media (max-width: 480px) {
+    .signup-row { grid-template-columns: 1fr; gap: 0; }
+    .signup-main { padding: 2.25rem 1.15rem; }
+    .signup-aside { padding: 2.5rem 1.15rem; }
+  }
+
   .mobile-menu {
     position: fixed; inset: 0; background: var(--card);
     z-index: 999; display: flex; flex-direction: column;
@@ -2009,7 +2096,7 @@ function MobileMenu({ open, onClose, onNav, links, cardImages, onToast }) {
     <div className={`mobile-menu${open ? ' open' : ''}`}>
       <BrandLogo size={54} />
       {items.map(i => <button key={i.id || i.key} onClick={() => { onNav(i.key); onClose(); }}>{i.label}</button>)}
-      <AuthNav onToast={onToast} compact />
+      <AuthNav onToast={onToast} onNav={onNav} compact />
     </div>
   );
 }
@@ -2039,13 +2126,14 @@ function useHotelAuth() {
   return auth;
 }
 
-function AuthModal({ mode, onMode, onClose, onToast }) {
-  const [name, setName] = useState('');
+/* Signing in stays a modal — it is two fields and interrupts nothing. Signing up
+   is its own page in this template (SignUpPage), so this only ever handles the
+   returning guest and hands the new one over to the page. */
+function AuthModal({ onClose, onToast, onSignUp }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const signingUp = mode === 'signup';
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
@@ -2057,19 +2145,14 @@ function AuthModal({ mode, onMode, onClose, onToast }) {
     e.preventDefault();
     const api = window.HMSHotelAuth;
     if (!api) { setError('The sign-in service is not available on this page.'); return; }
-    if (signingUp && !name.trim()) { setError('Enter your name.'); return; }
     if (!email.trim()) { setError('Enter your email address.'); return; }
     if (!password) { setError('Enter your password.'); return; }
 
     setError('');
     setBusy(true);
-    Promise.resolve(
-      signingUp
-        ? api.customerSignup(name.trim(), email.trim(), password)
-        : api.customerLogin(email.trim(), password)
-    )
+    Promise.resolve(api.customerLogin(email.trim(), password))
       .then(() => {
-        if (onToast) onToast(signingUp ? 'Welcome — your account is ready.' : 'Signed in.');
+        if (onToast) onToast('Signed in.');
         onClose();
       })
       .catch(err => setError((err && err.message) || 'That did not work. Check your details and try again.'))
@@ -2081,9 +2164,9 @@ function AuthModal({ mode, onMode, onClose, onToast }) {
       <div className="auth-card" onClick={e => e.stopPropagation()}>
         <div className="auth-card-head">
           <div>
-            <p className="auth-eyebrow">{signingUp ? 'Join us' : 'Welcome back'}</p>
+            <p className="auth-eyebrow">Welcome back</p>
             <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>
-              {signingUp ? 'Create an account' : 'Sign in'}
+              Sign in
             </h2>
           </div>
           <button type="button" className="auth-close" onClick={onClose} disabled={busy} aria-label="Close">
@@ -2092,22 +2175,14 @@ function AuthModal({ mode, onMode, onClose, onToast }) {
         </div>
 
         <form onSubmit={submit} noValidate>
-          {signingUp && (
-            <label className="auth-field">
-              <span>Full name</span>
-              <input className="auth-input" type="text" value={name} autoComplete="name"
-                onChange={e => setName(e.target.value)} />
-            </label>
-          )}
           <label className="auth-field">
-            <span>Email</span>
+            <span>Email address</span>
             <input className="auth-input" type="email" value={email} autoComplete="email"
               onChange={e => setEmail(e.target.value)} />
           </label>
           <label className="auth-field">
             <span>Password</span>
-            <input className="auth-input" type="password" value={password}
-              autoComplete={signingUp ? 'new-password' : 'current-password'}
+            <input className="auth-input" type="password" value={password} autoComplete="current-password"
               onChange={e => setPassword(e.target.value)} />
           </label>
 
@@ -2115,14 +2190,14 @@ function AuthModal({ mode, onMode, onClose, onToast }) {
 
           <button type="submit" className="nav-auth-btn is-solid" disabled={busy}
             style={{ width: '100%', padding: '0.75rem', fontSize: '0.74rem' }}>
-            {busy ? 'Please wait…' : (signingUp ? 'Create account' : 'Sign in')}
+            {busy ? 'Please wait…' : 'Sign in'}
           </button>
         </form>
 
         <p className="auth-swap">
-          {signingUp ? 'Already have an account? ' : 'New here? '}
-          <button type="button" onClick={() => { setError(''); onMode(signingUp ? 'signin' : 'signup'); }}>
-            {signingUp ? 'Sign in' : 'Create one'}
+          New here?{' '}
+          <button type="button" onClick={() => { setError(''); onClose(); if (onSignUp) onSignUp(); }}>
+            Create one
           </button>
         </p>
       </div>
@@ -2130,16 +2205,155 @@ function AuthModal({ mode, onMode, onClose, onToast }) {
   );
 }
 
+/* A page rather than a modal, which is the one way this template's sign-up
+   differs from Template 1. Same service call underneath, so an account made here
+   works exactly like one made there. */
+function SignUpPage({ onNav, onToast }) {
+  const auth = useHotelAuth();
+  const [lastName, setLastName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [email, setEmail] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const signedIn = !!(auth && auth.authenticated);
+
+  const submit = (e) => {
+    e.preventDefault();
+    const api = window.HMSHotelAuth;
+    if (!api) { setError('The sign-up service is not available on this page.'); return; }
+    if (!lastName.trim()) { setError('Enter your last name.'); return; }
+    if (!firstName.trim()) { setError('Enter your first name.'); return; }
+    if (!email.trim()) { setError('Enter your email address.'); return; }
+    if (!contactNumber.trim()) { setError('Enter your contact number.'); return; }
+    if (!password) { setError('Enter a password.'); return; }
+    if (password !== confirmPassword) { setError('The passwords do not match.'); return; }
+
+    setError('');
+    setBusy(true);
+    Promise.resolve(api.customerSignup({
+      lastName: lastName.trim(),
+      firstName: firstName.trim(),
+      email: email.trim(),
+      contactNumber: contactNumber.trim(),
+      password,
+      passwordConfirmation: confirmPassword,
+    }))
+      .then(() => {
+        if (onToast) onToast('Welcome — your account is ready.');
+      })
+      .catch(err => setError((err && err.message) || 'That did not work. Check your details and try again.'))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="signup-page" data-hms-no-edit="1">
+      <aside className="signup-aside">
+        <span className="section-num">Guest account</span>
+        <h1>Stay with us,<br />on your terms.</h1>
+        <p>One account holds your bookings, your room service and everything you ask of us while you are here.</p>
+        <ul className="signup-points">
+          <li><i className="fa-solid fa-check"></i><span>Book a room and see your stay at a glance</span></li>
+          <li><i className="fa-solid fa-check"></i><span>Order to your room and charge it to the stay</span></li>
+          <li><i className="fa-solid fa-check"></i><span>Tell the front desk what you need, whenever</span></li>
+        </ul>
+      </aside>
+
+      <main className="signup-main">
+        <div className="signup-form-wrap">
+          {signedIn ? (
+            <div className="signup-done">
+              <i className="fa-regular fa-circle-check"></i>
+              <h2 className="font-display" style={{ fontSize: '1.8rem', marginBottom: '0.4rem' }}>
+                You are signed in
+              </h2>
+              <p style={{ color: 'var(--fg-muted)', fontSize: '0.88rem', marginBottom: '1.6rem' }}>
+                Welcome, {auth.name || 'Guest'}. Your guest account is ready.
+              </p>
+              <button type="button" className="btn-primary signup-submit" onClick={() => onNav && onNav('rooms')}>
+                Browse rooms
+              </button>
+            </div>
+          ) : (
+            <>
+              <h2>Create your account</h2>
+              <p className="signup-lede">It takes a minute, and the front desk will know you by name.</p>
+
+              <form onSubmit={submit} noValidate>
+                <div className="signup-row">
+                  <label className="auth-field">
+                    <span>Last name</span>
+                    <input className="auth-input" type="text" value={lastName} autoComplete="family-name"
+                      onChange={e => setLastName(e.target.value)} />
+                  </label>
+                  <label className="auth-field">
+                    <span>First name</span>
+                    <input className="auth-input" type="text" value={firstName} autoComplete="given-name"
+                      onChange={e => setFirstName(e.target.value)} />
+                  </label>
+                </div>
+
+                <label className="auth-field">
+                  <span>Email address</span>
+                  <input className="auth-input" type="email" value={email} autoComplete="email"
+                    onChange={e => setEmail(e.target.value)} />
+                </label>
+
+                <label className="auth-field">
+                  <span>Contact number</span>
+                  <input className="auth-input" type="tel" value={contactNumber} autoComplete="tel"
+                    onChange={e => setContactNumber(e.target.value)} />
+                </label>
+
+                <div className="signup-row">
+                  <label className="auth-field">
+                    <span>Password</span>
+                    <input className="auth-input" type="password" value={password} autoComplete="new-password"
+                      onChange={e => setPassword(e.target.value)} />
+                  </label>
+                  <label className="auth-field">
+                    <span>Confirm password</span>
+                    <input className="auth-input" type="password" value={confirmPassword} autoComplete="new-password"
+                      onChange={e => setConfirmPassword(e.target.value)} />
+                  </label>
+                </div>
+
+                {error && <p className="auth-error">{error}</p>}
+
+                <button type="submit" className="nav-auth-btn is-solid signup-submit" disabled={busy}>
+                  {busy ? 'Please wait…' : 'Create account'}
+                </button>
+              </form>
+
+              <p className="signup-foot">
+                Already have an account?{' '}
+                <button type="button" onClick={() => onNav && onNav('home')}>Sign in from the menu</button>
+              </p>
+            </>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
 /* Sits at the right-hand end of the navigation. `compact` stacks it for the
    mobile menu, where a row of buttons has nowhere to go. */
-function AuthNav({ onToast, compact }) {
+function AuthNav({ onToast, compact, onNav }) {
   const auth = useHotelAuth();
-  const [mode, setMode] = useState(null);
+  const [signingIn, setSigningIn] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // Inert while the student is redesigning the page — same rule the rest of the
   // site's controls follow, so a click in Design mode edits rather than signs in.
-  const open = (next) => { if (isSiteInteractive()) setMode(next); };
+  const openSignIn = () => { if (isSiteInteractive()) setSigningIn(true); };
+
+  // Sign up is a page here, not a modal, so this is a navigation rather than an
+  // overlay. navigateTo already refuses while the page is being redesigned.
+  const goSignUp = () => { if (onNav) onNav('signup'); };
 
   const signOut = () => {
     const api = window.HMSHotelAuth;
@@ -2165,13 +2379,13 @@ function AuthNav({ onToast, compact }) {
         </>
       ) : (
         <>
-          <button type="button" className="nav-auth-btn is-ghost" onClick={() => open('signin')}>Sign in</button>
-          <button type="button" className="nav-auth-btn is-solid" onClick={() => open('signup')}>Sign up</button>
+          <button type="button" className="nav-auth-btn is-ghost" onClick={openSignIn}>Sign in</button>
+          <button type="button" className="nav-auth-btn is-solid" onClick={goSignUp}>Sign up</button>
         </>
       )}
 
-      {mode && (
-        <AuthModal mode={mode} onMode={setMode} onClose={() => setMode(null)} onToast={onToast} />
+      {signingIn && (
+        <AuthModal onClose={() => setSigningIn(false)} onToast={onToast} onSignUp={goSignUp} />
       )}
     </div>
   );
@@ -2261,7 +2475,7 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, canEditNav, o
           <button className="btn-primary" onClick={() => onNav('booking')} style={{ fontSize: '0.72rem', padding: '0.5rem 1.2rem' }}>
             <i className="fa-regular fa-calendar" style={{ fontSize: '0.7rem' }}></i> Book Now
           </button>
-          <AuthNav onToast={onToast} />
+          <AuthNav onToast={onToast} onNav={onNav} />
         </div>
         <button className={`hamburger${mobileOpen ? ' active' : ''}`} onClick={onToggle} aria-label="Toggle menu" data-hms-no-edit="1">
           <span></span><span></span><span></span>
@@ -3381,7 +3595,9 @@ function App() {
 
   const navigateTo = useCallback((target, opts) => {
     if (!(opts && opts.force) && !isSiteInteractive()) return;
-    const next = (target === 'login' || target === 'signup') ? 'home' : target;
+    // 'signup' is a real page in this template, so it is no longer folded into
+    // home the way the modal-only 'login' target still is.
+    const next = target === 'login' ? 'home' : target;
     setPage(next);
     window.__HMS_CURRENT_PAGE__ = next;
     window.scrollTo({ top: 0 });
@@ -3641,6 +3857,9 @@ function App() {
     experience: <ExperiencePage onNav={navigateTo} onToast={showToast} canEdit={canEditExperiences} cardImages={cardImages} />,
     amenities: <AmenitiesPage onNav={navigateTo} addons={addons} />,
     booking: <BookingPage onToast={showToast} rooms={rooms} />,
+    // Reached from the Sign up button, not from the navigation menu — it is
+    // deliberately absent from PAGE_OPTIONS so a nav link cannot point at it.
+    signup: <SignUpPage onNav={navigateTo} onToast={showToast} />,
   };
 
   return (

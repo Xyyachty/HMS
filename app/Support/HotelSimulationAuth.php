@@ -139,14 +139,26 @@ class HotelSimulationAuth
         return ['ok' => true, 'auth' => self::payload($auth)];
     }
 
-    public static function signupCustomer(User $viewer, string $name, string $email, string $password): array
+    /**
+     * @param array{first_name: string, last_name: string, email: string, contact_number: string, password: string} $details
+     */
+    public static function signupCustomer(User $viewer, array $details): array
     {
         $ctx = self::teamContext($viewer);
         if (!$ctx) {
             return ['ok' => false, 'error' => 'Join a hotel team first before creating a guest account.', 'status' => 422];
         }
 
-        $email = strtolower(trim($email));
+        $firstName = trim($details['first_name'] ?? '');
+        $lastName = trim($details['last_name'] ?? '');
+        $contactNumber = trim($details['contact_number'] ?? '');
+        $password = $details['password'] ?? '';
+
+        // What the site greets the guest by, composed once here so every screen
+        // that shows a name reads a single field.
+        $name = trim($firstName . ' ' . $lastName);
+
+        $email = strtolower(trim($details['email'] ?? ''));
         $exists = HotelCustomer::where('group_name', $ctx['group_name'])
             ->where('faculty_id', $ctx['faculty_id'])
             ->where('email', $email)
@@ -172,7 +184,10 @@ class HotelSimulationAuth
             'group_name' => $ctx['group_name'],
             'faculty_id' => $ctx['faculty_id'],
             'group_id' => $ctx['group_id'],
-            'name' => trim($name),
+            'name' => $name,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'contact_number' => $contactNumber,
             'email' => $email,
             'password' => Hash::make($password),
         ]);

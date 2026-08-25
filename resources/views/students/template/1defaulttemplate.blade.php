@@ -1156,9 +1156,12 @@ function useHotelAuth() {
 }
 
 function AuthModal({ mode, onMode, onClose, onToast }) {
-  const [name, setName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const signingUp = mode === 'signup';
@@ -1173,15 +1176,25 @@ function AuthModal({ mode, onMode, onClose, onToast }) {
     e.preventDefault();
     const api = window.HMSHotelAuth;
     if (!api) { setError('The sign-in service is not available on this page.'); return; }
-    if (signingUp && !name.trim()) { setError('Enter your name.'); return; }
+    if (signingUp && !lastName.trim()) { setError('Enter your last name.'); return; }
+    if (signingUp && !firstName.trim()) { setError('Enter your first name.'); return; }
     if (!email.trim()) { setError('Enter your email address.'); return; }
+    if (signingUp && !contactNumber.trim()) { setError('Enter your contact number.'); return; }
     if (!password) { setError('Enter your password.'); return; }
+    if (signingUp && password !== confirmPassword) { setError('The passwords do not match.'); return; }
 
     setError('');
     setBusy(true);
     Promise.resolve(
       signingUp
-        ? api.customerSignup(name.trim(), email.trim(), password)
+        ? api.customerSignup({
+            lastName: lastName.trim(),
+            firstName: firstName.trim(),
+            email: email.trim(),
+            contactNumber: contactNumber.trim(),
+            password,
+            passwordConfirmation: confirmPassword,
+          })
         : api.customerLogin(email.trim(), password)
     )
       .then(() => {
@@ -1209,23 +1222,44 @@ function AuthModal({ mode, onMode, onClose, onToast }) {
 
         <form onSubmit={submit} noValidate>
           {signingUp && (
-            <label className="auth-field">
-              <span>Full name</span>
-              <input className="auth-input" type="text" value={name} autoComplete="name"
-                onChange={e => setName(e.target.value)} />
-            </label>
+            <>
+              <label className="auth-field">
+                <span>Last name</span>
+                <input className="auth-input" type="text" value={lastName} autoComplete="family-name"
+                  onChange={e => setLastName(e.target.value)} />
+              </label>
+              <label className="auth-field">
+                <span>First name</span>
+                <input className="auth-input" type="text" value={firstName} autoComplete="given-name"
+                  onChange={e => setFirstName(e.target.value)} />
+              </label>
+            </>
           )}
           <label className="auth-field">
-            <span>Email</span>
+            <span>Email address</span>
             <input className="auth-input" type="email" value={email} autoComplete="email"
               onChange={e => setEmail(e.target.value)} />
           </label>
+          {signingUp && (
+            <label className="auth-field">
+              <span>Contact number</span>
+              <input className="auth-input" type="tel" value={contactNumber} autoComplete="tel"
+                onChange={e => setContactNumber(e.target.value)} />
+            </label>
+          )}
           <label className="auth-field">
             <span>Password</span>
             <input className="auth-input" type="password" value={password}
               autoComplete={signingUp ? 'new-password' : 'current-password'}
               onChange={e => setPassword(e.target.value)} />
           </label>
+          {signingUp && (
+            <label className="auth-field">
+              <span>Confirm password</span>
+              <input className="auth-input" type="password" value={confirmPassword} autoComplete="new-password"
+                onChange={e => setConfirmPassword(e.target.value)} />
+            </label>
+          )}
 
           {error && <p className="auth-error">{error}</p>}
 
