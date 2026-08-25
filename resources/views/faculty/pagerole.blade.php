@@ -1101,10 +1101,15 @@
 ═══════════════════════════════════════════════ --}}
 <div id="panel-create_task" class="tab-panel {{ $activeTab === 'create_task' ? 'active' : '' }}">
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        {{-- The block tabs matter here: the team step lists this block's teams, so
+             faculty need to switch blocks without leaving the wizard. --}}
         @include('faculty.partials.teams-subnav', [
             'teamsSubTab' => $activeTab,
             'groups' => $groups ?? [],
+            'classes' => $classes ?? collect(),
             'activeClass' => $activeClass ?? null,
+            'classCapacity' => $classCapacity ?? 40,
+            'teamCountsByClass' => $teamCountsByClass ?? [],
         ])
 
         {{-- Header --}}
@@ -1120,6 +1125,8 @@
 
         <form method="POST" action="{{ route('faculty.tasks.store') }}" id="taskAssignForm">
             @csrf
+            {{-- Rides along so the redirect lands back on the block being worked in. --}}
+            <input type="hidden" name="class" value="{{ request('class', $activeClass->letter ?? '') }}">
 
             @if($errors->any() && $activeTab === 'create_task')
                 <div class="mx-6 mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
@@ -1138,30 +1145,83 @@
                 <div class="flex items-center justify-center gap-2">
                     <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand text-white text-xs font-bold" id="step-ind-1">
                         <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
-                        <span class="hidden sm:inline">Department</span>
+                        <span class="hidden sm:inline">Team</span>
                     </div>
                     <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-1"></div>
                     <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-2">
                         <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">2</span>
-                        <span class="hidden sm:inline">Tasks</span>
+                        <span class="hidden sm:inline">Department</span>
                     </div>
                     <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-2"></div>
                     <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-3">
                         <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">3</span>
-                        <span class="hidden sm:inline">Due Date</span>
+                        <span class="hidden sm:inline">Tasks</span>
                     </div>
                     <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-3"></div>
                     <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-4">
                         <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">4</span>
+                        <span class="hidden sm:inline">Due Date</span>
+                    </div>
+                    <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-4"></div>
+                    <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-5">
+                        <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">5</span>
                         <span class="hidden sm:inline">Assign</span>
                     </div>
                 </div>
 
-                {{-- ═══════ STEP 1: DEPARTMENT ═══════ --}}
+                {{-- ═══════ STEP 1: TEAM ═══════
+                     A task belongs to one team. The radio is a real form field, unlike
+                     the department below, which reaches the server as the tasks[] key. --}}
                 <div id="task-step-1" class="task-step">
                     <div class="text-center mb-4">
-                        <h4 class="text-sm font-bold text-slate-700">Which department needs tasks?</h4>
-                        <p class="text-xs text-slate-400 mt-1">Choose a department to see available tasks</p>
+                        <h4 class="text-sm font-bold text-slate-700">Which team is this task for?</h4>
+                        <p class="text-xs text-slate-400 mt-1">Only the team you pick will see it</p>
+                    </div>
+
+                    @if(($groups ?? collect())->isEmpty())
+                        <div class="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+                            <span class="iconify text-3xl text-slate-300" data-icon="mdi:account-group-outline"></span>
+                            <p class="text-sm font-bold text-slate-500 mt-2">No teams in this block yet</p>
+                            <p class="text-xs text-slate-400 mt-1">Build a team first, then come back to set its tasks.</p>
+                        </div>
+                    @else
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="taskTeamSelector">
+                            @foreach($groups as $groupName => $members)
+                                <label data-team="{{ $groupName }}"
+                                    class="task-team-btn group p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-brand/40 hover:shadow-md transition-all cursor-pointer flex items-start gap-3 text-left has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
+                                    <input type="radio" name="group_name" value="{{ $groupName }}"
+                                        onchange="selectTeam(this.value)"
+                                        {{ old('group_name') === $groupName ? 'checked' : '' }}
+                                        class="mt-0.5 text-brand focus:ring-brand/30 task-team-radio">
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-bold text-slate-700 truncate">{{ $groupName }}</span>
+                                        <span class="block text-[10px] text-slate-400 mt-0.5">
+                                            {{ $members->count() }} {{ Str::plural('member', $members->count()) }}
+                                        </span>
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+
+                        <div class="mt-4 flex justify-end">
+                            <button type="button" onclick="goToStep(2)" id="btn-to-step2"
+                                class="px-5 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" disabled>
+                                <span class="iconify" data-icon="mdi:arrow-right"></span> Continue
+                            </button>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- ═══════ STEP 2: DEPARTMENT ═══════ --}}
+                <div id="task-step-2" class="task-step hidden">
+                    <div class="flex items-center gap-2 mb-4">
+                        <button type="button" onclick="goToStep(1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
+                            <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
+                        </button>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-700">Which department needs tasks?</h4>
+                            <p class="text-xs text-slate-400">Assigning to <span id="deptStepTeamName" class="font-semibold text-slate-500">this team</span></p>
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="taskDeptSelector">
                         @foreach($rolesMeta ?? [] as $rKey => $rMeta)
@@ -1171,16 +1231,20 @@
                                 <span class="iconify text-2xl {{ $rMeta['color'] }} group-hover:scale-110 transition-transform" data-icon="{{ $rMeta['icon'] }}"></span>
                                 <p class="text-xs font-bold text-slate-700 mt-2">{{ $rMeta['label'] }}</p>
                                 <p class="text-[10px] text-slate-400 mt-0.5">{{ count($taskChecklist[$rKey] ?? []) }} tasks</p>
+                                {{-- Filled by updateDeptMemberCounts() once a team is known. Assigning
+                                     to a role nobody fills is still allowed: the row waits for whoever
+                                     takes it. --}}
+                                <p class="text-[10px] font-semibold text-slate-400 mt-1 dept-member-count" data-dept-count="{{ $rKey }}"></p>
                             </button>
                         @endforeach
                     </div>
                 </div>
 
-                {{-- ═══════ STEP 2: TASKS ═══════ --}}
-                <div id="task-step-2" class="task-step hidden">
+                {{-- ═══════ STEP 3: TASKS ═══════ --}}
+                <div id="task-step-3" class="task-step hidden">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
-                            <button type="button" onclick="goToStep(1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
+                            <button type="button" onclick="goToStep(2)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
                                 <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
                             </button>
                             <div>
@@ -1230,17 +1294,17 @@
                     @endforeach
 
                     <div class="mt-4 flex justify-end">
-                        <button type="button" onclick="goToStep(3)" id="btn-to-step3"
+                        <button type="button" onclick="goToStep(4)" id="btn-to-step4"
                             class="px-5 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" disabled>
                             <span class="iconify" data-icon="mdi:arrow-right"></span> Continue
                         </button>
                     </div>
                 </div>
 
-                {{-- ═══════ STEP 3: DUE DATE ═══════ --}}
-                <div id="task-step-3" class="task-step hidden">
+                {{-- ═══════ STEP 4: DUE DATE ═══════ --}}
+                <div id="task-step-4" class="task-step hidden">
                     <div class="flex items-center gap-2 mb-4">
-                        <button type="button" onclick="goToStep(2)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
+                        <button type="button" onclick="goToStep(3)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
                             <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
                         </button>
                         <div>
@@ -1259,17 +1323,17 @@
                     </div>
 
                     <div class="mt-6 flex justify-end">
-                        <button type="button" onclick="goToStep(4)"
+                        <button type="button" onclick="goToStep(5)"
                             class="px-5 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2">
                             <span class="iconify" data-icon="mdi:arrow-right"></span> Review & Assign
                         </button>
                     </div>
                 </div>
 
-                {{-- ═══════ STEP 4: REVIEW ═══════ --}}
-                <div id="task-step-4" class="task-step hidden">
+                {{-- ═══════ STEP 5: REVIEW ═══════ --}}
+                <div id="task-step-5" class="task-step hidden">
                     <div class="flex items-center gap-2 mb-4">
-                        <button type="button" onclick="goToStep(3)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
+                        <button type="button" onclick="goToStep(4)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
                             <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
                         </button>
                         <div>
@@ -1279,6 +1343,16 @@
                     </div>
 
                     <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                                <span class="iconify text-emerald-500" data-icon="mdi:account-group-outline"></span>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400 font-medium">Team</p>
+                                <p class="text-sm font-bold text-slate-800" id="reviewTeamName">—</p>
+                            </div>
+                        </div>
+                        <div class="h-px bg-slate-200"></div>
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center" id="reviewDeptIcon"></div>
                             <div>
@@ -2863,6 +2937,7 @@ function onUpdateMemberToggle(checkbox) {
 
 // ── Task Assignment Wizard ─────────────────────
 let currentStep = 1;
+let selectedTeam = null;
 let selectedDept = null;
 
 const DEPT_META = {
@@ -2871,16 +2946,20 @@ const DEPT_META = {
     @endforeach
 };
 
+// How many members of each team hold each role, so the department step can say
+// who is actually there to receive the task.
+const TEAM_ROLE_COUNTS = @json($teamRoleCounts ?? []);
+
 function goToStep(step) {
     document.querySelectorAll('.task-step').forEach(s => s.classList.add('hidden'));
     document.getElementById('task-step-' + step).classList.remove('hidden');
     currentStep = step;
     updateStepIndicators();
-    if (step === 4) updateReview();
+    if (step === 5) updateReview();
 }
 
 function updateStepIndicators() {
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 5; i++) {
         const ind = document.getElementById('step-ind-' + i);
         const line = document.getElementById('step-line-' + (i - 1));
         if (!ind) continue;
@@ -2901,6 +2980,34 @@ function updateStepIndicators() {
             line.classList.toggle('bg-slate-200', i > currentStep);
         }
     }
+}
+
+function selectTeam(groupName) {
+    selectedTeam = groupName;
+
+    const btn = document.getElementById('btn-to-step2');
+    if (btn) btn.disabled = !selectedTeam;
+
+    const label = document.getElementById('deptStepTeamName');
+    if (label) label.textContent = groupName || 'this team';
+
+    updateDeptMemberCounts();
+}
+
+// Annotates each department card with this team's headcount for that role. A role
+// nobody fills is still assignable — the task waits for whoever takes it — so this
+// informs rather than blocks.
+function updateDeptMemberCounts() {
+    const counts = (selectedTeam && TEAM_ROLE_COUNTS[selectedTeam]) || {};
+
+    document.querySelectorAll('[data-dept-count]').forEach(el => {
+        const n = counts[el.dataset.deptCount] || 0;
+        el.textContent = selectedTeam
+            ? (n > 0 ? n + (n === 1 ? ' member' : ' members') : 'nobody holds this')
+            : '';
+        el.classList.toggle('text-slate-400', n > 0);
+        el.classList.toggle('text-amber-500', selectedTeam && n === 0);
+    });
 }
 
 function selectDepartment(deptId) {
@@ -2930,8 +3037,8 @@ function selectDepartment(deptId) {
     const hasTasks = !!(panel && panel.querySelector('.task-check'));
     document.getElementById('selectAllTasksBtn')?.classList.toggle('hidden', !hasTasks);
 
-    // Go to step 2
-    goToStep(2);
+    // Go to the task checklist
+    goToStep(3);
     updateContinueBtn();
 }
 
@@ -2946,13 +3053,16 @@ function selectAllVisibleTasks() {
 function updateContinueBtn() {
     if (!selectedDept) return;
     const checked = document.querySelectorAll('.task-checkbox-' + selectedDept + ':checked').length;
-    const btn = document.getElementById('btn-to-step3');
+    const btn = document.getElementById('btn-to-step4');
     if (btn) {
         btn.disabled = checked === 0;
     }
 }
 
 function updateReview() {
+    // Team
+    document.getElementById('reviewTeamName').textContent = selectedTeam || '—';
+
     // Dept
     const meta = DEPT_META[selectedDept];
     if (meta) {
@@ -2977,7 +3087,9 @@ function updateReview() {
 }
 
 function resetTaskWizard() {
+    selectedTeam = null;
     selectedDept = null;
+    document.querySelectorAll('.task-team-radio').forEach(r => r.checked = false);
     document.querySelectorAll('.task-check').forEach(cb => cb.checked = false);
     document.querySelector('input[name="due_date"]').value = '';
     document.querySelectorAll('.task-dept-btn').forEach(btn => {
@@ -2985,6 +3097,9 @@ function resetTaskWizard() {
         btn.classList.add('border-slate-200', 'bg-white');
     });
     document.querySelectorAll('.task-checklist-panel').forEach(p => p.classList.add('hidden'));
+    const btn = document.getElementById('btn-to-step2');
+    if (btn) btn.disabled = true;
+    updateDeptMemberCounts();
     goToStep(1);
 }
 
@@ -2999,6 +3114,10 @@ document.addEventListener('change', function(e) {
 (function() {
     const activeTab = '{{ $activeTab }}';
     if (activeTab === 'create_task') {
+        // A failed submit re-renders with the team still ticked; pick it back up so
+        // the wizard does not reopen claiming no team was chosen.
+        const checkedTeam = document.querySelector('.task-team-radio:checked');
+        if (checkedTeam) selectTeam(checkedTeam.value);
         goToStep(1);
     }
     // Auto-open create team modal if there are validation errors from that form

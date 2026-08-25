@@ -14,6 +14,10 @@ class Task extends Model
 
     protected $fillable = [
         'faculty_id',
+        // The team this task was assigned to. Null only on rows that predate
+        // per-team assignment; those stay visible to whoever holds the role.
+        'group_name',
+        'group_id',
         'student_id',
         'assigned_to',
         'role',
@@ -93,6 +97,27 @@ class Task extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    /**
+     * The tasks one team may read.
+     *
+     * Faculty assign to a single team, so a row states its team and is filtered on
+     * it directly — the same way every hotel_* table scopes by group_name. Rows with
+     * no team are the ones created before assignment was team-scoped; they carry no
+     * submission and so no feedback, and stay visible to whoever holds the role
+     * rather than disappearing from every dashboard at once. Delete this null branch
+     * once those rows are gone and the scope becomes a plain equality.
+     */
+    public function scopeForTeam($query, ?string $groupName)
+    {
+        return $query->where(function ($q) use ($groupName) {
+            $q->whereNull('group_name');
+
+            if (filled($groupName)) {
+                $q->orWhere('group_name', $groupName);
+            }
+        });
     }
 
     /** The one task that gates the rest of the simulation. */

@@ -329,11 +329,24 @@ class HotelConceptDesk
                 ])->save();
             }
 
+            // Seeded before tasks named their team, or the member has since moved.
+            // Stamp it now so it reads as this team's rather than as everyone's.
+            if (blank($existing->group_name) && filled($membership->group_name)) {
+                $existing->forceFill([
+                    'group_name' => $membership->group_name,
+                    'group_id' => $membership->group_id,
+                ])->save();
+            }
+
             return;
         }
 
         Task::create([
             'faculty_id' => $membership->faculty_id,
+            // Named like any other task so the team reads it as theirs and nobody
+            // else picks it up, rather than being inferred from student_id.
+            'group_name' => $membership->group_name,
+            'group_id' => $membership->group_id,
             'student_id' => $membership->student_id,
             'assigned_to' => Student::whereKey($membership->student_id)->value('user_id'),
             'role' => self::OWNING_ROLE,

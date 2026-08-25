@@ -59,12 +59,22 @@ class DepartmentTemplatePage
         // syncNavBadges() in builder/ops-shell keeps them fresh after that.
         $navBadges = HotelNavBadges::forRole($groupMembership, $role);
 
+        // Scoped to the team, like the dashboard. Filtering on faculty and role alone
+        // listed every other team's rows under the same faculty on these pages.
         $tasks = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('role', $role)->where('status', 'active')->get()
+            ? Task::where('faculty_id', $facultyId)
+                ->forTeam($groupName)
+                ->where('role', $role)
+                ->where('status', 'active')
+                ->get()
             : collect();
 
         $tasksByRole = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('status', 'active')->get()->groupBy('role')
+            ? Task::where('faculty_id', $facultyId)
+                ->forTeam($groupName)
+                ->where('status', 'active')
+                ->get()
+                ->groupBy('role')
             : collect();
 
         $selectedTemplate = null;

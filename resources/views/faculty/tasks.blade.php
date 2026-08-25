@@ -74,9 +74,9 @@
     if (!array_key_exists($activeTab, $roles)) $activeTab = 'front_desk';
 @endphp
 
-<div class="flex gap-2 mb-6 overflow-x-auto pb-1 flex-wrap">
+<div class="flex gap-2 mb-4 overflow-x-auto pb-1 flex-wrap">
     @foreach($roles as $roleKey => $roleMeta)
-    <a href="{{ route('faculty.tasks', ['tab' => $roleKey]) }}"
+    <a href="{{ route('faculty.tasks', array_filter(['tab' => $roleKey, 'team' => $activeTeam ?? null])) }}"
         class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-500 whitespace-nowrap
                {{ $activeTab === $roleKey ? 'active-tab' : 'bg-white hover:bg-slate-50 hover:text-slate-700' }}">
         <span class="iconify text-base {{ $activeTab === $roleKey ? 'text-white' : $roleMeta['color'] }}"
@@ -89,6 +89,27 @@
     </a>
     @endforeach
 </div>
+
+{{-- ══════ TEAM FILTER ══════
+     Tasks fan out one row per member, so without the team a role's list reads as
+     duplicates of the same title. --}}
+@if(!empty($teamNames))
+<div class="flex items-center gap-2 mb-6 flex-wrap">
+    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Team</span>
+    <a href="{{ route('faculty.tasks', ['tab' => $activeTab]) }}"
+        class="px-3 py-1.5 rounded-lg border text-xs font-semibold whitespace-nowrap
+               {{ empty($activeTeam) ? 'border-brand bg-brand-soft text-brand' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50' }}">
+        All teams
+    </a>
+    @foreach($teamNames as $teamName)
+    <a href="{{ route('faculty.tasks', ['tab' => $activeTab, 'team' => $teamName]) }}"
+        class="px-3 py-1.5 rounded-lg border text-xs font-semibold whitespace-nowrap
+               {{ ($activeTeam ?? null) === $teamName ? 'border-brand bg-brand-soft text-brand' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50' }}">
+        {{ $teamName }}
+    </a>
+    @endforeach
+</div>
+@endif
 
 {{-- ══════ TASK LIST ══════ --}}
 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -128,6 +149,12 @@
                 @if($task->description)
                     <p class="text-xs text-slate-400 mt-0.5 line-clamp-2">{{ $task->description }}</p>
                 @endif
+                <p class="mt-1 flex items-center gap-1 text-[11px] font-semibold {{ $task->group_name ? 'text-slate-500' : 'text-amber-500' }}">
+                    <span class="iconify" data-icon="mdi:account-group-outline"></span>
+                    {{-- Rows assigned before tasks named a team are still read by every
+                         team holding the role. --}}
+                    {{ $task->group_name ?: 'All teams (legacy)' }}
+                </p>
             </div>
 
             {{-- Meta --}}

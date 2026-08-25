@@ -27,7 +27,9 @@
                 $isClosed = $classTab->status === 'closed';
                 $teamCount = $teamCountsByClass[$classTab->faculty_class_id] ?? 0;
             @endphp
-            <a href="{{ route('faculty.role', ['class' => $classTab->letter, 'tab' => 'teams']) }}"
+            {{-- Stay on the tab you are on. Hard-coding 'teams' threw faculty out of
+                 the Set Task wizard whenever they switched block. --}}
+            <a href="{{ route('faculty.role', ['class' => $classTab->letter, 'tab' => $teamsSubTab]) }}"
                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 transition
                {{ $isActiveClass
                     ? 'bg-white text-brand border-slate-200 -mb-px relative z-10'

@@ -168,34 +168,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $membersByRole = $membersByRole->map(fn($members) => $members->unique()->values());
 
         /*
-         * A task row carries no team column of its own — it is tied to one student,
-         * and the student's membership is what puts it on a team. Faculty assign the
-         * same role task to every team they own, so filtering by faculty + role alone
-         * showed one team every other team's rows, including the feedback and approval
-         * faculty left on them. Resolve the team once here and scope every task query
-         * below to it, so a team only ever reads its own submissions and their verdict.
+         * Faculty assign a task to one team, and the row says which. Scope every task
+         * query below to this student's team so it only ever reads its own tasks, its
+         * own submissions and the verdict faculty left on them. Task::scopeForTeam()
+         * carries the allowance for rows assigned before tasks named a team.
          */
-        $teamStudentIds = $groupMembership
-            ? StudentGroup::where('group_name', $groupMembership->group_name)
-                ->where('faculty_id', $groupMembership->faculty_id)
-                ->pluck('student_id')
-                ->filter()
-                ->map(fn ($id) => (int) $id)
-                ->unique()
-                ->values()
-                ->all()
-            : [];
-
-        // Rows with no student belong to no team: faculty creates one when nobody in
-        // the faculty holds that role yet. They carry no submission and so no feedback,
-        // so they stay visible to the role rather than vanishing from every dashboard.
-        $scopeToTeam = function ($query) use ($teamStudentIds) {
-            $query->where(function ($q) use ($teamStudentIds) {
-                $q->whereNull('student_id');
-                if ($teamStudentIds !== []) {
-                    $q->orWhereIn('student_id', $teamStudentIds);
-                }
-            });
+        $scopeToTeam = function ($query) use ($groupMembership) {
+            $query->forTeam($groupMembership?->group_name);
         };
 
         // ── Real tasks from faculty ──────────────────────────────────────
@@ -369,6 +348,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $groupMembership = StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first();
         if (!$groupMembership || (int) $task->faculty_id !== (int) $groupMembership->faculty_id) {
+            abort(403);
+        }
+
+        // Same faculty is not the same team. Without this a student could submit
+        // another team's row — the claim check below only catches it once someone
+        // has already taken it, and an unclaimed row would pass straight through.
+        // Compared case-insensitively because group_name is citext in the database.
+        if (filled($task->group_name)
+            && strcasecmp((string) $task->group_name, (string) $groupMembership->group_name) !== 0) {
             abort(403);
         }
 
