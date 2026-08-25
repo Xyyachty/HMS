@@ -477,14 +477,14 @@
                     <div id="reviewDecisionBlock" class="space-y-3">
                         {{-- Step 1: pick a verdict. The feedback box only belongs to
                              Revise, so it stays out of the way until that is chosen. --}}
-                        <div id="reviewChoiceStep" class="flex flex-col gap-2 pt-1">
+                        <div id="reviewChoiceStep" class="flex flex-row items-center gap-2 pt-1">
                             <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')"
-                                class="w-full px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">
-                                <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve
+                                class="flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1 shadow-sm shadow-emerald-600/20">
+                                <span class="iconify text-[13px]" data-icon="mdi:check-circle-outline"></span> Approve
                             </button>
                             <button type="button" id="reviewReviseBtn" onclick="showReviseStep()"
-                                class="w-full px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">
-                                <span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Revise
+                                class="flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg bg-white text-amber-700 border border-amber-300 text-[11px] font-bold hover:bg-amber-50 hover:border-amber-400 transition inline-flex items-center justify-center gap-1">
+                                <span class="iconify text-[13px]" data-icon="mdi:undo-variant"></span> Revise
                             </button>
                         </div>
 
