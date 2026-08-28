@@ -51,7 +51,12 @@
             @endphp
             <div class="p-6 hover:bg-brand-soft/20 transition flex flex-col md:flex-row gap-6 items-start md:items-center">
                 <div class="flex items-center gap-4 w-full md:w-1/4">
-                    <img src="https://ui-avatars.com/api/?name={{ urlencode($displayName) }}&background=DB2777&color=fff&size=40&font-size=0.4" class="w-12 h-12 rounded-xl shadow-md border-2 border-white" alt="{{ $displayName }}">
+                    @include('partials.user-avatar', [
+                        'user'        => $user,
+                        'name'        => $displayName,
+                        'size'        => 'w-12 h-12',
+                        'extraClasses' => 'shadow-md border-2 border-white',
+                    ])
                     <div class="min-w-0">
                         <h4 class="font-bold text-slate-800 text-sm truncate">{{ $displayName }}</h4>
                         <p class="text-xs text-slate-400 font-mono">{{ $task->student?->student_number ? '#' . $task->student->student_number : ($user?->email ?? '—') }}</p>

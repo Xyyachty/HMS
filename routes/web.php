@@ -147,6 +147,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                         'name'       => $displayName,
                         'email'      => $user?->email,
                         'roles'      => $member->roles->pluck('role')->toArray(),
+                        'user'       => $user,
                     ];
                 });
 

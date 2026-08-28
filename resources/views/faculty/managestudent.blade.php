@@ -245,11 +245,13 @@
 
                         <td class="px-3 py-2.5">
                             <div class="flex items-center gap-2 min-w-0">
-                                <img
-                                    src="https://ui-avatars.com/api/?name={{ urlencode($displayName) }}&background=DB2777&color=fff&size=32"
-                                    class="w-8 h-8 rounded-lg shadow-sm border border-pink-100 shrink-0"
-                                    alt="{{ $displayName }}"
-                                >
+                                @include('partials.user-avatar', [
+                                    'user'        => $user,
+                                    'name'        => $displayName,
+                                    'size'        => 'w-8 h-8',
+                                    'rounded'     => 'rounded-lg',
+                                    'extraClasses' => 'shadow-sm border border-pink-100',
+                                ])
                                 <div class="min-w-0 flex-1">
                                     <p class="font-bold text-slate-800 text-sm cell-truncate" title="{{ $displayName }}">
                                         {{ $primaryName }}@if($secondaryName !== ''), {{ $secondaryName }}@endif

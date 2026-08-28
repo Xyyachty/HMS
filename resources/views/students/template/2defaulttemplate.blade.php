@@ -129,30 +129,6 @@
     object-fit: cover;
     display: block;
   }
-  .hero-slide-img {
-    position: absolute; inset: 0;
-    opacity: 0;
-    transition: opacity 1.2s ease;
-  }
-  .hero-slide-img.is-active { opacity: 1; }
-  .hero-dots {
-    position: absolute; left: 0; right: 0; bottom: 1.5rem; z-index: 3;
-    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-  }
-  .hero-dot {
-    width: 8px; height: 8px; border-radius: 50%; border: none; padding: 0;
-    background: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.2s;
-  }
-  .hero-dot.is-active { background: var(--accent); width: 22px; border-radius: 4px; }
-  .hero-edit-btn {
-    position: absolute; right: 1.25rem; bottom: 1.4rem; z-index: 3;
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    background: rgba(26,26,26,0.65); color: #fff;
-    border: 1px solid rgba(255,255,255,0.3); border-radius: 999px;
-    padding: 0.4rem 0.9rem; font-size: 0.68rem; letter-spacing: 0.04em;
-    cursor: pointer; backdrop-filter: blur(4px);
-  }
-  .hero-edit-btn:hover { border-color: var(--accent); }
   .hero-content {
     flex: 1;
     display: flex;
@@ -231,162 +207,7 @@
     border-radius: 4px;
   }
 
-  /* -- Room status badge / picker, availability calendar, room + menu detail modal -- */
-  .room-status-badge {
-    position: absolute; top: 0.85rem; left: 0.85rem;
-    padding: 0.25rem 0.7rem; border-radius: 4px;
-    font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
-    font-weight: 600; border: 1px solid transparent;
-  }
-  .room-status-badge.status-available {
-    background: rgba(45,122,79,0.14); color: #1b4332; border-color: rgba(45,122,79,0.3);
-  }
-  .room-status-badge.status-cleaning {
-    background: rgba(193,120,73,0.16); color: #94510f; border-color: rgba(193,120,73,0.35);
-  }
-  .room-status-badge.status-maintenance {
-    background: rgba(225,29,72,0.12); color: #be123c; border-color: rgba(225,29,72,0.3);
-  }
-
-  .room-modal-overlay {
-    position: fixed; inset: 0; z-index: 2000;
-    background: rgba(26,26,26,0.6);
-    display: flex; align-items: center; justify-content: center;
-    padding: 1.25rem;
-    animation: roomModalFade 0.2s ease;
-  }
-  @keyframes roomModalFade {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  .room-modal {
-    width: min(560px, 100%);
-    max-height: min(90vh, 720px);
-    overflow: auto;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.25);
-    animation: roomModalRise 0.22s ease;
-  }
-  @keyframes roomModalRise {
-    from { opacity: 0; transform: translateY(12px) scale(0.98); }
-    to { opacity: 1; transform: none; }
-  }
-  .room-modal-img {
-    position: relative; height: 220px; overflow: hidden;
-  }
-  .room-modal-img img {
-    width: 100%; height: 100%; object-fit: cover;
-  }
-  .room-modal-close {
-    position: absolute; top: 0.75rem; right: 0.75rem;
-    width: 34px; height: 34px; border-radius: 8px;
-    border: 1px solid var(--border);
-    background: rgba(255,255,255,0.9); color: var(--fg);
-    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-  }
-  .room-status-picker {
-    display: flex; flex-wrap: wrap; gap: 0.45rem;
-  }
-  .room-status-option {
-    font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 600;
-    letter-spacing: 0.06em; text-transform: uppercase;
-    padding: 0.45rem 0.85rem; border-radius: 100px;
-    border: 1.5px solid var(--border); background: transparent;
-    color: var(--fg-muted); cursor: pointer; transition: all 0.15s;
-  }
-  .room-status-option:hover { border-color: var(--accent); color: var(--accent); }
-  .room-status-option.active {
-    background: var(--accent); border-color: var(--accent); color: #fff;
-  }
-
-  .room-cal {
-    background: var(--bg-alt); border: 1px solid var(--border);
-    border-radius: 12px; padding: 0.9rem 1rem 1rem;
-  }
-  .room-cal-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 0.75rem;
-  }
-  .room-cal-title {
-    font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 600;
-    color: var(--fg);
-  }
-  .room-cal-nav {
-    width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--card); color: var(--fg-muted); cursor: pointer;
-    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
-  }
-  .room-cal-nav:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-  .room-cal-nav:disabled { opacity: 0.3; cursor: not-allowed; }
-  .room-cal-weekdays, .room-cal-grid {
-    display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.25rem;
-  }
-  .room-cal-weekdays {
-    margin-bottom: 0.35rem;
-  }
-  .room-cal-weekdays span {
-    font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--fg-muted); text-align: center;
-  }
-  .room-cal-day {
-    aspect-ratio: 1; border-radius: 8px; border: 1px solid transparent;
-    background: var(--bg); color: var(--fg);
-    font-family: 'DM Sans', sans-serif; font-size: 0.74rem; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
-  }
-  .room-cal-day:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-  .room-cal-day.is-blank { visibility: hidden; cursor: default; }
-  .room-cal-day.is-past { color: var(--fg-muted); opacity: 0.4; cursor: not-allowed; }
-  .room-cal-day.is-booked { background: rgba(225,29,72,0.1); color: #be123c; cursor: not-allowed; }
-  .room-cal-day.is-in-range { background: rgba(193,120,73,0.14); }
-  .room-cal-day.is-selected {
-    background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700;
-  }
-  .room-cal-legend {
-    display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.75rem;
-  }
-  .room-cal-legend span {
-    display: inline-flex; align-items: center; gap: 0.35rem;
-    font-size: 0.68rem; color: var(--fg-muted);
-  }
-  .room-cal-swatch {
-    width: 10px; height: 10px; border-radius: 3px; display: inline-block;
-    background: var(--border);
-  }
-  .room-cal-swatch.is-available { background: var(--border); }
-  .room-cal-swatch.is-booked { background: #be123c; }
-  .room-cal-swatch.is-past { background: var(--fg-muted); opacity: 0.5; }
-
-  .menu-food-card {
-    border-radius: 10px; overflow: hidden;
-    background: var(--card); border: 1px solid var(--border);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    transition: box-shadow 0.25s, transform 0.25s;
-    display: flex; flex-direction: column;
-  }
-  .menu-food-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); transform: translateY(-3px); }
-  .menu-food-img {
-    position: relative; height: 180px; overflow: hidden; background: var(--bg-alt);
-  }
-  .menu-food-img img {
-    width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s;
-  }
-  .menu-food-card:hover .menu-food-img img { transform: scale(1.04); }
-  .menu-food-img-fallback {
-    width: 100%; height: 100%;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--fg-muted); background: var(--bg-alt);
-  }
-  .menu-food-price {
-    position: absolute; bottom: 0.75rem; right: 0.75rem;
-    background: rgba(255,255,255,0.92); padding: 0.3rem 0.65rem; border-radius: 5px;
-    font-family: 'Cormorant Garamond', serif; font-size: 0.95rem; color: var(--accent);
-  }
-  .menu-food-body { padding: 1.1rem 1.15rem 1.25rem; flex: 1; }
-
-  /* -- Restaurant Cards -- */
+  /* â”€â”€ Restaurant Cards â”€â”€ */
   .rest-card {
     background: var(--card); border-radius: 10px; overflow: hidden;
     box-shadow: 0 1px 4px rgba(0,0,0,0.04);
@@ -495,146 +316,6 @@
     transition: opacity 0.3s, transform 0.3s; pointer-events: none;
   }
   .toast-el.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
-
-  /* Customer sign in / sign up. This is the hotel site's own visitor session —
-     separate from the HMS login the student signed in with to open the builder.
-     public/js/hms-hotel-auth.js is the bridge; it broadcasts hms-hotel-auth
-     whenever the session changes. */
-  .nav-auth {
-    display: flex; align-items: center; gap: 0.5rem;
-    margin-left: 0.35rem; padding-left: 0.9rem;
-    border-left: 1px solid var(--border);
-  }
-  .nav-auth-btn {
-    font-family: inherit; font-size: 0.7rem; font-weight: 600;
-    letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
-    padding: 0.52rem 1.05rem; border-radius: 6px; cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
-  }
-  .nav-auth-btn.is-ghost {
-    background: transparent; color: var(--fg); border: 1px solid var(--border);
-  }
-  .nav-auth-btn.is-ghost:hover { border-color: var(--accent); color: var(--accent); }
-  .nav-auth-btn.is-solid {
-    background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
-  }
-  .nav-auth-btn.is-solid:hover { background: var(--accent-light); border-color: var(--accent-light); transform: translateY(-1px); }
-  .nav-auth-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .nav-auth-who {
-    display: inline-flex; align-items: center; gap: 0.45rem;
-    color: var(--fg); font-size: 0.78rem; max-width: 180px;
-  }
-  .nav-auth-who b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* Stacked full-width inside the mobile menu, where there is no room for a row. */
-  .nav-auth.is-compact {
-    flex-direction: column; gap: 0.6rem;
-    border-left: none; border-top: 1px solid var(--border);
-    margin: 0.9rem 0 0; padding: 1.3rem 0 0; width: min(260px, 72vw);
-  }
-  .nav-auth.is-compact .nav-auth-btn { width: 100%; }
-
-  /* Field styling only. This template signs a guest in and up on its own pages
-     (SignInPage / SignUpPage), so it carries no auth overlay or modal card. */
-  .auth-field { display: block; margin-bottom: 0.9rem; }
-  .auth-field > span {
-    display: block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--fg-muted); margin-bottom: 0.35rem;
-  }
-  .auth-input {
-    width: 100%; font-family: inherit; font-size: 0.88rem;
-    background: transparent; color: var(--fg);
-    border: 1px solid var(--border); border-radius: 6px;
-    padding: 0.7rem 0.9rem; outline: none; transition: border-color 0.2s;
-  }
-  .auth-input:focus { border-color: var(--accent); }
-  .auth-error { margin: 0 0 0.9rem; color: #e11d48; font-size: 0.78rem; }
-
-  /* ── Guest account pages ──
-     This template signs a guest in and up on its own pages rather than in a
-     modal, and both share this layout. Two columns on a desktop — the hotel's
-     pitch beside the form — collapsing to the form alone on a phone, where the
-     pitch would otherwise scroll the reader past the thing they came to do. */
-  .auth-page {
-    min-height: 100vh;
-    display: grid; grid-template-columns: 1fr 1fr;
-    /* Clears the fixed .nav-bar, which is 64px tall. */
-    padding-top: 64px;
-  }
-  .auth-page-aside {
-    background: var(--accent); color: var(--bg);
-    padding: 4rem 3.5rem; display: flex; flex-direction: column; justify-content: center;
-    position: relative; overflow: hidden;
-  }
-  .auth-page-aside::after {
-    content: ''; position: absolute; right: -80px; bottom: -80px;
-    width: 260px; height: 260px; border-radius: 50%;
-    background: rgba(255,255,255,0.05);
-  }
-  .auth-page-aside .section-num { color: var(--warm-light); }
-  .auth-page-aside h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(2.1rem, 3.6vw, 3rem); font-weight: 600;
-    line-height: 1.12; margin-bottom: 1rem;
-  }
-  .auth-page-aside p {
-    color: rgba(255,255,255,0.72); font-size: 0.92rem; max-width: 38ch;
-  }
-  .auth-page-points {
-    list-style: none; margin: 2.25rem 0 0; padding: 0;
-    display: flex; flex-direction: column; gap: 0.9rem;
-  }
-  .auth-page-points li {
-    display: flex; align-items: flex-start; gap: 0.7rem;
-    font-size: 0.86rem; color: rgba(255,255,255,0.82);
-  }
-  .auth-page-points i { color: var(--warm-light); margin-top: 0.25rem; font-size: 0.78rem; }
-
-  .auth-page-main {
-    background: var(--bg);
-    padding: 4rem 3.5rem; display: flex; align-items: center; justify-content: center;
-  }
-  .auth-page-form { width: 100%; max-width: 460px; }
-  .auth-page-form > h2 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 2rem; font-weight: 600; margin-bottom: 0.35rem; color: var(--fg);
-  }
-  .auth-page-form > .auth-page-lede {
-    color: var(--fg-muted); font-size: 0.88rem; margin-bottom: 2rem;
-  }
-  /* Two names sit side by side; everything else runs the full width. */
-  .auth-page-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
-  .auth-page-submit {
-    width: 100%; margin-top: 0.4rem;
-    padding: 0.85rem; font-size: 0.74rem;
-  }
-  .auth-page-foot {
-    margin-top: 1.4rem; text-align: center;
-    color: var(--fg-muted); font-size: 0.8rem;
-  }
-  .auth-page-foot button {
-    background: none; border: none; padding: 0; cursor: pointer;
-    color: var(--accent); font-family: inherit; font-size: 0.8rem; font-weight: 600;
-  }
-  .auth-page-foot button:hover { text-decoration: underline; }
-  .auth-page-done {
-    text-align: center; padding: 1rem 0;
-  }
-  .auth-page-done i {
-    font-size: 2.4rem; color: var(--accent); margin-bottom: 1rem; display: block;
-  }
-
-  @media (max-width: 900px) {
-    .auth-page { grid-template-columns: 1fr; min-height: auto; }
-    /* The pitch would push the form below the fold on a phone, so it goes under it. */
-    .auth-page-aside { order: 2; padding: 3rem 1.5rem; }
-    .auth-page-aside h1 { font-size: 1.9rem; }
-    .auth-page-main { order: 1; padding: 3rem 1.5rem; }
-  }
-  @media (max-width: 480px) {
-    .auth-page-row { grid-template-columns: 1fr; gap: 0; }
-    .auth-page-main { padding: 2.25rem 1.15rem; }
-    .auth-page-aside { padding: 2.5rem 1.15rem; }
-  }
 
   .mobile-menu {
     position: fixed; inset: 0; background: var(--card);
@@ -1075,16 +756,6 @@ function toolBtnStyle(kind) {
    changing it anywhere changes it everywhere. */
 const DEFAULT_LOGO = window.HMS_DEFAULT_LOGO || '/images/hotel-logo-default.svg';
 const LOGO_ID = 'logo';
-
-/* Five-slide hero. Front Desk owns Home, so these follow the exact __navLinks
-   pattern — page:'home', fixed count, per-slide image replace only. */
-const DEFAULT_HERO_SLIDES = [
-  { id: 'hero-slide-1', img: 'https://picsum.photos/seed/resortlux/1200/900.jpg' },
-  { id: 'hero-slide-2', img: 'https://picsum.photos/seed/resortlobby/1200/900.jpg' },
-  { id: 'hero-slide-3', img: 'https://picsum.photos/seed/resortpool/1200/900.jpg' },
-  { id: 'hero-slide-4', img: 'https://picsum.photos/seed/resortsuite/1200/900.jpg' },
-  { id: 'hero-slide-5', img: 'https://picsum.photos/seed/resortdining/1200/900.jpg' },
-];
 const LEGACY_LOGO_IDS = ['logo-home', 'logo-rooms', 'logo-restaurant'];
 
 function resolveLogo() {
@@ -2055,7 +1726,7 @@ function Toast({ message, visible }) {
   );
 }
 
-function MobileMenu({ open, onClose, onNav, links, cardImages, onToast }) {
+function MobileMenu({ open, onClose, onNav, links, cardImages }) {
   const items = [
     ...(links || []),
     { key: 'booking', label: 'Book Now' },
@@ -2066,304 +1737,6 @@ function MobileMenu({ open, onClose, onNav, links, cardImages, onToast }) {
     <div className={`mobile-menu${open ? ' open' : ''}`}>
       <BrandLogo size={54} />
       {items.map(i => <button key={i.id || i.key} onClick={() => { onNav(i.key); onClose(); }}>{i.label}</button>)}
-      <AuthNav onToast={onToast} onNav={onNav} compact />
-    </div>
-  );
-}
-
-/* ═══════════════ CUSTOMER SIGN IN / SIGN UP ═══════════════ */
-
-/*
- * The hotel site's own visitor session — a customer browsing and booking — which
- * is not the HMS login the student signed in with to open the builder.
- *
- * window.HMSHotelAuth (public/js/hms-hotel-auth.js) owns the session and fires
- * hms-hotel-auth whenever it changes, so every copy of this on the page stays in
- * step without any of them polling.
- */
-function useHotelAuth() {
-  const [auth, setAuth] = useState(() => window.__HMS_HOTEL_AUTH__ || { authenticated: false });
-
-  useEffect(() => {
-    const onAuth = (e) => setAuth((e && e.detail && e.detail.auth) || { authenticated: false });
-    window.addEventListener('hms-hotel-auth', onAuth);
-    // The bridge resolves the session shortly after load, which can land before
-    // this mounts — so read whatever is already there rather than wait for an event.
-    setAuth(window.__HMS_HOTEL_AUTH__ || { authenticated: false });
-    return () => window.removeEventListener('hms-hotel-auth', onAuth);
-  }, []);
-
-  return auth;
-}
-
-/* Signing in is a page here too, so both halves of the guest account read the
-   same way in this template. Nothing in it opens over the site. */
-function SignInPage({ onNav, onToast }) {
-  const auth = useHotelAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const signedIn = !!(auth && auth.authenticated);
-
-  const submit = (e) => {
-    e.preventDefault();
-    const api = window.HMSHotelAuth;
-    if (!api) { setError('The sign-in service is not available on this page.'); return; }
-    if (!email.trim()) { setError('Enter your email address.'); return; }
-    if (!password) { setError('Enter your password.'); return; }
-
-    setError('');
-    setBusy(true);
-    Promise.resolve(api.customerLogin(email.trim(), password))
-      .then(() => {
-        if (onToast) onToast('Signed in.');
-      })
-      .catch(err => setError((err && err.message) || 'That did not work. Check your details and try again.'))
-      .finally(() => setBusy(false));
-  };
-
-  return (
-    <div className="auth-page" data-hms-no-edit="1">
-      <aside className="auth-page-aside">
-        <span className="section-num">Welcome back</span>
-        <h1>Good to see<br />you again.</h1>
-        <p>Sign in to pick up where you left off — your stay, your orders and anything you have asked us for.</p>
-        <ul className="auth-page-points">
-          <li><i className="fa-solid fa-check"></i><span>Pick up a booking you started</span></li>
-          <li><i className="fa-solid fa-check"></i><span>See what you have ordered to your room</span></li>
-          <li><i className="fa-solid fa-check"></i><span>Reach the front desk without repeating yourself</span></li>
-        </ul>
-      </aside>
-
-      <main className="auth-page-main">
-        <div className="auth-page-form">
-          {signedIn ? (
-            <div className="auth-page-done">
-              <i className="fa-regular fa-circle-check"></i>
-              <h2 className="font-display" style={{ fontSize: '1.8rem', marginBottom: '0.4rem' }}>
-                You are signed in
-              </h2>
-              <p style={{ color: 'var(--fg-muted)', fontSize: '0.88rem', marginBottom: '1.6rem' }}>
-                Welcome back, {auth.name || 'Guest'}.
-              </p>
-              <button type="button" className="btn-primary auth-page-submit" onClick={() => onNav && onNav('rooms')}>
-                Browse rooms
-              </button>
-            </div>
-          ) : (
-            <>
-              <h2>Sign in</h2>
-              <p className="auth-page-lede">Your guest account, and everything on it.</p>
-
-              <form onSubmit={submit} noValidate>
-                <label className="auth-field">
-                  <span>Email address</span>
-                  <input className="auth-input" type="email" value={email} autoComplete="email"
-                    onChange={e => setEmail(e.target.value)} />
-                </label>
-                <label className="auth-field">
-                  <span>Password</span>
-                  <input className="auth-input" type="password" value={password} autoComplete="current-password"
-                    onChange={e => setPassword(e.target.value)} />
-                </label>
-
-                {error && <p className="auth-error">{error}</p>}
-
-                <button type="submit" className="nav-auth-btn is-solid auth-page-submit" disabled={busy}>
-                  {busy ? 'Please wait…' : 'Sign in'}
-                </button>
-              </form>
-
-              <p className="auth-page-foot">
-                New here?{' '}
-                <button type="button" onClick={() => onNav && onNav('signup')}>Create an account</button>
-              </p>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-}
-
-/* A page rather than a modal, which is the one way this template's sign-up
-   differs from Template 1. Same service call underneath, so an account made here
-   works exactly like one made there. */
-function SignUpPage({ onNav, onToast }) {
-  const auth = useHotelAuth();
-  const [lastName, setLastName] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [email, setEmail] = useState('');
-  const [contactNumber, setContactNumber] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const signedIn = !!(auth && auth.authenticated);
-
-  const submit = (e) => {
-    e.preventDefault();
-    const api = window.HMSHotelAuth;
-    if (!api) { setError('The sign-up service is not available on this page.'); return; }
-    if (!lastName.trim()) { setError('Enter your last name.'); return; }
-    if (!firstName.trim()) { setError('Enter your first name.'); return; }
-    if (!email.trim()) { setError('Enter your email address.'); return; }
-    if (!contactNumber.trim()) { setError('Enter your contact number.'); return; }
-    if (!password) { setError('Enter a password.'); return; }
-    if (password !== confirmPassword) { setError('The passwords do not match.'); return; }
-
-    setError('');
-    setBusy(true);
-    Promise.resolve(api.customerSignup({
-      lastName: lastName.trim(),
-      firstName: firstName.trim(),
-      email: email.trim(),
-      contactNumber: contactNumber.trim(),
-      password,
-      passwordConfirmation: confirmPassword,
-    }))
-      .then(() => {
-        if (onToast) onToast('Welcome — your account is ready.');
-      })
-      .catch(err => setError((err && err.message) || 'That did not work. Check your details and try again.'))
-      .finally(() => setBusy(false));
-  };
-
-  return (
-    <div className="auth-page" data-hms-no-edit="1">
-      <aside className="auth-page-aside">
-        <span className="section-num">Guest account</span>
-        <h1>Stay with us,<br />on your terms.</h1>
-        <p>One account holds your bookings, your room service and everything you ask of us while you are here.</p>
-        <ul className="auth-page-points">
-          <li><i className="fa-solid fa-check"></i><span>Book a room and see your stay at a glance</span></li>
-          <li><i className="fa-solid fa-check"></i><span>Order to your room and charge it to the stay</span></li>
-          <li><i className="fa-solid fa-check"></i><span>Tell the front desk what you need, whenever</span></li>
-        </ul>
-      </aside>
-
-      <main className="auth-page-main">
-        <div className="auth-page-form">
-          {signedIn ? (
-            <div className="auth-page-done">
-              <i className="fa-regular fa-circle-check"></i>
-              <h2 className="font-display" style={{ fontSize: '1.8rem', marginBottom: '0.4rem' }}>
-                You are signed in
-              </h2>
-              <p style={{ color: 'var(--fg-muted)', fontSize: '0.88rem', marginBottom: '1.6rem' }}>
-                Welcome, {auth.name || 'Guest'}. Your guest account is ready.
-              </p>
-              <button type="button" className="btn-primary auth-page-submit" onClick={() => onNav && onNav('rooms')}>
-                Browse rooms
-              </button>
-            </div>
-          ) : (
-            <>
-              <h2>Create your account</h2>
-              <p className="auth-page-lede">It takes a minute, and the front desk will know you by name.</p>
-
-              <form onSubmit={submit} noValidate>
-                <div className="auth-page-row">
-                  <label className="auth-field">
-                    <span>Last name</span>
-                    <input className="auth-input" type="text" value={lastName} autoComplete="family-name"
-                      onChange={e => setLastName(e.target.value)} />
-                  </label>
-                  <label className="auth-field">
-                    <span>First name</span>
-                    <input className="auth-input" type="text" value={firstName} autoComplete="given-name"
-                      onChange={e => setFirstName(e.target.value)} />
-                  </label>
-                </div>
-
-                <label className="auth-field">
-                  <span>Email address</span>
-                  <input className="auth-input" type="email" value={email} autoComplete="email"
-                    onChange={e => setEmail(e.target.value)} />
-                </label>
-
-                <label className="auth-field">
-                  <span>Contact number</span>
-                  <input className="auth-input" type="tel" value={contactNumber} autoComplete="tel"
-                    onChange={e => setContactNumber(e.target.value)} />
-                </label>
-
-                <div className="auth-page-row">
-                  <label className="auth-field">
-                    <span>Password</span>
-                    <input className="auth-input" type="password" value={password} autoComplete="new-password"
-                      onChange={e => setPassword(e.target.value)} />
-                  </label>
-                  <label className="auth-field">
-                    <span>Confirm password</span>
-                    <input className="auth-input" type="password" value={confirmPassword} autoComplete="new-password"
-                      onChange={e => setConfirmPassword(e.target.value)} />
-                  </label>
-                </div>
-
-                {error && <p className="auth-error">{error}</p>}
-
-                <button type="submit" className="nav-auth-btn is-solid auth-page-submit" disabled={busy}>
-                  {busy ? 'Please wait…' : 'Create account'}
-                </button>
-              </form>
-
-              <p className="auth-page-foot">
-                Already have an account?{' '}
-                <button type="button" onClick={() => onNav && onNav('signin')}>Sign in</button>
-              </p>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-}
-
-/* Sits at the right-hand end of the navigation. `compact` stacks it for the
-   mobile menu, where a row of buttons has nowhere to go. */
-function AuthNav({ onToast, compact, onNav }) {
-  const auth = useHotelAuth();
-  const [busy, setBusy] = useState(false);
-
-  // Both halves of the guest account are pages in this template, so these are
-  // navigations rather than overlays. navigateTo already refuses while the
-  // student is redesigning the page, which is the rule the rest of the site's
-  // controls follow — a click in Design mode edits rather than signs in.
-  const goSignIn = () => { if (onNav) onNav('signin'); };
-  const goSignUp = () => { if (onNav) onNav('signup'); };
-
-  const signOut = () => {
-    const api = window.HMSHotelAuth;
-    if (!api || !isSiteInteractive()) return;
-    setBusy(true);
-    Promise.resolve(api.logout())
-      .then(() => { if (onToast) onToast('Signed out.'); })
-      .catch(() => { if (onToast) onToast('Could not sign out.'); })
-      .finally(() => setBusy(false));
-  };
-
-  return (
-    <div className={`nav-auth${compact ? ' is-compact' : ''}`} data-hms-no-edit="1">
-      {auth && auth.authenticated ? (
-        <>
-          <span className="nav-auth-who" title={auth.email || ''}>
-            <i className="fa-regular fa-circle-user" style={{ color: 'var(--accent)' }}></i>
-            <b>{auth.name || 'Guest'}</b>
-          </span>
-          <button type="button" className="nav-auth-btn is-ghost" onClick={signOut} disabled={busy}>
-            {busy ? 'Signing out…' : 'Sign out'}
-          </button>
-        </>
-      ) : (
-        <>
-          <button type="button" className="nav-auth-btn is-ghost" onClick={goSignIn}>Sign in</button>
-          <button type="button" className="nav-auth-btn is-solid" onClick={goSignUp}>Sign up</button>
-        </>
-      )}
     </div>
   );
 }
@@ -2430,7 +1803,7 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, canEditNav, o
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <button onClick={() => onNav('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <BrandLogo size={34} />
-            <span data-hms-text="1" data-hms-brand-name="1" style={{ color: 'var(--accent)', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
+            <span style={{ color: 'var(--accent)', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
           </button>
           {canEditThisLogo && <ChangeLogoButton onToast={onToast} />}
         </div>
@@ -2452,7 +1825,6 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, canEditNav, o
           <button className="btn-primary" onClick={() => onNav('booking')} style={{ fontSize: '0.72rem', padding: '0.5rem 1.2rem' }}>
             <i className="fa-regular fa-calendar" style={{ fontSize: '0.7rem' }}></i> Book Now
           </button>
-          <AuthNav onToast={onToast} onNav={onNav} />
         </div>
         <button className={`hamburger${mobileOpen ? ' active' : ''}`} onClick={onToggle} aria-label="Toggle menu" data-hms-no-edit="1">
           <span></span><span></span><span></span>
@@ -2477,55 +1849,7 @@ function EmptyState({ text }) {
 
 
 /* â•â•â•â•â•â•â• HOME â•â•â•â•â•â•â• */
-function HeroSlider({ slides, canEdit }) {
-  const list = slides && slides.length ? slides : DEFAULT_HERO_SLIDES;
-  const [active, setActive] = useState(0);
-
-  useEffect(() => {
-    if (list.length < 2) return undefined;
-    const id = setInterval(() => setActive((i) => (i + 1) % list.length), 6000);
-    return () => clearInterval(id);
-  }, [list.length]);
-
-  const handleChangeImage = () => {
-    if (!window.HMSSiteContent) return;
-    window.HMSSiteContent.pickImageFile((url) => {
-      if (!url) return;
-      window.HMSSiteContent.updateHeroSlide(list[active].id, { img: url }, DEFAULT_HERO_SLIDES);
-    });
-  };
-
-  return (
-    <>
-      {list.map((slide, i) => (
-        <img
-          key={slide.id}
-          className={`hero-slide-img${i === active ? ' is-active' : ''}`}
-          src={slide.img}
-          alt="SPC Hotel"
-        />
-      ))}
-      <div className="hero-dots" data-hms-no-edit="1">
-        {list.map((slide, i) => (
-          <button
-            key={slide.id}
-            type="button"
-            className={`hero-dot${i === active ? ' is-active' : ''}`}
-            aria-label={'Slide ' + (i + 1)}
-            onClick={() => setActive(i)}
-          ></button>
-        ))}
-      </div>
-      {canEdit && (
-        <button type="button" className="hero-edit-btn" data-hms-no-edit="1" onClick={handleChangeImage}>
-          <i className="fa-solid fa-image" style={{ fontSize: 10 }}></i> Change image
-        </button>
-      )}
-    </>
-  );
-}
-
-function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides }) {
+function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom }) {
   const roomList = rooms && rooms.length ? rooms : [];
   const menuList = menus || [];
 
@@ -2562,7 +1886,7 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
     <>
       <div className="hero-split" data-hms-section="hero">
         <div className="hero-img" data-hms-bg-target="1">
-          <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} />
+          <img src="https://picsum.photos/seed/resortlux/1200/900.jpg" alt="SPC Hotel" />
         </div>
         <div className="hero-content">
           <span className="section-num">Est. 1923</span>
@@ -3372,7 +2696,7 @@ function Footer({ onNav, cardImages, page }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.85rem' }}>
               <BrandLogo size={30} />
-              <span data-hms-text="1" data-hms-brand-name="1" style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#fff' }}>SPC HOTEL</span>
+              <span style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#fff' }}>SPC HOTEL</span>
             </div>
             <p style={{ fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem', color: 'rgba(247,244,239,0.6)' }}>A sanctuary of refined hospitality. Where every guest becomes part of our story.</p>
             <div style={{ display: 'flex', gap: '0.65rem' }}>
@@ -3457,10 +2781,6 @@ function App() {
   const [cardImages, setCardImages] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getCardImages ? window.HMSSiteContent.getCardImages() : {}
   ));
-  const [heroSlides, setHeroSlidesState] = useState(() => (
-    window.HMSSiteContent ? window.HMSSiteContent.getHeroSlides(DEFAULT_HERO_SLIDES) : DEFAULT_HERO_SLIDES
-  ));
-  const [canEditHeroSlides, setCanEditHeroSlides] = useState(false);
 
   // In-flight room writes — a poll that lands mid-write would show stale data.
   const pendingWrites = useRef(0);
@@ -3524,12 +2844,6 @@ function App() {
     setNavLinks(window.HMSSiteContent.getNav());
     // Rooms and menus come from the DB API — do NOT overwrite with customizations
     if (window.HMSSiteContent.getCardImages) setCardImages(window.HMSSiteContent.getCardImages());
-    setHeroSlidesState(window.HMSSiteContent.getHeroSlides(DEFAULT_HERO_SLIDES));
-    setCanEditHeroSlides(
-      typeof window.HMSSiteContent.canEditHeroSlides === 'function'
-        ? window.HMSSiteContent.canEditHeroSlides()
-        : false
-    );
     setCanEditNav(window.HMSSiteContent.canEditNav());
     setCanEditRooms(window.HMSSiteContent.canEditRooms());
     setCanManageRooms(
@@ -3572,10 +2886,7 @@ function App() {
 
   const navigateTo = useCallback((target, opts) => {
     if (!(opts && opts.force) && !isSiteInteractive()) return;
-    // Both auth screens are real pages in this template rather than overlays, so
-    // neither is folded into home any more. 'login' is the older name for the
-    // sign-in target and still resolves, in case a saved nav link carries it.
-    const next = target === 'login' ? 'signin' : target;
+    const next = (target === 'login' || target === 'signup') ? 'home' : target;
     setPage(next);
     window.__HMS_CURRENT_PAGE__ = next;
     window.scrollTo({ top: 0 });
@@ -3793,8 +3104,6 @@ function App() {
         rooms={rooms}
         menus={menus}
         canEditRooms={canEditRooms}
-        heroSlides={heroSlides}
-        canEditHeroSlides={canEditHeroSlides}
         onAddRoom={addRoom}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
@@ -3835,11 +3144,6 @@ function App() {
     experience: <ExperiencePage onNav={navigateTo} onToast={showToast} canEdit={canEditExperiences} cardImages={cardImages} />,
     amenities: <AmenitiesPage onNav={navigateTo} addons={addons} />,
     booking: <BookingPage onToast={showToast} rooms={rooms} />,
-    // Reached from the Sign in / Sign up buttons, not from the navigation menu —
-    // both are deliberately absent from PAGE_OPTIONS so a nav link cannot point
-    // at them.
-    signup: <SignUpPage onNav={navigateTo} onToast={showToast} />,
-    signin: <SignInPage onNav={navigateTo} onToast={showToast} />,
   };
 
   return (
@@ -3863,7 +3167,6 @@ function App() {
         onNav={navigateTo}
         links={navLinks}
         cardImages={cardImages}
-        onToast={showToast}
       />
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
       <Footer onNav={navigateTo} cardImages={cardImages} page={page} />

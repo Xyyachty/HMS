@@ -28,12 +28,12 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `activity_logs` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `user_id` bigint(20) UNSIGNED NOT NULL,
-  `role` varchar(32) NOT NULL DEFAULT '',
-  `activity` varchar(64) NOT NULL,
-  `description` varchar(500) NOT NULL DEFAULT '',
-  `created_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`user_id` bigint(20) UNSIGNED NOT NULL,
+`role` varchar(32) NOT NULL DEFAULT '',
+`activity` varchar(64) NOT NULL,
+`description` varchar(500) NOT NULL DEFAULT '',
+`created_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -111,13 +111,13 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `role`, `activity`, `description`,
 --
 
 CREATE TABLE `faculties` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `user_id` bigint(20) UNSIGNED NOT NULL,
-  `phone_number` varchar(255) DEFAULT NULL,
-  `status` varchar(255) NOT NULL DEFAULT 'active',
-  `block` varchar(5) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`user_id` bigint(20) UNSIGNED NOT NULL,
+`phone_number` varchar(255) DEFAULT NULL,
+`status` varchar(255) NOT NULL DEFAULT 'active',
+`block` varchar(5) DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -134,15 +134,15 @@ INSERT INTO `faculties` (`id`, `user_id`, `phone_number`, `status`, `block`, `cr
 --
 
 CREATE TABLE `faculty_classes` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `letter` varchar(8) NOT NULL,
-  `capacity` smallint(5) UNSIGNED NOT NULL DEFAULT 40,
-  `status` varchar(20) NOT NULL DEFAULT 'open',
-  `sort_order` smallint(5) UNSIGNED NOT NULL DEFAULT 1,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`faculty_id` bigint(20) UNSIGNED NOT NULL,
+`name` varchar(255) NOT NULL,
+`letter` varchar(8) NOT NULL,
+`capacity` smallint(5) UNSIGNED NOT NULL DEFAULT 40,
+`status` varchar(20) NOT NULL DEFAULT 'open',
+`sort_order` smallint(5) UNSIGNED NOT NULL DEFAULT 1,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -160,14 +160,14 @@ INSERT INTO `faculty_classes` (`id`, `faculty_id`, `name`, `letter`, `capacity`,
 --
 
 CREATE TABLE `front_desk_activities` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `canvas_id` bigint(20) UNSIGNED NOT NULL,
-  `user_id` bigint(20) UNSIGNED NOT NULL,
-  `action` varchar(255) NOT NULL,
-  `description` text DEFAULT NULL,
-  `metadata` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`metadata`)),
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`canvas_id` bigint(20) UNSIGNED NOT NULL,
+`user_id` bigint(20) UNSIGNED NOT NULL,
+`action` varchar(255) NOT NULL,
+`description` text DEFAULT NULL,
+`metadata` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`metadata`)),
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -177,16 +177,16 @@ CREATE TABLE `front_desk_activities` (
 --
 
 CREATE TABLE `front_desk_canvases` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `user_id` bigint(20) UNSIGNED NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `student_group_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `canvas_mode` enum('custom','default') NOT NULL DEFAULT 'custom',
-  `widgets` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`widgets`)),
-  `default_html` longtext DEFAULT NULL,
-  `status` enum('draft','published') NOT NULL DEFAULT 'draft',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`user_id` bigint(20) UNSIGNED NOT NULL,
+`faculty_id` bigint(20) UNSIGNED DEFAULT NULL,
+`student_group_id` bigint(20) UNSIGNED DEFAULT NULL,
+`canvas_mode` enum('custom','default') NOT NULL DEFAULT 'custom',
+`widgets` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`widgets`)),
+`default_html` longtext DEFAULT NULL,
+`status` enum('draft','published') NOT NULL DEFAULT 'draft',
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -196,13 +196,13 @@ CREATE TABLE `front_desk_canvases` (
 --
 
 CREATE TABLE `group_settings` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `group_name` varchar(255) NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED NOT NULL,
-  `selected_template` varchar(255) DEFAULT NULL,
-  `is_published` tinyint(1) NOT NULL DEFAULT 0,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`group_name` varchar(255) NOT NULL,
+`faculty_id` bigint(20) UNSIGNED NOT NULL,
+`selected_template` varchar(255) DEFAULT NULL,
+`is_published` tinyint(1) NOT NULL DEFAULT 0,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -219,14 +219,14 @@ INSERT INTO `group_settings` (`id`, `group_name`, `faculty_id`, `selected_templa
 --
 
 CREATE TABLE `hotel_customers` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `group_name` varchar(255) NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `email` varchar(255) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`group_name` varchar(255) NOT NULL,
+`faculty_id` bigint(20) UNSIGNED NOT NULL,
+`name` varchar(255) NOT NULL,
+`email` varchar(255) NOT NULL,
+`password` varchar(255) NOT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -244,17 +244,17 @@ INSERT INTO `hotel_customers` (`id`, `group_name`, `faculty_id`, `name`, `email`
 --
 
 CREATE TABLE `hotel_food_orders` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `group_name` varchar(255) NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED NOT NULL,
-  `room_number` varchar(255) NOT NULL,
-  `guest_name` varchar(255) NOT NULL,
-  `items` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`items`)),
-  `total` int(10) UNSIGNED NOT NULL DEFAULT 0,
-  `status` varchar(255) NOT NULL DEFAULT 'Pending',
-  `placed_by` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`group_name` varchar(255) NOT NULL,
+`faculty_id` bigint(20) UNSIGNED NOT NULL,
+`room_number` varchar(255) NOT NULL,
+`guest_name` varchar(255) NOT NULL,
+`items` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`items`)),
+`total` int(10) UNSIGNED NOT NULL DEFAULT 0,
+`status` varchar(255) NOT NULL DEFAULT 'Pending',
+`placed_by` varchar(255) DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -264,17 +264,17 @@ CREATE TABLE `hotel_food_orders` (
 --
 
 CREATE TABLE `hotel_menu_items` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `group_name` varchar(255) NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `category` varchar(255) NOT NULL DEFAULT 'Main Dishes',
-  `price` int(10) UNSIGNED NOT NULL DEFAULT 0,
-  `stock` int(10) UNSIGNED NOT NULL DEFAULT 0,
-  `description` varchar(255) DEFAULT NULL,
-  `image` longtext DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`group_name` varchar(255) NOT NULL,
+`faculty_id` bigint(20) UNSIGNED NOT NULL,
+`name` varchar(255) NOT NULL,
+`category` varchar(255) NOT NULL DEFAULT 'Main Dishes',
+`price` int(10) UNSIGNED NOT NULL DEFAULT 0,
+`stock` int(10) UNSIGNED NOT NULL DEFAULT 0,
+`description` varchar(255) DEFAULT NULL,
+`image` longtext DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -306,18 +306,18 @@ INSERT INTO `hotel_menu_items` (`id`, `group_name`, `faculty_id`, `name`, `categ
 --
 
 CREATE TABLE `hotel_rooms` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `group_name` varchar(255) NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `category` varchar(255) NOT NULL DEFAULT 'Classic',
-  `status` varchar(255) NOT NULL DEFAULT 'Available',
-  `reservation` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`reservation`)),
-  `price` int(10) UNSIGNED NOT NULL DEFAULT 0,
-  `description` text DEFAULT NULL,
-  `image` longtext DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`group_name` varchar(255) NOT NULL,
+`faculty_id` bigint(20) UNSIGNED NOT NULL,
+`name` varchar(255) NOT NULL,
+`category` varchar(255) NOT NULL DEFAULT 'Classic',
+`status` varchar(255) NOT NULL DEFAULT 'Available',
+`reservation` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`reservation`)),
+`price` int(10) UNSIGNED NOT NULL DEFAULT 0,
+`description` text DEFAULT NULL,
+`image` longtext DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -344,9 +344,9 @@ INSERT INTO `hotel_rooms` (`id`, `group_name`, `faculty_id`, `name`, `category`,
 --
 
 CREATE TABLE `migrations` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `migration` varchar(255) NOT NULL,
-  `batch` int(11) NOT NULL
+`id` int(10) UNSIGNED NOT NULL,
+`migration` varchar(255) NOT NULL,
+`batch` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -410,19 +410,19 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 --
 
 CREATE TABLE `reservation_notifications` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `group_name` varchar(100) NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED NOT NULL,
-  `room_id` varchar(100) NOT NULL,
-  `room_name` varchar(255) DEFAULT NULL,
-  `guest_name` varchar(255) DEFAULT NULL,
-  `check_in` date DEFAULT NULL,
-  `check_out` date DEFAULT NULL,
-  `acknowledged` tinyint(1) NOT NULL DEFAULT 0,
-  `acknowledged_at` timestamp NULL DEFAULT NULL,
-  `recorded_by` bigint(20) UNSIGNED DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`group_name` varchar(100) NOT NULL,
+`faculty_id` bigint(20) UNSIGNED NOT NULL,
+`room_id` varchar(100) NOT NULL,
+`room_name` varchar(255) DEFAULT NULL,
+`guest_name` varchar(255) DEFAULT NULL,
+`check_in` date DEFAULT NULL,
+`check_out` date DEFAULT NULL,
+`acknowledged` tinyint(1) NOT NULL DEFAULT 0,
+`acknowledged_at` timestamp NULL DEFAULT NULL,
+`recorded_by` bigint(20) UNSIGNED DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -432,13 +432,13 @@ CREATE TABLE `reservation_notifications` (
 --
 
 CREATE TABLE `students` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `user_id` bigint(20) UNSIGNED NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `faculty_class_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `student_id` varchar(255) NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`user_id` bigint(20) UNSIGNED NOT NULL,
+`faculty_id` bigint(20) UNSIGNED DEFAULT NULL,
+`faculty_class_id` bigint(20) UNSIGNED DEFAULT NULL,
+`student_id` varchar(255) NOT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -498,13 +498,13 @@ INSERT INTO `students` (`id`, `user_id`, `faculty_id`, `faculty_class_id`, `stud
 --
 
 CREATE TABLE `student_groups` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `group_name` varchar(255) NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `student_id` bigint(20) UNSIGNED NOT NULL,
-  `role` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`group_name` varchar(255) NOT NULL,
+`faculty_id` bigint(20) UNSIGNED DEFAULT NULL,
+`student_id` bigint(20) UNSIGNED NOT NULL,
+`role` varchar(255) DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -560,11 +560,11 @@ INSERT INTO `student_groups` (`id`, `group_name`, `faculty_id`, `student_id`, `r
 --
 
 CREATE TABLE `student_group_roles` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `student_group_id` bigint(20) UNSIGNED NOT NULL,
-  `role` varchar(255) NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`student_group_id` bigint(20) UNSIGNED NOT NULL,
+`role` varchar(255) NOT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -621,22 +621,22 @@ INSERT INTO `student_group_roles` (`id`, `student_group_id`, `role`, `created_at
 --
 
 CREATE TABLE `tasks` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED NOT NULL,
-  `student_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `assigned_to` bigint(20) UNSIGNED DEFAULT NULL,
-  `role` enum('front_desk','restaurant_management','room_management','maintenance','housekeeping') NOT NULL,
-  `title` varchar(255) NOT NULL,
-  `description` text DEFAULT NULL,
-  `due_date` date DEFAULT NULL,
-  `priority` enum('low','medium','high') NOT NULL DEFAULT 'medium',
-  `status` enum('active','archived') NOT NULL DEFAULT 'active',
-  `feedback` text DEFAULT NULL,
-  `feedback_at` timestamp NULL DEFAULT NULL,
-  `feedback_by` bigint(20) UNSIGNED DEFAULT NULL,
-  `revision_count` tinyint(3) UNSIGNED NOT NULL DEFAULT 0,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`faculty_id` bigint(20) UNSIGNED NOT NULL,
+`student_id` bigint(20) UNSIGNED DEFAULT NULL,
+`assigned_to` bigint(20) UNSIGNED DEFAULT NULL,
+`role` enum('front_desk','restaurant_management','room_management','maintenance','housekeeping') NOT NULL,
+`title` varchar(255) NOT NULL,
+`description` text DEFAULT NULL,
+`due_date` date DEFAULT NULL,
+`priority` enum('low','medium','high') NOT NULL DEFAULT 'medium',
+`status` enum('active','archived') NOT NULL DEFAULT 'active',
+`feedback` text DEFAULT NULL,
+`feedback_at` timestamp NULL DEFAULT NULL,
+`feedback_by` bigint(20) UNSIGNED DEFAULT NULL,
+`revision_count` tinyint(3) UNSIGNED NOT NULL DEFAULT 0,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -674,16 +674,16 @@ INSERT INTO `tasks` (`id`, `faculty_id`, `student_id`, `assigned_to`, `role`, `t
 --
 
 CREATE TABLE `team_role_templates` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `group_name` varchar(255) NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED NOT NULL,
-  `role` varchar(64) NOT NULL,
-  `selected_template` varchar(255) DEFAULT NULL,
-  `is_published` tinyint(1) NOT NULL DEFAULT 0,
-  `version` int(10) UNSIGNED NOT NULL DEFAULT 1,
-  `updated_by` bigint(20) UNSIGNED DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`group_name` varchar(255) NOT NULL,
+`faculty_id` bigint(20) UNSIGNED NOT NULL,
+`role` varchar(64) NOT NULL,
+`selected_template` varchar(255) DEFAULT NULL,
+`is_published` tinyint(1) NOT NULL DEFAULT 0,
+`version` int(10) UNSIGNED NOT NULL DEFAULT 1,
+`updated_by` bigint(20) UNSIGNED DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -703,15 +703,15 @@ INSERT INTO `team_role_templates` (`id`, `group_name`, `faculty_id`, `role`, `se
 --
 
 CREATE TABLE `team_role_template_versions` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `team_role_template_id` bigint(20) UNSIGNED NOT NULL,
-  `version` int(10) UNSIGNED NOT NULL,
-  `selected_template` varchar(255) DEFAULT NULL,
-  `is_published` tinyint(1) NOT NULL DEFAULT 0,
-  `label` varchar(255) DEFAULT NULL,
-  `created_by` bigint(20) UNSIGNED DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`team_role_template_id` bigint(20) UNSIGNED NOT NULL,
+`version` int(10) UNSIGNED NOT NULL,
+`selected_template` varchar(255) DEFAULT NULL,
+`is_published` tinyint(1) NOT NULL DEFAULT 0,
+`label` varchar(255) DEFAULT NULL,
+`created_by` bigint(20) UNSIGNED DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -738,14 +738,14 @@ INSERT INTO `team_role_template_versions` (`id`, `team_role_template_id`, `versi
 --
 
 CREATE TABLE `team_template_edit_grants` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `faculty_id` bigint(20) UNSIGNED NOT NULL,
-  `group_name` varchar(255) NOT NULL,
-  `student_id` bigint(20) UNSIGNED NOT NULL,
-  `role` varchar(64) NOT NULL,
-  `granted_by` bigint(20) UNSIGNED DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`faculty_id` bigint(20) UNSIGNED NOT NULL,
+`group_name` varchar(255) NOT NULL,
+`student_id` bigint(20) UNSIGNED NOT NULL,
+`role` varchar(64) NOT NULL,
+`granted_by` bigint(20) UNSIGNED DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -755,12 +755,12 @@ CREATE TABLE `team_template_edit_grants` (
 --
 
 CREATE TABLE `template_content_fields` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `content_item_id` bigint(20) UNSIGNED NOT NULL,
-  `field_name` varchar(120) NOT NULL,
-  `field_value` longtext DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`content_item_id` bigint(20) UNSIGNED NOT NULL,
+`field_name` varchar(120) NOT NULL,
+`field_value` longtext DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -1002,15 +1002,15 @@ INSERT INTO `template_content_fields` (`id`, `content_item_id`, `field_name`, `f
 --
 
 CREATE TABLE `template_content_items` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `team_role_template_id` bigint(20) UNSIGNED NOT NULL,
-  `version_id` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
-  `collection` varchar(64) NOT NULL,
-  `sort_order` int(10) UNSIGNED NOT NULL DEFAULT 0,
-  `item_ref` varchar(120) DEFAULT NULL,
-  `parent_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`team_role_template_id` bigint(20) UNSIGNED NOT NULL,
+`version_id` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+`collection` varchar(64) NOT NULL,
+`sort_order` int(10) UNSIGNED NOT NULL DEFAULT 0,
+`item_ref` varchar(120) DEFAULT NULL,
+`parent_id` bigint(20) UNSIGNED DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -1092,63 +1092,63 @@ INSERT INTO `template_content_items` (`id`, `team_role_template_id`, `version_id
 --
 
 CREATE TABLE `template_elements` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `team_role_template_id` bigint(20) UNSIGNED NOT NULL,
-  `version_id` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
-  `element_key` text NOT NULL,
-  `hms_id` varchar(120) DEFAULT NULL,
-  `page` varchar(64) DEFAULT NULL,
-  `free_position` tinyint(1) NOT NULL DEFAULT 0,
-  `move_mode` varchar(40) DEFAULT NULL,
-  `keep_fixed` tinyint(1) NOT NULL DEFAULT 0,
-  `text_content` text DEFAULT NULL,
-  `icon_class` varchar(255) DEFAULT NULL,
-  `display_value` varchar(255) DEFAULT NULL,
-  `image_src` varchar(500) DEFAULT NULL,
-  `image_background` varchar(500) DEFAULT NULL,
-  `color` varchar(120) DEFAULT NULL,
-  `background_color` varchar(120) DEFAULT NULL,
-  `font_family` varchar(255) DEFAULT NULL,
-  `font_weight` varchar(40) DEFAULT NULL,
-  `font_style` varchar(40) DEFAULT NULL,
-  `text_decoration` varchar(80) DEFAULT NULL,
-  `font_size` varchar(40) DEFAULT NULL,
-  `text_align` varchar(40) DEFAULT NULL,
-  `line_height` varchar(40) DEFAULT NULL,
-  `letter_spacing` varchar(40) DEFAULT NULL,
-  `background_size` varchar(80) DEFAULT NULL,
-  `background_position` varchar(80) DEFAULT NULL,
-  `background_repeat` varchar(40) DEFAULT NULL,
-  `padding` varchar(80) DEFAULT NULL,
-  `padding_top` varchar(40) DEFAULT NULL,
-  `padding_right` varchar(40) DEFAULT NULL,
-  `padding_bottom` varchar(40) DEFAULT NULL,
-  `padding_left` varchar(40) DEFAULT NULL,
-  `margin` varchar(80) DEFAULT NULL,
-  `margin_top` varchar(40) DEFAULT NULL,
-  `margin_right` varchar(40) DEFAULT NULL,
-  `margin_bottom` varchar(40) DEFAULT NULL,
-  `margin_left` varchar(40) DEFAULT NULL,
-  `border` varchar(120) DEFAULT NULL,
-  `border_radius` varchar(80) DEFAULT NULL,
-  `box_shadow` varchar(255) DEFAULT NULL,
-  `opacity` varchar(20) DEFAULT NULL,
-  `position` varchar(40) DEFAULT NULL,
-  `top` varchar(40) DEFAULT NULL,
-  `left_pos` varchar(40) DEFAULT NULL,
-  `right_pos` varchar(40) DEFAULT NULL,
-  `bottom_pos` varchar(40) DEFAULT NULL,
-  `width` varchar(40) DEFAULT NULL,
-  `height` varchar(40) DEFAULT NULL,
-  `max_width` varchar(40) DEFAULT NULL,
-  `min_width` varchar(40) DEFAULT NULL,
-  `min_height` varchar(40) DEFAULT NULL,
-  `z_index` varchar(20) DEFAULT NULL,
-  `transform` varchar(255) DEFAULT NULL,
-  `display` varchar(40) DEFAULT NULL,
-  `overflow` varchar(40) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`team_role_template_id` bigint(20) UNSIGNED NOT NULL,
+`version_id` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+`element_key` text NOT NULL,
+`hms_id` varchar(120) DEFAULT NULL,
+`page` varchar(64) DEFAULT NULL,
+`free_position` tinyint(1) NOT NULL DEFAULT 0,
+`move_mode` varchar(40) DEFAULT NULL,
+`keep_fixed` tinyint(1) NOT NULL DEFAULT 0,
+`text_content` text DEFAULT NULL,
+`icon_class` varchar(255) DEFAULT NULL,
+`display_value` varchar(255) DEFAULT NULL,
+`image_src` varchar(500) DEFAULT NULL,
+`image_background` varchar(500) DEFAULT NULL,
+`color` varchar(120) DEFAULT NULL,
+`background_color` varchar(120) DEFAULT NULL,
+`font_family` varchar(255) DEFAULT NULL,
+`font_weight` varchar(40) DEFAULT NULL,
+`font_style` varchar(40) DEFAULT NULL,
+`text_decoration` varchar(80) DEFAULT NULL,
+`font_size` varchar(40) DEFAULT NULL,
+`text_align` varchar(40) DEFAULT NULL,
+`line_height` varchar(40) DEFAULT NULL,
+`letter_spacing` varchar(40) DEFAULT NULL,
+`background_size` varchar(80) DEFAULT NULL,
+`background_position` varchar(80) DEFAULT NULL,
+`background_repeat` varchar(40) DEFAULT NULL,
+`padding` varchar(80) DEFAULT NULL,
+`padding_top` varchar(40) DEFAULT NULL,
+`padding_right` varchar(40) DEFAULT NULL,
+`padding_bottom` varchar(40) DEFAULT NULL,
+`padding_left` varchar(40) DEFAULT NULL,
+`margin` varchar(80) DEFAULT NULL,
+`margin_top` varchar(40) DEFAULT NULL,
+`margin_right` varchar(40) DEFAULT NULL,
+`margin_bottom` varchar(40) DEFAULT NULL,
+`margin_left` varchar(40) DEFAULT NULL,
+`border` varchar(120) DEFAULT NULL,
+`border_radius` varchar(80) DEFAULT NULL,
+`box_shadow` varchar(255) DEFAULT NULL,
+`opacity` varchar(20) DEFAULT NULL,
+`position` varchar(40) DEFAULT NULL,
+`top` varchar(40) DEFAULT NULL,
+`left_pos` varchar(40) DEFAULT NULL,
+`right_pos` varchar(40) DEFAULT NULL,
+`bottom_pos` varchar(40) DEFAULT NULL,
+`width` varchar(40) DEFAULT NULL,
+`height` varchar(40) DEFAULT NULL,
+`max_width` varchar(40) DEFAULT NULL,
+`min_width` varchar(40) DEFAULT NULL,
+`min_height` varchar(40) DEFAULT NULL,
+`z_index` varchar(20) DEFAULT NULL,
+`transform` varchar(255) DEFAULT NULL,
+`display` varchar(40) DEFAULT NULL,
+`overflow` varchar(40) DEFAULT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -1279,14 +1279,14 @@ INSERT INTO `template_elements` (`id`, `team_role_template_id`, `version_id`, `e
 --
 
 CREATE TABLE `template_images` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `team_role_template_id` bigint(20) UNSIGNED NOT NULL,
-  `version_id` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
-  `element_key` text NOT NULL,
-  `kind` varchar(40) NOT NULL DEFAULT 'src',
-  `image_path` varchar(500) NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`team_role_template_id` bigint(20) UNSIGNED NOT NULL,
+`version_id` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+`element_key` text NOT NULL,
+`kind` varchar(40) NOT NULL DEFAULT 'src',
+`image_path` varchar(500) NOT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -1326,14 +1326,14 @@ INSERT INTO `template_images` (`id`, `team_role_template_id`, `version_id`, `ele
 --
 
 CREATE TABLE `template_layouts` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `team_role_template_id` bigint(20) UNSIGNED NOT NULL,
-  `version_id` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
-  `sort_order` int(10) UNSIGNED NOT NULL DEFAULT 0,
-  `section_id` varchar(120) NOT NULL,
-  `is_visible` tinyint(1) NOT NULL DEFAULT 1,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`team_role_template_id` bigint(20) UNSIGNED NOT NULL,
+`version_id` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+`sort_order` int(10) UNSIGNED NOT NULL DEFAULT 0,
+`section_id` varchar(120) NOT NULL,
+`is_visible` tinyint(1) NOT NULL DEFAULT 1,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -1429,22 +1429,22 @@ INSERT INTO `template_layouts` (`id`, `team_role_template_id`, `version_id`, `so
 --
 
 CREATE TABLE `users` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `first_name` varchar(255) DEFAULT NULL,
-  `middle_name` varchar(255) DEFAULT NULL,
-  `last_name` varchar(255) DEFAULT NULL,
-  `email` varchar(255) NOT NULL,
-  `phone_number` varchar(255) DEFAULT NULL,
-  `avatar` varchar(255) DEFAULT NULL,
-  `email_verified_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `password` varchar(255) NOT NULL,
-  `role` varchar(255) NOT NULL DEFAULT 'student',
-  `status` varchar(255) NOT NULL DEFAULT 'active',
-  `remember_token` varchar(100) NOT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  `last_seen_at` timestamp NULL DEFAULT NULL
+`id` bigint(20) UNSIGNED NOT NULL,
+`name` varchar(255) NOT NULL,
+`first_name` varchar(255) DEFAULT NULL,
+`middle_name` varchar(255) DEFAULT NULL,
+`last_name` varchar(255) DEFAULT NULL,
+`email` varchar(255) NOT NULL,
+`phone_number` varchar(255) DEFAULT NULL,
+`avatar` varchar(255) DEFAULT NULL,
+`email_verified_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+`password` varchar(255) NOT NULL,
+`role` varchar(255) NOT NULL DEFAULT 'student',
+`status` varchar(255) NOT NULL DEFAULT 'active',
+`remember_token` varchar(100) NOT NULL,
+`created_at` timestamp NULL DEFAULT NULL,
+`updated_at` timestamp NULL DEFAULT NULL,
+`last_seen_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -1507,201 +1507,201 @@ INSERT INTO `users` (`id`, `name`, `first_name`, `middle_name`, `last_name`, `em
 -- Indexes for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `activity_logs_user_id_created_at_index` (`user_id`,`created_at`),
-  ADD KEY `activity_logs_activity_index` (`activity`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `activity_logs_user_id_created_at_index` (`user_id`,`created_at`),
+ADD KEY `activity_logs_activity_index` (`activity`);
 
 --
 -- Indexes for table `faculties`
 --
 ALTER TABLE `faculties`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `faculties_block_unique` (`block`),
-  ADD KEY `faculties_user_id_foreign` (`user_id`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `faculties_block_unique` (`block`),
+ADD KEY `faculties_user_id_foreign` (`user_id`);
 
 --
 -- Indexes for table `faculty_classes`
 --
 ALTER TABLE `faculty_classes`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `faculty_classes_faculty_id_letter_unique` (`faculty_id`,`letter`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `faculty_classes_faculty_id_letter_unique` (`faculty_id`,`letter`);
 
 --
 -- Indexes for table `front_desk_activities`
 --
 ALTER TABLE `front_desk_activities`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `front_desk_activities_user_id_action_index` (`user_id`,`action`),
-  ADD KEY `front_desk_activities_canvas_id_index` (`canvas_id`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `front_desk_activities_user_id_action_index` (`user_id`,`action`),
+ADD KEY `front_desk_activities_canvas_id_index` (`canvas_id`);
 
 --
 -- Indexes for table `front_desk_canvases`
 --
 ALTER TABLE `front_desk_canvases`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `front_desk_canvases_faculty_id_foreign` (`faculty_id`),
-  ADD KEY `front_desk_canvases_student_group_id_foreign` (`student_group_id`),
-  ADD KEY `front_desk_canvases_user_id_faculty_id_index` (`user_id`,`faculty_id`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `front_desk_canvases_faculty_id_foreign` (`faculty_id`),
+ADD KEY `front_desk_canvases_student_group_id_foreign` (`student_group_id`),
+ADD KEY `front_desk_canvases_user_id_faculty_id_index` (`user_id`,`faculty_id`);
 
 --
 -- Indexes for table `group_settings`
 --
 ALTER TABLE `group_settings`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `group_settings_group_name_faculty_id_unique` (`group_name`,`faculty_id`),
-  ADD KEY `group_settings_faculty_id_foreign` (`faculty_id`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `group_settings_group_name_faculty_id_unique` (`group_name`,`faculty_id`),
+ADD KEY `group_settings_faculty_id_foreign` (`faculty_id`);
 
 --
 -- Indexes for table `hotel_customers`
 --
 ALTER TABLE `hotel_customers`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `hotel_customers_team_email_unique` (`group_name`,`faculty_id`,`email`),
-  ADD KEY `hotel_customers_group_name_faculty_id_index` (`group_name`,`faculty_id`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `hotel_customers_team_email_unique` (`group_name`,`faculty_id`,`email`),
+ADD KEY `hotel_customers_group_name_faculty_id_index` (`group_name`,`faculty_id`);
 
 --
 -- Indexes for table `hotel_food_orders`
 --
 ALTER TABLE `hotel_food_orders`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `hotel_food_orders_group_name_faculty_id_index` (`group_name`,`faculty_id`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `hotel_food_orders_group_name_faculty_id_index` (`group_name`,`faculty_id`);
 
 --
 -- Indexes for table `hotel_menu_items`
 --
 ALTER TABLE `hotel_menu_items`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `hotel_menu_items_group_name_faculty_id_index` (`group_name`,`faculty_id`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `hotel_menu_items_group_name_faculty_id_index` (`group_name`,`faculty_id`);
 
 --
 -- Indexes for table `hotel_rooms`
 --
 ALTER TABLE `hotel_rooms`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `hotel_rooms_group_name_faculty_id_index` (`group_name`,`faculty_id`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `hotel_rooms_group_name_faculty_id_index` (`group_name`,`faculty_id`);
 
 --
 -- Indexes for table `migrations`
 --
 ALTER TABLE `migrations`
-  ADD PRIMARY KEY (`id`);
+ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `reservation_notifications`
 --
 ALTER TABLE `reservation_notifications`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `reservation_notifications_group_name_faculty_id_index` (`group_name`,`faculty_id`),
-  ADD KEY `reservation_notifications_acknowledged_created_at_index` (`acknowledged`,`created_at`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `reservation_notifications_group_name_faculty_id_index` (`group_name`,`faculty_id`),
+ADD KEY `reservation_notifications_acknowledged_created_at_index` (`acknowledged`,`created_at`);
 
 --
 -- Indexes for table `students`
 --
 ALTER TABLE `students`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `students_student_id_unique` (`student_id`),
-  ADD KEY `students_user_id_foreign` (`user_id`),
-  ADD KEY `students_faculty_id_foreign` (`faculty_id`),
-  ADD KEY `students_faculty_class_id_foreign` (`faculty_class_id`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `students_student_id_unique` (`student_id`),
+ADD KEY `students_user_id_foreign` (`user_id`),
+ADD KEY `students_faculty_id_foreign` (`faculty_id`),
+ADD KEY `students_faculty_class_id_foreign` (`faculty_class_id`);
 
 --
 -- Indexes for table `student_groups`
 --
 ALTER TABLE `student_groups`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `student_groups_group_name_student_id_unique` (`group_name`,`student_id`),
-  ADD KEY `student_groups_student_id_foreign` (`student_id`),
-  ADD KEY `student_groups_faculty_id_foreign` (`faculty_id`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `student_groups_group_name_student_id_unique` (`group_name`,`student_id`),
+ADD KEY `student_groups_student_id_foreign` (`student_id`),
+ADD KEY `student_groups_faculty_id_foreign` (`faculty_id`);
 
 --
 -- Indexes for table `student_group_roles`
 --
 ALTER TABLE `student_group_roles`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `student_group_roles_student_group_id_role_unique` (`student_group_id`,`role`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `student_group_roles_student_group_id_role_unique` (`student_group_id`,`role`);
 
 --
 -- Indexes for table `tasks`
 --
 ALTER TABLE `tasks`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `tasks_faculty_id_foreign` (`faculty_id`),
-  ADD KEY `tasks_assigned_to_foreign` (`assigned_to`),
-  ADD KEY `tasks_student_id_foreign` (`student_id`),
-  ADD KEY `tasks_feedback_by_foreign` (`feedback_by`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `tasks_faculty_id_foreign` (`faculty_id`),
+ADD KEY `tasks_assigned_to_foreign` (`assigned_to`),
+ADD KEY `tasks_student_id_foreign` (`student_id`),
+ADD KEY `tasks_feedback_by_foreign` (`feedback_by`);
 
 --
 -- Indexes for table `team_role_templates`
 --
 ALTER TABLE `team_role_templates`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `team_role_templates_unique` (`group_name`,`faculty_id`,`role`),
-  ADD KEY `team_role_templates_updated_by_foreign` (`updated_by`),
-  ADD KEY `team_role_templates_faculty_id_group_name_index` (`faculty_id`,`group_name`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `team_role_templates_unique` (`group_name`,`faculty_id`,`role`),
+ADD KEY `team_role_templates_updated_by_foreign` (`updated_by`),
+ADD KEY `team_role_templates_faculty_id_group_name_index` (`faculty_id`,`group_name`);
 
 --
 -- Indexes for table `team_role_template_versions`
 --
 ALTER TABLE `team_role_template_versions`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `team_role_template_versions_unique` (`team_role_template_id`,`version`),
-  ADD KEY `team_role_template_versions_created_by_foreign` (`created_by`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `team_role_template_versions_unique` (`team_role_template_id`,`version`),
+ADD KEY `team_role_template_versions_created_by_foreign` (`created_by`);
 
 --
 -- Indexes for table `team_template_edit_grants`
 --
 ALTER TABLE `team_template_edit_grants`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `team_template_edit_grants_unique` (`faculty_id`,`group_name`,`student_id`,`role`),
-  ADD KEY `team_template_edit_grants_student_id_foreign` (`student_id`),
-  ADD KEY `team_template_edit_grants_granted_by_foreign` (`granted_by`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `team_template_edit_grants_unique` (`faculty_id`,`group_name`,`student_id`,`role`),
+ADD KEY `team_template_edit_grants_student_id_foreign` (`student_id`),
+ADD KEY `team_template_edit_grants_granted_by_foreign` (`granted_by`);
 
 --
 -- Indexes for table `template_content_fields`
 --
 ALTER TABLE `template_content_fields`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `tpl_content_fields_idx` (`content_item_id`,`field_name`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `tpl_content_fields_idx` (`content_item_id`,`field_name`);
 
 --
 -- Indexes for table `template_content_items`
 --
 ALTER TABLE `template_content_items`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `template_content_items_parent_id_foreign` (`parent_id`),
-  ADD KEY `tpl_content_collection_idx` (`team_role_template_id`,`version_id`,`collection`),
-  ADD KEY `template_content_items_version_id_index` (`version_id`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `template_content_items_parent_id_foreign` (`parent_id`),
+ADD KEY `tpl_content_collection_idx` (`team_role_template_id`,`version_id`,`collection`),
+ADD KEY `template_content_items_version_id_index` (`version_id`);
 
 --
 -- Indexes for table `template_elements`
 --
 ALTER TABLE `template_elements`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `tpl_elements_template_version_idx` (`team_role_template_id`,`version_id`),
-  ADD KEY `template_elements_version_id_index` (`version_id`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `tpl_elements_template_version_idx` (`team_role_template_id`,`version_id`),
+ADD KEY `template_elements_version_id_index` (`version_id`);
 
 --
 -- Indexes for table `template_images`
 --
 ALTER TABLE `template_images`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `tpl_images_template_version_idx` (`team_role_template_id`,`version_id`),
-  ADD KEY `template_images_version_id_index` (`version_id`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `tpl_images_template_version_idx` (`team_role_template_id`,`version_id`),
+ADD KEY `template_images_version_id_index` (`version_id`);
 
 --
 -- Indexes for table `template_layouts`
 --
 ALTER TABLE `template_layouts`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `tpl_layouts_template_version_idx` (`team_role_template_id`,`version_id`),
-  ADD KEY `template_layouts_version_id_index` (`version_id`);
+ADD PRIMARY KEY (`id`),
+ADD KEY `tpl_layouts_template_version_idx` (`team_role_template_id`,`version_id`),
+ADD KEY `template_layouts_version_id_index` (`version_id`);
 
 --
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `users_email_unique` (`email`);
+ADD PRIMARY KEY (`id`),
+ADD UNIQUE KEY `users_email_unique` (`email`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -1711,151 +1711,151 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=63;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=63;
 
 --
 -- AUTO_INCREMENT for table `faculties`
 --
 ALTER TABLE `faculties`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `faculty_classes`
 --
 ALTER TABLE `faculty_classes`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `front_desk_activities`
 --
 ALTER TABLE `front_desk_activities`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `front_desk_canvases`
 --
 ALTER TABLE `front_desk_canvases`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `group_settings`
 --
 ALTER TABLE `group_settings`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `hotel_customers`
 --
 ALTER TABLE `hotel_customers`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `hotel_food_orders`
 --
 ALTER TABLE `hotel_food_orders`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `hotel_menu_items`
 --
 ALTER TABLE `hotel_menu_items`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `hotel_rooms`
 --
 ALTER TABLE `hotel_rooms`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
 
 --
 -- AUTO_INCREMENT for table `reservation_notifications`
 --
 ALTER TABLE `reservation_notifications`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=169;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=169;
 
 --
 -- AUTO_INCREMENT for table `student_groups`
 --
 ALTER TABLE `student_groups`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
 
 --
 -- AUTO_INCREMENT for table `student_group_roles`
 --
 ALTER TABLE `student_group_roles`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 
 --
 -- AUTO_INCREMENT for table `tasks`
 --
 ALTER TABLE `tasks`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `team_role_templates`
 --
 ALTER TABLE `team_role_templates`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `team_role_template_versions`
 --
 ALTER TABLE `team_role_template_versions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
 
 --
 -- AUTO_INCREMENT for table `team_template_edit_grants`
 --
 ALTER TABLE `team_template_edit_grants`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `template_content_fields`
 --
 ALTER TABLE `template_content_fields`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6233;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6233;
 
 --
 -- AUTO_INCREMENT for table `template_content_items`
 --
 ALTER TABLE `template_content_items`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1670;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1670;
 
 --
 -- AUTO_INCREMENT for table `template_elements`
 --
 ALTER TABLE `template_elements`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5003;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5003;
 
 --
 -- AUTO_INCREMENT for table `template_images`
 --
 ALTER TABLE `template_images`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=638;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=638;
 
 --
 -- AUTO_INCREMENT for table `template_layouts`
 --
 ALTER TABLE `template_layouts`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4101;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4101;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=173;
+MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=173;
 
 --
 -- Constraints for dumped tables
@@ -1865,123 +1865,123 @@ ALTER TABLE `users`
 -- Constraints for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  ADD CONSTRAINT `activity_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `activity_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `faculties`
 --
 ALTER TABLE `faculties`
-  ADD CONSTRAINT `faculties_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `faculties_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `faculty_classes`
 --
 ALTER TABLE `faculty_classes`
-  ADD CONSTRAINT `faculty_classes_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `faculty_classes_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `front_desk_activities`
 --
 ALTER TABLE `front_desk_activities`
-  ADD CONSTRAINT `front_desk_activities_canvas_id_foreign` FOREIGN KEY (`canvas_id`) REFERENCES `front_desk_canvases` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `front_desk_activities_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `front_desk_activities_canvas_id_foreign` FOREIGN KEY (`canvas_id`) REFERENCES `front_desk_canvases` (`id`) ON DELETE CASCADE,
+ADD CONSTRAINT `front_desk_activities_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `front_desk_canvases`
 --
 ALTER TABLE `front_desk_canvases`
-  ADD CONSTRAINT `front_desk_canvases_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `front_desk_canvases_student_group_id_foreign` FOREIGN KEY (`student_group_id`) REFERENCES `student_groups` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `front_desk_canvases_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `front_desk_canvases_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE SET NULL,
+ADD CONSTRAINT `front_desk_canvases_student_group_id_foreign` FOREIGN KEY (`student_group_id`) REFERENCES `student_groups` (`id`) ON DELETE SET NULL,
+ADD CONSTRAINT `front_desk_canvases_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `group_settings`
 --
 ALTER TABLE `group_settings`
-  ADD CONSTRAINT `group_settings_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `group_settings_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `students`
 --
 ALTER TABLE `students`
-  ADD CONSTRAINT `students_faculty_class_id_foreign` FOREIGN KEY (`faculty_class_id`) REFERENCES `faculty_classes` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `students_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `students_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `students_faculty_class_id_foreign` FOREIGN KEY (`faculty_class_id`) REFERENCES `faculty_classes` (`id`) ON DELETE SET NULL,
+ADD CONSTRAINT `students_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE SET NULL,
+ADD CONSTRAINT `students_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `student_groups`
 --
 ALTER TABLE `student_groups`
-  ADD CONSTRAINT `student_groups_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `student_groups_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `student_groups_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE SET NULL,
+ADD CONSTRAINT `student_groups_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `student_group_roles`
 --
 ALTER TABLE `student_group_roles`
-  ADD CONSTRAINT `student_group_roles_student_group_id_foreign` FOREIGN KEY (`student_group_id`) REFERENCES `student_groups` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `student_group_roles_student_group_id_foreign` FOREIGN KEY (`student_group_id`) REFERENCES `student_groups` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `tasks`
 --
 ALTER TABLE `tasks`
-  ADD CONSTRAINT `tasks_assigned_to_foreign` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `tasks_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `tasks_feedback_by_foreign` FOREIGN KEY (`feedback_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `tasks_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE SET NULL;
+ADD CONSTRAINT `tasks_assigned_to_foreign` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+ADD CONSTRAINT `tasks_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE CASCADE,
+ADD CONSTRAINT `tasks_feedback_by_foreign` FOREIGN KEY (`feedback_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+ADD CONSTRAINT `tasks_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `team_role_templates`
 --
 ALTER TABLE `team_role_templates`
-  ADD CONSTRAINT `team_role_templates_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `team_role_templates_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+ADD CONSTRAINT `team_role_templates_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE CASCADE,
+ADD CONSTRAINT `team_role_templates_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `team_role_template_versions`
 --
 ALTER TABLE `team_role_template_versions`
-  ADD CONSTRAINT `team_role_template_versions_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `team_role_template_versions_team_role_template_id_foreign` FOREIGN KEY (`team_role_template_id`) REFERENCES `team_role_templates` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `team_role_template_versions_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+ADD CONSTRAINT `team_role_template_versions_team_role_template_id_foreign` FOREIGN KEY (`team_role_template_id`) REFERENCES `team_role_templates` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `team_template_edit_grants`
 --
 ALTER TABLE `team_template_edit_grants`
-  ADD CONSTRAINT `team_template_edit_grants_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `team_template_edit_grants_granted_by_foreign` FOREIGN KEY (`granted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `team_template_edit_grants_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `team_template_edit_grants_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `faculties` (`id`) ON DELETE CASCADE,
+ADD CONSTRAINT `team_template_edit_grants_granted_by_foreign` FOREIGN KEY (`granted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+ADD CONSTRAINT `team_template_edit_grants_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `template_content_fields`
 --
 ALTER TABLE `template_content_fields`
-  ADD CONSTRAINT `template_content_fields_content_item_id_foreign` FOREIGN KEY (`content_item_id`) REFERENCES `template_content_items` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `template_content_fields_content_item_id_foreign` FOREIGN KEY (`content_item_id`) REFERENCES `template_content_items` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `template_content_items`
 --
 ALTER TABLE `template_content_items`
-  ADD CONSTRAINT `template_content_items_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `template_content_items` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `template_content_items_team_role_template_id_foreign` FOREIGN KEY (`team_role_template_id`) REFERENCES `team_role_templates` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `template_content_items_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `template_content_items` (`id`) ON DELETE CASCADE,
+ADD CONSTRAINT `template_content_items_team_role_template_id_foreign` FOREIGN KEY (`team_role_template_id`) REFERENCES `team_role_templates` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `template_elements`
 --
 ALTER TABLE `template_elements`
-  ADD CONSTRAINT `template_elements_team_role_template_id_foreign` FOREIGN KEY (`team_role_template_id`) REFERENCES `team_role_templates` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `template_elements_team_role_template_id_foreign` FOREIGN KEY (`team_role_template_id`) REFERENCES `team_role_templates` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `template_images`
 --
 ALTER TABLE `template_images`
-  ADD CONSTRAINT `template_images_team_role_template_id_foreign` FOREIGN KEY (`team_role_template_id`) REFERENCES `team_role_templates` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `template_images_team_role_template_id_foreign` FOREIGN KEY (`team_role_template_id`) REFERENCES `team_role_templates` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `template_layouts`
 --
 ALTER TABLE `template_layouts`
-  ADD CONSTRAINT `template_layouts_team_role_template_id_foreign` FOREIGN KEY (`team_role_template_id`) REFERENCES `team_role_templates` (`id`) ON DELETE CASCADE;
+ADD CONSTRAINT `template_layouts_team_role_template_id_foreign` FOREIGN KEY (`team_role_template_id`) REFERENCES `team_role_templates` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
