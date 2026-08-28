@@ -330,9 +330,9 @@
             <div class="relative" id="profileWrapper">
                 <?php
                     $authUser = auth()->user();
-                    $profileName = $authUser?->name ?? 'Student';
-                    $nameParts = preg_split('/\s+/', trim($profileName));
-                    $initials = strtoupper(($nameParts[0][0] ?? 'S') . (count($nameParts) > 1 ? substr(end($nameParts), 0, 1) : ''));
+                    // Single source of truth: User::initials reads first_name + last_name
+                    // so a profile update is reflected here without re-derivation.
+                    $initials = strtoupper((string) ($authUser?->initials ?? 'S'));
                 ?>
                 <div class="profile-dropdown" id="profileDropdown">
                     <div class="dd-item" onclick="toast('Opening profile...')"><i class="fas fa-user-circle"></i> My Profile</div>

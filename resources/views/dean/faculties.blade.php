@@ -95,9 +95,13 @@
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-3.5">
                                     <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-xs font-bold flex-shrink-0">
-                                            {{ strtoupper(substr($displayName, 0, 1)) }}
-                                        </div>
+                                        @include('partials.user-avatar', [
+                                            'user'         => $faculty->user,
+                                            'name'         => $displayName,
+                                            'size'         => 'w-8 h-8',
+                                            'rounded'      => 'rounded-full',
+                                            'extraClasses' => 'bg-rose-100 text-rose-600 text-xs font-bold',
+                                        ])
                                         <span class="font-semibold text-slate-800 text-sm">{{ $displayName }}</span>
                                     </div>
                                 </td>

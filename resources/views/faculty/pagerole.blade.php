@@ -667,9 +667,13 @@
                                                 class="create-student-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 shrink-0"
                                                 {{ in_array($sk, $selectedMembers, true) ? 'checked' : '' }}
                                                 onchange="onSingleTeamMemberToggle(this)">
-                                            <div class="w-9 h-9 rounded-lg bg-brand-soft text-brand text-xs font-bold flex items-center justify-center shrink-0">
-                                                {{ strtoupper(mb_substr($dn, 0, 1)) }}
-                                            </div>
+                                            @include('partials.user-avatar', [
+                                                'user'         => $u,
+                                                'name'         => $dn,
+                                                'size'         => 'w-9 h-9',
+                                                'rounded'      => 'rounded-lg',
+                                                'extraClasses' => 'bg-brand-soft text-brand text-xs font-bold',
+                                            ])
                                             <div class="min-w-0 flex-1">
                                                 <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
                                                 <p class="text-[11px] text-slate-400 font-mono">
@@ -786,9 +790,13 @@
                                          data-search="{{ $searchBlob }}">
                                         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                                             <div class="flex items-center gap-3 min-w-0 flex-1">
-                                                <div class="w-9 h-9 rounded-lg bg-brand-soft text-brand text-xs font-bold flex items-center justify-center shrink-0">
-                                                    {{ strtoupper(mb_substr($dn, 0, 1)) }}
-                                                </div>
+                                                @include('partials.user-avatar', [
+                                                    'user'         => $u,
+                                                    'name'         => $dn,
+                                                    'size'         => 'w-9 h-9',
+                                                    'rounded'      => 'rounded-lg',
+                                                    'extraClasses' => 'bg-brand-soft text-brand text-xs font-bold',
+                                                ])
                                                 <div class="min-w-0 flex-1">
                                                     <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
                                                     <p class="text-[11px] text-slate-400 font-mono">
@@ -901,9 +909,13 @@
                                                 class="insert-student-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 shrink-0"
                                                 {{ in_array($sk, $selectedMembers, true) ? 'checked' : '' }}
                                                 onchange="onTeamMemberToggle(this, 'insert')">
-                                            <div class="w-9 h-9 rounded-lg bg-brand-soft text-brand text-xs font-bold flex items-center justify-center shrink-0">
-                                                {{ strtoupper(mb_substr($dn, 0, 1)) }}
-                                            </div>
+                                            @include('partials.user-avatar', [
+                                                'user'         => $u,
+                                                'name'         => $dn,
+                                                'size'         => 'w-9 h-9',
+                                                'rounded'      => 'rounded-lg',
+                                                'extraClasses' => 'bg-brand-soft text-brand text-xs font-bold',
+                                            ])
                                             <div class="min-w-0 flex-1">
                                                 <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
                                                 <p class="text-[11px] text-slate-400 font-mono">

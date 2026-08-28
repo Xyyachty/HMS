@@ -144,7 +144,16 @@
                     @endphp
                     <tr data-user-id="{{ $user->user_id }}" data-role="{{ $user->role }}" data-block="{{ strtoupper((string) $block) }}">
                         <td>
-                            <span class="font-semibold text-slate-800">{{ $displayName }}</span>
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                @include('partials.user-avatar', [
+                                    'user'         => $user,
+                                    'name'         => $displayName,
+                                    'size'         => 'w-8 h-8',
+                                    'rounded'      => 'rounded-lg',
+                                    'extraClasses' => 'shadow-sm border border-slate-200',
+                                ])
+                                <span class="font-semibold text-slate-800 truncate">{{ $displayName }}</span>
+                            </div>
                         </td>
                         <td class="text-slate-400">{{ $user->email }}</td>
                         <td class="text-slate-600 font-medium">{{ $phone ?? '—' }}</td>

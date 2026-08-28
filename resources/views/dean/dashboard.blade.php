@@ -120,16 +120,15 @@
                         $user?->first_name,
                         $user?->middle_name,
                     ]))) ?: ($user?->name ?? 'Student');
-                    $initials = strtoupper(substr($name, 0, 1));
-                    $sp = strpos($name, ' ');
-                    if ($sp !== false) {
-                        $initials .= strtoupper(substr($name, $sp + 1, 1));
-                    }
                 @endphp
                 <div class="px-5 py-3.5 flex items-center gap-3 hover:bg-slate-50/70 transition">
-                    <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 text-xs font-bold">
-                        {{ $initials }}
-                    </div>
+                    @include('partials.user-avatar', [
+                        'user'         => $user,
+                        'name'         => $name,
+                        'size'         => 'w-9 h-9',
+                        'rounded'      => 'rounded-xl',
+                        'extraClasses' => 'bg-rose-50 text-rose-500 text-xs font-bold',
+                    ])
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-bold text-slate-800 truncate">{{ $name }}</p>
                         <p class="text-xs text-slate-400 truncate">
