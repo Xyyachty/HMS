@@ -121,6 +121,31 @@ class User extends Authenticatable
         return 'https://ui-avatars.com/api/?name=' . urlencode($label) . '&background=DB2777&color=fff&size=128&font-size=0.4';
     }
 
+    /**
+     * Two-letter initials for the initials chip that views fall back to when no
+     * avatar is uploaded. Uses first + last name parts of the trimmed full name
+     * so it agrees with the avatar URL fallback label.
+     */
+    public function getInitialsAttribute(): string
+    {
+        $label = trim(implode(' ', array_filter([
+            $this->first_name,
+            $this->last_name,
+        ]))) ?: (string) ($this->name ?? '');
+
+        if ($label === '') {
+            return '?';
+        }
+
+        $parts = preg_split('/\s+/', $label);
+        $first = strtoupper(substr((string) ($parts[0] ?? ''), 0, 1));
+        $last  = count($parts) > 1 ? strtoupper(substr((string) end($parts), 0, 1)) : '';
+
+        $initials = $first . $last;
+
+        return $initials !== '' ? $initials : '?';
+    }
+
     protected static function booted(): void
     {
         static::creating(function (User $user) {

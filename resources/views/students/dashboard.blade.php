@@ -197,10 +197,6 @@
             $profileName = $studentDisplayName
                 ?? (trim(implode(' ', array_filter([$authUser?->first_name, $authUser?->last_name])))
                     ?: ($authUser?->name ?? 'Student'));
-            $nameParts = preg_split('/\s+/', trim($profileName));
-            $firstInitial = $nameParts[0][0] ?? 'S';
-            $lastInitial = count($nameParts) > 1 ? substr(end($nameParts), 0, 1) : '';
-            $profileInitials = strtoupper($firstInitial . $lastInitial);
         @endphp
         <div class="px-3 pb-4 border-t border-white/[0.06] pt-4">
             <div class="relative" id="studentProfileMenu">
@@ -208,7 +204,13 @@
                         class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.06] transition-colors"
                         aria-haspopup="true" aria-expanded="false"
                         onclick="toggleStudentProfileMenu()">
-                    <div class="w-9 h-9 brand-gradient rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-brand/20">{{ $profileInitials }}</div>
+                    @include('partials.user-avatar', [
+                        'user'        => $authUser,
+                        'name'        => $profileName,
+                        'size'        => 'w-9 h-9',
+                        'currentUser' => true,
+                        'extraClasses' => 'shadow-lg shadow-brand/20',
+                    ])
                     <div class="flex-1 text-left min-w-0">
                         <p class="text-sm font-semibold text-white truncate">{{ $profileName }}</p>
                         <p class="text-[10px] text-white">Student</p>
@@ -470,15 +472,15 @@
                                     }
                                     $isCurrentUser = $getMemberValue($member, 'id') === (auth()->id() ?? null);
                                     $memberName = $getMemberValue($member, 'name', 'Unknown');
-                                    $memberInitials = strtoupper(substr($memberName, 0, 1));
-                                    $sp = strpos($memberName, ' ');
-                                    if ($sp !== false) $memberInitials .= strtoupper(substr($memberName, $sp + 1, 1));
                                 @endphp
-                                <div class="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 transition-colors">
+                                <div class="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 transition-colors" data-member-row data-member-id="{{ $getMemberValue($member, 'id') }}">
                                     <span class="text-xs font-bold text-slate-300 w-5 text-center shrink-0">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</span>
-                                    <div class="w-9 h-9 {{ $isCurrentUser ? 'brand-gradient shadow-md shadow-brand/20' : 'bg-slate-100' }} rounded-xl flex items-center justify-center shrink-0">
-                                        <span class="{{ $isCurrentUser ? 'text-white' : 'text-slate-500' }} text-xs font-bold">{{ $memberInitials }}</span>
-                                    </div>
+                                    @include('partials.user-avatar', [
+                                        'user'        => is_object($member) ? ($member->user ?? null) : null,
+                                        'name'        => $memberName,
+                                        'size'        => 'w-9 h-9',
+                                        'currentUser' => $isCurrentUser,
+                                    ])
                                     <div class="flex-1 min-w-0">
                                         <p class="text-sm font-bold text-slate-800 truncate">
                                             {{ $memberName }}

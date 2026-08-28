@@ -42,6 +42,7 @@ class DepartmentTemplatePage
                     // "id" is the member shape the department Blade views read.
                     return (object) [
                         'id' => $user?->user_id,
+                        'user' => $user,
                         'name' => $displayName,
                         'email' => $user?->email,
                         'roles' => $member->roles->pluck('role')->toArray(),
