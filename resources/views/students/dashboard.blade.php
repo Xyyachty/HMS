@@ -8,6 +8,7 @@
     <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -204,10 +205,10 @@
                         aria-haspopup="true" aria-expanded="false"
                         onclick="toggleStudentProfileMenu()">
                     @include('partials.user-avatar', [
-                        'user'         => $authUser,
-                        'name'         => $profileName,
-                        'size'         => 'w-9 h-9',
-                        'currentUser'  => true,
+                        'user'        => $authUser,
+                        'name'        => $profileName,
+                        'size'        => 'w-9 h-9',
+                        'currentUser' => true,
                         'extraClasses' => 'shadow-lg shadow-brand/20',
                     ])
                     <div class="flex-1 text-left min-w-0">
@@ -217,7 +218,7 @@
                     <span class="iconify text-white text-sm transition-transform" data-icon="mdi:chevron-up" id="profileChevron"></span>
                 </button>
                 <div class="absolute bottom-full left-0 mb-2 w-full rounded-xl border border-white/10 bg-sidebar-hover shadow-2xl p-1.5 hidden" id="studentProfileDropdown" role="menu">
-                    <a href="#group" onclick="showSection('group'); closeStudentProfileMenu(); closeMobileSidebar();" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-white hover:bg-white/[0.06] transition-colors" role="menuitem">
+                    <a href="#profile" onclick="showSection('profile'); closeStudentProfileMenu(); closeMobileSidebar();" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-white hover:bg-white/[0.06] transition-colors" role="menuitem">
                         <span class="iconify text-base" data-icon="mdi:account-outline"></span>
                         My Profile
                     </a>
@@ -255,25 +256,14 @@
 
                 <!-- Right side actions -->
                 <div class="flex items-center gap-2">
-                    <!-- Notification -->
-                    <button class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
-                        <span class="iconify text-xl text-slate-400" data-icon="mdi:bell-outline"></span>
-                        @if(!empty($studentRoles) && $myRoleTasks->count() > 0)
-                            <span class="absolute top-2 right-2 w-2 h-2 bg-brand rounded-full pulse-dot"></span>
-                        @endif
-                    </button>
-
-                    <!-- Date -->
-                    <div class="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
-                        <span class="iconify text-sm text-slate-400" data-icon="mdi:calendar-today"></span>
-                        <span class="text-xs font-semibold text-slate-500">{{ now()->format('M d, Y') }}</span>
-                    </div>
+                    @include('partials.datetime-clock')
+                    @include('partials.notification-bell')
                 </div>
             </div>
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto">
+        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#F5F5F5">
             @php
                 $getMemberValue = function ($member, $field, $fallback = '') {
                     if (is_array($member)) return $member[$field] ?? $fallback;
@@ -427,7 +417,7 @@
                         <div class="flex items-center gap-4">
                             <div class="w-11 h-11 bg-white/15 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/20 shrink-0">
                                 <span class="iconify text-white text-xl" data-icon="mdi:office-building-outline"></span>
-                        </div>
+                            </div>
                             <div class="flex-1 min-w-0">
                                 @if($group)
                                     <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Hotel Management Simulation</p>
@@ -449,9 +439,23 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- The concept faculty chose. It stops being a proposal at that point
+                             and becomes what this team is building, so it sits with the team's
+                             name rather than in the panel about proposals below — which is why
+                             that panel disappears once this fills in. Painted from the same
+                             payload as that panel, by paintTeamHeaderConcept(), so there is one
+                             description of "what the team's concept is" rather than a server
+                             copy and a client copy that can drift. --}}
+                        <div id="teamHeaderConcept" class="hidden mt-4 pt-4 border-t border-white/15"></div>
                     </div>
 
-                    <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    {{-- The concepts used to head this panel. They outgrew it once there
+                         were two of them, each with its own state, feedback and history,
+                         so they have their own panel below and this one is about members
+                         again. --}}
+
+                    <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
                         <h3 class="text-sm font-bold text-slate-800">All Members</h3>
                         <span class="text-xs font-bold text-brand">{{ ($groupMembers ?? collect())->count() }}</span>
                     </div>
@@ -469,7 +473,7 @@
                                     $isCurrentUser = $getMemberValue($member, 'id') === (auth()->id() ?? null);
                                     $memberName = $getMemberValue($member, 'name', 'Unknown');
                                 @endphp
-                                <div class="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 transition-colors">
+                                <div class="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 transition-colors" data-member-row data-member-id="{{ $getMemberValue($member, 'id') }}">
                                     <span class="text-xs font-bold text-slate-300 w-5 text-center shrink-0">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</span>
                                     @include('partials.user-avatar', [
                                         'user'        => is_object($member) ? ($member->user ?? null) : null,
@@ -531,6 +535,113 @@
                         </div>
                     @endif
                 </div>
+
+                {{-- The team's two hotel concepts, side by side, while faculty is still
+                     choosing. Faculty judges each separately, so each card carries its own
+                     state, its own feedback and its own edit history. Front Desk proposes
+                     each first version; every member may then improve either one; Front
+                     Desk hands both in with the single button in this header, because the
+                     pair exists so faculty can weigh them against each other.
+
+                     Once faculty decides, this whole card hides — paintTeamHeaderConcept()
+                     toggles it — because there is nothing left to propose or compare; the
+                     winner has already moved up into the team header above.
+
+                     The whole panel is rendered from #conceptPanel by the same JS that
+                     repaints it after a save or a submit, so there is one description of
+                     this markup rather than a server copy and a client copy that drift. --}}
+                <div id="conceptPanelCard" class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
+                        <div class="min-w-0">
+                            <h3 class="text-sm font-bold text-slate-800">Hotel Concepts</h3>
+                            <p class="text-[11px] text-slate-400">Two proposals for your faculty to review.</p>
+                        </div>
+                        <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
+                            class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60 hidden">
+                            <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
+                            <span>Submit both to Faculty</span>
+                        </button>
+                    </div>
+
+                    @if (session('success'))
+                        <div class="mx-4 mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                            {{ session('success') }}
+                        </div>
+                    @endif
+                    @if ($errors->any())
+                        <div class="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                            {{ $errors->first() }}
+                        </div>
+                    @endif
+
+                    <div id="conceptPanel" class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                </div>
+
+                @if($group)
+                    {{-- Edit dialog behind the header's Edit button. Saves over fetch so the
+                         header, the task card and the history all move together, without
+                         throwing the member back to the top of the dashboard.
+
+                         Rendered for every member of a team rather than gated on the edit
+                         right: a save or a faculty verdict can open editing up while the
+                         page is still open, and the button that reveals this dialog is
+                         repainted from that response. The controller is the real gate. --}}
+                    <div id="hotelConceptModal" class="fixed inset-0 z-50 hidden">
+                        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeHotelConceptModal()"></div>
+                        <div class="relative top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100 w-[92vw] max-w-xl max-h-[90vh] overflow-y-auto">
+                            <div class="brand-gradient px-5 py-4 flex items-center justify-between gap-3 sticky top-0 z-10">
+                                <div class="min-w-0">
+                                    <p class="text-white/60 text-[9px] font-bold uppercase tracking-[0.15em]">Task 1 · Your Team</p>
+                                    <h4 id="hotelConceptModalTitle" class="text-base font-extrabold text-white">Hotel Concept</h4>
+                                </div>
+                                <button type="button" onclick="closeHotelConceptModal()"
+                                    class="w-8 h-8 rounded-full text-white/70 hover:text-white hover:bg-white/15 transition flex items-center justify-center shrink-0">
+                                    <span class="iconify text-xl" data-icon="mdi:close"></span>
+                                </button>
+                            </div>
+
+                            {{-- One dialog serves both concepts; the slot says which one is
+                                 open, and openHotelConceptModal() fills the fields from it. --}}
+                            <form id="hotelConceptForm" method="POST" action="{{ route('students.hotel-concept.store') }}" class="p-5 space-y-4">
+                                @csrf
+                                <input type="hidden" name="slot" value="">
+                                <div id="hotelConceptFormError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"></div>
+
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Title</label>
+                                    <input name="title" type="text" required maxlength="150"
+                                        placeholder="e.g. Seaside Serenity Resort"
+                                        class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Type</label>
+                                    <select name="hotel_type" required
+                                        class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
+                                        <option value="">Select hotel type</option>
+                                        @foreach(\App\Models\HotelConcept::HOTEL_TYPES as $typeKey => $typeLabel)
+                                            <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
+                                    <textarea name="description" required rows="5" maxlength="5000"
+                                        placeholder="What the hotel is, who it serves, what makes it different."
+                                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
+                                </div>
+
+                                <div class="flex items-center justify-end gap-2 pt-1">
+                                    <button type="button" onclick="closeHotelConceptModal()"
+                                        class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition">Cancel</button>
+                                    <button type="submit" id="hotelConceptSubmit"
+                                        class="px-4 py-2 brand-gradient text-white rounded-xl text-xs font-bold shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60">
+                                        Save concept
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endif
             </div>
 
             <!-- ==================== TASKS SECTION ==================== -->
@@ -616,12 +727,20 @@
                                                 <div class="flex items-center gap-3 mt-3">
                                                     <span class="flex items-center gap-1 text-[11px] {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400' }}">
                                                         <span class="iconify text-xs" data-icon="mdi:calendar-outline"></span>
-                                                        {{ $task->due_date->format('M d, Y') }}
+                                                        {{ $task->due_date->format('M d, Y g:i A') }}
                                                     </span>
                                                 </div>
                                             @endif
                                         </div>
-                                        @if($isMine)
+                                        @if($task->is_hotel_concept)
+                                            {{-- This one is not ticked off: it closes when Front Desk
+                                                 submits the concept itself, over in My Team. --}}
+                                            <button type="button" onclick="showSection('group')"
+                                                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">
+                                                <span class="iconify text-sm" data-icon="mdi:lightbulb-outline"></span>
+                                                Open Hotel Concept
+                                            </button>
+                                        @elseif($isMine)
                                             {{-- The real affordance; the circle above is too small to be the only target. --}}
                                             <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0">
                                                 @csrf
@@ -666,7 +785,7 @@
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-semibold text-slate-500 line-through">{{ $task->title }}</p>
                                             @if($task->due_date)
-                                                <p class="text-[11px] text-slate-300 mt-1">{{ $task->due_date->format('M d, Y') }}</p>
+                                                <p class="text-[11px] text-slate-300 mt-1">{{ $task->due_date->format('M d, Y g:i A') }}</p>
                                             @endif
                                         </div>
                                         <span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Done</span>
@@ -931,6 +1050,139 @@
                 </div>
             </div>
 
+            {{-- ═══════ MY PROFILE ═══════
+                 What the student may change is what describes them. Their student
+                 number, block, adviser, class, team and roles are the school's
+                 record and their faculty's to set, so they are shown read-only. --}}
+            <div id="profile-section" class="section-content hidden fade-in space-y-4">
+                @php
+                    $pUser = auth()->user();
+                    $pAdviser = $student?->faculty?->user;
+                @endphp
+
+                <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">My Profile</h2>
+
+                @if (session('success'))
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-2">
+                        <span class="iconify text-emerald-600 text-lg" data-icon="mdi:check-circle-outline"></span>
+                        <p class="text-sm font-semibold text-emerald-800">{{ session('success') }}</p>
+                    </div>
+                @endif
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {{-- Editable --}}
+                    <form method="POST" action="{{ route('students.profile.update') }}" enctype="multipart/form-data"
+                          class="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        @csrf
+                        @method('PUT')
+
+                        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+                            <h3 class="text-sm font-bold text-slate-800">Account Details</h3>
+                            <p class="text-[11px] text-slate-400 mt-0.5">This is how your name appears to your team and your faculty.</p>
+                        </div>
+
+                        <div class="p-5 space-y-4">
+                            <div class="flex items-center gap-4">
+                                <img src="{{ $pUser?->avatar_url }}" alt="{{ $studentDisplayName }}"
+                                     class="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0">
+                                <div class="min-w-0">
+                                    <label for="studentAvatar" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer">
+                                        <span class="iconify text-sm" data-icon="mdi:camera-outline"></span> Change photo
+                                    </label>
+                                    <input id="studentAvatar" type="file" name="avatar" accept="image/*" class="hidden">
+                                    <p class="text-[11px] text-slate-400 mt-1">JPG, PNG, WEBP or GIF · up to 2 MB</p>
+                                    @if ($pUser?->avatar)
+                                        <label class="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-600 cursor-pointer">
+                                            <input type="checkbox" name="remove_avatar" value="1" class="rounded border-slate-300 text-rose-500">
+                                            Remove current photo
+                                        </label>
+                                    @endif
+                                    @error('avatar')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                @foreach ([
+                                    ['first_name', 'First name', $pUser?->first_name, true],
+                                    ['middle_name', 'Middle name', $pUser?->middle_name, false],
+                                    ['last_name', 'Last name', $pUser?->last_name, true],
+                                ] as [$field, $label, $value, $required])
+                                    <div>
+                                        <label for="student_{{ $field }}" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                            {{ $label }} @if(!$required)<span class="text-slate-300 normal-case font-semibold">(optional)</span>@endif
+                                        </label>
+                                        <input id="student_{{ $field }}" type="text" name="{{ $field }}" value="{{ old($field, $value) }}" @if($required) required @endif
+                                               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                                        @error($field)<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label for="student_email" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
+                                    <input id="student_email" type="email" name="email" value="{{ old('email', $pUser?->email) }}" required
+                                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                                    @error('email')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                </div>
+                                <div>
+                                    <label for="student_phone" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Phone <span class="text-slate-300 normal-case font-semibold">(optional)</span>
+                                    </label>
+                                    <input id="student_phone" type="text" name="phone_number" value="{{ old('phone_number', $pUser?->phone_number ?? $student?->phone_number) }}"
+                                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                                    @error('phone_number')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-5 py-3 border-t border-slate-100 bg-slate-50/60 flex justify-end">
+                            <button type="submit" class="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center gap-1.5">
+                                <span class="iconify text-sm" data-icon="mdi:content-save-outline"></span> Save changes
+                            </button>
+                        </div>
+                    </form>
+
+                    {{-- Read-only school record --}}
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden self-start">
+                        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+                            <h3 class="text-sm font-bold text-slate-800">School Record</h3>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Set by your faculty — ask them if something is wrong.</p>
+                        </div>
+                        <dl class="divide-y divide-slate-50">
+                            @foreach ([
+                                ['Student number', $student?->student_number],
+                                // The block is the class row this student sits in.
+                                // user_information.block is the faculty's own block
+                                // letter and is never set on a student, so reading it
+                                // here only ever produced a dash.
+                                ['Block', $studentClass?->name],
+                                ['Status', $student?->status ? ucfirst($student->status) : null],
+                                ['Adviser', $pAdviser?->name],
+                                ['Team', $group?->name],
+                            ] as [$label, $value])
+                                <div class="px-5 py-2.5 flex items-center justify-between gap-3">
+                                    <dt class="text-[11px] font-semibold text-slate-400">{{ $label }}</dt>
+                                    <dd class="text-xs font-bold text-slate-700 text-right truncate">{{ $value ?: '—' }}</dd>
+                                </div>
+                            @endforeach
+                            <div class="px-5 py-2.5">
+                                <dt class="text-[11px] font-semibold text-slate-400 mb-1.5">Roles</dt>
+                                <dd class="flex flex-wrap gap-1.5">
+                                    @forelse ($studentRoles ?? [] as $role)
+                                        <span class="px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[10px] font-bold">
+                                            {{ \App\Support\HotelTemplateBuilder::ROLES[$role] ?? $role }}
+                                        </span>
+                                    @empty
+                                        <span class="text-xs text-slate-400">No role assigned yet</span>
+                                    @endforelse
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -977,7 +1229,7 @@
             }
 
             // Update breadcrumb
-            const labels = { home: 'Dashboard', group: 'My Group', tasks: 'Tasks', activity: 'Activity Logs', reports: 'Reports' };
+            const labels = { home: 'Dashboard', group: 'My Group', tasks: 'Tasks', activity: 'Activity Logs', reports: 'Reports', profile: 'My Profile' };
             document.getElementById('breadcrumb-current').textContent = labels[section] || 'Dashboard';
 
             try {
@@ -990,6 +1242,402 @@
                 history.replaceState(null, '', url);
             } catch (e) { /* ignore */ }
         }
+
+        /* The concept form posts and redirects back here, so the section the
+           student was reading has to survive the round trip. */
+        (function restoreSection() {
+            let section = null;
+            try {
+                section = new URL(window.location.href).searchParams.get('section');
+            } catch (e) { /* ignore */ }
+
+            @php
+                // Which fields failed says which form the student was in, so a
+                // rejected profile save reopens Profile rather than the concept
+                // panel the group default assumes.
+                $profileFields = ['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'avatar'];
+                $profileHasErrors = collect($profileFields)->contains(fn ($f) => $errors->has($f));
+            @endphp
+            @if ($profileHasErrors)
+                section = 'profile';
+            @elseif (session('success') || $errors->any())
+                // Only when the URL did not already name one — the profile save
+                // redirects with ?section=profile and must keep it.
+                if (!section) section = 'group';
+            @endif
+
+            if (section && document.getElementById(section + '-section')) {
+                document.addEventListener('DOMContentLoaded', () => showSection(section));
+            }
+        })();
+
+        /* ── Hotel concepts: the panel is the source of truth on screen ──────
+           A team owes two concepts. Saving one, or handing both in, returns the whole
+           team payload — both slots, both histories, and which buttons this member is
+           allowed to see — so the panel is rebuilt from what the database actually
+           holds rather than from what was typed. The server decides the permissions;
+           this script only draws them.
+
+           The initial payload is the same shape the endpoints return, so there is one
+           renderer instead of a server copy of this markup and a client copy that
+           drift apart. */
+        @php
+            // Built here rather than inline: @json() cannot parse a multi-line
+            // expression, and silently truncates it.
+            $conceptPayloadJson = $conceptPayload;
+        @endphp
+        let conceptState = @json($conceptPayloadJson);
+
+        /** The slot currently open in the dialog. */
+        let editingSlot = null;
+
+        function conceptSlot(slot) {
+            return (conceptState?.slots || []).find((entry) => Number(entry.slot) === Number(slot)) || null;
+        }
+
+        function openHotelConceptModal(slot) {
+            const modal = document.getElementById('hotelConceptModal');
+            const form = document.getElementById('hotelConceptForm');
+            const entry = conceptSlot(slot);
+            if (!modal || !form || !entry) return;
+
+            editingSlot = Number(slot);
+            const concept = entry.concept;
+
+            // Always open on the stored concept, not on a half-typed abandoned edit.
+            form.querySelector('input[name="slot"]').value = editingSlot;
+            form.querySelector('input[name="title"]').value = concept?.title ?? '';
+            form.querySelector('select[name="hotel_type"]').value = concept?.hotel_type ?? '';
+            form.querySelector('textarea[name="description"]').value = concept?.description ?? '';
+
+            const title = document.getElementById('hotelConceptModalTitle');
+            if (title) {
+                title.textContent = (concept ? 'Edit ' : 'Propose ') + entry.slot_label;
+            }
+            hideHotelConceptError();
+
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => form.querySelector('input[name="title"]')?.focus(), 50);
+        }
+
+        function closeHotelConceptModal() {
+            const modal = document.getElementById('hotelConceptModal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        function hideHotelConceptError() {
+            document.getElementById('hotelConceptFormError')?.classList.add('hidden');
+        }
+
+        function showHotelConceptError(message) {
+            const box = document.getElementById('hotelConceptFormError');
+            if (!box) return;
+            box.textContent = message;
+            box.classList.remove('hidden');
+        }
+
+        function conceptEscape(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        /* Badge colour per workflow state, so a member can read where each concept
+           stands at a glance. */
+        const CONCEPT_BADGE_CLASSES = {
+            draft: 'bg-slate-100 text-slate-600 border-slate-200',
+            submitted: 'bg-amber-50 text-amber-700 border-amber-200',
+            needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
+            approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
+        };
+
+        const CONCEPT_NOTICE_CLASSES = {
+            submitted: 'border-amber-200 bg-amber-50 text-amber-700',
+            needs_revision: 'border-rose-200 bg-rose-50 text-rose-700',
+            approved: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+            not_selected: 'border-slate-200 bg-slate-50 text-slate-500',
+        };
+
+        const CONCEPT_NOTICE_TEXT = {
+            submitted: 'Submitted to your faculty. You can still improve it until they choose.',
+            needs_revision: 'Your faculty asked for changes.',
+            approved: 'Your faculty approved this concept. It is your official hotel concept and is no longer editable.',
+        };
+
+        /* Redraw both slots and the shared Submit button from a server payload. Every
+           write returns the whole team, so a save on one concept also refreshes the
+           other's lock state and the button that hands the pair in. Also repaints
+           the header, since the same payload is what says whether a decision has
+           been made. */
+        function paintHotelConcepts(data) {
+            if (data && Array.isArray(data.slots)) conceptState = data;
+
+            const panel = document.getElementById('conceptPanel');
+            if (panel) {
+                panel.innerHTML = (conceptState?.slots || []).map(renderConceptSlot).join('');
+            }
+
+            const submitBtn = document.getElementById('conceptSubmitAllBtn');
+            if (submitBtn) {
+                submitBtn.classList.toggle('hidden', !conceptState?.can_submit);
+                submitBtn.disabled = false;
+            }
+
+            paintTeamHeaderConcept();
+        }
+
+        /* The concept faculty chose, in the team header. Once one slot's payload
+           comes back approved, that is the team's identity now — the proposals
+           panel below has nothing left to do, so it hides and this fills in. */
+        function paintTeamHeaderConcept() {
+            const container = document.getElementById('teamHeaderConcept');
+            const panelCard = document.getElementById('conceptPanelCard');
+            if (!container) return;
+
+            const approved = (conceptState?.slots || [])
+                .map((entry) => entry.concept)
+                .find((concept) => concept && concept.status === 'approved');
+
+            if (panelCard) panelCard.classList.toggle('hidden', !!approved);
+
+            if (!approved) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+
+            // Descriptions run up to 5000 characters and the panel that used to hold
+            // the full text is gone, so long ones clamp with a way to still read them.
+            const description = approved.description || '';
+            const isLong = description.length > 180;
+
+            container.innerHTML =
+                '<div class="flex items-start justify-between gap-3 flex-wrap">'
+                    + '<div class="min-w-0">'
+                        + '<p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Official Hotel Concept</p>'
+                        + '<h4 class="text-base font-extrabold text-white leading-tight mt-0.5">' + conceptEscape(approved.title) + '</h4>'
+                    + '</div>'
+                    + '<span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full bg-white/15 border border-white/20 text-[10px] font-bold text-white">'
+                        + conceptEscape(approved.hotel_type_label) + '</span>'
+                + '</div>'
+                + '<p id="teamHeaderConceptDesc" class="text-[11px] text-white/70 leading-relaxed mt-2 whitespace-pre-line' + (isLong ? ' line-clamp-3' : '') + '">'
+                    + conceptEscape(description) + '</p>'
+                + (isLong
+                    ? '<button type="button" onclick="toggleTeamHeaderConceptDesc(this)" class="mt-1.5 text-[10px] font-bold text-white/80 hover:text-white underline underline-offset-2">Show more</button>'
+                    : '');
+
+            container.classList.remove('hidden');
+        }
+
+        function toggleTeamHeaderConceptDesc(button) {
+            const desc = document.getElementById('teamHeaderConceptDesc');
+            if (!desc) return;
+            const stillClamped = desc.classList.toggle('line-clamp-3');
+            button.textContent = stillClamped ? 'Show more' : 'Show less';
+        }
+
+        /* One concept card: where it stands, what it says, what faculty said about it,
+           its own edit history, and — when this member is allowed — its Edit button. */
+        function renderConceptSlot(entry) {
+            const concept = entry.concept;
+            const status = concept ? (concept.status || 'draft') : 'draft';
+
+            const badge = concept
+                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider '
+                    + (CONCEPT_BADGE_CLASSES[status] || CONCEPT_BADGE_CLASSES.draft) + '">'
+                    + conceptEscape(concept.status_label) + '</span>'
+                : '<span class="inline-flex items-center px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-400 text-[9px] font-bold uppercase tracking-wider">Empty</span>';
+
+            const rounds = concept ? Number(concept.revision_count || 0) : 0;
+            const revisionBadge = rounds > 0
+                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold uppercase tracking-wider">Revision '
+                    + rounds + '</span>'
+                : '';
+
+            const editButton = entry.can_edit
+                ? '<button type="button" onclick="openHotelConceptModal(' + Number(entry.slot) + ')"'
+                    + ' class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">'
+                    + '<span class="iconify text-[13px]" data-icon="mdi:pencil-outline"></span>'
+                    + (concept ? 'Edit' : 'Propose')
+                  + '</button>'
+                : '';
+
+            const officialRibbon = concept && status === 'approved'
+                ? '<p class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.15em] text-emerald-600 mt-1.5">'
+                    + '<span class="iconify text-[12px]" data-icon="mdi:star-circle"></span> Official Hotel Concept</p>'
+                : '';
+
+            const body = concept
+                ? officialRibbon
+                    + '<h4 class="text-sm font-extrabold text-slate-800 mt-1">' + conceptEscape(concept.title) + '</h4>'
+                    + '<p class="text-[11px] font-bold text-slate-500">' + conceptEscape(concept.hotel_type_label) + '</p>'
+                    + '<p class="text-xs text-slate-500 leading-relaxed mt-1.5 whitespace-pre-line">' + conceptEscape(concept.description) + '</p>'
+                : '<p class="text-sm font-bold text-slate-400 mt-1">Not proposed yet</p>'
+                    + '<p class="text-xs text-slate-400 mt-1">'
+                    + (entry.can_edit
+                        ? 'Write this one to complete the pair.'
+                        : 'The Front Desk members of this team propose it.')
+                    + '</p>';
+
+            const notice = (concept && CONCEPT_NOTICE_TEXT[status])
+                ? '<div class="mt-2.5 rounded-xl border px-3 py-2 text-xs ' + (CONCEPT_NOTICE_CLASSES[status] || '') + '">'
+                    + '<p class="font-bold">' + conceptEscape(CONCEPT_NOTICE_TEXT[status]) + '</p>'
+                    + (concept.faculty_feedback
+                        ? '<p class="mt-1 leading-relaxed whitespace-pre-line">' + conceptEscape(concept.faculty_feedback) + '</p>'
+                        : '')
+                  + '</div>'
+                : '';
+
+            const history = Array.isArray(entry.history) ? entry.history : [];
+
+            return '<div class="rounded-2xl border border-slate-200 bg-slate-50/50 p-3.5 flex flex-col">' +
+                '<div class="flex items-start justify-between gap-2">' +
+                    '<div class="min-w-0">' +
+                        '<div class="flex items-center gap-1.5 flex-wrap">' +
+                            '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">' + conceptEscape(entry.slot_label) + '</p>' +
+                            badge + revisionBadge +
+                        '</div>' +
+                        body +
+                    '</div>' +
+                    editButton +
+                '</div>' +
+                notice +
+                '<div class="mt-3">' +
+                    '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Edit History · '
+                        + history.length + ' ' + (history.length === 1 ? 'entry' : 'entries') + '</p>' +
+                    '<div class="rounded-xl border border-slate-100 bg-white divide-y divide-slate-100 max-h-56 overflow-y-auto">'
+                        + renderConceptHistory(history) +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function renderConceptHistory(history) {
+            if (history.length === 0) {
+                return '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>';
+            }
+
+            return history.map(function (entry) {
+                const changes = (entry.changes || []).map(function (change) {
+                    return '<li class="text-[11px] text-slate-500">' +
+                        '<span class="font-semibold text-slate-600">' + conceptEscape(change.label) + ':</span> ' +
+                        '<span class="line-through text-slate-400">' + (conceptEscape(change.from) || '—') + '</span> ' +
+                        '<span class="text-slate-400">to</span> ' +
+                        '<span class="text-slate-700">' + conceptEscape(change.to) + '</span>' +
+                    '</li>';
+                }).join('');
+
+                return '<div class="px-3 py-2.5">' +
+                    '<div class="flex items-start justify-between gap-2 flex-wrap">' +
+                        '<p class="text-xs font-bold text-slate-700">' + conceptEscape(entry.editor) +
+                            ' <span class="font-semibold text-slate-400">— ' + conceptEscape(entry.action_label) + '</span></p>' +
+                        '<span class="text-[10px] text-slate-400 shrink-0">' + conceptEscape(entry.created_at) +
+                            ' · ' + conceptEscape(entry.created_at_human) + '</span>' +
+                    '</div>' +
+                    (changes
+                        ? '<ul class="mt-1.5 space-y-1">' + changes + '</ul>'
+                        : '<p class="mt-1.5 text-[11px] text-slate-500"><span class="font-semibold text-slate-600">'
+                            + conceptEscape(entry.title) + '</span> · ' + conceptEscape(entry.hotel_type_label) + '</p>') +
+                '</div>';
+            }).join('');
+        }
+
+        /* Hand both concepts to faculty. The team can keep improving either one
+           afterward — submitting only starts the review, it does not lock anything. */
+        async function submitHotelConcepts() {
+            const confirmed = await Swal.fire({
+                icon: 'question',
+                title: 'Submit your hotel concepts?',
+                text: 'Submit your hotel concepts to your faculty? Your team can keep improving either concept until your faculty approves one.',
+                showCancelButton: true,
+                confirmButtonText: 'Submit',
+                confirmButtonColor: '#DB2777',
+                cancelButtonText: 'Cancel',
+            }).then(result => result.isConfirmed);
+
+            if (!confirmed) {
+                return;
+            }
+
+            const button = document.getElementById('conceptSubmitAllBtn');
+            if (button) button.disabled = true;
+
+            try {
+                const response = await fetch(@json(route('students.hotel-concept.submit')), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || '',
+                    },
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Could not submit the hotel concepts.');
+                }
+
+                paintHotelConcepts(data);
+                Swal.fire({ icon: 'success', title: 'Submitted', text: 'Your hotel concepts were sent to your faculty.', confirmButtonColor: '#DB2777' });
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Could not submit', text: error.message || 'Could not submit the hotel concepts.', confirmButtonColor: '#DB2777' });
+                if (button) button.disabled = false;
+            }
+        }
+
+        (function wireHotelConceptForm() {
+            const form = document.getElementById('hotelConceptForm');
+
+            // Draw the panel from the payload the server rendered with the page.
+            paintHotelConcepts(null);
+
+            if (!form) return;
+
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                hideHotelConceptError();
+
+                const submit = document.getElementById('hotelConceptSubmit');
+                const originalLabel = submit?.textContent;
+                if (submit) {
+                    submit.disabled = true;
+                    submit.textContent = 'Saving…';
+                }
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: new FormData(form),
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        // 422 carries Laravel's validation bag; 403 carries our own message.
+                        const firstError = data.errors
+                            ? Object.values(data.errors)[0][0]
+                            : (data.message || 'Could not save the hotel concept.');
+                        throw new Error(firstError);
+                    }
+
+                    paintHotelConcepts(data);
+                    closeHotelConceptModal();
+                } catch (error) {
+                    showHotelConceptError(error.message || 'Could not save the hotel concept.');
+                } finally {
+                    if (submit) {
+                        submit.disabled = false;
+                        submit.textContent = originalLabel || 'Save concept';
+                    }
+                }
+            });
+        })();
 
         /* Teammate activity — reads the centralized activity_logs table. The endpoint
            is gated server-side by ActivityLogAccess, which only allows members of the
@@ -1185,7 +1833,9 @@
         setInterval(syncStudentPresence, 5000);
 
         (function openSectionFromQuery() {
-            const allowed = ['home', 'group', 'tasks', 'activity', 'reports'];
+            // Every section id the page defines. A section missing here is simply
+            // ignored on load, so it must be added whenever one is added above.
+            const allowed = ['home', 'group', 'tasks', 'activity', 'reports', 'profile'];
             let section = null;
             try {
                 section = new URLSearchParams(window.location.search).get('section');
