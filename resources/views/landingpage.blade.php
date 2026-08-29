@@ -48,7 +48,7 @@
       align-items: center;
       background-image:
         linear-gradient(90deg, rgba(15,23,42,.92) 0%, rgba(15,23,42,.78) 40%, rgba(15,23,42,.30) 72%, rgba(15,23,42,.12) 100%),
-        url('{{ asset('chtm-building.png') }}');
+        url('{{ asset('chtm-buildiing1.png') }}');
       background-size: cover;
       background-position: center;
     }
@@ -154,7 +154,7 @@
         min-height: 610px;
         background-image:
           linear-gradient(90deg, rgba(15,23,42,.91), rgba(15,23,42,.68)),
-          url('{{ asset('chtm-building.png') }}');
+          url('{{ asset('chtm-buildiing1.png') }}');
         background-position: 58% center;
       }
       .audience-item + .audience-item {
