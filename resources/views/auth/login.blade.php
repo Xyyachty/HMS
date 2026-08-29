@@ -271,7 +271,7 @@
                 <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
               </button>
             </div>
-            <a href="{{ route('forgot-password') }}" class="mt-1.5 inline-block text-xs text-brand font-semibold hover:text-brand-dark transition-colors">Forgot password?</a>
+            <a href="{{ route('forgot-password') }}" class="mt-1.5 block text-left text-xs text-brand font-semibold hover:text-brand-dark transition-colors">Forgot password?</a>
           </div>
 
           <!-- Remember me -->
