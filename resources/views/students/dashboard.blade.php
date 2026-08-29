@@ -61,10 +61,14 @@
 
         .stat-card {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
         }
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 12px 40px -12px rgba(0,0,0,0.1);
+        }
+        .stat-card:active {
+            transform: translateY(0);
         }
 
         .role-badge-room { background: #FDF2F8; color: #DB2777; border: 1px solid #FBCFE8; }
@@ -306,10 +310,13 @@
                     <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">Welcome back, {{ $studentDisplayName ?? (auth()->user()->name ?? 'Student') }}</h2>
                 </div>
 
-                <!-- Stats Row -->
+                {{-- Stats Row. Each card opens the section that owns its number, through the
+                     same showSection() the sidebar calls — so the sidebar highlight, the
+                     breadcrumb and the ?section= URL all follow along for free. --}}
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <!-- Team -->
-                    <div class="stat-card bg-white rounded-2xl p-4 border border-slate-100">
+                    <button type="button" onclick="showSection('group')" aria-label="Open My Team"
+                            class="stat-card bg-white rounded-2xl p-4 border border-slate-100 text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
                         <div class="flex items-center mb-3">
                             <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
                                 <span class="iconify text-violet-500 text-lg" data-icon="mdi:office-building-outline"></span>
@@ -322,10 +329,11 @@
                                 · {{ $studentClass->name }}
                             @endif
                         </p>
-                    </div>
+                    </button>
 
                     <!-- Role -->
-                    <div class="stat-card bg-white rounded-2xl p-4 border border-slate-100">
+                    <button type="button" onclick="showSection('profile')" aria-label="Open My Profile"
+                            class="stat-card bg-white rounded-2xl p-4 border border-slate-100 text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
                         <div class="flex items-center mb-3">
                             <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
                                 <span class="iconify text-rose-500 text-lg" data-icon="{{ !empty($studentRoles) ? $myRoleIcon : 'mdi:account-question-outline' }}"></span>
@@ -333,10 +341,11 @@
                         </div>
                         <p class="text-base font-extrabold text-slate-900 truncate leading-tight">{{ $myRoleLabel }}</p>
                         <p class="text-xs text-slate-400 font-medium mt-1">Assigned Role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
-                    </div>
+                    </button>
 
                     <!-- Active Tasks -->
-                    <div class="stat-card bg-white rounded-2xl p-4 border border-slate-100">
+                    <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
+                            class="stat-card bg-white rounded-2xl p-4 border border-slate-100 text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
                         <div class="flex items-center justify-between mb-3">
                             <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
                                 <span class="iconify text-amber-500 text-lg" data-icon="mdi:clipboard-text-outline"></span>
@@ -347,10 +356,11 @@
                         </div>
                         <p class="text-2xl font-extrabold text-slate-900">{{ !empty($studentRoles) ? $myRoleTasks->count() : 0 }}</p>
                         <p class="text-xs text-slate-400 font-medium mt-1">Active Tasks</p>
-                    </div>
+                    </button>
 
                     <!-- Completed -->
-                    <div class="stat-card bg-white rounded-2xl p-4 border border-slate-100">
+                    <button type="button" onclick="showSection('reports')" aria-label="Open Reports"
+                            class="stat-card bg-white rounded-2xl p-4 border border-slate-100 text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
                         <div class="flex items-center mb-3">
                             <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
                                 <span class="iconify text-emerald-500 text-lg" data-icon="mdi:check-circle-outline"></span>
@@ -358,7 +368,7 @@
                         </div>
                         <p class="text-2xl font-extrabold text-slate-900">{{ $myCompletedTasks->count() ?? 0 }}</p>
                         <p class="text-xs text-slate-400 font-medium mt-1">Completed</p>
-                    </div>
+                    </button>
                 </div>
 
                 <!-- Recent Activities -->
