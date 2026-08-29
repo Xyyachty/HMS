@@ -500,14 +500,14 @@
                                 <p class="text-[10px] text-slate-400 mt-1">Required — this is what the student will see.</p>
                             </div>
 
-                            <div class="flex flex-col gap-2">
-                                <button type="button" id="reviewSendFeedbackBtn" onclick="submitTaskFeedback('revise')"
-                                    class="w-full px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">
-                                    <span class="iconify text-sm" data-icon="mdi:send-outline"></span> Send feedback
-                                </button>
+                            <div class="flex flex-row items-center justify-end gap-2">
                                 <button type="button" onclick="hideReviseStep()"
-                                    class="w-full px-3 py-2 rounded-xl bg-white text-slate-500 border border-slate-200 text-xs font-bold hover:bg-slate-50 transition">
+                                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-white text-slate-600 border border-slate-200 text-[11px] font-bold hover:bg-slate-50 hover:text-slate-700 transition whitespace-nowrap">
                                     Cancel
+                                </button>
+                                <button type="button" id="reviewSendFeedbackBtn" onclick="submitTaskFeedback('revise')"
+                                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-600 text-white text-[11px] font-bold hover:bg-amber-700 transition whitespace-nowrap shadow-sm shadow-amber-600/20">
+                                    <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span> Send feedback
                                 </button>
                             </div>
                         </div>
