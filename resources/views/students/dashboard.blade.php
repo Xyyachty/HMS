@@ -1851,5 +1851,22 @@
         })();
 
     </script>
+
+    @if (session('welcome'))
+        <script>
+            window.addEventListener('load', function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Welcome',
+                    text: '{{ session('welcome.name') }} to {{ ucfirst(session('welcome.role')) }}',
+                    timer: 2500,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    iconColor: '#DB2777',
+                    width: '22rem'
+                });
+            });
+        </script>
+    @endif
 </body>
 </html>
