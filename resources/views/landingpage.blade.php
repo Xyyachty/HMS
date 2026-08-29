@@ -350,10 +350,7 @@
         </div>
 
         <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <label for="landingLoginPassword" class="text-xs font-bold uppercase tracking-wider text-slate-500">Password</label>
-            <a href="{{ route('forgot-password') }}" class="text-xs text-brand font-semibold hover:text-brand-dark transition-colors">Forgot password?</a>
-          </div>
+          <label for="landingLoginPassword" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
           <div class="relative">
             <span class="iconify absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:lock-outline"></span>
             <input id="landingLoginPassword" name="password" type="password" placeholder="Enter your password" required
@@ -362,6 +359,7 @@
               <span id="landingPasswordToggleIcon" class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
             </button>
           </div>
+          <a href="{{ route('forgot-password') }}" class="mt-1.5 inline-block text-xs text-brand font-semibold hover:text-brand-dark transition-colors">Forgot password?</a>
         </div>
 
         <label class="flex items-center gap-2.5 cursor-pointer">
