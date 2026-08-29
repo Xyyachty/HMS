@@ -502,7 +502,7 @@
 
                             <div class="flex flex-row items-center justify-end gap-2">
                                 <button type="button" onclick="hideReviseStep()"
-                                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-white text-slate-600 border border-slate-200 text-[11px] font-bold hover:bg-slate-50 hover:text-slate-700 transition whitespace-nowrap">
+                                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 border border-slate-300 text-[11px] font-bold hover:bg-slate-200 hover:text-slate-900 transition whitespace-nowrap">
                                     Cancel
                                 </button>
                                 <button type="button" id="reviewSendFeedbackBtn" onclick="submitTaskFeedback('revise')"
