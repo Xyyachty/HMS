@@ -477,14 +477,14 @@
                     <div id="reviewDecisionBlock" class="space-y-3">
                         {{-- Step 1: pick a verdict. The feedback box only belongs to
                              Revise, so it stays out of the way until that is chosen. --}}
-                        <div id="reviewChoiceStep" class="flex flex-row items-center justify-end gap-2 pt-2">
+                        <div id="reviewChoiceStep" class="flex items-center justify-end gap-2 pt-2">
                             <button type="button" id="reviewReviseBtn" onclick="showReviseStep()"
-                                class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-white text-rose-600 border border-slate-200 text-[11px] font-bold hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 transition whitespace-nowrap">
-                                <span class="iconify text-[13px]" data-icon="mdi:pencil-circle-outline"></span> Revise
+                                class="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition bg-white text-rose-600 border border-slate-200 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700">
+                                <span class="iconify text-sm" data-icon="mdi:pencil-circle-outline"></span> Revise
                             </button>
                             <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')"
-                                class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 transition whitespace-nowrap shadow-sm shadow-emerald-600/20">
-                                <span class="iconify text-[13px]" data-icon="mdi:check-circle-outline"></span> Approve
+                                class="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition bg-emerald-600 text-white shadow-sm hover:bg-emerald-700">
+                                <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve
                             </button>
                         </div>
 
@@ -500,14 +500,14 @@
                                 <p class="text-[10px] text-slate-400 mt-1">Required — this is what the student will see.</p>
                             </div>
 
-                            <div class="flex flex-row items-center justify-end gap-2">
+                            <div class="flex items-center justify-end gap-2">
                                 <button type="button" onclick="hideReviseStep()"
-                                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-100 text-slate-700 border border-slate-300 text-[11px] font-bold hover:bg-slate-200 hover:text-slate-900 transition whitespace-nowrap">
+                                    class="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200 hover:text-slate-900">
                                     Cancel
                                 </button>
                                 <button type="button" id="reviewSendFeedbackBtn" onclick="submitTaskFeedback('revise')"
-                                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-teal-600 text-white text-[11px] font-bold hover:bg-teal-700 transition whitespace-nowrap shadow-sm shadow-teal-600/20 focus:outline-none focus:ring-2 focus:ring-teal-500/40">
-                                    <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span> Send feedback
+                                    class="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition bg-emerald-600 text-white shadow-sm hover:bg-emerald-700">
+                                    <span class="iconify text-sm" data-icon="mdi:send-outline"></span> Send feedback
                                 </button>   
                             </div>
                         </div>
