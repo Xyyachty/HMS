@@ -506,7 +506,7 @@
                                     Cancel
                                 </button>
                                 <button type="button" id="reviewSendFeedbackBtn" onclick="submitTaskFeedback('revise')"
-                                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 transition whitespace-nowrap shadow-sm shadow-indigo-600/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/40">
+                                    class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-teal-600 text-white text-[11px] font-bold hover:bg-teal-700 transition whitespace-nowrap shadow-sm shadow-teal-600/20 focus:outline-none focus:ring-2 focus:ring-teal-500/40">
                                     <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span> Send feedback
                                 </button>   
                             </div>
@@ -2099,7 +2099,7 @@ function renderTeamConceptControls(entry, data) {
                     + '<span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve ' + escHtml(entry.slot_label)
                 + '</button>'
                 + '<button type="button" data-team-concept-action="' + slot + '" onclick="showTeamConceptRevisionForm(' + slot + ')"'
-                    + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">'
+                    + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition inline-flex items-center justify-center gap-1.5 shadow-sm shadow-teal-600/20">'
                     + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back'
                 + '</button>'
             + '</div>'
@@ -2112,7 +2112,7 @@ function renderTeamConceptControls(entry, data) {
                 + '<p class="text-[10px] text-slate-400 mt-1">Required before sending back.</p>'
                 + '<div class="flex flex-wrap gap-2 mt-2">'
                     + '<button type="button" data-team-concept-action="' + slot + '" onclick="submitTeamConceptFeedback(' + slot + ', \'revise\')"'
-                        + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">'
+                        + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition inline-flex items-center justify-center gap-1.5 shadow-sm shadow-teal-600/20">'
                         + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Confirm send back'
                     + '</button>'
                     + '<button type="button" onclick="hideTeamConceptRevisionForm(' + slot + ')"'
