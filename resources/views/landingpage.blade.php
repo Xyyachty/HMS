@@ -359,7 +359,7 @@
               <span id="landingPasswordToggleIcon" class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
             </button>
           </div>
-          <a href="{{ route('forgot-password') }}" class="mt-1.5 block text-left text-xs text-brand font-semibold hover:text-brand-dark transition-colors">Forgot password?</a>
+          <a href="{{ route('forgot-password') }}" class="mt-1.5 block text-right text-xs text-brand font-semibold hover:text-brand-dark transition-colors">Forgot password?</a>
         </div>
 
         <label class="flex items-center gap-2.5 cursor-pointer">
