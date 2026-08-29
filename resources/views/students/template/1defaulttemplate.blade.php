@@ -765,12 +765,6 @@ function menuFoodImg(item) {
   return 'https://picsum.photos/seed/' + seed + '/800/600.jpg';
 }
 
-function amenityImg(item) {
-  if (item && item.img) return item.img;
-  const seed = encodeURIComponent((item && (item.id || item.name)) || 'amenity');
-  return 'https://picsum.photos/seed/' + seed + '/800/600.jpg';
-}
-
 /* A room with no photo of its own — every seeded room starts that way — would render
    <img src=""> and leave a blank hole where its neighbours show a picture. Same
    stand-in the menu uses, seeded by the room so each one keeps the same photo
@@ -2874,71 +2868,21 @@ function ExperiencePage({ onNavigate }) {
 }
 
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• BOOKING PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function AmenitiesPage({ onNavigate, addons }) {
-  const items = addons || [];
-
+/* Header only. The add-ons catalogue used to be listed here, but add-ons belong to
+   the Housekeeping Add-ons page — the two are separate now, so the body is left
+   empty for Housekeeping to build the page themselves. */
+function AmenitiesPage() {
   return (
-    <>
-      <div className="page-header">
-        <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Beyond the Stay</p>
-        <h1 className="font-display">Hotel Amenities</h1>
-        <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
-      </div>
-      <section style={{ padding: '0 1.5rem 4rem', maxWidth: 1200, margin: '0 auto' }}>
-        {items.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--fg-muted)' }}>
-            <i className="fa-solid fa-concierge-bell" style={{ fontSize: '1.6rem', color: 'var(--accent)', marginBottom: '1rem', display: 'block' }}></i>
-            <p style={{ fontSize: '0.85rem' }}>No amenities listed yet.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}>
-            {items.map(item => {
-              const available = item.status === 'Available';
-              return (
-                <div key={item.id} className="menu-food-card">
-                  <div className="menu-food-img">
-                    <img
-                      src={amenityImg(item)}
-                      alt={item.name}
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        const fallback = e.currentTarget.nextElementSibling;
-                        if (fallback) fallback.style.display = 'flex';
-                      }}
-                    />
-                    <div className="menu-food-img-fallback" style={{ display: 'none' }}>
-                      <i className="fa-solid fa-concierge-bell" style={{ fontSize: '1.6rem', color: 'var(--accent)' }}></i>
-                    </div>
-                    <div className="menu-food-price">{formatPeso(item.price)}</div>
-                  </div>
-                  <div className="menu-food-body">
-                    <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 0.5rem' }}>{item.name}</h3>
-                    <span style={{
-                      display: 'inline-block', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.05em',
-                      textTransform: 'uppercase', padding: '0.25rem 0.6rem', borderRadius: '999px',
-                      color: available ? '#2f7a4d' : '#a33',
-                      background: available ? 'rgba(47,122,77,0.1)' : 'rgba(170,51,51,0.1)',
-                    }}>{item.status}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div style={{ textAlign: 'center', marginTop: items.length ? '3rem' : 0 }}>
-          <button className="btn-primary" onClick={() => onNavigate('booking')}>
-            Book Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
-          </button>
-        </div>
-      </section>
-    </>
+    <div className="page-header">
+      <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Beyond the Stay</p>
+      <h1 className="font-display">Hotel Amenities</h1>
+      <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
+    </div>
   );
 }
 
 
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• BOOKING PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function BookingPage({ onToast, rooms }) {
   const roomList = rooms && rooms.length ? rooms : [];
   const [form, setForm] = useState({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
@@ -3485,7 +3429,7 @@ function App() {
       />
     ),
     experience: <ExperiencePage onNavigate={navigateTo} />,
-    amenities: <AmenitiesPage onNavigate={navigateTo} addons={addons} />,
+    amenities: <AmenitiesPage />,
     booking: <BookingPage onToast={showToast} rooms={rooms} />,
   };
 

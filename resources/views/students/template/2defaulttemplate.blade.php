@@ -721,12 +721,6 @@ function pickImageFile(onPicked) {
   input.click();
 }
 
-function amenityImg(item) {
-  if (item && item.img) return item.img;
-  const seed = encodeURIComponent((item && (item.id || item.name)) || 'amenity');
-  return 'https://picsum.photos/seed/' + seed + '/800/600.jpg';
-}
-
 function resolveCardImg(kind, id, fallback) {
   if (window.HMSSiteContent && typeof window.HMSSiteContent.getCardImage === 'function') {
     return window.HMSSiteContent.getCardImage(kind, id, fallback) || fallback;
@@ -2519,57 +2513,21 @@ function ExperiencePage({ onNav, canEdit, onToast, cardImages }) {
 }
 
 
-/* â•â•â•â•â•â•â• BOOKING â•â•â•â•â•â•â• */
-/* 'YYYY-MM-DD' + n days -> 'YYYY-MM-DD'. Built from the date parts, not by adding
-   ms to a Date, so it can't drift across a DST boundary. */
-function AmenitiesPage({ onNav, addons }) {
-  const items = addons || [];
-
+/* Header only. The add-ons catalogue used to be listed here, but add-ons belong to
+   the Housekeeping Add-ons page — the two are separate now, so the body is left
+   empty for Housekeeping to build the page themselves. */
+function AmenitiesPage() {
   return (
-    <>
-      <div className="page-header">
-        <span className="section-num">Beyond the Stay</span>
-        <h1 className="font-display">Hotel Amenities</h1>
-        <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
-      </div>
-      <section style={{ padding: '0 1.5rem 4rem', maxWidth: 1100, margin: '0 auto' }}>
-        {items.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--fg-muted)' }}>
-            <i className="fa-solid fa-concierge-bell" style={{ fontSize: '1.6rem', color: 'var(--warm)', marginBottom: '1rem', display: 'block' }}></i>
-            <p style={{ fontSize: '0.85rem' }}>No amenities listed yet.</p>
-          </div>
-        ) : (
-          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1.25rem' }}>
-            {items.map(item => {
-              const available = item.status === 'Available';
-              return (
-                <div key={item.id} className="rest-card">
-                  <div className="rest-card-img">
-                    <img src={amenityImg(item)} alt={item.name} loading="lazy" />
-                  </div>
-                  <div style={{ padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{item.name}</h3>
-                      <span style={{
-                        display: 'inline-block', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.05em',
-                        textTransform: 'uppercase', padding: '0.25rem 0.6rem', borderRadius: '999px',
-                        color: available ? '#2f7a4d' : '#a33',
-                        background: available ? 'rgba(47,122,77,0.1)' : 'rgba(170,51,51,0.1)',
-                      }}>{item.status}</span>
-                    </div>
-                    <p style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.9rem', margin: 0 }}>{'₱' + Number(item.price || 0).toLocaleString()}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-    </>
+    <div className="page-header">
+      <span className="section-num">Beyond the Stay</span>
+      <h1 className="font-display">Hotel Amenities</h1>
+      <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
+    </div>
   );
 }
 
 
+/* â•â•â•â•â•â•â• BOOKING â•â•â•â•â•â•â• */
 function BookingPage({ onToast, rooms }) {
   const roomList = rooms && rooms.length ? rooms : [];
   const [form, setForm] = useState({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
@@ -3142,7 +3100,7 @@ function App() {
       />
     ),
     experience: <ExperiencePage onNav={navigateTo} onToast={showToast} canEdit={canEditExperiences} cardImages={cardImages} />,
-    amenities: <AmenitiesPage onNav={navigateTo} addons={addons} />,
+    amenities: <AmenitiesPage />,
     booking: <BookingPage onToast={showToast} rooms={rooms} />,
   };
 
