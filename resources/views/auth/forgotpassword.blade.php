@@ -215,7 +215,7 @@
               <span class="iconify text-brand text-3xl" data-icon="mdi:lock-reset"></span>
             </div>
             <h2 class="text-3xl font-bold tracking-tight mb-2">Forgot your password?</h2>
-            <p class="text-slate-500 font-light leading-relaxed">Enter your @hms.edu email and set your new password.</p>
+            <p class="text-slate-500 font-light leading-relaxed">Enter the email address on your account and set your new password.</p>
           </div>
 
           <form id="resetForm" method="POST" action="{{ route('forgot-password.submit') }}" class="space-y-0">
@@ -262,20 +262,17 @@
                 </p>
               @enderror
               <p id="emailMissingMsg" class="text-[10px] text-red-500 font-medium hidden flex items-center gap-1">
-                <span class="iconify text-xs" data-icon="mdi:alert-circle-outline"></span>
-                <span>No account found with this email address.</span>
+                <span class="iconify text-xs" data-icon="mdi:close-circle"></span>
+                <span>This account is not registered. Please contact your Faculty.</span>
               </p>
               <p id="emailExistsMsg" class="text-[10px] text-green-600 font-medium hidden flex items-center gap-1">
                 <span class="iconify text-xs" data-icon="mdi:check-circle-outline"></span>
                 <span>Email verified. You can reset your password.</span>
               </p>
-              <p class="text-[10px] text-slate-400 font-medium flex items-center gap-1">
-                <span class="iconify text-xs" data-icon="mdi:information-outline"></span>
-                <span>We only accept @hms.edu email addresses.</span>
-              </p>
             </div>
-            <!-- ===== PASSWORD FIELDS ===== -->
-            <div id="passwordSection" class="space-y-4 mt-6">
+            {{-- Stays closed until the email is confirmed to belong to a registered,
+                 active account, so there is no form to fill in before that. --}}
+            <div id="passwordSection" class="reveal-section space-y-4">
               <div class="space-y-4">
                 <!-- Divider -->
                 <div class="flex items-center gap-3">
@@ -376,8 +373,20 @@
     const checkingMsg = document.getElementById('emailCheckingMsg');
     const missingMsg = document.getElementById('emailMissingMsg');
     const existsMsg = document.getElementById('emailExistsMsg');
+    const passwordSection = document.getElementById('passwordSection');
+    const resetForm = document.getElementById('resetForm');
     let debounceTimer = null;
     let isChecking = false;
+
+    /* Closing the section also empties it: a password typed against one email must not
+       ride along when the student switches to another. */
+    function setPasswordSectionVisible(show) {
+      passwordSection.classList.toggle('visible', show);
+      if (!show) {
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+      }
+    }
 
     function resetEmailStatus() {
       emailInput.classList.remove('error', 'success', 'checking');
@@ -390,6 +399,7 @@
       checkingMsg.classList.add('hidden');
       missingMsg.classList.add('hidden');
       existsMsg.classList.add('hidden');
+      setPasswordSectionVisible(false);
     }
 
     async function checkEmail(email) {
@@ -421,17 +431,20 @@
           successIcon.classList.remove('hidden');
           successIcon.classList.add('visible');
           existsMsg.classList.remove('hidden');
+          setPasswordSectionVisible(true);
         } else {
           emailInput.classList.add('error');
           errorIcon.classList.remove('hidden');
           errorIcon.classList.add('visible');
           missingMsg.classList.remove('hidden');
+          setPasswordSectionVisible(false);
         }
       } catch (error) {
         checkingIcon.classList.add('hidden');
         checkingIcon.classList.remove('visible');
         checkingMsg.classList.add('hidden');
         emailInput.classList.remove('checking');
+        setPasswordSectionVisible(false);
       } finally {
         isChecking = false;
       }
@@ -456,6 +469,13 @@
       if (!email || isChecking) return;
       if (email.includes('@') && email.includes('.') && email.length > 5) {
         checkEmail(email);
+      }
+    });
+
+    /* UX guard only — forgotPasswordSubmit() re-runs the same check server-side. */
+    resetForm.addEventListener('submit', function (e) {
+      if (!passwordSection.classList.contains('visible')) {
+        e.preventDefault();
       }
     });
 

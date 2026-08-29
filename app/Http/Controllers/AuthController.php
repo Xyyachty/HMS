@@ -100,18 +100,37 @@ class AuthController extends Controller
         return view('auth.forgotpassword');
     }
 
+    /* A password may only be reset onto an account that exists and is usable. Pending
+       and deactivated accounts are excluded, or a student the faculty switched off
+       could reset their way back in. Both the live check and the submit run through
+       here so the two never disagree. */
+    private function resettableAccount(?string $email): ?User
+    {
+        if (!$email) {
+            return null;
+        }
+
+        $user = User::whereEmail($email)->first();
+
+        if (!$user || ($user->status ?? 'active') !== 'active') {
+            return null;
+        }
+
+        return $user;
+    }
+
     public function forgotPasswordSubmit(Request $request)
     {
         $data = $request->validate([
-            'email' => ['required', 'email', 'regex:/^[^@\s]+@hms\.edu$/i'],
+            'email' => ['required', 'email'],
             'password' => ['required', 'min:8', 'confirmed'],
         ]);
 
-        $user = User::whereEmail($data['email'])->first();
+        $user = $this->resettableAccount($data['email']);
 
         if (!$user) {
             return back()->withErrors([
-                'email' => 'No account found with this email address.',
+                'email' => 'This account is not registered. Please contact your Faculty.',
             ])->withInput();
         }
 
@@ -125,13 +144,11 @@ class AuthController extends Controller
     public function checkForgotPasswordEmail(Request $request): JsonResponse
     {
         $request->validate([
-            'email' => ['required', 'email', 'regex:/^[^@\s]+@hms\.edu$/i'],
+            'email' => ['required', 'email'],
         ]);
 
-        $exists = User::whereEmail($request->input('email'))->exists();
-
         return response()->json([
-            'exists' => $exists,
+            'exists' => $this->resettableAccount($request->input('email')) !== null,
         ]);
     }
 

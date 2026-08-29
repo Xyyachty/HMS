@@ -43,8 +43,10 @@ Route::post('/login', [AuthController::class, 'authenticate'])->middleware('gues
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('guest')->name('forgot-password');
 Route::post('/forgot-password', [AuthController::class, 'forgotPasswordSubmit'])->middleware('guest')->name('forgot-password.submit');
+// Throttled: unauthenticated, called on every keystroke, and its answer reveals
+// whether an email is registered.
 Route::get('/forgot-password/check-email', [AuthController::class, 'checkForgotPasswordEmail'])
-    ->middleware('guest')
+    ->middleware(['guest', 'throttle:20,1'])
     ->name('forgot-password.check-email');
 
 // Notification bell — same feed endpoints for dean, faculty and students.
