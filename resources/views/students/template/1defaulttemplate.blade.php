@@ -242,6 +242,52 @@
   .facility-card-desc {
     font-size: 0.82rem; color: var(--fg-muted); font-weight: 300;
     line-height: 1.6; margin-top: 0.2rem;
+    /* Two lines on the card; the modal is where the whole thing is readable. */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .facility-card { cursor: pointer; }
+  .facility-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* Its own classes rather than .room-modal's: a facility modal is read-only and the
+     two must stay free to diverge. Skinned to match this template, not template 2's. */
+  .facility-modal-overlay {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,0.72);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1.25rem;
+    animation: roomModalFade 0.2s ease;
+  }
+  .facility-modal {
+    width: min(560px, 100%);
+    max-height: min(90vh, 720px);
+    overflow: auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+    animation: roomModalRise 0.22s ease;
+  }
+  .facility-modal-img { position: relative; height: 260px; overflow: hidden; }
+  .facility-modal-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .facility-modal-close {
+    position: absolute; top: 0.75rem; right: 0.75rem;
+    width: 34px; height: 34px; border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(12,11,9,0.85); color: var(--fg);
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .facility-modal-body { padding: 1.5rem 1.6rem 1.75rem; }
+  .facility-modal-row {
+    display: flex; align-items: flex-start; gap: 0.7rem;
+    padding: 0.7rem 0; border-top: 1px solid var(--border);
+    font-size: 0.85rem; color: var(--fg-muted); font-weight: 300;
+  }
+  .facility-modal-row i { color: var(--accent); font-size: 0.8rem; margin-top: 0.2rem; }
+  .facility-modal-row strong {
+    display: block; color: var(--fg); font-weight: 500;
+    font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 0.2rem;
   }
 
   .tab-bar {
@@ -2917,8 +2963,78 @@ function facilityStatusClass(status) {
   return 'is-maintenance';
 }
 
+/* What a guest gets on tapping a card: the picture at full width and the details the
+   card had to clamp or drop. Read-only — there is nothing to book on a facility.
+
+   Deliberately NOT shown: the repair notes on the row. Those are Maintenance's working
+   comments to Housekeeping, and the amenity's own status already tells a guest what
+   they need to know. */
+function FacilityModal({ facility, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    // The page behind must not scroll under the overlay.
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  return (
+    <div className="facility-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true" aria-label={facility.name}>
+      <div className="facility-modal" onClick={e => e.stopPropagation()}>
+        <div className="facility-modal-img">
+          <img src={facility.img} alt={facility.name} />
+          <button type="button" className="facility-modal-close" onClick={onClose} aria-label="Close">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+          <span className={'facility-status ' + facilityStatusClass(facility.status)}>{facility.status}</span>
+        </div>
+        <div className="facility-modal-body">
+          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Amenity</p>
+          <h2 className="font-display" style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 1.1rem' }}>{facility.name}</h2>
+
+          {facility.description && (
+            <p style={{ fontSize: '0.9rem', color: 'var(--fg-muted)', fontWeight: 300, lineHeight: 1.7, margin: '0 0 1.1rem' }}>
+              {facility.description}
+            </p>
+          )}
+
+          {facility.location && (
+            <div className="facility-modal-row">
+              <i className="fa-solid fa-location-dot"></i>
+              <div><strong>Location</strong>{facility.location}</div>
+            </div>
+          )}
+          <div className="facility-modal-row">
+            <i className="fa-solid fa-clock"></i>
+            <div><strong>Opening Hours</strong>{facility.hours || 'Ask the front desk'}</div>
+          </div>
+          <div className="facility-modal-row">
+            <i className="fa-solid fa-circle-info"></i>
+            <div>
+              <strong>Status</strong>
+              {facility.status === 'Available'
+                ? 'Open to guests.'
+                : facility.status === 'Temporarily Closed'
+                  ? 'Closed for now. The front desk can tell you when it reopens.'
+                  : 'Closed while it is being repaired. Sorry for the inconvenience.'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AmenitiesPage({ amenities }) {
   const list = Array.isArray(amenities) ? amenities : [];
+  const [openId, setOpenId] = useState(null);
+  // Read off the live list rather than held in state, so a poll that changes a
+  // facility's status updates the open modal instead of showing a stale copy.
+  const selected = list.find(item => item.id === openId) || null;
 
   return (
     <>
@@ -2939,6 +3055,13 @@ function AmenitiesPage({ amenities }) {
               <div
                 key={item.id}
                 className={'facility-card' + (item.status === 'Available' ? '' : ' is-unavailable')}
+                role="button"
+                tabIndex={0}
+                aria-label={'View ' + item.name}
+                onClick={() => setOpenId(item.id)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(item.id); }
+                }}
               >
                 <div className="facility-card-media">
                   <img src={item.img} alt={item.name} />
@@ -2959,12 +3082,17 @@ function AmenitiesPage({ amenities }) {
                     </div>
                   )}
                   {item.description && <p className="facility-card-desc">{item.description}</p>}
+                  <span style={{ marginTop: 'auto', paddingTop: '0.6rem', color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                    View details <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.62rem' }}></i>
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         )}
       </section>
+
+      {selected && <FacilityModal facility={selected} onClose={() => setOpenId(null)} />}
     </>
   );
 }
