@@ -140,9 +140,36 @@
   .hero-bg {
     position: absolute;
     inset: 0;
-    background: url('https://picsum.photos/seed/luxuryhotel/1920/1080.jpg') center/cover no-repeat;
     overflow: hidden;
   }
+  .hero-slide {
+    position: absolute;
+    inset: 0;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+  }
+  .hero-slide.is-active { opacity: 1; }
+  .hero-dots {
+    position: absolute; left: 0; right: 0; bottom: 1.5rem; z-index: 3;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  }
+  .hero-dot {
+    width: 8px; height: 8px; border-radius: 50%; border: none; padding: 0;
+    background: rgba(245,240,232,0.4); cursor: pointer; transition: all 0.2s;
+  }
+  .hero-dot.is-active { background: var(--accent); width: 22px; border-radius: 4px; }
+  .hero-edit-btn {
+    position: absolute; right: 1.5rem; bottom: 1.4rem; z-index: 3;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: rgba(12,11,9,0.65); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 0.4rem 0.9rem; font-size: 0.68rem; letter-spacing: 0.04em;
+    cursor: pointer; backdrop-filter: blur(4px);
+  }
+  .hero-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
   .hero-overlay {
     position: absolute;
     inset: 0;
@@ -1475,8 +1502,66 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, ca
 }
 
 
+/* Five-slide hero. Front Desk owns Home, so these follow the exact __navLinks
+   pattern — page:'home', fixed count, per-slide image replace only. */
+const DEFAULT_HERO_SLIDES = [
+  { id: 'hero-slide-1', img: 'https://picsum.photos/seed/luxuryhotel/1920/1080.jpg' },
+  { id: 'hero-slide-2', img: 'https://picsum.photos/seed/hotellobby/1920/1080.jpg' },
+  { id: 'hero-slide-3', img: 'https://picsum.photos/seed/hotelpool/1920/1080.jpg' },
+  { id: 'hero-slide-4', img: 'https://picsum.photos/seed/luxurysuite/1920/1080.jpg' },
+  { id: 'hero-slide-5', img: 'https://picsum.photos/seed/hoteldining/1920/1080.jpg' },
+];
+
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• HOME PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom }) {
+function HeroSlider({ slides, canEdit }) {
+  const list = slides && slides.length ? slides : DEFAULT_HERO_SLIDES;
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (list.length < 2) return undefined;
+    const id = setInterval(() => setActive((i) => (i + 1) % list.length), 6000);
+    return () => clearInterval(id);
+  }, [list.length]);
+
+  const handleChangeImage = () => {
+    if (!window.HMSSiteContent) return;
+    window.HMSSiteContent.pickImageFile((url) => {
+      if (!url) return;
+      window.HMSSiteContent.updateHeroSlide(list[active].id, { img: url }, DEFAULT_HERO_SLIDES);
+    });
+  };
+
+  return (
+    <>
+      {list.map((slide, i) => (
+        <div
+          key={slide.id}
+          className={`hero-slide${i === active ? ' is-active' : ''}`}
+          style={{ backgroundImage: 'url(' + slide.img + ')' }}
+        ></div>
+      ))}
+      <div className="hero-dots" data-hms-no-edit="1">
+        {list.map((slide, i) => (
+          <button
+            key={slide.id}
+            type="button"
+            className={`hero-dot${i === active ? ' is-active' : ''}`}
+            aria-label={'Slide ' + (i + 1)}
+            onClick={() => setActive(i)}
+          ></button>
+        ))}
+      </div>
+      {canEdit && (
+        <button type="button" className="hero-edit-btn" data-hms-no-edit="1" onClick={handleChangeImage}>
+          <i className="fa-solid fa-image" style={{ fontSize: 10 }}></i> Change image
+        </button>
+      )}
+    </>
+  );
+}
+
+
+function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides }) {
   const roomList = rooms && rooms.length ? rooms : [];
   const menuList = menus || [];
 
@@ -1514,7 +1599,9 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
   return (
     <>
       <section className="hero" data-hms-section="hero" data-hms-bg-target="1">
-        <div className="hero-bg" data-hms-bg-target="1"></div>
+        <div className="hero-bg" data-hms-bg-target="1">
+          <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} />
+        </div>
         <div className="hero-overlay"></div>
         <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 1.5rem', maxWidth: 760 }}>
           <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '1.25rem' }}>Boutique Luxury</p>
@@ -3310,6 +3397,11 @@ function App() {
   const [cardImages, setCardImages] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getCardImages ? window.HMSSiteContent.getCardImages() : {}
   ));
+  const [heroSlides, setHeroSlidesState] = useState(() => (
+    window.HMSSiteContent ? window.HMSSiteContent.getHeroSlides(DEFAULT_HERO_SLIDES) : DEFAULT_HERO_SLIDES
+  ));
+  const [canEditHeroSlides, setCanEditHeroSlides] = useState(false);
+
 
   // In-flight room writes — a poll that lands mid-write would show stale data.
   const pendingWrites = useRef(0);
@@ -3386,6 +3478,12 @@ function App() {
     setNavLinks(window.HMSSiteContent.getNav());
     // Rooms and menus come from the DB API — do NOT overwrite with customizations
     if (window.HMSSiteContent.getCardImages) setCardImages(window.HMSSiteContent.getCardImages());
+    setHeroSlidesState(window.HMSSiteContent.getHeroSlides(DEFAULT_HERO_SLIDES));
+    setCanEditHeroSlides(
+      typeof window.HMSSiteContent.canEditHeroSlides === 'function'
+        ? window.HMSSiteContent.canEditHeroSlides()
+        : false
+    );
     setCanEditNav(window.HMSSiteContent.canEditNav());
     setCanEditRooms(window.HMSSiteContent.canEditRooms());
     setCanManageRooms(
@@ -3623,6 +3721,8 @@ function App() {
         rooms={rooms}
         menus={menus}
         canEditRooms={canEditRooms}
+        heroSlides={heroSlides}
+        canEditHeroSlides={canEditHeroSlides}
         onAddRoom={addRoom}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
