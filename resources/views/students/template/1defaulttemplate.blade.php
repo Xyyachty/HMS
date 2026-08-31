@@ -917,6 +917,12 @@ function isSiteInteractive() {
   return !document.body.classList.contains('hms-design-mode');
 }
 
+/* Where the site's data lives. The builder points these at /students/hotel/*, which
+   needs a login; the Mini Portfolio points them at its own slug-scoped, guest-safe
+   mirrors. The literals are the fallback so nothing breaks if the bridge is absent. */
+const HMS_API = window.__HMS_API__ || {};
+function hmsApi(key, fallback) { return HMS_API[key] || fallback; }
+
 function hmsCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
   return meta ? meta.getAttribute('content') : '';
@@ -2938,7 +2944,7 @@ function AmenitiesPage({ amenities }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• BOOKING PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function BookingPage({ onToast, rooms }) {
+function BookingPage({ onToast, rooms, onCreateBooking }) {
   const roomList = rooms && rooms.length ? rooms : [];
   const [form, setForm] = useState({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
   const today = new Date().toISOString().split('T')[0];
@@ -2963,12 +2969,44 @@ function BookingPage({ onToast, rooms }) {
 
   const estimate = getEstimate();
 
+  /* On the Mini Portfolio this really books. In the builder it stays the demo it has
+     always been — a student clicking through their own design should not be filing
+     reservations against their hotel. onCreateBooking is the same call the Rooms page
+     makes, so both entry points go through one endpoint and one set of guards. */
+  const [sending, setSending] = useState(false);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!isSiteInteractive()) return;
+    if (!isSiteInteractive() || sending) return;
     const room = roomList.find(r => r.id === form.roomType);
-    onToast(`Thank you, ${form.name}! Your booking for the ${room ? room.name : 'room'} has been submitted.`);
-    setForm({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
+
+    if (!window.__HMS_PUBLIC__ || !onCreateBooking) {
+      onToast(`Thank you, ${form.name}! Your booking for the ${room ? room.name : 'room'} has been submitted.`);
+      setForm({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
+      return;
+    }
+
+    if (!room) { onToast('Please choose a room type.'); return; }
+
+    setSending(true);
+    // createBooking carries the dates on the guest object, not a separate one.
+    // No payment and no add-ons: the public endpoint refuses both anyway.
+    Promise.resolve(onCreateBooking(
+      room,
+      {
+        // The form asks for a name and an email; the desk takes the rest on arrival.
+        fullName: form.name, contactNo: '', email: form.email, idNumber: '',
+        checkIn: form.checkIn, checkOut: form.checkOut, checkInTime: '',
+      },
+      null,
+      []
+    ))
+      .then(() => {
+        onToast(`Thank you, ${form.name}! Your request for the ${room.name} is with the front desk.`);
+        setForm({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
+      })
+      .catch(err => onToast((err && err.message) ? err.message : 'That booking could not be sent.'))
+      .finally(() => setSending(false));
   };
 
   // Check-out must be a later date than check-in, so the day of check-in itself is
@@ -3162,7 +3200,7 @@ function App() {
   const roomsHydrated = useRef(false);
   const fetchRooms = useCallback(() => {
     if (pendingWrites.current > 0) return;
-    fetch('/students/hotel/rooms', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    fetch(hmsApi('rooms', '/students/hotel/rooms'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
@@ -3176,7 +3214,7 @@ function App() {
   // now is computed server-side, so the picker never has to work it out itself.
   const fetchAddons = useCallback(() => {
     if (pendingWrites.current > 0) return;
-    fetch('/students/hotel/addons', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    fetch(hmsApi('addons', '/students/hotel/addons'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
@@ -3189,7 +3227,7 @@ function App() {
   // the Housekeeping Amenities screen holds, closures and repairs included.
   const fetchAmenities = useCallback(() => {
     if (pendingWrites.current > 0) return;
-    fetch('/students/hotel/amenities', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    fetch(hmsApi('amenities', '/students/hotel/amenities'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
@@ -3201,7 +3239,7 @@ function App() {
   // The server decides who may edit the menu — the client only mirrors that answer.
   const fetchMenus = useCallback(() => {
     if (pendingWrites.current > 0) return;
-    fetch('/students/hotel/menus', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    fetch(hmsApi('menus', '/students/hotel/menus'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
@@ -3322,7 +3360,7 @@ function App() {
     const body = { status: patch.status };
 
     pendingWrites.current += 1;
-    fetch('/students/hotel/rooms/' + String(id).replace(/^db-/, ''), {
+    fetch(hmsApi('roomUpdate', '/students/hotel/rooms') + '/' + String(id).replace(/^db-/, ''), {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
@@ -3354,7 +3392,7 @@ function App() {
   // projected `reservation` already on it, so the grid needs no guesswork.
   const createBooking = useCallback((room, guest, payment, addonLines) => {
     pendingWrites.current += 1;
-    return fetch('/students/hotel/bookings', {
+    return fetch(hmsApi('bookings', '/students/hotel/bookings'), {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
@@ -3512,7 +3550,7 @@ function App() {
     ),
     experience: <ExperiencePage onNavigate={navigateTo} />,
     amenities: <AmenitiesPage amenities={amenities} />,
-    booking: <BookingPage onToast={showToast} rooms={rooms} />,
+    booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} />,
   };
 
   return (

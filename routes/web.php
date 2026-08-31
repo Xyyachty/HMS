@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HotelConceptController;
 use App\Http\Controllers\HotelTemplateController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PublicSiteController;
 use App\Models\ActivityLog;
 use App\Models\HotelBooking;
 use App\Models\HotelComplaint;
@@ -48,6 +49,39 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPasswordSubmit'])
 Route::get('/forgot-password/check-email', [AuthController::class, 'checkForgotPasswordEmail'])
     ->middleware(['guest', 'throttle:20,1'])
     ->name('forgot-password.check-email');
+
+/*
+|--------------------------------------------------------------------------
+| Mini Portfolio — a team's hotel site, open to anyone
+|--------------------------------------------------------------------------
+|
+| The only routes in this file outside `auth`. Everything else answers "which hotel?"
+| from the logged-in student's membership; here the slug in the URL is the whole of it.
+|
+| No middleware on purpose. NOT `guest` — that alias is RedirectIfAuthenticated, which
+| would bounce a student clicking their own team's link off to a dashboard. The `web`
+| group already applies, and EnsureStudentIsActive inside it is a no-op with no session.
+|
+| The team's Publish in the builder is what opens the door; before that every one of
+| these 404s, with the same response an unknown slug gets so the URL cannot be used to
+| enumerate teams.
+*/
+Route::prefix('hotel')->name('public.hotel')->group(function () {
+    Route::get('/{slug}', [PublicSiteController::class, 'show']);
+
+    // What the template polls every eight seconds. Narrower payloads than the staff
+    // endpoints they mirror — see PublicSiteController and HotelRoom::toPublicArray().
+    Route::get('/{slug}/api/rooms', [PublicSiteController::class, 'rooms'])->name('.rooms');
+    Route::get('/{slug}/api/menus', [PublicSiteController::class, 'menus'])->name('.menus');
+    Route::get('/{slug}/api/amenities', [PublicSiteController::class, 'amenities'])->name('.amenities');
+    Route::get('/{slug}/api/addons', [PublicSiteController::class, 'addons'])->name('.addons');
+
+    // The one write a visitor can make. Throttled because it is the only unauthenticated
+    // endpoint in the app that creates a row.
+    Route::post('/{slug}/api/bookings', [PublicSiteController::class, 'book'])
+        ->middleware('throttle:10,1')
+        ->name('.book');
+});
 
 // Notification bell — same feed endpoints for dean, faculty and students.
 // Every query is scoped to auth()->id() inside the controller.

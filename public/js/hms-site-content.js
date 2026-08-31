@@ -103,6 +103,19 @@
     return window.__HMS_BUILDER_ROLE__ || null;
   }
 
+  /**
+   * The Mini Portfolio — a team's hotel site opened by a guest with no login.
+   *
+   * Answered explicitly rather than by picking a builder role that happens to produce
+   * the right booleans, because neither existing value does: 'front_desk' switches
+   * Order Now on (room service needs a checked-in room and the server would refuse a
+   * guest), and null switches the Restaurant staff tools on through the early return
+   * in canUseRestaurantUi().
+   */
+  function isPublicSite() {
+    return window.__HMS_PUBLIC__ === true;
+  }
+
   function getAuthRoles() {
     const auth = window.__HMS_HOTEL_AUTH__;
     if (auth && Array.isArray(auth.roles)) return auth.roles.slice();
@@ -131,6 +144,7 @@
   }
 
   function canUseRoomManagementUi() {
+    if (isPublicSite()) return false;
     return canAccess('room_management_ui');
   }
 
@@ -141,6 +155,9 @@
    * module, so the server's can_manage answer decides on its own.
    */
   function canUseRestaurantUi() {
+    // Before the builder-role check: a guest has no builder role, and the early return
+    // below would otherwise hand them the Restaurant staff tools.
+    if (isPublicSite()) return false;
     if (!getBuilderRole()) return true;
     return canAccess('restaurant_ui');
   }
@@ -150,6 +167,8 @@
    * Room Management module so reservations stay exclusive to Front Desk.
    */
   function canReserveRooms() {
+    // Booking is the whole point of the public site, so this is the one that stays on.
+    if (isPublicSite()) return true;
     return !canUseRoomManagementUi();
   }
 
@@ -159,6 +178,9 @@
    * staff member's own roles do. Guests and other modules only browse the menu.
    */
   function canOrderMenu() {
+    // Room service is placed by Front Desk against a checked-in room. A visitor
+    // browsing the menu has neither, and the server would 403 the attempt.
+    if (isPublicSite()) return false;
     return canAccess('order_ui');
   }
 

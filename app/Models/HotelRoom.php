@@ -129,4 +129,49 @@ class HotelRoom extends Model
             'amenities'    => [['icon' => 'fa-bed', 'text' => 'Bed'], ['icon' => 'fa-wifi', 'text' => 'WiFi']],
         ];
     }
+
+    /**
+     * The same room as a guest on the public site may see it.
+     *
+     * A separate method rather than a flag on toTemplateArray(), because the difference is
+     * not cosmetic and the default must stay the safe one: `reservation` carries the
+     * current occupant's full name, email, contact number, ID number and every payment
+     * row through HotelBooking::toReservationArray(). The staff grid needs all of that.
+     * A public page polling every eight seconds would be publishing the hotel's guest
+     * list, so here it is simply absent.
+     *
+     * bookedRanges stays. It is dates and statuses with nobody's name on it, and it is
+     * what the availability calendar a guest books against is drawn from.
+     */
+    public function toPublicArray(): array
+    {
+        $openBookings = $this->relationLoaded('openBookings')
+            ? $this->openBookings
+            : $this->openBookings()->get();
+
+        return [
+            'id'           => 'db-' . $this->hotel_room_id,
+            'dbId'         => $this->hotel_room_id,
+            'name'         => $this->name,
+            'label'        => $this->category,
+            'category'     => $this->category,
+            'status'       => $this->status,
+            'price'        => (int) $this->price,
+            'desc'         => $this->description ?? '',
+            'img'          => \App\Support\HotelImageStore::url($this->image),
+            'bookedRanges' => $openBookings
+                ->filter(fn (HotelBooking $b) => $b->check_in && $b->check_out)
+                ->map(fn (HotelBooking $b) => [
+                    // 'to' is exclusive — the checkout date itself is free for the next guest.
+                    'from'   => $b->check_in->toDateString(),
+                    'to'     => $b->check_out->toDateString(),
+                    // No bookingId and no guest: a visitor needs to know the room is taken,
+                    // not who has it or which record says so.
+                    'status' => $b->status,
+                ])
+                ->values()
+                ->all(),
+            'amenities'    => [['icon' => 'fa-bed', 'text' => 'Bed'], ['icon' => 'fa-wifi', 'text' => 'WiFi']],
+        ];
+    }
 }

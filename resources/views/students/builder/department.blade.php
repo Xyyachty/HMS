@@ -750,6 +750,34 @@
                     </button>
                 @endif
                 <button class="hdr-btn btn-primary" onclick="saveTemplateDraft(true)"><i class="fas fa-paper-plane"></i> Publish</button>
+
+                {{-- The Mini Portfolio: the same site, open to anyone, no login. Publish is
+                     what opens it — before that the link 404s. Shown only to the role that
+                     owns the site, since theirs is the Publish that matters. --}}
+                @php
+                    $portfolioSlug = ($builderRole === 'front_desk' && !empty($groupName))
+                        ? \App\Models\Group::slugForTeam($groupName, (int) $facultyId)
+                        : null;
+                    $portfolioLive = $portfolioSlug && \App\Models\GroupSettings::where('group_name', $groupName)
+                        ->where('faculty_id', $facultyId)
+                        ->value('is_published');
+                @endphp
+                @if($portfolioSlug)
+                    <div class="flex items-center gap-1.5 ml-1 pl-2 border-l border-zinc-800">
+                        <span class="text-[10px] uppercase tracking-wider {{ $portfolioLive ? 'text-emerald-400' : 'text-zinc-500' }}"
+                              title="{{ $portfolioLive ? 'Anyone with the link can see your hotel' : 'Press Publish to open your site to visitors' }}">
+                            <i class="fas fa-globe text-[10px]"></i> {{ $portfolioLive ? 'Live' : 'Not live' }}
+                        </span>
+                        <input id="portfolioUrl" readonly value="{{ url('/hotel/' . $portfolioSlug) }}"
+                               onclick="this.select()"
+                               class="w-52 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-300 font-mono"
+                               title="Your hotel's public address">
+                        <button type="button" class="hdr-btn btn-secondary" title="Copy link"
+                                onclick="(function(b){var i=document.getElementById('portfolioUrl');i.select();navigator.clipboard&&navigator.clipboard.writeText(i.value);var o=b.innerHTML;b.innerHTML='<i class='fas fa-check'></i>';setTimeout(function(){b.innerHTML=o;},1200);})(this)">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                @endif
             @endif
 
             <div class="relative" id="profileWrapper">
