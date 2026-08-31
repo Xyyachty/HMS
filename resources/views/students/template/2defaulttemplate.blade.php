@@ -2074,7 +2074,7 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
             <button className="btn-primary" onClick={() => onNav('rooms')}>
               Explore Rooms <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
             </button>
-            <button className="btn-ghost" onClick={() => onNav('booking')}>Book Now</button>
+            <button className="btn-ghost" onClick={() => onNav('rooms')}>Book Now</button>
           </div>
         </div>
       </div>
@@ -2685,7 +2685,7 @@ function ExperiencePage({ onNav, canEdit, onToast, cardImages }) {
         </div>
       </section>
       <div style={{ textAlign: 'center', paddingBottom: '5rem' }}>
-        <button className="btn-warm" onClick={() => onNav('booking')}>Book Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i></button>
+        <button className="btn-warm" onClick={() => onNav('rooms')}>Book Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i></button>
       </div>
     </>
   );

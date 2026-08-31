@@ -1374,7 +1374,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
             <button className="btn-primary" onClick={() => onNavigate('rooms')}>
               Explore Rooms <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
             </button>
-            <button className="btn-outline" onClick={() => onNavigate('booking')}>Book Now</button>
+            <button className="btn-outline" onClick={() => onNavigate('rooms')}>Book Now</button>
           </div>
         </div>
       </section>
@@ -2783,7 +2783,7 @@ function ExperiencePage({ onNavigate }) {
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <button className="btn-primary" onClick={() => onNavigate('booking')}>
+          <button className="btn-primary" onClick={() => onNavigate('rooms')}>
             Book Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
           </button>
         </div>
