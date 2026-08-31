@@ -143,6 +143,9 @@
     storeUrl: @json(route('students.hotel.amenities.store')),
     statuses: @json(\App\Models\HotelAmenity::STATUSES),
     accessTypes: @json(\App\Models\HotelAmenity::ACCESS_TYPES),
+    reservationsUrl: @json(route('students.hotel.amenity-reservations.index')),
+    servicesUrl: @json(route('students.hotel.amenity-services.index')),
+    housekeepingFlow: @json(\App\Models\HotelAmenityReservation::HOUSEKEEPING_FLOW),
     accessLabels: @json(\App\Models\HotelAmenity::ACCESS_LABELS),
     // Same list the Front Desk complaint form offers, so a repair request lands in
     // Maintenance's queue under a category they already sort by.
@@ -160,6 +163,9 @@ const IMAGE_MAX_BYTES = 600 * 1024;
 const CONFIG = window.HMS_AMENITIES || {};
 const STATUSES = CONFIG.statuses || ['Available', 'Temporarily Closed', 'Under Maintenance'];
 const ACCESS_TYPES = CONFIG.accessTypes || ['open', 'registered', 'appointment', 'event'];
+const HK_FLOW = CONFIG.housekeepingFlow || [];
+
+function peso(v) { return '₱' + Number(v || 0).toLocaleString(); }
 const ACCESS_LABELS = CONFIG.accessLabels || {};
 /* What each access type means, in the words of the person who has to pick one. */
 const ACCESS_HINTS = {
@@ -706,6 +712,354 @@ function RepairCell({ amenity, canManage, onRequest, onVerify, verifying }) {
   );
 }
 
+/* Housekeeping's turnaround for one booked event, step by step.
+
+   Separate from the amenity's own Available / Temporarily Closed / Under Maintenance:
+   that one is the condition of the hall, this is the state of one event's room. A hall
+   being cleaned after a wedding is not a broken hall — and a hall that IS broken still
+   goes to Maintenance through the repair request on the amenity itself. */
+function EventTurnaroundPanel({ reservations, canManage, onChanged }) {
+  const [busyId, setBusyId] = useState(null);
+
+  const events = (reservations || [])
+    .filter(r => r.kind === 'event' && r.status !== 'Cancelled')
+    .sort((a, b) => (a.scheduledOn + a.startsAt < b.scheduledOn + b.startsAt ? -1 : 1));
+
+  const advance = (r, next) => {
+    setBusyId(r.id);
+    fetch(CONFIG.reservationsUrl + '/' + r.id, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ housekeeping_status: next }),
+    })
+      .then(res => (res.ok ? res.json() : res.json().then(err => Promise.reject(err))))
+      .then(data => onChanged(data.reservation))
+      .catch(err => swal('error', 'Error', (err && err.message) ? err.message : 'Could not update that room.'))
+      .finally(() => setBusyId(null));
+  };
+
+  if (events.length === 0) return null;
+
+  return (
+    <div className="rm-row" style={{ marginTop: '1.5rem' }}>
+      <div className="rm-content">
+        <div className="rm-panel">
+          <h3>Function Room Schedule</h3>
+          <p className="rm-panel-desc">
+            Events Front Desk has booked, and where each room stands. This is one event&rsquo;s
+            turnaround &mdash; it is not the same thing as whether the hall itself is broken.
+            If you find a fault, set the amenity above to Under Maintenance and send it to
+            Maintenance as usual.
+          </p>
+        </div>
+
+        <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
+          <table className="rm-table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>When</th>
+                <th>Package</th>
+                <th>Room Status</th>
+                <th style={{ width: 190 }}>Next Step</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map(r => {
+                const at = HK_FLOW.indexOf(r.housekeepingStatus);
+                const next = at >= 0 && at < HK_FLOW.length - 1 ? HK_FLOW[at + 1] : null;
+                return (
+                  <tr key={r.id}>
+                    <td style={{ color: 'var(--fg)', fontWeight: 600 }}>
+                      {r.customerName}
+                      <div style={{ fontSize: '0.68rem', fontWeight: 400, opacity: 0.7, marginTop: 2 }}>
+                        {r.reference}{r.eventType ? ' · ' + r.eventType : ''}
+                        {r.guestCount ? ' · ' + r.guestCount + ' guests' : ''}
+                      </div>
+                      {r.specialRequests && (
+                        <div style={{ fontSize: '0.68rem', fontWeight: 400, opacity: 0.7, marginTop: 3, whiteSpace: 'normal', maxWidth: 250, fontStyle: 'italic', lineHeight: 1.45 }}>
+                          &ldquo;{r.specialRequests}&rdquo;
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {r.scheduledOn}
+                      <div style={{ fontSize: '0.68rem', opacity: 0.7, marginTop: 2 }}>{r.timeLabel}</div>
+                    </td>
+                    <td style={{ whiteSpace: 'normal', maxWidth: 170 }}>
+                      {r.package || '—'}
+                      {r.cateringPackageName && (
+                        <div style={{ fontSize: '0.68rem', opacity: 0.7, marginTop: 2 }}>
+                          Catering: {r.cateringPackageName}
+                          {r.cateringOrderStatus ? ' (' + r.cateringOrderStatus + ')' : ''}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <span className="amenity-badge is-available" style={{
+                        background: 'transparent',
+                        borderColor: 'var(--accent)',
+                        color: 'var(--accent)',
+                      }}>
+                        {r.housekeepingStatus || '—'}
+                      </span>
+                    </td>
+                    <td>
+                      {!canManage ? (
+                        <span style={{ opacity: 0.5, fontSize: '0.72rem' }}>&mdash;</span>
+                      ) : next ? (
+                        <button
+                          type="button" className="btn-outline"
+                          style={{ fontSize: '0.68rem', padding: '0.4rem 0.8rem' }}
+                          disabled={busyId === r.id}
+                          onClick={() => advance(r, next)}
+                        >
+                          {busyId === r.id ? 'Saving…' : 'Mark ' + next}
+                        </button>
+                      ) : (
+                        <span style={{ color: '#4ade80', fontSize: '0.72rem' }}>
+                          <i className="fa-solid fa-circle-check" style={{ marginRight: '0.35rem' }}></i>
+                          Done
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* The treatments behind a by-appointment facility. Housekeeping's rate card — Front Desk
+   reads it when selling a slot and cannot edit it, the same split the add-ons catalogue
+   makes between the two desks. */
+function ServiceModal({ service, amenities, onClose, onSaved }) {
+  const isEdit = !!service;
+  const appointmentAmenities = amenities.filter(a => a.accessType === 'appointment');
+  const [form, setForm] = useState(() => ({
+    amenityId: service ? String(service.amenityId) : (appointmentAmenities[0] ? String(appointmentAmenities[0].dbId) : ''),
+    name: (service && service.name) || '',
+    description: (service && service.description) || '',
+    minutes: service ? String(service.minutes) : '60',
+    price: service ? String(service.price) : '',
+    isActive: service ? service.isActive : true,
+  }));
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const update = (k, v) => setForm(prev => Object.assign({}, prev, { [k]: v }));
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) { setError('Name the service.'); return; }
+    if (!form.amenityId) { setError('There is no by-appointment facility to attach this to.'); return; }
+
+    setSaving(true);
+    const url = CONFIG.servicesUrl + (isEdit ? '/' + service.id : '');
+    fetch(url, {
+      method: isEdit ? 'PATCH' : 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({
+        hotel_amenity_id: Number(form.amenityId),
+        name: form.name.trim(),
+        description: form.description.trim(),
+        duration_minutes: Math.max(5, parseInt(form.minutes, 10) || 60),
+        price: Math.max(0, parseInt(form.price, 10) || 0),
+        is_active: !!form.isActive,
+      }),
+    })
+      .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
+      .then(data => {
+        onSaved(data.service);
+        onClose();
+        swal('success', isEdit ? 'Service updated' : 'Service added', data.service.name + ' has been saved.');
+      })
+      .catch(err => {
+        const msg = (err && err.message) ? err.message : 'Could not save that service.';
+        if (window.Swal) swal('error', 'Error', msg); else setError(msg);
+      })
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <div className="room-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="room-modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '1.5rem' }}>
+          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+            {isEdit ? 'Update Service' : 'New Service'}
+          </p>
+          <h2 className="font-display" style={{ fontSize: '1.4rem', margin: '0 0 1.1rem', color: 'var(--fg)' }}>
+            {isEdit ? service.name : 'Add a Service'}
+          </h2>
+
+          <form onSubmit={handleSubmit} className="rm-form-grid" noValidate>
+            <div>
+              <label style={fieldLabel}>Facility *</label>
+              <select className="booking-input" value={form.amenityId}
+                onChange={e => update('amenityId', e.target.value)}>
+                {appointmentAmenities.map(a => <option key={a.dbId} value={a.dbId}>{a.name}</option>)}
+              </select>
+              {appointmentAmenities.length === 0 && (
+                <p style={{ margin: '0.35rem 0 0', color: '#fbbf24', fontSize: '0.72rem' }}>
+                  Set a facility's Access Type to "By Appointment" first.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label style={fieldLabel}>Name *</label>
+              <input type="text" className="booking-input" value={form.name}
+                placeholder="Swedish Massage" onChange={e => update('name', e.target.value)} />
+            </div>
+
+            <div>
+              <label style={fieldLabel}>Description</label>
+              <input type="text" className="booking-input" value={form.description}
+                placeholder="Full-body relaxation massage with warm oil."
+                onChange={e => update('description', e.target.value)} />
+            </div>
+
+            <div className="rm-form-row">
+              <div>
+                <label style={fieldLabel}>Duration (minutes) *</label>
+                <input type="number" min="5" max="600" className="booking-input" value={form.minutes}
+                  onChange={e => update('minutes', e.target.value)} />
+              </div>
+              <div>
+                <label style={fieldLabel}>Price (₱) *</label>
+                <input type="number" min="0" className="booking-input" value={form.price}
+                  placeholder="1200" onChange={e => update('price', e.target.value)} />
+              </div>
+            </div>
+            <p style={{ margin: '-0.35rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem', lineHeight: 1.5 }}>
+              The duration is what sets the end of a booking, so a 60 minute treatment cannot
+              be sold into a 30 minute gap.
+            </p>
+
+            {isEdit && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', fontSize: '0.78rem', color: 'var(--fg-muted)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.isActive}
+                  onChange={e => update('isActive', e.target.checked)} />
+                <span>Offered to guests. Turn this off to retire it — booked appointments keep working.</span>
+              </label>
+            )}
+
+            {error && <p style={{ margin: 0, color: '#fb7185', fontSize: '0.72rem' }}>{error}</p>}
+
+            <button type="submit" className="btn-primary" disabled={saving} style={{ justifyContent: 'center' }}>
+              {saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Add Service')}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ServicesPanel({ services, amenities, canManage, onSaved }) {
+  const [editing, setEditing] = useState(null);
+  const hasAppointmentFacility = amenities.some(a => a.accessType === 'appointment');
+
+  if (!hasAppointmentFacility && services.length === 0) return null;
+
+  return (
+    <div className="rm-row" style={{ marginTop: '1.5rem' }}>
+      <div className="rm-content">
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="rm-panel">
+            <h3>Services</h3>
+            <p className="rm-panel-desc">
+              What guests can book at a by-appointment facility. Front Desk picks from this
+              list and the duration decides the slot &mdash; they cannot change either.
+            </p>
+          </div>
+          {canManage && (
+            <button type="button" className="btn-outline" onClick={() => setEditing('new')}>
+              <i className="fa-solid fa-plus" style={{ fontSize: '0.65rem' }}></i> Add Service
+            </button>
+          )}
+        </div>
+
+        {services.length === 0 ? (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem 1rem', textAlign: 'center', color: 'var(--fg-muted)' }}>
+            <p style={{ margin: 0, fontSize: '0.82rem' }}>No services yet.</p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
+            <table className="rm-table">
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th>Facility</th>
+                  <th>Duration</th>
+                  <th>Price</th>
+                  <th>Offered</th>
+                  <th style={{ width: 110 }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {services.map(s => {
+                  const owner = amenities.find(a => a.dbId === s.amenityId);
+                  return (
+                    <tr key={s.id}>
+                      <td style={{ color: 'var(--fg)', fontWeight: 600 }}>
+                        {s.name}
+                        {s.description && (
+                          <div style={{ fontSize: '0.68rem', fontWeight: 400, opacity: 0.7, marginTop: 2, whiteSpace: 'normal', maxWidth: 260 }}>
+                            {s.description}
+                          </div>
+                        )}
+                      </td>
+                      <td>{owner ? owner.name : '—'}</td>
+                      <td>{s.duration}</td>
+                      <td>{peso(s.price)}</td>
+                      <td>
+                        <span className={'amenity-badge ' + (s.isActive ? 'is-available' : 'is-closed')}>
+                          {s.isActive ? 'Yes' : 'Retired'}
+                        </span>
+                      </td>
+                      <td>
+                        {canManage ? (
+                          <button type="button" className="btn-outline"
+                            style={{ fontSize: '0.68rem', padding: '0.4rem 0.8rem' }}
+                            onClick={() => setEditing(s)}>
+                            <i className="fa-solid fa-pen" style={{ fontSize: '0.65rem' }}></i> Update
+                          </button>
+                        ) : <span style={{ opacity: 0.5, fontSize: '0.72rem' }}>&mdash;</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {editing && (
+        <ServiceModal
+          service={editing === 'new' ? null : editing}
+          amenities={amenities}
+          onClose={() => setEditing(null)}
+          onSaved={onSaved}
+        />
+      )}
+    </div>
+  );
+}
+
 function AmenitiesPanel({ amenities, loading, canManage, onSaved }) {
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState(null);     // an amenity row, or 'new'
@@ -899,6 +1253,8 @@ function AmenitiesPanel({ amenities, loading, canManage, onSaved }) {
 
 function App() {
   const [amenities, setAmenities] = useState([]);
+  const [reservations, setReservations] = useState([]);
+  const [services, setServices] = useState([]);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
   // A poll landing mid-save would overwrite the row the user just changed with the
@@ -918,6 +1274,20 @@ function App() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    const opts = { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } };
+
+    // Events Front Desk booked. Only the ones still holding a slot — a cancelled or
+    // finished booking is history and there is nothing left to turn round.
+    fetch(CONFIG.reservationsUrl + '?kind=event&holding=1', opts)
+      .then(r => (r.ok ? r.json() : Promise.reject(r)))
+      .then(d => { if (pendingWrites.current === 0) setReservations(d.reservations || []); })
+      .catch(() => {});
+
+    fetch(CONFIG.servicesUrl, opts)
+      .then(r => (r.ok ? r.json() : Promise.reject(r)))
+      .then(d => { if (pendingWrites.current === 0) setServices(d.services || []); })
+      .catch(() => {});
   }, []);
 
   // Polled, not just loaded once: Maintenance closing a repair happens in their
@@ -939,6 +1309,17 @@ function App() {
     });
   }, []);
 
+  const handleReservationChanged = useCallback((reservation) => {
+    setReservations(prev => prev.map(r => (r.id === reservation.id ? reservation : r)));
+  }, []);
+
+  const handleServiceSaved = useCallback((service) => {
+    setServices(prev => {
+      const exists = prev.some(s => s.id === service.id);
+      return exists ? prev.map(s => (s.id === service.id ? service : s)) : prev.concat([service]);
+    });
+  }, []);
+
   return (
     <div style={{ padding: '1.5rem' }}>
       <AmenitiesPanel
@@ -946,6 +1327,19 @@ function App() {
         loading={loading}
         canManage={canManage}
         onSaved={handleSaved}
+      />
+
+      <ServicesPanel
+        services={services}
+        amenities={amenities}
+        canManage={canManage}
+        onSaved={handleServiceSaved}
+      />
+
+      <EventTurnaroundPanel
+        reservations={reservations}
+        canManage={canManage}
+        onChanged={handleReservationChanged}
       />
     </div>
   );

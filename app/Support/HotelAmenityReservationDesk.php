@@ -301,31 +301,37 @@ class HotelAmenityReservationDesk
         }
 
         return DB::transaction(function () use ($reservation, $booking, $outstanding, $actor) {
-            $lines = $reservation->folioLines();
-            $lineTotal = round(array_sum(array_column($lines, 'amount')), 2);
             $alreadyPaid = $reservation->amountPaid();
 
-            foreach ($lines as $line) {
-                // A part payment already taken in cash is spread across the lines, so the
-                // folio never charges the guest for money they have already handed over.
-                $amount = $lineTotal > 0
-                    ? round($line['amount'] * ($outstanding / $lineTotal), 2)
-                    : 0;
-
-                if ($amount <= 0) {
-                    continue;
-                }
-
+            $post = function (string $description, float $amount) use ($reservation, $booking, $actor) {
                 HotelBookingCharge::create([
                     'group_name'       => $reservation->group_name,
                     'faculty_id'       => $reservation->faculty_id,
                     'group_id'         => $reservation->group_id,
                     'hotel_booking_id' => $booking->hotel_booking_id,
-                    'description'      => $line['description']
-                        . ($alreadyPaid > 0 ? ' (balance)' : ''),
+                    'description'      => $description,
                     'amount'           => $amount,
                     'added_by'         => $actor?->name,
                 ]);
+            };
+
+            // The real figures, line by line. Spreading the outstanding balance across
+            // them proportionally would balance, but it would print "Function Room =
+            // 2,560.98" — a number that is not what the function room costs and that
+            // nobody could check against the contract.
+            foreach ($reservation->folioLines() as $line) {
+                if ($line['amount'] > 0) {
+                    $post($line['description'], $line['amount']);
+                }
+            }
+
+            // What they have already handed over comes off as its own line, the way a
+            // folio actually reads. The sum still equals the outstanding balance.
+            if ($alreadyPaid > 0) {
+                $post(
+                    'Less: paid on ' . ($reservation->reference ?: 'booking'),
+                    -1 * round($alreadyPaid, 2)
+                );
             }
 
             $reservation->charge_to_room = true;

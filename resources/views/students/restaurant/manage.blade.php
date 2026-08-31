@@ -68,6 +68,11 @@
   .tb-delivering { background: rgba(34,197,94,0.18); color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
   .tb-completed { background: rgba(20,148,80,0.18); color: #34d399; border-color: rgba(20,148,80,0.35); }
   .tb-cancelled { background: rgba(148,163,184,0.15); color: #94a3b8; border-color: rgba(148,163,184,0.3); }
+  /* Catering-only statuses. Pending is amber because it is waiting on the kitchen to
+     accept it; Serving is green because the food is out at the event. */
+  .tb-pending   { background: rgba(251,191,36,0.16); color: #fbbf24; border-color: rgba(251,191,36,0.35); }
+  .tb-confirmed { background: rgba(129,140,248,0.18); color: #a5b4fc; border-color: rgba(129,140,248,0.35); }
+  .tb-serving   { background: rgba(34,197,94,0.18); color: var(--success, #4ade80); border-color: rgba(34,197,94,0.35); }
   .order-card {
     border: 1px solid var(--border); border-radius: 12px;
     background: rgba(255,255,255,0.02); padding: 1rem 1.1rem;
@@ -142,6 +147,9 @@
   :root[data-ops-theme="2"] .tb-preparing { background: #f3e8ff; color: #7e22ce; border-color: #e9d5ff; }
   :root[data-ops-theme="2"] .tb-ready { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
   :root[data-ops-theme="2"] .tb-completed { background: #d1fae5; color: #047857; border-color: #a7f3d0; }
+  :root[data-ops-theme="2"] .tb-pending { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+  :root[data-ops-theme="2"] .tb-confirmed { background: #e0e7ff; color: #4338ca; border-color: #c7d2fe; }
+  :root[data-ops-theme="2"] .tb-serving { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
   :root[data-ops-theme="2"] .tb-cancelled { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
   :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
   :root[data-ops-theme="2"] .order-card { background: rgba(27,67,50,0.03); }
@@ -569,27 +577,45 @@ const ORDER_FLOW = ['Preparing', 'Ready', 'Delivering', 'Completed'];
 const ORDER_STATUSES = [...ORDER_FLOW, 'Cancelled'];
 const OPEN_ORDER_STATUSES = ['Preparing', 'Ready'];
 
+/* Mirrors HotelFoodOrder::CATERING_FLOW. Catering is agreed days ahead and served over
+   hours, so it starts before the kitchen has accepted it and ends with Serving rather
+   than a runner's Delivering. */
+const CATERING_FLOW = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Serving', 'Completed'];
+const CATERING_OPEN_STATUSES = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Serving'];
+
+function flowFor(orderType) {
+  return orderType === 'catering' ? CATERING_FLOW : ORDER_FLOW;
+}
+function openStatusesFor(orderType) {
+  return orderType === 'catering' ? CATERING_OPEN_STATUSES : OPEN_ORDER_STATUSES;
+}
+
 /* The button the kitchen presses next, given where the order is now. Every step of
    the flow is theirs, delivery included, so none of them is held back. */
-function nextKitchenStatus(status) {
-  const at = ORDER_FLOW.indexOf(status);
-  if (at < 0 || at >= ORDER_FLOW.length - 1) return null;
-  return ORDER_FLOW[at + 1];
+function nextKitchenStatus(status, orderType) {
+  const flow = flowFor(orderType);
+  const at = flow.indexOf(status);
+  if (at < 0 || at >= flow.length - 1) return null;
+  return flow[at + 1];
 }
 
 const ORDER_ACTION_LABEL = {
+  Confirmed: 'Accept Order',
+  Preparing: 'Start Preparing',
   Ready: 'Mark Ready',
   Delivering: 'Start Delivery',
+  Serving: 'Start Serving',
   Completed: 'Complete Order',
 };
 
 /* Mirrors HotelFoodOrder::isForwardTransition() — status only moves forward here
    too, so a disabled pill in the UI matches what the server would refuse anyway. */
-function canMoveOrderTo(from, to) {
+function canMoveOrderTo(from, to, orderType) {
   if (from === to || from === 'Completed' || from === 'Cancelled') return false;
   if (to === 'Cancelled') return true;
-  const fromAt = ORDER_FLOW.indexOf(from);
-  const toAt = ORDER_FLOW.indexOf(to);
+  const flow = flowFor(orderType);
+  const fromAt = flow.indexOf(from);
+  const toAt = flow.indexOf(to);
   return fromAt !== -1 && toAt !== -1 && toAt > fromAt;
 }
 
@@ -1005,7 +1031,7 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
  * way to Completed with the runner carrying it up to the room.
  */
 function RoomServiceOrderCard({ order, onMove }) {
-  const next = nextKitchenStatus(order.status);
+  const next = nextKitchenStatus(order.status, order.orderType);
   const finished = order.status === 'Completed' || order.status === 'Cancelled';
 
   return (
@@ -1076,7 +1102,7 @@ function DineInOrderCard({ order, table, onMove }) {
             key={status}
             type="button"
             className={`tb-tab ${order.status === status ? 'is-active' : ''}`}
-            disabled={!canMoveOrderTo(order.status, status)}
+            disabled={!canMoveOrderTo(order.status, status, order.orderType)}
             onClick={() => onMove(order, status)}
           >
             {status}
@@ -1223,6 +1249,284 @@ function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
   );
 }
 
+/* Catering packages — Restaurant Services' rate card for function room events.
+ *
+ * Not menu items, and the difference is the whole reason this panel exists: a menu item
+ * is one dish with a stock count that the order pipeline decrements per unit, while a
+ * package is priced per head and has no shelf to come off. Front Desk picks from this
+ * list when booking a hall and cannot add to it — which is what keeps catering actually
+ * coming out of this module rather than being typed into a booking form.
+ */
+function CateringPackageModal({ pkg, onClose, onSaved }) {
+  const isEdit = !!pkg;
+  const [form, setForm] = useState(() => ({
+    name: (pkg && pkg.name) || '',
+    description: (pkg && pkg.description) || '',
+    inclusions: (pkg && pkg.inclusions) || '',
+    pricePerHead: pkg ? String(pkg.pricePerHead) : '',
+    minGuests: pkg ? String(pkg.minGuests) : '20',
+    isActive: pkg ? pkg.isActive : true,
+  }));
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const update = (k, v) => setForm(prev => Object.assign({}, prev, { [k]: v }));
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) { setError('Name the package.'); return; }
+    const price = parseInt(form.pricePerHead, 10);
+    if (!Number.isFinite(price) || price < 0) { setError('Enter a price per head.'); return; }
+
+    setSaving(true);
+    fetch('/students/hotel/catering-packages' + (isEdit ? '/' + pkg.dbId : ''), {
+      method: isEdit ? 'PATCH' : 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({
+        name: form.name.trim(),
+        description: form.description.trim(),
+        inclusions: form.inclusions.trim(),
+        price_per_head: price,
+        min_guests: Math.max(1, parseInt(form.minGuests, 10) || 1),
+        is_active: !!form.isActive,
+      }),
+    })
+      .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
+      .then(data => { onSaved(data.package); onClose(); })
+      .catch(err => setError((err && err.message) ? err.message : 'Could not save that package.'))
+      .finally(() => setSaving(false));
+  };
+
+  const label = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
+
+  return (
+    <div className="room-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="room-modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '1.5rem' }}>
+          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+            {isEdit ? 'Update Package' : 'New Package'}
+          </p>
+          <h2 className="font-display" style={{ fontSize: '1.4rem', margin: '0 0 1.1rem', color: 'var(--fg)' }}>
+            {isEdit ? pkg.name : 'Add a Catering Package'}
+          </h2>
+
+          <form onSubmit={submit} style={{ display: 'grid', gap: '0.95rem' }} noValidate>
+            <div>
+              <label style={label}>Name *</label>
+              <input type="text" className="booking-input" value={form.name}
+                placeholder="Premium Buffet" onChange={e => update('name', e.target.value)} />
+            </div>
+            <div>
+              <label style={label}>Description</label>
+              <input type="text" className="booking-input" value={form.description}
+                placeholder="Wider spread with a carving station."
+                onChange={e => update('description', e.target.value)} />
+            </div>
+            <div>
+              <label style={label}>Inclusions</label>
+              <textarea className="booking-input" value={form.inclusions}
+                placeholder="Rice · 3 main dishes · Carving station · Salad bar · Dessert · Drinks"
+                onChange={e => update('inclusions', e.target.value)} />
+              <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem', lineHeight: 1.5 }}>
+                What Front Desk reads out to the customer when they pick this package.
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+              <div>
+                <label style={label}>Price per head (₱) *</label>
+                <input type="number" min="0" className="booking-input" value={form.pricePerHead}
+                  placeholder="750" onChange={e => update('pricePerHead', e.target.value)} />
+              </div>
+              <div>
+                <label style={label}>Minimum guests</label>
+                <input type="number" min="1" className="booking-input" value={form.minGuests}
+                  placeholder="50" onChange={e => update('minGuests', e.target.value)} />
+              </div>
+            </div>
+            <p style={{ margin: '-0.35rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem', lineHeight: 1.5 }}>
+              Priced per head, not per portion — there is no stock to keep. An event of 100
+              at ₱{form.pricePerHead || '0'} bills {formatPeso((parseInt(form.pricePerHead, 10) || 0) * 100)}.
+            </p>
+
+            {isEdit && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', fontSize: '0.78rem', color: 'var(--fg-muted)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.isActive} onChange={e => update('isActive', e.target.checked)} />
+                <span>Offered to Front Desk. Turn off to retire it — booked events keep working.</span>
+              </label>
+            )}
+
+            {error && <p style={{ margin: 0, color: '#fb7185', fontSize: '0.72rem' }}>{error}</p>}
+
+            <button type="submit" className="btn-primary" disabled={saving} style={{ justifyContent: 'center' }}>
+              {saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Add Package')}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CateringPackagesPanel({ packages, canManage, onSaved, onBack }) {
+  const [editing, setEditing] = useState(null);
+
+  return (
+    <div className="rm-panel" style={{ maxWidth: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+        <div>
+          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Events</p>
+          <h3>Catering Packages</h3>
+          <p className="rm-panel-desc">
+            What you sell to a function room booking. Front Desk picks one and enters the
+            headcount; the order lands on your board under Catering. These are priced per
+            head and carry no stock, which is why they are not on the menu.
+          </p>
+        </div>
+        {canManage && (
+          <button type="button" className="btn-outline" onClick={() => setEditing('new')}>
+            <i className="fa-solid fa-plus" style={{ fontSize: '0.65rem' }}></i> Add Package
+          </button>
+        )}
+      </div>
+
+      {packages.length === 0 ? (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--fg-muted)' }}>
+          <i className="fa-solid fa-champagne-glasses" style={{ fontSize: '1.6rem', opacity: 0.4, display: 'block', marginBottom: '0.6rem' }}></i>
+          <p style={{ margin: 0, fontSize: '0.85rem' }}>No catering packages yet.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+          {packages.map(p => (
+            <div key={p.dbId} className="order-card" style={{ opacity: p.isActive ? 1 : 0.55 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, color: 'var(--fg)', fontSize: '0.95rem' }}>{p.name}</p>
+                  <p style={{ margin: '0.15rem 0 0', color: 'var(--accent-light)', fontWeight: 700, fontSize: '0.9rem' }}>
+                    {formatPeso(p.pricePerHead)} <span style={{ color: 'var(--fg-muted)', fontWeight: 400, fontSize: '0.72rem' }}>/ head</span>
+                  </p>
+                </div>
+                {!p.isActive && <span className="tb-badge tb-cancelled">Retired</span>}
+              </div>
+
+              {p.description && (
+                <p style={{ margin: '0.6rem 0 0', fontSize: '0.78rem', color: 'var(--fg-muted)', lineHeight: 1.5 }}>{p.description}</p>
+              )}
+              {p.inclusions && (
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.74rem', color: 'var(--fg-muted)', lineHeight: 1.55 }}>{p.inclusions}</p>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', marginTop: '0.7rem' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)' }}>Minimum {p.minGuests} guests</span>
+                {canManage && (
+                  <button type="button" className="btn-outline"
+                    style={{ fontSize: '0.68rem', padding: '0.35rem 0.75rem' }}
+                    onClick={() => setEditing(p)}>
+                    <i className="fa-solid fa-pen" style={{ fontSize: '0.62rem' }}></i> Update
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button type="button" className="btn-outline" onClick={onBack} style={{ marginTop: '1.25rem', fontSize: '0.72rem' }}>
+        <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.7rem' }}></i> Back
+      </button>
+
+      {editing && (
+        <CateringPackageModal
+          pkg={editing === 'new' ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={onSaved}
+        />
+      )}
+    </div>
+  );
+}
+
+/* A catering ticket. Unlike a room-service order it is not one trip upstairs — it is
+   agreed days ahead, prepared, then served across an event — so the card shows the whole
+   flow as pills and the kitchen jumps to wherever they actually are.
+
+   Everything here about the event (venue, date, headcount, requests) comes from the
+   reservation Front Desk booked. Restaurant Services never type it in. */
+function CateringOrderCard({ order, onMove }) {
+  const finished = order.status === 'Completed' || order.status === 'Cancelled';
+
+  return (
+    <div className="order-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ margin: 0, fontWeight: 700, color: 'var(--fg)', fontSize: '0.95rem' }}>
+            {order.eventVenue || 'Function Room'}
+          </p>
+          <p style={{ margin: '0.15rem 0 0', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
+            {order.guestName}
+            {order.eventType ? ' · ' + order.eventType : ''}
+          </p>
+        </div>
+        <span className={`tb-badge tb-${order.status.toLowerCase()}`}>{order.status}</span>
+      </div>
+
+      <div style={{ margin: '0.6rem 0', display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.9rem', fontSize: '0.74rem', color: 'var(--fg-muted)' }}>
+        {order.eventDate && (
+          <span><i className="fa-solid fa-calendar-day" style={{ marginRight: '0.35rem', color: 'var(--accent)' }}></i>{order.eventDate}</span>
+        )}
+        {order.eventTime && (
+          <span><i className="fa-solid fa-clock" style={{ marginRight: '0.35rem', color: 'var(--accent)' }}></i>{order.eventTime}</span>
+        )}
+        {order.guestCount ? (
+          <span><i className="fa-solid fa-users" style={{ marginRight: '0.35rem', color: 'var(--accent)' }}></i>{order.guestCount} guests</span>
+        ) : null}
+      </div>
+
+      <ul style={{ listStyle: 'none', margin: '0 0 0.6rem', padding: 0, display: 'grid', gap: '0.2rem' }}>
+        {(order.items || []).map((item, i) => (
+          <li key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.78rem', color: 'var(--fg-muted)' }}>
+            <span>{item.name} × {item.qty}</span>
+            <span>{formatPeso((item.price || 0) * (item.qty || 0))}</span>
+          </li>
+        ))}
+      </ul>
+
+      {order.eventRequests && (
+        <p style={{ margin: '0 0 0.6rem', fontSize: '0.74rem', color: 'var(--fg-muted)', fontStyle: 'italic', lineHeight: 1.5 }}>
+          &ldquo;{order.eventRequests}&rdquo;
+        </p>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.55rem' }}>
+        <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)' }}>Total</span>
+        <span style={{ fontWeight: 700, color: 'var(--fg)' }}>{formatPeso(order.total)}</span>
+      </div>
+
+      {!finished && (
+        <div className="tb-tabs" style={{ marginTop: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+          {[...CATERING_FLOW, 'Cancelled'].map(status => (
+            <button
+              key={status}
+              type="button"
+              className={`tb-tab ${order.status === status ? 'is-active' : ''}`}
+              disabled={!canMoveOrderTo(order.status, status, 'catering')}
+              onClick={() => onMove(order, status)}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUpdateOrderStatus, onToast }) {
   const [orderType, setOrderType] = useState('room_service');
   const [filter, setFilter] = useState('Open');
@@ -1231,20 +1535,25 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
   const changeOrderType = (next) => { setOrderType(next); setFilter('Open'); setPage(1); };
   const changeFilter = (next) => { setFilter(next); setPage(1); };
 
+  // Explicit equality on all three. The old test was "not dine_in", which would have
+  // quietly dropped catering orders into the Room Service tab.
   const typedOrders = (orders || [])
-    .filter(o => (orderType === 'dine_in' ? o.orderType === 'dine_in' : o.orderType !== 'dine_in'))
+    .filter(o => (orderType === 'room_service'
+      ? (o.orderType === 'room_service' || !o.orderType)
+      : o.orderType === orderType))
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 
   const visible = typedOrders.filter(o => (
     filter === 'All' ? true
-      : filter === 'Open' ? OPEN_ORDER_STATUSES.indexOf(o.status) !== -1
+      : filter === 'Open' ? openStatusesFor(orderType).indexOf(o.status) !== -1
       : o.status === filter
   ));
 
-  const openCount = typedOrders.filter(o => OPEN_ORDER_STATUSES.indexOf(o.status) !== -1).length;
-  // Only dine-in can be cancelled, so only the dine-in tab offers the filter — on
-  // room service it would never match anything.
-  const filters = ['Open', 'All', ...ORDER_FLOW, ...(orderType === 'dine_in' ? ['Cancelled'] : [])];
+  const openCount = typedOrders.filter(o => openStatusesFor(orderType).indexOf(o.status) !== -1).length;
+  // Room service cannot be cancelled — it is already on a stay's bill — so only the tabs
+  // that can offer the filter; on room service it would never match anything.
+  const filters = ['Open', 'All', ...flowFor(orderType),
+    ...(orderType === 'dine_in' || orderType === 'catering' ? ['Cancelled'] : [])];
   const tableFor = (id) => (tables || []).find(t => t.id === id);
 
   // safePage rather than page: switching to a filter with fewer orders must not
@@ -1267,7 +1576,9 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
         {typedOrders.length === 0
           ? (orderType === 'dine_in'
               ? 'No dine-in orders yet. Take one below once a guest is seated.'
-              : 'No room-service orders yet. Front Desk places them for checked-in guests.')
+              : orderType === 'catering'
+                ? 'No catering yet. These arrive on their own when Front Desk books a function room with a catering package.'
+                : 'No room-service orders yet. Front Desk places them for checked-in guests.')
           : `${openCount} order${openCount === 1 ? '' : 's'} still in the kitchen · ${typedOrders.length} total.`}
       </p>
 
@@ -1277,6 +1588,9 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
         </button>
         <button type="button" className={`tb-tab ${orderType === 'dine_in' ? 'is-active' : ''}`} onClick={() => changeOrderType('dine_in')}>
           <i className="fa-solid fa-utensils" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Dine-In
+        </button>
+        <button type="button" className={`tb-tab ${orderType === 'catering' ? 'is-active' : ''}`} onClick={() => changeOrderType('catering')}>
+          <i className="fa-solid fa-champagne-glasses" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Catering
         </button>
       </div>
 
@@ -1292,16 +1606,18 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
 
       {visible.length === 0 ? (
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>
-          <i className={`fa-solid ${orderType === 'dine_in' ? 'fa-utensils' : 'fa-bell-concierge'}`} style={{ fontSize: '1.6rem', color: 'var(--fg-muted)', opacity: 0.3, display: 'block', marginBottom: '0.65rem' }}></i>
+          <i className={`fa-solid ${orderType === 'dine_in' ? 'fa-utensils' : orderType === 'catering' ? 'fa-champagne-glasses' : 'fa-bell-concierge'}`} style={{ fontSize: '1.6rem', color: 'var(--fg-muted)', opacity: 0.3, display: 'block', marginBottom: '0.65rem' }}></i>
           <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.85rem' }}>No orders in this view.</p>
         </div>
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', alignItems: 'stretch' }}>
             {pageOrders.map(order => (
-              orderType === 'dine_in'
-                ? <DineInOrderCard key={order.id} order={order} table={tableFor(order.tableId)} onMove={move} />
-                : <RoomServiceOrderCard key={order.id} order={order} onMove={move} />
+              orderType === 'catering'
+                ? <CateringOrderCard key={order.id} order={order} onMove={move} />
+                : orderType === 'dine_in'
+                  ? <DineInOrderCard key={order.id} order={order} table={tableFor(order.tableId)} onMove={move} />
+                  : <RoomServiceOrderCard key={order.id} order={order} onMove={move} />
             ))}
           </div>
 
@@ -1348,6 +1664,7 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
 
 function RestaurantManagementPage({
   initialNav, menus, tables, orders, canManageTables,
+  cateringPackages, canManageCatering, onSaveCateringPackage,
   onBack, onAddMenu, onEditMenu, onRemoveMenu,
   onAddTable, onEditTable, onCloseTable, onRemoveTable, onSeatTable, onFetchBill, onSettleTable,
   onPlaceOrder, onUpdateOrderStatus,
@@ -1377,6 +1694,14 @@ function RestaurantManagementPage({
               onRemoveMenu={onRemoveMenu}
               onToast={onToast}
               onCancel={onBack}
+            />
+          )}
+          {activeNav === 'catering-packages' && (
+            <CateringPackagesPanel
+              packages={cateringPackages}
+              canManage={canManageCatering}
+              onSaved={onSaveCateringPackage}
+              onBack={onBack}
             />
           )}
           {activeNav === 'manage-tables' && (
@@ -1413,6 +1738,8 @@ function RestaurantManagementPage({
 
 function App() {
   const [menus, setMenus] = useState([]);
+  const [cateringPackages, setCateringPackages] = useState([]);
+  const [canManageCatering, setCanManageCatering] = useState(false);
   const [tables, setTables] = useState([]);
   const [orders, setOrders] = useState([]);
   const [canManageTables, setCanManageTables] = useState(false);
@@ -1446,15 +1773,35 @@ function App() {
       .catch(() => {});
   }, []);
 
+  // Catering packages change far less often than tickets do, so this is loaded once
+  // rather than joining the 8s poll.
+  const fetchCateringPackages = useCallback(() => {
+    fetch('/students/hotel/catering-packages', {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(r => (r.ok ? r.json() : Promise.reject(r)))
+      .then(d => { setCateringPackages(d.packages || []); setCanManageCatering(!!d.can_manage); })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetchMenus();
     fetchTables();
     fetchOrders();
+    fetchCateringPackages();
     const id = setInterval(() => { fetchMenus(); fetchTables(); fetchOrders(); }, 8000);
     const onFocus = () => { fetchMenus(); fetchTables(); fetchOrders(); };
     window.addEventListener('focus', onFocus);
     return () => { clearInterval(id); window.removeEventListener('focus', onFocus); };
-  }, [fetchMenus, fetchTables, fetchOrders]);
+  }, [fetchMenus, fetchTables, fetchOrders, fetchCateringPackages]);
+
+  const saveCateringPackage = useCallback((pkg) => {
+    setCateringPackages(prev => {
+      const exists = prev.some(x => x.dbId === pkg.dbId);
+      return exists ? prev.map(x => (x.dbId === pkg.dbId ? pkg : x)) : prev.concat([pkg]);
+    });
+  }, []);
 
   const menuRequest = useCallback((url, method, body) => {
     pendingWrites.current += 1;
@@ -1559,6 +1906,9 @@ function App() {
   return (
     <RestaurantManagementPage
       initialNav={window.HMS_RESTAURANT_INITIAL_NAV}
+      cateringPackages={cateringPackages}
+      canManageCatering={canManageCatering}
+      onSaveCateringPackage={saveCateringPackage}
       menus={menus}
       tables={tables}
       orders={orders}

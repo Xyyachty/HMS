@@ -2470,7 +2470,18 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         // Type-aware: catering runs a longer pipeline (Pending .. Serving .. Completed),
         // so a status is validated against this order's own flow rather than the kitchen's.
-        $next = HotelFoodOrder::normalizeStatus($data['status'], $order->order_type);
+        $requested = trim((string) $data['status']);
+        $next = HotelFoodOrder::normalizeStatus($requested, $order->order_type);
+
+        // normalizeStatus() falls back to the flow's first step, which would then be
+        // refused as a backwards move — a true answer to a question nobody asked. Say
+        // what is actually wrong instead.
+        if (mb_strtolower($next) !== mb_strtolower($requested)) {
+            return response()->json([
+                'message' => '"' . $requested . '" is not a step a '
+                    . str_replace('_', ' ', $order->order_type) . ' order goes through.',
+            ], 422);
+        }
 
         // The kitchen owns every step, delivery included. Front Desk reads the status
         // and nothing more, so any write from them is refused rather than ignored.
