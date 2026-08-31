@@ -643,89 +643,6 @@
   }
   .toast-el.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
-  /* Customer sign in / sign up. This is the hotel site's own visitor session —
-     separate from the HMS login the student signed in with to open the builder.
-     public/js/hms-hotel-auth.js is the bridge; it broadcasts hms-hotel-auth
-     whenever the session changes. */
-  .nav-auth {
-    display: flex; align-items: center; gap: 0.5rem;
-    margin-left: 0.35rem; padding-left: 0.9rem;
-    border-left: 1px solid var(--border);
-  }
-  .nav-auth-btn {
-    font-family: inherit; font-size: 0.7rem; font-weight: 600;
-    letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
-    padding: 0.52rem 1.05rem; border-radius: 6px; cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
-  }
-  .nav-auth-btn.is-ghost {
-    background: transparent; color: var(--fg); border: 1px solid var(--border);
-  }
-  .nav-auth-btn.is-ghost:hover { border-color: var(--accent); color: var(--accent); }
-  .nav-auth-btn.is-solid {
-    background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
-  }
-  .nav-auth-btn.is-solid:hover { background: var(--accent-light); border-color: var(--accent-light); transform: translateY(-1px); }
-  .nav-auth-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .nav-auth-who {
-    display: inline-flex; align-items: center; gap: 0.45rem;
-    color: var(--fg); font-size: 0.78rem; max-width: 180px;
-  }
-  .nav-auth-who b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* Stacked full-width inside the mobile menu, where there is no room for a row. */
-  .nav-auth.is-compact {
-    flex-direction: column; gap: 0.6rem;
-    border-left: none; border-top: 1px solid var(--border);
-    margin: 0.9rem 0 0; padding: 1.3rem 0 0; width: min(260px, 72vw);
-  }
-  .nav-auth.is-compact .nav-auth-btn { width: 100%; }
-
-  .auth-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-    display: flex; align-items: flex-start; justify-content: center;
-    padding: 2rem 1.5rem; z-index: 5000; overflow-y: auto;
-  }
-  .auth-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    width: 100%; max-width: 400px; margin: auto; padding: 1.75rem;
-  }
-  .auth-card-head {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 1rem; margin-bottom: 1.35rem;
-  }
-  .auth-eyebrow {
-    color: var(--accent); font-size: 0.64rem; letter-spacing: 0.2em;
-    text-transform: uppercase; margin-bottom: 0.4rem;
-  }
-  .auth-close {
-    width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
-    border: 1px solid var(--border); background: transparent;
-    color: var(--fg); cursor: pointer; line-height: 1;
-  }
-  .auth-close:hover { border-color: var(--accent); color: var(--accent); }
-  .auth-field { display: block; margin-bottom: 0.9rem; }
-  .auth-field > span {
-    display: block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--fg-muted); margin-bottom: 0.35rem;
-  }
-  .auth-input {
-    width: 100%; font-family: inherit; font-size: 0.88rem;
-    background: transparent; color: var(--fg);
-    border: 1px solid var(--border); border-radius: 6px;
-    padding: 0.7rem 0.9rem; outline: none; transition: border-color 0.2s;
-  }
-  .auth-input:focus { border-color: var(--accent); }
-  .auth-error { margin: 0 0 0.9rem; color: #e11d48; font-size: 0.78rem; }
-  .auth-swap {
-    margin-top: 1.1rem; text-align: center;
-    color: var(--fg-muted); font-size: 0.78rem;
-  }
-  .auth-swap button {
-    background: none; border: none; padding: 0; cursor: pointer;
-    color: var(--accent); font-family: inherit; font-size: 0.78rem; font-weight: 600;
-  }
-  .auth-swap button:hover { text-decoration: underline; }
-
   .mobile-menu {
     position: fixed; inset: 0; background: rgba(12,11,9,0.97);
     z-index: 999; display: flex; flex-direction: column;
@@ -1212,7 +1129,7 @@ function Toast({ message, visible }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MOBILE MENU â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function MobileMenu({ open, onClose, onNavigate, links, cardImages, page, onToast }) {
+function MobileMenu({ open, onClose, onNavigate, links, cardImages, page }) {
   const items = [...(links || [])];
   // Passed only so the menu re-renders when the shared logo changes.
   void cardImages;
@@ -1224,177 +1141,13 @@ function MobileMenu({ open, onClose, onNavigate, links, cardImages, page, onToas
           {item.label}
         </button>
       ))}
-      <AuthNav onToast={onToast} compact />
     </div>
   );
 }
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• NAVBAR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-/* ═══════════════ CUSTOMER SIGN IN / SIGN UP ═══════════════ */
-
-/*
- * The hotel site's own visitor session — a customer browsing and booking — which
- * is not the HMS login the student signed in with to open the builder.
- *
- * window.HMSHotelAuth (public/js/hms-hotel-auth.js) owns the session and fires
- * hms-hotel-auth whenever it changes, so every copy of this on the page stays in
- * step without any of them polling.
- */
-function useHotelAuth() {
-  const [auth, setAuth] = useState(() => window.__HMS_HOTEL_AUTH__ || { authenticated: false });
-
-  useEffect(() => {
-    const onAuth = (e) => setAuth((e && e.detail && e.detail.auth) || { authenticated: false });
-    window.addEventListener('hms-hotel-auth', onAuth);
-    // The bridge resolves the session shortly after load, which can land before
-    // this mounts — so read whatever is already there rather than wait for an event.
-    setAuth(window.__HMS_HOTEL_AUTH__ || { authenticated: false });
-    return () => window.removeEventListener('hms-hotel-auth', onAuth);
-  }, []);
-
-  return auth;
-}
-
-function AuthModal({ mode, onMode, onClose, onToast }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const signingUp = mode === 'signup';
-
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, busy]);
-
-  const submit = (e) => {
-    e.preventDefault();
-    const api = window.HMSHotelAuth;
-    if (!api) { setError('The sign-in service is not available on this page.'); return; }
-    if (signingUp && !name.trim()) { setError('Enter your name.'); return; }
-    if (!email.trim()) { setError('Enter your email address.'); return; }
-    if (!password) { setError('Enter your password.'); return; }
-
-    setError('');
-    setBusy(true);
-    Promise.resolve(
-      signingUp
-        ? api.customerSignup(name.trim(), email.trim(), password)
-        : api.customerLogin(email.trim(), password)
-    )
-      .then(() => {
-        if (onToast) onToast(signingUp ? 'Welcome — your account is ready.' : 'Signed in.');
-        onClose();
-      })
-      .catch(err => setError((err && err.message) || 'That did not work. Check your details and try again.'))
-      .finally(() => setBusy(false));
-  };
-
-  return (
-    <div className="auth-overlay" data-hms-no-edit="1" onClick={() => { if (!busy) onClose(); }} role="dialog" aria-modal="true">
-      <div className="auth-card" onClick={e => e.stopPropagation()}>
-        <div className="auth-card-head">
-          <div>
-            <p className="auth-eyebrow">{signingUp ? 'Join us' : 'Welcome back'}</p>
-            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>
-              {signingUp ? 'Create an account' : 'Sign in'}
-            </h2>
-          </div>
-          <button type="button" className="auth-close" onClick={onClose} disabled={busy} aria-label="Close">
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <form onSubmit={submit} noValidate>
-          {signingUp && (
-            <label className="auth-field">
-              <span>Full name</span>
-              <input className="auth-input" type="text" value={name} autoComplete="name"
-                onChange={e => setName(e.target.value)} />
-            </label>
-          )}
-          <label className="auth-field">
-            <span>Email</span>
-            <input className="auth-input" type="email" value={email} autoComplete="email"
-              onChange={e => setEmail(e.target.value)} />
-          </label>
-          <label className="auth-field">
-            <span>Password</span>
-            <input className="auth-input" type="password" value={password}
-              autoComplete={signingUp ? 'new-password' : 'current-password'}
-              onChange={e => setPassword(e.target.value)} />
-          </label>
-
-          {error && <p className="auth-error">{error}</p>}
-
-          <button type="submit" className="nav-auth-btn is-solid" disabled={busy}
-            style={{ width: '100%', padding: '0.75rem', fontSize: '0.74rem' }}>
-            {busy ? 'Please wait…' : (signingUp ? 'Create account' : 'Sign in')}
-          </button>
-        </form>
-
-        <p className="auth-swap">
-          {signingUp ? 'Already have an account? ' : 'New here? '}
-          <button type="button" onClick={() => { setError(''); onMode(signingUp ? 'signin' : 'signup'); }}>
-            {signingUp ? 'Sign in' : 'Create one'}
-          </button>
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/* Sits at the right-hand end of the navigation. `compact` stacks it for the
-   mobile menu, where a row of buttons has nowhere to go. */
-function AuthNav({ onToast, compact }) {
-  const auth = useHotelAuth();
-  const [mode, setMode] = useState(null);
-  const [busy, setBusy] = useState(false);
-
-  // Inert while the student is redesigning the page — same rule the rest of the
-  // site's controls follow, so a click in Design mode edits rather than signs in.
-  const open = (next) => { if (isSiteInteractive()) setMode(next); };
-
-  const signOut = () => {
-    const api = window.HMSHotelAuth;
-    if (!api || !isSiteInteractive()) return;
-    setBusy(true);
-    Promise.resolve(api.logout())
-      .then(() => { if (onToast) onToast('Signed out.'); })
-      .catch(() => { if (onToast) onToast('Could not sign out.'); })
-      .finally(() => setBusy(false));
-  };
-
-  return (
-    <div className={`nav-auth${compact ? ' is-compact' : ''}`} data-hms-no-edit="1">
-      {auth && auth.authenticated ? (
-        <>
-          <span className="nav-auth-who" title={auth.email || ''}>
-            <i className="fa-regular fa-circle-user" style={{ color: 'var(--accent)' }}></i>
-            <b>{auth.name || 'Guest'}</b>
-          </span>
-          <button type="button" className="nav-auth-btn is-ghost" onClick={signOut} disabled={busy}>
-            {busy ? 'Signing out…' : 'Sign out'}
-          </button>
-        </>
-      ) : (
-        <>
-          <button type="button" className="nav-auth-btn is-ghost" onClick={() => open('signin')}>Sign in</button>
-          <button type="button" className="nav-auth-btn is-solid" onClick={() => open('signup')}>Sign up</button>
-        </>
-      )}
-
-      {mode && (
-        <AuthModal mode={mode} onMode={setMode} onClose={() => setMode(null)} onToast={onToast} />
-      )}
-    </div>
-  );
-}
-
-function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav, cardImages, onToast }) {
+function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav, cardImages }) {
   // Passed only so the navigation re-renders when the shared logo changes.
   void cardImages;
   const canEditThisLogo = !!(window.HMSSiteContent && window.HMSSiteContent.canEditLogo && window.HMSSiteContent.canEditLogo());
@@ -1491,7 +1244,6 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, ca
               data-hms-no-edit="1"
             ><i className="fa-solid fa-plus" style={{ fontSize: 10 }}></i> Add link</button>
           )}
-          <AuthNav onToast={onToast} />
         </div>
         <button className={`hamburger${mobileOpen ? ' active' : ''}`} onClick={onToggleMobile} aria-label="Toggle menu" data-hms-no-edit="1">
           <span></span><span></span><span></span>
@@ -3776,7 +3528,6 @@ function App() {
         onEditNav={(id, patch) => window.HMSSiteContent && window.HMSSiteContent.updateNavLink(id, patch)}
         onRemoveNav={(id) => window.HMSSiteContent && window.HMSSiteContent.removeNavLink(id)}
         cardImages={cardImages}
-        onToast={showToast}
       />
       <MobileMenu
         open={mobileOpen}
@@ -3785,7 +3536,6 @@ function App() {
         links={navLinks}
         cardImages={cardImages}
         page={page}
-        onToast={showToast}
       />
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
       <Footer onNavigate={navigateTo} cardImages={cardImages} page={page} />
