@@ -207,6 +207,42 @@
     border-radius: 4px;
   }
 
+  /* â”€â”€ Facility Cards â”€â”€ */
+  /* The facilities on the Amenities page — Housekeeping's hotel_amenities rows.
+     Same frame as a room card, minus the hover lift: these are not clickable. */
+  .facility-card {
+    display: flex; flex-direction: column; height: 100%;
+    background: var(--card); border-radius: 10px; overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    transition: box-shadow 0.25s, opacity 0.25s;
+  }
+  .facility-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+  /* Closed or broken still shows — a guest needs to know the pool exists and is shut
+     today, not be left wondering whether the hotel has one. */
+  .facility-card.is-unavailable { opacity: 0.6; }
+  .facility-card-media { position: relative; height: 200px; flex: 0 0 200px; overflow: hidden; }
+  .facility-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .facility-card.is-unavailable .facility-card-media img { filter: grayscale(0.75); }
+  .facility-status {
+    position: absolute; top: 0.85rem; left: 0.85rem;
+    display: inline-block; padding: 0.22rem 0.65rem; border-radius: 3px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.63rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    background: rgba(255,255,255,0.94);
+  }
+  .facility-status.is-available   { color: var(--accent); }
+  .facility-status.is-closed      { color: var(--warm); }
+  .facility-status.is-maintenance { color: #b3364c; }
+  .facility-card-body { flex: 1 1 auto; padding: 1.25rem 1.35rem 1.45rem; display: flex; flex-direction: column; gap: 0.45rem; }
+  .facility-card-meta {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.75rem; color: var(--fg-muted);
+  }
+  .facility-card-desc {
+    font-size: 0.82rem; color: var(--fg-muted);
+    line-height: 1.6; margin: 0.25rem 0 0;
+  }
+
   /* â”€â”€ Restaurant Cards â”€â”€ */
   .rest-card {
     background: var(--card); border-radius: 10px; overflow: hidden;
@@ -2513,16 +2549,70 @@ function ExperiencePage({ onNav, canEdit, onToast, cardImages }) {
 }
 
 
-/* Header only. The add-ons catalogue used to be listed here, but add-ons belong to
-   the Housekeeping Add-ons page — the two are separate now, so the body is left
-   empty for Housekeeping to build the page themselves. */
-function AmenitiesPage() {
+/* The hotel's facilities, straight from Housekeeping's Amenities screen. Not add-ons —
+   those are the things a guest borrows for their room and they live on their own page.
+
+   The header is click-to-edit copy Housekeeping owns; the cards below are database rows
+   and are deliberately NOT editable inline, the same call the rooms and menu lists make.
+   Editing one happens on the Housekeeping screen, and this page follows within 8 seconds.
+
+   Nothing is filtered out by status. A guest who cannot find the pool on this page will
+   assume the hotel has none, so a closed or broken one stays listed and says so. */
+function facilityStatusClass(status) {
+  if (status === 'Available') return 'is-available';
+  if (status === 'Temporarily Closed') return 'is-closed';
+  return 'is-maintenance';
+}
+
+function AmenitiesPage({ amenities }) {
+  const list = Array.isArray(amenities) ? amenities : [];
+
   return (
-    <div className="page-header">
-      <span className="section-num">Beyond the Stay</span>
-      <h1 className="font-display">Hotel Amenities</h1>
-      <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
-    </div>
+    <>
+      <div className="page-header">
+        <span className="section-num">Beyond the Stay</span>
+        <h1 className="font-display">Hotel Amenities</h1>
+        <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
+      </div>
+      <section style={{ padding: '2.5rem 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
+        {list.length === 0 ? (
+          <div style={{ background: 'var(--card)', borderRadius: 10, padding: '4rem 1.5rem', textAlign: 'center', color: 'var(--fg-muted)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <i className="fa-solid fa-person-swimming" style={{ fontSize: '1.8rem', color: 'var(--accent)', opacity: 0.55, display: 'block', marginBottom: '0.9rem' }}></i>
+            <p style={{ margin: 0 }}>Amenities coming soon.</p>
+          </div>
+        ) : (
+          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1.5rem' }}>
+            {list.map(item => (
+              <div
+                key={item.id}
+                className={'facility-card' + (item.status === 'Available' ? '' : ' is-unavailable')}
+              >
+                <div className="facility-card-media">
+                  <img src={item.img} alt={item.name} />
+                  <span className={'facility-status ' + facilityStatusClass(item.status)}>{item.status}</span>
+                </div>
+                <div className="facility-card-body">
+                  <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>{item.name}</h3>
+                  {item.location && (
+                    <div className="facility-card-meta">
+                      <i className="fa-solid fa-location-dot" style={{ color: 'var(--warm)', fontSize: '0.72rem' }}></i>
+                      {item.location}
+                    </div>
+                  )}
+                  {item.hours && (
+                    <div className="facility-card-meta">
+                      <i className="fa-solid fa-clock" style={{ color: 'var(--warm)', fontSize: '0.72rem' }}></i>
+                      {item.hours}
+                    </div>
+                  )}
+                  {item.description && <p className="facility-card-desc">{item.description}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
   );
 }
 
@@ -2736,6 +2826,7 @@ function App() {
   const [canOrderMenu, setCanOrderMenu] = useState(false);
   const [canEditExperiences, setCanEditExperiences] = useState(false);
   const [addons, setAddons] = useState([]);
+  const [amenities, setAmenities] = useState([]);
   const [cardImages, setCardImages] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getCardImages ? window.HMSSiteContent.getCardImages() : {}
   ));
@@ -2770,6 +2861,19 @@ function App() {
       .catch(() => {});
   }, []);
 
+  // Housekeeping's facilities list. Read-only here: what a guest sees is exactly what
+  // the Housekeeping Amenities screen holds, closures and repairs included.
+  const fetchAmenities = useCallback(() => {
+    if (pendingWrites.current > 0) return;
+    fetch('/students/hotel/amenities', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => {
+        if (pendingWrites.current > 0) return;
+        if (Array.isArray(data.items)) setAmenities(data.items);
+      })
+      .catch(() => {});
+  }, []);
+
   // The server decides who may edit the menu — the client only mirrors that answer.
   const fetchMenus = useCallback(() => {
     if (pendingWrites.current > 0) return;
@@ -2786,7 +2890,7 @@ function App() {
   // Poll so Front Desk arrivals, room status changes, menu edits and Housekeeping's
   // add-on stock all cross over between sessions.
   useEffect(() => {
-    const refresh = () => { fetchRooms(); fetchMenus(); fetchAddons(); };
+    const refresh = () => { fetchRooms(); fetchMenus(); fetchAddons(); fetchAmenities(); };
     refresh();
     const id = setInterval(refresh, 8000);
     window.addEventListener('focus', refresh);
@@ -2794,7 +2898,7 @@ function App() {
       clearInterval(id);
       window.removeEventListener('focus', refresh);
     };
-  }, [fetchRooms, fetchMenus, fetchAddons]);
+  }, [fetchRooms, fetchMenus, fetchAddons, fetchAmenities]);
 
   const syncSiteContent = useCallback(() => {
     if (!window.HMSSiteContent) return;
@@ -3100,7 +3204,7 @@ function App() {
       />
     ),
     experience: <ExperiencePage onNav={navigateTo} onToast={showToast} canEdit={canEditExperiences} cardImages={cardImages} />,
-    amenities: <AmenitiesPage />,
+    amenities: <AmenitiesPage amenities={amenities} />,
     booking: <BookingPage onToast={showToast} rooms={rooms} />,
   };
 

@@ -52,6 +52,7 @@ class HotelComplaint extends Model
         'faculty_id',
         'group_id',
         'hotel_room_inspection_id',
+        'hotel_amenity_id',
         'room_number',
         'guest_name',
         'category',
@@ -142,6 +143,7 @@ class HotelComplaint extends Model
         return [
             'id'              => $this->hotel_complaint_id,
             'inspectionId'    => $this->hotel_room_inspection_id,
+            'amenityId'       => $this->hotel_amenity_id,
             'roomNumber'      => $this->room_number,
             'guestName'       => $this->guest_name ?? '',
             'category'        => $this->category,

@@ -79,6 +79,14 @@
                     {{-- Nothing left to lend until one comes back. --}}
                     @include('students.frontdesk.left-sidebar.badge', ['key' => 'addons'])
                 </a>
+                <a href="{{ route('students.housekeeping.amenities') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.housekeeping.amenities') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-person-swimming text-[13px] text-emerald-400"></i> Amenities
+                    {{-- Broken facilities waiting on this desk: not yet reported, or repaired
+                         and needing a look before they reopen. --}}
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'amenities'])
+                </a>
                 <a href="{{ route('students.housekeeping.complaints') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.housekeeping.complaints') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">

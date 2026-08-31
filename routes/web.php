@@ -1478,6 +1478,206 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
     /*
     |--------------------------------------------------------------------------
+    | Hotel amenities
+    |--------------------------------------------------------------------------
+    |
+    | The hotel's facilities — the pool, the gym, the spa. Housekeeping owns the list;
+    | everyone else reads it, including a guest browsing the team's site, because the
+    | Amenities page there and the Housekeeping screen are one list rather than two
+    | copies of one.
+    |
+    | There is deliberately no delete route, for the same reason the add-ons catalogue
+    | has none: a repair request outlives the shutdown that caused it, and dropping the
+    | amenity would strand it. Retiring one means setting it Temporarily Closed.
+    |
+    | Under Maintenance is the only status a repair can be filed from, and once one is
+    | open the amenity cannot be set back to Available by the plain update route — the
+    | verify route is the way out, and it checks with Maintenance first.
+    */
+    Route::get('/hotel/amenities', function () {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['items' => [], 'can_manage' => false]);
+        }
+
+        // A team starts with the five facilities nearly every hotel has. No-ops once it
+        // has any amenity at all, so a team that built its own list is never touched.
+        \App\Support\HotelAmenityAccess::seedDefaults($membership);
+
+        $repairs = \App\Support\HotelAmenityDesk::latestRepairsFor($membership);
+
+        $items = \App\Models\HotelAmenity::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_amenity_id')
+            ->get()
+            ->map(fn (\App\Models\HotelAmenity $amenity) => $amenity->toTemplateArray(
+                $repairs[$amenity->hotel_amenity_id] ?? null
+            ));
+
+        return response()->json([
+            'items'      => $items,
+            'can_manage' => \App\Support\HotelAmenityAccess::canManage($membership),
+        ]);
+    })->name('hotel.amenities.index');
+
+    Route::post('/hotel/amenities', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can add amenities.'], 403);
+        }
+
+        $data = $request->validate([
+            'name'        => 'required|string|max:120',
+            'description' => 'nullable|string|max:2000',
+            'location'    => 'nullable|string|max:160',
+            'opens_at'    => 'nullable|date_format:H:i',
+            'closes_at'   => 'nullable|date_format:H:i',
+            'status'      => ['required', Rule::in(\App\Models\HotelAmenity::STATUSES)],
+            'image'       => 'nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        $amenity = \App\Models\HotelAmenity::create([
+            'group_name'  => $membership->group_name,
+            'faculty_id'  => $membership->faculty_id,
+            'group_id'    => $membership->group_id,
+            'name'        => trim($data['name']),
+            'description' => trim((string) ($data['description'] ?? '')) ?: null,
+            'location'    => trim((string) ($data['location'] ?? '')) ?: null,
+            'opens_at'    => \App\Models\HotelAmenity::normalizeTime($data['opens_at'] ?? null),
+            'closes_at'   => \App\Models\HotelAmenity::normalizeTime($data['closes_at'] ?? null),
+            'status'      => \App\Models\HotelAmenity::normalizeStatus($data['status']),
+            'image'       => \App\Support\HotelImageStore::persist(
+                $data['image'] ?? null,
+                $membership->faculty_id,
+                $membership->group_name
+            ),
+        ]);
+
+        // Nothing can be under repair yet, so the fresh row has no complaint behind it.
+        return response()->json(['item' => $amenity->toTemplateArray(null)], 201);
+    })->name('hotel.amenities.store');
+
+    Route::patch('/hotel/amenities/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can edit amenities.'], 403);
+        }
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'name'        => 'sometimes|string|max:120',
+            'description' => 'sometimes|nullable|string|max:2000',
+            'location'    => 'sometimes|nullable|string|max:160',
+            'opens_at'    => 'sometimes|nullable|date_format:H:i',
+            'closes_at'   => 'sometimes|nullable|date_format:H:i',
+            'status'      => ['sometimes', Rule::in(\App\Models\HotelAmenity::STATUSES)],
+            'image'       => 'sometimes|nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        // Reopening a facility Maintenance is still fixing has to go through the verify
+        // route, which checks the repair first. Editing anything else about it is fine.
+        if (array_key_exists('status', $data)
+            && \App\Models\HotelAmenity::normalizeStatus($data['status']) === 'Available'
+            && \App\Support\HotelAmenityDesk::openRepairFor($amenity)) {
+            return response()->json([
+                'message' => 'Maintenance is still working on this. Verify the repair first.',
+            ], 422);
+        }
+
+        if (array_key_exists('name', $data))        $amenity->name        = trim($data['name']);
+        if (array_key_exists('description', $data)) $amenity->description = trim((string) $data['description']) ?: null;
+        if (array_key_exists('location', $data))    $amenity->location    = trim((string) $data['location']) ?: null;
+        if (array_key_exists('opens_at', $data))    $amenity->opens_at    = \App\Models\HotelAmenity::normalizeTime($data['opens_at']);
+        if (array_key_exists('closes_at', $data))   $amenity->closes_at   = \App\Models\HotelAmenity::normalizeTime($data['closes_at']);
+        if (array_key_exists('status', $data))      $amenity->status      = \App\Models\HotelAmenity::normalizeStatus($data['status']);
+        if (array_key_exists('image', $data))       $amenity->image       = \App\Support\HotelImageStore::persist(
+            $data['image'],
+            $membership->faculty_id,
+            $membership->group_name
+        );
+        $amenity->save();
+
+        return response()->json(['item' => $amenity->toTemplateArray($amenity->repairs()->first())]);
+    })->name('hotel.amenities.update');
+
+    /*
+    | Housekeeping hands a broken facility to Maintenance. Files a hotel_complaints row
+    | rather than opening a second queue — see HotelAmenityDesk.
+    */
+    Route::post('/hotel/amenities/{id}/repair-request', function (Request $request, $id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can request a repair.'], 403);
+        }
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'category' => ['nullable', Rule::in(array_keys(HotelComplaint::CATEGORY_DEPARTMENTS))],
+            'details'  => 'required|string|max:2000',
+        ]);
+
+        try {
+            $complaint = \App\Support\HotelAmenityDesk::requestRepair($amenity, $data, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'item'      => $amenity->fresh()->toTemplateArray($complaint),
+            'complaint' => $complaint->toTemplateArray(),
+        ], 201);
+    })->name('hotel.amenities.repair');
+
+    /*
+    | The final look after the repair. Refuses while Maintenance still holds the
+    | complaint, the same guard that sits in front of marking a room ready.
+    */
+    Route::post('/hotel/amenities/{id}/verify', function ($id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can verify a repair.'], 403);
+        }
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        try {
+            \App\Support\HotelAmenityDesk::verifyRepaired($amenity, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['item' => $amenity->toTemplateArray($amenity->repairs()->first())]);
+    })->name('hotel.amenities.verify');
+
+    /*
+    |--------------------------------------------------------------------------
     | Hotel food orders — room service and dine-in. Front Desk places room service
     | against a stay; a dine-in order is taken tableside by Restaurant Services once
     | the customer arrives at the table Front Desk reserved. Restaurant Services
@@ -2446,5 +2646,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.housekeeping.addons', $data);
     })->name('housekeeping.addons');
+
+    Route::get('/housekeeping/amenities', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
+        return view('students.housekeeping.amenities', $data);
+    })->name('housekeeping.amenities');
 });
 

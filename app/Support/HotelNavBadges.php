@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\HotelAddon;
+use App\Models\HotelAmenity;
 use App\Models\HotelBooking;
 use App\Models\HotelComplaint;
 use App\Models\HotelFoodOrder;
@@ -49,6 +50,7 @@ class HotelNavBadges
                 'inspections' => self::inspectionsOnHousekeeping($membership),
                 'complaints'  => self::complaints($membership, 'housekeeping', 'Open'),
                 'addons'      => self::addonsFullyLentOut($membership),
+                'amenities'   => self::amenitiesOnHousekeeping($membership),
             ],
             'maintenance' => [
                 'complaints' => self::complaints($membership, 'maintenance', 'Open'),
@@ -119,6 +121,30 @@ class HotelNavBadges
         return HotelRoomInspection::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->whereIn('status', ['Pending', 'Awaiting Re-inspection'])
+            ->count();
+    }
+
+    /**
+     * Broken facilities that are Housekeeping's move: either nobody has told Maintenance
+     * yet, or Maintenance is done and the repair still needs verifying.
+     *
+     * One under an open repair is not counted, for the same reason inspectionsOnHousekeeping
+     * skips "Awaiting Repair" — that ball is with Maintenance, and it comes back on its own
+     * when they close the complaint.
+     */
+    private static function amenitiesOnHousekeeping(StudentGroup $membership): int
+    {
+        $repairs = HotelAmenityDesk::latestRepairsFor($membership);
+
+        return HotelAmenity::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->where('status', 'Under Maintenance')
+            ->get()
+            ->reject(function ($amenity) use ($repairs) {
+                $repair = $repairs[$amenity->hotel_amenity_id] ?? null;
+
+                return $repair && in_array($repair->status, HotelAmenity::OPEN_REPAIR_STATUSES, true);
+            })
             ->count();
     }
 
