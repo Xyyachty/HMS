@@ -473,11 +473,6 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'room_management');
         return view('students.roommanagement.manage', $data);
     })->name('roommanagement.manage');
-
-    Route::get('/roommanagement/reports', function () {
-        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'room_management');
-        return view('students.roommanagement.reports', $data);
-    })->name('roommanagement.reports');
     Route::get('/frontdesk', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
         return view('students.frontdesk.frontdesk', $data);
@@ -3271,18 +3266,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'maintenance');
         return view('students.maintenance', $data);
     })->name('maintenance');
-    Route::get('/maintenance/reports', function () {
-        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'maintenance');
-        return view('students.maintenance.reports', $data);
-    })->name('maintenance.reports');
     Route::get('/housekeeping', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.housekeeping', $data);
     })->name('housekeeping');
-    Route::get('/housekeeping/reports', function () {
-        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
-        return view('students.housekeeping.reports', $data);
-    })->name('housekeeping.reports');
 
     Route::get('/housekeeping/inspections', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
