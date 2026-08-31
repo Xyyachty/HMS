@@ -1147,7 +1147,7 @@ function MobileMenu({ open, onClose, onNavigate, links, cardImages, page }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• NAVBAR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav, cardImages }) {
+function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav, cardImages, onToast }) {
   // Passed only so the navigation re-renders when the shared logo changes.
   void cardImages;
   const canEditThisLogo = !!(window.HMSSiteContent && window.HMSSiteContent.canEditLogo && window.HMSSiteContent.canEditLogo());
@@ -3528,6 +3528,7 @@ function App() {
         onEditNav={(id, patch) => window.HMSSiteContent && window.HMSSiteContent.updateNavLink(id, patch)}
         onRemoveNav={(id) => window.HMSSiteContent && window.HMSSiteContent.removeNavLink(id)}
         cardImages={cardImages}
+        onToast={showToast}
       />
       <MobileMenu
         open={mobileOpen}
