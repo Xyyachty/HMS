@@ -28,6 +28,25 @@ class HotelAmenity extends Model
     /** A repair Maintenance is still holding. Anything else is back on Housekeeping's desk. */
     public const OPEN_REPAIR_STATUSES = ['Open', 'In Progress'];
 
+    /**
+     * How a guest gets at this facility. Front Desk's screen, the route guards and the
+     * available actions all read this rather than the amenity's name — a team that renames
+     * "Gym" to "Fitness Centre" must not lose the ability to sign people into it.
+     *
+     * open        walk in; nothing to book, nobody to sign (Playground)
+     * registered  signed in and out, so somebody knows who is inside (Pool, Gym)
+     * appointment booked by the hour against a named service (Spa)
+     * event       booked for a date with a package, catering and a bill (Function Room)
+     */
+    public const ACCESS_TYPES = ['open', 'registered', 'appointment', 'event'];
+
+    public const ACCESS_LABELS = [
+        'open'        => 'Open Access',
+        'registered'  => 'Entry Register',
+        'appointment' => 'By Appointment',
+        'event'       => 'Event Booking',
+    ];
+
     protected $primaryKey = 'hotel_amenity_id';
 
     protected $fillable = [
@@ -40,7 +59,17 @@ class HotelAmenity extends Model
         'opens_at',
         'closes_at',
         'status',
+        'access_type',
+        'rate',
+        'setup_fee',
+        'capacity',
         'image',
+    ];
+
+    protected $casts = [
+        'rate'      => 'integer',
+        'setup_fee' => 'integer',
+        'capacity'  => 'integer',
     ];
 
     /**
@@ -51,6 +80,65 @@ class HotelAmenity extends Model
     {
         return $this->hasMany(HotelComplaint::class, 'hotel_amenity_id', 'hotel_amenity_id')
             ->orderByDesc('hotel_complaint_id');
+    }
+
+    /** Every trip anyone has made to this facility, newest first. */
+    public function visits(): HasMany
+    {
+        return $this->hasMany(HotelAmenityVisit::class, 'hotel_amenity_id', 'hotel_amenity_id')
+            ->orderByDesc('hotel_amenity_visit_id');
+    }
+
+    public static function normalizeAccessType(?string $value): string
+    {
+        $raw = mb_strtolower(trim((string) $value));
+
+        // Falls back to the least privileged shape: a facility nobody has classified is
+        // one a guest may look at and no desk may book.
+        return in_array($raw, self::ACCESS_TYPES, true) ? $raw : 'open';
+    }
+
+    public function accessLabel(): string
+    {
+        return self::ACCESS_LABELS[$this->access_type] ?? 'Open Access';
+    }
+
+    /**
+     * Whether the facility is within its posted hours.
+     *
+     * Both times unset means no posted hours at all, which reads as always open rather
+     * than never — a playground with no sign on it is not shut. A closing time earlier
+     * than the opening time is an overnight window (22:00 to 02:00), so the test flips.
+     */
+    public function isOpenNow(?\DateTimeInterface $at = null): bool
+    {
+        $opens = self::normalizeTime($this->opens_at);
+        $closes = self::normalizeTime($this->closes_at);
+
+        if ($opens === null && $closes === null) {
+            return true;
+        }
+
+        $now = ($at ? \Illuminate\Support\Carbon::instance($at) : now())->format('H:i');
+        $opens = $opens ?? '00:00';
+        $closes = $closes ?? '23:59';
+
+        return $opens <= $closes
+            ? ($now >= $opens && $now < $closes)
+            : ($now >= $opens || $now < $closes);
+    }
+
+    /** "6:00 AM – 8:00 PM", or null when the facility posts no hours. */
+    public function hoursLabel(): ?string
+    {
+        $opens = self::formatTime($this->opens_at);
+        $closes = self::formatTime($this->closes_at);
+
+        if ($opens && $closes) {
+            return $opens . ' – ' . $closes;
+        }
+
+        return $opens ?: ($closes ? 'Until ' . $closes : null);
     }
 
     public static function normalizeStatus(?string $value): string
@@ -108,9 +196,6 @@ class HotelAmenity extends Model
         $underMaintenance = $this->status === 'Under Maintenance';
         $openRepair = $repairStatus !== null && in_array($repairStatus, self::OPEN_REPAIR_STATUSES, true);
 
-        $opens = self::formatTime($this->opens_at);
-        $closes = self::formatTime($this->closes_at);
-
         return [
             'id'          => 'db-' . $this->hotel_amenity_id,
             'dbId'        => $this->hotel_amenity_id,
@@ -121,9 +206,20 @@ class HotelAmenity extends Model
             'closesAt'    => self::normalizeTime($this->closes_at),
             // Pre-joined so neither template skin has to reimplement the dash and the
             // "Open 24 hours" fallback in JSX.
-            'hours'       => $opens && $closes ? $opens . ' – ' . $closes : ($opens ?: ($closes ? 'Until ' . $closes : '')),
+            'hours'       => $this->hoursLabel() ?? '',
             'status'      => $this->status,
             'img'         => \App\Support\HotelImageStore::url($this->image),
+
+            // How a guest gets at it. Front Desk's screen switches its whole action area
+            // on accessType rather than on the amenity's name.
+            'accessType'  => $this->access_type ?? 'open',
+            'accessLabel' => $this->accessLabel(),
+            'rate'        => (int) $this->rate,
+            'setupFee'    => (int) $this->setup_fee,
+            'capacity'    => $this->capacity === null ? null : (int) $this->capacity,
+            // Derived on read: a stored "open" flag would be wrong the minute the clock
+            // passed the closing time with nobody looking.
+            'isOpenNow'   => $this->isOpenNow(),
 
             // Derived, never stored — see the class docblock.
             'repairId'          => $repair?->hotel_complaint_id,

@@ -46,6 +46,13 @@
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.frontdesk.room-service') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-bell-concierge text-[13px] text-emerald-400"></i> Room Service
                 </a>
+                <a href="{{ route('students.frontdesk.amenities') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.frontdesk.amenities') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-person-swimming text-[13px] text-emerald-400"></i> Amenities
+                    {{-- Guests signed in and not yet signed back out. --}}
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'amenities'])
+                </a>
                 <a href="{{ route('students.frontdesk.complaints') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.frontdesk.complaints') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">

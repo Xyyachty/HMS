@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\HotelAddon;
 use App\Models\HotelAmenity;
+use App\Models\HotelAmenityVisit;
 use App\Models\HotelBooking;
 use App\Models\HotelComplaint;
 use App\Models\HotelFoodOrder;
@@ -37,6 +38,7 @@ class HotelNavBadges
             'front_desk' => [
                 'verify-guest' => self::awaitingCheckIn($membership),
                 'complaints'   => self::complaints($membership, null, 'Resolved'),
+                'amenities'    => self::guestsInsideAmenities($membership),
             ],
             'room_management' => [
                 'guest-details' => self::awaitingCheckIn($membership),
@@ -121,6 +123,22 @@ class HotelNavBadges
         return HotelRoomInspection::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->whereIn('status', ['Pending', 'Awaiting Re-inspection'])
+            ->count();
+    }
+
+    /**
+     * Guests signed into a facility and not signed back out.
+     *
+     * Rows, not heads: one family in the pool is one thing on the desk to close, however
+     * many of them are swimming. Note this is the same badge key Housekeeping uses for a
+     * different count — keys are namespaced per role, and each desk's "amenities" badge
+     * answers its own question.
+     */
+    private static function guestsInsideAmenities(StudentGroup $membership): int
+    {
+        return HotelAmenityVisit::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->inside()
             ->count();
     }
 

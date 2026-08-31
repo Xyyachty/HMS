@@ -20,6 +20,16 @@ class HotelAmenityAccess
     /** Roles that may add / edit amenities. */
     public const MANAGE_ROLES = [self::MANAGE_ROLE, 'administrator'];
 
+    /**
+     * Roles that may sign a guest into a facility and back out of it.
+     *
+     * Deliberately not Housekeeping: they own what the facility *is* — its hours, its
+     * photo, whether it is open at all — while letting a guest in is desk work, done by
+     * whoever is standing in front of the guest. The same split the add-ons catalogue
+     * already makes, where Housekeeping owns the list and Front Desk attaches it to a stay.
+     */
+    public const REGISTER_ROLES = ['front_desk', 'administrator'];
+
     public static function membership(): ?StudentGroup
     {
         $student = auth()->user()?->student;
@@ -33,6 +43,21 @@ class HotelAmenityAccess
      */
     public static function canManage(StudentGroup $membership): bool
     {
+        return count(array_intersect(self::roles($membership), self::MANAGE_ROLES)) > 0;
+    }
+
+    /** A member may register guests into a facility when they are on the front desk. */
+    public static function canRegister(StudentGroup $membership): bool
+    {
+        return count(array_intersect(self::roles($membership), self::REGISTER_ROLES)) > 0;
+    }
+
+    /**
+     * The member's own team roles, plus whatever they are signed into the hotel site as.
+     * Extracted so canManage and canRegister cannot drift apart.
+     */
+    public static function roles(StudentGroup $membership): array
+    {
         $roles = StudentGroupSync::roleKeys($membership);
 
         $sim = HotelSimulationAuth::current();
@@ -40,7 +65,7 @@ class HotelAmenityAccess
             $roles = array_merge($roles, $sim['roles']);
         }
 
-        return count(array_intersect($roles, self::MANAGE_ROLES)) > 0;
+        return $roles;
     }
 
     /**

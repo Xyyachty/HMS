@@ -110,6 +110,24 @@
     border-radius: 8px; border: none; background: rgba(0,0,0,0.55); color: #fff;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
   }
+
+  /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──
+     Additive only — nothing above this block is touched, so a Template 1
+     team (or one that hasn't chosen a template yet) renders unchanged. */
+  :root[data-ops-theme="2"] {
+    --bg: #f7f4ef; --bg-warm: #efe9e0; --fg: #1a1a1a; --fg-muted: #7a7570;
+    --accent: #1b4332; --accent-light: #2d6a4f; --card: #ffffff; --border: #e2ddd5;
+  }
+  :root[data-ops-theme="2"] #opsContentWrap { font-family: 'DM Sans', sans-serif; }
+  :root[data-ops-theme="2"] .font-display { font-family: 'Cormorant Garamond', serif; }
+  :root[data-ops-theme="2"] select.booking-input { color-scheme: light; }
+  :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
+  :root[data-ops-theme="2"] input[type="time"].booking-input::-webkit-calendar-picker-indicator { filter: none; }
+  :root[data-ops-theme="2"] .amenity-badge.is-available   { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+  :root[data-ops-theme="2"] .amenity-badge.is-closed      { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+  :root[data-ops-theme="2"] .amenity-badge.is-maintenance { background: #ffe4e6; color: #be123c; border-color: #fecdd3; }
+  :root[data-ops-theme="2"] .repair-strip { background: #faf8f5; }
+  :root[data-ops-theme="2"] .rm-row { box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
 </style>
 @endsection
 
@@ -124,6 +142,8 @@
     indexUrl: @json(route('students.hotel.amenities.index')),
     storeUrl: @json(route('students.hotel.amenities.store')),
     statuses: @json(\App\Models\HotelAmenity::STATUSES),
+    accessTypes: @json(\App\Models\HotelAmenity::ACCESS_TYPES),
+    accessLabels: @json(\App\Models\HotelAmenity::ACCESS_LABELS),
     // Same list the Front Desk complaint form offers, so a repair request lands in
     // Maintenance's queue under a category they already sort by.
     categories: @json(array_keys(\App\Models\HotelComplaint::CATEGORY_DEPARTMENTS)),
@@ -139,6 +159,15 @@ const IMAGE_MAX_BYTES = 600 * 1024;
 
 const CONFIG = window.HMS_AMENITIES || {};
 const STATUSES = CONFIG.statuses || ['Available', 'Temporarily Closed', 'Under Maintenance'];
+const ACCESS_TYPES = CONFIG.accessTypes || ['open', 'registered', 'appointment', 'event'];
+const ACCESS_LABELS = CONFIG.accessLabels || {};
+/* What each access type means, in the words of the person who has to pick one. */
+const ACCESS_HINTS = {
+  open: 'Guests walk in during opening hours. Nothing for Front Desk to record.',
+  registered: 'Front Desk signs each guest in and out, so you always know who is inside.',
+  appointment: 'Booked ahead for a slot against a named service, like a spa treatment.',
+  event: 'Booked for a date as an event, with a package, catering and a bill.',
+};
 const CATEGORIES = CONFIG.categories || ['Furniture / Fixtures'];
 const DEFAULT_CATEGORY = CATEGORIES.indexOf('Furniture / Fixtures') >= 0 ? 'Furniture / Fixtures' : CATEGORIES[0];
 
@@ -255,6 +284,10 @@ function AmenityModal({ amenity, onClose, onSaved }) {
     opensAt: (amenity && amenity.opensAt) || '',
     closesAt: (amenity && amenity.closesAt) || '',
     status: (amenity && amenity.status) || 'Available',
+    accessType: (amenity && amenity.accessType) || 'open',
+    rate: amenity && amenity.rate ? String(amenity.rate) : '',
+    setupFee: amenity && amenity.setupFee ? String(amenity.setupFee) : '',
+    capacity: amenity && amenity.capacity !== null && amenity.capacity !== undefined ? String(amenity.capacity) : '',
     img: (amenity && amenity.img) || '',
   }));
   const [errors, setErrors] = useState({});
@@ -295,6 +328,12 @@ function AmenityModal({ amenity, onClose, onSaved }) {
         opens_at: form.opensAt || null,
         closes_at: form.closesAt || null,
         status: form.status,
+        access_type: form.accessType,
+        // Blank means zero for a fee and "no limit" for capacity — which is why capacity
+        // goes back as null and the fees go back as 0.
+        rate: parseInt(form.rate, 10) || 0,
+        setup_fee: parseInt(form.setupFee, 10) || 0,
+        capacity: String(form.capacity).trim() === '' ? null : (parseInt(form.capacity, 10) || 0),
         // Handed back as-is when untouched: the server collapses an existing
         // storage path to the one it already holds rather than re-uploading.
         image: form.img || '',
@@ -412,6 +451,60 @@ function AmenityModal({ amenity, onClose, onSaved }) {
                   : 'Guests see this on the Amenities page of your site. Under Maintenance lets you send a repair request to Maintenance.'}
               </p>
             </div>
+
+            {/* Access type decides what Front Desk can do with this facility. It is the
+                one field on this form the other departments read. */}
+            <div>
+              <label style={fieldLabel}>Access Type *</label>
+              <select
+                className="booking-input" value={form.accessType}
+                onChange={e => update('accessType', e.target.value)}
+              >
+                {ACCESS_TYPES.map(type => (
+                  <option key={type} value={type}>{ACCESS_LABELS[type] || type}</option>
+                ))}
+              </select>
+              <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem', lineHeight: 1.5 }}>
+                {ACCESS_HINTS[form.accessType] || ''}
+              </p>
+            </div>
+
+            {/* Only asked for where it means something: a capacity on the playground and
+                an event fee on the pool are questions with no useful answer. */}
+            {(form.accessType === 'registered' || form.accessType === 'event') && (
+              <div>
+                <label style={fieldLabel}>Capacity</label>
+                <input
+                  type="number" min="0" max="9999" className="booking-input" value={form.capacity}
+                  placeholder="Leave blank for no limit"
+                  onChange={e => update('capacity', e.target.value)}
+                />
+                <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem', lineHeight: 1.5 }}>
+                  How many people fit. Front Desk cannot sign in a party that would go over it.
+                </p>
+              </div>
+            )}
+
+            {form.accessType === 'event' && (
+              <div className="rm-form-row">
+                <div>
+                  <label style={fieldLabel}>Event Rate (₱)</label>
+                  <input
+                    type="number" min="0" className="booking-input" value={form.rate}
+                    placeholder="5000"
+                    onChange={e => update('rate', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label style={fieldLabel}>Setup Fee (₱)</label>
+                  <input
+                    type="number" min="0" className="booking-input" value={form.setupFee}
+                    placeholder="1500"
+                    onChange={e => update('setupFee', e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <label style={fieldLabel}>Photo</label>
@@ -699,6 +792,12 @@ function AmenitiesPanel({ amenities, loading, canManage, onSaved }) {
                     </td>
                     <td style={{ color: 'var(--fg)', fontWeight: 600 }}>
                       {amenity.name}
+                      {/* What Front Desk can do with it — the one field on this screen the
+                          other departments read. */}
+                      <div style={{ fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', marginTop: 3 }}>
+                        {amenity.accessLabel}
+                        {amenity.capacity ? ' · cap ' + amenity.capacity : ''}
+                      </div>
                       {amenity.description && (
                         <div style={{ fontSize: '0.68rem', fontWeight: 400, opacity: 0.7, marginTop: 2, whiteSpace: 'normal', maxWidth: 260, lineHeight: 1.45 }}>
                           {amenity.description}

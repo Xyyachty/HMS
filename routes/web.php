@@ -1536,6 +1536,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'opens_at'    => 'nullable|date_format:H:i',
             'closes_at'   => 'nullable|date_format:H:i',
             'status'      => ['required', Rule::in(\App\Models\HotelAmenity::STATUSES)],
+            'access_type' => ['nullable', Rule::in(\App\Models\HotelAmenity::ACCESS_TYPES)],
+            'rate'        => 'nullable|integer|min:0|max:9999999',
+            'setup_fee'   => 'nullable|integer|min:0|max:9999999',
+            // Nullable is "no limit", which is not the same fact as 0.
+            'capacity'    => 'nullable|integer|min:0|max:9999',
             'image'       => 'nullable|string|max:900000',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
@@ -1551,6 +1556,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'opens_at'    => \App\Models\HotelAmenity::normalizeTime($data['opens_at'] ?? null),
             'closes_at'   => \App\Models\HotelAmenity::normalizeTime($data['closes_at'] ?? null),
             'status'      => \App\Models\HotelAmenity::normalizeStatus($data['status']),
+            'access_type' => \App\Models\HotelAmenity::normalizeAccessType($data['access_type'] ?? null),
+            'rate'        => (int) ($data['rate'] ?? 0),
+            'setup_fee'   => (int) ($data['setup_fee'] ?? 0),
+            'capacity'    => array_key_exists('capacity', $data) && $data['capacity'] !== null
+                ? (int) $data['capacity']
+                : null,
             'image'       => \App\Support\HotelImageStore::persist(
                 $data['image'] ?? null,
                 $membership->faculty_id,
@@ -1583,6 +1594,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'opens_at'    => 'sometimes|nullable|date_format:H:i',
             'closes_at'   => 'sometimes|nullable|date_format:H:i',
             'status'      => ['sometimes', Rule::in(\App\Models\HotelAmenity::STATUSES)],
+            'access_type' => ['sometimes', Rule::in(\App\Models\HotelAmenity::ACCESS_TYPES)],
+            'rate'        => 'sometimes|integer|min:0|max:9999999',
+            'setup_fee'   => 'sometimes|integer|min:0|max:9999999',
+            // Nullable is "no limit", which is not the same fact as 0.
+            'capacity'    => 'sometimes|nullable|integer|min:0|max:9999',
             'image'       => 'sometimes|nullable|string|max:900000',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
@@ -1604,6 +1620,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (array_key_exists('opens_at', $data))    $amenity->opens_at    = \App\Models\HotelAmenity::normalizeTime($data['opens_at']);
         if (array_key_exists('closes_at', $data))   $amenity->closes_at   = \App\Models\HotelAmenity::normalizeTime($data['closes_at']);
         if (array_key_exists('status', $data))      $amenity->status      = \App\Models\HotelAmenity::normalizeStatus($data['status']);
+        if (array_key_exists('access_type', $data)) $amenity->access_type = \App\Models\HotelAmenity::normalizeAccessType($data['access_type']);
+        if (array_key_exists('rate', $data))        $amenity->rate        = (int) $data['rate'];
+        if (array_key_exists('setup_fee', $data))   $amenity->setup_fee   = (int) $data['setup_fee'];
+        if (array_key_exists('capacity', $data))    $amenity->capacity    = $data['capacity'] === null ? null : (int) $data['capacity'];
         if (array_key_exists('image', $data))       $amenity->image       = \App\Support\HotelImageStore::persist(
             $data['image'],
             $membership->faculty_id,
@@ -1675,6 +1695,134 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json(['item' => $amenity->toTemplateArray($amenity->repairs()->first())]);
     })->name('hotel.amenities.verify');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Amenity entry register
+    |--------------------------------------------------------------------------
+    |
+    | Signing a guest into a facility that has to know who is inside — the pool, the gym —
+    | and signing them back out. Front Desk work: Housekeeping owns what the facility is,
+    | the desk owns who is in it, the same split the add-ons catalogue already makes.
+    |
+    | Only amenities with access_type 'registered' accept a visit. The playground is open
+    | access and has nothing to sign; the spa and the function room are booked ahead.
+    |
+    | Every refusal lives in HotelAmenityVisitDesk rather than here — they are the rules of
+    | the feature, not the shape of one HTTP call — and arrives as a RuntimeException whose
+    | message goes to the desk unchanged.
+    */
+    Route::get('/hotel/amenity-visits', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['visits' => [], 'can_register' => false]);
+        }
+
+        // Tenancy is the base of the query, never one of the optional filters below —
+        // nothing they do can widen it, only narrow it further.
+        $query = \App\Models\HotelAmenityVisit::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id);
+
+        // The screen asks for the open ones; the register asks for all of them.
+        if ($request->query('inside') === '1') {
+            $query->inside();
+        }
+
+        if (ctype_digit((string) $request->query('amenity_id'))) {
+            $query->where('hotel_amenity_id', (int) $request->query('amenity_id'));
+        }
+
+        $visits = $query->orderByDesc('hotel_amenity_visit_id')
+            ->limit(200)
+            ->get()
+            ->map(fn (\App\Models\HotelAmenityVisit $visit) => $visit->toTemplateArray());
+
+        return response()->json([
+            'visits'       => $visits,
+            'can_register' => \App\Support\HotelAmenityAccess::canRegister($membership),
+        ]);
+    })->name('hotel.amenity-visits.index');
+
+    /*
+    | The guests the desk may sign in: everyone currently in the hotel. A Booked stay holds
+    | a room but its guest is not here yet, so it is not offered.
+    */
+    Route::get('/hotel/amenity-guests', function () {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['guests' => []]);
+        }
+
+        $guests = \App\Support\HotelAmenityVisitDesk::inHouseGuests($membership)
+            ->map(fn (HotelBooking $booking) => [
+                'bookingId' => $booking->hotel_booking_id,
+                'guestName' => $booking->guest?->full_name ?: 'Guest',
+                'roomName'  => $booking->room?->name ?? '',
+                'contactNo' => $booking->guest?->contact_no ?? '',
+            ])
+            ->values();
+
+        return response()->json(['guests' => $guests]);
+    })->name('hotel.amenity-guests');
+
+    Route::post('/hotel/amenity-visits', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can register amenity access.'], 403);
+        }
+
+        $data = $request->validate([
+            'hotel_amenity_id' => 'required|integer',
+            'hotel_booking_id' => 'required|integer',
+            'party_size'       => 'nullable|integer|min:1|max:999',
+            'notes'            => 'nullable|string|max:500',
+        ]);
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $booking = HotelBooking::with(['guest', 'room'])
+            ->where('hotel_booking_id', $data['hotel_booking_id'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        try {
+            $visit = \App\Support\HotelAmenityVisitDesk::registerEntry($amenity, $booking, $data, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['visit' => $visit->toTemplateArray()], 201);
+    })->name('hotel.amenity-visits.store');
+
+    Route::post('/hotel/amenity-visits/{id}/exit', function ($id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can sign a guest out.'], 403);
+        }
+
+        $visit = \App\Models\HotelAmenityVisit::where('hotel_amenity_visit_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        try {
+            \App\Support\HotelAmenityVisitDesk::registerExit($visit, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['visit' => $visit->toTemplateArray()]);
+    })->name('hotel.amenity-visits.exit');
 
     /*
     |--------------------------------------------------------------------------
@@ -2651,5 +2799,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.housekeeping.amenities', $data);
     })->name('housekeeping.amenities');
+
+    Route::get('/frontdesk/amenities', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.frontdesk.amenities', $data);
+    })->name('frontdesk.amenities');
 });
 

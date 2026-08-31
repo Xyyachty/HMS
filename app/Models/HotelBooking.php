@@ -122,6 +122,18 @@ class HotelBooking extends Model
         return $query->whereIn('status', self::AWAITING_CHECK_IN_STATUSES);
     }
 
+    /**
+     * Guests physically in the hotel right now.
+     *
+     * Narrower than open(): a Booked stay holds a room but its guest is not here yet, and
+     * only someone who has actually checked in may be let into an amenity or billed for
+     * one. The room-service route makes the same test inline; this is that rule named.
+     */
+    public function scopeCheckedIn(Builder $query): Builder
+    {
+        return $query->where('status', 'Checked In');
+    }
+
     public static function normalizeStatus(?string $value): string
     {
         $raw = mb_strtolower(trim((string) $value));
