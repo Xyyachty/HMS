@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\HotelAmenity;
+use App\Models\HotelAmenityService;
 use App\Models\StudentGroup;
 
 /**
@@ -81,6 +82,10 @@ class HotelAmenityAccess
             ->exists();
 
         if ($exists) {
+            // Teams that were seeded before the Spa had a treatment list still need one,
+            // so this runs for them too. It carries its own guard.
+            self::seedSpaServices($membership);
+
             return;
         }
 
@@ -95,6 +100,48 @@ class HotelAmenityAccess
         ]), self::defaultAmenities());
 
         HotelAmenity::insert($rows);
+
+        self::seedSpaServices($membership);
+    }
+
+    /**
+     * The Spa is useless without something to book at it, so the treatments arrive with
+     * it. Attached to whichever amenity is the seeded Spa rather than created free-
+     * standing, because a service belongs to the facility that gives it.
+     */
+    private static function seedSpaServices(StudentGroup $membership): void
+    {
+        $spa = HotelAmenity::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->where('name', 'Spa')
+            ->first();
+
+        if (!$spa) {
+            return;
+        }
+
+        $alreadyHasServices = HotelAmenityService::where('hotel_amenity_id', $spa->hotel_amenity_id)->exists();
+        if ($alreadyHasServices) {
+            return;
+        }
+
+        $now = now();
+        $rows = array_map(fn ($service) => array_merge($service, [
+            'group_name'       => $membership->group_name,
+            'faculty_id'       => $membership->faculty_id,
+            'group_id'         => $membership->group_id,
+            'hotel_amenity_id' => $spa->hotel_amenity_id,
+            'is_active'        => true,
+            'created_at'       => $now,
+            'updated_at'       => $now,
+        ]), [
+            ['name' => 'Swedish Massage', 'description' => 'Full-body relaxation massage with warm oil.', 'duration_minutes' => 60, 'price' => 1200],
+            ['name' => 'Foot Spa',        'description' => 'Soak, scrub and foot massage.',              'duration_minutes' => 45, 'price' => 800],
+            ['name' => 'Body Scrub',      'description' => 'Exfoliating salt scrub and rinse.',          'duration_minutes' => 60, 'price' => 1000],
+            ['name' => 'Facial',          'description' => 'Cleanse, steam and hydrating mask.',         'duration_minutes' => 45, 'price' => 950],
+        ]);
+
+        HotelAmenityService::insert($rows);
     }
 
     /**

@@ -1826,6 +1826,433 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
     /*
     |--------------------------------------------------------------------------
+    | Amenity reservations — spa appointments and function room events
+    |--------------------------------------------------------------------------
+    |
+    | Both kinds live on one table and go through one desk, because both do the same
+    | dangerous thing: hold a slot nobody else may have. Every write is in
+    | HotelAmenityReservationDesk, which runs the conflict check inside its own
+    | transaction after locking the facility — a check made out here is one two Front Desk
+    | tabs can both pass.
+    |
+    | Front Desk books and takes the money. Housekeeping runs the hall's turnaround for an
+    | event, which is a separate status from the amenity's own condition. Restaurant
+    | Services never touch these rows: they see the catering as an order on their own board.
+    |
+    | There is no delete route. A reservation is a record of money and a promise; calling
+    | one off is a Cancelled status, which keeps the row and frees the slot.
+    */
+    Route::get('/hotel/amenity-reservations', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['reservations' => [], 'can_book' => false, 'can_prepare' => false]);
+        }
+
+        // Tenancy is the base of the query, never one of the optional filters below —
+        // nothing they do can widen it, only narrow it further.
+        $query = \App\Support\HotelAmenityReservationDesk::scopedQuery($membership);
+
+        if (ctype_digit((string) $request->query('amenity_id'))) {
+            $query->where('hotel_amenity_id', (int) $request->query('amenity_id'));
+        }
+        if (in_array($request->query('kind'), \App\Models\HotelAmenityReservation::KINDS, true)) {
+            $query->where('kind', $request->query('kind'));
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query('date'))) {
+            $query->whereDate('scheduled_on', $request->query('date'));
+        }
+        if ($request->query('holding') === '1') {
+            $query->holding();
+        }
+
+        return response()->json([
+            'reservations' => $query->limit(200)->get()
+                ->map(fn (\App\Models\HotelAmenityReservation $r) => $r->toTemplateArray()),
+            // Front Desk sells the slot; Housekeeping runs the hall around it.
+            'can_book'     => \App\Support\HotelAmenityAccess::canRegister($membership),
+            'can_prepare'  => \App\Support\HotelAmenityAccess::canManage($membership),
+        ]);
+    })->name('hotel.amenity-reservations.index');
+
+    Route::post('/hotel/amenity-reservations', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can take a booking.'], 403);
+        }
+
+        $data = $request->validate([
+            'hotel_amenity_id'          => 'required|integer',
+            'kind'                      => ['required', Rule::in(\App\Models\HotelAmenityReservation::KINDS)],
+            'customer_name'             => 'required|string|max:160',
+            'contact_no'                => 'nullable|string|max:40',
+            'email'                     => 'nullable|email|max:160',
+            'scheduled_on'              => 'required|date_format:Y-m-d',
+            'starts_at'                 => 'required|date_format:H:i',
+            'ends_at'                   => 'nullable|date_format:H:i',
+            'special_requests'          => 'nullable|string|max:2000',
+            'hotel_booking_id'          => 'nullable|integer',
+            'charge_to_room'            => 'nullable|boolean',
+            'additional_fee'            => 'nullable|numeric|min:0|max:9999999',
+            'additional_note'           => 'nullable|string|max:255',
+            // appointment
+            'hotel_amenity_service_id'  => 'nullable|integer',
+            // event
+            'event_type'                => 'nullable|string|max:120',
+            'guest_count'               => 'nullable|integer|min:1|max:9999',
+            'package'                   => ['nullable', Rule::in(\App\Models\HotelAmenityReservation::PACKAGES)],
+            'hotel_catering_package_id' => 'nullable|integer',
+        ]);
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        try {
+            $reservation = \App\Support\HotelAmenityReservationDesk::book($amenity, $data, auth()->user());
+        } catch (\RuntimeException $e) {
+            // 409 for a clash, the same status the room-booking guard returns; 422 for
+            // everything the desk simply got wrong.
+            $clash = str_contains($e->getMessage(), 'already taken');
+
+            return response()->json(['message' => $e->getMessage()], $clash ? 409 : 422);
+        }
+
+        return response()->json(['reservation' => $reservation->toTemplateArray()], 201);
+    })->name('hotel.amenity-reservations.store');
+
+    /*
+    | Two different moves on one route, because they belong to two different desks and
+    | never overlap: `status` is Front Desk walking the booking forward, and
+    | `housekeeping_status` is Housekeeping turning the hall round for it.
+    */
+    Route::patch('/hotel/amenity-reservations/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+
+        $reservation = \App\Models\HotelAmenityReservation::with(['service', 'cateringPackage', 'payments', 'cateringOrders'])
+            ->where('hotel_amenity_reservation_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'status'              => ['sometimes', Rule::in(\App\Models\HotelAmenityReservation::STATUSES)],
+            'housekeeping_status' => ['sometimes', Rule::in(\App\Models\HotelAmenityReservation::HOUSEKEEPING_FLOW)],
+        ]);
+
+        try {
+            if (array_key_exists('status', $data)) {
+                if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
+                    return response()->json(['message' => 'Only Front Desk staff can update a booking.'], 403);
+                }
+                \App\Support\HotelAmenityReservationDesk::advance($reservation, $data['status'], auth()->user());
+            }
+
+            if (array_key_exists('housekeeping_status', $data)) {
+                if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+                    return response()->json(['message' => 'Only Housekeeping staff can update the room preparation.'], 403);
+                }
+                \App\Support\HotelAmenityReservationDesk::advanceHousekeeping($reservation, $data['housekeeping_status'], auth()->user());
+            }
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'reservation' => $reservation->fresh(['service', 'cateringPackage', 'payments', 'cateringOrders'])->toTemplateArray(),
+        ]);
+    })->name('hotel.amenity-reservations.update');
+
+    Route::post('/hotel/amenity-reservations/{id}/payments', function (Request $request, $id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can take a payment.'], 403);
+        }
+
+        $reservation = \App\Models\HotelAmenityReservation::with(['service', 'cateringPackage', 'payments', 'cateringOrders'])
+            ->where('hotel_amenity_reservation_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            // 'Charged to Room' is not typed in here — it is written by the folio route.
+            'type'        => ['nullable', Rule::in(['Full', 'Partial'])],
+            'amount_paid' => 'required|numeric|min:0.01|max:9999999',
+            'method'      => ['nullable', Rule::in(\App\Models\HotelAmenityPayment::METHODS)],
+            'reference'   => 'nullable|string|max:120',
+            'payer_name'  => 'nullable|string|max:160',
+            'notes'       => 'nullable|string|max:500',
+        ]);
+
+        try {
+            \App\Support\HotelAmenityReservationDesk::addPayment($reservation, $data, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'reservation' => $reservation->fresh(['service', 'cateringPackage', 'payments', 'cateringOrders'])->toTemplateArray(),
+        ], 201);
+    })->name('hotel.amenity-reservations.payments.store');
+
+    /*
+    | Push the balance onto a checked-in guest's room account. Writes one
+    | hotel_booking_charges row per component, which HotelBooking::grandTotal() already
+    | sums and the check-out route already refuses to release a guest without settling.
+    */
+    Route::post('/hotel/amenity-reservations/{id}/charge-to-room', function ($id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can charge a booking to a room.'], 403);
+        }
+
+        $reservation = \App\Models\HotelAmenityReservation::with(['booking.room', 'service', 'cateringPackage', 'payments', 'cateringOrders'])
+            ->where('hotel_amenity_reservation_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        try {
+            \App\Support\HotelAmenityReservationDesk::chargeToRoom($reservation, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'reservation' => $reservation->fresh(['service', 'cateringPackage', 'payments', 'cateringOrders'])->toTemplateArray(),
+        ]);
+    })->name('hotel.amenity-reservations.charge-to-room');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Amenity services — the treatments behind a by-appointment facility
+    |--------------------------------------------------------------------------
+    |
+    | Housekeeping's rate card, the same call the amenities catalogue itself makes: the
+    | department that operates a facility owns what it offers. Front Desk reads it to sell
+    | a slot and cannot write to it.
+    */
+    Route::get('/hotel/amenity-services', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['services' => [], 'can_manage' => false]);
+        }
+
+        $query = \App\Models\HotelAmenityService::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id);
+
+        if (ctype_digit((string) $request->query('amenity_id'))) {
+            $query->where('hotel_amenity_id', (int) $request->query('amenity_id'));
+        }
+
+        return response()->json([
+            'services'   => $query->orderBy('hotel_amenity_service_id')->get()
+                ->map(fn (\App\Models\HotelAmenityService $s) => $s->toTemplateArray()),
+            'can_manage' => \App\Support\HotelAmenityAccess::canManage($membership),
+        ]);
+    })->name('hotel.amenity-services.index');
+
+    Route::post('/hotel/amenity-services', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can add a service.'], 403);
+        }
+
+        $data = $request->validate([
+            'hotel_amenity_id' => 'required|integer',
+            'name'             => 'required|string|max:120',
+            'description'      => 'nullable|string|max:255',
+            'duration_minutes' => 'required|integer|min:5|max:600',
+            'price'            => 'required|integer|min:0|max:9999999',
+        ]);
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $service = \App\Models\HotelAmenityService::create([
+            'group_name'       => $membership->group_name,
+            'faculty_id'       => $membership->faculty_id,
+            'group_id'         => $membership->group_id,
+            'hotel_amenity_id' => $amenity->hotel_amenity_id,
+            'name'             => trim($data['name']),
+            'description'      => trim((string) ($data['description'] ?? '')) ?: null,
+            'duration_minutes' => (int) $data['duration_minutes'],
+            'price'            => (int) $data['price'],
+            'is_active'        => true,
+        ]);
+
+        return response()->json(['service' => $service->toTemplateArray()], 201);
+    })->name('hotel.amenity-services.store');
+
+    Route::patch('/hotel/amenity-services/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can edit a service.'], 403);
+        }
+
+        $service = \App\Models\HotelAmenityService::where('hotel_amenity_service_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'name'             => 'sometimes|string|max:120',
+            'description'      => 'sometimes|nullable|string|max:255',
+            'duration_minutes' => 'sometimes|integer|min:5|max:600',
+            'price'            => 'sometimes|integer|min:0|max:9999999',
+            // Retired rather than deleted, so booked appointments still resolve.
+            'is_active'        => 'sometimes|boolean',
+        ]);
+
+        if (array_key_exists('name', $data))             $service->name = trim($data['name']);
+        if (array_key_exists('description', $data))      $service->description = trim((string) $data['description']) ?: null;
+        if (array_key_exists('duration_minutes', $data)) $service->duration_minutes = (int) $data['duration_minutes'];
+        if (array_key_exists('price', $data))            $service->price = (int) $data['price'];
+        if (array_key_exists('is_active', $data))        $service->is_active = (bool) $data['is_active'];
+        $service->save();
+
+        return response()->json(['service' => $service->toTemplateArray()]);
+    })->name('hotel.amenity-services.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Catering packages
+    |--------------------------------------------------------------------------
+    |
+    | Restaurant Services own and price these; Front Desk reads them when booking a
+    | function room and cannot create one. That is what keeps catering coming out of the
+    | Restaurant module rather than being invented on the booking form.
+    |
+    | Priced per head with no stock, which is why these are not hotel_menu_items — the
+    | order pipeline decrements a menu item's stock per unit, and a hundred-guest buffet
+    | has no shelf to come off.
+    */
+    Route::get('/hotel/catering-packages', function () {
+        $membership = \App\Support\HotelCateringAccess::membership();
+        if (!$membership) {
+            return response()->json(['packages' => [], 'can_manage' => false]);
+        }
+
+        // A team starts with three packages, so Front Desk can book a catered event on
+        // day one. No-ops once the team has any at all.
+        \App\Support\HotelCateringAccess::seedDefaults($membership);
+
+        return response()->json([
+            'packages'   => \App\Models\HotelCateringPackage::where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->orderBy('hotel_catering_package_id')
+                ->get()
+                ->map(fn (\App\Models\HotelCateringPackage $p) => $p->toTemplateArray()),
+            'can_manage' => \App\Support\HotelCateringAccess::canManage($membership),
+        ]);
+    })->name('hotel.catering-packages.index');
+
+    Route::post('/hotel/catering-packages', function (Request $request) {
+        $membership = \App\Support\HotelCateringAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelCateringAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant Services staff can add a catering package.'], 403);
+        }
+
+        $data = $request->validate([
+            'name'           => 'required|string|max:120',
+            'description'    => 'nullable|string|max:500',
+            'inclusions'     => 'nullable|string|max:1000',
+            'price_per_head' => 'required|integer|min:0|max:9999999',
+            'min_guests'     => 'nullable|integer|min:1|max:9999',
+            'image'          => 'nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        $package = \App\Models\HotelCateringPackage::create([
+            'group_name'     => $membership->group_name,
+            'faculty_id'     => $membership->faculty_id,
+            'group_id'       => $membership->group_id,
+            'name'           => trim($data['name']),
+            'description'    => trim((string) ($data['description'] ?? '')) ?: null,
+            'inclusions'     => trim((string) ($data['inclusions'] ?? '')) ?: null,
+            'price_per_head' => (int) $data['price_per_head'],
+            'min_guests'     => (int) ($data['min_guests'] ?? 1),
+            'image'          => \App\Support\HotelImageStore::persist(
+                $data['image'] ?? null,
+                $membership->faculty_id,
+                $membership->group_name
+            ),
+            'is_active'      => true,
+        ]);
+
+        return response()->json(['package' => $package->toTemplateArray()], 201);
+    })->name('hotel.catering-packages.store');
+
+    Route::patch('/hotel/catering-packages/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelCateringAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelCateringAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant Services staff can edit a catering package.'], 403);
+        }
+
+        $package = \App\Models\HotelCateringPackage::where('hotel_catering_package_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'name'           => 'sometimes|string|max:120',
+            'description'    => 'sometimes|nullable|string|max:500',
+            'inclusions'     => 'sometimes|nullable|string|max:1000',
+            'price_per_head' => 'sometimes|integer|min:0|max:9999999',
+            'min_guests'     => 'sometimes|integer|min:1|max:9999',
+            // Retired rather than deleted, so booked events still resolve.
+            'is_active'      => 'sometimes|boolean',
+            'image'          => 'sometimes|nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        if (array_key_exists('name', $data))           $package->name = trim($data['name']);
+        if (array_key_exists('description', $data))    $package->description = trim((string) $data['description']) ?: null;
+        if (array_key_exists('inclusions', $data))     $package->inclusions = trim((string) $data['inclusions']) ?: null;
+        if (array_key_exists('price_per_head', $data)) $package->price_per_head = (int) $data['price_per_head'];
+        if (array_key_exists('min_guests', $data))     $package->min_guests = (int) $data['min_guests'];
+        if (array_key_exists('is_active', $data))      $package->is_active = (bool) $data['is_active'];
+        if (array_key_exists('image', $data))          $package->image = \App\Support\HotelImageStore::persist(
+            $data['image'],
+            $membership->faculty_id,
+            $membership->group_name
+        );
+        $package->save();
+
+        return response()->json(['package' => $package->toTemplateArray()]);
+    })->name('hotel.catering-packages.update');
+
+    /*
+    |--------------------------------------------------------------------------
     | Hotel food orders — room service and dine-in. Front Desk places room service
     | against a stay; a dine-in order is taken tableside by Restaurant Services once
     | the customer arrives at the table Front Desk reserved. Restaurant Services
@@ -1907,6 +2334,16 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // dine-in, and the guest-facing booking flow never sends the field at all.
         $orderType = HotelFoodOrder::normalizeOrderType($request->input('order_type'));
         $isDineIn = $orderType === 'dine_in';
+
+        // Catering is not placed here. It is raised by HotelCateringDesk when a function
+        // room booking picks a package, and it deliberately skips the stock transaction
+        // below — a buffet priced per head has no shelf to come off, so this route's
+        // menu-item matching would reject it on the first line.
+        if ($orderType === 'catering') {
+            return response()->json([
+                'message' => 'Catering is ordered by booking the function room, not from here.',
+            ], 422);
+        }
 
         if ($isDineIn) {
             if (!\App\Support\HotelOrderAccess::canPlaceDineIn($membership)) {
@@ -2031,7 +2468,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'status' => 'required|string|max:50',
         ]);
 
-        $next = HotelFoodOrder::normalizeStatus($data['status']);
+        // Type-aware: catering runs a longer pipeline (Pending .. Serving .. Completed),
+        // so a status is validated against this order's own flow rather than the kitchen's.
+        $next = HotelFoodOrder::normalizeStatus($data['status'], $order->order_type);
 
         // The kitchen owns every step, delivery included. Front Desk reads the status
         // and nothing more, so any write from them is refused rather than ignored.
@@ -2044,7 +2483,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // A room-service order is billed to a stay the moment it is placed, so there
         // is no cancelling it — it runs to Completed. Dine-in keeps the exit: nothing
         // is charged to a room there, and a table can change its mind.
-        if ($next === 'Cancelled' && $order->order_type !== 'dine_in') {
+        // Catering keeps the exit too: an event gets called off, and the reservation that
+        // raised the order is the thing that cancels it.
+        if ($next === 'Cancelled' && !in_array($order->order_type, ['dine_in', 'catering'], true)) {
             return response()->json([
                 'message' => 'A room-service order cannot be cancelled. See it through to Completed.',
             ], 422);
@@ -2052,7 +2493,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         // Status only ever moves forward, for every role — the kitchen included.
         // Once Completed or Cancelled, an order is done; nothing may reopen it.
-        if (!HotelFoodOrder::isForwardTransition($order->status, $next)) {
+        if (!HotelFoodOrder::isForwardTransition($order->status, $next, $order->order_type)) {
             return response()->json([
                 'message' => $order->status . ' cannot go back to ' . $next . '. Status only moves forward.',
             ], 422);

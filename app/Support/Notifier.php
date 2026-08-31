@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\FacultyClass;
+use App\Models\HotelAmenityReservation;
 use App\Models\HotelComplaint;
 use App\Models\HotelConcept;
 use App\Models\HotelDineInTable;
@@ -483,6 +484,44 @@ class Notifier
      * The Front Desk seated a guest at a table. Restaurant Management is the only
      * audience — they are the ones about to take the order.
      */
+    /**
+     * A function room event has been booked. Goes to Housekeeping, who have to prepare,
+     * turn round and inspect the hall — not to Front Desk, who just took the booking.
+     */
+    public static function amenityEventBooked(?User $actor, HotelAmenityReservation $reservation): void
+    {
+        static::push(
+            static::teamRoleUserIds($reservation->group_name, (int) $reservation->faculty_id, ['housekeeping']),
+            UserNotification::AMENITY_BOOKED,
+            'Event booked · ' . $reservation->amenity_name,
+            trim(($reservation->event_type ? $reservation->event_type . ' for ' : 'An event for ')
+                . ($reservation->guest_count ? $reservation->guest_count . ' guests ' : '')
+                . 'on ' . optional($reservation->scheduled_on)->format('M j') . ', '
+                . $reservation->timeLabel() . '.'),
+            route('students.housekeeping.amenities'),
+            $actor
+        );
+    }
+
+    /**
+     * The kitchen has catering to cook for an event. Restaurant Services see the ticket on
+     * their own board either way; this is the nudge that it landed there without them
+     * taking the order themselves.
+     */
+    public static function cateringOrderReceived(?User $actor, HotelAmenityReservation $reservation): void
+    {
+        static::push(
+            static::teamRoleUserIds($reservation->group_name, (int) $reservation->faculty_id, ['restaurant_management']),
+            UserNotification::CATERING_ORDER,
+            'Catering order · ' . $reservation->amenity_name,
+            ($reservation->cateringPackage?->name ?: 'A catering package')
+                . ' for ' . ($reservation->guest_count ?: '?') . ' guests on '
+                . optional($reservation->scheduled_on)->format('M j') . '.',
+            route('students.restaurant.manage', ['nav' => 'orders']),
+            $actor
+        );
+    }
+
     public static function tableAssigned(?User $actor, HotelDineInTable $table): void
     {
         static::push(

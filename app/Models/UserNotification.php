@@ -25,6 +25,8 @@ class UserNotification extends Model
     public const COMPLAINT_FILED = 'complaint_filed';
     public const COMPLAINT_UPDATED = 'complaint_updated';
     public const TABLE_ASSIGNED = 'table_assigned';
+    public const AMENITY_BOOKED = 'amenity_booked';
+    public const CATERING_ORDER = 'catering_order';
     public const ROOM_INSPECTION = 'room_inspection';
     public const ROOM_READY = 'room_ready';
     public const CONCEPT_SUBMITTED = 'concept_submitted';
@@ -43,6 +45,8 @@ class UserNotification extends Model
         self::COMPLAINT_FILED => ['icon' => 'mdi:alert-octagon', 'accent' => 'rose'],
         self::COMPLAINT_UPDATED => ['icon' => 'mdi:clipboard-check-outline', 'accent' => 'emerald'],
         self::TABLE_ASSIGNED => ['icon' => 'mdi:table-chair', 'accent' => 'amber'],
+        self::AMENITY_BOOKED => ['icon' => 'mdi:calendar-star', 'accent' => 'amber'],
+        self::CATERING_ORDER => ['icon' => 'mdi:silverware-fork-knife', 'accent' => 'amber'],
         self::ROOM_INSPECTION => ['icon' => 'mdi:broom', 'accent' => 'amber'],
         self::ROOM_READY => ['icon' => 'mdi:bed-check', 'accent' => 'emerald'],
         self::CONCEPT_SUBMITTED => ['icon' => 'mdi:lightbulb-on', 'accent' => 'amber'],
