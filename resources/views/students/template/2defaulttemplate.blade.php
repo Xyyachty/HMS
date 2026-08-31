@@ -2088,7 +2088,7 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
           <button className="btn-ghost" onClick={() => onNav('rooms')} style={{ fontSize: '0.72rem' }}>View all</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.15rem' }}>
-          {roomList.slice(0, 5).map(room => (
+          {roomList.slice(0, 8).map(room => (
             <div key={room.id} className="room-card" style={{ cursor: 'pointer', position: 'relative' }} onClick={() => onNav('rooms')}>
               {canEditRooms && (
                 <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
@@ -2147,7 +2147,7 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
           <button className="btn-ghost" onClick={() => onNav('restaurant')} style={{ fontSize: '0.72rem' }}>View dining</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
-          {menuList.slice(0, 5).map(item => (
+          {menuList.slice(0, 6).map(item => (
             <div key={item.id || item.name} className="menu-item" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
               <div>
                 <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
