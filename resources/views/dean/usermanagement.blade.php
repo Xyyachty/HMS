@@ -261,10 +261,13 @@
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Role</label>
-                <select name="role" id="createUserRole" onchange="toggleCreateBlockField()" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
-                    <option value="faculty">Faculty</option>
-                    <option value="student">Student</option>
-                </select>
+                {{-- This modal only ever adds faculty (the Add Faculty button is hidden on the
+                     Students tab), so the role is fixed rather than chosen. Kept as a hidden
+                     input under the same id so toggleCreateBlockField() still reads it. --}}
+                <input type="hidden" name="role" id="createUserRole" value="faculty">
+                <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center text-slate-500 font-semibold">
+                    Faculty
+                </div>
             </div>
             <div id="createBlockField">
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Block</label>
