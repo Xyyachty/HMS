@@ -178,8 +178,11 @@
                     id="nav-tasks"
                     class="sidebar-link w-full flex items-center px-3 py-2.5 rounded-xl text-sm font-semibold text-white">
                 Tasks
-                @if(!empty($studentRoles) && $myRoleTasks->count() > 0)
-                    <span class="ml-auto bg-white/25 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">{{ $myRoleTasks->count() }}</span>
+                {{-- Always rendered, hidden at zero: the concept task can close while
+                     the page is open, and a badge that only exists server-side could
+                     not then be taken away. --}}
+                @if(!empty($studentRoles))
+                    <span id="navTasksBadge" class="ml-auto bg-white/25 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md{{ $myRoleTasks->count() > 0 ? '' : ' hidden' }}"><span data-task-count="active">{{ $myRoleTasks->count() }}</span></span>
                 @endif
             </button>
             <button onclick="showSection('activity'); closeMobileSidebar();"
@@ -354,7 +357,7 @@
                                 <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Needs Attention</span>
                             @endif
                         </div>
-                        <p class="text-2xl font-extrabold text-slate-900">{{ !empty($studentRoles) ? $myRoleTasks->count() : 0 }}</p>
+                        <p class="text-2xl font-extrabold text-slate-900"><span data-task-count="active">{{ !empty($studentRoles) ? $myRoleTasks->count() : 0 }}</span></p>
                         <p class="text-xs text-slate-400 font-medium mt-1">Active Tasks</p>
                     </button>
 
@@ -366,7 +369,7 @@
                                 <span class="iconify text-emerald-500 text-lg" data-icon="mdi:check-circle-outline"></span>
                             </div>
                         </div>
-                        <p class="text-2xl font-extrabold text-slate-900">{{ $myCompletedTasks->count() ?? 0 }}</p>
+                        <p class="text-2xl font-extrabold text-slate-900"><span data-task-count="completed">{{ $myCompletedTasks->count() ?? 0 }}</span></p>
                         <p class="text-xs text-slate-400 font-medium mt-1">Completed</p>
                     </button>
                 </div>
@@ -583,169 +586,168 @@
                             @endforeach
                             <div class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-lg">
                                 <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
-                                <span class="text-xs font-bold text-emerald-700">{{ $myCompletedTasks->count() }} completed</span>
+                                <span class="text-xs font-bold text-emerald-700"><span data-task-count="completed">{{ $myCompletedTasks->count() }}</span> completed</span>
                             </div>
                             <div class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-lg">
                                 <div class="w-2 h-2 rounded-full bg-amber-400"></div>
-                                <span class="text-xs font-bold text-amber-700">{{ $myRoleTasks->count() }} active</span>
+                                <span class="text-xs font-bold text-amber-700"><span data-task-count="active">{{ $myRoleTasks->count() }}</span> active</span>
                             </div>
                         </div>
                     @endif
                 </div>
 
                 @if(!empty($studentRoles))
-                    @if($myRoleTasks->count() > 0)
-                        <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                            <div class="px-6 py-4 border-b border-slate-100">
-                                <h3 class="text-sm font-bold text-slate-800">Active Tasks</h3>
-                            </div>
-                            <div class="divide-y divide-slate-50">
-                                @foreach($myRoleTasks as $task)
-                                    @php
-                                        $isOverdue = $task->due_date && $task->due_date->isPast();
-                                        // Rows are per member; only offer submit on this student's own
-                                        // row (or an unclaimed one). Task::booted() keeps assigned_to
-                                        // in sync with student_id, so the user id is enough here.
-                                        $isMine = !$task->assigned_to || (int) $task->assigned_to === (int) auth()->id();
-                                    @endphp
-                                    {{-- The concept task is not a one-line tick: the whole proposal
-                                         is written on this row, so it stacks instead of sitting on
-                                         one line, and keeps #conceptPanelCard — paintTeamHeaderConcept()
-                                         hides the row by that id once faculty has chosen. --}}
-                                    <div class="task-row px-4 py-3{{ $task->is_hotel_concept ? ' space-y-3' : '' }}"
-                                        @if($task->is_hotel_concept) id="conceptPanelCard" @endif>
-                                        <div class="flex items-start gap-3">
-                                        @if($task->is_hotel_concept)
-                                            {{-- No tick: this task closes on the faculty verdict, not
-                                                 on a checkbox — see the guard in students.tasks.complete. --}}
-                                            <div class="mt-1 w-3 h-3 shrink-0 flex items-center justify-center">
-                                                <span class="iconify text-brand text-xs" data-icon="mdi:lightbulb-outline"></span>
-                                            </div>
-                                        @elseif($isMine)
-                                            <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0 mt-1.5 leading-none">
-                                                @csrf
-                                                <button type="submit"
-                                                    class="w-3 h-3 rounded-full border-2 border-slate-200 hover:border-brand hover:bg-brand-soft cursor-pointer transition-colors"
-                                                    title="Mark &quot;{{ $task->title }}&quot; as done"
-                                                    aria-label="Mark {{ $task->title }} as done"></button>
-                                            </form>
-                                        @else
-                                            <div class="mt-1.5 w-3 h-3 rounded-full border-2 border-slate-100 shrink-0" title="Assigned to a teammate"></div>
-                                        @endif
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex items-center gap-2 flex-wrap">
-                                                <p class="text-sm font-bold text-slate-800">{{ $task->title }}</p>
-                                            </div>
-                                            @if($task->description)
-                                                <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">{{ $task->description }}</p>
-                                            @endif
-                                            @if($task->needs_revision)
-                                                {{-- Sent back by faculty: active again, but carrying feedback. --}}
-                                                <div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                                    <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
-                                                        <span class="iconify text-xs" data-icon="mdi:message-alert-outline"></span>
-                                                        Faculty feedback{{ $task->revision_count > 1 ? ' · revision ' . $task->revision_count : '' }}
-                                                    </p>
-                                                    <p class="text-xs text-amber-800 mt-1 whitespace-pre-line">{{ $task->feedback }}</p>
-                                                    @if($task->feedback_at)
-                                                        <p class="text-[10px] text-amber-600 mt-1">{{ $task->feedback_at->diffForHumans() }}</p>
-                                                    @endif
-                                                </div>
-                                            @endif
-                                            @if($task->due_date)
-                                                <div class="flex items-center gap-3 mt-3">
-                                                    <span class="flex items-center gap-1 text-[11px] {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400' }}">
-                                                        <span class="iconify text-xs" data-icon="mdi:calendar-outline"></span>
-                                                        {{ $task->due_date->format('M d, Y g:i A') }}
-                                                    </span>
-                                                </div>
-                                            @endif
+                    {{-- Both the list and the empty state are rendered, and one of them
+                         is hidden — faculty can close the concept task while this page
+                         is open, and the poller has to be able to swap them without a
+                         reload. --}}
+                    <div id="activeTasksCard" class="bg-white rounded-2xl border border-slate-100 overflow-hidden{{ $myRoleTasks->count() > 0 ? '' : ' hidden' }}">
+                        <div class="px-6 py-4 border-b border-slate-100">
+                            <h3 class="text-sm font-bold text-slate-800">Active Tasks</h3>
+                        </div>
+                        <div class="divide-y divide-slate-50">
+                            @foreach($myRoleTasks as $task)
+                                @php
+                                    $isOverdue = $task->due_date && $task->due_date->isPast();
+                                    // Rows are per member; only offer submit on this student's own
+                                    // row (or an unclaimed one). Task::booted() keeps assigned_to
+                                    // in sync with student_id, so the user id is enough here.
+                                    $isMine = !$task->assigned_to || (int) $task->assigned_to === (int) auth()->id();
+                                @endphp
+                                {{-- The concept task is not a one-line tick: the whole proposal
+                                     is written on this row, so it stacks instead of sitting on
+                                     one line, and keeps #conceptPanelCard — paintTeamHeaderConcept()
+                                     hides the row by that id once faculty has chosen. --}}
+                                <div class="task-row px-4 py-3{{ $task->is_hotel_concept ? ' space-y-3' : '' }}"
+                                    @if($task->is_hotel_concept) id="conceptPanelCard" data-task-title="{{ $task->title }}" @endif>
+                                    <div class="flex items-start gap-3">
+                                    @if($task->is_hotel_concept)
+                                        {{-- No tick: this task closes on the faculty verdict, not
+                                             on a checkbox — see the guard in students.tasks.complete. --}}
+                                        <div class="mt-1 w-3 h-3 shrink-0 flex items-center justify-center">
+                                            <span class="iconify text-brand text-xs" data-icon="mdi:lightbulb-outline"></span>
                                         </div>
-                                        @if($task->is_hotel_concept)
-                                            {{-- One button for the pair: faculty is asked to weigh the
-                                                 two against each other, so they go in together. Hidden
-                                                 until both slots are filled — paintHotelConcepts()
-                                                 toggles it off conceptState.can_submit. --}}
-                                            <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
-                                                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60 hidden">
-                                                <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
-                                                <span>Submit both to Faculty</span>
+                                    @elseif($isMine)
+                                        <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0 mt-1.5 leading-none">
+                                            @csrf
+                                            <button type="submit"
+                                                class="w-3 h-3 rounded-full border-2 border-slate-200 hover:border-brand hover:bg-brand-soft cursor-pointer transition-colors"
+                                                title="Mark &quot;{{ $task->title }}&quot; as done"
+                                                aria-label="Mark {{ $task->title }} as done"></button>
+                                        </form>
+                                    @else
+                                        <div class="mt-1.5 w-3 h-3 rounded-full border-2 border-slate-100 shrink-0" title="Assigned to a teammate"></div>
+                                    @endif
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <p class="text-sm font-bold text-slate-800">{{ $task->title }}</p>
+                                        </div>
+                                        @if($task->description)
+                                            <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">{{ $task->description }}</p>
+                                        @endif
+                                        @if($task->needs_revision)
+                                            {{-- Sent back by faculty: active again, but carrying feedback. --}}
+                                            <div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                                <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
+                                                    <span class="iconify text-xs" data-icon="mdi:message-alert-outline"></span>
+                                                    Faculty feedback{{ $task->revision_count > 1 ? ' · revision ' . $task->revision_count : '' }}
+                                                </p>
+                                                <p class="text-xs text-amber-800 mt-1 whitespace-pre-line">{{ $task->feedback }}</p>
+                                                @if($task->feedback_at)
+                                                    <p class="text-[10px] text-amber-600 mt-1">{{ $task->feedback_at->diffForHumans() }}</p>
+                                                @endif
+                                            </div>
+                                        @endif
+                                        @if($task->due_date)
+                                            <div class="flex items-center gap-3 mt-3">
+                                                <span class="flex items-center gap-1 text-[11px] {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400' }}">
+                                                    <span class="iconify text-xs" data-icon="mdi:calendar-outline"></span>
+                                                    {{ $task->due_date->format('M d, Y g:i A') }}
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    @if($task->is_hotel_concept)
+                                        {{-- One button for the pair: faculty is asked to weigh the
+                                             two against each other, so they go in together. Hidden
+                                             until both slots are filled — paintHotelConcepts()
+                                             toggles it off conceptState.can_submit. --}}
+                                        <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
+                                            class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60 hidden">
+                                            <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
+                                            <span>Submit both to Faculty</span>
+                                        </button>
+                                    @elseif($isMine)
+                                        {{-- The real affordance; the circle above is too small to be the only target. --}}
+                                        <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0">
+                                            @csrf
+                                            <button type="submit"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition
+                                                    {{ $task->needs_revision
+                                                        ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100'
+                                                        : 'text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10' }}">
+                                                <span class="iconify text-sm" data-icon="{{ $task->needs_revision ? 'mdi:send-outline' : 'mdi:check-circle-outline' }}"></span>
+                                                {{ $task->needs_revision ? 'Resubmit' : 'Mark as done' }}
                                             </button>
-                                        @elseif($isMine)
-                                            {{-- The real affordance; the circle above is too small to be the only target. --}}
-                                            <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0">
-                                                @csrf
-                                                <button type="submit"
-                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition
-                                                        {{ $task->needs_revision
-                                                            ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100'
-                                                            : 'text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10' }}">
-                                                    <span class="iconify text-sm" data-icon="{{ $task->needs_revision ? 'mdi:send-outline' : 'mdi:check-circle-outline' }}"></span>
-                                                    {{ $task->needs_revision ? 'Resubmit' : 'Mark as done' }}
-                                                </button>
-                                            </form>
-                                        @else
-                                            <span class="shrink-0 text-[10px] font-semibold text-slate-300 whitespace-nowrap">Teammate's task</span>
+                                        </form>
+                                    @else
+                                        <span class="shrink-0 text-[10px] font-semibold text-slate-300 whitespace-nowrap">Teammate's task</span>
+                                    @endif
+                                    </div>
+
+                                    @if($task->is_hotel_concept)
+                                        @if (session('success'))
+                                            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                                                {{ session('success') }}
+                                            </div>
                                         @endif
-                                        </div>
+                                        @if ($errors->any())
+                                            <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                                                {{ $errors->first() }}
+                                            </div>
+                                        @endif
 
-                                        @if($task->is_hotel_concept)
-                                            @if (session('success'))
-                                                <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                                                    {{ session('success') }}
-                                                </div>
-                                            @endif
-                                            @if ($errors->any())
-                                                <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                                                    {{ $errors->first() }}
-                                                </div>
-                                            @endif
+                                        {{-- Both proposals, side by side, so faculty's choice can be
+                                             weighed here too. Rendered from this one container by
+                                             paintHotelConcepts(), which repaints after every save
+                                             and every submit — there is no server copy of this
+                                             markup to drift from the client one. --}}
+                                        <div id="conceptPanel" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div id="activeTasksEmpty" class="bg-white rounded-2xl border border-slate-100 px-6 py-12 text-center{{ $myRoleTasks->count() > 0 ? ' hidden' : '' }}">
+                        <div class="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <span class="iconify text-emerald-400 text-3xl" data-icon="mdi:check-decagram-outline"></span>
+                        </div>
+                        <p class="text-base font-bold text-slate-600">All tasks completed!</p>
+                        <p class="text-sm text-slate-400 mt-1">Great job — no pending tasks for your role.</p>
+                    </div>
 
-                                            {{-- Both proposals, side by side, so faculty's choice can be
-                                                 weighed here too. Rendered from this one container by
-                                                 paintHotelConcepts(), which repaints after every save
-                                                 and every submit — there is no server copy of this
-                                                 markup to drift from the client one. --}}
-                                            <div id="conceptPanel" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                    <div id="completedTasksCard" class="bg-white rounded-2xl border border-slate-100 overflow-hidden{{ $myCompletedTasks->count() > 0 ? '' : ' hidden' }}">
+                        <button onclick="toggleCompletedTasks()" class="w-full px-6 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                            <h3 class="text-sm font-bold text-slate-800">Completed Tasks (<span data-task-count="completed">{{ $myCompletedTasks->count() }}</span>)</h3>
+                            <span class="iconify text-slate-400 text-lg transition-transform" data-icon="mdi:chevron-down" id="completedChevron"></span>
+                        </button>
+                        <div id="completedTasksList" class="divide-y divide-slate-50 hidden">
+                            @foreach($myCompletedTasks as $task)
+                                <div class="task-row px-6 py-4 flex items-start gap-4 opacity-60">
+                                    <div class="mt-0.5 w-3 h-3 rounded-full bg-emerald-400 shrink-0 flex items-center justify-center">
+                                        <span class="iconify text-white text-[8px]" data-icon="mdi:check"></span>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold text-slate-500 line-through">{{ $task->title }}</p>
+                                        @if($task->due_date)
+                                            <p class="text-[11px] text-slate-300 mt-1">{{ $task->due_date->format('M d, Y g:i A') }}</p>
                                         @endif
                                     </div>
-                                @endforeach
-                            </div>
+                                    <span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Done</span>
+                                </div>
+                            @endforeach
                         </div>
-                    @else
-                        <div class="bg-white rounded-2xl border border-slate-100 px-6 py-12 text-center">
-                            <div class="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <span class="iconify text-emerald-400 text-3xl" data-icon="mdi:check-decagram-outline"></span>
-                            </div>
-                            <p class="text-base font-bold text-slate-600">All tasks completed!</p>
-                            <p class="text-sm text-slate-400 mt-1">Great job — no pending tasks for your role.</p>
-                        </div>
-                    @endif
-
-                    @if($myCompletedTasks->count() > 0)
-                        <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                            <button onclick="toggleCompletedTasks()" class="w-full px-6 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                                <h3 class="text-sm font-bold text-slate-800">Completed Tasks ({{ $myCompletedTasks->count() }})</h3>
-                                <span class="iconify text-slate-400 text-lg transition-transform" data-icon="mdi:chevron-down" id="completedChevron"></span>
-                            </button>
-                            <div id="completedTasksList" class="divide-y divide-slate-50 hidden">
-                                @foreach($myCompletedTasks as $task)
-                                    <div class="task-row px-6 py-4 flex items-start gap-4 opacity-60">
-                                        <div class="mt-0.5 w-3 h-3 rounded-full bg-emerald-400 shrink-0 flex items-center justify-center">
-                                            <span class="iconify text-white text-[8px]" data-icon="mdi:check"></span>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-semibold text-slate-500 line-through">{{ $task->title }}</p>
-                                            @if($task->due_date)
-                                                <p class="text-[11px] text-slate-300 mt-1">{{ $task->due_date->format('M d, Y g:i A') }}</p>
-                                            @endif
-                                        </div>
-                                        <span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Done</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
+                    </div>
                 @else
                     <div class="bg-white rounded-2xl border border-slate-100 px-6 py-12 text-center">
                         <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -1410,6 +1412,147 @@
             }
 
             paintTeamHeaderConcept();
+            settleConceptTaskRow();
+        }
+
+        /* ── Live concept state ────────────────────────────────────────────────
+           The verdict is faculty's action on their own page, so nothing about it
+           reaches this one on its own. Polling the same endpoint the page was drawn
+           from keeps every part of the concept live — the badges, the faculty's
+           words, the lock on the fields, the team heading, and the task row itself.
+
+           Polled rather than pushed because that is what this app already does for
+           presence, and the endpoint returns the whole team's payload, which is
+           exactly what paintHotelConcepts() takes. */
+
+        /* What the last paint saw, so a change can be told from a repeat. Seeded
+           from the payload the page rendered with: the first poll after load should
+           announce nothing. */
+        let conceptStatusSeen = conceptStatusMap(conceptState);
+        let conceptTaskSettled = false;
+
+        function conceptStatusMap(data) {
+            const seen = {};
+            (data?.slots || []).forEach((entry) => {
+                seen[String(entry.slot)] = entry.concept ? (entry.concept.status || 'draft') : null;
+            });
+            return seen;
+        }
+
+        /* The concept task closes on the verdict, not on a tick — so when the
+           verdict lands the row has to leave Active Tasks the way a submitted task
+           would have. Done in the DOM rather than by reloading: the point of the
+           poll is that nobody has to refresh.
+
+           Runs on every paint but acts once, because paintHotelConcepts() is also
+           called after every save. */
+        function settleConceptTaskRow() {
+            const row = document.getElementById('conceptPanelCard');
+            if (!row || conceptTaskSettled || !conceptState?.decided) return;
+
+            conceptTaskSettled = true;
+
+            const title = row.dataset.taskTitle || 'Propose Two Hotel Concepts';
+            row.remove();
+
+            const list = document.getElementById('completedTasksList');
+            if (list) {
+                const done = document.createElement('div');
+                done.className = 'task-row px-6 py-4 flex items-start gap-4 opacity-60';
+                done.innerHTML =
+                    '<div class="mt-0.5 w-3 h-3 rounded-full bg-emerald-400 shrink-0 flex items-center justify-center">'
+                        + '<span class="iconify text-white text-[8px]" data-icon="mdi:check"></span>'
+                    + '</div>'
+                    + '<div class="flex-1 min-w-0">'
+                        + '<p class="text-sm font-semibold text-slate-500 line-through">' + conceptEscape(title) + '</p>'
+                    + '</div>'
+                    + '<span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Done</span>';
+                list.prepend(done);
+                document.getElementById('completedTasksCard')?.classList.remove('hidden');
+                if (window.Iconify && typeof window.Iconify.scan === 'function') {
+                    window.Iconify.scan(done);
+                }
+            }
+
+            bumpTaskCounts(-1);
+        }
+
+        /* Every place the page prints a task count, moved together. They are marked
+           rather than looked up by id because the same number is printed in four
+           places — the nav badge, the two KPI tiles, and the pills over the list. */
+        function bumpTaskCounts(activeDelta) {
+            document.querySelectorAll('[data-task-count="active"]').forEach((el) => {
+                el.textContent = String(Math.max(0, (parseInt(el.textContent, 10) || 0) + activeDelta));
+            });
+            document.querySelectorAll('[data-task-count="completed"]').forEach((el) => {
+                el.textContent = String(Math.max(0, (parseInt(el.textContent, 10) || 0) - activeDelta));
+            });
+
+            const active = parseInt(
+                document.querySelector('[data-task-count="active"]')?.textContent || '0', 10
+            ) || 0;
+
+            document.getElementById('navTasksBadge')?.classList.toggle('hidden', active === 0);
+            document.getElementById('activeTasksCard')?.classList.toggle('hidden', active === 0);
+            document.getElementById('activeTasksEmpty')?.classList.toggle('hidden', active > 0);
+        }
+
+        /* Says what changed, once, when it changes. Without this the cards would
+           quietly rearrange themselves under a member who was reading them. */
+        function announceConceptChanges(data) {
+            const now = conceptStatusMap(data);
+            const messages = [];
+
+            Object.keys(now).forEach((slot) => {
+                const was = conceptStatusSeen[slot];
+                const is = now[slot];
+                if (is === was || !is) return;
+
+                const label = 'Concept ' + slot;
+                if (is === 'approved') messages.push(label + ' was approved by your faculty.');
+                else if (is === 'needs_revision') messages.push(label + ' was sent back for revision.');
+                else if (is === 'not_selected') messages.push('Your faculty chose the other concept.');
+            });
+
+            conceptStatusSeen = now;
+
+            if (!messages.length) return;
+
+            // A toast, not a dialog: the bell already carries the notification, and
+            // the cards below have repainted themselves — this only has to catch the
+            // eye of someone who was looking elsewhere on the page.
+            const approved = messages.some((m) => m.indexOf('approved') !== -1);
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: approved ? 'success' : 'info',
+                title: approved ? 'Your concept was approved' : 'Your faculty answered',
+                text: messages.join(' '),
+                showConfirmButton: false,
+                timer: 6000,
+                timerProgressBar: true,
+            });
+        }
+
+        async function syncHotelConcepts() {
+            try {
+                const res = await fetch(@json(route('students.hotel-concept.history')), {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!res.ok) return;
+
+                const data = await res.json();
+                if (!data || !Array.isArray(data.slots)) return;
+
+                // Announce before painting: the comparison is against what the member
+                // is still looking at.
+                announceConceptChanges(data);
+                paintHotelConcepts(data);
+                if (window.Iconify && typeof window.Iconify.scan === 'function') {
+                    window.Iconify.scan(document.getElementById('conceptPanel') || document.body);
+                }
+            } catch (e) { /* a dropped poll is not worth telling anyone about */ }
         }
 
         /* The concept faculty chose, in the team header. Once one slot's payload
@@ -1644,6 +1787,13 @@
 
             // Draw the panel from the payload the server rendered with the page.
             paintHotelConcepts(null);
+
+            // Faculty approve and send back from their own portal, so this page only
+            // learns of a verdict by asking. Every 10s, and only for a member who
+            // actually has concepts to watch.
+            if ((conceptState?.slots || []).length) {
+                setInterval(syncHotelConcepts, 10000);
+            }
 
             if (!form) return;
 
