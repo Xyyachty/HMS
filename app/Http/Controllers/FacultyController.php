@@ -643,39 +643,112 @@ class FacultyController extends Controller
 
     public function updateStudent(Request $request, $userId)
     {
-        $validated = $request->validate([
-            'phone_number' => ['nullable', 'string', 'max:30'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'status' => ['required', 'in:active,inactive'],
-        ]);
-
         $user = User::findOrFail($userId);
 
         if ($user->role !== 'student') {
             return back()->withErrors(['error' => 'Only student accounts can be updated.']);
         }
 
+        // The user id arrives in the URL, and this form now changes an address and can
+        // reset a password — enough to take an account over. Nothing here previously
+        // checked whose student it was.
+        $facultyId = auth()->user()?->faculty?->user_information_id;
+
+        if (!$facultyId || (int) ($user->student?->faculty_id) !== (int) $facultyId) {
+            return back()->withErrors(['error' => 'You can only update students in your own class.']);
+        }
+
+        // Normalised before validation, not after: the User mutator lowercases on the
+        // way in, so a unique check on the raw input would let "A@x.com" through
+        // against a stored "a@x.com" and only fail at the index.
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+
+        $validated = $request->validate([
+            // Editable because bulk import takes the address off a spreadsheet, and a
+            // typo there creates an account whose welcome email went to nobody. This
+            // is where that is put right.
+            'email' => [
+                'required', 'string', 'email', 'max:255',
+                Rule::unique('users', 'email')->ignore($user->user_id, 'user_id'),
+            ],
+            'phone_number' => ['nullable', 'string', 'max:30'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'status' => ['required', 'in:active,inactive'],
+        ]);
+
+        $previousEmail = strtolower(trim((string) $user->email));
+        $emailChanged  = $validated['email'] !== $previousEmail;
+
         $updateData = [
+            'email' => $validated['email'],
             'phone_number' => User::cleanOptional($validated['phone_number'] ?? null) !== ''
                 ? User::cleanOptional($validated['phone_number'] ?? null)
                 : ($user->phone_number ?? ''),
             'status' => $validated['status'],
         ];
 
-        if (!empty($validated['password'])) {
-            $updateData['password'] = Hash::make($validated['password']);
+        $plainPassword = $validated['password'] ?? null;
+
+        if (!empty($plainPassword)) {
+            $updateData['password'] = Hash::make($plainPassword);
+        }
+
+        // A corrected address means the account email reached nobody, so it is sent
+        // again — and it carries a password, which is stored only as a hash and cannot
+        // be read back. One is generated when faculty did not type one.
+        //
+        // Only for a student who has never signed in. Once last_seen_at is set the
+        // account is in use and its password is the student's, not ours to replace;
+        // an address changed at that point is a change of address, not a repair.
+        $resendWelcome = false;
+
+        if ($emailChanged) {
+            if (!empty($plainPassword)) {
+                $resendWelcome = true;
+            } elseif ($user->last_seen_at === null) {
+                $plainPassword = StudentWelcomeMailer::generatePassword();
+                $updateData['password'] = Hash::make($plainPassword);
+                $resendWelcome = true;
+            }
         }
 
         $user->update($updateData);
 
-        ActivityLog::recordFor(
-            ActivityLog::ACCOUNT_UPDATED,
-            'Updated student account ' . ($user->name ?? $user->email) . ' — status set to ' . $validated['status'] . '.'
-        );
+        $description = 'Updated student account ' . ($user->name ?? $user->email)
+            . ' — status set to ' . $validated['status'] . '.';
+
+        if ($emailChanged) {
+            $description = 'Updated student account ' . ($user->name ?? $validated['email'])
+                . ' — email corrected from ' . ($previousEmail !== '' ? $previousEmail : 'blank')
+                . ' to ' . $validated['email']
+                . ', status set to ' . $validated['status'] . '.';
+        }
+
+        ActivityLog::recordFor(ActivityLog::ACCOUNT_UPDATED, $description);
+
+        $message = 'Student updated successfully.';
+
+        if ($resendWelcome) {
+            $classLetter = $user->student?->facultyClass?->letter;
+
+            $mailResult = StudentWelcomeMailer::send(
+                $user->fresh(),
+                $plainPassword,
+                $classLetter ? 'Block ' . $classLetter : null,
+                $user->student?->student_number
+            );
+
+            $message = $mailResult['sent']
+                ? 'Email corrected and the account email was sent to ' . $validated['email'] . '.'
+                : 'Email corrected, but the account email was not sent — ' . $mailResult['reason'] . '.';
+        } elseif ($emailChanged) {
+            $message = 'Email corrected to ' . $validated['email']
+                . '. The password was left alone because this student has already signed in.';
+        }
 
         return redirect()->route('faculty.students', ['class' => request('class')])
-            ->with('success', 'Student updated successfully.')
-            ->with('success_title', 'Student Updated');
+            ->with('success', $message)
+            ->with('success_title', $emailChanged ? 'Email Updated' : 'Student Updated');
     }
 
     public function bulkImportStudents(Request $request)

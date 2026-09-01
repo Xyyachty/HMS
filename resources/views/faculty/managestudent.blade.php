@@ -660,7 +660,8 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
-                    <input id="updateEmail" type="text" readonly class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-500 focus:outline-none">
+                    <input id="updateEmail" name="email" type="email" required placeholder="student@example.com" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    <p class="mt-1 text-[11px] text-slate-400">Editable so a typo from the Excel import can be corrected. Fixing it re-sends the account email to the new address.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
