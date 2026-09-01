@@ -63,6 +63,30 @@ else
     echo "[entrypoint] migrations skipped (RUN_MIGRATIONS=false)"
 fi
 
+# ---------------------------------------------------------------------------
+# Seeders
+#
+# Creates the dean and faculty accounts the app cannot be administered without.
+# Every seeder is updateOrCreate, so this is a no-op on every start after the
+# first — but it does rewrite the seeded passwords back to their defaults, so a
+# password changed by hand will not survive the next deploy.
+#
+# Non-fatal for the same reason as the migrations above: a database that is
+# briefly unreachable should leave the site up, not dead.
+#
+# Set RUN_SEEDERS=false to skip entirely.
+# ---------------------------------------------------------------------------
+if [ "${RUN_SEEDERS:-true}" = "true" ]; then
+    echo "[entrypoint] running seeders"
+    if php artisan db:seed --force --no-interaction 2>&1 | tail -20; then
+        echo "[entrypoint] seeders ok"
+    else
+        echo "[entrypoint] WARNING: seeders failed - check DB_PG_* variables"
+    fi
+else
+    echo "[entrypoint] seeders skipped (RUN_SEEDERS=false)"
+fi
+
 # Only meaningful when MEDIA_DISK=public. On Render the media disk is Supabase
 # Storage, so nothing is served from the local filesystem.
 php artisan storage:link >/dev/null 2>&1 || true
