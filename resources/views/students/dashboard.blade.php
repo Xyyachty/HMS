@@ -430,8 +430,17 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 @if($group)
-                                    <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Hotel Management Simulation</p>
-                                    <h3 class="text-lg font-extrabold text-white leading-tight">{{ $group->name }}</h3>
+                                    {{-- Once faculty approves a concept, the team is known by that
+                                         concept: the heading becomes its title and the type sits
+                                         under it, with the group's own name demoted to the line
+                                         above so the roster below is still identifiable. Both are
+                                         swapped by paintTeamHeaderConcept(), which is why the
+                                         group name is carried on the heading as a data attribute
+                                         — it is what the heading reverts to. --}}
+                                    <p id="teamHeaderEyebrow" class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Hotel Management Simulation</p>
+                                    <h3 id="teamHeaderName" class="text-lg font-extrabold text-white leading-tight"
+                                        data-team-name="{{ $group->name }}">{{ $group->name }}</h3>
+                                    <p id="teamHeaderType" class="hidden text-[11px] font-bold text-white/75 mt-0.5"></p>
                                 @else
                                     <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Team</p>
                                     <h3 class="text-base font-extrabold text-white">Not assigned yet</h3>
@@ -450,13 +459,12 @@
                             </div>
                         </div>
 
-                        {{-- The concept faculty chose. It stops being a proposal at that point
-                             and becomes what this team is building, so it sits with the team's
-                             name rather than in the panel about proposals below — which is why
-                             that panel disappears once this fills in. Painted from the same
-                             payload as that panel, by paintTeamHeaderConcept(), so there is one
-                             description of "what the team's concept is" rather than a server
-                             copy and a client copy that can drift. --}}
+                        {{-- The approved concept's description. The title and type live up in
+                             the heading above; this is the part that runs long, so it gets the
+                             full width and a clamp of its own. Painted by
+                             paintTeamHeaderConcept() from the same payload as the proposal
+                             cards, so there is one description of "what the team's concept is"
+                             rather than a server copy and a client copy that can drift. --}}
                         <div id="teamHeaderConcept" class="hidden mt-4 pt-4 border-t border-white/15"></div>
                     </div>
 
@@ -561,7 +569,7 @@
                 @endphp
                 <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                     <div>
-                        <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">My Tasks</h2>
+                        <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Manage Tasks</h2>
                         <p class="text-sm text-slate-400">Tasks assigned to your role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
                     </div>
                     @if(!empty($studentRoles))
@@ -1405,20 +1413,52 @@
         }
 
         /* The concept faculty chose, in the team header. Once one slot's payload
-           comes back approved, that is the team's identity now — the concept task
-           row over in Tasks has nothing left to propose, so it hides and this fills
-           in. (The row usually goes on its own, since a verdict archives the task;
-           the toggle covers the page that was already open when it landed.) */
+           comes back approved, that is the team's identity now: the heading stops
+           being the group's name and becomes the concept's title, with its type on
+           the line under it and its description below the whole header row. The
+           group's own name drops to the eyebrow above, so the roster underneath is
+           still identifiable.
+
+           The concept task row over in Tasks has nothing left to propose either, so
+           it hides. (The row usually goes on its own, since a verdict archives the
+           task; the toggle covers the page that was already open when it landed.)
+
+           Everything here is reversible on purpose — the heading reverts from its
+           data-team-name — because a repaint runs on every save, not only after a
+           verdict. */
         function paintTeamHeaderConcept() {
             const container = document.getElementById('teamHeaderConcept');
             const panelCard = document.getElementById('conceptPanelCard');
-            if (!container) return;
+            const heading = document.getElementById('teamHeaderName');
+            const eyebrow = document.getElementById('teamHeaderEyebrow');
+            const typeLine = document.getElementById('teamHeaderType');
 
             const approved = (conceptState?.slots || [])
                 .map((entry) => entry.concept)
                 .find((concept) => concept && concept.status === 'approved');
 
             if (panelCard) panelCard.classList.toggle('hidden', !!approved);
+
+            // The team name and its type line: swapped whether or not the description
+            // container exists, so a page without one still renames.
+            if (heading) {
+                heading.textContent = approved
+                    ? (approved.title || heading.dataset.teamName || '')
+                    : (heading.dataset.teamName || heading.textContent);
+            }
+
+            if (eyebrow) {
+                eyebrow.textContent = approved
+                    ? (heading?.dataset.teamName || 'Official Hotel Concept')
+                    : 'Hotel Management Simulation';
+            }
+
+            if (typeLine) {
+                typeLine.textContent = approved ? (approved.hotel_type_label || '') : '';
+                typeLine.classList.toggle('hidden', !approved || !approved.hotel_type_label);
+            }
+
+            if (!container) return;
 
             if (!approved) {
                 container.classList.add('hidden');
@@ -1432,15 +1472,8 @@
             const isLong = description.length > 180;
 
             container.innerHTML =
-                '<div class="flex items-start justify-between gap-3 flex-wrap">'
-                    + '<div class="min-w-0">'
-                        + '<p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Official Hotel Concept</p>'
-                        + '<h4 class="text-base font-extrabold text-white leading-tight mt-0.5">' + conceptEscape(approved.title) + '</h4>'
-                    + '</div>'
-                    + '<span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full bg-white/15 border border-white/20 text-[10px] font-bold text-white">'
-                        + conceptEscape(approved.hotel_type_label) + '</span>'
-                + '</div>'
-                + '<p id="teamHeaderConceptDesc" class="text-[11px] text-white/70 leading-relaxed mt-2 whitespace-pre-line' + (isLong ? ' line-clamp-3' : '') + '">'
+                '<p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Concept Description</p>'
+                + '<p id="teamHeaderConceptDesc" class="text-[11px] text-white/70 leading-relaxed mt-1 whitespace-pre-line' + (isLong ? ' line-clamp-3' : '') + '">'
                     + conceptEscape(description) + '</p>'
                 + (isLong
                     ? '<button type="button" onclick="toggleTeamHeaderConceptDesc(this)" class="mt-1.5 text-[10px] font-bold text-white/80 hover:text-white underline underline-offset-2">Show more</button>'
