@@ -568,7 +568,11 @@
                 $groupName => $members->flatMap(fn ($m) => $m->roles->pluck('role'))->unique()->values(),
             ]);
         @endphp
-        <script>window.EXISTING_TEAM_ROLES = @json($groupRolesMap);</script>
+        <script>
+            window.EXISTING_TEAM_ROLES = @json($groupRolesMap);
+            // Role keys are all JS had (TEAM_DEFAULT_ROLES); the labels live in PHP.
+            window.TEAM_ROLE_LABELS = @json($teamRoleOptions);
+        </script>
 
         <!-- Tab Panel: Add Team (single or multiple) -->
         <div id="modal-panel-add_team" class="flex-1 min-h-0 overflow-y-auto">
@@ -633,6 +637,14 @@
                     </div>
                     <p id="createRandomizeNote" class="text-[11px] text-slate-400 -mt-3"></p>
 
+                    {{-- Who is on the team right now, without scrolling the list below to
+                         hunt for ticked boxes. Rendered from the checkboxes themselves, so
+                         it follows a hand-made change as closely as it follows Randomize. --}}
+                    <div id="createTeamSummary" class="hidden rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Selected members</p>
+                        <div id="createTeamSummaryChips" class="flex flex-wrap gap-1.5"></div>
+                    </div>
+
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Roles</span>
                         @foreach($teamRoleOptions as $rk => $rl)
@@ -661,7 +673,8 @@
                                         $searchBlob = strtolower($dn . ' ' . $student->student_number);
                                     @endphp
                                     <div class="team-student-card create-student-card rounded-xl bg-white border border-slate-200 p-3"
-                                         data-search="{{ $searchBlob }}">
+                                         data-search="{{ $searchBlob }}"
+                                         data-student-name="{{ $dn }}">
                                         <label class="flex items-center gap-3 cursor-pointer">
                                             <input type="checkbox" name="members[]" value="{{ $sk }}"
                                                 class="create-student-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 shrink-0"
@@ -2769,6 +2782,12 @@ function refreshRoleAvailability(mode) {
             roleCb.disabled = !roleCb.checked && used.has(roleCb.value);
         });
     });
+
+    // Every member tick and every role tick on the create list reaches here, so the
+    // summary is refreshed from one place rather than from each handler.
+    if (mode === 'create') {
+        renderCreateTeamSummary();
+    }
 }
 
 function onTeamMemberToggle(checkbox, mode) {
@@ -2798,6 +2817,57 @@ function onSingleTeamMemberToggle(checkbox) {
     onTeamMemberToggle(checkbox, 'create');
 }
 
+/*
+   The picked members and their roles, shown above the list instead of only inside
+   it. Randomize ticks four boxes somewhere in a scrolling column of every
+   unassigned student, so without this the only way to read the result is to scroll
+   and hunt for ticks.
+
+   Built from the checkboxes rather than from what Randomize chose, so a member
+   unticked or a role changed by hand is reflected too and the panel cannot claim
+   someone who is no longer on the team.
+*/
+function renderCreateTeamSummary() {
+    const panel = document.getElementById('createTeamSummary');
+    const chips = document.getElementById('createTeamSummaryChips');
+    if (!panel || !chips) return;
+
+    const labels = window.TEAM_ROLE_LABELS || {};
+    const picked = Array.from(document.querySelectorAll('.create-student-checkbox:checked'));
+
+    // Nothing selected is the modal's opening state, not a result worth a panel.
+    panel.classList.toggle('hidden', picked.length === 0);
+    if (picked.length === 0) {
+        chips.innerHTML = '';
+        return;
+    }
+
+    chips.innerHTML = picked.map((cb) => {
+        const card = cb.closest('.team-student-card');
+        const name = card?.getAttribute('data-student-name') || 'Student';
+        const roles = Array.from(
+            card?.querySelectorAll('input[type="checkbox"][name^="member_roles"]:checked') || []
+        ).map(r => r.value);
+
+        const roleMarkup = roles.length
+            ? roles.map(key => `
+                <span class="inline-flex items-center gap-1 text-slate-500">
+                    <span class="w-1.5 h-1.5 rounded-full role-dot-${escapeBulkAttr(key)} shrink-0"></span>
+                    ${escapeBulkHtml(labels[key] || key)}
+                </span>
+            `).join('')
+            : '<span class="text-amber-700">No role yet</span>';
+
+        return `
+            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px]">
+                <span class="font-semibold text-slate-700">${escapeBulkHtml(name)}</span>
+                <span class="text-slate-300">·</span>
+                ${roleMarkup}
+            </span>
+        `;
+    }).join('');
+}
+
 function randomizeSingleTeamMembers() {
     const checkboxes = Array.from(document.querySelectorAll('.create-student-checkbox'));
     const note = document.getElementById('createRandomizeNote');
@@ -2820,6 +2890,7 @@ function randomizeSingleTeamMembers() {
     });
 
     updateTeamSelectedCount('create');
+    renderCreateTeamSummary();
     if (note) {
         note.textContent = pick.length < TEAM_MEMBER_MAX
             ? `Selected ${pick.length} available student${pick.length === 1 ? '' : 's'} (need ${TEAM_MEMBER_MAX} for a full team).`
@@ -2850,6 +2921,7 @@ function updateTeamSelectedCount(mode) {
 document.addEventListener('DOMContentLoaded', function () {
     updateTeamSelectedCount('insert');
     updateTeamSelectedCount('create');
+    renderCreateTeamSummary();
     rebuildBulkTeamSlots(maxCompleteBulkTeams());
     const randomizeBtn = document.getElementById('createRandomizeBtn');
     if (randomizeBtn) randomizeBtn.addEventListener('click', randomizeSingleTeamMembers);
