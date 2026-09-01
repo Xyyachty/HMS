@@ -108,6 +108,10 @@
     }
     .bulk-pager-btn:hover:not(:disabled) { color: #DB2777; border-color: #DB2777; }
     .bulk-pager-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* Add Student / Bulk Upload with no block assigned. Same reason as above: the
+       frozen build has no disabled: variants to compose this from. */
+    .intake-disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 </style>
 @endpush
 
@@ -164,26 +168,43 @@
                     onkeydown="if (event.key === 'Escape') collapseStudentSearch(true)"
                 >
             </div>
+            @php
+                // No block, no class to enrol into — see FacultyController::students().
+                $canEnrol = $hasBlock ?? true;
+                $noBlockHint = 'No block assigned to your account yet. Ask the dean to assign one.';
+            @endphp
             <button
                 type="button"
-                onclick="openModal('bulkUploadModal')"
-                title="Bulk Upload"
+                @if ($canEnrol) onclick="openModal('bulkUploadModal')" @else disabled @endif
+                title="{{ $canEnrol ? 'Bulk Upload' : $noBlockHint }}"
                 aria-label="Bulk Upload"
-                class="h-10 shrink-0 bg-emerald-600 text-white px-4 rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20 inline-flex items-center gap-2 whitespace-nowrap"
+                class="h-10 shrink-0 bg-emerald-600 text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-emerald-600/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'hover:bg-emerald-700' : 'intake-disabled' }}"
             >
                 <span class="iconify text-base" data-icon="mdi:upload"></span>
                 Bulk Upload
             </button>
             <button
                 type="button"
-                onclick="openModal('createStudentModal')"
-                class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap"
+                @if ($canEnrol) onclick="openModal('createStudentModal')" @else disabled @endif
+                title="{{ $canEnrol ? 'Add Student' : $noBlockHint }}"
+                class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'hover:opacity-95' : 'intake-disabled' }}"
             >
                 <span class="iconify text-base" data-icon="mdi:account-plus-outline"></span>
                 Add Student
             </button>
         </div>
     </div>
+
+    @unless ($hasBlock ?? true)
+        <div class="mx-6 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 flex items-start gap-2">
+            <span class="iconify text-base shrink-0" data-icon="mdi:alert-outline"></span>
+            <span>
+                <b>No block assigned to your account.</b>
+                Students are enrolled into your block, so Add Student and Bulk Upload stay
+                switched off until the dean assigns one.
+            </span>
+        </div>
+    @endunless
 
     @if (session('success'))
         <div id="successAlert" class="mx-6 mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">

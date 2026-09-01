@@ -418,9 +418,22 @@ class FacultyController extends Controller
         return ['roles' => $resolved, 'error' => null];
     }
 
+    /**
+     * The block letter assigned to the signed-in faculty, or '' when there is none.
+     *
+     * The dean assigns it when creating the faculty account. Until it is set the
+     * faculty has no class to enrol anyone into, so both intake paths — Add Student
+     * and Bulk Upload — refuse rather than creating students who belong nowhere.
+     */
+    private function signedInFacultyBlock(): string
+    {
+        return strtoupper(trim((string) (auth()->user()?->faculty?->block ?? '')));
+    }
+
     public function students()
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
+        $hasBlock  = $this->signedInFacultyBlock() !== '';
 
         if (!$facultyId) {
             return view('faculty.managestudent', [
@@ -429,6 +442,7 @@ class FacultyController extends Controller
                 'activeClass' => null,
                 'openClass' => null,
                 'classCapacity' => FacultyClass::CAPACITY,
+                'hasBlock' => false,
             ]);
         }
 
@@ -456,7 +470,8 @@ class FacultyController extends Controller
             'classes',
             'activeClass',
             'openClass',
-            'classCapacity'
+            'classCapacity',
+            'hasBlock'
         ));
     }
 
@@ -507,6 +522,12 @@ class FacultyController extends Controller
         $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return back()->withErrors(['error' => 'Faculty account not found.'])->withInput();
+        }
+
+        if ($this->signedInFacultyBlock() === '') {
+            return back()->withErrors([
+                'error' => 'No block is assigned to your account yet. Ask the dean to assign one before adding students.',
+            ])->withInput();
         }
 
         $validated = $request->validate([
@@ -756,6 +777,12 @@ class FacultyController extends Controller
         $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return response()->json(['message' => 'Faculty account not found.'], 403);
+        }
+
+        if ($this->signedInFacultyBlock() === '') {
+            return response()->json([
+                'message' => 'No block is assigned to your account yet. Ask the dean to assign one before importing students.',
+            ], 422);
         }
 
         $request->validate([
