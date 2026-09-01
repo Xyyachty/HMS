@@ -210,7 +210,8 @@ class FacultyController extends Controller
             'class' => $request->input('class_letter') ?: null,
         ]))->with('success', $formSource === 'insert_student'
             ? 'Students added to the team.'
-            : 'Team created successfully.');
+            : 'Team created successfully.')
+          ->with('success_title', $formSource === 'insert_student' ? 'Students Added' : 'Team Created');
     }
 
     /**
@@ -344,7 +345,8 @@ class FacultyController extends Controller
             'class' => $request->input('class_letter') ?: null,
         ]))->with('success', $count === 1
             ? 'Team created successfully.'
-            : "{$count} teams created successfully.");
+            : "{$count} teams created successfully.")
+          ->with('success_title', $count === 1 ? 'Team Created' : 'Teams Created');
     }
 
     /** @return array<string, string> role key => display label */
@@ -1341,7 +1343,8 @@ class FacultyController extends Controller
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'teams',
             'class' => $request->input('class_letter') ?: null,
-        ]))->with('success', 'Team updated successfully.');
+        ]))->with('success', 'Team updated successfully.')
+          ->with('success_title', 'Team Updated');
     }
 
     public function tasks(Request $request)

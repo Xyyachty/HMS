@@ -3239,6 +3239,24 @@ window.addEventListener('load', function () {
 });
 @endif
 
+@if (session('success'))
+// Creating a team redirects, so the modal is gone by the time the page is back and
+// the green banner is the only thing that says it worked — easy to miss above a full
+// table. Same popup the rest of the app uses for a completed action.
+window.addEventListener('load', function () {
+    Swal.fire({
+        icon: 'success',
+        title: @json(session('success_title', 'Success')),
+        text: @json(session('success')),
+        timer: 2500,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        iconColor: '#DB2777',
+        width: '22rem',
+    });
+});
+@endif
+
 // ── Team Info Modal ────────────────────────────
 let teamModalActivityLogs = [];
 let teamModalActivityPage = 1;
