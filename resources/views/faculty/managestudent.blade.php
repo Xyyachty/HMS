@@ -95,6 +95,19 @@
     #studentSearchWrap.is-open #studentSearchInput::placeholder {
         color: #94a3b8;
     }
+
+    /* Bulk upload preview. Written out rather than composed from utilities because
+       public/css/app.css is a frozen build — max-h-80, hover:border-brand and the
+       disabled: variants this needs are not in it and would silently do nothing. */
+    .bulk-preview-scroll { max-height: 20rem; }
+    .bulk-pager-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 0.25rem 0.5rem; border-radius: 0.5rem;
+        border: 1px solid #E2E8F0; background: #fff; color: #64748B;
+        transition: color 0.2s, border-color 0.2s, opacity 0.2s;
+    }
+    .bulk-pager-btn:hover:not(:disabled) { color: #DB2777; border-color: #DB2777; }
+    .bulk-pager-btn:disabled { opacity: 0.4; cursor: default; }
 </style>
 @endpush
 
@@ -472,7 +485,7 @@
                     <p class="text-sm font-bold text-slate-700">Preview <span id="bulkPreviewCount" class="text-emerald-600"></span></p>
                     <button onclick="bulkResetToStep1()" class="text-xs text-slate-500 hover:text-brand underline">Change file</button>
                 </div>
-                <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-56">
+                <div class="overflow-x-auto rounded-xl border border-slate-200 bulk-preview-scroll">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-50 sticky top-0">
                             <tr>
@@ -488,7 +501,22 @@
                         <tbody id="bulkPreviewBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
-                <p class="text-xs text-slate-400 mt-2">Every row below will be imported. &ldquo;Sheet&rdquo; is the row number in your Excel file.</p>
+                <div class="flex items-center justify-between gap-3 mt-2">
+                    <p class="text-xs text-slate-400">Every row is imported, not just this page. &ldquo;Sheet&rdquo; is the row number in your Excel file.</p>
+                    <div id="bulkPreviewPager" class="hidden items-center gap-1 shrink-0">
+                        <button type="button" onclick="bulkPreviewGo(bulkPreviewPage - 1)" id="bulkPreviewPrev"
+                            class="bulk-pager-btn"
+                            aria-label="Previous page">
+                            <span class="iconify text-base" data-icon="mdi:chevron-left"></span>
+                        </button>
+                        <span id="bulkPreviewPageLabel" class="text-xs text-slate-500 font-semibold px-1 whitespace-nowrap"></span>
+                        <button type="button" onclick="bulkPreviewGo(bulkPreviewPage + 1)" id="bulkPreviewNext"
+                            class="bulk-pager-btn"
+                            aria-label="Next page">
+                            <span class="iconify text-base" data-icon="mdi:chevron-right"></span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Step 3: Results -->
@@ -757,6 +785,11 @@
         document.getElementById('bulkFileInfo').classList.add('hidden');
         document.getElementById('bulkFileInfo').textContent = '';
         document.getElementById('bulkPreviewBody').innerHTML = '';
+        // Dropped here too, or the next file opens on the previous roster's page.
+        bulkPreviewStudents = [];
+        bulkPreviewPage = 1;
+        document.getElementById('bulkPreviewPager').classList.add('hidden');
+        document.getElementById('bulkPreviewPager').classList.remove('flex');
         document.getElementById('bulkResultsBody').innerHTML = '';
         document.getElementById('bulkResultsTableWrap').classList.add('hidden');
         document.getElementById('bulkImportBtn').classList.add('hidden');
@@ -934,6 +967,63 @@
         return { headerRow: headerRow, students: students };
     }
 
+    /*
+       The preview pages rather than scrolls. A block list runs to forty-odd students
+       and the modal cannot show them all at once; the earlier version cut the list to
+       ten rows and said so in a caption, which read as "only ten were found". Every
+       parsed student is held here and the table renders one page of them.
+    */
+    const BULK_PREVIEW_PAGE_SIZE = 10;
+    let bulkPreviewStudents = [];
+    let bulkPreviewPage = 1;
+
+    function bulkPreviewPageCount() {
+        return Math.max(1, Math.ceil(bulkPreviewStudents.length / BULK_PREVIEW_PAGE_SIZE));
+    }
+
+    function bulkPreviewGo(page) {
+        const pages = bulkPreviewPageCount();
+        bulkPreviewPage = Math.min(Math.max(1, page), pages);
+
+        const start = (bulkPreviewPage - 1) * BULK_PREVIEW_PAGE_SIZE;
+        const slice = bulkPreviewStudents.slice(start, start + BULK_PREVIEW_PAGE_SIZE);
+
+        const tbody = document.getElementById('bulkPreviewBody');
+        tbody.innerHTML = '';
+        const cell = v => String(v || '—').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+        slice.forEach((s, i) => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50';
+            tr.innerHTML = `
+                <td class="px-3 py-2 text-slate-400">${start + i + 1}</td>
+                <td class="px-3 py-2 text-slate-400">${s.row}</td>
+                <td class="px-3 py-2 font-mono text-slate-700">${cell(s.student_number)}</td>
+                <td class="px-3 py-2">${cell(s.last_name)}</td>
+                <td class="px-3 py-2">${cell(s.first_name)}</td>
+                <td class="px-3 py-2 text-slate-500">${cell(s.email)}</td>
+                <td class="px-3 py-2 text-slate-500">${cell(s.phone_number)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // A single page needs no controls, and hiding them keeps the small-file case
+        // looking the way it did before paging existed.
+        const pager = document.getElementById('bulkPreviewPager');
+        pager.classList.toggle('hidden', pages <= 1);
+        pager.classList.toggle('flex', pages > 1);
+
+        const from = bulkPreviewStudents.length ? start + 1 : 0;
+        const to = start + slice.length;
+        document.getElementById('bulkPreviewPageLabel').textContent = `${from}–${to} of ${bulkPreviewStudents.length}`;
+        document.getElementById('bulkPreviewPrev').disabled = bulkPreviewPage <= 1;
+        document.getElementById('bulkPreviewNext').disabled = bulkPreviewPage >= pages;
+
+        // Back to the top of the list when the page changes, or row eleven starts
+        // halfway down the scroll box.
+        tbody.parentElement.parentElement.scrollTop = 0;
+    }
+
     function bulkParsePreview(file) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -976,23 +1066,8 @@
                     return;
                 }
 
-                const tbody = document.getElementById('bulkPreviewBody');
-                tbody.innerHTML = '';
-                parsed.students.forEach((s, i) => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-slate-50';
-                    const cell = v => String(v || '—').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
-                    tr.innerHTML = `
-                        <td class="px-3 py-2 text-slate-400">${i + 1}</td>
-                        <td class="px-3 py-2 text-slate-400">${s.row}</td>
-                        <td class="px-3 py-2 font-mono text-slate-700">${cell(s.student_number)}</td>
-                        <td class="px-3 py-2">${cell(s.last_name)}</td>
-                        <td class="px-3 py-2">${cell(s.first_name)}</td>
-                        <td class="px-3 py-2 text-slate-500">${cell(s.email)}</td>
-                        <td class="px-3 py-2 text-slate-500">${cell(s.phone_number)}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                bulkPreviewStudents = parsed.students;
+                bulkPreviewGo(1);
 
                 document.getElementById('bulkPreviewCount').textContent = `(${parsed.students.length} student${parsed.students.length!==1?'s':''})`;
                 document.getElementById('bulkImportBtn').classList.remove('hidden');
