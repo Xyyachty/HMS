@@ -477,6 +477,7 @@
                         <thead class="bg-slate-50 sticky top-0">
                             <tr>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">#</th>
+                                <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">Sheet</th>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">Student ID</th>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">Last Name</th>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">First Name</th>
@@ -487,7 +488,7 @@
                         <tbody id="bulkPreviewBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
-                <p class="text-xs text-slate-400 mt-2">Showing first 10 rows. All rows will be imported.</p>
+                <p class="text-xs text-slate-400 mt-2">Every row below will be imported. &ldquo;Sheet&rdquo; is the row number in your Excel file.</p>
             </div>
 
             <!-- Step 3: Results -->
@@ -971,11 +972,12 @@
 
                 const tbody = document.getElementById('bulkPreviewBody');
                 tbody.innerHTML = '';
-                parsed.students.slice(0, 10).forEach(s => {
+                parsed.students.forEach((s, i) => {
                     const tr = document.createElement('tr');
                     tr.className = 'hover:bg-slate-50';
                     const cell = v => String(v || '—').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
                     tr.innerHTML = `
+                        <td class="px-3 py-2 text-slate-400">${i + 1}</td>
                         <td class="px-3 py-2 text-slate-400">${s.row}</td>
                         <td class="px-3 py-2 font-mono text-slate-700">${cell(s.student_number)}</td>
                         <td class="px-3 py-2">${cell(s.last_name)}</td>

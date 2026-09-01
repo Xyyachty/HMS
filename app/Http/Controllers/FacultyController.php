@@ -25,6 +25,19 @@ use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 class FacultyController extends Controller
 {
+    /**
+     * What a bulk-imported student's account opens with.
+     *
+     * The import used to generate one password per student and mail it. Render's
+     * free plan blocks outbound SMTP, so that email never left the server and the
+     * password existed nowhere a student could read it — every imported account
+     * was unusable. Faculty hand this one out in class instead.
+     *
+     * Shared, and therefore only as private as the class it was read out to. It is
+     * a starting credential, not a lasting one.
+     */
+    private const BULK_DEFAULT_PASSWORD = 'password';
+
     public function dashboard()
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
@@ -782,10 +795,11 @@ class FacultyController extends Controller
 
             $fullName = trim(implode(' ', array_filter([$firstName, $middleName, $lastName])));
 
-            // One password per student rather than a shared default. These go out by
-            // email, and a password every student knows is one every student can use
-            // on any classmate's account.
-            $plainPassword   = StudentWelcomeMailer::generatePassword();
+            // The same starting password for everyone in the file — see
+            // BULK_DEFAULT_PASSWORD for why the generated one was dropped. Still
+            // passed to the welcome email below, so a student who does receive it
+            // reads the same credential faculty gives out in class.
+            $plainPassword   = self::BULK_DEFAULT_PASSWORD;
             $defaultPassword = Hash::make($plainPassword);
 
             try {
