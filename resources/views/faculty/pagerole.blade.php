@@ -33,6 +33,18 @@
         to   { opacity:1; transform:translateY(0); }
     }
 
+    /* ── Send back (concept revision) ──
+       Spelled out rather than composed from utilities: public/css/app.css is a
+       frozen build with no teal in it, so the bg-teal-600 this button used to
+       carry resolved to nothing and it rendered white on white. Rose rather than
+       teal so it reads as the opposite of the emerald Approve beside it, and
+       matches the rose "Needs revision" badge the team sees on their side. */
+    .btn-sendback {
+        background:#E11D48; color:#fff; border:1px solid #BE123C;
+        box-shadow:0 4px 12px -2px rgba(225,29,72,.35);
+    }
+    .btn-sendback:hover { background:#BE123C; }
+
     /* ── Priority badges ── */
     .badge-high   { background:#FEF2F2; color:#B91C1C; border:1px solid #FECACA; }
     .badge-medium { background:#FFFBEB; color:#B45309; border:1px solid #FDE68A; }
@@ -2112,7 +2124,7 @@ function renderTeamConceptControls(entry, data) {
                     + '<span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve ' + escHtml(entry.slot_label)
                 + '</button>'
                 + '<button type="button" data-team-concept-action="' + slot + '" onclick="showTeamConceptRevisionForm(' + slot + ')"'
-                    + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition inline-flex items-center justify-center gap-1.5 shadow-sm shadow-teal-600/20">'
+                    + ' class="btn-sendback flex-1 min-w-[9rem] px-3 py-2 rounded-xl text-xs font-bold transition inline-flex items-center justify-center gap-1.5">'
                     + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back'
                 + '</button>'
             + '</div>'
@@ -2125,7 +2137,7 @@ function renderTeamConceptControls(entry, data) {
                 + '<p class="text-[10px] text-slate-400 mt-1">Required before sending back.</p>'
                 + '<div class="flex flex-wrap gap-2 mt-2">'
                     + '<button type="button" data-team-concept-action="' + slot + '" onclick="submitTeamConceptFeedback(' + slot + ', \'revise\')"'
-                        + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition inline-flex items-center justify-center gap-1.5 shadow-sm shadow-teal-600/20">'
+                        + ' class="btn-sendback flex-1 min-w-[9rem] px-3 py-2 rounded-xl text-xs font-bold transition inline-flex items-center justify-center gap-1.5">'
                         + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Confirm send back'
                     + '</button>'
                     + '<button type="button" onclick="hideTeamConceptRevisionForm(' + slot + ')"'
