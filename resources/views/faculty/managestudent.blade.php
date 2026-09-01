@@ -943,7 +943,13 @@
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
 
-                const allRows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""});
+                // range: 0 forces the grid to start at sheet row 1. Without it SheetJS
+                // starts at the sheet's used range instead — the registrar's list
+                // declares A2:I59, so every row came back one short of the number
+                // Excel shows, and the preview disagreed with the server's results
+                // table by one. PhpSpreadsheet's toArray() always starts at row 1, so
+                // this is what makes the two agree.
+                const allRows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: "", range: 0});
                 if (!allRows.length) {
                     Swal.fire({icon:'warning', title:'Empty File', text:'The file has no data rows.', timer:2500, showConfirmButton:false,
                         iconColor:'#F59E0B', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
