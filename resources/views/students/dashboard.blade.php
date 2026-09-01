@@ -460,10 +460,10 @@
                         <div id="teamHeaderConcept" class="hidden mt-4 pt-4 border-t border-white/15"></div>
                     </div>
 
-                    {{-- The concepts used to head this panel. They outgrew it once there
-                         were two of them, each with its own state, feedback and history,
-                         so they have their own panel below and this one is about members
-                         again. --}}
+                    {{-- The concepts used to head this panel. Proposing them is Front Desk's
+                         task, so it is done on that task's row in Tasks; only the approved
+                         concept comes back here, in the team header above, and this panel is
+                         about members again. --}}
 
                     <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
                         <h3 class="text-sm font-bold text-slate-800">All Members</h3>
@@ -546,112 +546,11 @@
                     @endif
                 </div>
 
-                {{-- The team's two hotel concepts, side by side, while faculty is still
-                     choosing. Faculty judges each separately, so each card carries its own
-                     state, its own feedback and its own edit history. Front Desk proposes
-                     each first version; every member may then improve either one; Front
-                     Desk hands both in with the single button in this header, because the
-                     pair exists so faculty can weigh them against each other.
-
-                     Once faculty decides, this whole card hides — paintTeamHeaderConcept()
-                     toggles it — because there is nothing left to propose or compare; the
-                     winner has already moved up into the team header above.
-
-                     The whole panel is rendered from #conceptPanel by the same JS that
-                     repaints it after a save or a submit, so there is one description of
-                     this markup rather than a server copy and a client copy that drift. --}}
-                <div id="conceptPanelCard" class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
-                        <div class="min-w-0">
-                            <h3 class="text-sm font-bold text-slate-800">Hotel Concepts</h3>
-                            <p class="text-[11px] text-slate-400">Two proposals for your faculty to review.</p>
-                        </div>
-                        <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
-                            class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60 hidden">
-                            <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
-                            <span>Submit both to Faculty</span>
-                        </button>
-                    </div>
-
-                    @if (session('success'))
-                        <div class="mx-4 mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                            {{ session('success') }}
-                        </div>
-                    @endif
-                    @if ($errors->any())
-                        <div class="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                            {{ $errors->first() }}
-                        </div>
-                    @endif
-
-                    <div id="conceptPanel" class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
-                </div>
-
-                @if($group)
-                    {{-- Edit dialog behind the header's Edit button. Saves over fetch so the
-                         header, the task card and the history all move together, without
-                         throwing the member back to the top of the dashboard.
-
-                         Rendered for every member of a team rather than gated on the edit
-                         right: a save or a faculty verdict can open editing up while the
-                         page is still open, and the button that reveals this dialog is
-                         repainted from that response. The controller is the real gate. --}}
-                    <div id="hotelConceptModal" class="fixed inset-0 z-50 hidden">
-                        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeHotelConceptModal()"></div>
-                        <div class="relative top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100 w-[92vw] max-w-xl max-h-[90vh] overflow-y-auto">
-                            <div class="brand-gradient px-5 py-4 flex items-center justify-between gap-3 sticky top-0 z-10">
-                                <div class="min-w-0">
-                                    <p class="text-white/60 text-[9px] font-bold uppercase tracking-[0.15em]">Task 1 · Your Team</p>
-                                    <h4 id="hotelConceptModalTitle" class="text-base font-extrabold text-white">Hotel Concept</h4>
-                                </div>
-                                <button type="button" onclick="closeHotelConceptModal()"
-                                    class="w-8 h-8 rounded-full text-white/70 hover:text-white hover:bg-white/15 transition flex items-center justify-center shrink-0">
-                                    <span class="iconify text-xl" data-icon="mdi:close"></span>
-                                </button>
-                            </div>
-
-                            {{-- One dialog serves both concepts; the slot says which one is
-                                 open, and openHotelConceptModal() fills the fields from it. --}}
-                            <form id="hotelConceptForm" method="POST" action="{{ route('students.hotel-concept.store') }}" class="p-5 space-y-4">
-                                @csrf
-                                <input type="hidden" name="slot" value="">
-                                <div id="hotelConceptFormError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"></div>
-
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Title</label>
-                                    <input name="title" type="text" required maxlength="150"
-                                        placeholder="e.g. Seaside Serenity Resort"
-                                        class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Type</label>
-                                    <select name="hotel_type" required
-                                        class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
-                                        <option value="">Select hotel type</option>
-                                        @foreach(\App\Models\HotelConcept::HOTEL_TYPES as $typeKey => $typeLabel)
-                                            <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
-                                    <textarea name="description" required rows="5" maxlength="5000"
-                                        placeholder="What the hotel is, who it serves, what makes it different."
-                                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
-                                </div>
-
-                                <div class="flex items-center justify-end gap-2 pt-1">
-                                    <button type="button" onclick="closeHotelConceptModal()"
-                                        class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition">Cancel</button>
-                                    <button type="submit" id="hotelConceptSubmit"
-                                        class="px-4 py-2 brand-gradient text-white rounded-xl text-xs font-bold shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60">
-                                        Save concept
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                @endif
+                {{-- The concepts themselves are not proposed here any more. They are a
+                     Front Desk task, so they are done on that task's own row over in
+                     Tasks; what survives in this section is the approved concept in the
+                     team header above, which is the team's identity rather than a
+                     proposal. --}}
             </div>
 
             <!-- ==================== TASKS SECTION ==================== -->
@@ -701,8 +600,20 @@
                                         // in sync with student_id, so the user id is enough here.
                                         $isMine = !$task->assigned_to || (int) $task->assigned_to === (int) auth()->id();
                                     @endphp
-                                    <div class="task-row px-4 py-3 flex items-start gap-3">
-                                        @if($isMine)
+                                    {{-- The concept task is not a one-line tick: the whole proposal
+                                         is written on this row, so it stacks instead of sitting on
+                                         one line, and keeps #conceptPanelCard — paintTeamHeaderConcept()
+                                         hides the row by that id once faculty has chosen. --}}
+                                    <div class="task-row px-4 py-3{{ $task->is_hotel_concept ? ' space-y-3' : '' }}"
+                                        @if($task->is_hotel_concept) id="conceptPanelCard" @endif>
+                                        <div class="flex items-start gap-3">
+                                        @if($task->is_hotel_concept)
+                                            {{-- No tick: this task closes on the faculty verdict, not
+                                                 on a checkbox — see the guard in students.tasks.complete. --}}
+                                            <div class="mt-1 w-3 h-3 shrink-0 flex items-center justify-center">
+                                                <span class="iconify text-brand text-xs" data-icon="mdi:lightbulb-outline"></span>
+                                            </div>
+                                        @elseif($isMine)
                                             <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0 mt-1.5 leading-none">
                                                 @csrf
                                                 <button type="submit"
@@ -743,12 +654,14 @@
                                             @endif
                                         </div>
                                         @if($task->is_hotel_concept)
-                                            {{-- This one is not ticked off: it closes when Front Desk
-                                                 submits the concept itself, over in My Team. --}}
-                                            <button type="button" onclick="showSection('group')"
-                                                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">
-                                                <span class="iconify text-sm" data-icon="mdi:lightbulb-outline"></span>
-                                                Open Hotel Concept
+                                            {{-- One button for the pair: faculty is asked to weigh the
+                                                 two against each other, so they go in together. Hidden
+                                                 until both slots are filled — paintHotelConcepts()
+                                                 toggles it off conceptState.can_submit. --}}
+                                            <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
+                                                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60 hidden">
+                                                <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
+                                                <span>Submit both to Faculty</span>
                                             </button>
                                         @elseif($isMine)
                                             {{-- The real affordance; the circle above is too small to be the only target. --}}
@@ -765,6 +678,27 @@
                                             </form>
                                         @else
                                             <span class="shrink-0 text-[10px] font-semibold text-slate-300 whitespace-nowrap">Teammate's task</span>
+                                        @endif
+                                        </div>
+
+                                        @if($task->is_hotel_concept)
+                                            @if (session('success'))
+                                                <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                                                    {{ session('success') }}
+                                                </div>
+                                            @endif
+                                            @if ($errors->any())
+                                                <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                                                    {{ $errors->first() }}
+                                                </div>
+                                            @endif
+
+                                            {{-- Both proposals, side by side, so faculty's choice can be
+                                                 weighed here too. Rendered from this one container by
+                                                 paintHotelConcepts(), which repaints after every save
+                                                 and every submit — there is no server copy of this
+                                                 markup to drift from the client one. --}}
+                                            <div id="conceptPanel" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
                                         @endif
                                     </div>
                                 @endforeach
@@ -1196,6 +1130,76 @@
         </main>
     </div>
 
+    @if($group)
+        {{-- Edit dialog behind each slot's Propose/Edit button. Saves over fetch so the
+             task row, the team header and the history all move together, without throwing
+             the member back to the top of the dashboard.
+
+             It lives out here rather than inside a section: every .section-content is
+             hidden when another section is showing, and a dialog nested in one would be
+             hidden with it.
+
+             Rendered for every member of a team rather than gated on the edit right: a
+             save or a faculty verdict can open editing up while the page is still open,
+             and the button that reveals this dialog is repainted from that response. The
+             controller is the real gate. --}}
+        <div id="hotelConceptModal" class="fixed inset-0 z-50 hidden">
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeHotelConceptModal()"></div>
+            <div class="relative top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100 w-[92vw] max-w-xl max-h-[90vh] overflow-y-auto">
+                <div class="brand-gradient px-5 py-4 flex items-center justify-between gap-3 sticky top-0 z-10">
+                    <div class="min-w-0">
+                        <p class="text-white/60 text-[9px] font-bold uppercase tracking-[0.15em]">Hotel Concepts · Your Task</p>
+                        <h4 id="hotelConceptModalTitle" class="text-base font-extrabold text-white">Hotel Concept</h4>
+                    </div>
+                    <button type="button" onclick="closeHotelConceptModal()"
+                        class="w-8 h-8 rounded-full text-white/70 hover:text-white hover:bg-white/15 transition flex items-center justify-center shrink-0">
+                        <span class="iconify text-xl" data-icon="mdi:close"></span>
+                    </button>
+                </div>
+
+                {{-- One dialog serves both concepts; the slot says which one is
+                     open, and openHotelConceptModal() fills the fields from it. --}}
+                <form id="hotelConceptForm" method="POST" action="{{ route('students.hotel-concept.store') }}" class="p-5 space-y-4">
+                    @csrf
+                    <input type="hidden" name="slot" value="">
+                    <div id="hotelConceptFormError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"></div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Concept Title</label>
+                        <input name="title" type="text" required maxlength="150"
+                            placeholder="e.g. Seaside Serenity Resort"
+                            class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Type</label>
+                        <select name="hotel_type" required
+                            class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
+                            <option value="">Select hotel type</option>
+                            @foreach(\App\Models\HotelConcept::HOTEL_TYPES as $typeKey => $typeLabel)
+                                <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
+                        <textarea name="description" required rows="5" maxlength="5000"
+                            placeholder="What the hotel is, who it serves, what makes it different."
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-1">
+                        <button type="button" onclick="closeHotelConceptModal()"
+                            class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition">Cancel</button>
+                        <button type="submit" id="hotelConceptSubmit"
+                            class="px-4 py-2 brand-gradient text-white rounded-xl text-xs font-bold shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60">
+                            Save concept
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
     <!-- Member Activity Logs Modal -->
     <div id="memberActivityModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeMemberActivityModal()"></div>
@@ -1401,8 +1405,10 @@
         }
 
         /* The concept faculty chose, in the team header. Once one slot's payload
-           comes back approved, that is the team's identity now — the proposals
-           panel below has nothing left to do, so it hides and this fills in. */
+           comes back approved, that is the team's identity now — the concept task
+           row over in Tasks has nothing left to propose, so it hides and this fills
+           in. (The row usually goes on its own, since a verdict archives the task;
+           the toggle covers the page that was already open when it landed.) */
         function paintTeamHeaderConcept() {
             const container = document.getElementById('teamHeaderConcept');
             const panelCard = document.getElementById('conceptPanelCard');
@@ -1562,7 +1568,7 @@
             const confirmed = await Swal.fire({
                 icon: 'question',
                 title: 'Submit your hotel concepts?',
-                text: 'Submit your hotel concepts to your faculty? Your team can keep improving either concept until your faculty approves one.',
+                text: 'Submit your hotel concepts to your faculty? You can keep improving either concept until your faculty approves one.',
                 showCancelButton: true,
                 confirmButtonText: 'Submit',
                 confirmButtonColor: '#DB2777',

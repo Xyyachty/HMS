@@ -406,7 +406,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // the row — otherwise Front Desk could mark it done with nothing written.
         if ($task->is_hotel_concept) {
             return back()->withErrors([
-                'task' => 'Submit the hotel concept from My Team instead — that is what closes this task.',
+                'task' => 'Submit both concepts from this task instead — that is what closes it.',
             ]);
         }
 

@@ -67,8 +67,8 @@ class HotelConceptController extends Controller
      *
      * The slot says which of the two is being written. The gate reads that slot's
      * stored concept first, because who may write depends on what state it is in:
-     * Front Desk alone proposes each first version, the whole team improves it
-     * afterwards, and nobody edits it while faculty holds it.
+     * Front Desk owns both concepts throughout, and keeps editing while faculty
+     * holds them — the verdict is what closes them.
      */
     public function store(Request $request)
     {

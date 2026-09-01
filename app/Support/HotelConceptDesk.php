@@ -17,13 +17,13 @@ use Illuminate\Support\Facades\DB;
  *
  * A team proposes two concepts, and each one moves through states of its own:
  *
- *   draft          proposed; the whole team improves it
- *   submitted      handed to faculty; the team keeps improving it while they read
- *   needs_revision sent back with feedback; the whole team edits again
+ *   draft          proposed; Front Desk keeps improving it
+ *   submitted      handed to faculty; still editable while they read
+ *   needs_revision sent back with feedback; Front Desk edits again
  *   approved       the team's official concept, final and read-only
  *   not_selected   the other one, once faculty picked; still editable, never official
  *
- * Everything except approved stays open, because the team is asked to keep
+ * Everything except approved stays open, because Front Desk is asked to keep
  * improving both proposals right up until faculty chooses between them. Approval
  * is the one irreversible step: it settles which concept the team builds.
  *
@@ -61,7 +61,7 @@ class HotelConceptDesk
      */
     public const TASK_KIND = 'hotel_concept';
     public const TASK_TITLE = 'Propose Two Hotel Concepts';
-    public const TASK_DESCRIPTION = 'Propose two hotel concepts your team could build: for each one, its name, its type and what makes it different. Front Desk writes the first version of each, then the whole team can improve them before Front Desk submits both to your faculty, who reviews each concept separately.';
+    public const TASK_DESCRIPTION = 'Propose two hotel concepts your team could build: for each one, its title, its type and what makes it different. Write both here, improve them as often as you like, then submit the pair to your faculty, who reviews each concept separately and approves one.';
 
     public const STATUS_DRAFT = 'draft';
     public const STATUS_SUBMITTED = 'submitted';
@@ -81,7 +81,7 @@ class HotelConceptDesk
     /**
      * States in which a concept is open for edits.
      *
-     * The team keeps improving a concept while it sits with faculty and after it
+     * Front Desk keeps improving a concept while it sits with faculty and after it
      * comes back for revision. The choice closes both concepts at once: the
      * approved one because it is final, the other because it is out of the run.
      */
@@ -115,19 +115,24 @@ class HotelConceptDesk
     /**
      * Who may write a concept.
      *
-     * Front Desk alone proposes each first version — that is their task. Once a
-     * concept exists it belongs to the team, so every member may improve it, which
-     * is the point of the workflow. That stays true while it sits with faculty and
-     * after it comes back for revision. Faculty's choice ends it either way: the
-     * approved concept is final, the other is out of the run.
+     * Front Desk alone, first version and every version after it. The concepts are
+     * proposed on the Front Desk task row in the student's Tasks section, and a
+     * teammate without the role never sees that row — so the gate has to say the
+     * same thing, or the endpoint would still accept a write nobody can reach.
+     *
+     * Editing stays open while the pair sits with faculty and after one comes back
+     * for revision. Faculty's choice ends it either way: the approved concept is
+     * final, the other is out of the run.
      */
     public static function canEdit(?HotelConcept $concept, array $roleKeys): bool
     {
-        if (!$concept) {
-            return in_array(self::OWNING_ROLE, $roleKeys, true);
+        if (!in_array(self::OWNING_ROLE, $roleKeys, true)) {
+            return false;
         }
 
-        return in_array(self::status($concept), self::EDITABLE_STATUSES, true);
+        return $concept
+            ? in_array(self::status($concept), self::EDITABLE_STATUSES, true)
+            : true;
     }
 
     /**
@@ -229,6 +234,10 @@ class HotelConceptDesk
     /** Why an edit was refused, so the dashboard can say something useful. */
     public static function editRefusal(?HotelConcept $concept, array $roleKeys): string
     {
+        if (!in_array(self::OWNING_ROLE, $roleKeys, true)) {
+            return 'Only the Front Desk members of this team can write a hotel concept.';
+        }
+
         if (!$concept) {
             return 'Only the Front Desk members of this team can propose a hotel concept.';
         }
