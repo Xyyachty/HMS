@@ -1138,8 +1138,8 @@
 ═══════════════════════════════════════════════ --}}
 <div id="panel-create_task" class="tab-panel {{ $activeTab === 'create_task' ? 'active' : '' }}">
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        {{-- The block tabs matter here: the team step lists this block's teams, so
-             faculty need to switch blocks without leaving the wizard. --}}
+        {{-- The block tabs matter here: the team picker lists this block's teams, so
+             faculty need to switch blocks without leaving the form. --}}
         @include('faculty.partials.teams-subnav', [
             'teamsSubTab' => $activeTab,
             'groups' => $groups ?? [],
@@ -1156,7 +1156,7 @@
             </div>
             <div>
                 <h3 class="font-bold text-brand text-base">Set New Task</h3>
-                <p class="text-xs text-slate-400 mt-0.5">Pick a department, select tasks, set a due date, and assign.</p>
+                <p class="text-xs text-slate-400 mt-0.5">Pick a team, tick the tasks, set a due date, and assign - all on one page.</p>
             </div>
         </div>
 
@@ -1178,36 +1178,16 @@
                      $tasksByRole, which shadowed the controller's real task rows for
                      everything below it. --}}
 
-                {{-- ═══════ STEP INDICATORS ═══════ --}}
-                <div class="flex items-center justify-center gap-2">
-                    <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand text-white text-xs font-bold" id="step-ind-1">
-                        <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
-                        <span class="hidden sm:inline">Team</span>
-                    </div>
-                    <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-1"></div>
-                    <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-2">
-                        <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">2</span>
-                        <span class="hidden sm:inline">Tasks</span>
-                    </div>
-                    <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-2"></div>
-                    <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-3">
-                        <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">3</span>
-                        <span class="hidden sm:inline">Due Date</span>
-                    </div>
-                    <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-3"></div>
-                    <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-4">
-                        <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">4</span>
-                        <span class="hidden sm:inline">Assign</span>
-                    </div>
-                </div>
-
-                {{-- ═══════ STEP 1: TEAM ═══════
+                {{-- ═══════ TEAM ═══════
                      A task belongs to one team. The radio is a real form field, unlike
-                     the department below, which reaches the server as the tasks[] key. --}}
-                <div id="task-step-1" class="task-step">
-                    <div class="text-center mb-4">
-                        <h4 class="text-sm font-bold text-slate-700">Which team is this task for?</h4>
-                        <p class="text-xs text-slate-400 mt-1">Only the team you pick will see it</p>
+                     the department, which reaches the server as the tasks[] key. --}}
+                <div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="w-6 h-6 rounded-lg bg-brand text-white text-[11px] font-bold flex items-center justify-center shrink-0">1</span>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-700">Which team is this task for?</h4>
+                            <p class="text-xs text-slate-400">Only the team you pick will see it</p>
+                        </div>
                     </div>
 
                     @if(($groups ?? collect())->isEmpty())
@@ -1234,17 +1214,10 @@
                                 </label>
                             @endforeach
                         </div>
-
-                        <div class="mt-4 flex justify-end">
-                            <button type="button" onclick="goToStep(2)" id="btn-to-step2"
-                                class="px-5 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" disabled>
-                                <span class="iconify" data-icon="mdi:arrow-right"></span> Continue
-                            </button>
-                        </div>
                     @endif
                 </div>
 
-                {{-- ═══════ STEP 2: TASKS ═══════
+                {{-- ═══════ TASKS ═══════
                      One block per numbered step of the simulation. $taskSteps is the
                      checklist pivoted on position, so "Task 1" holds the first task of
                      every department at once and ticking its header hands that whole
@@ -1252,14 +1225,11 @@
 
                      The field names are unchanged - tasks[role][] carrying the position
                      as its value - because storeTask() already loops every role in one
-                     post. The department step this replaced only ever narrowed which of
-                     those keys got filled in. --}}
-                <div id="task-step-2" class="task-step hidden">
-                    <div class="flex items-center justify-between mb-4">
+                     post. --}}
+                <div>
+                    <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
-                            <button type="button" onclick="goToStep(1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
-                                <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
-                            </button>
+                            <span class="w-6 h-6 rounded-lg bg-brand text-white text-[11px] font-bold flex items-center justify-center shrink-0">2</span>
                             <div>
                                 <h4 class="text-sm font-bold text-slate-700">Which tasks are you setting?</h4>
                                 <p class="text-xs text-slate-400">Tick a task number to give that step to every department at once</p>
@@ -1324,23 +1294,14 @@
                             </div>
                         @endforeach
                     </div>
-
-                    <div class="mt-4 flex justify-end">
-                        <button type="button" onclick="goToStep(3)" id="btn-to-step3"
-                            class="px-5 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" disabled>
-                            <span class="iconify" data-icon="mdi:arrow-right"></span> Continue
-                        </button>
-                    </div>
                 </div>
 
-                {{-- ═══════ STEP 3: DUE DATE ═══════ --}}
-                <div id="task-step-3" class="task-step hidden">
-                    <div class="flex items-center gap-2 mb-4">
-                        <button type="button" onclick="goToStep(2)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
-                            <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
-                        </button>
+                {{-- ═══════ DUE DATE ═══════ --}}
+                <div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="w-6 h-6 rounded-lg bg-slate-200 text-slate-500 text-[11px] font-bold flex items-center justify-center shrink-0">3</span>
                         <div>
-                            <h4 class="text-sm font-bold text-slate-700">Set a due date and time?</h4>
+                            <h4 class="text-sm font-bold text-slate-700">Due date and time</h4>
                             <p class="text-xs text-slate-400">Optional - leave blank for no deadline</p>
                         </div>
                     </div>
@@ -1353,76 +1314,35 @@
                         </div>
                         <p class="text-[11px] text-slate-400 mt-1.5">Students see this deadline in their own task list.</p>
                     </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="button" onclick="goToStep(4)"
-                            class="px-5 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2">
-                            <span class="iconify" data-icon="mdi:arrow-right"></span> Review & Assign
-                        </button>
-                    </div>
                 </div>
 
-                {{-- ═══════ STEP 4: REVIEW ═══════ --}}
-                <div id="task-step-4" class="task-step hidden">
-                    <div class="flex items-center gap-2 mb-4">
-                        <button type="button" onclick="goToStep(3)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
-                            <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
-                        </button>
-                        <div>
-                            <h4 class="text-sm font-bold text-slate-700">Review your assignment</h4>
-                            <p class="text-xs text-slate-400">Confirm everything looks good before assigning</p>
+                {{-- ═══════ SUMMARY + ASSIGN ═══════
+                     What the review step used to say, kept live at the foot of the form
+                     so nothing has to be paged through to check it. --}}
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 min-w-0">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="iconify text-emerald-500 shrink-0" data-icon="mdi:account-group-outline"></span>
+                            <span class="text-xs text-slate-400 font-medium">Team</span>
+                            <span class="text-sm font-bold text-slate-800 truncate" id="reviewTeamName">—</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="iconify text-brand shrink-0" data-icon="mdi:clipboard-text-outline"></span>
+                            <span class="text-sm font-bold text-slate-800" id="reviewTaskCount">0 tasks</span>
+                            <span class="text-xs text-slate-400" id="reviewDeptName">—</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="iconify text-blue-500 shrink-0" data-icon="mdi:calendar-outline"></span>
+                            <span class="text-sm font-bold text-slate-800" id="reviewDueDate">No deadline</span>
                         </div>
                     </div>
 
-                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                                <span class="iconify text-emerald-500" data-icon="mdi:account-group-outline"></span>
-                            </div>
-                            <div>
-                                <p class="text-xs text-slate-400 font-medium">Team</p>
-                                <p class="text-sm font-bold text-slate-800" id="reviewTeamName">—</p>
-                            </div>
-                        </div>
-                        <div class="h-px bg-slate-200"></div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
-                                <span class="iconify text-brand" data-icon="mdi:office-building-outline"></span>
-                            </div>
-                            <div>
-                                <p class="text-xs text-slate-400 font-medium">Departments</p>
-                                <p class="text-sm font-bold text-slate-800" id="reviewDeptName">—</p>
-                            </div>
-                        </div>
-                        <div class="h-px bg-slate-200"></div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
-                                <span class="iconify text-amber-500" data-icon="mdi:clipboard-text-outline"></span>
-                            </div>
-                            <div>
-                                <p class="text-xs text-slate-400 font-medium">Tasks Selected</p>
-                                <p class="text-sm font-bold text-slate-800" id="reviewTaskCount">0 tasks</p>
-                            </div>
-                        </div>
-                        <div class="h-px bg-slate-200"></div>
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                <span class="iconify text-blue-500" data-icon="mdi:calendar-outline"></span>
-                            </div>
-                            <div>
-                                <p class="text-xs text-slate-400 font-medium">Due Date</p>
-                                <p class="text-sm font-bold text-slate-800" id="reviewDueDate">No deadline</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit"
-                            class="px-6 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2">
-                            <span class="iconify" data-icon="mdi:check-circle-outline"></span> Set Tasks
-                        </button>
-                    </div>
+                    <button type="submit" id="submitTasksBtn"
+                        class="px-6 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" disabled>
+                        <span class="iconify" data-icon="mdi:check-circle-outline"></span> Set Tasks
+                    </button>
                 </div>
+
 
                 {{-- ═══════ ACTIVE TASKS OVERVIEW ═══════ --}}
                 <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
@@ -3028,55 +2948,20 @@ function onUpdateMemberToggle(checkbox) {
     refreshRoleAvailability('update');
 }
 
-// ── Task Assignment Wizard ─────────────────────
-let currentStep = 1;
+// ── Task Assignment Form ───────────────────────
+// One page, no steps: team, tasks and due date are all on screen at once, and the
+// summary at the foot updates as they are filled in. It used to be a five-screen
+// wizard, which cost a click per screen to reach the assign button.
 let selectedTeam = null;
-
-const TOTAL_STEPS = 4;
 
 // How many members of each team hold each role, so a task row can say who is
 // actually there to receive it.
 const TEAM_ROLE_COUNTS = @json($teamRoleCounts ?? []);
 
-function goToStep(step) {
-    document.querySelectorAll('.task-step').forEach(s => s.classList.add('hidden'));
-    document.getElementById('task-step-' + step).classList.remove('hidden');
-    currentStep = step;
-    updateStepIndicators();
-    if (step === TOTAL_STEPS) updateReview();
-}
-
-function updateStepIndicators() {
-    for (let i = 1; i <= TOTAL_STEPS; i++) {
-        const ind = document.getElementById('step-ind-' + i);
-        const line = document.getElementById('step-line-' + (i - 1));
-        if (!ind) continue;
-
-        if (i <= currentStep) {
-            ind.classList.remove('bg-slate-100', 'text-slate-400');
-            ind.classList.add('bg-brand', 'text-white');
-            ind.querySelector('span:first-child').classList.remove('bg-slate-200');
-            ind.querySelector('span:first-child').classList.add('bg-white/20');
-        } else {
-            ind.classList.add('bg-slate-100', 'text-slate-400');
-            ind.classList.remove('bg-brand', 'text-white');
-            ind.querySelector('span:first-child').classList.add('bg-slate-200');
-            ind.querySelector('span:first-child').classList.remove('bg-white/20');
-        }
-        if (line) {
-            line.classList.toggle('bg-brand', i <= currentStep);
-            line.classList.toggle('bg-slate-200', i > currentStep);
-        }
-    }
-}
-
 function selectTeam(groupName) {
     selectedTeam = groupName;
-
-    const btn = document.getElementById('btn-to-step2');
-    if (btn) btn.disabled = !selectedTeam;
-
     updateRoleMemberCounts();
+    updateSubmitState();
 }
 
 // The headcount hint the department step used to carry on its cards. A task row
@@ -3120,7 +3005,7 @@ function toggleTaskGroupAll(step) {
 
     master.indeterminate = false;
     taskGroupBoxes(step).forEach(cb => cb.checked = master.checked);
-    updateContinueBtn();
+    updateSubmitState();
 }
 
 // The header box reflects its rows: all, none, or the browser's own partial mark
@@ -3146,34 +3031,38 @@ function selectAllVisibleTasks() {
         master.indeterminate = false;
     });
 
-    updateContinueBtn();
+    updateSubmitState();
 }
 
-function updateContinueBtn() {
-    const btn = document.getElementById('btn-to-step3');
-    if (btn) {
-        btn.disabled = document.querySelectorAll('.task-check:checked').length === 0;
-    }
-}
-
-function updateReview() {
-    // Team
-    document.getElementById('reviewTeamName').textContent = selectedTeam || '—';
-
-    // A step spans every department that has work at that position, so the review
-    // counts them rather than naming one.
+// ── Summary + submit ───────────────────────────
+// Assigning needs a team and at least one task; the server checks the team too,
+// but there is no reason to let the button be pressed without one.
+function updateSubmitState() {
     const checked = Array.from(document.querySelectorAll('.task-check:checked'));
-    const roles = new Set(checked.map(cb => cb.dataset.role));
 
-    document.getElementById('reviewDeptName').textContent = roles.size
-        ? roles.size + (roles.size === 1 ? ' department' : ' departments')
-        : '—';
+    const btn = document.getElementById('submitTasksBtn');
+    if (btn) btn.disabled = !selectedTeam || checked.length === 0;
+
+    updateSummary(checked);
+}
+
+function updateSummary(checked) {
+    checked = checked || Array.from(document.querySelectorAll('.task-check:checked'));
+
+    document.getElementById('reviewTeamName').textContent = selectedTeam || '—';
 
     document.getElementById('reviewTaskCount').textContent =
         checked.length + ' task' + (checked.length !== 1 ? 's' : '');
 
-    // Due date. datetime-local already carries the time, so parse it as-is
-    // rather than pinning midnight the way the date-only input needed.
+    // A step spans every department that has work at that position, so the summary
+    // counts them rather than naming one.
+    const roles = new Set(checked.map(cb => cb.dataset.role));
+    document.getElementById('reviewDeptName').textContent = roles.size
+        ? 'across ' + roles.size + (roles.size === 1 ? ' department' : ' departments')
+        : '—';
+
+    // datetime-local already carries the time, so parse it as-is rather than
+    // pinning midnight the way the date-only input needed.
     const dueDate = document.querySelector('input[name="due_date"]').value;
     document.getElementById('reviewDueDate').textContent = dueDate
         ? new Date(dueDate).toLocaleString('en-US', {
@@ -3193,19 +3082,17 @@ function resetTaskWizard() {
     });
     document.querySelector('input[name="due_date"]').value = '';
 
-    const btn = document.getElementById('btn-to-step2');
-    if (btn) btn.disabled = true;
-
-    updateContinueBtn();
     updateRoleMemberCounts();
-    goToStep(1);
+    updateSubmitState();
 }
 
-// Track checkbox changes
+// Track checkbox and due-date changes
 document.addEventListener('change', function(e) {
     if (e.target.classList.contains('task-check')) {
         syncTaskGroup(e.target.dataset.group);
-        updateContinueBtn();
+        updateSubmitState();
+    } else if (e.target.name === 'due_date') {
+        updateSummary();
     }
 });
 
@@ -3215,10 +3102,10 @@ document.addEventListener('change', function(e) {
     const activeTab = '{{ $activeTab }}';
     if (activeTab === 'create_task') {
         // A failed submit re-renders with the team still ticked; pick it back up so
-        // the wizard does not reopen claiming no team was chosen.
+        // the summary and the headcount hints match what is on the form.
         const checkedTeam = document.querySelector('.task-team-radio:checked');
         if (checkedTeam) selectTeam(checkedTeam.value);
-        goToStep(1);
+        updateSubmitState();
     }
     // Auto-open create team modal if there are validation errors from that form
     @if($errors->any() && in_array(old('_form_source'), ['create_teams_bulk', 'insert_student', 'create_team'], true))
