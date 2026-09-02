@@ -1187,21 +1187,16 @@
                     <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-1"></div>
                     <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-2">
                         <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">2</span>
-                        <span class="hidden sm:inline">Department</span>
+                        <span class="hidden sm:inline">Tasks</span>
                     </div>
                     <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-2"></div>
                     <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-3">
                         <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">3</span>
-                        <span class="hidden sm:inline">Tasks</span>
+                        <span class="hidden sm:inline">Due Date</span>
                     </div>
                     <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-3"></div>
                     <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-4">
                         <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">4</span>
-                        <span class="hidden sm:inline">Due Date</span>
-                    </div>
-                    <div class="w-8 h-0.5 bg-slate-200 rounded" id="step-line-4"></div>
-                    <div class="step-indicator flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" id="step-ind-5">
-                        <span class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">5</span>
                         <span class="hidden sm:inline">Assign</span>
                     </div>
                 </div>
@@ -1249,44 +1244,25 @@
                     @endif
                 </div>
 
-                {{-- ═══════ STEP 2: DEPARTMENT ═══════ --}}
-                <div id="task-step-2" class="task-step hidden">
-                    <div class="flex items-center gap-2 mb-4">
-                        <button type="button" onclick="goToStep(1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
-                            <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
-                        </button>
-                        <div>
-                            <h4 class="text-sm font-bold text-slate-700">Which department needs tasks?</h4>
-                            <p class="text-xs text-slate-400">Assigning to <span id="deptStepTeamName" class="font-semibold text-slate-500">this team</span></p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="taskDeptSelector">
-                        @foreach($rolesMeta ?? [] as $rKey => $rMeta)
-                            <button type="button" onclick="selectDepartment('{{ $rKey }}')"
-                                data-dept="{{ $rKey }}"
-                                class="task-dept-btn group p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-brand/40 hover:shadow-md transition-all text-center">
-                                <span class="iconify text-2xl {{ $rMeta['color'] }} group-hover:scale-110 transition-transform" data-icon="{{ $rMeta['icon'] }}"></span>
-                                <p class="text-xs font-bold text-slate-700 mt-2">{{ $rMeta['label'] }}</p>
-                                <p class="text-[10px] text-slate-400 mt-0.5">{{ count($taskChecklist[$rKey] ?? []) }} tasks</p>
-                                {{-- Filled by updateDeptMemberCounts() once a team is known. Assigning
-                                     to a role nobody fills is still allowed: the row waits for whoever
-                                     takes it. --}}
-                                <p class="text-[10px] font-semibold text-slate-400 mt-1 dept-member-count" data-dept-count="{{ $rKey }}"></p>
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
+                {{-- ═══════ STEP 2: TASKS ═══════
+                     One block per numbered step of the simulation. $taskSteps is the
+                     checklist pivoted on position, so "Task 1" holds the first task of
+                     every department at once and ticking its header hands that whole
+                     stage to the team in one submit.
 
-                {{-- ═══════ STEP 3: TASKS ═══════ --}}
-                <div id="task-step-3" class="task-step hidden">
+                     The field names are unchanged - tasks[role][] carrying the position
+                     as its value - because storeTask() already loops every role in one
+                     post. The department step this replaced only ever narrowed which of
+                     those keys got filled in. --}}
+                <div id="task-step-2" class="task-step hidden">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
-                            <button type="button" onclick="goToStep(2)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
+                            <button type="button" onclick="goToStep(1)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
                                 <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
                             </button>
                             <div>
-                                <h4 class="text-sm font-bold text-slate-700" id="selectedDeptTitle">Select Tasks</h4>
-                                <p class="text-xs text-slate-400">Check the tasks you want to assign</p>
+                                <h4 class="text-sm font-bold text-slate-700">Which tasks are you setting?</h4>
+                                <p class="text-xs text-slate-400">Tick a task number to give that step to every department at once</p>
                             </div>
                         </div>
                         <button type="button" id="selectAllTasksBtn" onclick="selectAllVisibleTasks()" class="text-xs font-semibold text-brand hover:underline">
@@ -1294,54 +1270,73 @@
                         </button>
                     </div>
 
-                    @foreach($rolesMeta ?? [] as $rKey => $rMeta)
-                        <div id="taskPanel-{{ $rKey }}" class="task-checklist-panel hidden">
-                            @if(empty($taskChecklist[$rKey]))
-                                <div class="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
-                                    <span class="iconify text-3xl text-slate-300" data-icon="mdi:clipboard-off-outline"></span>
-                                    <p class="text-sm font-bold text-slate-500 mt-2">No tasks for {{ $rMeta['label'] }} yet</p>
-                                    <p class="text-xs text-slate-400 mt-1">Pick another department to assign tasks.</p>
-                                </div>
-                            @endif
-                            <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1">
-                                @foreach($taskChecklist[$rKey] ?? [] as $index => $task)
-                                    <label class="task-checkbox-card flex items-start gap-3 p-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl hover:bg-{{ $rMeta['color'] }}-50/50 hover:border-{{ $rMeta['color'] }}-200 transition cursor-pointer has-[:checked]:border-{{ $rMeta['color'] }}-400 has-[:checked]:bg-{{ $rMeta['color'] }}-50">
-                                        <input type="checkbox" name="tasks[{{ $rKey }}][]" value="{{ $index }}"
-                                            class="task-checkbox-{{ $rKey }} mt-0.5 rounded border-slate-300 text-{{ $rMeta['color'] }}-500 focus:ring-{{ $rMeta['color'] }}-500/30 task-check">
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex items-center gap-2 flex-wrap">
-                                                <span class="text-sm font-bold text-slate-800">{{ $task['title'] }}</span>
-                                                {{-- Website work shows a Before/After in the review; staff-tool work
-                                                     changes no page, so it is judged by opening the department. --}}
-                                                @php $isOps = ($task['scope'] ?? 'site') === \App\Support\TaskChecklist::SCOPE_OPS; @endphp
-                                                <span class="shrink-0 px-1.5 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wide
-                                                    {{ $isOps ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200' }}">
-                                                    {{ \App\Support\TaskChecklist::scopeLabel($task['scope'] ?? 'site') }}
-                                                </span>
-                                            </div>
-                                            <p class="text-xs text-slate-500 mt-0.5">{{ $task['description'] }}</p>
-                                        </div>
-                                        <input type="hidden" name="task_titles[{{ $rKey }}][{{ $index }}]" value="{{ $task['title'] }}">
-                                        <input type="hidden" name="task_descriptions[{{ $rKey }}][{{ $index }}]" value="{{ $task['description'] }}">
-                                        <input type="hidden" name="task_priorities[{{ $rKey }}][{{ $index }}]" value="{{ $task['priority'] }}">
+                    <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1">
+                        @foreach($taskSteps ?? [] as $step => $stepTasks)
+                            <div id="taskGroup-{{ $step }}" class="rounded-xl border-2 border-slate-200 bg-white overflow-hidden has-[:checked]:border-brand">
+                                <div class="flex items-center gap-3 p-3.5 bg-slate-50">
+                                    <input type="checkbox" id="taskGroupCheck-{{ $step }}"
+                                        onchange="toggleTaskGroupAll({{ $step }})"
+                                        class="task-group-check rounded border-slate-300 text-brand focus:ring-brand/30">
+                                    <label for="taskGroupCheck-{{ $step }}" class="flex-1 min-w-0 cursor-pointer flex items-center gap-2 flex-wrap">
+                                        <span class="text-sm font-bold text-slate-800">Task {{ $step + 1 }}</span>
+                                        <span class="text-xs text-slate-400">{{ count($stepTasks) }} {{ Str::plural('department', count($stepTasks)) }}</span>
                                     </label>
-                                @endforeach
+                                    <button type="button" onclick="toggleTaskGroup(this, {{ $step }})"
+                                        class="w-8 h-8 rounded-lg hover:bg-slate-200 flex items-center justify-center transition shrink-0">
+                                        <span class="iconify text-slate-400" data-icon="mdi:chevron-down"></span>
+                                    </button>
+                                </div>
+
+                                {{-- Collapsed by default: the point of the group is that you
+                                     rarely need to look inside it. --}}
+                                <div id="taskGroupBody-{{ $step }}" class="hidden divide-y divide-slate-100">
+                                    @foreach($rolesMeta ?? [] as $rKey => $rMeta)
+                                        @continue(!isset($stepTasks[$rKey]))
+                                        @php $task = $stepTasks[$rKey]; @endphp
+                                        <label class="task-checkbox-card flex items-start gap-3 p-3.5 hover:bg-slate-50 transition cursor-pointer has-[:checked]:bg-brand-soft">
+                                            <input type="checkbox" name="tasks[{{ $rKey }}][]" value="{{ $step }}"
+                                                data-group="{{ $step }}" data-role="{{ $rKey }}"
+                                                class="task-check task-step-check mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <span class="iconify {{ $rMeta['color'] }}" data-icon="{{ $rMeta['icon'] }}"></span>
+                                                    <span class="text-sm font-bold text-slate-800">{{ $task['title'] }}</span>
+                                                    {{-- Website work shows a Before/After in the review; staff-tool work
+                                                         changes no page, so it is judged by opening the department. --}}
+                                                    @php $isOps = ($task['scope'] ?? 'site') === \App\Support\TaskChecklist::SCOPE_OPS; @endphp
+                                                    <span class="shrink-0 px-1.5 py-0.5 rounded-full border border-slate-200 text-[9px] font-bold uppercase tracking-wide {{ $isOps ? 'bg-slate-100 text-slate-500' : 'bg-brand-soft text-brand' }}">
+                                                        {{ \App\Support\TaskChecklist::scopeLabel($task['scope'] ?? 'site') }}
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs text-slate-500 mt-0.5">{{ $task['description'] }}</p>
+                                                {{-- The headcount hint the department step used to carry. Filled by
+                                                     updateRoleMemberCounts() once a team is picked. --}}
+                                                <p class="text-[11px] font-semibold text-slate-400 mt-1">
+                                                    {{ $rMeta['label'] }}<span data-role-count="{{ $rKey }}"></span>
+                                                </p>
+                                            </div>
+                                            <input type="hidden" name="task_titles[{{ $rKey }}][{{ $step }}]" value="{{ $task['title'] }}">
+                                            <input type="hidden" name="task_descriptions[{{ $rKey }}][{{ $step }}]" value="{{ $task['description'] }}">
+                                            <input type="hidden" name="task_priorities[{{ $rKey }}][{{ $step }}]" value="{{ $task['priority'] }}">
+                                        </label>
+                                    @endforeach
+                                </div>
                             </div>
-                        </div>
-                    @endforeach
+                        @endforeach
+                    </div>
 
                     <div class="mt-4 flex justify-end">
-                        <button type="button" onclick="goToStep(4)" id="btn-to-step4"
+                        <button type="button" onclick="goToStep(3)" id="btn-to-step3"
                             class="px-5 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" disabled>
                             <span class="iconify" data-icon="mdi:arrow-right"></span> Continue
                         </button>
                     </div>
                 </div>
 
-                {{-- ═══════ STEP 4: DUE DATE ═══════ --}}
-                <div id="task-step-4" class="task-step hidden">
+                {{-- ═══════ STEP 3: DUE DATE ═══════ --}}
+                <div id="task-step-3" class="task-step hidden">
                     <div class="flex items-center gap-2 mb-4">
-                        <button type="button" onclick="goToStep(3)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
+                        <button type="button" onclick="goToStep(2)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
                             <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
                         </button>
                         <div>
@@ -1360,17 +1355,17 @@
                     </div>
 
                     <div class="mt-6 flex justify-end">
-                        <button type="button" onclick="goToStep(5)"
+                        <button type="button" onclick="goToStep(4)"
                             class="px-5 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2">
                             <span class="iconify" data-icon="mdi:arrow-right"></span> Review & Assign
                         </button>
                     </div>
                 </div>
 
-                {{-- ═══════ STEP 5: REVIEW ═══════ --}}
-                <div id="task-step-5" class="task-step hidden">
+                {{-- ═══════ STEP 4: REVIEW ═══════ --}}
+                <div id="task-step-4" class="task-step hidden">
                     <div class="flex items-center gap-2 mb-4">
-                        <button type="button" onclick="goToStep(4)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
+                        <button type="button" onclick="goToStep(3)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">
                             <span class="iconify text-slate-500" data-icon="mdi:arrow-left"></span>
                         </button>
                         <div>
@@ -1391,9 +1386,11 @@
                         </div>
                         <div class="h-px bg-slate-200"></div>
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center" id="reviewDeptIcon"></div>
+                            <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
+                                <span class="iconify text-brand" data-icon="mdi:office-building-outline"></span>
+                            </div>
                             <div>
-                                <p class="text-xs text-slate-400 font-medium">Department</p>
+                                <p class="text-xs text-slate-400 font-medium">Departments</p>
                                 <p class="text-sm font-bold text-slate-800" id="reviewDeptName">—</p>
                             </div>
                         </div>
@@ -3034,16 +3031,11 @@ function onUpdateMemberToggle(checkbox) {
 // ── Task Assignment Wizard ─────────────────────
 let currentStep = 1;
 let selectedTeam = null;
-let selectedDept = null;
 
-const DEPT_META = {
-    @foreach($rolesMeta ?? [] as $rKey => $rMeta)
-        '{{ $rKey }}': { label: '{{ $rMeta["label"] }}', icon: '{{ $rMeta["icon"] }}', color: '{{ $rMeta["color"] }}' },
-    @endforeach
-};
+const TOTAL_STEPS = 4;
 
-// How many members of each team hold each role, so the department step can say
-// who is actually there to receive the task.
+// How many members of each team hold each role, so a task row can say who is
+// actually there to receive it.
 const TEAM_ROLE_COUNTS = @json($teamRoleCounts ?? []);
 
 function goToStep(step) {
@@ -3051,11 +3043,11 @@ function goToStep(step) {
     document.getElementById('task-step-' + step).classList.remove('hidden');
     currentStep = step;
     updateStepIndicators();
-    if (step === 5) updateReview();
+    if (step === TOTAL_STEPS) updateReview();
 }
 
 function updateStepIndicators() {
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= TOTAL_STEPS; i++) {
         const ind = document.getElementById('step-ind-' + i);
         const line = document.getElementById('step-line-' + (i - 1));
         if (!ind) continue;
@@ -3084,74 +3076,83 @@ function selectTeam(groupName) {
     const btn = document.getElementById('btn-to-step2');
     if (btn) btn.disabled = !selectedTeam;
 
-    const label = document.getElementById('deptStepTeamName');
-    if (label) label.textContent = groupName || 'this team';
-
-    updateDeptMemberCounts();
+    updateRoleMemberCounts();
 }
 
-// Annotates each department card with this team's headcount for that role. A role
-// nobody fills is still assignable — the task waits for whoever takes it — so this
-// informs rather than blocks.
-function updateDeptMemberCounts() {
+// The headcount hint the department step used to carry on its cards. A task row
+// names its own department now, so the hint rides along with the row. A role
+// nobody fills is still assignable — the task waits for whoever takes it — so
+// this informs rather than blocks.
+function updateRoleMemberCounts() {
     const counts = (selectedTeam && TEAM_ROLE_COUNTS[selectedTeam]) || {};
 
-    document.querySelectorAll('[data-dept-count]').forEach(el => {
-        const n = counts[el.dataset.deptCount] || 0;
+    document.querySelectorAll('[data-role-count]').forEach(el => {
+        const n = counts[el.dataset.roleCount] || 0;
         el.textContent = selectedTeam
-            ? (n > 0 ? n + (n === 1 ? ' member' : ' members') : 'nobody holds this')
+            ? ' · ' + (n > 0 ? n + (n === 1 ? ' member' : ' members') : 'nobody holds this')
             : '';
-        el.classList.toggle('text-slate-400', n > 0);
-        el.classList.toggle('text-amber-500', selectedTeam && n === 0);
+        el.classList.toggle('text-amber-500', !!selectedTeam && n === 0);
     });
 }
 
-function selectDepartment(deptId) {
-    selectedDept = deptId;
+// ── Task groups ────────────────────────────────
+// One group is one numbered step of the simulation, holding that position's task
+// for every department that still has one.
 
-    // Highlight selected button
-    document.querySelectorAll('.task-dept-btn').forEach(btn => {
-        btn.classList.remove('border-brand', 'bg-brand-soft', 'shadow-md');
-        btn.classList.add('border-slate-200', 'bg-white');
-    });
-    const btn = document.querySelector('.task-dept-btn[data-dept="' + deptId + '"]');
-    if (btn) {
-        btn.classList.add('border-brand', 'bg-brand-soft', 'shadow-md');
-        btn.classList.remove('border-slate-200', 'bg-white');
-    }
+function taskGroupBoxes(step) {
+    return Array.from(document.querySelectorAll('.task-step-check[data-group="' + step + '"]'));
+}
 
-    // Show task panel for this dept
-    document.querySelectorAll('.task-checklist-panel').forEach(p => p.classList.add('hidden'));
-    const panel = document.getElementById('taskPanel-' + deptId);
-    if (panel) panel.classList.remove('hidden');
+function toggleTaskGroup(btn, step) {
+    const body = document.getElementById('taskGroupBody-' + step);
+    if (!body) return;
 
-    // Update step 2 title
-    const meta = DEPT_META[deptId];
-    document.getElementById('selectedDeptTitle').textContent = meta ? meta.label + ' Tasks' : 'Select Tasks';
+    const open = !body.classList.toggle('hidden');
+    // public/css/app.css is a frozen build with no rotate-180 in it, and Iconify
+    // swaps the chevron span for an <svg> of its own, so the button around it is
+    // turned with an inline transform.
+    btn.style.transform = open ? 'rotate(180deg)' : '';
+}
 
-    // Departments with no tasks show an empty state, so Select All has nothing to act on.
-    const hasTasks = !!(panel && panel.querySelector('.task-check'));
-    document.getElementById('selectAllTasksBtn')?.classList.toggle('hidden', !hasTasks);
+function toggleTaskGroupAll(step) {
+    const master = document.getElementById('taskGroupCheck-' + step);
+    if (!master) return;
 
-    // Go to the task checklist
-    goToStep(3);
+    master.indeterminate = false;
+    taskGroupBoxes(step).forEach(cb => cb.checked = master.checked);
     updateContinueBtn();
 }
 
+// The header box reflects its rows: all, none, or the browser's own partial mark
+// when a department has been unticked out of the step.
+function syncTaskGroup(step) {
+    const master = document.getElementById('taskGroupCheck-' + step);
+    if (!master) return;
+
+    const boxes = taskGroupBoxes(step);
+    const checked = boxes.filter(cb => cb.checked).length;
+
+    master.checked = checked > 0 && checked === boxes.length;
+    master.indeterminate = checked > 0 && checked < boxes.length;
+}
+
 function selectAllVisibleTasks() {
-    if (!selectedDept) return;
-    const checkboxes = document.querySelectorAll('.task-checkbox-' + selectedDept);
-    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-    checkboxes.forEach(cb => cb.checked = !allChecked);
+    const boxes = Array.from(document.querySelectorAll('.task-check'));
+    const allChecked = boxes.length > 0 && boxes.every(cb => cb.checked);
+
+    boxes.forEach(cb => cb.checked = !allChecked);
+    document.querySelectorAll('.task-group-check').forEach(master => {
+        master.checked = !allChecked;
+        master.indeterminate = false;
+    });
+
     updateContinueBtn();
 }
 
 function updateContinueBtn() {
-    if (!selectedDept) return;
-    const checked = document.querySelectorAll('.task-checkbox-' + selectedDept + ':checked').length;
-    const btn = document.getElementById('btn-to-step4');
+    const btn = document.getElementById('btn-to-step3');
     if (btn) {
-        btn.disabled = checked === 0;
+        btn.disabled = document.querySelectorAll('.task-check:checked').length === 0;
     }
 }
 
@@ -3159,17 +3160,17 @@ function updateReview() {
     // Team
     document.getElementById('reviewTeamName').textContent = selectedTeam || '—';
 
-    // Dept
-    const meta = DEPT_META[selectedDept];
-    if (meta) {
-        document.getElementById('reviewDeptName').textContent = meta.label;
-        const iconEl = document.getElementById('reviewDeptIcon');
-        iconEl.innerHTML = '<span class="iconify ' + meta.color + '" data-icon="' + meta.icon + '"></span>';
-    }
+    // A step spans every department that has work at that position, so the review
+    // counts them rather than naming one.
+    const checked = Array.from(document.querySelectorAll('.task-check:checked'));
+    const roles = new Set(checked.map(cb => cb.dataset.role));
 
-    // Task count
-    const checked = selectedDept ? document.querySelectorAll('.task-checkbox-' + selectedDept + ':checked').length : 0;
-    document.getElementById('reviewTaskCount').textContent = checked + ' task' + (checked !== 1 ? 's' : '');
+    document.getElementById('reviewDeptName').textContent = roles.size
+        ? roles.size + (roles.size === 1 ? ' department' : ' departments')
+        : '—';
+
+    document.getElementById('reviewTaskCount').textContent =
+        checked.length + ' task' + (checked.length !== 1 ? 's' : '');
 
     // Due date. datetime-local already carries the time, so parse it as-is
     // rather than pinning midnight the way the date-only input needed.
@@ -3184,27 +3185,30 @@ function updateReview() {
 
 function resetTaskWizard() {
     selectedTeam = null;
-    selectedDept = null;
     document.querySelectorAll('.task-team-radio').forEach(r => r.checked = false);
     document.querySelectorAll('.task-check').forEach(cb => cb.checked = false);
-    document.querySelector('input[name="due_date"]').value = '';
-    document.querySelectorAll('.task-dept-btn').forEach(btn => {
-        btn.classList.remove('border-brand', 'bg-brand-soft', 'shadow-md');
-        btn.classList.add('border-slate-200', 'bg-white');
+    document.querySelectorAll('.task-group-check').forEach(master => {
+        master.checked = false;
+        master.indeterminate = false;
     });
-    document.querySelectorAll('.task-checklist-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelector('input[name="due_date"]').value = '';
+
     const btn = document.getElementById('btn-to-step2');
     if (btn) btn.disabled = true;
-    updateDeptMemberCounts();
+
+    updateContinueBtn();
+    updateRoleMemberCounts();
     goToStep(1);
 }
 
 // Track checkbox changes
 document.addEventListener('change', function(e) {
     if (e.target.classList.contains('task-check')) {
+        syncTaskGroup(e.target.dataset.group);
         updateContinueBtn();
     }
 });
+
 
 // Initialize on page load
 (function() {

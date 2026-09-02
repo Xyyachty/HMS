@@ -455,6 +455,35 @@ class TaskChecklist
         return $out;
     }
 
+    /**
+     * The same checklist pivoted: step index => [role => task].
+     *
+     * Position N carries the same stage of the simulation for every role — index
+     * 0 is site setup everywhere, the ops work follows — so the Create Task
+     * wizard can hand out "Task 1" to a whole team in one tick. The roles run out
+     * at different lengths, so the later steps hold fewer entries; a step is only
+     * as wide as the roles that still have work at that position.
+     *
+     * Role order inside a step follows all(), which follows
+     * HotelTemplateBuilder::ROLES.
+     *
+     * @return array<int, array<string, array{title: string, description: string, priority: string, scope: string}>>
+     */
+    public static function allByStep(): array
+    {
+        $byStep = [];
+
+        foreach (self::all() as $role => $tasks) {
+            foreach ($tasks as $index => $task) {
+                $byStep[$index][$role] = $task;
+            }
+        }
+
+        ksort($byStep);
+
+        return $byStep;
+    }
+
     /** @return list<array{title: string, description: string, priority: string, scope: string}> */
     public static function forRole(string $role): array
     {

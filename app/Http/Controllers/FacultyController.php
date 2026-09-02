@@ -1127,6 +1127,11 @@ class FacultyController extends Controller
         // one for the checklist and lose the real rows for the rest of the page.
         $taskChecklist = \App\Support\TaskChecklist::all();
 
+        // The same checklist pivoted into numbered steps. Position N is the same
+        // stage of the simulation for every role, so the wizard hands out "Task 1"
+        // to the whole team in one tick instead of once per department.
+        $taskSteps = \App\Support\TaskChecklist::allByStep();
+
         // How many of each team's members hold each role, so the Create Task wizard
         // can say "2 members" or "nobody holds this" once a team is picked. Read off
         // the roster already in memory rather than a query per team.
@@ -1245,6 +1250,7 @@ class FacultyController extends Controller
             'tasksByRole',
             'taskCounts',
             'taskChecklist',
+            'taskSteps',
             'teamRoleCounts',
             'teamActivityByGroup',
             'conceptsByGroup'
