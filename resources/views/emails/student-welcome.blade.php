@@ -3,6 +3,8 @@
 
     Table-based layout with inline styles on purpose: Gmail strips <style> blocks and
     ignores most modern CSS, so anything that has to survive the trip is set per element.
+    Gradients are layered over a solid background-color so clients that drop
+    background-image (Outlook) still land on the brand rose.
 --}}
 <!DOCTYPE html>
 <html lang="en">
@@ -11,57 +13,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Your HMS account is ready</title>
 </head>
-<body style="margin:0; padding:0; background-color:#f1f5f9; font-family:Arial, Helvetica, sans-serif; color:#0f172a;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9; padding:24px 12px;">
+<body style="margin:0; padding:0; background-color:#fff1f2; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fff1f2; padding:24px 12px;">
         <tr>
             <td align="center">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background-color:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e2e8f0;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background-color:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #fecdd3;">
 
                     <tr>
-                        <td style="background-color:#047857; padding:24px 28px;">
-                            <p style="margin:0; font-size:20px; font-weight:bold; color:#ffffff;">HMS</p>
-                            <p style="margin:4px 0 0; font-size:13px; color:#d1fae5;">Hotel Management Simulation</p>
+                        <td bgcolor="#e11d48" style="background-color:#e11d48; background-image:linear-gradient(135deg, #f43f5e 0%, #db2777 100%); padding:26px 28px;">
+                            <p style="margin:0; font-size:22px; font-weight:bold; color:#ffffff; letter-spacing:1px;">HMS</p>
+                            <p style="margin:5px 0 0; font-size:13px; color:#ffe4e6;">Hotel Management Simulation</p>
                         </td>
                     </tr>
 
                     <tr>
-                        <td style="padding:28px;">
-                            <p style="margin:0 0 16px; font-size:16px;">Hi {{ $studentName }},</p>
+                        <td style="height:4px; line-height:4px; font-size:0; background-color:#fda4af;">&nbsp;</td>
+                    </tr>
 
-                            <p style="margin:0 0 20px; font-size:14px; line-height:22px; color:#334155;">
+                    <tr>
+                        <td style="padding:28px;">
+                            <p style="margin:0 0 16px; font-size:17px; color:#9f1239; font-weight:bold;">Hi {{ $studentName }},</p>
+
+                            <p style="margin:0 0 22px; font-size:14px; line-height:22px; color:#4b5563;">
                                 Welcome to HMS. Your student account has been created
-                                @if($className) and you have been enrolled in <strong>{{ $className }}</strong>@endif.
+                                @if($className) and you have been enrolled in <strong style="color:#be123c;">{{ $className }}</strong>@endif.
                                 You can sign in with the details below.
                             </p>
 
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; margin-bottom:20px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fff1f2; border:1px solid #fecdd3; border-radius:12px; margin-bottom:22px;">
                                 <tr>
                                     <td style="padding:18px 20px;">
                                         @if($studentNumber)
-                                        <p style="margin:0 0 12px; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:bold;">Student Number</p>
-                                        <p style="margin:0 0 16px; font-size:15px; color:#0f172a; font-family:'Courier New', Courier, monospace;">{{ $studentNumber }}</p>
+                                        <p style="margin:0 0 6px; font-size:11px; color:#9f1239; text-transform:uppercase; letter-spacing:1.2px; font-weight:bold;">Student Number</p>
+                                        <p style="margin:0 0 16px; font-size:15px; color:#1f2937; font-family:'Courier New', Courier, monospace;">{{ $studentNumber }}</p>
                                         @endif
 
-                                        <p style="margin:0 0 6px; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:bold;">Login Email</p>
-                                        <p style="margin:0 0 16px; font-size:15px; color:#0f172a; font-family:'Courier New', Courier, monospace;">{{ $loginEmail }}</p>
+                                        <p style="margin:0 0 6px; font-size:11px; color:#9f1239; text-transform:uppercase; letter-spacing:1.2px; font-weight:bold;">Login Email</p>
+                                        <p style="margin:0 0 16px; font-size:15px; color:#1f2937; font-family:'Courier New', Courier, monospace;">{{ $loginEmail }}</p>
 
-                                        <p style="margin:0 0 6px; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:bold;">Temporary Password</p>
-                                        <p style="margin:0; font-size:18px; color:#047857; font-family:'Courier New', Courier, monospace; font-weight:bold; letter-spacing:1px;">{{ $plainPassword }}</p>
+                                        <p style="margin:0 0 6px; font-size:11px; color:#9f1239; text-transform:uppercase; letter-spacing:1.2px; font-weight:bold;">Temporary Password</p>
+                                        <table role="presentation" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="background-color:#ffffff; border:1px dashed #fb7185; border-radius:8px; padding:10px 16px;">
+                                                    <span style="font-size:18px; color:#be123c; font-family:'Courier New', Courier, monospace; font-weight:bold; letter-spacing:1.5px;">{{ $plainPassword }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
                                     </td>
                                 </tr>
                             </table>
 
                             <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:22px;">
                                 <tr>
-                                    <td style="background-color:#047857; border-radius:8px;">
-                                        <a href="{{ $loginUrl }}" style="display:inline-block; padding:12px 28px; font-size:14px; font-weight:bold; color:#ffffff; text-decoration:none;">Sign in to HMS</a>
+                                    <td bgcolor="#e11d48" style="background-color:#e11d48; background-image:linear-gradient(135deg, #f43f5e 0%, #db2777 100%); border-radius:9px;">
+                                        <a href="{{ $loginUrl }}" style="display:inline-block; padding:13px 30px; font-size:14px; font-weight:bold; color:#ffffff; text-decoration:none;">Sign in to HMS</a>
                                     </td>
                                 </tr>
                             </table>
 
-                            <p style="margin:0 0 20px; font-size:12px; color:#64748b; line-height:18px;">
+                            <p style="margin:0 0 20px; font-size:12px; color:#6b7280; line-height:18px;">
                                 If the button does not work, copy this link into your browser:<br>
-                                <a href="{{ $loginUrl }}" style="color:#047857; word-break:break-all;">{{ $loginUrl }}</a>
+                                <a href="{{ $loginUrl }}" style="color:#e11d48; word-break:break-all;">{{ $loginUrl }}</a>
                             </p>
 
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fffbeb; border:1px solid #fde68a; border-radius:8px;">
@@ -78,8 +90,8 @@
                     </tr>
 
                     <tr>
-                        <td style="background-color:#f8fafc; padding:18px 28px; border-top:1px solid #e2e8f0;">
-                            <p style="margin:0; font-size:12px; color:#94a3b8; line-height:18px;">
+                        <td style="background-color:#fff1f2; padding:18px 28px; border-top:1px solid #fecdd3;">
+                            <p style="margin:0; font-size:12px; color:#9ca3af; line-height:18px;">
                                 This message was sent automatically by HMS because an account was created for you.
                                 If you were not expecting it, please contact your instructor.
                             </p>
