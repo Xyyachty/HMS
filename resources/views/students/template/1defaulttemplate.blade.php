@@ -190,6 +190,17 @@
     border: 1px solid var(--border); padding: 0;
   }
   .card-color-swatch.is-active { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* The header colour lives in the Background Colours dialog with the other
+     areas, but a student looking at the header expects to find it there. */
+  .hms-header-color {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; flex-shrink: 0;
+    border-radius: 999px; cursor: pointer;
+    background: rgba(6,182,212,0.14); color: #22d3ee;
+    border: 1px solid rgba(34,211,238,0.5);
+    font-size: 11px;
+  }
+  .hms-header-color:hover { background: rgba(6,182,212,0.28); }
   .site-color-row {
     padding: 0.7rem 0;
     border-bottom: 1px solid var(--border);
@@ -1368,6 +1379,17 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, br
               onKeyDown={editing && canEditBrandName ? (e) => { if (e.key === 'Enter' || e.key === ' ') openEdit(e, { kind: 'brand' }); } : undefined}
             >{brandName}</span>
           </button>
+          {editing && (
+            <button
+              type="button"
+              className="hms-header-color"
+              title="Header colour"
+              aria-label="Change the header colour"
+              onClick={() => window.dispatchEvent(new CustomEvent('hms-card-color', { detail: 'site' }))}
+            >
+              <i className="fa-solid fa-palette"></i>
+            </button>
+          )}
         </div>
         <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: '1.1rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {(links || []).map(link => (
@@ -1475,7 +1497,8 @@ function cardPalette(bg) {
   try {
     const siteAccent = window.getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
     const accentRgb = parseColorToRgb(siteAccent);
-    if (accentRgb && contrastRatio(relativeLuminance(accentRgb), lum) >= 3) accent = siteAccent;
+    const readable = accentRgb ? readableAccent(accentRgb, lum, parseColorToRgb(fg)) : null;
+    if (readable) accent = readable;
   } catch (e) { /* keep the readable fallback */ }
 
   return { bg: bg, fg: fg, muted: muted, border: border, accent: accent };
@@ -1503,9 +1526,33 @@ const SITE_COLOR_AREAS = [
   { id: 'experience', label: 'Experience', selector: 'main[data-hms-page="experience"]' },
 ];
 
-function mixToward(rgb, target, amount) {
+function mixRgb(rgb, target, amount) {
   const c = (a, b) => Math.round(a + (b - a) * amount);
-  return 'rgb(' + c(rgb.r, target.r) + ',' + c(rgb.g, target.g) + ',' + c(rgb.b, target.b) + ')';
+  return { r: c(rgb.r, target.r), g: c(rgb.g, target.g), b: c(rgb.b, target.b) };
+}
+
+function rgbToCss(o) {
+  return 'rgb(' + o.r + ',' + o.g + ',' + o.b + ')';
+}
+
+function mixToward(rgb, target, amount) {
+  return rgbToCss(mixRgb(rgb, target, amount));
+}
+
+/* Keep the site's accent hue on an unusual background instead of dropping to
+   the plain text colour. Gold on a pale ground fails contrast outright, and
+   replacing it flattened every price and eyebrow to black; darkening the gold
+   until it reads keeps the design recognisable. Returns null only when even the
+   fully mixed colour cannot reach 3:1, which is the caller's cue to fall back. */
+function readableAccent(accentRgb, bgLum, fgRgb) {
+  const target = fgRgb || { r: 245, g: 240, b: 232 };
+  for (let t = 0; t <= 0.91; t += 0.13) {
+    const candidate = mixRgb(accentRgb, target, t);
+    if (contrastRatio(relativeLuminance(candidate), bgLum) >= 3) {
+      return t === 0 ? rgbToCss(accentRgb) : rgbToCss(candidate);
+    }
+  }
+  return null;
 }
 
 /* The card, border and warm shades are steps off the chosen background toward
