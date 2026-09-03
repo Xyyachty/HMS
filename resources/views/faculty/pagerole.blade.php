@@ -1232,7 +1232,7 @@
                             <span class="w-6 h-6 rounded-lg bg-brand text-white text-[11px] font-bold flex items-center justify-center shrink-0">2</span>
                             <div>
                                 <h4 class="text-sm font-bold text-slate-700">Which tasks are you setting?</h4>
-                                <p class="text-xs text-slate-400">Tick a task number to give that step to every department that has work in it</p>
+                                <p class="text-xs text-slate-400">Tick a task to give that step to every department that has work in it</p>
                             </div>
                         </div>
                         <button type="button" id="selectAllTasksBtn" onclick="selectAllVisibleTasks()" class="text-xs font-semibold text-brand hover:underline">
@@ -1240,61 +1240,122 @@
                         </button>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1">
+                    {{-- Search + category filter, purely client-side over the cards below. --}}
+                    <div class="flex flex-wrap items-center gap-2 mb-3">
+                        <div class="relative flex-1 min-w-[180px]">
+                            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" data-icon="mdi:magnify"></span>
+                            <input type="text" id="taskSearchInput" oninput="filterTaskCards()" placeholder="Search tasks..."
+                                class="w-full h-10 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-wrap" id="taskCategoryTabs">
+                            <button type="button" data-filter="all" onclick="filterTaskCards('all')"
+                                class="task-filter-tab px-2.5 py-1 rounded-lg text-xs font-bold transition border border-slate-200 hover:border-brand/40">All</button>
+                            <button type="button" data-filter="site" onclick="filterTaskCards('site')"
+                                class="task-filter-tab px-2.5 py-1 rounded-lg text-xs font-bold transition border border-slate-200 hover:border-brand/40">Website</button>
+                            @foreach($rolesMeta ?? [] as $rKey => $rMeta)
+                                <button type="button" data-filter="{{ $rKey }}" onclick="filterTaskCards('{{ $rKey }}')"
+                                    class="task-filter-tab px-2.5 py-1 rounded-lg text-xs font-bold transition border border-slate-200 hover:border-brand/40">{{ $rMeta['label'] }}</button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- One card per numbered step of the simulation. Ticking a card's own
+                         box hands every department's task at that step to the team; View
+                         Details opens the modal below to tick or read them one at a time. --}}
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-1" id="taskCardGrid">
                         @foreach($taskSteps ?? [] as $step => $stepTasks)
-                            <div id="taskGroup-{{ $step }}" class="rounded-xl border-2 border-slate-200 bg-white overflow-hidden has-[:checked]:border-brand">
-                                <div class="flex items-center gap-3 p-3.5 bg-slate-50">
+                            @php
+                                $stepRoles = array_keys($stepTasks);
+                                $hasSite = collect($stepTasks)->contains(fn ($t) => ($t['scope'] ?? 'site') === \App\Support\TaskChecklist::SCOPE_SITE);
+                                $leadMeta = $rolesMeta[$stepRoles[0] ?? null] ?? null;
+                                $searchBlob = Str::lower('task ' . ($step + 1) . ' ' . collect($stepTasks)->pluck('title')->implode(' '));
+                                $categories = trim(($hasSite ? 'site ' : '') . implode(' ', $stepRoles));
+                            @endphp
+                            <div id="taskCard-{{ $step }}" data-categories="{{ $categories }}" data-search="{{ $searchBlob }}"
+                                class="task-card rounded-xl border-2 border-slate-200 bg-white p-3.5 hover:border-brand/40 hover:shadow-md transition-all flex flex-col gap-2">
+                                <div class="flex items-start justify-between">
                                     <input type="checkbox" id="taskGroupCheck-{{ $step }}"
                                         onchange="toggleTaskGroupAll({{ $step }})"
-                                        class="task-group-check rounded border-slate-300 text-brand focus:ring-brand/30">
-                                    <label for="taskGroupCheck-{{ $step }}" class="flex-1 min-w-0 cursor-pointer flex items-center gap-2 flex-wrap">
-                                        <span class="text-sm font-bold text-slate-800">Task {{ $step + 1 }}</span>
-                                        <span class="text-xs text-slate-400">{{ count($stepTasks) }} {{ Str::plural('department', count($stepTasks)) }}</span>
-                                    </label>
-                                    <button type="button" onclick="toggleTaskGroup(this, {{ $step }})"
-                                        class="w-8 h-8 rounded-lg hover:bg-slate-200 flex items-center justify-center transition shrink-0">
-                                        <span class="iconify text-slate-400" data-icon="mdi:chevron-down"></span>
-                                    </button>
+                                        class="task-group-check mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30">
+                                    @if($leadMeta)
+                                        <span class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                                            <span class="iconify {{ $leadMeta['color'] }}" data-icon="{{ $leadMeta['icon'] }}"></span>
+                                        </span>
+                                    @endif
                                 </div>
-
-                                {{-- Collapsed by default: the point of the group is that you
-                                     rarely need to look inside it. --}}
-                                <div id="taskGroupBody-{{ $step }}" class="hidden divide-y divide-slate-100">
-                                    @foreach($rolesMeta ?? [] as $rKey => $rMeta)
-                                        @continue(!isset($stepTasks[$rKey]))
-                                        @php $task = $stepTasks[$rKey]; @endphp
-                                        <label class="task-checkbox-card flex items-start gap-3 p-3.5 hover:bg-slate-50 transition cursor-pointer has-[:checked]:bg-brand-soft">
-                                            <input type="checkbox" name="tasks[{{ $rKey }}][]" value="{{ $step }}"
-                                                data-group="{{ $step }}" data-role="{{ $rKey }}"
-                                                class="task-check task-step-check mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30">
-                                            <div class="flex-1 min-w-0">
-                                                <div class="flex items-center gap-2 flex-wrap">
-                                                    <span class="iconify {{ $rMeta['color'] }}" data-icon="{{ $rMeta['icon'] }}"></span>
-                                                    <span class="text-sm font-bold text-slate-800">{{ $task['title'] }}</span>
-                                                    {{-- Website work shows a Before/After in the review; staff-tool work
-                                                         changes no page, so it is judged by opening the department. --}}
-                                                    @php $isOps = ($task['scope'] ?? 'site') === \App\Support\TaskChecklist::SCOPE_OPS; @endphp
-                                                    <span class="shrink-0 px-1.5 py-0.5 rounded-full border border-slate-200 text-[9px] font-bold uppercase tracking-wide {{ $isOps ? 'bg-slate-100 text-slate-500' : 'bg-brand-soft text-brand' }}">
-                                                        {{ \App\Support\TaskChecklist::scopeLabel($task['scope'] ?? 'site') }}
-                                                    </span>
-                                                </div>
-                                                <p class="text-xs text-slate-500 mt-0.5">{{ $task['description'] }}</p>
-                                                {{-- The headcount hint the department step used to carry. Filled by
-                                                     updateRoleMemberCounts() once a team is picked. --}}
-                                                <p class="text-[11px] font-semibold text-slate-400 mt-1">
-                                                    {{ $rMeta['label'] }}<span data-role-count="{{ $rKey }}"></span>
-                                                </p>
-                                            </div>
-                                            <input type="hidden" name="task_titles[{{ $rKey }}][{{ $step }}]" value="{{ $task['title'] }}">
-                                            <input type="hidden" name="task_descriptions[{{ $rKey }}][{{ $step }}]" value="{{ $task['description'] }}">
-                                            <input type="hidden" name="task_priorities[{{ $rKey }}][{{ $step }}]" value="{{ $task['priority'] }}">
-                                        </label>
-                                    @endforeach
+                                <div>
+                                    <p class="text-sm font-bold text-slate-800">TASK {{ str_pad($step + 1, 2, '0', STR_PAD_LEFT) }}</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">{{ count($stepTasks) }} {{ Str::plural('Activity', count($stepTasks)) }}</p>
                                 </div>
+                                <button type="button" onclick="openTaskDetailsModal({{ $step }})"
+                                    class="text-xs font-semibold text-brand hover:underline text-left flex items-center gap-1">
+                                    View Details <span class="iconify text-sm" data-icon="mdi:arrow-right"></span>
+                                </button>
                             </div>
                         @endforeach
                     </div>
                 </div>
+
+                {{-- One modal per step: the activities toggleTaskGroup used to reveal
+                     inline now live here, opened from a card's View Details button. --}}
+                @foreach($taskSteps ?? [] as $step => $stepTasks)
+                    <div id="taskDetailsModal-{{ $step }}" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+                        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTaskDetailsModal({{ $step }})"></div>
+                        <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 32rem;">
+                            <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center rounded-t-2xl flex-shrink-0">
+                                <div class="min-w-0">
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">TASK {{ str_pad($step + 1, 2, '0', STR_PAD_LEFT) }}</p>
+                                    <h4 class="font-bold text-brand text-base truncate">{{ count($stepTasks) }} {{ Str::plural('Activity', count($stepTasks)) }} in this step</h4>
+                                </div>
+                                <button type="button" onclick="closeTaskDetailsModal({{ $step }})"
+                                    class="text-slate-400 hover:text-brand hover:bg-slate-50 w-7 h-7 rounded-full transition flex items-center justify-center shrink-0">
+                                    <span class="iconify text-lg" data-icon="mdi:close"></span>
+                                </button>
+                            </div>
+
+                            <div class="overflow-y-auto flex-1 divide-y divide-slate-100">
+                                @foreach($rolesMeta ?? [] as $rKey => $rMeta)
+                                    @continue(!isset($stepTasks[$rKey]))
+                                    @php $task = $stepTasks[$rKey]; @endphp
+                                    <label class="task-checkbox-card flex items-start gap-3 p-3.5 hover:bg-slate-50 transition cursor-pointer">
+                                        <input type="checkbox" name="tasks[{{ $rKey }}][]" value="{{ $step }}"
+                                            data-group="{{ $step }}" data-role="{{ $rKey }}"
+                                            class="task-check task-step-check mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30">
+                                        <span class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                                            <span class="iconify {{ $rMeta['color'] }}" data-icon="{{ $rMeta['icon'] }}"></span>
+                                        </span>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="text-sm font-bold text-slate-800">{{ $task['title'] }}</span>
+                                                {{-- Website work shows a Before/After in the review; staff-tool work
+                                                     changes no page, so it is judged by opening the department. --}}
+                                                @php $isOps = ($task['scope'] ?? 'site') === \App\Support\TaskChecklist::SCOPE_OPS; @endphp
+                                                <span class="shrink-0 px-1.5 py-0.5 rounded-full border border-slate-200 text-[9px] font-bold uppercase tracking-wide {{ $isOps ? 'bg-slate-100 text-slate-500' : 'bg-brand-soft text-brand' }}">
+                                                    {{ $isOps ? $rMeta['label'] : 'Website' }}
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-slate-500 mt-0.5">{{ $task['description'] }}</p>
+                                            {{-- The headcount hint the department step used to carry. Filled by
+                                                 updateRoleMemberCounts() once a team is picked. --}}
+                                            <p class="text-[11px] font-semibold text-slate-400 mt-1">
+                                                {{ $rMeta['label'] }}<span data-role-count="{{ $rKey }}"></span>
+                                            </p>
+                                        </div>
+                                        <input type="hidden" name="task_titles[{{ $rKey }}][{{ $step }}]" value="{{ $task['title'] }}">
+                                        <input type="hidden" name="task_descriptions[{{ $rKey }}][{{ $step }}]" value="{{ $task['description'] }}">
+                                        <input type="hidden" name="task_priorities[{{ $rKey }}][{{ $step }}]" value="{{ $task['priority'] }}">
+                                    </label>
+                                @endforeach
+                            </div>
+
+                            <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between rounded-b-2xl flex-shrink-0">
+                                <p class="text-[11px] text-slate-400">Total Activities <span class="font-bold text-slate-600">{{ count($stepTasks) }}</span></p>
+                                <button type="button" onclick="closeTaskDetailsModal({{ $step }})"
+                                    class="px-4 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white transition">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
 
                 {{-- ═══════ DUE DATE ═══════ --}}
                 <div>
@@ -2988,15 +3049,53 @@ function taskGroupBoxes(step) {
     return Array.from(document.querySelectorAll('.task-step-check[data-group="' + step + '"]'));
 }
 
-function toggleTaskGroup(btn, step) {
-    const body = document.getElementById('taskGroupBody-' + step);
-    if (!body) return;
+// public/css/app.css is a frozen build with no has-[:checked] variant in it, so
+// a card's selected look is toggled by hand instead of leaning on that selector.
+function setTaskCardSelected(step, selected) {
+    const card = document.getElementById('taskCard-' + step);
+    if (!card) return;
+    card.classList.toggle('border-brand', selected);
+    card.classList.toggle('bg-brand-soft', selected);
+}
 
-    const open = !body.classList.toggle('hidden');
-    // public/css/app.css is a frozen build with no rotate-180 in it, and Iconify
-    // swaps the chevron span for an <svg> of its own, so the button around it is
-    // turned with an inline transform.
-    btn.style.transform = open ? 'rotate(180deg)' : '';
+function refreshTaskCardState(step) {
+    const master = document.getElementById('taskGroupCheck-' + step);
+    setTaskCardSelected(step, !!master && (master.checked || master.indeterminate));
+}
+
+function openTaskDetailsModal(step) {
+    document.getElementById('taskDetailsModal-' + step)?.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeTaskDetailsModal(step) {
+    document.getElementById('taskDetailsModal-' + step)?.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+// ── Search + category filter over the task cards ──
+let currentTaskCategoryFilter = 'all';
+
+function filterTaskCards(filter) {
+    if (typeof filter === 'string') {
+        currentTaskCategoryFilter = filter;
+        document.querySelectorAll('.task-filter-tab').forEach(btn => {
+            const active = btn.dataset.filter === filter;
+            btn.classList.toggle('bg-brand', active);
+            btn.classList.toggle('text-white', active);
+            btn.classList.toggle('bg-white', !active);
+            btn.classList.toggle('text-slate-500', !active);
+        });
+    }
+
+    const query = (document.getElementById('taskSearchInput')?.value || '').trim().toLowerCase();
+
+    document.querySelectorAll('.task-card').forEach(card => {
+        const categories = (card.dataset.categories || '').split(' ');
+        const matchesCategory = currentTaskCategoryFilter === 'all' || categories.includes(currentTaskCategoryFilter);
+        const matchesSearch = !query || (card.dataset.search || '').includes(query);
+        card.classList.toggle('hidden', !(matchesCategory && matchesSearch));
+    });
 }
 
 function toggleTaskGroupAll(step) {
@@ -3005,6 +3104,7 @@ function toggleTaskGroupAll(step) {
 
     master.indeterminate = false;
     taskGroupBoxes(step).forEach(cb => cb.checked = master.checked);
+    refreshTaskCardState(step);
     updateSubmitState();
 }
 
@@ -3019,6 +3119,7 @@ function syncTaskGroup(step) {
 
     master.checked = checked > 0 && checked === boxes.length;
     master.indeterminate = checked > 0 && checked < boxes.length;
+    refreshTaskCardState(step);
 }
 
 function selectAllVisibleTasks() {
@@ -3029,6 +3130,8 @@ function selectAllVisibleTasks() {
     document.querySelectorAll('.task-group-check').forEach(master => {
         master.checked = !allChecked;
         master.indeterminate = false;
+        const step = master.id.replace('taskGroupCheck-', '');
+        setTaskCardSelected(step, !allChecked);
     });
 
     updateSubmitState();
@@ -3079,6 +3182,7 @@ function resetTaskWizard() {
     document.querySelectorAll('.task-group-check').forEach(master => {
         master.checked = false;
         master.indeterminate = false;
+        setTaskCardSelected(master.id.replace('taskGroupCheck-', ''), false);
     });
     document.querySelector('input[name="due_date"]').value = '';
 
@@ -3105,6 +3209,8 @@ document.addEventListener('change', function(e) {
         // the summary and the headcount hints match what is on the form.
         const checkedTeam = document.querySelector('.task-team-radio:checked');
         if (checkedTeam) selectTeam(checkedTeam.value);
+        filterTaskCards('all');
+        document.querySelectorAll('.task-group-check').forEach(master => refreshTaskCardState(master.id.replace('taskGroupCheck-', '')));
         updateSubmitState();
     }
     // Auto-open create team modal if there are validation errors from that form
