@@ -22,39 +22,39 @@
     @endphp
 
     @if($canPickTemplate)
-    <div id="templatePicker" class="flex-1 flex flex-col items-center justify-center gap-8">
+    <div id="templatePicker" class="flex-1 flex flex-col items-center justify-center gap-10 w-full max-w-5xl mx-auto">
         <div class="text-center">
-            <p class="text-[10px] font-semibold tracking-widest uppercase mb-2" style="color: {{ $accent }}">Front Desk Editor</p>
-            <h2 class="text-xl font-bold text-white mb-1">Choose a Template</h2>
-            <p class="text-xs text-zinc-500">Select a starting template for your group. Teammates will see it only after you choose.</p>
+            <p class="text-xs font-semibold tracking-widest uppercase mb-3" style="color: {{ $accent }}">Front Desk Editor</p>
+            <h2 class="text-4xl font-bold text-white mb-2">Choose a Template</h2>
+            <p class="text-sm text-zinc-400">Select a starting template for your group. Teammates will see it only after you choose.</p>
         </div>
-        <div class="flex gap-6 flex-wrap justify-center">
-            <div class="group w-56 bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden {{ $accentBorder }} transition-all duration-200 text-left">
-                <div class="h-32 bg-zinc-800 overflow-hidden relative">
+        <div class="flex gap-8 flex-wrap justify-center w-full">
+            <div class="group flex-1 min-w-[320px] max-w-[440px] bg-zinc-900 border border-zinc-700 rounded-2xl overflow-hidden {{ $accentBorder }} transition-all duration-200 text-left">
+                <div class="h-64 bg-zinc-800 overflow-hidden relative">
                     <iframe src="{{ route('students.frontdesk.template.1', ['role' => $builderRole ?? 'front_desk']) }}" class="w-full h-full border-0 pointer-events-none scale-[0.5] origin-top-left" style="width:200%;height:200%;" tabindex="-1" aria-hidden="true"></iframe>
                     <div class="absolute inset-0 bg-zinc-900/20 group-hover:bg-transparent transition-colors"></div>
                 </div>
-                <div class="p-3">
-                    <p class="text-xs font-bold text-white mb-0.5">Template 1</p>
-                    <p class="text-[10px] text-zinc-500 mb-2">Dark luxury — Playfair Display</p>
-                    <div class="flex gap-2">
-                        <button type="button" onclick="previewHotelTemplate('1')" class="flex-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-1.5 rounded-md border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition-colors">Preview</button>
-                        <button type="button" onclick="selectHotelTemplate('1')" class="flex-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-1.5 rounded-md text-black transition-colors" style="background: {{ $accent }}">Select</button>
+                <div class="p-5">
+                    <p class="text-lg font-bold text-white mb-1">Template 1</p>
+                    <p class="text-xs text-zinc-500 mb-4">Dark luxury — Playfair Display</p>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="previewHotelTemplate('1')" class="flex-1 text-xs font-semibold uppercase tracking-wide px-3 py-2.5 rounded-md border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition-colors">Preview</button>
+                        <button type="button" onclick="selectHotelTemplate('1')" class="flex-1 text-xs font-semibold uppercase tracking-wide px-3 py-2.5 rounded-md text-black transition-colors" style="background: {{ $accent }}">Select</button>
                     </div>
                 </div>
             </div>
 
-            <div class="group w-56 bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden {{ $accentBorder }} transition-all duration-200 text-left">
-                <div class="h-32 bg-zinc-800 overflow-hidden relative">
+            <div class="group flex-1 min-w-[320px] max-w-[440px] bg-zinc-900 border border-zinc-700 rounded-2xl overflow-hidden {{ $accentBorder }} transition-all duration-200 text-left">
+                <div class="h-64 bg-zinc-800 overflow-hidden relative">
                     <iframe src="{{ route('students.frontdesk.template.2', ['role' => $builderRole ?? 'front_desk']) }}" class="w-full h-full border-0 pointer-events-none scale-[0.5] origin-top-left" style="width:200%;height:200%;" tabindex="-1" aria-hidden="true"></iframe>
                     <div class="absolute inset-0 bg-zinc-900/20 group-hover:bg-transparent transition-colors"></div>
                 </div>
-                <div class="p-3">
-                    <p class="text-xs font-bold text-white mb-0.5">Template 2</p>
-                    <p class="text-[10px] text-zinc-500 mb-2">Light natural — Cormorant Garamond</p>
-                    <div class="flex gap-2">
-                        <button type="button" onclick="previewHotelTemplate('2')" class="flex-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-1.5 rounded-md border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition-colors">Preview</button>
-                        <button type="button" onclick="selectHotelTemplate('2')" class="flex-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-1.5 rounded-md text-black transition-colors" style="background: {{ $accent }}">Select</button>
+                <div class="p-5">
+                    <p class="text-lg font-bold text-white mb-1">Template 2</p>
+                    <p class="text-xs text-zinc-500 mb-4">Light natural — Cormorant Garamond</p>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="previewHotelTemplate('2')" class="flex-1 text-xs font-semibold uppercase tracking-wide px-3 py-2.5 rounded-md border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition-colors">Preview</button>
+                        <button type="button" onclick="selectHotelTemplate('2')" class="flex-1 text-xs font-semibold uppercase tracking-wide px-3 py-2.5 rounded-md text-black transition-colors" style="background: {{ $accent }}">Select</button>
                     </div>
                 </div>
             </div>
