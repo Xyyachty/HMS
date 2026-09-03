@@ -77,6 +77,7 @@ class TemplateDiff
         'brandName' => 'Hotel name',
         'roomCardStyle' => 'Room card colour',
         'menuCardStyle' => 'Menu card colour',
+        'siteColors' => 'Section background colour',
         'cardImages' => 'Card image',
         'heroSlides' => 'Hero slide',
     ];

@@ -193,6 +193,32 @@
     border: 1px solid var(--border); padding: 0;
   }
   .card-color-swatch.is-active { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .site-color-row {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .site-color-row:last-of-type { border-bottom: none; }
+  .site-color-name {
+    display: flex; align-items: center; gap: 0.6rem;
+    font-size: 0.72rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--fg-muted);
+    margin-bottom: 0.45rem;
+  }
+  .site-color-clear {
+    border: none; background: none; cursor: pointer; padding: 0;
+    color: var(--accent); font-size: 0.62rem;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .site-color-swatches {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 0.35rem;
+  }
+  .site-color-swatches .card-color-swatch { height: 26px; }
+  .site-color-input {
+    height: 26px; width: 100%; padding: 0; cursor: pointer;
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+  }
   .card-color-custom {
     display: flex; align-items: center; justify-content: space-between;
     gap: 0.75rem; margin-top: 1rem;
@@ -2193,6 +2219,131 @@ function cardPalette(bg) {
    rendered three components deep on two different pages. An event keeps that a
    one-line addition at each chip instead of a prop threaded through every
    component in between. */
+/* Site background colours. Every area is themed by redefining the palette
+   variables the template already reads, so one rule recolours a whole region
+   and its contents stay readable. --bg is what body, the header and the hero
+   fade all read, so :root alone repaints the site.
+
+   The two pages that are not sections are reached through <main data-hms-page>,
+   which already exists — wrapping them in a new element would shift the
+   structural selectors every saved customization on those pages is keyed by. */
+const SITE_COLOR_AREAS = [
+  { id: 'site', label: 'Main website', selector: ':root' },
+  { id: 'header', label: 'Header', selector: '.nav-bar' },
+  { id: 'footer', label: 'Footer', selector: '[data-hms-section="footer"]' },
+  { id: 'rooms', label: 'Available Rooms', selector: '[data-hms-section="rooms"]' },
+  { id: 'dining', label: 'Restaurant Menu', selector: '[data-hms-section="dining"]' },
+  { id: 'amenities', label: 'Amenities', selector: 'main[data-hms-page="amenities"]' },
+  { id: 'experience', label: 'Experience', selector: 'main[data-hms-page="experience"]' },
+];
+
+function mixToward(rgb, target, amount) {
+  const c = (a, b) => Math.round(a + (b - a) * amount);
+  return 'rgb(' + c(rgb.r, target.r) + ',' + c(rgb.g, target.g) + ',' + c(rgb.b, target.b) + ')';
+}
+
+/* The card, border and warm shades are steps off the chosen background toward
+   the text colour, so a student picks one colour and the rest of the palette
+   follows instead of stranding light text on a light background. */
+function sitePalette(bg) {
+  const base = cardPalette(bg);
+  if (!base) return null;
+  const rgb = parseColorToRgb(bg);
+  const fgRgb = parseColorToRgb(base.fg) || { r: 245, g: 240, b: 232 };
+  return Object.assign({}, base, {
+    warm: mixToward(rgb, fgRgb, 0.03),
+    card: mixToward(rgb, fgRgb, 0.07),
+    border: mixToward(rgb, fgRgb, 0.18),
+  });
+}
+
+function siteAreaCss(selector, bg) {
+  const p = sitePalette(bg);
+  if (!p) return '';
+  // Template 1 reads --bg-warm for its secondary ground, Template 2 --bg-alt.
+  // Emitting both keeps one function correct for either; each ignores the other.
+  const vars = '--bg:' + p.bg + ';'
+    + '--bg-warm:' + p.warm + ';'
+    + '--bg-alt:' + p.warm + ';'
+    + '--card:' + p.card + ';'
+    + '--border:' + p.border + ';'
+    + '--fg:' + p.fg + ';'
+    + '--fg-muted:' + p.muted + ';'
+    + '--accent:' + p.accent + ';';
+  // :root only needs the variables — body already paints itself with var(--bg).
+  const paint = selector === ':root' ? '' : 'background:' + p.bg + ';';
+  return selector + '{' + vars + paint + '}';
+}
+
+function SiteTheme({ colors }) {
+  const css = SITE_COLOR_AREAS
+    .map((area) => (colors && colors[area.id] ? siteAreaCss(area.selector, colors[area.id]) : ''))
+    .filter(Boolean)
+    .join('');
+  if (!css) return null;
+  return <style data-hms-no-edit="1">{css}</style>;
+}
+
+function SiteColorsModal({ open, colors, onPick, onClose }) {
+  if (!open) return null;
+
+  return ReactDOM.createPortal(
+    <div
+      className="facility-modal-overlay hero-modal-overlay"
+      data-hms-no-edit="1"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Background colours"
+      onClick={onClose}
+    >
+      <div className="facility-modal" style={{ width: 'min(560px, 100%)', padding: '1.5rem', maxHeight: '86vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display" style={{  fontSize: '1.35rem', marginBottom: '0.35rem' }}>Background Colours</h3>
+        <p className="header-modal-hint" style={{ marginTop: 0 }}>
+          Pick a background for the whole site or for one area. Text and cards in that
+          area adjust so they stay readable.
+        </p>
+
+        {SITE_COLOR_AREAS.map((area) => (
+          <div key={area.id} className="site-color-row">
+            <div className="site-color-name">
+              <span>{area.label}</span>
+              {colors && colors[area.id]
+                ? <button type="button" className="site-color-clear" onClick={() => onPick(area.id, '')}>Reset</button>
+                : null}
+            </div>
+            <div className="site-color-swatches">
+              {CARD_COLOR_PRESETS.map((hex) => (
+                <button
+                  key={hex}
+                  type="button"
+                  className={`card-color-swatch${colors && colors[area.id] === hex ? ' is-active' : ''}`}
+                  style={{ background: hex }}
+                  title={hex}
+                  aria-label={area.label + ': use ' + hex}
+                  onClick={() => onPick(area.id, hex)}
+                ></button>
+              ))}
+              <input
+                type="color"
+                className="site-color-input"
+                title={'Custom colour for ' + area.label}
+                value={(colors && parseColorToRgb(colors[area.id])) ? colors[area.id] : '#1f1b14'}
+                onChange={(e) => onPick(area.id, e.target.value)}
+              />
+            </div>
+          </div>
+        ))}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-primary" onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+
 function CardColorButton({ kind, label }) {
   return (
     <button type="button" title={label} data-hms-no-edit="1"
@@ -3424,7 +3575,10 @@ function App() {
     window.HMSSiteContent && window.HMSSiteContent.getMenuCardBg ? window.HMSSiteContent.getMenuCardBg() : ''
   ));
   const [canEditMenuColor, setCanEditMenuColor] = useState(false);
-  // Which colour dialog is open, if any: 'room', 'menu' or null.
+  const [siteColors, setSiteColorsState] = useState(() => (
+    window.HMSSiteContent && window.HMSSiteContent.getSiteColors ? window.HMSSiteContent.getSiteColors() : {}
+  ));
+  // Which colour dialog is open, if any: 'room', 'menu', 'site' or null.
   const [cardColorKind, setCardColorKind] = useState(null);
   const [headerEdit, setHeaderEdit] = useState(null);
   const [canEditRooms, setCanEditRooms] = useState(false);
@@ -3521,7 +3675,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const open = (e) => setCardColorKind(e && e.detail === 'menu' ? 'menu' : 'room');
+    const open = (e) => {
+      const kind = e && e.detail;
+      setCardColorKind(kind === 'menu' || kind === 'site' ? kind : 'room');
+    };
     window.addEventListener('hms-card-color', open);
     return () => window.removeEventListener('hms-card-color', open);
   }, []);
@@ -3560,6 +3717,7 @@ function App() {
         ? window.HMSSiteContent.canEditMenuCardStyle()
         : false
     );
+    if (window.HMSSiteContent.getSiteColors) setSiteColorsState(window.HMSSiteContent.getSiteColors());
     setCanEditRooms(window.HMSSiteContent.canEditRooms());
     setCanManageRooms(
       typeof window.HMSSiteContent.canUseRoomManagementUi === 'function'
@@ -3870,6 +4028,13 @@ function App() {
     }
   };
 
+  const pickSiteColor = (area, hex) => {
+    if (!window.HMSSiteContent || !window.HMSSiteContent.setSiteColor) return;
+    if (window.HMSSiteContent.setSiteColor(area, hex)) {
+      showToast(hex ? 'Background colour updated' : 'Background back to the template colour');
+    }
+  };
+
   const pickMenuCardBg = (hex) => {
     if (!window.HMSSiteContent || !window.HMSSiteContent.setMenuCardBg) return;
     if (window.HMSSiteContent.setMenuCardBg(hex)) {
@@ -3950,6 +4115,13 @@ function App() {
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
       <Footer onNav={navigateTo} cardImages={cardImages} page={page} brandName={brandName} />
       <HeaderEditModal edit={headerEditDialog} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />
+      <SiteTheme colors={siteColors} />
+      <SiteColorsModal
+        open={cardColorKind === 'site'}
+        colors={siteColors}
+        onPick={pickSiteColor}
+        onClose={() => setCardColorKind(null)}
+      />
       <CardTheme selector=".room-card" bg={roomCardBg} />
       <CardTheme selector=".menu-card, .menu-food-card" bg={menuCardBg} />
       <CardColorModal

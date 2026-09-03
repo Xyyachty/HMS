@@ -15,7 +15,8 @@
   const BRAND_NAME_KEY = '__brandName';
   const ROOM_CARD_STYLE_KEY = '__roomCardStyle';
   const MENU_CARD_STYLE_KEY = '__menuCardStyle';
-  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const SITE_COLORS_KEY = '__siteColors';
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   /**
    * The hotel name shown in the header and the footer.
@@ -337,6 +338,50 @@
       items: [{ id: MENU_CARD_STYLE_ID, bg: String(bg == null ? '' : bg).trim().slice(0, 32) }],
     });
     return true;
+  }
+
+  /**
+   * Background colours for the areas of the site that are chrome rather than
+   * anyone's page: the site background itself, the header, the footer, and the
+   * Rooms / Restaurant / Amenities / Experience areas.
+   *
+   * Not gated on a page, for the same reason the logo is not (see canEditLogo):
+   * no single role owns the site's background, and every role that can edit
+   * anything could already recolour the section it works on. A change applies
+   * site-wide and the most recent one wins.
+   */
+  const SITE_COLOR_AREAS = ['site', 'header', 'footer', 'rooms', 'dining', 'amenities', 'experience'];
+
+  function getSiteColors() {
+    const c = getCustomizations();
+    const entry = c[SITE_COLORS_KEY];
+    const items = entry && Array.isArray(entry.items) ? entry.items : [];
+    const out = {};
+    items.forEach((item) => {
+      if (!item || SITE_COLOR_AREAS.indexOf(item.id) === -1) return;
+      const bg = typeof item.bg === 'string' ? item.bg.trim() : '';
+      if (bg) out[item.id] = bg;
+    });
+    return out;
+  }
+
+  function setSiteColor(area, bg) {
+    if (!canEditSiteColors()) return false;
+    if (SITE_COLOR_AREAS.indexOf(area) === -1) return false;
+    const next = getSiteColors();
+    const clean = String(bg == null ? '' : bg).trim().slice(0, 32);
+    if (clean) next[area] = clean; else delete next[area];
+    patch(SITE_COLORS_KEY, {
+      page: 'home',
+      items: SITE_COLOR_AREAS
+        .filter((id) => next[id])
+        .map((id) => ({ id: id, bg: next[id] })),
+    });
+    return true;
+  }
+
+  function canEditSiteColors() {
+    return canEdit();
   }
 
   function canEditMenuCardStyle() {
@@ -871,6 +916,7 @@
       brandName: getBrandName(),
       roomCardBg: getRoomCardBg(),
       menuCardBg: getMenuCardBg(),
+      siteColors: getSiteColors(),
       rooms: getRooms(),
       menus: getMenus(),
       cardImages: getCardImages(),
@@ -916,6 +962,8 @@
     BRAND_NAME_KEY,
     ROOM_CARD_STYLE_KEY,
     MENU_CARD_STYLE_KEY,
+    SITE_COLORS_KEY,
+    SITE_COLOR_AREAS,
     ROOMS_KEY,
     MENUS_KEY,
     CARD_IMAGES_KEY,
@@ -938,6 +986,9 @@
     getMenuCardBg,
     setMenuCardBg,
     canEditMenuCardStyle,
+    getSiteColors,
+    setSiteColor,
+    canEditSiteColors,
     getRooms,
     setRooms,
     addRoom,

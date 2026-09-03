@@ -18,7 +18,7 @@
 
   const USER_KEY = '__userElements';
   const DELETED_KEY = '__deleted';
-  const SITE_CONTENT_KEYS = ['__navLinks', '__brandName', '__roomCardStyle', '__menuCardStyle', '__rooms', '__menus', '__cardImages', '__heroSlides'];
+  const SITE_CONTENT_KEYS = ['__navLinks', '__brandName', '__roomCardStyle', '__menuCardStyle', '__siteColors', '__rooms', '__menus', '__cardImages', '__heroSlides'];
 
   let designMode = false;
   let selectedEl = null;
@@ -2278,6 +2278,7 @@
       background: #ec4899; box-shadow: 0 0 0 1px rgba(236,72,153,.35);
     }
     .hms-drag-unclipped { overflow: visible !important; }
+    #hms-section-rail .hms-rail-colors { text-transform: none; gap: 5px; }
     .hms-smart-guide.vertical { top: 0; bottom: 0; width: 1px; }
     .hms-smart-guide.horizontal { left: 0; right: 0; height: 1px; }
     body.hms-design-mode::after {
@@ -2339,7 +2340,9 @@
   function rebuildSectionRail() {
     const sections = getSections();
     const rail = ensureSectionRail();
-    if (!designMode || !sections.length) {
+    // Amenities and Experience have no marked sections, but the colours button
+    // below still has to be reachable from them.
+    if (!designMode || (!sections.length && !canEdit)) {
       rail.style.display = 'none';
       return;
     }
@@ -2357,6 +2360,23 @@
       });
       rail.appendChild(btn);
     });
+
+    // Background colours belong to the whole site, not to whichever element is
+    // selected, so the rail carries them rather than the Design Panel — the rail
+    // is already the site-wide control strip and is only shown in design mode.
+    if (canEdit) {
+      const colors = document.createElement('button');
+      colors.type = 'button';
+      colors.className = 'hms-rail-colors';
+      colors.title = 'Background colours';
+      colors.innerHTML = '<i class="fa-solid fa-palette"></i> colours';
+      colors.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.dispatchEvent(new CustomEvent('hms-card-color', { detail: 'site' }));
+      });
+      rail.appendChild(colors);
+    }
     rail.style.display = 'inline-flex';
   }
 

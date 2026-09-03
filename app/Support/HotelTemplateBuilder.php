@@ -68,6 +68,13 @@ class HotelTemplateBuilder
 
     /** The same, for the menu cards: Front Desk shows them on Home, Restaurant Management on its own page. */
     public const MENU_CARD_STYLE_KEY = '__menuCardStyle';
+
+    /**
+     * Background colours for the site's shared chrome. Like the logo, no single
+     * role owns these, so any site-owning role may set them and the most recent
+     * write wins through claimSharedContentKeys().
+     */
+    public const SITE_COLORS_KEY = '__siteColors';
     public const ROOMS_KEY = '__rooms';
     public const MENUS_KEY = '__menus';
     public const CARD_IMAGES_KEY = '__cardImages';
@@ -91,6 +98,7 @@ class HotelTemplateBuilder
         self::BRAND_NAME_KEY,
         self::ROOM_CARD_STYLE_KEY,
         self::MENU_CARD_STYLE_KEY,
+        self::SITE_COLORS_KEY,
         self::ROOMS_KEY,
         self::MENUS_KEY,
     ];
@@ -429,6 +437,7 @@ class HotelTemplateBuilder
             self::BRAND_NAME_KEY,
             self::ROOM_CARD_STYLE_KEY,
             self::MENU_CARD_STYLE_KEY,
+            self::SITE_COLORS_KEY,
             self::ROOMS_KEY,
             self::MENUS_KEY,
             self::CARD_IMAGES_KEY,
@@ -531,6 +540,14 @@ class HotelTemplateBuilder
             if ($key === self::MENU_CARD_STYLE_KEY && in_array($role, ['front_desk', 'restaurant_management'], true)) {
                 if (is_array($value)) {
                     $value['page'] = $value['page'] ?? 'restaurant';
+                    $out[$key] = $value;
+                }
+                continue;
+            }
+
+            if ($key === self::SITE_COLORS_KEY && in_array($role, self::SITE_OWNING_ROLES, true)) {
+                if (is_array($value)) {
+                    $value['page'] = $value['page'] ?? 'home';
                     $out[$key] = $value;
                 }
                 continue;
