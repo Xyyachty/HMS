@@ -181,6 +181,19 @@ class HotelConceptDesk
     }
 
     /**
+     * Whether this team has faculty approval to move past the concept stage.
+     *
+     * Front Desk cannot pick a Default Template until faculty has approved one
+     * of the team's two proposed concepts — the website is built on top of the
+     * approved concept, so choosing a template before that exists would let a
+     * team skip the review step entirely.
+     */
+    public static function hasApprovedConcept(?string $groupName, ?int $facultyId): bool
+    {
+        return self::isDecided(self::conceptsFor($groupName, $facultyId));
+    }
+
+    /**
      * The concepts a portal should show.
      *
      * Before a decision, both — the point is to weigh them against each other.

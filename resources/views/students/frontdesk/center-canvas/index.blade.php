@@ -5,9 +5,12 @@
         $isFrontDeskRole = $builderRole === 'front_desk';
         $moduleLabel = $moduleLabel ?? (\App\Support\HotelTemplateBuilder::ROLES[$builderRole] ?? 'Editor');
         $hasTemplate = !empty($selectedTemplate);
-        // Only Front Desk can pick; everyone else waits until Front Desk chooses
-        $canPickTemplate = $isFrontDeskRole && ($canEditTemplate ?? false) && !$hasTemplate;
-        $waitingForFrontDesk = !$hasTemplate && !$canPickTemplate;
+        $conceptApproved = $conceptApproved ?? false;
+        // Only Front Desk can pick, and only after faculty has approved a hotel
+        // concept; everyone else waits until Front Desk chooses
+        $canPickTemplate = $isFrontDeskRole && ($canEditTemplate ?? false) && !$hasTemplate && $conceptApproved;
+        $needsConceptApproval = $isFrontDeskRole && ($canEditTemplate ?? false) && !$hasTemplate && !$conceptApproved;
+        $waitingForFrontDesk = !$hasTemplate && !$canPickTemplate && !$needsConceptApproval;
         $accent = $theme['badge_color'] ?? '#22d3ee';
         $accentBorder = match ($builderRole) {
             'room_management' => 'hover:border-rose-500 hover:shadow-[0_0_20px_rgba(244,63,94,0.2)]',
@@ -77,6 +80,18 @@
             </div>
         </div>
     </div>
+    @elseif($needsConceptApproval)
+    <div class="flex-1 flex flex-col items-center justify-center gap-6">
+        <div class="text-center max-w-sm">
+            <p class="text-[10px] font-semibold tracking-widest uppercase mb-2" style="color: {{ $accent }}">Front Desk Editor</p>
+            <h2 class="text-xl font-bold text-white mb-1">Concept approval required</h2>
+            <p class="text-xs text-zinc-500">Your faculty has not approved a hotel concept yet. Once they approve one of your team's two proposed concepts, you'll be able to preview and select a Default Template.</p>
+        </div>
+        <div class="w-16 h-16 rounded-full border-2 border-dashed border-zinc-700 flex items-center justify-center">
+            <i class="fas fa-clipboard-check text-2xl text-zinc-600"></i>
+        </div>
+        <a href="{{ route('students.dashboard') }}" class="text-[10px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-md border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition-colors">Check concept status</a>
+    </div>
     @elseif($waitingForFrontDesk)
     <div class="flex-1 flex flex-col items-center justify-center gap-6">
         <div class="text-center max-w-sm">
@@ -90,7 +105,7 @@
     </div>
     @endif
 
-    <div id="canvasFrame" class="flex-1 min-h-0 {{ ($canPickTemplate || $waitingForFrontDesk) ? 'hidden' : '' }}">
+    <div id="canvasFrame" class="flex-1 min-h-0 {{ ($canPickTemplate || $needsConceptApproval || $waitingForFrontDesk) ? 'hidden' : '' }}">
         <div class="canvas-frame h-full">
             <div class="flex-1 min-h-0 bg-white">
                 <iframe id="templateFrame" src="" title="{{ $moduleLabel }} Template" class="w-full h-full border-0"></iframe>

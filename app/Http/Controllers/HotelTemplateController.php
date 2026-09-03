@@ -72,6 +72,14 @@ class HotelTemplateController extends Controller
             'snapshot' => ['sometimes', 'boolean'],
         ]);
 
+        if (!empty($data['selected_template'])
+            && !\App\Support\HotelConceptDesk::hasApprovedConcept($membership->group_name, (int) $membership->faculty_id)
+        ) {
+            return response()->json([
+                'error' => 'Your faculty has not approved a hotel concept yet. Wait for approval before picking a Default Template.',
+            ], 403);
+        }
+
         $template = HotelTemplateBuilder::ensureTemplate($membership, $role);
         $saved = HotelTemplateBuilder::save(
             $template,

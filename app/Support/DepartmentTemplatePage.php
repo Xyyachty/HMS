@@ -84,11 +84,13 @@ class DepartmentTemplatePage
         $templateLayout = HotelTemplateBuilder::defaultLayout();
         $templatePayload = null;
         $canEditTemplate = false;
+        $conceptApproved = false;
 
         $editablePages = HotelTemplateBuilder::editablePagesForRole($role);
         $preferredPage = HotelTemplateBuilder::preferredPageForRole($role);
 
         if ($groupMembership) {
+            $conceptApproved = HotelConceptDesk::hasApprovedConcept($groupName, $facultyId);
             $roleTemplate = HotelTemplateBuilder::ensureTemplate($groupMembership, $role);
             $canEditTemplate = HotelTemplateBuilder::canEdit($authUser, $groupMembership, $role);
             $templatePayload = HotelTemplateBuilder::payload($roleTemplate, $canEditTemplate);
@@ -127,6 +129,7 @@ class DepartmentTemplatePage
             'templateLayout',
             'templatePayload',
             'canEditTemplate',
+            'conceptApproved',
             'editablePages',
             'preferredPage',
             'navBadges'

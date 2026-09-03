@@ -590,6 +590,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
                         abort(403, 'Only Front Desk role can select a template.');
                     }
+                    if (!\App\Support\HotelConceptDesk::hasApprovedConcept($groupMembership->group_name, (int) $groupMembership->faculty_id)) {
+                        abort(403, 'Your faculty has not approved a hotel concept yet.');
+                    }
                     GroupSettings::updateOrCreate(
                         ['group_name' => $groupMembership->group_name, 'faculty_id' => $groupMembership->faculty_id],
                         ['selected_template' => '1']
@@ -626,6 +629,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 if ($request->query('save') === '1') {
                     if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
                         abort(403, 'Only Front Desk role can select a template.');
+                    }
+                    if (!\App\Support\HotelConceptDesk::hasApprovedConcept($groupMembership->group_name, (int) $groupMembership->faculty_id)) {
+                        abort(403, 'Your faculty has not approved a hotel concept yet.');
                     }
                     GroupSettings::updateOrCreate(
                         ['group_name' => $groupMembership->group_name, 'faculty_id' => $groupMembership->faculty_id],
@@ -673,6 +679,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
             return response()->json([
                 'error' => 'Only students with the Front Desk role can select or edit the hotel template. Ask your faculty to assign that role.',
+            ], 403);
+        }
+
+        if (!\App\Support\HotelConceptDesk::hasApprovedConcept($groupMembership->group_name, (int) $groupMembership->faculty_id)) {
+            return response()->json([
+                'error' => 'Your faculty has not approved a hotel concept yet. Wait for approval before picking a Default Template.',
             ], 403);
         }
 
