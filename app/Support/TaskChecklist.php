@@ -20,6 +20,14 @@ namespace App\Support;
  *                than the site, so their review shows no site changes and is
  *                judged by opening the department page instead.
  *
+ * The two kinds are not interleaved. A team customises its site before it runs
+ * the hotel, so Tasks 1 and 2 (the first SITE_STEPS positions) are website work
+ * for every role, and the ops work starts at Task 3 for all of them at once.
+ * allByStep() enforces that rather than trusting these arrays to be counted out
+ * by hand. Each role gets exactly two site tasks: the first builds the content,
+ * the second gives it its pictures, prices and copy and matches the page to the
+ * rest of the site.
+ *
  * The ops list is the simulation itself, in the order the server enforces it —
  * a stay runs Booked → Arrived → Checked In → Checked Out, and checking out
  * opens the housekeeping inspection that ends with the room Available again.
@@ -42,42 +50,27 @@ class TaskChecklist
     public const SCOPE_SITE = 'site';
     public const SCOPE_OPS = 'ops';
 
+    /** How many leading task numbers are reserved for website work. */
+    public const SITE_STEPS = 2;
+
     /**
      * Keyed by role, in the order they should appear under each department.
-     * Site work first, then the ops work that follows from it.
+     * The two website tasks first, then the ops work that follows from them.
      *
      * @var array<string, list<array{title: string, description: string, priority: string, scope: string}>>
      */
     private const TASKS = [
         'front_desk' => [
             [
-                'title' => 'Change Logo',
-                'description' => 'Replace the default logo with your own. It is one image for the whole site — the header, the footer and every page read it.',
-                'priority' => 'medium',
+                'title' => 'Brand Your Hotel',
+                'description' => "Give the site your hotel's identity: replace the default logo with your own, and the placeholder name in the header with your team's hotel name. Both are single site-wide values — the header, the footer and every page read them.",
+                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
-                'title' => 'Name Your Hotel',
-                'description' => "Replace the placeholder name in the header with your team's hotel name.",
+                'title' => 'Design the Home Page',
+                'description' => 'Customise the page a guest lands on: pick the five photographs that rotate across the top, rewrite the headline and the introduction under them so they describe your hotel rather than the sample text, and check every link in the top menu points at the right page and is labelled the way your hotel would label it.',
                 'priority' => 'medium',
-                'scope' => self::SCOPE_SITE,
-            ],
-            [
-                'title' => 'Choose Your Hero Images',
-                'description' => 'Pick the five photographs that rotate across the top of the Home page. They are the first thing a guest sees.',
-                'priority' => 'medium',
-                'scope' => self::SCOPE_SITE,
-            ],
-            [
-                'title' => 'Write the Welcome Section',
-                'description' => 'Rewrite the headline and the introduction under the hero so they describe your hotel rather than the sample text.',
-                'priority' => 'medium',
-                'scope' => self::SCOPE_SITE,
-            ],
-            [
-                'title' => 'Set Up the Navigation Menu',
-                'description' => 'Check every link in the top menu points at the right page and is labelled the way your hotel would label it.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
 
@@ -176,33 +169,15 @@ class TaskChecklist
 
         'room_management' => [
             [
-                'title' => 'Add Your Room Types',
-                'description' => 'Replace the sample rooms with the room types your hotel offers, each with its own name.',
+                'title' => 'Build Your Room Types',
+                'description' => 'Replace the sample rooms with the room types your hotel actually offers. Give each one its own name and describe what it includes, so a guest can tell them apart without asking.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
-                'title' => 'Photograph Every Room',
-                'description' => 'Give every room type its own picture on the Rooms page. No room should be left on the placeholder image.',
-                'priority' => 'medium',
-                'scope' => self::SCOPE_SITE,
-            ],
-            [
-                'title' => 'Price Your Rooms',
-                'description' => 'Set a nightly rate for each room type and be ready to explain why the more expensive ones cost more.',
+                'title' => 'Photograph and Price Every Room',
+                'description' => 'Give every room type its own picture — none should be left on the placeholder image — set a nightly rate you can explain, and lay the Rooms page out so it matches the rest of the site.',
                 'priority' => 'high',
-                'scope' => self::SCOPE_SITE,
-            ],
-            [
-                'title' => 'Write Room Descriptions',
-                'description' => 'Describe each room type and list what it includes, so a guest can tell them apart without asking.',
-                'priority' => 'medium',
-                'scope' => self::SCOPE_SITE,
-            ],
-            [
-                'title' => 'Style the Rooms Page',
-                'description' => 'Lay out the Rooms page so it matches the rest of the site — colours, fonts and spacing.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
 
@@ -253,21 +228,9 @@ class TaskChecklist
                 'scope' => self::SCOPE_SITE,
             ],
             [
-                'title' => 'Photograph Your Dishes',
-                'description' => 'Add a picture to every dish on the Restaurant page.',
-                'priority' => 'medium',
-                'scope' => self::SCOPE_SITE,
-            ],
-            [
-                'title' => 'Price the Menu',
-                'description' => 'Set a price for every dish and check the menu reads consistently.',
+                'title' => 'Photograph and Price the Menu',
+                'description' => 'Add a picture to every dish, set a price for every dish, and lay the Restaurant page out so it matches the rest of the site.',
                 'priority' => 'high',
-                'scope' => self::SCOPE_SITE,
-            ],
-            [
-                'title' => 'Style the Restaurant Page',
-                'description' => 'Lay out the Restaurant page so it matches the rest of the site.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
 
@@ -331,14 +294,8 @@ class TaskChecklist
             ],
             [
                 'title' => 'Write the Experience Page',
-                'description' => 'Write the Experience page so it tells a guest what staying at your hotel is like.',
+                'description' => 'Write the Experience page so it tells a guest what staying at your hotel is like, and lay it out so it matches the rest of the site.',
                 'priority' => 'medium',
-                'scope' => self::SCOPE_SITE,
-            ],
-            [
-                'title' => 'Style Your Pages',
-                'description' => 'Lay out the Experience and Amenities pages so they match the rest of the site.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
 
@@ -458,11 +415,16 @@ class TaskChecklist
     /**
      * The same checklist pivoted: step index => [role => task].
      *
-     * Position N carries the same stage of the simulation for every role — index
-     * 0 is site setup everywhere, the ops work follows — so the Create Task
-     * wizard can hand out "Task 1" to a whole team in one tick. The roles run out
-     * at different lengths, so the later steps hold fewer entries; a step is only
-     * as wide as the roles that still have work at that position.
+     * Position N is the same stage for every role, so the Create Task tab can
+     * hand out "Task 1" to a whole team in one tick. The first SITE_STEPS
+     * positions are the website build and hold nothing else: a role's site
+     * tasks fill them in order, and its ops tasks start after them, so Task 3
+     * is where the simulation begins for everybody at once. Maintenance owns no
+     * page of the site, so it simply has no card in Tasks 1 and 2 and its queue
+     * opens at Task 3 with the rest.
+     *
+     * A step is only as wide as the roles that still have work at that position,
+     * so the later ones hold fewer entries as the shorter lists run out.
      *
      * Role order inside a step follows all(), which follows
      * HotelTemplateBuilder::ROLES.
@@ -474,8 +436,21 @@ class TaskChecklist
         $byStep = [];
 
         foreach (self::all() as $role => $tasks) {
-            foreach ($tasks as $index => $task) {
-                $byStep[$index][$role] = $task;
+            $siteCount = count(array_filter(
+                $tasks,
+                fn ($task) => ($task['scope'] ?? self::SCOPE_SITE) === self::SCOPE_SITE
+            ));
+
+            $siteStep = 0;
+            // Never below SITE_STEPS, so ops starts at Task 3 even for a role
+            // with no site work at all; never below the site tasks a role
+            // actually has, so giving one a third website task widens the site
+            // range instead of colliding with its first ops task.
+            $opsStep = max(self::SITE_STEPS, $siteCount);
+
+            foreach ($tasks as $task) {
+                $isSite = ($task['scope'] ?? self::SCOPE_SITE) === self::SCOPE_SITE;
+                $byStep[$isSite ? $siteStep++ : $opsStep++][$role] = $task;
             }
         }
 

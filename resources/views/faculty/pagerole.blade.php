@@ -1232,7 +1232,7 @@
                             <span class="w-6 h-6 rounded-lg bg-brand text-white text-[11px] font-bold flex items-center justify-center shrink-0">2</span>
                             <div>
                                 <h4 class="text-sm font-bold text-slate-700">Which tasks are you setting?</h4>
-                                <p class="text-xs text-slate-400">Tick a task number to give that step to every department at once</p>
+                                <p class="text-xs text-slate-400">Tick a task number to give that step to every department that has work in it</p>
                             </div>
                         </div>
                         <button type="button" id="selectAllTasksBtn" onclick="selectAllVisibleTasks()" class="text-xs font-semibold text-brand hover:underline">
