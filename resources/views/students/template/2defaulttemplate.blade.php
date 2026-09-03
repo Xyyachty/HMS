@@ -1849,7 +1849,7 @@ function MobileMenu({ open, onClose, onNav, links, cardImages }) {
   // Passed only so the menu re-renders when the shared logo changes.
   void cardImages;
   return (
-    <div className={`mobile-menu${open ? ' open' : ''}`}>
+    <div className={`mobile-menu${open ? ' open' : ''}`} data-hms-section="nav">
       <BrandLogo size={54} />
       {items.map(i => <button key={i.id || i.key} onClick={() => { onNav(i.key); onClose(); }}>{i.label}</button>)}
     </div>
@@ -1913,9 +1913,9 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, canEditNav, o
     if (hmsConfirm('Remove this navigation link?')) onRemoveNav(id);
   };
   return (
-    <nav className="nav-bar" role="navigation" aria-label="Main navigation">
+    <nav className="nav-bar" data-hms-section="nav" role="navigation" aria-label="Main navigation">
       <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        <div data-hms-section="brand" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <button onClick={() => onNav('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <BrandLogo size={34} />
             <span style={{ color: 'var(--accent)', fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
@@ -3058,6 +3058,17 @@ function Footer({ onNav, cardImages, page }) {
 
 
 /* â•â•â•â•â•â•â• APP â•â•â•â•â•â•â• */
+/* Which section of the site each page counts as, for the task-scoped editor.
+   A section is editable only while the task that owns it is assigned — see
+   App/Support/TemplateSectionMap and hms-template-editor.js. Home is absent on
+   purpose: it carries its own per-section markers inside. */
+const PAGE_SECTIONS = {
+  rooms: 'rooms',
+  restaurant: 'dining',
+  experience: 'experience',
+  amenities: 'amenities',
+};
+
 function App() {
   const [page, setPage] = useState('home');
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -3500,7 +3511,7 @@ function App() {
         links={navLinks}
         cardImages={cardImages}
       />
-      <main data-hms-page={page}>{pages[page] || pages.home}</main>
+      <main data-hms-page={page} data-hms-section={PAGE_SECTIONS[page]}>{pages[page] || pages.home}</main>
       <Footer onNav={navigateTo} cardImages={cardImages} page={page} />
       <Toast message={toast.message} visible={toast.visible} />
     </>

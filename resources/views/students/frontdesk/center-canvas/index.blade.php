@@ -110,6 +110,9 @@
         var serverTemplate = '{{ $selectedTemplate }}';
         var canEdit = @json((bool) ($canEditTemplate ?? false));
         var editablePages = @json($editablePages ?? []);
+        // Narrower than the pages: which sections of them the student's current
+        // tasks have opened. See App\Support\TemplateSectionMap.
+        var editableSections = @json($editableSections ?? []);
         var preferredPage = @json($preferredPage ?? 'home');
         if (serverTemplate && TEMPLATE_URLS[serverTemplate]) {
             var frame = document.getElementById('templateFrame');
@@ -123,6 +126,7 @@
                     // Redesign is gated by HMS role assignment (not hotel Staff login)
                     var designOn = canEdit && (window.currentEditorMode !== 'preview');
                     postToTemplate({ type: 'set-editable-pages', pages: editablePages });
+                    postToTemplate({ type: 'set-editable-sections', sections: editableSections });
                     postToTemplate({ type: 'set-can-edit', canEdit: designOn });
                     postToTemplate({ type: 'set-mode', mode: designOn ? 'design' : 'preview' });
                     if (preferredPage) {

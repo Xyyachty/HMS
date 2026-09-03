@@ -88,6 +88,13 @@ class DepartmentTemplatePage
         $editablePages = HotelTemplateBuilder::editablePagesForRole($role);
         $preferredPage = HotelTemplateBuilder::preferredPageForRole($role);
 
+        // Which parts of the site this student may actually redesign. The page
+        // list above says where their role is allowed to work at all; this says
+        // which sections of it are open right now, and it is narrower: a section
+        // opens only while the task that owns it is assigned and unsubmitted.
+        // Read off the rows already fetched above rather than querying again.
+        $editableSections = TemplateSectionMap::unlockedFor($tasks);
+
         if ($groupMembership) {
             $roleTemplate = HotelTemplateBuilder::ensureTemplate($groupMembership, $role);
             $canEditTemplate = HotelTemplateBuilder::canEdit($authUser, $groupMembership, $role);
@@ -128,6 +135,7 @@ class DepartmentTemplatePage
             'templatePayload',
             'canEditTemplate',
             'editablePages',
+            'editableSections',
             'preferredPage',
             'navBadges'
         ) + ['builderRole' => $role];

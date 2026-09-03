@@ -3,6 +3,10 @@
     $hmsCustomizations = $customizations ?? [];
     $hmsCanEdit = (bool) ($canEditTemplate ?? false);
     $hmsEditablePages = $editablePages ?? [];
+    // Which sections of those pages are open, decided by the tasks the student
+    // is holding right now. Empty means read-only even where the page is theirs.
+    $hmsEditableSections = $editableSections ?? [];
+    $hmsSectionLabels = array_map(fn ($section) => $section['label'], \App\Support\TemplateSectionMap::all());
     $hmsBuilderRole = $builderRole ?? null;
     $hmsReviewHighlight = $reviewHighlight ?? null;
 
@@ -15,6 +19,8 @@
     window.__HMS_CUSTOMIZATIONS__ = @json($hmsCustomizations);
     window.__HMS_CAN_EDIT__ = @json($hmsCanEdit);
     window.__HMS_EDITABLE_PAGES__ = @json($hmsEditablePages);
+    window.__HMS_EDITABLE_SECTIONS__ = @json($hmsEditableSections);
+    window.__HMS_SECTION_LABELS__ = @json($hmsSectionLabels);
     window.__HMS_BUILDER_ROLE__ = @json($hmsBuilderRole);
     try {
         // Design tools only belong inside the builder iframe. A standalone tab
@@ -23,10 +29,12 @@
         if (!window.parent || window.parent === window) {
             window.__HMS_CAN_EDIT__ = false;
             window.__HMS_EDITABLE_PAGES__ = [];
+            window.__HMS_EDITABLE_SECTIONS__ = [];
         }
     } catch (e) {
         window.__HMS_CAN_EDIT__ = false;
         window.__HMS_EDITABLE_PAGES__ = [];
+        window.__HMS_EDITABLE_SECTIONS__ = [];
     }
     window.__HMS_CURRENT_PAGE__ = 'home';
     // Set only on the faculty Before/After preview — drives hms-review-highlight.js.
