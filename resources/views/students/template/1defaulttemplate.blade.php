@@ -179,6 +179,27 @@
      replaces whichever photograph they meant, instead of having to wait for
      the carousel to rotate to it. */
   .hero-modal-overlay { z-index: 2600; }
+  .room-color-swatches {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.4rem;
+    margin-top: 1rem;
+  }
+  .room-color-swatch {
+    height: 34px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); padding: 0;
+  }
+  .room-color-swatch.is-active { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .room-color-custom {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.75rem; margin-top: 1rem;
+    font-size: 0.72rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--fg-muted);
+  }
+  .room-color-custom input {
+    width: 54px; height: 30px; padding: 0; cursor: pointer;
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+  }
   .hero-slides-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -1192,7 +1213,10 @@ function HeaderEditModal({ edit, onSave, onCancel }) {
     onSave(value);
   };
 
-  return (
+  // Portalled like the other dialogs, so a conditional <div> never appears and
+  // disappears among #root's own children — customizations are keyed by
+  // structural selectors, and shifting siblings shifts those selectors.
+  return ReactDOM.createPortal(
     <div
       className="room-modal-overlay header-modal-overlay"
       data-hms-no-edit="1"
@@ -1242,7 +1266,8 @@ function HeaderEditModal({ edit, onSave, onCancel }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1358,6 +1383,153 @@ const DEFAULT_HERO_SLIDES = [
 
    Rendered through a portal: the slider sits inside .hero-bg / .hero-img, and a
    dialog belongs to the page rather than to the box it was opened from. */
+/* Room card colour — one value for every card, on Home and on the Rooms page.
+
+   Applied by redefining the palette variables on .room-card rather than by
+   restyling each element: the card and its children already read --card, --fg,
+   --fg-muted, --border and --accent, so overriding them there cascades through
+   the whole card with no !important and no per-element edits. */
+const ROOM_CARD_PRESETS = [
+  '#14110c', '#1f1b14', '#2b2b2b', '#1c2733',
+  '#22302a', '#2e2124', '#f5f0e8', '#ffffff',
+];
+
+function parseColorToRgb(value) {
+  const v = String(value || '').trim();
+  let m = /^#([0-9a-f]{3})$/i.exec(v);
+  if (m) {
+    const h = m[1];
+    return { r: parseInt(h[0] + h[0], 16), g: parseInt(h[1] + h[1], 16), b: parseInt(h[2] + h[2], 16) };
+  }
+  m = /^#([0-9a-f]{6})$/i.exec(v);
+  if (m) {
+    const h = m[1];
+    return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+  }
+  m = /^rgba?\(([^)]+)\)$/i.exec(v);
+  if (m) {
+    const parts = m[1].split(',').map((x) => parseFloat(x));
+    if (parts.length >= 3 && parts.slice(0, 3).every((x) => !isNaN(x))) {
+      return { r: parts[0], g: parts[1], b: parts[2] };
+    }
+  }
+  return null;
+}
+
+function relativeLuminance(rgb) {
+  const channel = (c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(rgb.r) + 0.7152 * channel(rgb.g) + 0.0722 * channel(rgb.b);
+}
+
+function contrastRatio(l1, l2) {
+  const hi = Math.max(l1, l2);
+  const lo = Math.min(l1, l2);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/* Text colour follows the chosen background, so a pale card never ends up with
+   pale text on it. The site accent is kept for the price and the category label
+   while it still reads against the card, and falls back to the text colour when
+   it does not. */
+function roomCardPalette(bg) {
+  const rgb = parseColorToRgb(bg);
+  if (!rgb) return null;
+  const lum = relativeLuminance(rgb);
+  const light = lum > 0.4;
+  const fg = light ? '#14110c' : '#f5f0e8';
+  const muted = light ? 'rgba(20,17,12,0.62)' : 'rgba(245,240,232,0.62)';
+  const border = light ? 'rgba(20,17,12,0.16)' : 'rgba(245,240,232,0.18)';
+
+  let accent = fg;
+  try {
+    const siteAccent = window.getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    const accentRgb = parseColorToRgb(siteAccent);
+    if (accentRgb && contrastRatio(relativeLuminance(accentRgb), lum) >= 3) accent = siteAccent;
+  } catch (e) { /* keep the readable fallback */ }
+
+  return { bg: bg, fg: fg, muted: muted, border: border, accent: accent };
+}
+
+/* The colour is one site-wide value, and the chip that opens it sits on cards
+   rendered three components deep on two different pages. An event keeps that a
+   one-line addition at each chip instead of a prop threaded through every
+   component in between. */
+function openRoomCardColor() {
+  window.dispatchEvent(new CustomEvent('hms-room-card-color'));
+}
+
+function RoomCardColorButton() {
+  return (
+    <button type="button" title="Card colour (all room cards)" onClick={openRoomCardColor}
+      style={toolBtnStyle('edit')}><i className="fa-solid fa-palette" style={{fontSize:11}}></i></button>
+  );
+}
+
+function RoomCardTheme({ bg }) {
+  const palette = roomCardPalette(bg);
+  if (!palette) return null;
+  const css = '.room-card{'
+    + '--card:' + palette.bg + ';'
+    + '--fg:' + palette.fg + ';'
+    + '--fg-muted:' + palette.muted + ';'
+    + '--border:' + palette.border + ';'
+    + '--accent:' + palette.accent + ';'
+    + '}';
+  return <style data-hms-no-edit="1">{css}</style>;
+}
+
+function RoomCardColorModal({ open, value, onPick, onClose }) {
+  if (!open) return null;
+
+  return ReactDOM.createPortal(
+    <div
+      className="room-modal-overlay hero-modal-overlay"
+      data-hms-no-edit="1"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Room card colour"
+      onClick={onClose}
+    >
+      <div className="room-modal" style={{ width: 'min(460px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 className="" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '0.35rem' }}>Room Card Colour</h3>
+        <p className="header-modal-hint" style={{ marginTop: 0 }}>
+          One colour for every room card, on this page and the Rooms page. The text on the
+          cards adjusts so it stays readable.
+        </p>
+
+        <div className="room-color-swatches">
+          {ROOM_CARD_PRESETS.map((hex) => (
+            <button
+              key={hex}
+              type="button"
+              className={`room-color-swatch${value === hex ? ' is-active' : ''}`}
+              style={{ background: hex }}
+              title={hex}
+              aria-label={'Use ' + hex}
+              onClick={() => onPick(hex)}
+            ></button>
+          ))}
+        </div>
+
+        <label className="room-color-custom">
+          <span>Custom colour</span>
+          <input type="color" value={parseColorToRgb(value) ? value : '#1f1b14'} onChange={(e) => onPick(e.target.value)} />
+        </label>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-outline" onClick={() => onPick('')}>Use template colour</button>
+          <button type="button" className="btn-primary" onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+
 function HeroSlidesModal({ open, slides, activeIndex, onReplace, onClose }) {
   if (!open) return null;
 
@@ -1535,6 +1707,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
                 <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
                   data-hms-no-edit="1"
                   onClick={e => e.stopPropagation()}>
+                  <RoomCardColorButton />
                   <button type="button" title="Change image" onClick={() => pickImageFile((url) => { if (url && onEditRoom) onEditRoom(room.id, { img: url }); if (onToast) onToast('Room image updated'); })}
                     style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
                   <button type="button" title="Edit room" onClick={() => handleEditRoom(room)}
@@ -2441,6 +2614,7 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, canEditRooms, canManage
                 <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
                   data-hms-no-edit="1"
                   onClick={e => e.stopPropagation()}>
+                  <RoomCardColorButton />
                   <button type="button" title="Change image" onClick={() => pickImageFile((url) => { if (url) onEditRoom(room.id, { img: url }); onToast('Room image updated'); })}
                     style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
                   <button type="button" title="Edit room" onClick={() => handleEdit(room)}
@@ -3329,6 +3503,10 @@ function App() {
   // Read through state, not inline in NavBar: hotel auth resolves after the
   // first render, so an inline canEditLogo() read shows a stale answer.
   const [canEditLogo, setCanEditLogo] = useState(false);
+  const [roomCardBg, setRoomCardBgState] = useState(() => (
+    window.HMSSiteContent && window.HMSSiteContent.getRoomCardBg ? window.HMSSiteContent.getRoomCardBg() : ''
+  ));
+  const [roomColorOpen, setRoomColorOpen] = useState(false);
   const [headerEdit, setHeaderEdit] = useState(null);
   const [canEditRooms, setCanEditRooms] = useState(false);
   const [canManageRooms, setCanManageRooms] = useState(false);
@@ -3414,6 +3592,12 @@ function App() {
     };
   }, [fetchRooms, fetchMenus, fetchAddons, fetchAmenities]);
 
+  useEffect(() => {
+    const open = () => setRoomColorOpen(true);
+    window.addEventListener('hms-room-card-color', open);
+    return () => window.removeEventListener('hms-room-card-color', open);
+  }, []);
+
   // The <title> is server-rendered outside React and would otherwise keep the placeholder.
   useEffect(() => { document.title = brandName; }, [brandName]);
 
@@ -3441,6 +3625,7 @@ function App() {
         ? window.HMSSiteContent.canEditLogo()
         : false
     );
+    if (window.HMSSiteContent.getRoomCardBg) setRoomCardBgState(window.HMSSiteContent.getRoomCardBg());
     setCanEditRooms(window.HMSSiteContent.canEditRooms());
     setCanManageRooms(
       typeof window.HMSSiteContent.canUseRoomManagementUi === 'function'
@@ -3719,6 +3904,13 @@ function App() {
     booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} />,
   };
 
+  const pickRoomCardBg = (hex) => {
+    if (!window.HMSSiteContent || !window.HMSSiteContent.setRoomCardBg) return;
+    if (window.HMSSiteContent.setRoomCardBg(hex)) {
+      showToast(hex ? 'Room card colour updated' : 'Room cards back to the template colour');
+    }
+  };
+
   /* Design mode is not React state, so it is read here in App — which re-renders
      on hms-mode-change — rather than inside NavBar, which otherwise would not
      re-render when the student switches between Design and Preview. */
@@ -3793,6 +3985,13 @@ function App() {
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
       <Footer onNavigate={navigateTo} cardImages={cardImages} page={page} brandName={brandName} />
       <HeaderEditModal edit={headerEditDialog} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />
+      <RoomCardTheme bg={roomCardBg} />
+      <RoomCardColorModal
+        open={roomColorOpen}
+        value={roomCardBg}
+        onPick={pickRoomCardBg}
+        onClose={() => setRoomColorOpen(false)}
+      />
       <Toast message={toast.message} visible={toast.visible} />
     </>
   );

@@ -13,7 +13,8 @@
   const RESERVATION_NOTIFICATIONS_KEY = '__reservationNotifications';
   const ROOM_RESERVATIONS_KEY = '__roomReservations';
   const BRAND_NAME_KEY = '__brandName';
-  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const ROOM_CARD_STYLE_KEY = '__roomCardStyle';
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   /**
    * The hotel name shown in the header and the footer.
@@ -29,6 +30,9 @@
   const DEFAULT_BRAND_NAME = 'SPC HOTEL';
   const BRAND_NAME_MAX = 60;
   const NAV_LABEL_MAX = 24;
+
+  /** Same one-item-collection shape, for the same round-trip reason. */
+  const ROOM_CARD_STYLE_ID = 'room-card';
 
   const DEFAULT_NAV = [
     { id: 'nav-home', key: 'home', label: 'Home' },
@@ -283,6 +287,33 @@
     if (!canEditNav()) return false;
     patch(NAV_KEY, { page: 'home', items: reconcileNav(items) });
     return true;
+  }
+
+  /**
+   * One colour for every room card, on the Home section and the Rooms page
+   * alike. Empty means the template's own colour, so a team that never touches
+   * this looks exactly as it does today.
+   */
+  function getRoomCardBg() {
+    const c = getCustomizations();
+    const entry = c[ROOM_CARD_STYLE_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    const bg = item && typeof item.bg === 'string' ? item.bg.trim() : '';
+    return bg;
+  }
+
+  function setRoomCardBg(bg) {
+    if (!canEditRoomCardStyle()) return false;
+    const clean = String(bg == null ? '' : bg).trim().slice(0, 32);
+    patch(ROOM_CARD_STYLE_KEY, {
+      page: 'rooms',
+      items: [{ id: ROOM_CARD_STYLE_ID, bg: clean }],
+    });
+    return true;
+  }
+
+  function canEditRoomCardStyle() {
+    return canEditRooms();
   }
 
   function getBrandName() {
@@ -810,6 +841,7 @@
     return {
       navLinks: getNav(),
       brandName: getBrandName(),
+      roomCardBg: getRoomCardBg(),
       rooms: getRooms(),
       menus: getMenus(),
       cardImages: getCardImages(),
@@ -853,6 +885,7 @@
   window.HMSSiteContent = {
     NAV_KEY,
     BRAND_NAME_KEY,
+    ROOM_CARD_STYLE_KEY,
     ROOMS_KEY,
     MENUS_KEY,
     CARD_IMAGES_KEY,
@@ -869,6 +902,9 @@
     updateNavLink,
     getBrandName,
     setBrandName,
+    getRoomCardBg,
+    setRoomCardBg,
+    canEditRoomCardStyle,
     getRooms,
     setRooms,
     addRoom,

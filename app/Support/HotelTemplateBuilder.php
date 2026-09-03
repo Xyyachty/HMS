@@ -58,6 +58,13 @@ class HotelTemplateBuilder
      */
     public const BRAND_NAME_KEY = '__brandName';
     public const DEFAULT_BRAND_NAME = 'SPC HOTEL';
+
+    /**
+     * One colour for every room card, on the Home section and the Rooms page
+     * alike. Shared like __rooms, and for the same reason: both Front Desk and
+     * Room Management show those cards and either may set the colour.
+     */
+    public const ROOM_CARD_STYLE_KEY = '__roomCardStyle';
     public const ROOMS_KEY = '__rooms';
     public const MENUS_KEY = '__menus';
     public const CARD_IMAGES_KEY = '__cardImages';
@@ -79,6 +86,7 @@ class HotelTemplateBuilder
     public const SHARED_CONTENT_KEYS = [
         self::NAV_LINKS_KEY,
         self::BRAND_NAME_KEY,
+        self::ROOM_CARD_STYLE_KEY,
         self::ROOMS_KEY,
         self::MENUS_KEY,
     ];
@@ -415,6 +423,7 @@ class HotelTemplateBuilder
         $keepKeys = [
             self::NAV_LINKS_KEY,
             self::BRAND_NAME_KEY,
+            self::ROOM_CARD_STYLE_KEY,
             self::ROOMS_KEY,
             self::MENUS_KEY,
             self::CARD_IMAGES_KEY,
@@ -496,6 +505,17 @@ class HotelTemplateBuilder
             // Shared site content: Front Desk may edit rooms shown on Home;
             // Room Management may edit rooms on the Rooms page; both persist __rooms.
             if ($key === self::ROOMS_KEY && in_array($role, ['front_desk', 'room_management'], true)) {
+                if (is_array($value)) {
+                    $value['page'] = $value['page'] ?? 'rooms';
+                    $out[$key] = $value;
+                }
+                continue;
+            }
+
+            // The room card colour rides with the cards themselves: same two
+            // owners, and claimSharedContentKeys() keeps it in one row so the
+            // merge cannot reinstate a teammate's older colour.
+            if ($key === self::ROOM_CARD_STYLE_KEY && in_array($role, ['front_desk', 'room_management'], true)) {
                 if (is_array($value)) {
                     $value['page'] = $value['page'] ?? 'rooms';
                     $out[$key] = $value;

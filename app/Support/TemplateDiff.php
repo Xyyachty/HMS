@@ -75,6 +75,7 @@ class TemplateDiff
         'menus' => 'Menu item',
         'navLinks' => 'Navigation link',
         'brandName' => 'Hotel name',
+        'roomCardStyle' => 'Room card colour',
         'cardImages' => 'Card image',
         'heroSlides' => 'Hero slide',
     ];

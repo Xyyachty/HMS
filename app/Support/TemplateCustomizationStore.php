@@ -22,6 +22,7 @@ class TemplateCustomizationStore
         HotelTemplateBuilder::DELETED_KEY => 'deleted',
         HotelTemplateBuilder::NAV_LINKS_KEY => 'navLinks',
         HotelTemplateBuilder::BRAND_NAME_KEY => 'brandName',
+        HotelTemplateBuilder::ROOM_CARD_STYLE_KEY => 'roomCardStyle',
         HotelTemplateBuilder::ROOMS_KEY => 'rooms',
         HotelTemplateBuilder::MENUS_KEY => 'menus',
         HotelTemplateBuilder::CARD_IMAGES_KEY => 'cardImages',
@@ -644,6 +645,7 @@ class TemplateCustomizationStore
             'menus' => HotelTemplateBuilder::MENUS_KEY,
             'navLinks' => HotelTemplateBuilder::NAV_LINKS_KEY,
             'brandName' => HotelTemplateBuilder::BRAND_NAME_KEY,
+            'roomCardStyle' => HotelTemplateBuilder::ROOM_CARD_STYLE_KEY,
             'cardImages' => HotelTemplateBuilder::CARD_IMAGES_KEY,
             'heroSlides' => HotelTemplateBuilder::HERO_SLIDES_KEY,
         ] as $collection => $jsonKey) {
