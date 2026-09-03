@@ -2384,17 +2384,6 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
     if (onToast) onToast('Room card added — click the pencil to edit');
   };
 
-  const handleEditRoom = (room) => {
-    const name = hmsPrompt('Room name', room.name);
-    if (name == null || !String(name).trim()) return;
-    const priceRaw = hmsPrompt('Price per 12 hrs', String(room.price || 200));
-    if (priceRaw == null) return;
-    const price = Math.max(1, parseInt(priceRaw || String(room.price || 200), 10) || room.price || 200);
-    const desc = hmsPrompt('Description', room.desc || '');
-    if (desc == null) return;
-    if (onEditRoom) onEditRoom(room.id, { name: String(name).trim(), price, desc: String(desc).trim() });
-  };
-
   return (
     <>
       <div className="hero-split" data-hms-section="hero">
@@ -2437,8 +2426,6 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
                   <CardColorButton kind="room" label="Card colour (all room cards)" />
                   <button type="button" title="Change image" onClick={() => pickImageFile((url) => { if (url && onEditRoom) onEditRoom(room.id, { img: url }); if (onToast) onToast('Room image updated'); })}
                     style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
-                  <button type="button" title="Edit room" onClick={() => handleEditRoom(room)}
-                    style={toolBtnStyle('edit')}><i className="fa-solid fa-pen" style={{fontSize:10}}></i></button>
                   <button type="button" title="Remove room" onClick={() => onRemoveRoom && onRemoveRoom(room.id)}
                     style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
                 </div>

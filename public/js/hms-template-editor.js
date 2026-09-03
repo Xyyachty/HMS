@@ -1010,6 +1010,7 @@
         ['position', 'left', 'top', 'right', 'bottom'].forEach(function (p) {
           if (!entry.keepFixed) el.style.removeProperty(p);
         });
+        if (entry.transform) clampTransformIntoBounds(el);
       } else if (entry.keepFixed || entry.position === 'fixed') {
         el.setAttribute('data-hms-keep-fixed', '1');
         ensurePositioningContext(el);
@@ -1437,6 +1438,53 @@
     resizeState.isCorner = ['nw', 'ne', 'sw', 'se'].indexOf(resizeState.dir) !== -1;
   }
 
+  /* Cards clip their own overflow, so a child dragged past the edge is not moved
+     out of the card, it is cut off and disappears. Keep anything dragged inside
+     a card within that card. */
+  const DRAG_BOUNDS_SELECTOR = '.room-card, .menu-food-card, .menu-card';
+
+  function getDragBoundsRect(el) {
+    const host = el && el.closest ? el.closest(DRAG_BOUNDS_SELECTOR) : null;
+    if (!host || host === el) return null;
+    const rect = host.getBoundingClientRect();
+    return rect.width && rect.height ? rect : null;
+  }
+
+  /* An element taller or wider than its card cannot satisfy both edges; pin it
+     to the top-left one rather than letting the clamp invert. */
+  function clampDragDelta(state, dx, dy) {
+    const bounds = state.boundsRect;
+    const r = state.startRect;
+    if (!bounds || !r) return { dx: dx, dy: dy };
+    const minDx = bounds.left - r.left;
+    const maxDx = bounds.right - r.right;
+    const minDy = bounds.top - r.top;
+    const maxDy = bounds.bottom - r.bottom;
+    return {
+      dx: maxDx < minDx ? minDx : Math.min(Math.max(dx, minDx), maxDx),
+      dy: maxDy < minDy ? minDy : Math.min(Math.max(dy, minDy), maxDy),
+    };
+  }
+
+  /* Repairs a move saved before the clamp existed: without this an element
+     already dragged out of its card stays clipped and cannot be grabbed back.
+     DOM only — customizations are rewritten on the student's next edit. */
+  function clampTransformIntoBounds(el) {
+    const bounds = getDragBoundsRect(el);
+    if (!bounds) return;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    let dx = 0;
+    let dy = 0;
+    if (r.left < bounds.left) dx = bounds.left - r.left;
+    else if (r.right > bounds.right) dx = Math.max(bounds.right - r.right, bounds.left - r.left);
+    if (r.top < bounds.top) dy = bounds.top - r.top;
+    else if (r.bottom > bounds.bottom) dy = Math.max(bounds.bottom - r.bottom, bounds.top - r.top);
+    if (!dx && !dy) return;
+    const t = getElementTranslate(el);
+    setElementTranslate(el, t.x + dx, t.y + dy);
+  }
+
   function onPointerMove(e) {
     if (dragState) {
       const dx = e.clientX - dragState.startX;
@@ -1472,6 +1520,7 @@
           dragState.left = 0;
           dragState.top = 0;
           dragState.startRect = getVisualRect(el);
+          dragState.boundsRect = getDragBoundsRect(el);
         }
         dragState.historyStarted = true;
         suppressNextClick = true;
@@ -1480,7 +1529,8 @@
       const snapped = snapDragPosition(dragState, dx, dy, e.altKey);
       const el = dragState.el;
       if (dragState.mode === 'transform') {
-        setElementTranslate(el, dragState.baseX + snapped.dx, dragState.baseY + snapped.dy);
+        const bounded = clampDragDelta(dragState, snapped.dx, snapped.dy);
+        setElementTranslate(el, dragState.baseX + bounded.dx, dragState.baseY + bounded.dy);
         updateHandles();
       } else {
         setPosImportant(el, 'position', 'fixed');
