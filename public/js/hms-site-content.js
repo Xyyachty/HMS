@@ -350,7 +350,7 @@
    * anything could already recolour the section it works on. A change applies
    * site-wide and the most recent one wins.
    */
-  const SITE_COLOR_AREAS = ['site', 'header', 'footer', 'rooms', 'dining', 'amenities', 'experience'];
+  const SITE_COLOR_AREAS = ['site', 'header', 'footer', 'rooms', 'roomModal', 'dining', 'amenities', 'experience'];
 
   function getSiteColors() {
     const c = getCustomizations();

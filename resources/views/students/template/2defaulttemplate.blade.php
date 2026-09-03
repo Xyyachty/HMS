@@ -1379,7 +1379,7 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
 
   return (
     <div className="room-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="room-modal" onClick={e => e.stopPropagation()}>
+      <div className="room-modal room-detail-modal" onClick={e => e.stopPropagation()}>
         <div className="room-modal-img">
           <img src={roomCardImg(room)} alt={room.name} />
           <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close">
@@ -2255,6 +2255,10 @@ const SITE_COLOR_AREAS = [
   { id: 'header', label: 'Header', selector: '.nav-bar' },
   { id: 'footer', label: 'Footer', selector: '[data-hms-section="footer"]' },
   { id: 'rooms', label: 'Available Rooms', selector: '[data-hms-section="rooms"]' },
+  // The booking popup carries its own class because .room-modal is also the
+  // shell every editor dialog reuses — recolouring that would repaint the
+  // colour picker itself.
+  { id: 'roomModal', label: 'Room details popup', selector: '.room-detail-modal' },
   { id: 'dining', label: 'Restaurant Menu', selector: '[data-hms-section="dining"]' },
   { id: 'amenities', label: 'Amenities', selector: 'main[data-hms-page="amenities"]' },
   { id: 'experience', label: 'Experience', selector: 'main[data-hms-page="experience"]' },
