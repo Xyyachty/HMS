@@ -175,6 +175,52 @@
     cursor: pointer; backdrop-filter: blur(4px);
   }
   .hero-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+  /* All five slides in one place: a student opens "Change image" once and
+     replaces whichever photograph they meant, instead of having to wait for
+     the carousel to rotate to it. */
+  .hero-modal-overlay { z-index: 2600; }
+  .hero-slides-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.85rem;
+    margin-top: 1.1rem;
+  }
+  .hero-slide-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--card);
+  }
+  .hero-slide-card.is-active { border-color: var(--accent); }
+  .hero-slide-thumb {
+    position: relative;
+    height: 92px;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+  }
+  .hero-slide-badge {
+    position: absolute; top: 6px; left: 6px;
+    padding: 2px 7px; border-radius: 999px;
+    background: var(--accent); color: var(--bg);
+    font-size: 0.55rem; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .hero-slide-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.5rem; padding: 0.5rem 0.6rem;
+  }
+  .hero-slide-name {
+    font-size: 0.72rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--fg-muted);
+  }
+  .hero-slide-replace {
+    border: 1px solid var(--border); border-radius: 999px;
+    background: transparent; color: var(--accent);
+    padding: 0.25rem 0.6rem; font-size: 0.62rem;
+    letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+  }
+  .hero-slide-replace:hover { border-color: var(--accent); }
   .hero-overlay {
     position: absolute;
     inset: 0;
@@ -1306,21 +1352,74 @@ const DEFAULT_HERO_SLIDES = [
 ];
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• HOME PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* Every slide at once. The old "Change image" button replaced whichever slide
+   the carousel happened to be showing, so replacing a particular photograph
+   meant waiting for it to come round. This lists all five.
+
+   Rendered through a portal: the slider sits inside .hero-bg / .hero-img, and a
+   dialog belongs to the page rather than to the box it was opened from. */
+function HeroSlidesModal({ open, slides, activeIndex, onReplace, onClose }) {
+  if (!open) return null;
+
+  return ReactDOM.createPortal(
+    <div
+      className="room-modal-overlay hero-modal-overlay"
+      data-hms-no-edit="1"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Slider images"
+      onClick={onClose}
+    >
+      <div className="room-modal" style={{ width: 'min(620px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 className="" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '0.35rem' }}>Slider Images</h3>
+        <p className="header-modal-hint" style={{ marginTop: 0 }}>
+          These five photographs rotate across the top of your home page. Replace any of them.
+        </p>
+
+        <div className="hero-slides-grid">
+          {slides.map((slide, i) => (
+            <div key={slide.id} className={`hero-slide-card${i === activeIndex ? ' is-active' : ''}`}>
+              <div className="hero-slide-thumb" style={{ backgroundImage: 'url(' + slide.img + ')' }}>
+                {i === activeIndex && <span className="hero-slide-badge">Showing</span>}
+              </div>
+              <div className="hero-slide-row">
+                <span className="hero-slide-name">Slide {i + 1}</span>
+                <button type="button" className="hero-slide-replace" onClick={() => onReplace(slide)}>Replace</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-outline" onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+
 function HeroSlider({ slides, canEdit }) {
   const list = slides && slides.length ? slides : DEFAULT_HERO_SLIDES;
   const [active, setActive] = useState(0);
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
-    if (list.length < 2) return undefined;
+    // Hold the carousel while the dialog is open, so the slide a student is
+    // looking at does not rotate out from under them mid-replacement.
+    if (list.length < 2 || picking) return undefined;
     const id = setInterval(() => setActive((i) => (i + 1) % list.length), 6000);
     return () => clearInterval(id);
-  }, [list.length]);
+  }, [list.length, picking]);
 
-  const handleChangeImage = () => {
+  // The dialog stays open across a replacement so several slides can be
+  // swapped in one visit.
+  const replaceSlide = (slide) => {
     if (!window.HMSSiteContent) return;
     window.HMSSiteContent.pickImageFile((url) => {
       if (!url) return;
-      window.HMSSiteContent.updateHeroSlide(list[active].id, { img: url }, DEFAULT_HERO_SLIDES);
+      window.HMSSiteContent.updateHeroSlide(slide.id, { img: url }, DEFAULT_HERO_SLIDES);
     });
   };
 
@@ -1345,10 +1444,17 @@ function HeroSlider({ slides, canEdit }) {
         ))}
       </div>
       {canEdit && (
-        <button type="button" className="hero-edit-btn" data-hms-no-edit="1" onClick={handleChangeImage}>
+        <button type="button" className="hero-edit-btn" data-hms-no-edit="1" onClick={() => setPicking(true)}>
           <i className="fa-solid fa-image" style={{ fontSize: 10 }}></i> Change image
         </button>
       )}
+      <HeroSlidesModal
+        open={picking && canEdit}
+        slides={list}
+        activeIndex={active}
+        onReplace={replaceSlide}
+        onClose={() => setPicking(false)}
+      />
     </>
   );
 }
