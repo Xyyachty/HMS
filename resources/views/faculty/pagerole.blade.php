@@ -1288,10 +1288,6 @@
                                             <input type="hidden" name="task_titles[{{ $rKey }}][{{ $step }}]" value="{{ $task['title'] }}">
                                             <input type="hidden" name="task_descriptions[{{ $rKey }}][{{ $step }}]" value="{{ $task['description'] }}">
                                             <input type="hidden" name="task_priorities[{{ $rKey }}][{{ $step }}]" value="{{ $task['priority'] }}">
-                                            {{-- The checklist entry this row came from. Unlike the title it never
-                                                 changes, so TemplateSectionMap can keep saying which part of the
-                                                 site the task unlocks. --}}
-                                            <input type="hidden" name="task_keys[{{ $rKey }}][{{ $step }}]" value="{{ $task['key'] }}">
                                         </label>
                                     @endforeach
                                 </div>

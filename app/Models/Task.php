@@ -21,11 +21,6 @@ class Task extends Model
         'student_id',
         'assigned_to',
         'role',
-        // Which TaskChecklist entry this row came from. Decides the part of the
-        // hotel site the student may edit while holding it — see
-        // App\Support\TemplateSectionMap. Null on the seeded hotel-concept task
-        // and on rows handed out before the column existed.
-        'checklist_key',
         // null for an ordinary assignment; HotelConceptDesk::TASK_KIND for the
         // seeded hotel concept task, which has its own submit and review path.
         'kind',

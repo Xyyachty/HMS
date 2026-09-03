@@ -88,35 +88,6 @@
   }
 
   /**
-   * The parts of the site this student may edit right now.
-   *
-   * Narrower than editablePages(): the page list is what the role is allowed to
-   * touch at all, this is what the tasks currently on their plate have opened.
-   * Written by editor-bridge from App\Support\TemplateSectionMap, and kept
-   * in step by the 'set-editable-sections' message the builder sends.
-   *
-   * An absent global means no section lock — the faculty review preview and the
-   * public Mini Portfolio both render the site without one, and neither can edit
-   * anyway because canEdit() is false there.
-   */
-  function editableSections() {
-    if (Array.isArray(window.__HMS_EDITABLE_SECTIONS__)) return window.__HMS_EDITABLE_SECTIONS__;
-    return null;
-  }
-
-  function sectionUnlocked(section) {
-    const list = editableSections();
-    if (list === null) return true;
-    return list.indexOf(section) !== -1;
-  }
-
-  function sectionLabel(section) {
-    const labels = window.__HMS_SECTION_LABELS__;
-    if (labels && labels[section]) return labels[section];
-    return section;
-  }
-
-  /**
    * Feature → allowed role keys (extend here for future UI permissions).
    * room_management_ui: Room Manager / System Administrator only.
    * front_desk must never see room_management_ui.
@@ -214,42 +185,40 @@
   }
 
   function canEditNav() {
-    return canEdit() && editablePages().indexOf('home') !== -1 && sectionUnlocked('nav');
+    return canEdit() && editablePages().indexOf('home') !== -1;
   }
 
   function canEditHeroSlides() {
-    return canEdit() && editablePages().indexOf('home') !== -1 && sectionUnlocked('hero');
+    return canEdit() && editablePages().indexOf('home') !== -1;
   }
 
   function canEditRooms() {
     // Room Management owns the Rooms page; Front Desk can also manage
     // room cards from the Home "Available Rooms" section.
     const pages = editablePages();
-    // The section is what actually decides it: the Home page's Available Rooms
-    // strip draws the same room list, so branding must not open the room cards.
-    return canEdit() && (pages.indexOf('rooms') !== -1 || pages.indexOf('home') !== -1) && sectionUnlocked('rooms');
+    return canEdit() && (pages.indexOf('rooms') !== -1 || pages.indexOf('home') !== -1);
   }
 
   function canEditMenus() {
-    return canEdit() && editablePages().indexOf('restaurant') !== -1 && sectionUnlocked('dining');
+    return canEdit() && editablePages().indexOf('restaurant') !== -1;
   }
 
   function canEditExperiences() {
-    return canEdit() && editablePages().indexOf('experience') !== -1 && sectionUnlocked('experience');
+    return canEdit() && editablePages().indexOf('experience') !== -1;
   }
 
   /**
    * One logo for the whole site, under a single key — see cardImageKey('brand',
    * 'logo'). It is deliberately not gated on a particular page: there is no page
-   * that owns it. It is not gated on a page for that reason, but it IS gated on
-   * the 'brand' section, which the Brand Your Hotel task opens: the logo and the
-   * hotel name are exactly that task's work.
+   * that owns it, and every role that can edit anything could already change the
+   * logo on its own section before this became shared, so gating it on Home
+   * would take that away rather than merely redirect it.
    *
    * A change therefore applies site-wide, and the most recent one wins — see
    * HotelTemplateBuilder::claimSharedLogo().
    */
   function canEditLogo() {
-    return canEdit() && sectionUnlocked('brand');
+    return canEdit();
   }
 
   function getNav() {
@@ -881,9 +850,6 @@
     canEditMenus,
     canEditExperiences,
     canEditLogo,
-    editableSections,
-    sectionUnlocked,
-    sectionLabel,
     canAccess,
     canUseRoomManagementUi,
     canUseRestaurantUi,
@@ -952,10 +918,7 @@
       setTimeout(function () { window.HMSSiteContent.refreshFromEditor(); }, 50);
       return;
     }
-    if (data.type === 'set-editable-sections') {
-      window.__HMS_EDITABLE_SECTIONS__ = Array.isArray(data.sections) ? data.sections.slice() : [];
-    }
-    if (data.type === 'set-can-edit' || data.type === 'set-editable-pages' || data.type === 'set-editable-sections') {
+    if (data.type === 'set-can-edit' || data.type === 'set-editable-pages') {
       setTimeout(function () { window.HMSSiteContent.refreshFromEditor(); }, 50);
     }
   });

@@ -1410,7 +1410,6 @@ class FacultyController extends Controller
             'task_titles' => ['nullable', 'array'],
             'task_descriptions' => ['nullable', 'array'],
             'task_priorities' => ['nullable', 'array'],
-            'task_keys' => ['nullable', 'array'],
             'due_date' => ['nullable', 'date', 'after_or_equal:today'],
         ], [
             'group_name.required' => 'Pick the team this task is for.',
@@ -1455,10 +1454,6 @@ class FacultyController extends Controller
                     $title = $validated['task_titles'][$role][$index] ?? null;
                     $description = $validated['task_descriptions'][$role][$index] ?? null;
                     $priority = $validated['task_priorities'][$role][$index] ?? 'medium';
-                    // Stable identity of the checklist entry. It is what decides which
-                    // part of the site the student may edit while holding this task — see
-                    // App\Support\TemplateSectionMap. The title is prose and gets rewritten.
-                    $checklistKey = $validated['task_keys'][$role][$index] ?? null;
 
                     if ($title) {
                         // Only this team's holders of the role. Assigning used to read
@@ -1473,7 +1468,6 @@ class FacultyController extends Controller
                             'group_name'  => $groupName,
                             'group_id'    => $groupId,
                             'role'        => $role,
-                            'checklist_key' => $checklistKey,
                             'title'       => $title,
                             'description' => User::cleanOptional($description),
                             'priority'    => $priority,

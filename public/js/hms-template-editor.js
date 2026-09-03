@@ -27,12 +27,6 @@
   let editablePages = Array.isArray(window.__HMS_EDITABLE_PAGES__)
     ? window.__HMS_EDITABLE_PAGES__.slice()
     : null; // null = no page lock (legacy)
-  // Which sections of those pages are open, decided by the tasks the student is
-  // holding. null = no section lock, which is how the faculty review preview and
-  // the public site render; neither can edit anyway.
-  let editableSections = Array.isArray(window.__HMS_EDITABLE_SECTIONS__)
-    ? window.__HMS_EDITABLE_SECTIONS__.slice()
-    : null;
   let currentPage = window.__HMS_CURRENT_PAGE__ || 'home';
   let applying = false;
   let reapplyTimer = null;
@@ -82,50 +76,6 @@
     if (!Array.isArray(editablePages)) return true;
     if (editablePages.length === 0) return false;
     return editablePages.indexOf(getCurrentPage()) !== -1;
-  }
-
-  /**
-   * The section an element sits in, or null if it sits in none.
-   *
-   * Every editable part of the template is wrapped in a [data-hms-section]; the
-   * markup is the contract between the page and TemplateSectionMap. Anything
-   * outside one belongs to no task, so nobody is allowed to edit it.
-   */
-  function sectionOf(el) {
-    if (!el || typeof el.closest !== 'function') return null;
-    const marked = el.closest('[data-hms-section]');
-    return marked ? marked.getAttribute('data-hms-section') : null;
-  }
-
-  function canEditSection(section) {
-    if (!Array.isArray(editableSections)) return true;
-    if (!section) return false;
-    return editableSections.indexOf(section) !== -1;
-  }
-
-  /** Page gate and section gate together — the whole answer for one element. */
-  function canEditElement(el) {
-    if (!canEditCurrentPage()) return false;
-    return canEditSection(sectionOf(el));
-  }
-
-  function sectionLabel(section) {
-    const labels = window.__HMS_SECTION_LABELS__;
-    if (labels && section && labels[section]) return labels[section];
-    return section || 'this part of the page';
-  }
-
-  /** Names the section that was refused, so the message is actionable. */
-  function blockSectionToast(section) {
-    const open = Array.isArray(editableSections) && editableSections.length
-      ? editableSections.map(sectionLabel).join(', ')
-      : 'nothing yet';
-    postToParent({
-      type: 'edit-blocked',
-      page: getCurrentPage(),
-      section: section || null,
-      message: sectionLabel(section) + ' belongs to a task you have not been set. Open right now: ' + open + '.',
-    });
   }
 
   function blockEditToast() {
@@ -330,9 +280,6 @@
   function isEditableTarget(el, allowContainers) {
     if (!el || el === document.body || el === document.documentElement) return false;
     if (isEditorChrome(el)) return false;
-    // Section lock first: an element in a section this student has not been set
-    // a task for is not a target at all, so it never selects, outlines or drags.
-    if (!canEditSection(sectionOf(el))) return false;
     if (el.id === 'hms-user-canvas' || el.id === 'hms-section-rail') return false;
     if (el.closest('[data-hms-no-edit]')) return false;
 
@@ -971,10 +918,6 @@
     if (!el) return;
     if (!canEditCurrentPage()) {
       blockEditToast();
-      return;
-    }
-    if (!canEditSection(sectionOf(el))) {
-      blockSectionToast(sectionOf(el));
       return;
     }
     if (el.hasAttribute('data-hms-user')) {
@@ -2212,10 +2155,6 @@
     body.hms-design-mode a, body.hms-design-mode img, body.hms-design-mode i,
     body.hms-design-mode input, body.hms-design-mode textarea,
     body.hms-design-mode .nav-bar,
-    #hms-section-rail button.locked {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
     body.hms-design-mode [data-hms-section],
     body.hms-design-mode [data-hms-bg-target] {
       cursor: pointer;
@@ -2342,21 +2281,13 @@
     rail.innerHTML = '';
     sections.forEach((section) => {
       const id = section.getAttribute('data-hms-section') || 'section';
-      const open = canEditSection(id);
       const btn = document.createElement('button');
       btn.type = 'button';
-      // Locked sections stay listed rather than hidden: a student should be able
-      // to see the rest of the site exists and that a task would open it.
-      btn.textContent = open ? sectionLabel(id) : (sectionLabel(id) + ' (locked)');
-      btn.className = [id === activeSectionId ? 'active' : '', open ? '' : 'locked'].filter(Boolean).join(' ');
-      btn.title = open ? sectionLabel(id) : sectionLabel(id) + ' — not one of your current tasks';
+      btn.textContent = id;
+      btn.className = id === activeSectionId ? 'active' : '';
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!open) {
-          blockSectionToast(id);
-          return;
-        }
         focusSection(id);
       });
       rail.appendChild(btn);
@@ -2374,12 +2305,8 @@
       clearSectionFocus();
       return;
     }
-    // Land on something the student can actually work on, falling back to the
-    // first section when nothing is open so the page still renders normally.
-    const openSections = sections.filter((s) => canEditSection(s.getAttribute('data-hms-section')));
-    const firstSection = (openSections[0] || sections[0]).getAttribute('data-hms-section');
     if (!activeSectionId || !sections.some((s) => s.getAttribute('data-hms-section') === activeSectionId)) {
-      focusSection(firstSection, { scroll: false });
+      focusSection(sections[0].getAttribute('data-hms-section'), { scroll: false });
     } else {
       focusSection(activeSectionId, { scroll: false });
     }
@@ -2387,16 +2314,9 @@
 
   function updateEditHint() {
     const pages = Array.isArray(editablePages) ? editablePages : [];
-    const sectionBit = activeSectionId ? (' · ' + sectionLabel(activeSectionId)) : '';
-    // Named rather than counted: the point of the lock is that the student can
-    // see which task opened what.
-    const openBit = Array.isArray(editableSections)
-      ? (editableSections.length
-        ? (' · your tasks open: ' + editableSections.map(sectionLabel).join(', '))
-        : ' · no task set yet, so nothing is editable')
-      : '';
+    const sectionBit = activeSectionId ? (' · slide "' + activeSectionId + '"') : '';
     const hint = canEditCurrentPage()
-      ? ('Editing "' + getCurrentPage() + '"' + sectionBit + openBit + ' · click to style · Move handle to drag · Alt+click selects container/background')
+      ? ('Editing "' + getCurrentPage() + '"' + sectionBit + ' · click to style · Move handle to drag · Alt+click selects container/background')
       : (canEdit
         ? ('View only on "' + getCurrentPage() + '" — you may redesign: ' + (pages.join(', ') || 'none'))
         : 'Preview — team synced site');
@@ -2470,12 +2390,6 @@
         updateEditHint();
         clearSelection();
         break;
-      case 'set-editable-sections':
-        editableSections = Array.isArray(data.sections) ? data.sections.slice() : [];
-        window.__HMS_EDITABLE_SECTIONS__ = editableSections;
-        updateEditHint();
-        clearSelection();
-        break;
       case 'navigate-page':
         if (typeof window.__HMS_NAVIGATE__ === 'function' && data.page) {
           window.__HMS_NAVIGATE__(data.page);
@@ -2484,10 +2398,6 @@
       case 'apply-edit':
         if (!canEditCurrentPage()) {
           blockEditToast();
-          break;
-        }
-        if (selectedEl && !canEditElement(selectedEl)) {
-          blockSectionToast(sectionOf(selectedEl));
           break;
         }
         applyFromParent(data);
@@ -2506,10 +2416,6 @@
       case 'trigger-image-upload':
         if (!canEditCurrentPage()) {
           blockEditToast();
-          break;
-        }
-        if (selectedEl && !canEditElement(selectedEl)) {
-          blockSectionToast(sectionOf(selectedEl));
           break;
         }
         ensureFileInput().click();

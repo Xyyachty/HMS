@@ -57,24 +57,17 @@ class TaskChecklist
      * Keyed by role, in the order they should appear under each department.
      * The two website tasks first, then the ops work that follows from them.
      *
-     * Every entry carries a 'key' that never changes. It is what a handed-out
-     * task row stores in tasks.checklist_key, and what TemplateSectionMap reads
-     * to decide which part of the site the task unlocks — so a task can be
-     * retitled without silently unlocking nothing.
-     *
-     * @var array<string, list<array{key: string, title: string, description: string, priority: string, scope: string}>>
+     * @var array<string, list<array{title: string, description: string, priority: string, scope: string}>>
      */
     private const TASKS = [
         'front_desk' => [
             [
-                'key' => 'fd_brand',
                 'title' => 'Brand Your Hotel',
                 'description' => "Give the site your hotel's identity: replace the default logo with your own, and the placeholder name in the header with your team's hotel name. Both are single site-wide values — the header, the footer and every page read them.",
                 'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
-                'key' => 'fd_home_design',
                 'title' => 'Design the Home Page',
                 'description' => 'Customise the page a guest lands on: pick the five photographs that rotate across the top, rewrite the headline and the introduction under them so they describe your hotel rather than the sample text, and check every link in the top menu points at the right page and is labelled the way your hotel would label it.',
                 'priority' => 'medium',
@@ -84,35 +77,30 @@ class TaskChecklist
             // A stay in the order the desk works it: find a free room, take the
             // guest's details, take their money, then greet them on arrival.
             [
-                'key' => 'fd_check_availability',
                 'title' => 'Check Room Availability',
                 'description' => 'Open the Rooms page and answer a guest asking what is free. Each room card has an availability calendar showing the dates already booked.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_register_guest',
                 'title' => 'Register a Guest',
                 'description' => 'Press Reserve Now on a free room and fill in Register Guest: full name, contact number, email, the government or passport ID you verified, and the check-in and check-out dates and times.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_reservation_addons',
                 'title' => 'Add Add-ons to a Reservation',
                 'description' => "Open the Add-ons expander while registering and lend the guest something extra from Housekeeping's catalogue. Anything showing Out of stock cannot be added.",
                 'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_reservation_payment',
                 'title' => 'Process the Reservation Payment',
                 'description' => 'Take the payment on the Process Payment step: full or partial, the amount, the method, the payer name and a reference. Complete Reservation is what actually books the room.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_guest_arrived',
                 'title' => 'Mark a Guest as Arrived',
                 'description' => 'When the guest reaches the desk, find their booking in Guest Information and press Arrive. Room Management checks them into the room after that.',
                 'priority' => 'medium',
@@ -122,35 +110,30 @@ class TaskChecklist
             // Restaurant work the desk owns: it holds tables and places room
             // service, but the kitchen runs the orders.
             [
-                'key' => 'fd_reserve_table',
                 'title' => 'Reserve a Dine-in Table',
                 'description' => 'Hold a table in Dine-in Tables for a customer who has rung ahead: their name, contact number, the date and time, and a party size the table can seat.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_seat_table',
                 'title' => 'Seat a Reserved Table',
                 'description' => 'Press Customer Arrived on a reserved table when the customer turns up. The restaurant cannot take an order until the table is seated.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_room_service_order',
                 'title' => 'Take a Room Service Order',
                 'description' => 'Order from the Restaurant page, review the order, then charge it to a checked-in guest. Only a guest who is already checked in can be billed for room service.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_file_complaint',
                 'title' => 'File a Guest Complaint',
                 'description' => 'Record what a guest reported in Complaints — the room, the guest, the category — and send it to the department that can fix it.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_followup_complaint',
                 'title' => 'Follow Up on a Resolved Complaint',
                 'description' => 'The badge on Complaints counts the ones the department has closed. Read the resolution note and tell the guest what was done.',
                 'priority' => 'low',
@@ -159,28 +142,24 @@ class TaskChecklist
 
             // Departure, and the money that has to be settled before it.
             [
-                'key' => 'fd_check_out',
                 'title' => 'Check a Guest Out',
                 'description' => 'Press Check Out in Guest Information and read the final bill with the guest: room charges, room service, add-ons and what they have already paid.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_extra_charge',
                 'title' => 'Add an Extra Charge to the Final Bill',
                 'description' => 'Put anything the guest used that is not on the bill yet — a minibar item, a late fee — onto the final bill before you settle it.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_settle_bill',
                 'title' => 'Settle the Final Bill',
                 'description' => 'Take the closing payment with a method, an amount and a reference, then check the guest out. The system refuses to check anyone out while money is still outstanding.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'fd_revenue_reports',
                 'title' => 'Review the Revenue Reports',
                 'description' => 'Read the Reports page and say where your hotel earns most — rooms, dine-in or room service.',
                 'priority' => 'low',
@@ -190,14 +169,12 @@ class TaskChecklist
 
         'room_management' => [
             [
-                'key' => 'rm_room_types',
                 'title' => 'Build Your Room Types',
                 'description' => 'Replace the sample rooms with the room types your hotel actually offers. Give each one its own name and describe what it includes, so a guest can tell them apart without asking.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
-                'key' => 'rm_room_media',
                 'title' => 'Photograph and Price Every Room',
                 'description' => 'Give every room type its own picture — none should be left on the placeholder image — set a nightly rate you can explain, and lay the Rooms page out so it matches the rest of the site.',
                 'priority' => 'high',
@@ -206,42 +183,36 @@ class TaskChecklist
 
             // Build the inventory first, then work the rooms that are sold.
             [
-                'key' => 'rm_add_room',
                 'title' => 'Add a Room to the Inventory',
                 'description' => 'Use Add Room in Manage Room to put a new room in the hotel: its category, price, description and photo. The room number comes from the category sequence — you do not type it.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rm_update_room',
                 'title' => "Update a Room's Details",
                 'description' => 'Press Update on a room and correct what is wrong — its name, category, price, description or photo. The same panel shows the dates it is already booked.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rm_check_in',
                 'title' => 'Check a Guest In',
                 'description' => 'Open Guest Details, find a guest Front Desk has marked as arrived and press Check In. Nothing can be ordered or reported against that room until you do.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rm_occupancy',
                 'title' => 'Monitor Occupancy',
                 'description' => 'Read Guest Details and say how the hotel stands: which rooms hold a guest, who is still waiting to be checked in, and how long each stay has left.',
                 'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rm_room_status',
                 'title' => "Update a Room's Status",
                 'description' => 'Set a room to Available, Cleaning or Maintenance from Update Status on the Rooms page. Changing the status of a room with a guest in it closes their stay, so check before you do.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rm_release_room',
                 'title' => 'Release a Room After Maintenance',
                 'description' => 'Once Maintenance has closed the repair, put the room back to Available so it can be sold again.',
                 'priority' => 'medium',
@@ -251,14 +222,12 @@ class TaskChecklist
 
         'restaurant_management' => [
             [
-                'key' => 'rst_menu',
                 'title' => 'Build Your Menu',
                 'description' => 'Replace the sample dishes with your own menu, grouped so a guest can find what they want.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
-                'key' => 'rst_menu_media',
                 'title' => 'Photograph and Price the Menu',
                 'description' => 'Add a picture to every dish, set a price for every dish, and lay the Restaurant page out so it matches the rest of the site.',
                 'priority' => 'high',
@@ -267,56 +236,48 @@ class TaskChecklist
 
             // The kitchen: stock it, lay out the room, then run the orders.
             [
-                'key' => 'rst_add_dishes',
                 'title' => 'Add Dishes to the Menu',
                 'description' => 'Use Manage Menu to add a dish the kitchen can actually serve: name, category, price, how many you hold, a short description and a photo.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rst_menu_stock',
                 'title' => 'Keep Menu Stock Current',
                 'description' => 'Every order placed takes portions off the dish. Work through Manage Menu, restock what is running down and check nothing is left sold out that you can still serve.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rst_tables',
                 'title' => 'Set Up Your Dining Tables',
                 'description' => 'Use Manage Tables to lay out the dining room — how many tables, and how many people each one seats.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rst_dinein_order',
                 'title' => 'Take a Dine-In Order',
                 'description' => 'Open Orders and take a New Dine-In Order. Only a seated table can be picked — if the list is empty, seat a reserved table in Manage Tables first.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rst_kitchen_flow',
                 'title' => 'Move an Order Through the Kitchen',
                 'description' => 'Take an order from Preparing to Ready, then Delivering, then Completed. A status only ever moves forward, so do not skip a step.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rst_room_service_fulfil',
                 'title' => 'Fulfil a Room Service Order',
                 'description' => 'Work the Room Service tab in Orders and run a room order through to Completed so it lands on the guest\'s bill. A room-service order cannot be cancelled.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rst_cancel_order',
                 'title' => 'Cancel a Dine-In Order',
                 'description' => 'Cancel a dine-in order the customer changed their mind about. The portions go back into stock — this is the only order type that can be cancelled.',
                 'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'rst_bill_table',
                 'title' => 'Bill and Close a Dine-In Table',
                 'description' => 'Press Bill on an occupied table, take the payment with a method, amount and reference, then Mark Paid and Close Table. You cannot bill a table with food still with the kitchen.',
                 'priority' => 'high',
@@ -326,14 +287,12 @@ class TaskChecklist
 
         'housekeeping' => [
             [
-                'key' => 'hk_amenities_page',
                 'title' => 'Build the Amenities Page',
                 'description' => 'Fill in the Amenities page with what your hotel actually offers, so it matches the add-ons you lend out.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
-                'key' => 'hk_experience_page',
                 'title' => 'Write the Experience Page',
                 'description' => 'Write the Experience page so it tells a guest what staying at your hotel is like, and lay it out so it matches the rest of the site.',
                 'priority' => 'medium',
@@ -343,56 +302,48 @@ class TaskChecklist
             // One inspection, start to finish. It opens by itself when Front
             // Desk checks a guest out, and ends with the room sellable again.
             [
-                'key' => 'hk_addons_catalogue',
                 'title' => 'Stock the Add-ons Catalogue',
                 'description' => 'Fill the Add-ons list with what guests can ask for, and set how many of each you hold. Front Desk lends from this list while registering a guest.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'hk_room_board',
                 'title' => 'Watch the Room Board',
                 'description' => 'Read the room strip across the top of Room Inspections and say which rooms are ready, which are waiting on cleaning and which are out for maintenance.',
                 'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'hk_start_inspection',
                 'title' => 'Start a Room Inspection',
                 'description' => 'A room raises an inspection by itself the moment Front Desk checks its guest out. Pick one up with Start inspection.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'hk_record_findings',
                 'title' => 'Record What You Found',
                 'description' => 'Say what the room needs — cleaning only, damaged equipment, needs repair or missing items — and write a note describing it.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'hk_report_issue',
                 'title' => 'Report an Issue to Maintenance',
                 'description' => 'Send a fault you found to Maintenance with a category and a description. The room goes out to maintenance and the inspection waits until the repair is closed.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'hk_reinspect',
                 'title' => 'Re-inspect After a Repair',
                 'description' => 'When Maintenance closes the repair the room comes back for a final pass. Walk it again and either report another issue or finish it.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'hk_complete_inspection',
                 'title' => 'Complete an Inspection',
                 'description' => 'Clean the room, replace the linens, towels and amenities, then mark the inspection completed — that is what puts the room back to Available. It is refused while any issue is still open.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'hk_complaint',
                 'title' => 'Work a Housekeeping Complaint',
                 'description' => 'Take a complaint that belongs to housekeeping from Open to In Progress to Resolved, write what you did in the note, or hand it to Maintenance if it turns out to be a repair.',
                 'priority' => 'medium',
@@ -404,42 +355,36 @@ class TaskChecklist
         // Housekeeping's inspection is parked until this queue closes the issue.
         'maintenance' => [
             [
-                'key' => 'mt_receive_request',
                 'title' => 'Receive a Maintenance Request',
                 'description' => 'Open Complaints and Concerns and read the queue. Requests reach you from Front Desk, when a guest reports something, and from Housekeeping, when an inspection finds a fault.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'mt_prioritise',
                 'title' => 'Prioritise the Queue',
                 'description' => 'Sort what is waiting and say which you would do first. A room with an open issue is out of service, so the rooms nobody can sell come before anything else.',
                 'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'mt_start_repair',
                 'title' => 'Start a Repair',
                 'description' => 'Move a request to In Progress when you begin work on it, so the rest of the hotel can see it is being dealt with.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'mt_record_repair',
                 'title' => 'Record the Repair',
                 'description' => 'Write what was wrong and what you did in the note. That note is what Front Desk reads back to the guest.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'mt_close_repair',
                 'title' => 'Close a Repair',
                 'description' => 'Inspect your own work, then move the request to Resolved. Closing the last issue on a room sends it back to Housekeeping for its final pass.',
                 'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
-                'key' => 'mt_hand_to_housekeeping',
                 'title' => 'Hand a Request to Housekeeping',
                 'description' => 'Send a concern to Housekeeping when it turns out to be cleaning rather than a repair. A request already closed cannot be handed over.',
                 'priority' => 'low',
@@ -454,7 +399,7 @@ class TaskChecklist
      * Ordered by HotelTemplateBuilder::ROLES so a role added there cannot be
      * silently missed here — it appears with an empty list instead.
      *
-     * @return array<string, list<array{key: string, title: string, description: string, priority: string, scope: string}>>
+     * @return array<string, list<array{title: string, description: string, priority: string, scope: string}>>
      */
     public static function all(): array
     {
@@ -484,7 +429,7 @@ class TaskChecklist
      * Role order inside a step follows all(), which follows
      * HotelTemplateBuilder::ROLES.
      *
-     * @return array<int, array<string, array{key: string, title: string, description: string, priority: string, scope: string}>>
+     * @return array<int, array<string, array{title: string, description: string, priority: string, scope: string}>>
      */
     public static function allByStep(): array
     {
@@ -514,76 +459,10 @@ class TaskChecklist
         return $byStep;
     }
 
-    /** @return list<array{key: string, title: string, description: string, priority: string, scope: string}> */
+    /** @return list<array{title: string, description: string, priority: string, scope: string}> */
     public static function forRole(string $role): array
     {
         return self::TASKS[$role] ?? [];
-    }
-
-    /**
-     * Titles this checklist used to hand out, and the entry that replaced them.
-     *
-     * Task rows store their title, so rows created before checklist_key existed
-     * are matched back by it. These are the ones whose wording no longer appears
-     * above: the site work each role used to have spread over four or five tasks
-     * before it was folded into two. Without them a class already running would
-     * lose the edit rights its assigned tasks had granted.
-     *
-     * @var array<string, string>
-     */
-    private const RETIRED_TITLES = [
-        'Change Logo' => 'fd_brand',
-        'Name Your Hotel' => 'fd_brand',
-        'Choose Your Hero Images' => 'fd_home_design',
-        'Write the Welcome Section' => 'fd_home_design',
-        'Set Up the Navigation Menu' => 'fd_home_design',
-        'Add Your Room Types' => 'rm_room_types',
-        'Write Room Descriptions' => 'rm_room_types',
-        'Photograph Every Room' => 'rm_room_media',
-        'Price Your Rooms' => 'rm_room_media',
-        'Style the Rooms Page' => 'rm_room_media',
-        'Photograph Your Dishes' => 'rst_menu_media',
-        'Price the Menu' => 'rst_menu_media',
-        'Style the Restaurant Page' => 'rst_menu_media',
-        'Style Your Pages' => 'hk_experience_page',
-    ];
-
-    /**
-     * Every task in the checklist, keyed by its stable key.
-     *
-     * @return array<string, array{key: string, title: string, description: string, priority: string, scope: string, role: string}>
-     */
-    public static function byKey(): array
-    {
-        $out = [];
-
-        foreach (self::all() as $role => $tasks) {
-            foreach ($tasks as $task) {
-                $out[$task['key']] = $task + ['role' => $role];
-            }
-        }
-
-        return $out;
-    }
-
-    /**
-     * title => key, for backfilling rows handed out before the key existed.
-     *
-     * Includes the titles this checklist has since retired, so a row handed out
-     * under the old wording still resolves. A live entry always wins over a
-     * retired one of the same name.
-     *
-     * @return array<string, string>
-     */
-    public static function keysByTitle(): array
-    {
-        $out = self::RETIRED_TITLES;
-
-        foreach (self::byKey() as $key => $task) {
-            $out[$task['title']] = $key;
-        }
-
-        return $out;
     }
 
     /** Short label for the scope badge on each checklist card. */

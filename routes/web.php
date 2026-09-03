@@ -576,7 +576,6 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::get('/frontdesk/template/1', function (Request $request) {
         $customizations = [];
         $canEditTemplate = false;
-        $groupMembership = null;
         $authUser = auth()->user();
         $student = $authUser?->student;
         $roleKeys = array_keys(\App\Support\HotelTemplateBuilder::ROLES);
@@ -608,23 +607,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ? \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole)
             : [];
 
-        // Narrower than the page list: which sections of those pages are open
-        // right now, decided by the tasks this role is currently holding.
-        $editableSections = $canEditTemplate
-            ? \App\Support\TemplateSectionMap::unlockedForMember(
-                $groupMembership?->faculty_id,
-                $groupMembership?->group_name,
-                $builderRole
-            )
-            : [];
-
-        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'editableSections', 'builderRole'));
+        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole'));
     })->name('frontdesk.template.1');
 
     Route::get('/frontdesk/template/2', function (Request $request) {
         $customizations = [];
         $canEditTemplate = false;
-        $groupMembership = null;
         $authUser = auth()->user();
         $student = $authUser?->student;
         $roleKeys = array_keys(\App\Support\HotelTemplateBuilder::ROLES);
@@ -656,17 +644,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ? \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole)
             : [];
 
-        // Narrower than the page list: which sections of those pages are open
-        // right now, decided by the tasks this role is currently holding.
-        $editableSections = $canEditTemplate
-            ? \App\Support\TemplateSectionMap::unlockedForMember(
-                $groupMembership?->faculty_id,
-                $groupMembership?->group_name,
-                $builderRole
-            )
-            : [];
-
-        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'editableSections', 'builderRole'));
+        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole'));
     })->name('frontdesk.template.2');
 
     Route::post('/frontdesk/template/select', function (Request $request) {
