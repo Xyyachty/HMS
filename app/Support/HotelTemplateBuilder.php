@@ -65,6 +65,9 @@ class HotelTemplateBuilder
      * Room Management show those cards and either may set the colour.
      */
     public const ROOM_CARD_STYLE_KEY = '__roomCardStyle';
+
+    /** The same, for the menu cards: Front Desk shows them on Home, Restaurant Management on its own page. */
+    public const MENU_CARD_STYLE_KEY = '__menuCardStyle';
     public const ROOMS_KEY = '__rooms';
     public const MENUS_KEY = '__menus';
     public const CARD_IMAGES_KEY = '__cardImages';
@@ -87,6 +90,7 @@ class HotelTemplateBuilder
         self::NAV_LINKS_KEY,
         self::BRAND_NAME_KEY,
         self::ROOM_CARD_STYLE_KEY,
+        self::MENU_CARD_STYLE_KEY,
         self::ROOMS_KEY,
         self::MENUS_KEY,
     ];
@@ -424,6 +428,7 @@ class HotelTemplateBuilder
             self::NAV_LINKS_KEY,
             self::BRAND_NAME_KEY,
             self::ROOM_CARD_STYLE_KEY,
+            self::MENU_CARD_STYLE_KEY,
             self::ROOMS_KEY,
             self::MENUS_KEY,
             self::CARD_IMAGES_KEY,
@@ -518,6 +523,14 @@ class HotelTemplateBuilder
             if ($key === self::ROOM_CARD_STYLE_KEY && in_array($role, ['front_desk', 'room_management'], true)) {
                 if (is_array($value)) {
                     $value['page'] = $value['page'] ?? 'rooms';
+                    $out[$key] = $value;
+                }
+                continue;
+            }
+
+            if ($key === self::MENU_CARD_STYLE_KEY && in_array($role, ['front_desk', 'restaurant_management'], true)) {
+                if (is_array($value)) {
+                    $value['page'] = $value['page'] ?? 'restaurant';
                     $out[$key] = $value;
                 }
                 continue;

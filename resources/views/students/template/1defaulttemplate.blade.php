@@ -179,24 +179,24 @@
      replaces whichever photograph they meant, instead of having to wait for
      the carousel to rotate to it. */
   .hero-modal-overlay { z-index: 2600; }
-  .room-color-swatches {
+  .card-color-swatches {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
     gap: 0.4rem;
     margin-top: 1rem;
   }
-  .room-color-swatch {
+  .card-color-swatch {
     height: 34px; border-radius: 8px; cursor: pointer;
     border: 1px solid var(--border); padding: 0;
   }
-  .room-color-swatch.is-active { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .room-color-custom {
+  .card-color-swatch.is-active { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .card-color-custom {
     display: flex; align-items: center; justify-content: space-between;
     gap: 0.75rem; margin-top: 1rem;
     font-size: 0.72rem; letter-spacing: 0.06em;
     text-transform: uppercase; color: var(--fg-muted);
   }
-  .room-color-custom input {
+  .card-color-custom input {
     width: 54px; height: 30px; padding: 0; cursor: pointer;
     background: none; border: 1px solid var(--border); border-radius: 6px;
   }
@@ -1383,13 +1383,15 @@ const DEFAULT_HERO_SLIDES = [
 
    Rendered through a portal: the slider sits inside .hero-bg / .hero-img, and a
    dialog belongs to the page rather than to the box it was opened from. */
-/* Room card colour — one value for every card, on Home and on the Rooms page.
+/* Card colour — one value for every room card, one for every menu card.
 
-   Applied by redefining the palette variables on .room-card rather than by
+   Applied by redefining the palette variables on the card rather than by
    restyling each element: the card and its children already read --card, --fg,
    --fg-muted, --border and --accent, so overriding them there cascades through
-   the whole card with no !important and no per-element edits. */
-const ROOM_CARD_PRESETS = [
+   the whole card with no !important and no per-element edits. It beats the
+   inline background on the menu rows for the same reason — those read
+   var(--card) too. */
+const CARD_COLOR_PRESETS = [
   '#14110c', '#1f1b14', '#2b2b2b', '#1c2733',
   '#22302a', '#2e2124', '#f5f0e8', '#ffffff',
 ];
@@ -1434,7 +1436,7 @@ function contrastRatio(l1, l2) {
    pale text on it. The site accent is kept for the price and the category label
    while it still reads against the card, and falls back to the text colour when
    it does not. */
-function roomCardPalette(bg) {
+function cardPalette(bg) {
   const rgb = parseColorToRgb(bg);
   if (!rgb) return null;
   const lum = relativeLuminance(rgb);
@@ -1453,25 +1455,22 @@ function roomCardPalette(bg) {
   return { bg: bg, fg: fg, muted: muted, border: border, accent: accent };
 }
 
-/* The colour is one site-wide value, and the chip that opens it sits on cards
+/* Each colour is one site-wide value, and the chip that opens it sits on cards
    rendered three components deep on two different pages. An event keeps that a
    one-line addition at each chip instead of a prop threaded through every
    component in between. */
-function openRoomCardColor() {
-  window.dispatchEvent(new CustomEvent('hms-room-card-color'));
-}
-
-function RoomCardColorButton() {
+function CardColorButton({ kind, label }) {
   return (
-    <button type="button" title="Card colour (all room cards)" onClick={openRoomCardColor}
+    <button type="button" title={label} data-hms-no-edit="1"
+      onClick={() => window.dispatchEvent(new CustomEvent('hms-card-color', { detail: kind }))}
       style={toolBtnStyle('edit')}><i className="fa-solid fa-palette" style={{fontSize:11}}></i></button>
   );
 }
 
-function RoomCardTheme({ bg }) {
-  const palette = roomCardPalette(bg);
+function CardTheme({ selector, bg }) {
+  const palette = cardPalette(bg);
   if (!palette) return null;
-  const css = '.room-card{'
+  const css = selector + '{'
     + '--card:' + palette.bg + ';'
     + '--fg:' + palette.fg + ';'
     + '--fg-muted:' + palette.muted + ';'
@@ -1481,7 +1480,7 @@ function RoomCardTheme({ bg }) {
   return <style data-hms-no-edit="1">{css}</style>;
 }
 
-function RoomCardColorModal({ open, value, onPick, onClose }) {
+function CardColorModal({ open, title, hint, value, onPick, onClose }) {
   if (!open) return null;
 
   return ReactDOM.createPortal(
@@ -1490,22 +1489,19 @@ function RoomCardColorModal({ open, value, onPick, onClose }) {
       data-hms-no-edit="1"
       role="dialog"
       aria-modal="true"
-      aria-label="Room card colour"
+      aria-label={title}
       onClick={onClose}
     >
       <div className="room-modal" style={{ width: 'min(460px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
-        <h3 className="" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '0.35rem' }}>Room Card Colour</h3>
-        <p className="header-modal-hint" style={{ marginTop: 0 }}>
-          One colour for every room card, on this page and the Rooms page. The text on the
-          cards adjusts so it stays readable.
-        </p>
+        <h3 className="" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '0.35rem' }}>{title}</h3>
+        <p className="header-modal-hint" style={{ marginTop: 0 }}>{hint}</p>
 
-        <div className="room-color-swatches">
-          {ROOM_CARD_PRESETS.map((hex) => (
+        <div className="card-color-swatches">
+          {CARD_COLOR_PRESETS.map((hex) => (
             <button
               key={hex}
               type="button"
-              className={`room-color-swatch${value === hex ? ' is-active' : ''}`}
+              className={`card-color-swatch${value === hex ? ' is-active' : ''}`}
               style={{ background: hex }}
               title={hex}
               aria-label={'Use ' + hex}
@@ -1514,7 +1510,7 @@ function RoomCardColorModal({ open, value, onPick, onClose }) {
           ))}
         </div>
 
-        <label className="room-color-custom">
+        <label className="card-color-custom">
           <span>Custom colour</span>
           <input type="color" value={parseColorToRgb(value) ? value : '#1f1b14'} onChange={(e) => onPick(e.target.value)} />
         </label>
@@ -1632,7 +1628,7 @@ function HeroSlider({ slides, canEdit }) {
 }
 
 
-function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides }) {
+function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides }) {
   const roomList = rooms && rooms.length ? rooms : [];
   const menuList = menus || [];
 
@@ -1707,7 +1703,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
                 <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
                   data-hms-no-edit="1"
                   onClick={e => e.stopPropagation()}>
-                  <RoomCardColorButton />
+                  <CardColorButton kind="room" label="Card colour (all room cards)" />
                   <button type="button" title="Change image" onClick={() => pickImageFile((url) => { if (url && onEditRoom) onEditRoom(room.id, { img: url }); if (onToast) onToast('Room image updated'); })}
                     style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
                   <button type="button" title="Edit room" onClick={() => handleEditRoom(room)}
@@ -1765,7 +1761,12 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, onAddRoom, 
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
           {menuList.slice(0, 6).map(item => (
-            <div key={item.id || item.name} style={{ display: 'flex', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', alignItems: 'center' }}>
+            <div key={item.id || item.name} className="menu-card" style={{ position: 'relative', display: 'flex', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', alignItems: 'center' }}>
+              {canEditMenuColor && (
+                <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1">
+                  <CardColorButton kind="menu" label="Card colour (all menu cards)" />
+                </div>
+              )}
               <img src={menuFoodImg(item)} alt={item.name} loading="lazy" style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem' }}>{item.name}</p>
@@ -2614,7 +2615,7 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, canEditRooms, canManage
                 <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
                   data-hms-no-edit="1"
                   onClick={e => e.stopPropagation()}>
-                  <RoomCardColorButton />
+                  <CardColorButton kind="room" label="Card colour (all room cards)" />
                   <button type="button" title="Change image" onClick={() => pickImageFile((url) => { if (url) onEditRoom(room.id, { img: url }); onToast('Room image updated'); })}
                     style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
                   <button type="button" title="Edit room" onClick={() => handleEdit(room)}
@@ -2914,7 +2915,7 @@ function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, on
   );
 }
 
-function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canOrderMenu, onOrderMenu, cardImages, isDesignMode, rooms }) {
+function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, cardImages, isDesignMode, rooms }) {
   const menuList = menus || [];
   const [selectedMenuId, setSelectedMenuId] = useState(null);
   const selectedMenu = menuList.find(m => m.id === selectedMenuId) || null;
@@ -2982,6 +2983,12 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canOrderMe
             {filteredMenus.map(item => (
               <div key={item.id || item.name} className="menu-food-card" style={{ position: 'relative', cursor: 'pointer' }}
                 onClick={() => setSelectedMenuId(item.id)}>
+                {canEditMenuColor && (
+                  <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
+                    data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
+                    <CardColorButton kind="menu" label="Card colour (all menu cards)" />
+                  </div>
+                )}
                 <div className="menu-food-img">
                   <img
                     src={menuFoodImg(item)}
@@ -3506,7 +3513,12 @@ function App() {
   const [roomCardBg, setRoomCardBgState] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getRoomCardBg ? window.HMSSiteContent.getRoomCardBg() : ''
   ));
-  const [roomColorOpen, setRoomColorOpen] = useState(false);
+  const [menuCardBg, setMenuCardBgState] = useState(() => (
+    window.HMSSiteContent && window.HMSSiteContent.getMenuCardBg ? window.HMSSiteContent.getMenuCardBg() : ''
+  ));
+  const [canEditMenuColor, setCanEditMenuColor] = useState(false);
+  // Which colour dialog is open, if any: 'room', 'menu' or null.
+  const [cardColorKind, setCardColorKind] = useState(null);
   const [headerEdit, setHeaderEdit] = useState(null);
   const [canEditRooms, setCanEditRooms] = useState(false);
   const [canManageRooms, setCanManageRooms] = useState(false);
@@ -3593,9 +3605,9 @@ function App() {
   }, [fetchRooms, fetchMenus, fetchAddons, fetchAmenities]);
 
   useEffect(() => {
-    const open = () => setRoomColorOpen(true);
-    window.addEventListener('hms-room-card-color', open);
-    return () => window.removeEventListener('hms-room-card-color', open);
+    const open = (e) => setCardColorKind(e && e.detail === 'menu' ? 'menu' : 'room');
+    window.addEventListener('hms-card-color', open);
+    return () => window.removeEventListener('hms-card-color', open);
   }, []);
 
   // The <title> is server-rendered outside React and would otherwise keep the placeholder.
@@ -3626,6 +3638,12 @@ function App() {
         : false
     );
     if (window.HMSSiteContent.getRoomCardBg) setRoomCardBgState(window.HMSSiteContent.getRoomCardBg());
+    if (window.HMSSiteContent.getMenuCardBg) setMenuCardBgState(window.HMSSiteContent.getMenuCardBg());
+    setCanEditMenuColor(
+      typeof window.HMSSiteContent.canEditMenuCardStyle === 'function'
+        ? window.HMSSiteContent.canEditMenuCardStyle()
+        : false
+    );
     setCanEditRooms(window.HMSSiteContent.canEditRooms());
     setCanManageRooms(
       typeof window.HMSSiteContent.canUseRoomManagementUi === 'function'
@@ -3862,6 +3880,7 @@ function App() {
         rooms={rooms}
         menus={menus}
         canEditRooms={canEditRooms}
+        canEditMenuColor={canEditMenuColor}
         heroSlides={heroSlides}
         canEditHeroSlides={canEditHeroSlides}
         onAddRoom={addRoom}
@@ -3892,6 +3911,7 @@ function App() {
         onToast={showToast}
         menus={menus}
         canManageMenus={canManageMenus && inRestaurantModule}
+        canEditMenuColor={canEditMenuColor}
         canOrderMenu={canOrderMenu}
         onOrderMenu={placeOrder}
         cardImages={cardImages}
@@ -3908,6 +3928,13 @@ function App() {
     if (!window.HMSSiteContent || !window.HMSSiteContent.setRoomCardBg) return;
     if (window.HMSSiteContent.setRoomCardBg(hex)) {
       showToast(hex ? 'Room card colour updated' : 'Room cards back to the template colour');
+    }
+  };
+
+  const pickMenuCardBg = (hex) => {
+    if (!window.HMSSiteContent || !window.HMSSiteContent.setMenuCardBg) return;
+    if (window.HMSSiteContent.setMenuCardBg(hex)) {
+      showToast(hex ? 'Menu card colour updated' : 'Menu cards back to the template colour');
     }
   };
 
@@ -3985,12 +4012,23 @@ function App() {
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
       <Footer onNavigate={navigateTo} cardImages={cardImages} page={page} brandName={brandName} />
       <HeaderEditModal edit={headerEditDialog} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />
-      <RoomCardTheme bg={roomCardBg} />
-      <RoomCardColorModal
-        open={roomColorOpen}
+      <CardTheme selector=".room-card" bg={roomCardBg} />
+      <CardTheme selector=".menu-card, .menu-food-card" bg={menuCardBg} />
+      <CardColorModal
+        open={cardColorKind === 'room'}
+        title="Room Card Colour"
+        hint="One colour for every room card, on this page and the Rooms page. The text on the cards adjusts so it stays readable."
         value={roomCardBg}
         onPick={pickRoomCardBg}
-        onClose={() => setRoomColorOpen(false)}
+        onClose={() => setCardColorKind(null)}
+      />
+      <CardColorModal
+        open={cardColorKind === 'menu'}
+        title="Menu Card Colour"
+        hint="One colour for every menu card, on this page and the Restaurant page. The text on the cards adjusts so it stays readable."
+        value={menuCardBg}
+        onPick={pickMenuCardBg}
+        onClose={() => setCardColorKind(null)}
       />
       <Toast message={toast.message} visible={toast.visible} />
     </>

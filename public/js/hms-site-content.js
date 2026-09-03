@@ -14,7 +14,8 @@
   const ROOM_RESERVATIONS_KEY = '__roomReservations';
   const BRAND_NAME_KEY = '__brandName';
   const ROOM_CARD_STYLE_KEY = '__roomCardStyle';
-  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const MENU_CARD_STYLE_KEY = '__menuCardStyle';
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   /**
    * The hotel name shown in the header and the footer.
@@ -33,6 +34,7 @@
 
   /** Same one-item-collection shape, for the same round-trip reason. */
   const ROOM_CARD_STYLE_ID = 'room-card';
+  const MENU_CARD_STYLE_ID = 'menu-card';
 
   const DEFAULT_NAV = [
     { id: 'nav-home', key: 'home', label: 'Home' },
@@ -314,6 +316,32 @@
 
   function canEditRoomCardStyle() {
     return canEditRooms();
+  }
+
+  /**
+   * The menu card colour, like the room card colour. Front Desk owns the
+   * Restaurant Menu preview on Home and Restaurant Management owns the
+   * Restaurant page, and both show the same cards, so either may set it.
+   */
+  function getMenuCardBg() {
+    const c = getCustomizations();
+    const entry = c[MENU_CARD_STYLE_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    return item && typeof item.bg === 'string' ? item.bg.trim() : '';
+  }
+
+  function setMenuCardBg(bg) {
+    if (!canEditMenuCardStyle()) return false;
+    patch(MENU_CARD_STYLE_KEY, {
+      page: 'restaurant',
+      items: [{ id: MENU_CARD_STYLE_ID, bg: String(bg == null ? '' : bg).trim().slice(0, 32) }],
+    });
+    return true;
+  }
+
+  function canEditMenuCardStyle() {
+    const pages = editablePages();
+    return canEdit() && (pages.indexOf('restaurant') !== -1 || pages.indexOf('home') !== -1);
   }
 
   function getBrandName() {
@@ -842,6 +870,7 @@
       navLinks: getNav(),
       brandName: getBrandName(),
       roomCardBg: getRoomCardBg(),
+      menuCardBg: getMenuCardBg(),
       rooms: getRooms(),
       menus: getMenus(),
       cardImages: getCardImages(),
@@ -886,6 +915,7 @@
     NAV_KEY,
     BRAND_NAME_KEY,
     ROOM_CARD_STYLE_KEY,
+    MENU_CARD_STYLE_KEY,
     ROOMS_KEY,
     MENUS_KEY,
     CARD_IMAGES_KEY,
@@ -905,6 +935,9 @@
     getRoomCardBg,
     setRoomCardBg,
     canEditRoomCardStyle,
+    getMenuCardBg,
+    setMenuCardBg,
+    canEditMenuCardStyle,
     getRooms,
     setRooms,
     addRoom,
