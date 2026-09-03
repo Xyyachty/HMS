@@ -74,6 +74,7 @@ class TemplateDiff
         'rooms' => 'Room',
         'menus' => 'Menu item',
         'navLinks' => 'Navigation link',
+        'brandName' => 'Hotel name',
         'cardImages' => 'Card image',
         'heroSlides' => 'Hero slide',
     ];
@@ -500,6 +501,23 @@ class TemplateDiff
 
         foreach ($afterMap as $ref => $item) {
             if (array_key_exists($ref, $beforeMap)) {
+                continue;
+            }
+            // A team's first hotel name has no Before row, so the raw diff reads
+            // as "added". What faculty need to see for Task 1 is what the
+            // placeholder became, the way the logo is already reported.
+            if ($jsonName === 'brandName') {
+                $changes[] = [
+                    'type' => 'modified', 'scope' => 'collection_item', 'key' => null, 'hms_id' => null,
+                    'page' => $item['page'] ?? 'home',
+                    'label' => $label,
+                    'fields' => [[
+                        'property' => 'label',
+                        'label' => 'Name',
+                        'from' => HotelTemplateBuilder::DEFAULT_BRAND_NAME,
+                        'to' => $item['label'] ?? '',
+                    ]],
+                ];
                 continue;
             }
             $changes[] = [

@@ -57,62 +57,67 @@
   .nav-links-desktop {
     position: relative;
   }
-  /* Edit tools sit inline inside their own nav item, so they can never overlap
-     the neighbouring link the way an absolutely positioned overlay did. */
-  .nav-edit-tools {
-    display: none;
-    align-items: center;
-    gap: 2px;
-    margin-left: 4px;
-    white-space: nowrap;
-  }
-  body.hms-design-mode .nav-edit-tools { display: inline-flex; }
-  body.hms-design-mode .nav-item {
-    gap: 2px;
-    padding: 3px 6px;
+  /* The header's layout is fixed for every team: it cannot be moved, resized or
+     restyled. What a student can change is what it says — the logo, the hotel
+     name, and the wording of the five links. Each of those is marked
+     .hms-header-edit, which shows a dashed outline and a label chip in Design
+     mode and disappears entirely in Preview and on the published site. */
+  .hms-header-edit {
+    position: relative;
     border-radius: 6px;
-    border: 1px dashed rgba(34,211,238,0.45);
   }
-  body.hms-design-mode .nav-item:hover,
-  body.hms-design-mode .nav-item:focus-within {
-    border-color: #22d3ee;
+  body.hms-design-mode .hms-header-edit {
+    outline: 1px dashed rgba(34,211,238,0.55);
+    outline-offset: 3px;
+    cursor: pointer;
+  }
+  body.hms-design-mode .hms-header-edit:hover,
+  body.hms-design-mode .hms-header-edit:focus-visible {
+    outline-color: #22d3ee;
     background: rgba(34,211,238,0.10);
   }
-  .nav-edit-tools button {
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    padding: 2px 3px;
-    line-height: 1;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-  }
-  .nav-edit-tools button:hover { background: rgba(148,163,184,0.22); }
-  .nav-edit-btn { color: #22d3ee; }
-  .nav-remove-btn { color: #f87171; }
-  /* Inline chip at the end of the row — reads as "add a link here" instead of
-     floating in the blank space beside the brand. */
-  .nav-add-btn {
-    display: none;
-    align-items: center;
-    gap: 4px;
-    height: 26px;
-    padding: 0 9px;
+  body.hms-design-mode .hms-header-edit::after {
+    content: attr(data-hms-edit-label);
+    position: absolute;
+    top: calc(100% + 7px);
+    left: 0;
+    padding: 3px 7px;
     border-radius: 999px;
-    border: 1px dashed #22d3ee;
-    background: rgba(34,211,238,0.12);
-    color: #67e8f9;
-    cursor: pointer;
+    background: #0891b2;
+    color: #fff;
     font-family: 'Outfit', sans-serif;
-    font-size: 0.68rem;
+    font-size: 0.55rem;
     font-weight: 600;
-    letter-spacing: 0.1em;
+    line-height: 1.4;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+    z-index: 5;
   }
-  body.hms-design-mode .nav-add-btn { display: inline-flex; }
-  .nav-add-btn:hover { background: rgba(34,211,238,0.22); color: #a5f3fc; }
+  body.hms-design-mode .hms-header-edit:hover::after,
+  body.hms-design-mode .hms-header-edit:focus-visible::after { opacity: 1; }
+  /* Same dialog as the room/facility modals, one level above the fixed header. */
+  .header-modal-overlay { z-index: 2600; }
+  .header-modal-field {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+  }
+  .header-modal-field:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .header-modal-hint {
+    margin-top: 0.5rem;
+    color: var(--fg-muted);
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
   .nav-link {
     color: var(--fg-muted);
     text-decoration: none;
@@ -1086,18 +1091,6 @@ function BrandLogo({ size }) {
   );
 }
 
-function ChangeLogoButton({ onToast }) {
-  return (
-    <button
-      type="button"
-      title="Change logo"
-      data-hms-no-edit="1"
-      onClick={() => changeCardImg('brand', LOGO_ID, () => { if (onToast) onToast('Logo updated — applied across the whole site'); })}
-      style={Object.assign({}, toolBtnStyle('image'), { width: 22, height: 22 })}
-    ><i className="fa-solid fa-image" style={{ fontSize: 10 }}></i></button>
-  );
-}
-
 function resolveCardImg(kind, id, fallback) {
   if (window.HMSSiteContent && typeof window.HMSSiteContent.getCardImage === 'function') {
     return window.HMSSiteContent.getCardImage(kind, id, fallback) || fallback;
@@ -1135,6 +1128,79 @@ function Toast({ message, visible }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MOBILE MENU â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* One dialog for every header edit, so a student meets the same small box
+   whichever part of the header they click. It replaces the window.prompt()
+   boxes the navigation used to open, which the iframe often blocked outright. */
+function HeaderEditModal({ edit, onSave, onCancel }) {
+  const [value, setValue] = React.useState('');
+
+  React.useEffect(() => {
+    setValue(edit && edit.mode === 'text' ? (edit.value || '') : '');
+  }, [edit]);
+
+  if (!edit) return null;
+
+  const submit = () => {
+    if (edit.mode !== 'text') return;
+    if (!value.trim()) return;
+    onSave(value);
+  };
+
+  return (
+    <div
+      className="room-modal-overlay header-modal-overlay"
+      data-hms-no-edit="1"
+      role="dialog"
+      aria-modal="true"
+      aria-label={edit.title}
+      onClick={onCancel}
+    >
+      <div className="room-modal" style={{ width: 'min(420px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '1rem' }}>{edit.title}</h3>
+
+        {edit.mode === 'text' ? (
+          <React.Fragment>
+            <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>
+              {edit.fieldLabel}
+            </label>
+            <input
+              className="header-modal-field"
+              type="text"
+              value={value}
+              maxLength={edit.maxLength}
+              autoFocus
+              onChange={(e) => setValue(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); submit(); }
+                if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+              }}
+            />
+            <p className="header-modal-hint">{edit.hint}</p>
+          </React.Fragment>
+        ) : (
+          <React.Fragment>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0 1.2rem' }}>
+              <img src={edit.previewSrc} alt="Current logo" style={{ width: 84, height: 84, objectFit: 'contain' }} />
+            </div>
+            <p className="header-modal-hint" style={{ marginTop: 0, textAlign: 'center' }}>{edit.hint}</p>
+          </React.Fragment>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
+          {edit.mode === 'text' ? (
+            <button type="button" className="btn-primary" disabled={!value.trim()} onClick={submit}>Save</button>
+          ) : (
+            <button type="button" className="btn-primary" onClick={() => onSave(null)}>Choose image</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function MobileMenu({ open, onClose, onNavigate, links, cardImages, page }) {
   const items = [...(links || [])];
   // Passed only so the menu re-renders when the shared logo changes.
@@ -1153,103 +1219,72 @@ function MobileMenu({ open, onClose, onNavigate, links, cardImages, page }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• NAVBAR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, canEditNav, onAddNav, onEditNav, onRemoveNav, cardImages, onToast }) {
+/* The header's shape never changes: the logo and the hotel name on the left,
+   the same five links on the right, in that order. A student clicks a piece of
+   it in Design mode and gets a dialog for that piece's wording; nothing here can
+   be dragged, resized, restyled, added to or removed.
+
+   data-hms-no-edit on the <nav> is what enforces that — the editor treats the
+   whole subtree as its own chrome — and it is also why these onClick handlers
+   run at all in Design mode. Because the editor no longer swallows the click,
+   each handler has to check isSiteInteractive() itself and decide between
+   navigating (Preview) and opening a dialog (Design). */
+function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, onHeaderEdit, cardImages }) {
   // Passed only so the navigation re-renders when the shared logo changes.
   void cardImages;
-  const canEditThisLogo = !!(window.HMSSiteContent && window.HMSSiteContent.canEditLogo && window.HMSSiteContent.canEditLogo());
-  const PAGE_OPTIONS = [
-    { key: 'home', label: 'Home' },
-    { key: 'rooms', label: 'Rooms' },
-    { key: 'restaurant', label: 'Restaurant' },
-    { key: 'experience', label: 'Experience' },
-    { key: 'amenities', label: 'Amenities' },
-    { key: 'booking', label: 'Book Now' },
-  ];
 
-  /* Asks which page the link opens as a numbered menu. Typing a raw key by hand
-     used to be accepted unvalidated, so a typo produced a link that went nowhere.
-     Returns null when the student cancels or picks something that isn't a page. */
-  const askPageKey = (currentKey) => {
-    const menu = PAGE_OPTIONS.map((p, i) => (i + 1) + ') ' + p.label).join('\n');
-    const currentIndex = PAGE_OPTIONS.findIndex(p => p.key === currentKey);
-    const fallback = String(currentIndex >= 0 ? currentIndex + 1 : 1);
-    const answer = hmsPrompt('Which page should this link open?\n\n' + menu + '\n\nType a number:', fallback);
-    if (answer == null) return null;
-    const typed = String(answer).trim().toLowerCase();
-    if (!typed) return null;
-    const byNumber = PAGE_OPTIONS[parseInt(typed, 10) - 1];
-    if (byNumber) return byNumber.key;
-    const byName = PAGE_OPTIONS.find(p => p.key === typed || p.label.toLowerCase() === typed);
-    if (byName) return byName.key;
-    if (onToast) onToast('"' + answer + '" is not a page — pick a number from the list');
-    return null;
-  };
-
-  const handleAdd = (e) => {
+  const openEdit = (e, payload) => {
     e.preventDefault();
     e.stopPropagation();
-    const label = hmsPrompt('Name for the new navigation link', 'New Page');
-    if (label == null || !label.trim()) return;
-    const key = askPageKey('home');
-    if (!key) return;
-    onAddNav({ label: label.trim(), key });
-    if (onToast) onToast('Navigation link added');
-  };
-
-  const handleEdit = (e, link) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const label = hmsPrompt('Name for this navigation link', link.label);
-    if (label == null || !label.trim()) return;
-    const key = askPageKey(link.key);
-    if (!key) return;
-    onEditNav(link.id, { label: label.trim(), key });
-  };
-
-  const handleRemove = (e, link) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (hmsConfirm('Remove "' + link.label + '" from the navigation menu?')) onRemoveNav(link.id);
+    onHeaderEdit(payload);
   };
 
   return (
-    <nav className="nav-bar" role="navigation" aria-label="Main navigation">
+    <nav className="nav-bar" role="navigation" aria-label="Main navigation" data-hms-no-edit="1">
       <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <button onClick={() => onNavigate('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <BrandLogo size={34} />
-            <span style={{ color: 'var(--fg)', fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
+          <button
+            onClick={(e) => { if (editing) { e.preventDefault(); return; } onNavigate('home'); }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+          >
+            <span
+              role={editing && canEditLogo ? 'button' : undefined}
+              tabIndex={editing && canEditLogo ? 0 : undefined}
+              className={editing && canEditLogo ? 'hms-header-edit' : undefined}
+              data-hms-edit-label="Change logo"
+              title={editing && canEditLogo ? 'Click to change the hotel logo' : undefined}
+              style={{ display: 'flex' }}
+              onClick={editing && canEditLogo ? (e) => openEdit(e, { kind: 'logo' }) : undefined}
+              onKeyDown={editing && canEditLogo ? (e) => { if (e.key === 'Enter' || e.key === ' ') openEdit(e, { kind: 'logo' }); } : undefined}
+            >
+              <BrandLogo size={34} />
+            </span>
+            <span
+              role={editing && canEditBrandName ? 'button' : undefined}
+              tabIndex={editing && canEditBrandName ? 0 : undefined}
+              className={editing && canEditBrandName ? 'hms-header-edit' : undefined}
+              data-hms-edit-label="Edit name"
+              data-hms-brand-name="1"
+              title={editing && canEditBrandName ? 'Click to change the hotel name' : undefined}
+              style={{ color: 'var(--fg)', fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}
+              onClick={editing && canEditBrandName ? (e) => openEdit(e, { kind: 'brand' }) : undefined}
+              onKeyDown={editing && canEditBrandName ? (e) => { if (e.key === 'Enter' || e.key === ' ') openEdit(e, { kind: 'brand' }); } : undefined}
+            >{brandName}</span>
           </button>
-          {canEditThisLogo && <ChangeLogoButton onToast={onToast} />}
         </div>
         <div className="nav-links-desktop" style={{ display: 'flex', alignItems: 'center', gap: '1.1rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {(links || []).map(link => (
-            <div key={link.id || link.key} className="nav-item">
+            <div key={link.key} className="nav-item">
               <button
-                className={`nav-link${currentPage === link.key ? ' active' : ''}`}
-                onClick={() => onNavigate(link.key)}
+                className={`nav-link${currentPage === link.key ? ' active' : ''}${editing && canEditNav ? ' hms-header-edit' : ''}`}
+                data-hms-edit-label="Rename"
+                title={editing && canEditNav ? 'Click to rename this link' : undefined}
+                onClick={editing && canEditNav ? (e) => openEdit(e, { kind: 'nav', link }) : () => onNavigate(link.key)}
               >
                 {link.label}
               </button>
-              {canEditNav && (
-                <span className="nav-edit-tools" data-hms-no-edit="1">
-                  <button type="button" className="nav-edit-btn" title={'Rename "' + link.label + '" or change the page it opens'}
-                    onClick={(e) => handleEdit(e, link)}><i className="fa-solid fa-pen" style={{fontSize:10}}></i></button>
-                  <button type="button" className="nav-remove-btn" title={'Remove "' + link.label + '" from the menu'}
-                    onClick={(e) => handleRemove(e, link)}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
-                </span>
-              )}
             </div>
           ))}
-          {canEditNav && (
-            <button
-              type="button"
-              className="nav-add-btn"
-              title="Add a new link to this menu"
-              onClick={handleAdd}
-              data-hms-no-edit="1"
-            ><i className="fa-solid fa-plus" style={{ fontSize: 10 }}></i> Add link</button>
-          )}
         </div>
         <button className={`hamburger${mobileOpen ? ' active' : ''}`} onClick={onToggleMobile} aria-label="Toggle menu" data-hms-no-edit="1">
           <span></span><span></span><span></span>
@@ -3087,7 +3122,7 @@ function BookingPage({ onToast, rooms, onCreateBooking }) {
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FOOTER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function Footer({ onNavigate, cardImages, page }) {
+function Footer({ onNavigate, cardImages, page, brandName }) {
   // Passed only so the footer re-renders when the shared logo changes.
   void cardImages;
   void page;
@@ -3098,7 +3133,9 @@ function Footer({ onNavigate, cardImages, page }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.85rem' }}>
               <BrandLogo size={38} />
-              <span style={{ fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}>SPC HOTEL</span>
+              {/* Edited in the header, shown here: one name, one place to change it.
+                  no-edit stops a double-click caret fighting the next React render. */}
+              <span data-hms-brand-name="1" data-hms-no-edit="1" style={{ fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}>{brandName}</span>
             </div>
             <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', fontWeight: 300, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem' }}>A sanctuary of refined hospitality. Where every guest becomes part of our story.</p>
             <div style={{ display: 'flex', gap: '0.65rem' }}>
@@ -3161,12 +3198,13 @@ function App() {
   const [toast, setToast] = useState({ message: '', visible: false });
   const toastTimer = useRef(null);
   const [navLinks, setNavLinks] = useState(() => (
+    // Same five links, same order, as HMSSiteContent.DEFAULT_NAV.
     window.HMSSiteContent ? window.HMSSiteContent.getNav() : [
       { id: 'nav-home', key: 'home', label: 'Home' },
       { id: 'nav-rooms', key: 'rooms', label: 'Rooms' },
       { id: 'nav-restaurant', key: 'restaurant', label: 'Restaurant' },
-      { id: 'nav-experience', key: 'experience', label: 'Experience' },
       { id: 'nav-amenities', key: 'amenities', label: 'Amenities' },
+      { id: 'nav-experience', key: 'experience', label: 'Experience' },
     ]
   ));
   const [rooms, setRooms] = useState([]);
@@ -3178,6 +3216,14 @@ function App() {
   // page is only reachable from Preview — Design mode is layout-editing only.
   const [isDesignMode, setIsDesignMode] = useState(() => window.__HMS_DESIGN_MODE__ === true);
   const [canEditNav, setCanEditNav] = useState(false);
+  const [brandName, setBrandNameState] = useState(() => (
+    window.HMSSiteContent && window.HMSSiteContent.getBrandName ? window.HMSSiteContent.getBrandName() : 'SPC HOTEL'
+  ));
+  const [canEditBrandName, setCanEditBrandName] = useState(false);
+  // Read through state, not inline in NavBar: hotel auth resolves after the
+  // first render, so an inline canEditLogo() read shows a stale answer.
+  const [canEditLogo, setCanEditLogo] = useState(false);
+  const [headerEdit, setHeaderEdit] = useState(null);
   const [canEditRooms, setCanEditRooms] = useState(false);
   const [canManageRooms, setCanManageRooms] = useState(false);
   const [canReserveRooms, setCanReserveRooms] = useState(true);
@@ -3262,6 +3308,9 @@ function App() {
     };
   }, [fetchRooms, fetchMenus, fetchAddons, fetchAmenities]);
 
+  // The <title> is server-rendered outside React and would otherwise keep the placeholder.
+  useEffect(() => { document.title = brandName; }, [brandName]);
+
   const syncSiteContent = useCallback(() => {
     if (!window.HMSSiteContent) return;
     // Must sync even in Design mode so Add Room / menu / nav tools update the UI.
@@ -3275,6 +3324,17 @@ function App() {
         : false
     );
     setCanEditNav(window.HMSSiteContent.canEditNav());
+    if (window.HMSSiteContent.getBrandName) setBrandNameState(window.HMSSiteContent.getBrandName());
+    setCanEditBrandName(
+      typeof window.HMSSiteContent.canEditBrandName === 'function'
+        ? window.HMSSiteContent.canEditBrandName()
+        : false
+    );
+    setCanEditLogo(
+      typeof window.HMSSiteContent.canEditLogo === 'function'
+        ? window.HMSSiteContent.canEditLogo()
+        : false
+    );
     setCanEditRooms(window.HMSSiteContent.canEditRooms());
     setCanManageRooms(
       typeof window.HMSSiteContent.canUseRoomManagementUi === 'function'
@@ -3553,6 +3613,53 @@ function App() {
     booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} />,
   };
 
+  /* Design mode is not React state, so it is read here in App — which re-renders
+     on hms-mode-change — rather than inside NavBar, which otherwise would not
+     re-render when the student switches between Design and Preview. */
+  const headerEditing = !isSiteInteractive();
+
+  /* One descriptor per kind of header edit, so the dialog stays a single
+     component and the header only has to say which piece was clicked. */
+  const headerEditDialog = !headerEdit ? null : (
+    headerEdit.kind === 'brand'
+      ? {
+          mode: 'text',
+          title: 'Edit Hotel Name',
+          fieldLabel: 'Hotel name',
+          value: brandName,
+          maxLength: 60,
+          hint: 'Shown in the header and the footer of every page.',
+        }
+      : headerEdit.kind === 'nav'
+        ? {
+            mode: 'text',
+            title: 'Rename Link',
+            fieldLabel: 'Link text',
+            value: headerEdit.link.label,
+            maxLength: 24,
+            hint: 'Only the wording changes. This link still opens the same page.',
+          }
+        : {
+            mode: 'image',
+            title: 'Change Logo',
+            previewSrc: resolveLogo(),
+            hint: 'Pick a square image. The new logo appears across the whole site.',
+          }
+  );
+
+  const saveHeaderEdit = (value) => {
+    const content = window.HMSSiteContent;
+    if (!content || !headerEdit) return;
+    if (headerEdit.kind === 'brand') {
+      if (content.setBrandName(value)) showToast('Hotel name updated across the whole site');
+    } else if (headerEdit.kind === 'nav') {
+      if (content.renameNavLink(headerEdit.link.key, value)) showToast('Navigation link renamed');
+    } else {
+      changeCardImg('brand', LOGO_ID, () => showToast('Logo updated across the whole site'));
+    }
+    setHeaderEdit(null);
+  };
+
   return (
     <>
       <NavBar
@@ -3561,12 +3668,13 @@ function App() {
         onToggleMobile={() => setMobileOpen(v => !v)}
         mobileOpen={mobileOpen}
         links={navLinks}
+        brandName={brandName}
+        editing={headerEditing}
         canEditNav={canEditNav}
-        onAddNav={(partial) => window.HMSSiteContent && window.HMSSiteContent.addNavLink(partial)}
-        onEditNav={(id, patch) => window.HMSSiteContent && window.HMSSiteContent.updateNavLink(id, patch)}
-        onRemoveNav={(id) => window.HMSSiteContent && window.HMSSiteContent.removeNavLink(id)}
+        canEditBrandName={canEditBrandName}
+        canEditLogo={canEditLogo}
+        onHeaderEdit={setHeaderEdit}
         cardImages={cardImages}
-        onToast={showToast}
       />
       <MobileMenu
         open={mobileOpen}
@@ -3577,7 +3685,8 @@ function App() {
         page={page}
       />
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
-      <Footer onNavigate={navigateTo} cardImages={cardImages} page={page} />
+      <Footer onNavigate={navigateTo} cardImages={cardImages} page={page} brandName={brandName} />
+      <HeaderEditModal edit={headerEditDialog} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />
       <Toast message={toast.message} visible={toast.visible} />
     </>
   );

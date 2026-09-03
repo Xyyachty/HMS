@@ -12,7 +12,23 @@
   const HERO_SLIDES_KEY = '__heroSlides';
   const RESERVATION_NOTIFICATIONS_KEY = '__reservationNotifications';
   const ROOM_RESERVATIONS_KEY = '__roomReservations';
-  const CONTENT_KEYS = [NAV_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const BRAND_NAME_KEY = '__brandName';
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+
+  /**
+   * The hotel name shown in the header and the footer.
+   *
+   * Stored as a one-item collection rather than a plain string because
+   * TemplateCustomizationStore writes a scalar customization to
+   * template_elements.display_value and reads it back as an array — a string
+   * would not survive one save/reload round trip. The field has to be `label`
+   * so TemplateDiff::itemTitle() prints the name in the faculty review instead
+   * of the item id.
+   */
+  const BRAND_NAME_ID = 'brand-name';
+  const DEFAULT_BRAND_NAME = 'SPC HOTEL';
+  const BRAND_NAME_MAX = 60;
+  const NAV_LABEL_MAX = 24;
 
   const DEFAULT_NAV = [
     { id: 'nav-home', key: 'home', label: 'Home' },
@@ -188,6 +204,16 @@
     return canEdit() && editablePages().indexOf('home') !== -1;
   }
 
+  /**
+   * The hotel name belongs to Front Desk, like the navigation, not to every
+   * role like the logo. Because only one role's row can ever hold the key,
+   * filterCustomizationsForRole() strips it everywhere else and no
+   * last-write-wins claim (the claimSharedLogo() treatment) is needed.
+   */
+  function canEditBrandName() {
+    return canEdit() && editablePages().indexOf('home') !== -1;
+  }
+
   function canEditHeroSlides() {
     return canEdit() && editablePages().indexOf('home') !== -1;
   }
@@ -221,24 +247,59 @@
     return canEdit();
   }
 
+  /**
+   * The header carries exactly the five links in DEFAULT_NAV, in that order.
+   * Students rename them; they cannot add, remove or repoint one.
+   *
+   * Saved lists from before that rule still exist, so every read and every
+   * write goes through here: a saved label is kept when its `key` matches a
+   * canonical link, and everything else — extra links, missing links, saved
+   * ids — is discarded. Matching on `key` rather than `id` means a link that
+   * was repointed at another page loses its label instead of carrying it onto
+   * the wrong slot.
+   */
+  function reconcileNav(saved) {
+    const byKey = {};
+    (Array.isArray(saved) ? saved : []).forEach((item) => {
+      if (!item) return;
+      const key = String(item.key == null ? '' : item.key).trim();
+      if (!key || Object.prototype.hasOwnProperty.call(byKey, key)) return;
+      byKey[key] = item;
+    });
+    return DEFAULT_NAV.map((base) => {
+      const match = byKey[base.key];
+      const label = match && typeof match.label === 'string' ? match.label.trim() : '';
+      return { id: base.id, key: base.key, label: label || base.label };
+    });
+  }
+
   function getNav() {
     const c = getCustomizations();
     const entry = c[NAV_KEY];
-    if (entry && Array.isArray(entry.items) && entry.items.length) {
-      return entry.items.map((item) => Object.assign({}, item));
-    }
-    return DEFAULT_NAV.map((item) => Object.assign({}, item));
+    return reconcileNav(entry && entry.items);
   }
 
   function setNav(items) {
     if (!canEditNav()) return false;
-    patch(NAV_KEY, {
+    patch(NAV_KEY, { page: 'home', items: reconcileNav(items) });
+    return true;
+  }
+
+  function getBrandName() {
+    const c = getCustomizations();
+    const entry = c[BRAND_NAME_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    const name = item && typeof item.label === 'string' ? item.label.trim() : '';
+    return name || DEFAULT_BRAND_NAME;
+  }
+
+  function setBrandName(name) {
+    if (!canEditBrandName()) return false;
+    const clean = String(name == null ? '' : name).trim().slice(0, BRAND_NAME_MAX);
+    if (!clean) return false;
+    patch(BRAND_NAME_KEY, {
       page: 'home',
-      items: (items || []).map((item) => ({
-        id: item.id || uid('nav'),
-        key: item.key || 'home',
-        label: item.label || 'Link',
-      })),
+      items: [{ id: BRAND_NAME_ID, label: clean }],
     });
     return true;
   }
@@ -310,37 +371,20 @@
     return true;
   }
 
-  function addNavLink(partial) {
-    const list = getNav();
-    const item = {
-      id: uid('nav'),
-      key: (partial && partial.key) || 'home',
-      label: (partial && partial.label) || 'New Link',
-    };
-    list.push(item);
-    setNav(list);
-    return item;
+  /** Rename one of the five fixed links. The page it points at never changes. */
+  function renameNavLink(key, label) {
+    const clean = String(label == null ? '' : label).trim().slice(0, NAV_LABEL_MAX);
+    if (!clean) return false;
+    return setNav(getNav().map((item) => (
+      item.key === key ? Object.assign({}, item, { label: clean }) : item
+    )));
   }
 
+  /** Kept for older callers; only the label is honoured. */
   function updateNavLink(id, patchData) {
-    const list = getNav().map((item) => (item.id === id ? Object.assign({}, item, patchData) : item));
-    setNav(list);
-  }
-
-  function removeNavLink(id) {
-    setNav(getNav().filter((item) => item.id !== id));
-  }
-
-  function moveNavLink(id, direction) {
-    const list = getNav();
-    const idx = list.findIndex((item) => item.id === id);
-    if (idx < 0) return;
-    const target = direction === 'left' ? idx - 1 : idx + 1;
-    if (target < 0 || target >= list.length) return;
-    const tmp = list[idx];
-    list[idx] = list[target];
-    list[target] = tmp;
-    setNav(list);
+    const item = getNav().find((link) => link.id === id);
+    if (!item || !patchData) return false;
+    return renameNavLink(item.key, patchData.label);
   }
 
   function addRoom(partial, fallbackDefaults) {
@@ -765,10 +809,13 @@
   function getSnapshot() {
     return {
       navLinks: getNav(),
+      brandName: getBrandName(),
       rooms: getRooms(),
       menus: getMenus(),
       cardImages: getCardImages(),
       canEditNav: canEditNav(),
+      canEditBrandName: canEditBrandName(),
+      canEditLogo: canEditLogo(),
       canEditRooms: canEditRooms(),
       canEditMenus: canEditMenus(),
       canEditExperiences: canEditExperiences(),
@@ -805,19 +852,23 @@
 
   window.HMSSiteContent = {
     NAV_KEY,
+    BRAND_NAME_KEY,
     ROOMS_KEY,
     MENUS_KEY,
     CARD_IMAGES_KEY,
     RESERVATION_NOTIFICATIONS_KEY,
     CONTENT_KEYS,
     DEFAULT_NAV,
+    DEFAULT_BRAND_NAME,
     DEFAULT_MENUS,
+    NAV_LABEL_MAX,
+    BRAND_NAME_MAX,
     getNav,
     setNav,
-    addNavLink,
+    renameNavLink,
     updateNavLink,
-    removeNavLink,
-    moveNavLink,
+    getBrandName,
+    setBrandName,
     getRooms,
     setRooms,
     addRoom,
@@ -846,6 +897,7 @@
     setCardImage,
     pickImageFile,
     canEditNav,
+    canEditBrandName,
     canEditRooms,
     canEditMenus,
     canEditExperiences,

@@ -18,7 +18,7 @@
 
   const USER_KEY = '__userElements';
   const DELETED_KEY = '__deleted';
-  const SITE_CONTENT_KEYS = ['__navLinks', '__rooms', '__menus', '__cardImages'];
+  const SITE_CONTENT_KEYS = ['__navLinks', '__brandName', '__rooms', '__menus', '__cardImages', '__heroSlides'];
 
   let designMode = false;
   let selectedEl = null;
@@ -159,7 +159,7 @@
     }
     return id;
   }
-
+  
   function isEditorChrome(el) {
     return !!(el && (
       el.id === 'hms-editor-ui'
@@ -172,6 +172,20 @@
       || el.hasAttribute('data-hms-spacer')
       || el.tagName === 'HMS-SPACER'
     ));
+  }
+
+  /**
+   * The header is structure, not canvas. Its layout is fixed for every team:
+   * nothing inside it may be selected, moved, resized, restyled or deleted.
+   * Students change its content — logo, hotel name, link labels — through the
+   * template's own click-to-edit dialogs, which run as ordinary React handlers
+   * because <nav> carries data-hms-no-edit.
+   *
+   * .nav-bar is position:fixed with a hard-coded .hero top offset, so a drag
+   * used to pin it in viewport coordinates and leave the page misaligned.
+   */
+  function isHeaderLocked(el) {
+    return !!(el && el.nodeType === 1 && el.closest && el.closest('.nav-bar'));
   }
 
   function isLayoutContainer(el) {
@@ -203,32 +217,11 @@
     if (el.hasAttribute('data-hms-user') || el.hasAttribute('data-hms-bg-target') || el.hasAttribute('data-hms-section') || el.hasAttribute('data-hms-move-root')) {
       return el;
     }
-    if (el.classList.contains('nav-bar') || el.classList.contains('hero-bg')) return el;
+    if (el.classList.contains('hero-bg')) return el;
 
     // An element that declares its own text is already the unit being edited, so
-    // never widen past it. The hotel name is a bare <span> sitting in .nav-bar but
-    // outside .nav-links-desktop, which the brand branch below collapses to the
-    // whole <nav> — so renaming the hotel wrote the new name onto the navigation
-    // bar itself, wiping what it contained and keying the change to the wrong
-    // element in the faculty review.
+    // never widen past it.
     if (el.getAttribute('data-hms-text') === '1') return el;
-
-    // Prefer whole header/nav when clicking brand or nav links.
-    const nav = el.closest && el.closest('.nav-bar');
-    if (nav && (el.tagName === 'SPAN' || el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'I')) {
-      // Keep individual link text editable when it's clearly a nav-link label;
-      // otherwise select the whole header bar.
-      if (el.classList.contains('nav-link') || (el.closest && el.closest('.nav-link'))) {
-        return el.classList.contains('nav-link') ? el : el.closest('.nav-link');
-      }
-      if (el.closest('.nav-links-desktop') && (el.tagName === 'BUTTON' || el.tagName === 'A')) {
-        return el;
-      }
-      // Brand / empty header chrome → whole nav
-      if (!el.closest('.nav-links-desktop') || el.tagName === 'SPAN') {
-        return nav;
-      }
-    }
 
     let node = el;
     if (isInlineTextTag(node.tagName) || node.tagName === 'SPAN') {
@@ -288,7 +281,9 @@
 
     if (el.hasAttribute('data-hms-user')) return true;
 
-    if (el.classList.contains('nav-bar') || el.hasAttribute('data-hms-bg-target') || el.hasAttribute('data-hms-section')) {
+    if (isHeaderLocked(el)) return false;
+
+    if (el.hasAttribute('data-hms-bg-target') || el.hasAttribute('data-hms-section')) {
       return true;
     }
 
@@ -302,6 +297,7 @@
   }
 
   function findEditable(start, allowContainers) {
+    if (isHeaderLocked(start)) return null;
     let el = start;
     while (el && el !== document.body) {
       if (isEditorChrome(el) || el.id === 'hms-user-canvas' || el.id === 'hms-section-rail') {
@@ -333,6 +329,9 @@
 
         if (event.altKey) {
           let container = node;
+          // Alt+click walks straight to the nearest layout container, skipping
+          // isEditableTarget entirely — without this it hands back the header.
+          if (isHeaderLocked(container)) return null;
           while (container && container !== document.body) {
             if (container.hasAttribute('data-hms-no-edit')) {
               container = container.parentElement;
@@ -363,6 +362,7 @@
 
     if (event.altKey) {
       let container = textParent || event.target;
+      if (isHeaderLocked(container)) return null;
       while (container && container !== document.body) {
         if (container.hasAttribute('data-hms-no-edit')) {
           container = container.parentElement;
@@ -383,7 +383,7 @@
   function findEditableParent(el) {
     let parent = el && el.parentElement;
     while (parent && parent !== document.body) {
-      if (isEditorChrome(parent)) return null;
+      if (isEditorChrome(parent) || isHeaderLocked(parent)) return null;
       const hit = isEditableTarget(parent, true);
       if (hit === true) return parent;
       if (hit && hit.nodeType === 1 && hit !== el) return hit;
@@ -619,11 +619,16 @@
       // another page happens to match with the same selector.
       if (!entryBelongsToCurrentPage(entry)) return;
       let sel = id;
+      let probe = null;
       try {
-        document.querySelector(sel);
+        probe = document.querySelector(sel);
       } catch (err) {
         return;
       }
+      // A team that dragged the header before it was locked still has a saved
+      // "#root > nav" rule; emitting it would move the header the editor can no
+      // longer touch.
+      if (isHeaderLocked(probe)) return;
       const decls = [];
       if (entry.moveMode === 'transform' || (entry.transform && !entry.keepFixed && entry.position !== 'fixed')) {
         if (entry.transform) decls.push('transform:' + entry.transform + ' !important');
@@ -675,7 +680,6 @@
     // Prefer a large section/main so moves aren't clamped back into a tiny text wrapper.
     const section = el.closest('[data-hms-section], .hero, .hero-split, main, [data-hms-page]');
     if (section) return section;
-    if (el.classList.contains('nav-bar')) return document.body;
     let node = el.parentElement;
     while (node && node !== document.body) {
       if (node.id === 'root' || node === document.body) break;
@@ -732,7 +736,9 @@
   function selectElement(el) {
     clearSelection();
     el = resolveEditableRoot(el);
-    if (!el) {
+    // The one choke point every selection path passes through — clicks, the
+    // Design Panel, addElement(), and the public API.
+    if (!el || isHeaderLocked(el)) {
       postToParent({ type: 'element-deselected' });
       return;
     }
@@ -916,6 +922,8 @@
 
   function saveElementState(el) {
     if (!el) return;
+    // Last line of defence: nothing header-shaped is ever written to customizations.
+    if (isHeaderLocked(el)) return;
     if (!canEditCurrentPage()) {
       blockEditToast();
       return;
@@ -1167,7 +1175,8 @@
       // page must not hide the second room card too.
       if (typeof entry !== 'string' && !entryBelongsToCurrentPage(entry)) return;
       const el = findByKey(id);
-      if (el) el.style.display = 'none';
+      // A legacy entry for "#root > nav" would hide the whole header.
+      if (el && !isHeaderLocked(el)) el.style.display = 'none';
     });
   }
 
@@ -1194,6 +1203,18 @@
       if (!entryBelongsToCurrentPage(customizations[id])) return;
       let el = findByKey(id);
       if (!el) return;
+
+      // Header edits saved before the header was locked — a hotel name typed
+      // onto "#root > nav" by the old rename path, or a drag that pinned the
+      // bar in viewport coordinates. Drop them on load; the `migrated` flag
+      // below autosaves the cleaned set, so no migration command is needed.
+      // The footer name span is included because it is React-driven now and a
+      // stale text entry would fight every re-render.
+      if (isHeaderLocked(el) || el.hasAttribute('data-hms-brand-name')) {
+        delete customizations[id];
+        migrated = true;
+        return;
+      }
 
       // Re-key legacy ephemeral [data-hms-id="el-…"] entries to structural selectors.
       let key = id;
@@ -1257,7 +1278,7 @@
   }
 
   function promoteToAbsolute(el) {
-    if (!el) return;
+    if (!el || isHeaderLocked(el)) return;
     el = resolveEditableRoot(el) || el;
     clearNestedFreePositions(el);
     const cs = window.getComputedStyle(el);
@@ -1309,6 +1330,7 @@
 
   function onMoveHandleDown(e) {
     if (!designMode || !canEdit || !selectedEl) return;
+    if (isHeaderLocked(selectedEl)) return;
     if (!canEditCurrentPage()) return;
     if (e.button !== 0) return;
 
@@ -1390,6 +1412,7 @@
 
   function onResizeStart(e) {
     if (!designMode || !canEdit || !selectedEl) return;
+    if (isHeaderLocked(selectedEl)) return;
     e.preventDefault();
     e.stopPropagation();
     const el = resolveEditableRoot(selectedEl) || selectedEl;
@@ -1427,7 +1450,7 @@
         ensureStableId(el);
         clearNestedFreePositions(el);
 
-        if (el.hasAttribute('data-hms-user') || el.classList.contains('nav-bar')) {
+        if (el.hasAttribute('data-hms-user')) {
           dragState.mode = 'fixed';
           const er = getVisualRect(el);
           setPosImportant(el, 'position', 'fixed');
@@ -1438,7 +1461,6 @@
           setPosImportant(el, 'margin', '0');
           setPosImportant(el, 'transform', 'none');
           el.setAttribute('data-hms-free-position', '1');
-          if (el.classList.contains('nav-bar')) el.setAttribute('data-hms-keep-fixed', '1');
           dragState.left = er.left;
           dragState.top = er.top;
           dragState.startRect = er;
@@ -1582,7 +1604,7 @@
         if (dragState.mode === 'transform') {
           const t = getElementTranslate(el);
           setElementTranslate(el, t.x, t.y);
-        } else if (el && (el.classList.contains('nav-bar') || el.getAttribute('data-hms-keep-fixed') === '1')) {
+        } else if (el && el.getAttribute('data-hms-keep-fixed') === '1') {
           const er = getVisualRect(el);
           setPosImportant(el, 'position', 'fixed');
           setPosImportant(el, 'left', er.left + 'px');
@@ -1657,6 +1679,8 @@
 
   function onDblClick(e) {
     if (!designMode || !canEdit) return;
+    // The header has its own click-to-edit dialogs; never open a caret in it.
+    if (isHeaderLocked(e.target)) return;
     if (!canEditCurrentPage()) {
       e.preventDefault();
       e.stopPropagation();
@@ -1742,6 +1766,7 @@
 
   function applyImageToSelected(url, recordHistory) {
     if (!selectedEl || !url) return;
+    if (isHeaderLocked(selectedEl)) return;
     if (recordHistory !== false) beginHistoryStep();
 
     // Shared-content images (brand logo) persist through the site-content store
@@ -1832,6 +1857,9 @@
     if (!canEdit) return;
     if (!selectedEl && data.id) selectedEl = findByKey(data.id);
     if (!selectedEl) return;
+    // A stale "#root > nav" id still held by the Design Panel is the one way a
+    // style command could still reach the header.
+    if (isHeaderLocked(selectedEl)) return;
     beginHistoryStep();
 
     if (data.style) {
@@ -1921,7 +1949,7 @@
   }
 
   function deleteSelected() {
-    if (!canEdit || !selectedEl) return;
+    if (!canEdit || !selectedEl || isHeaderLocked(selectedEl)) return;
     if (!canEditCurrentPage()) {
       blockEditToast();
       return;
@@ -1956,7 +1984,7 @@
   }
 
   function duplicateSelected() {
-    if (!canEdit || !selectedEl) return;
+    if (!canEdit || !selectedEl || isHeaderLocked(selectedEl)) return;
     if (!canEditCurrentPage()) {
       blockEditToast();
       return;
@@ -2001,7 +2029,7 @@
   }
 
   function changeLayer(direction) {
-    if (!canEdit || !selectedEl) return;
+    if (!canEdit || !selectedEl || isHeaderLocked(selectedEl)) return;
     beginHistoryStep();
     promoteToAbsolute(selectedEl);
     const cur = parseInt(window.getComputedStyle(selectedEl).zIndex, 10) || 1;
@@ -2022,9 +2050,10 @@
 
   function nudgeSelected(dx, dy) {
     if (!selectedEl || !canEditCurrentPage()) return false;
+    if (isHeaderLocked(selectedEl)) return false;
     beginHistoryStep();
     selectedEl = resolveEditableRoot(selectedEl) || selectedEl;
-    if (selectedEl.hasAttribute('data-hms-user') || selectedEl.classList.contains('nav-bar')) {
+    if (selectedEl.hasAttribute('data-hms-user')) {
       promoteToAbsolute(selectedEl);
       const parent = selectedEl.offsetParent || selectedEl.parentElement || document.body;
       const pr = parent.getBoundingClientRect();
@@ -2042,6 +2071,7 @@
 
   function alignSelected(direction) {
     if (!selectedEl || !canEditCurrentPage()) return;
+    if (isHeaderLocked(selectedEl)) return;
     selectedEl = resolveEditableRoot(selectedEl) || selectedEl;
     beginHistoryStep();
 
@@ -2139,14 +2169,6 @@
       pointer-events: auto; cursor: pointer;
     }
     #hms-user-canvas [data-hms-user] { pointer-events: none; }
-    body.hms-design-mode .nav-bar {
-      z-index: 2500 !important;
-      pointer-events: auto !important;
-    }
-    body.hms-design-mode .nav-bar,
-    body.hms-design-mode .nav-bar * {
-      cursor: pointer;
-    }
     body.hms-design-mode [data-hms-id],
     body.hms-design-mode h1, body.hms-design-mode h2, body.hms-design-mode h3,
     body.hms-design-mode h4, body.hms-design-mode h5, body.hms-design-mode h6,
@@ -2154,7 +2176,6 @@
     body.hms-design-mode strong, body.hms-design-mode button,
     body.hms-design-mode a, body.hms-design-mode img, body.hms-design-mode i,
     body.hms-design-mode input, body.hms-design-mode textarea,
-    body.hms-design-mode .nav-bar,
     body.hms-design-mode [data-hms-section],
     body.hms-design-mode [data-hms-bg-target] {
       cursor: pointer;

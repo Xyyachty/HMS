@@ -69,7 +69,7 @@ class TaskChecklist
             ],
             [
                 'title' => 'Design the Home Page',
-                'description' => 'Customise the page a guest lands on: pick the five photographs that rotate across the top, rewrite the headline and the introduction under them so they describe your hotel rather than the sample text, and check every link in the top menu points at the right page and is labelled the way your hotel would label it.',
+                'description' => 'Customise the page a guest lands on: pick the five photographs that rotate across the top, rewrite the headline and the introduction under them so they describe your hotel rather than the sample text, and rename the links in the top menu so they read the way your hotel would label them.',
                 'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],

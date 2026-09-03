@@ -49,6 +49,15 @@ class HotelTemplateBuilder
     public const USER_ELEMENTS_KEY = '__userElements';
     public const DELETED_KEY = '__deleted';
     public const NAV_LINKS_KEY = '__navLinks';
+
+    /**
+     * The hotel name shown in the header and the footer. A one-item collection
+     * rather than a plain string: TemplateCustomizationStore writes a scalar
+     * customization to template_elements.display_value and reads it back as an
+     * array, so a string would not survive one save and reload.
+     */
+    public const BRAND_NAME_KEY = '__brandName';
+    public const DEFAULT_BRAND_NAME = 'SPC HOTEL';
     public const ROOMS_KEY = '__rooms';
     public const MENUS_KEY = '__menus';
     public const CARD_IMAGES_KEY = '__cardImages';
@@ -69,6 +78,7 @@ class HotelTemplateBuilder
      */
     public const SHARED_CONTENT_KEYS = [
         self::NAV_LINKS_KEY,
+        self::BRAND_NAME_KEY,
         self::ROOMS_KEY,
         self::MENUS_KEY,
     ];
@@ -404,6 +414,7 @@ class HotelTemplateBuilder
     {
         $keepKeys = [
             self::NAV_LINKS_KEY,
+            self::BRAND_NAME_KEY,
             self::ROOMS_KEY,
             self::MENUS_KEY,
             self::CARD_IMAGES_KEY,
@@ -493,6 +504,15 @@ class HotelTemplateBuilder
             }
 
             if ($key === self::NAV_LINKS_KEY && $role === 'front_desk' && is_array($value)) {
+                $value['page'] = $value['page'] ?? 'home';
+                $out[$key] = $value;
+                continue;
+            }
+
+            // The hotel name belongs to Front Desk, like the navigation. Because
+            // only one row ever holds it, the merge below cannot pick a stale
+            // copy from another role and no claim step is needed for it.
+            if ($key === self::BRAND_NAME_KEY && $role === 'front_desk' && is_array($value)) {
                 $value['page'] = $value['page'] ?? 'home';
                 $out[$key] = $value;
                 continue;
