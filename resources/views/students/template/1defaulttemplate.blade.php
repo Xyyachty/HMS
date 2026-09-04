@@ -2120,7 +2120,7 @@ function RoomTabBar({ tabs, active, onChange, items, getKey, allKey, extra, onRe
               onClick={(e) => { e.stopPropagation(); onRenameTab(tab); }}
               onMouseDown={(e) => e.stopPropagation()}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onRenameTab(tab); } }}
-              style={{ marginLeft: 6, opacity: 0.55, cursor: 'pointer', fontSize: '0.7em' }}
+              style={{ marginLeft: 7, opacity: 0.8, cursor: 'pointer', fontSize: '0.82em' }}
             >
               <i className="fa-solid fa-pen"></i>
             </span>

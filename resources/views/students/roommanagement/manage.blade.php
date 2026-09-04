@@ -736,7 +736,7 @@ function AddRoomModal({ rooms, categories, onClose, onAdded }) {
   );
 }
 
-function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated }) {
+function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onRenameCategory, onToast }) {
   // The inventory list that used to be its own Room Availability section. Adding a
   // room and looking one up are the same job, so they share a screen now.
   const [tab, setTab] = useState('All');
@@ -763,6 +763,26 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated }) {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
+  /* Renaming a tab renames the category for the whole team — the rooms in it are
+     renamed with it, and the hotel site's own Rooms tabs follow on their next poll. */
+  const handleRenameCategory = (from) => {
+    if (typeof onRenameCategory !== 'function') return;
+    const next = window.prompt(`Rename "${from}" to`, from);
+    if (next == null) return;
+    const clean = String(next).trim();
+    if (!clean || clean === from) return;
+
+    Promise.resolve(onRenameCategory(from, clean)).then((renamed) => {
+      if (!renamed) {
+        if (onToast) onToast('That name is already taken. Pick another.');
+        return;
+      }
+      // Follow the rename: the tab this panel was filtering on is gone by that name.
+      setTab(prev => (prev === from ? renamed : prev));
+      if (onToast) onToast(`${from} is now ${renamed}`);
+    });
+  };
+
   return (
     <div className="rm-panel" style={{ maxWidth: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -782,6 +802,20 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated }) {
           return (
             <button key={t} type="button" onClick={() => { setTab(t); setPage(1); }} className={`room-card-tab${tab === t ? ' active' : ''}`}>
               {t} ({count})
+              {/* "All" is not a category, so it is the one tab with nothing to rename. */}
+              {onRenameCategory && t !== 'All' && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  title={`Rename ${t}`}
+                  aria-label={`Rename ${t}`}
+                  onClick={(e) => { e.stopPropagation(); handleRenameCategory(t); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleRenameCategory(t); } }}
+                  style={{ marginLeft: 7, opacity: 0.75, cursor: 'pointer' }}
+                >
+                  <i className="fa-solid fa-pen" style={{ fontSize: '0.72em' }}></i>
+                </span>
+              )}
             </button>
           );
         })}
@@ -1361,7 +1395,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   );
 }
 
-function RoomManagementPage({ initialNav, rooms, categories, onBack, onAddRoom, onRoomUpdated, onBookingAction, onToast }) {
+function RoomManagementPage({ initialNav, rooms, categories, onBack, onAddRoom, onRoomUpdated, onRenameCategory, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
   const handleAddRoom = (payload) => {
@@ -1389,7 +1423,7 @@ function RoomManagementPage({ initialNav, rooms, categories, onBack, onAddRoom, 
             // Manage Room is the fallback: ?nav=rooms was the old Room Availability
             // section, whose room list lives here now, so an old link still lands
             // somewhere sensible instead of on a blank panel.
-            <ManageRoomPanel rooms={rooms} categories={categories} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} />
+            <ManageRoomPanel rooms={rooms} categories={categories} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} onRenameCategory={onRenameCategory} onToast={onToast} />
           )}
         </div>
       </div>
@@ -1441,6 +1475,34 @@ function App() {
     setRooms(prev => prev.map(r => (r.id === roomFromDb.id ? roomFromDb : r)));
   }, []);
 
+  /* Renames a category for the whole team. The rooms in it are renamed with it on the
+     server ("Classic 101" becomes "Standard 101"), so both come back here and on the
+     hotel site's own Rooms tabs. Resolves to the stored spelling, or null when taken. */
+  const renameCategory = useCallback((from, to) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/room-categories', {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ from, to }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && Array.isArray(data.categories)) {
+          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+          const floors = {};
+          data.categories.forEach(c => { if (c && c.name && c.floor) floors[c.name] = c.floor; });
+          setRoomCategoryNames(names);
+          setCategoryFloors(floors);
+          setCategories(names);
+        }
+        if (data && Array.isArray(data.rooms)) setRooms(data.rooms);
+        return data && data.category ? data.category.name : null;
+      })
+      .catch(() => null)
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
   // Check-in and check-out are booking moves. The room status follows on the server,
   // and the response hands the updated room back so this page never has to infer it.
   const bookingAction = useCallback((bookingId, action) => {
@@ -1466,6 +1528,7 @@ function App() {
       onBack={() => { window.location.href = window.HMS_ROOMMANAGEMENT_URL; }}
       onAddRoom={addRoom}
       onRoomUpdated={replaceRoom}
+      onRenameCategory={renameCategory}
       onBookingAction={bookingAction}
       onToast={(msg) => window.toast && window.toast(msg)}
     />
