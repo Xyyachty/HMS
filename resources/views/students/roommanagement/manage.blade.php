@@ -214,10 +214,12 @@ const IMAGE_MAX_BYTES = 600 * 1024;
 function bookingStatusClass(status) {
   return String(status || '').trim() === 'Checked In' ? 'status-occupied' : 'status-reserved';
 }
+/* Falls back to the team's first category, not to a literal "Classic" — the Rooms tab
+   bar can rename that one, so it stops being an answer once somebody does. */
 function normalizeRoomCategory(value) {
-  const raw = String(value || 'Classic').trim().toLowerCase();
+  const raw = String(value || '').trim().toLowerCase();
   const match = ROOM_CATEGORIES.find(c => c.toLowerCase() === raw);
-  return match || 'Classic';
+  return match || ROOM_CATEGORIES[0] || 'Classic';
 }
 function reservationArrivalStatus(reservation) {
   const raw = String((reservation && reservation.arrivalStatus) || 'Booked').trim().toLowerCase();

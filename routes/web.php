@@ -914,6 +914,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // all, so a team that already built its own inventory is never touched.
         \App\Support\HotelRoomDefaults::ensureFor($membership);
 
+        // And with the five categories as rows of its own, so the tab bar can rename
+        // them. Also a no-op once written; teams from before renaming get theirs here.
+        \App\Support\HotelRoomDefaults::ensureCategoriesFor($membership);
+
         $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
@@ -970,6 +974,44 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
         ], 201);
     })->name('hotel.room-categories.store');
+
+    /**
+     * Renaming a category from the Rooms tab bar. The rooms in it are renamed with it
+     * ("Classic 101" becomes "Standard 101"), so the rooms go back with the categories
+     * — Manage Room polls this same payload and picks both up on its next pass.
+     */
+    Route::patch('/hotel/room-categories', function (Request $request) {
+        $authUser = auth()->user();
+        $student  = $authUser?->student;
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
+        if (!$membership) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        $data = $request->validate([
+            'from' => 'required|string|max:60',
+            'to'   => 'required|string|max:60',
+        ]);
+
+        $renamed = \App\Support\HotelRoomDefaults::renameCategory($membership, $data['from'], $data['to']);
+
+        if (!$renamed) {
+            return response()->json(['message' => 'That name is already taken, or that category is not one of yours.'], 422);
+        }
+
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_room_id')
+            ->get()
+            ->map(fn (HotelRoom $room) => $room->toTemplateArray());
+
+        return response()->json([
+            'category'   => ['name' => $renamed],
+            'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+            'rooms'      => $rooms,
+        ]);
+    })->name('hotel.room-categories.update');
 
     /**
      * Guests Front Desk has registered that Room Management has not checked in yet.

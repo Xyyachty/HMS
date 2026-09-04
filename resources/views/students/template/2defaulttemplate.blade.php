@@ -759,10 +759,12 @@ const RESTAURANTS = [
 
 const REST_TABS = ['All', 'Fine Dining', 'Japanese', 'Bar & Lounge'];
 
+/* Falls back to the team's first category, not to a literal "Classic" — that name is
+   renameable now, so it stops being an answer the moment somebody changes it. */
 function normalizeRoomCategory(value) {
-  const raw = String(value || 'Classic').trim().toLowerCase();
+  const raw = String(value || '').trim().toLowerCase();
   const match = ROOM_CATEGORIES.find(c => c.toLowerCase() === raw);
-  return match || 'Classic';
+  return match || ROOM_CATEGORIES[0] || 'Classic';
 }
 function normalizeMenuCategory(value) {
   const raw = String(value || 'Main Dishes').trim().toLowerCase();
@@ -1938,7 +1940,7 @@ function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, on
 
 
 /* â•â•â•â•â•â•â•â•â•â•â• REUSABLE TAB BAR â•â•â•â•â•â•â•â•â•â•â• */
-function TabBar({ tabs, active, onChange, items, extra }) {
+function TabBar({ tabs, active, onChange, items, extra, onRenameTab }) {
   const counts = useMemo(() => {
     const map = { All: items.length };
     tabs.forEach(t => { if (t !== 'All') map[t] = items.filter(it => it.category === t).length; });
@@ -1957,6 +1959,24 @@ function TabBar({ tabs, active, onChange, items, extra }) {
         >
           {tab}
           <span className="tab-count">{counts[tab] || 0}</span>
+          {/* Renaming a category is renaming a tab — the tab is all a category is until
+              a room is put in it. "All" is not one, so it never gets the pencil. */}
+          {onRenameTab && tab !== 'All' && (
+            <span
+              role="button"
+              tabIndex={0}
+              title={`Rename ${tab}`}
+              aria-label={`Rename ${tab}`}
+              data-hms-no-edit="1"
+              data-hms-action="rename-room-category"
+              onClick={(e) => { e.stopPropagation(); onRenameTab(tab); }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onRenameTab(tab); } }}
+              style={{ marginLeft: 6, opacity: 0.55, cursor: 'pointer', fontSize: '0.7em' }}
+            >
+              <i className="fa-solid fa-pen"></i>
+            </span>
+          )}
         </button>
       ))}
       {/* Room Management's "add a category" control sits in the tab row itself, since a
@@ -2849,7 +2869,7 @@ function RoomCard({ room, onSelect, canEdit, onEdit, onRemove, onChangeImage }) 
   );
 }
 
-function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement }) {
+function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement }) {
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
   const list = rooms && rooms.length ? rooms : [];
@@ -2908,6 +2928,26 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
       // Land on the new tab: the next thing anybody does here is put a room in it.
       setTab(created);
       if (onToast) onToast(`${created} added — use Add Room Card to put rooms in it`);
+    });
+  };
+
+  /* Renames the category for the whole team, not just this tab: the rooms in it are
+     renamed with it, so Manage Room shows the new label on its next poll. */
+  const handleRenameCategory = (from) => {
+    if (typeof onRenameCategory !== 'function') return;
+    const next = hmsPrompt(`Rename "${from}" to`, from);
+    if (next == null) return;
+    const clean = String(next).trim();
+    if (!clean || clean === from) return;
+
+    Promise.resolve(onRenameCategory(from, clean)).then((renamed) => {
+      if (!renamed) {
+        if (onToast) onToast('That name is already taken. Pick another.');
+        return;
+      }
+      // Follow the rename: the tab the page was filtering on is gone by this name.
+      setTab(prev => (prev === from ? renamed : prev));
+      if (onToast) onToast(`${from} is now ${renamed} — Manage Room shows it too`);
     });
   };
 
@@ -2999,6 +3039,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
       </div>
       <TabBar
         tabs={tabs} active={tab} onChange={setTab} items={list}
+        onRenameTab={canEditRooms ? handleRenameCategory : null}
         extra={canEditRooms ? (
           <button
             type="button"
@@ -4099,6 +4140,31 @@ function App() {
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 
+  /* Renames one of the team's categories. The rooms come back with it — their own names
+     carry the category ("Classic 101"), so both change in the one write. Resolves to the
+     stored spelling, or null when the name was taken. */
+  const renameRoomCategory = useCallback((from, to) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/room-categories', {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ from, to }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && Array.isArray(data.categories)) {
+          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+          setRoomCategoryNames(names);
+          setRoomCategories(names);
+        }
+        if (data && Array.isArray(data.rooms)) setRooms(data.rooms);
+        return data && data.category ? data.category.name : null;
+      })
+      .catch(() => null)
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
   const removeRoom = useCallback((id) => {
     setRooms(prev => prev.filter(r => r.id !== id));
   }, []);
@@ -4276,6 +4342,7 @@ function App() {
         canReserveRooms={canReserveRooms}
         onAddRoom={addRoom}
         onAddCategory={addRoomCategory}
+        onRenameCategory={renameRoomCategory}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
         onCreateBooking={createBooking}

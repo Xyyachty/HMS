@@ -17,10 +17,11 @@ use Illuminate\Support\Facades\DB;
  * (Classic 101-110, Superior 201-210, ...) and every room added afterwards takes the
  * next free number in its category, so the naming never has to be typed or guessed.
  *
- * The five categories below are only where a team starts. Room Management can add its
- * own from the Rooms section, and those live in hotel_room_categories; every method
- * here that asks "what categories are there" reads the defaults and the team's own
- * together, so a room in a category somebody invented numbers itself the same way.
+ * The five categories below are only where a team starts. On a team's first visit they
+ * are written into hotel_room_categories as ordinary rows (see ensureCategoriesFor), so
+ * from then on that table is the whole list and a default can be renamed like any other.
+ * The constants stay as the seed, and as the answer for a caller with no team of its own
+ * — a visitor reading a published site before anybody has opened the editor.
  */
 class HotelRoomDefaults
 {
@@ -131,8 +132,8 @@ class HotelRoomDefaults
     /**
      * The category name as it is spelled in the team's list, whatever case it arrived in.
      *
-     * Without a team only the five defaults are known, so anything else falls back to
-     * Classic — the same answer this gave before teams could add categories of their own.
+     * Anything unrecognised falls back to the team's first category rather than to a
+     * literal "Classic", which stops being an answer the moment somebody renames it.
      */
     public static function normalizeCategory(?string $value, ?StudentGroup $membership = null): string
     {
@@ -145,16 +146,80 @@ class HotelRoomDefaults
             }
         }
 
-        return 'Classic';
+        return $known[0] ?? 'Classic';
     }
 
-    /** Every category the team has, defaults first, as name => hundreds block. */
+    /**
+     * Writes the five starting categories into the team's own list.
+     *
+     * Until a team has rows of its own the defaults are read off the constants, which
+     * cannot be renamed. Materialising them is what makes "Classic" an ordinary row that
+     * Room Management can rename from the Rooms tab bar. Rooms are untouched: they
+     * already carry these names.
+     *
+     * Missing slots are filled one at a time rather than the whole set written once,
+     * because a team may already hold a category it invented — that row is not the five
+     * defaults arriving, and skipping on "the table is not empty" would leave such a team
+     * with only its own category and none of the ones its rooms are actually named after.
+     *
+     * A slot is a hundreds block, not a name: a team that renamed Classic to Standard
+     * still occupies floor 1, so nothing re-creates "Classic" underneath it.
+     */
+    public static function ensureCategoriesFor(StudentGroup $membership): void
+    {
+        $scope = [
+            'group_name' => $membership->group_name,
+            'faculty_id' => $membership->faculty_id,
+        ];
+
+        $existing = HotelRoomCategory::where($scope)->get(['name', 'floor_number']);
+        $takenFloors = $existing->pluck('floor_number')->map(fn ($floor) => (int) $floor)->all();
+        $takenNames = $existing->pluck('name')->map(fn ($name) => mb_strtolower((string) $name))->all();
+
+        $rows = [];
+        $now = now();
+
+        foreach (self::CATEGORY_FLOORS as $name => $floor) {
+            if (in_array($floor, $takenFloors, true) || in_array(mb_strtolower($name), $takenNames, true)) {
+                continue;
+            }
+
+            $rows[] = $scope + [
+                'group_id'     => $membership->group_id,
+                'name'         => $name,
+                'floor_number' => $floor,
+                'rate'         => self::CATEGORY_RATES[$name],
+                'description'  => self::CATEGORY_DESCRIPTIONS[$name],
+                'created_at'   => $now,
+                'updated_at'   => $now,
+            ];
+        }
+
+        if (empty($rows)) {
+            return;
+        }
+
+        try {
+            HotelRoomCategory::insert($rows);
+        } catch (UniqueConstraintViolationException $e) {
+            // Two screens opening at once: both found the same slot free, the index caught
+            // the loser. The rows exist either way, which is all this promised.
+        }
+    }
+
+    /** Every category the team has, as name => hundreds block. */
     public static function floorsFor(StudentGroup $membership): array
     {
-        $floors = self::CATEGORY_FLOORS;
+        return self::floorsForTeam($membership->group_name, $membership->faculty_id);
+    }
 
-        foreach (self::customCategories($membership->group_name, $membership->faculty_id) as $category) {
-            $floors[$category->name] = $category->floor_number;
+    /** The same by team name, for the callers that have no membership to read. */
+    public static function floorsForTeam(string $groupName, $facultyId): array
+    {
+        $floors = [];
+
+        foreach (self::categoriesForTeam($groupName, $facultyId) as $category) {
+            $floors[$category['name']] = $category['floor'];
         }
 
         return $floors;
@@ -175,9 +240,22 @@ class HotelRoomDefaults
      */
     public static function categoriesForTeam(string $groupName, $facultyId): array
     {
+        $rows = self::categoryRows($groupName, $facultyId);
+        $takenFloors = $rows->pluck('floor_number')->map(fn ($floor) => (int) $floor)->all();
+        $takenNames = $rows->pluck('name')->map(fn ($name) => mb_strtolower((string) $name))->all();
+
         $categories = [];
 
+        // A default still stands wherever no row has taken over its hundreds block. That
+        // is what a renamed default is — the same slot under another name — so this drops
+        // "Classic" as soon as a row occupies floor 1, and keeps it for a team whose rows
+        // have never been written (ensureCategoriesFor has not run, or a visitor is
+        // reading a published site, which must not write anything to look at it).
         foreach (self::CATEGORY_FLOORS as $name => $floor) {
+            if (in_array($floor, $takenFloors, true) || in_array(mb_strtolower($name), $takenNames, true)) {
+                continue;
+            }
+
             $categories[] = [
                 'name' => $name,
                 // The hundreds block goes down with it so the Add Room form can preview
@@ -188,16 +266,108 @@ class HotelRoomDefaults
             ];
         }
 
-        foreach (self::customCategories($groupName, $facultyId) as $category) {
+        foreach ($rows as $category) {
             $categories[] = [
                 'name' => $category->name,
-                'floor' => $category->floor_number,
+                'floor' => (int) $category->floor_number,
                 'rate' => $category->rate,
                 'description' => $category->description,
             ];
         }
 
+        // Tab order is the hundreds block, so a renamed category keeps its place rather
+        // than jumping to the end of the bar.
+        usort($categories, fn ($a, $b) => $a['floor'] <=> $b['floor']);
+
         return $categories;
+    }
+
+    /**
+     * Renames one of the team's categories, and everything named after it.
+     *
+     * A room is called "<Category> <number>", so leaving the rooms alone would strand a
+     * "Standard" tab full of rooms still called "Classic 101". The rooms move with the
+     * name; only the ones that follow the convention are rewritten, so a hand-typed name
+     * keeps whatever it was given.
+     *
+     * Returns the stored spelling of the new name, or null when the name is taken or the
+     * category being renamed is not one of the team's.
+     */
+    public static function renameCategory(StudentGroup $membership, string $from, string $to): ?string
+    {
+        self::ensureCategoriesFor($membership);
+
+        $clean = trim($to);
+        if ($clean === '') {
+            return null;
+        }
+
+        $current = self::normalizeCategory($from, $membership);
+        if (mb_strtolower($current) !== mb_strtolower(trim($from))) {
+            // normalizeCategory() answers with the team's first category when it does not
+            // recognise the name; that is a rename of something this team never had.
+            return null;
+        }
+
+        foreach (array_keys(self::floorsFor($membership)) as $existing) {
+            if (mb_strtolower($existing) === mb_strtolower($clean) && mb_strtolower($existing) !== mb_strtolower($current)) {
+                return null;
+            }
+        }
+
+        // Same name in different clothes — "classic" to "Classic". Nothing to move.
+        if ($current === $clean) {
+            return $current;
+        }
+
+        // Read before the rename: afterwards the old name is not in the list to look up.
+        $floor = (int) (self::floorsFor($membership)[$current] ?? 0);
+
+        $scope = [
+            'group_name' => $membership->group_name,
+            'faculty_id' => $membership->faculty_id,
+        ];
+
+        try {
+            DB::transaction(function () use ($membership, $scope, $current, $clean, $floor) {
+                $updated = HotelRoomCategory::where($scope)
+                    ->where('name', $current)
+                    ->update(['name' => $clean]);
+
+                // No row to rename: ensureCategoriesFor() lost a race to another request,
+                // so this default has never been written down. Write it under its new name
+                // rather than leaving the rooms below pointing at a category that is not
+                // in the list — they would then belong to no tab at all.
+                if ($updated === 0) {
+                    HotelRoomCategory::create($scope + [
+                        'group_id'     => $membership->group_id,
+                        'name'         => $clean,
+                        'floor_number' => $floor ?: ((int) max(self::CATEGORY_FLOORS) + 1),
+                        'rate'         => self::CATEGORY_RATES[$current] ?? 0,
+                        'description'  => self::CATEGORY_DESCRIPTIONS[$current] ?? null,
+                    ]);
+                }
+
+                $rooms = HotelRoom::where($scope)
+                    ->where('category', $current)
+                    ->get();
+
+                foreach ($rooms as $room) {
+                    $attributes = ['category' => $clean];
+
+                    if (preg_match('/^' . preg_quote($current, '/') . '\s+(\d+)$/i', trim((string) $room->name), $m)) {
+                        $attributes['name'] = $clean . ' ' . $m[1];
+                    }
+
+                    $room->update($attributes);
+                }
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            // Somebody else took the name between the check above and the write.
+            return null;
+        }
+
+        return $clean;
     }
 
     /**
@@ -244,8 +414,14 @@ class HotelRoomDefaults
         }
     }
 
-    /** @return \Illuminate\Support\Collection<int, HotelRoomCategory> */
-    private static function customCategories(string $groupName, $facultyId)
+    /**
+     * The team's own category rows, in tab order. Empty for a team that has not been
+     * through ensureCategoriesFor() yet, which is what every caller here reads as
+     * "still on the defaults".
+     *
+     * @return \Illuminate\Support\Collection<int, HotelRoomCategory>
+     */
+    private static function categoryRows(string $groupName, $facultyId)
     {
         return HotelRoomCategory::where('group_name', $groupName)
             ->where('faculty_id', $facultyId)
