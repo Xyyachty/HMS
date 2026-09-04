@@ -528,6 +528,66 @@ function validateRoomForm(form, requireName = true) {
   return errors;
 }
 
+/* Renaming a category, in the page's own chrome. window.prompt() would work, but it
+   announces the hostname above the question — "hms-….onrender.com says" — which reads
+   like the site is talking to you from outside itself. */
+function RenameCategoryModal({ from, saving, error, onSubmit, onCancel }) {
+  const [name, setName] = useState(from || '');
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+
+  const clean = name.trim();
+  const canSave = !!clean && clean !== from && !saving;
+  const submit = (e) => {
+    if (e) e.preventDefault();
+    if (canSave) onSubmit(clean);
+  };
+
+  return (
+    <div className="room-modal-overlay" onClick={onCancel} role="dialog" aria-modal="true" aria-label={`Rename ${from}`}>
+      <div className="room-modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+        <form onSubmit={submit} style={{ padding: '1.5rem', position: 'relative' }} noValidate>
+          <button type="button" className="room-modal-close" onClick={onCancel} aria-label="Close">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Inventory</p>
+          <h2 className="font-display" style={{ fontSize: '1.5rem', margin: '0 0 0.35rem', color: 'var(--fg)' }}>Rename “{from}”</h2>
+          <p className="rm-panel-desc">
+            The rooms in it are renamed too — “{from} 101” becomes “{clean || 'New name'} 101”.
+          </p>
+
+          <label style={{ fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', margin: '1rem 0 0.4rem' }}>
+            New name
+          </label>
+          <input
+            type="text"
+            className="booking-input"
+            value={name}
+            maxLength={60}
+            autoFocus
+            onChange={e => setName(e.target.value)}
+            style={error ? { borderColor: '#f43f5e' } : undefined}
+          />
+          {error ? (
+            <p style={{ margin: '0.35rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.72rem' }}>{error}</p>
+          ) : null}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
+            <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={!canSave}>
+              {saving ? 'Renaming…' : 'Rename'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* Adding a room is the rare move; looking one up is the common one — so the form
    lives in a modal and the page leads with the inventory table. Same POST, same
    validation the inline form used: only where it renders changed. */
@@ -743,6 +803,10 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onRenameC
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
+  // The category the rename modal is open on, or null when it is closed.
+  const [renameFrom, setRenameFrom] = useState(null);
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [renameError, setRenameError] = useState('');
 
   const list = rooms || [];
   const categoryNames = (categories && categories.length) ? categories : DEFAULT_ROOM_CATEGORIES;
@@ -765,18 +829,20 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onRenameC
 
   /* Renaming a tab renames the category for the whole team — the rooms in it are
      renamed with it, and the hotel site's own Rooms tabs follow on their next poll. */
-  const handleRenameCategory = (from) => {
-    if (typeof onRenameCategory !== 'function') return;
-    const next = window.prompt(`Rename "${from}" to`, from);
-    if (next == null) return;
-    const clean = String(next).trim();
-    if (!clean || clean === from) return;
+  const submitRename = (to) => {
+    if (typeof onRenameCategory !== 'function' || !renameFrom) return;
+    const from = renameFrom;
+    setRenameSaving(true);
+    setRenameError('');
 
-    Promise.resolve(onRenameCategory(from, clean)).then((renamed) => {
+    Promise.resolve(onRenameCategory(from, to)).then((renamed) => {
+      setRenameSaving(false);
       if (!renamed) {
-        if (onToast) onToast('That name is already taken. Pick another.');
+        // Kept open with the typed name still in it — the fix is usually one word.
+        setRenameError('That name is already taken. Pick another.');
         return;
       }
+      setRenameFrom(null);
       // Follow the rename: the tab this panel was filtering on is gone by that name.
       setTab(prev => (prev === from ? renamed : prev));
       if (onToast) onToast(`${from} is now ${renamed}`);
@@ -809,8 +875,8 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onRenameC
                   tabIndex={0}
                   title={`Rename ${t}`}
                   aria-label={`Rename ${t}`}
-                  onClick={(e) => { e.stopPropagation(); handleRenameCategory(t); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleRenameCategory(t); } }}
+                  onClick={(e) => { e.stopPropagation(); setRenameError(''); setRenameFrom(t); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setRenameError(''); setRenameFrom(t); } }}
                   style={{ marginLeft: 7, opacity: 0.75, cursor: 'pointer' }}
                 >
                   <i className="fa-solid fa-pen" style={{ fontSize: '0.72em' }}></i>
@@ -916,6 +982,17 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onRenameC
           categories={categoryNames}
           onClose={() => setAddOpen(false)}
           onAdded={onSubmit}
+        />
+      )}
+
+      {renameFrom && (
+        <RenameCategoryModal
+          key={renameFrom}
+          from={renameFrom}
+          saving={renameSaving}
+          error={renameError}
+          onSubmit={submitRename}
+          onCancel={() => { setRenameFrom(null); setRenameError(''); }}
         />
       )}
 

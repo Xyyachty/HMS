@@ -1404,6 +1404,67 @@ function AddCategoryModal({ open, saving, error, onSubmit, onCancel }) {
   );
 }
 
+/* Renaming a category, in the page's own chrome. window.prompt() would work, but it
+   announces the hostname above the question — "hms-….onrender.com says" — which reads
+   like the site is talking to you from outside itself. */
+function RenameCategoryModal({ open, from, saving, error, onSubmit, onCancel }) {
+  const [name, setName] = React.useState('');
+
+  React.useEffect(() => {
+    if (open) setName(from || '');
+  }, [open, from]);
+
+  if (!open) return null;
+
+  const clean = name.trim();
+  const canSave = !!clean && clean !== from && !saving;
+  const submit = () => { if (canSave) onSubmit(clean); };
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+  };
+
+  return ReactDOM.createPortal(
+    <div
+      className="room-modal-overlay header-modal-overlay"
+      data-hms-no-edit="1"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Rename ${from}`}
+      onClick={onCancel}
+    >
+      <div className="room-modal" style={{ width: 'min(420px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '1rem' }}>Rename “{from}”</h3>
+
+        <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>
+          New name
+        </label>
+        <input
+          className="header-modal-field"
+          type="text"
+          value={name}
+          maxLength={60}
+          autoFocus
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={onKeyDown}
+        />
+        {error ? (
+          <p className="header-modal-hint" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p>
+        ) : null}
+        <p className="header-modal-hint">The rooms in it are renamed too — “{from} 101” becomes “{clean || 'New name'} 101”. Manage Room shows the new name as well.</p>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={!canSave} onClick={submit}>
+            {saving ? 'Renaming…' : 'Rename'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function MobileMenu({ open, onClose, onNavigate, links, cardImages, page }) {
   const items = [...(links || [])];
   // Passed only so the menu re-renders when the shared logo changes.
@@ -2814,6 +2875,10 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [categorySaving, setCategorySaving] = useState(false);
   const [categoryError, setCategoryError] = useState('');
+  // The category the rename modal is open on, or null when it is closed.
+  const [renameFrom, setRenameFrom] = useState(null);
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [renameError, setRenameError] = useState('');
   const categoryNames = (categories && categories.length) ? categories : DEFAULT_ROOM_CATEGORIES;
   const tabs = useMemo(() => ['All', ...categoryNames], [categoryNames]);
   const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
@@ -2873,18 +2938,20 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
 
   /* Renames the category for the whole team, not just this tab: the rooms in it are
      renamed with it, so Manage Room shows the new label on its next poll. */
-  const handleRenameCategory = (from) => {
-    if (typeof onRenameCategory !== 'function') return;
-    const next = hmsPrompt(`Rename "${from}" to`, from);
-    if (next == null) return;
-    const clean = String(next).trim();
-    if (!clean || clean === from) return;
+  const submitRename = (to) => {
+    if (typeof onRenameCategory !== 'function' || !renameFrom) return;
+    const from = renameFrom;
+    setRenameSaving(true);
+    setRenameError('');
 
-    Promise.resolve(onRenameCategory(from, clean)).then((renamed) => {
+    Promise.resolve(onRenameCategory(from, to)).then((renamed) => {
+      setRenameSaving(false);
       if (!renamed) {
-        if (onToast) onToast('That name is already taken. Pick another.');
+        // Kept open with the typed name still in it — the fix is usually one word.
+        setRenameError('That name is already taken. Pick another.');
         return;
       }
+      setRenameFrom(null);
       // Follow the rename: the tab the page was filtering on is gone by this name.
       setTab(prev => (prev === from ? renamed : prev));
       if (onToast) onToast(`${from} is now ${renamed} — Manage Room shows it too`);
@@ -2979,7 +3046,7 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
       </div>
       <RoomTabBar
         tabs={tabs} active={tab} onChange={setTab} items={list} allKey="All"
-        onRenameTab={canEditRooms ? handleRenameCategory : null}
+        onRenameTab={canEditRooms ? ((name) => { setRenameError(''); setRenameFrom(name); }) : null}
         extra={canEditRooms ? (
           <button
             type="button"
@@ -3059,6 +3126,14 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
         error={categoryError}
         onSubmit={submitCategory}
         onCancel={() => { setCategoryOpen(false); setCategoryError(''); }}
+      />
+      <RenameCategoryModal
+        open={!!renameFrom}
+        from={renameFrom}
+        saving={renameSaving}
+        error={renameError}
+        onSubmit={submitRename}
+        onCancel={() => { setRenameFrom(null); setRenameError(''); }}
       />
       <RoomDetailModal
         room={selectedRoom}
