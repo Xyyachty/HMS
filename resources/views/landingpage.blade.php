@@ -7,7 +7,6 @@
   <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}" />
   <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     @keyframes fadeInUp {
@@ -48,7 +47,7 @@
       align-items: center;
       background-image:
         linear-gradient(90deg, rgba(15,23,42,.92) 0%, rgba(15,23,42,.78) 40%, rgba(15,23,42,.30) 72%, rgba(15,23,42,.12) 100%),
-        url('{{ asset('chtm-buildiing1.png') }}');
+        url('{{ asset('chtm-building.png') }}');
       background-size: cover;
       background-position: center;
     }
@@ -154,7 +153,7 @@
         min-height: 610px;
         background-image:
           linear-gradient(90deg, rgba(15,23,42,.91), rgba(15,23,42,.68)),
-          url('{{ asset('chtm-buildiing1.png') }}');
+          url('{{ asset('chtm-building.png') }}');
         background-position: 58% center;
       }
       .audience-item + .audience-item {
@@ -297,7 +296,7 @@
         </div>
         <div class="audience-item px-6 py-5 flex items-center gap-4">
           <div class="w-12 h-12 rounded-full border border-white/50 flex items-center justify-center shrink-0">
-            <span class="iconify text-2xl" data-icon="mdi:shield-lock-outline"></span>
+            <span class="iconify text-2xl" data-icon="mdi:shield-lock-outline"></span>  
           </div>
           <div>
             <p class="text-[11px] font-extrabold uppercase tracking-wide">Secure &amp; Private</p>
@@ -315,7 +314,7 @@
       <div class="flex items-center gap-3">
         <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System" class="h-10 w-auto object-contain" />
         <div>
-          <p id="loginDrawerTitle" class="text-white font-bold text-lg leading-tight">Welcome</p>
+          <p id="loginDrawerTitle" class="text-white font-bold text-lg leading-tight">Welcome back</p>
           <p class="text-white/70 text-xs">Log in to your Hotel Management System account</p>
         </div>
       </div>
@@ -340,6 +339,12 @@
       <form method="POST" action="{{ route('login.submit') }}" class="space-y-4">
         @csrf
 
+        @if ($errors->any())
+          <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {{ $errors->first() }}
+          </div>
+        @endif
+
         <div>
           <label for="landingLoginEmail" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email Address</label>
           <div class="relative">
@@ -350,7 +355,10 @@
         </div>
 
         <div>
-          <label for="landingLoginPassword" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="landingLoginPassword" class="text-xs font-bold uppercase tracking-wider text-slate-500">Password</label>
+            <a href="{{ route('forgot-password') }}" class="text-xs text-brand font-semibold hover:text-brand-dark transition-colors">Forgot password?</a>
+          </div>
           <div class="relative">
             <span class="iconify absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:lock-outline"></span>
             <input id="landingLoginPassword" name="password" type="password" placeholder="Enter your password" required
@@ -359,7 +367,6 @@
               <span id="landingPasswordToggleIcon" class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
             </button>
           </div>
-          <a href="{{ route('forgot-password') }}" class="mt-1.5 block text-right text-xs text-brand font-semibold hover:text-brand-dark transition-colors">Forgot password?</a>
         </div>
 
         <label class="flex items-center gap-2.5 cursor-pointer">
@@ -434,23 +441,6 @@
         }
       }
     });
-
-    @if ($errors->any())
-    window.addEventListener('load', function () {
-      Swal.fire({
-        icon: 'error',
-        title: @json(session('error_title', 'Login Failed')),
-        text: @json($errors->first()),
-        confirmButtonText: 'Okay',
-        confirmButtonColor: '#DB2777',
-        iconColor: '#EF4444',
-        backdrop: 'rgba(15, 23, 42, 0.35)',
-        customClass: {
-          popup: 'rounded-2xl',
-        },
-      });
-    });
-    @endif
 
     // Mobile menu toggle
     const menuToggle = document.getElementById('menuToggle');
