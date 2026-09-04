@@ -226,10 +226,9 @@
   }
 
   function canEditRooms() {
-    // Room Management owns the Rooms page; Front Desk can also manage
-    // room cards from the Home "Available Rooms" section.
-    const pages = editablePages();
-    return canEdit() && (pages.indexOf('rooms') !== -1 || pages.indexOf('home') !== -1);
+    // Room Management owns the Rooms page exclusively. Front Desk sees room
+    // cards on the Home "Available Rooms" section too, but may not edit them.
+    return canEdit() && editablePages().indexOf('rooms') !== -1;
   }
 
   function canEditMenus() {
