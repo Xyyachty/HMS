@@ -189,7 +189,16 @@
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
-const ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
+// What every team starts with. Room Management can add categories of its own while
+// customising the Rooms section of the site; the server sends the team's full list
+// down with the rooms, and these five only stand in until it arrives.
+const DEFAULT_ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
+let ROOM_CATEGORIES = DEFAULT_ROOM_CATEGORIES.slice();
+/* Module-level rather than a prop: normalizeRoomCategory() is called from several
+   render paths. The App holds the same list in state, so a change re-renders. */
+function setRoomCategoryNames(names) {
+  if (Array.isArray(names) && names.length) ROOM_CATEGORIES = names.slice();
+}
 const BLOCK_HOURS = 12;
 const IMAGE_MAX_DIMENSION = 1280;
 const IMAGE_MAX_BYTES = 600 * 1024;
@@ -472,7 +481,13 @@ function createEmptyRoomForm() {
 /* Mirrors App\Support\HotelRoomDefaults: each category numbers from its own hundreds
    block, and the next room takes the highest number already used there plus one. Only
    a preview — the server recomputes it on save, so the two cannot disagree on disk. */
-const CATEGORY_FLOORS = { Classic: 1, Superior: 2, Deluxe: 3, Premium: 4, Family: 5 };
+/* Replaced by the blocks the server sends with the categories, which is what a team's
+   own categories number from — these five only stand in until that lands. */
+let CATEGORY_FLOORS = { Classic: 1, Superior: 2, Deluxe: 3, Premium: 4, Family: 5 };
+
+function setCategoryFloors(map) {
+  if (map && Object.keys(map).length) CATEGORY_FLOORS = map;
+}
 
 function nextRoomNameFor(rooms, category) {
   const cat = normalizeRoomCategory(category);
@@ -514,7 +529,7 @@ function validateRoomForm(form, requireName = true) {
 /* Adding a room is the rare move; looking one up is the common one — so the form
    lives in a modal and the page leads with the inventory table. Same POST, same
    validation the inline form used: only where it renders changed. */
-function AddRoomModal({ rooms, onClose, onAdded }) {
+function AddRoomModal({ rooms, categories, onClose, onAdded }) {
   const [form, setForm] = useState(createEmptyRoomForm);
   const [errors, setErrors] = useState({});
   const [imgPreview, setImgPreview] = useState('');
@@ -649,7 +664,7 @@ function AddRoomModal({ rooms, onClose, onAdded }) {
                   style={Object.assign({ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: form.category ? 'var(--fg)' : 'var(--fg-muted)' }, errors.category ? { borderColor: '#f43f5e' } : {})}
                 >
                   <option value="" style={{ background: 'var(--card, #181714)', color: 'var(--fg-muted)' }}>Select category</option>
-                  {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>)}
+                  {(categories && categories.length ? categories : DEFAULT_ROOM_CATEGORIES).map(c => <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>)}
                 </select>
                 {errorText('category')}
               </div>
@@ -719,7 +734,7 @@ function AddRoomModal({ rooms, onClose, onAdded }) {
   );
 }
 
-function ManageRoomPanel({ rooms, onSubmit, onRoomUpdated }) {
+function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated }) {
   // The inventory list that used to be its own Room Availability section. Adding a
   // room and looking one up are the same job, so they share a screen now.
   const [tab, setTab] = useState('All');
@@ -728,7 +743,8 @@ function ManageRoomPanel({ rooms, onSubmit, onRoomUpdated }) {
   const [addOpen, setAddOpen] = useState(false);
 
   const list = rooms || [];
-  const tabs = ['All', ...ROOM_CATEGORIES];
+  const categoryNames = (categories && categories.length) ? categories : DEFAULT_ROOM_CATEGORIES;
+  const tabs = ['All', ...categoryNames];
   const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
   const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
 
@@ -861,6 +877,7 @@ function ManageRoomPanel({ rooms, onSubmit, onRoomUpdated }) {
       {addOpen && (
         <AddRoomModal
           rooms={list}
+          categories={categoryNames}
           onClose={() => setAddOpen(false)}
           onAdded={onSubmit}
         />
@@ -869,6 +886,7 @@ function ManageRoomPanel({ rooms, onSubmit, onRoomUpdated }) {
       {selectedRoom && (
         <EditRoomModal
           room={selectedRoom}
+          categories={categoryNames}
           onClose={() => setSelectedRoomId(null)}
           onSaved={onRoomUpdated}
         />
@@ -879,7 +897,7 @@ function ManageRoomPanel({ rooms, onSubmit, onRoomUpdated }) {
 
 /* The Update action from the rooms table. Edits the room's own fields; the booked
    dates below it stay read-only — they belong to bookings, not to the room. */
-function EditRoomModal({ room, onClose, onSaved }) {
+function EditRoomModal({ room, categories, onClose, onSaved }) {
   const [form, setForm] = useState(() => ({
     name: room.name || '',
     category: normalizeRoomCategory(room.category || room.label),
@@ -997,7 +1015,7 @@ function EditRoomModal({ room, onClose, onSaved }) {
                   style={Object.assign({ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }, errors.category ? { borderColor: '#f43f5e' } : {})}
                 >
                   <option value="" style={{ background: 'var(--card, #181714)', color: 'var(--fg-muted)' }}>Select category</option>
-                  {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>)}
+                  {(categories && categories.length ? categories : DEFAULT_ROOM_CATEGORIES).map(c => <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>)}
                 </select>
                 {errorText('category')}
               </div>
@@ -1341,7 +1359,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   );
 }
 
-function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onRoomUpdated, onBookingAction, onToast }) {
+function RoomManagementPage({ initialNav, rooms, categories, onBack, onAddRoom, onRoomUpdated, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
   const handleAddRoom = (payload) => {
@@ -1369,7 +1387,7 @@ function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onRoomUpdate
             // Manage Room is the fallback: ?nav=rooms was the old Room Availability
             // section, whose room list lives here now, so an old link still lands
             // somewhere sensible instead of on a blank panel.
-            <ManageRoomPanel rooms={rooms} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} />
+            <ManageRoomPanel rooms={rooms} categories={categories} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} />
           )}
         </div>
       </div>
@@ -1379,13 +1397,27 @@ function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onRoomUpdate
 
 function App() {
   const [rooms, setRooms] = useState([]);
+  // The team's categories ride along with the rooms, so a category added while
+  // customising the site's Rooms section shows up here on the next poll.
+  const [categories, setCategories] = useState(DEFAULT_ROOM_CATEGORIES);
   const pendingWrites = useRef(0);
 
   const fetchRooms = useCallback(() => {
     if (pendingWrites.current > 0) return;
     fetch('/students/hotel/rooms', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
-      .then(data => { if (pendingWrites.current > 0) return; if (Array.isArray(data.rooms)) setRooms(data.rooms); })
+      .then(data => {
+        if (pendingWrites.current > 0) return;
+        if (Array.isArray(data.rooms)) setRooms(data.rooms);
+        if (Array.isArray(data.categories) && data.categories.length) {
+          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+          const floors = {};
+          data.categories.forEach(c => { if (c && c.name && c.floor) floors[c.name] = c.floor; });
+          setRoomCategoryNames(names);
+          setCategoryFloors(floors);
+          setCategories(names);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -1425,6 +1457,7 @@ function App() {
     <RoomManagementPage
       initialNav={window.HMS_ROOM_MGMT_INITIAL_NAV}
       rooms={rooms}
+      categories={categories}
       onBack={() => { window.location.href = window.HMS_ROOMMANAGEMENT_URL; }}
       onAddRoom={addRoom}
       onRoomUpdated={replaceRoom}

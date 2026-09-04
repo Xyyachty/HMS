@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\HotelRoom;
+use App\Models\HotelRoomCategory;
 use App\Models\StudentGroup;
 use Illuminate\Support\Facades\DB;
 
@@ -14,6 +15,11 @@ use Illuminate\Support\Facades\DB;
  * way a real hotel numbers its doors. A team begins with ten rooms per category
  * (Classic 101-110, Superior 201-210, ...) and every room added afterwards takes the
  * next free number in its category, so the naming never has to be typed or guessed.
+ *
+ * The five categories below are only where a team starts. Room Management can add its
+ * own from the Rooms section, and those live in hotel_room_categories; every method
+ * here that asks "what categories are there" reads the defaults and the team's own
+ * together, so a room in a category somebody invented numbers itself the same way.
  */
 class HotelRoomDefaults
 {
@@ -55,8 +61,8 @@ class HotelRoomDefaults
      */
     public static function nextNameFor(StudentGroup $membership, string $category): string
     {
-        $category = self::normalizeCategory($category);
-        $floor = self::CATEGORY_FLOORS[$category] ?? 1;
+        $category = self::normalizeCategory($category, $membership);
+        $floor = self::floorsFor($membership)[$category] ?? 1;
         $highest = $floor * 100;
 
         $names = HotelRoom::where('group_name', $membership->group_name)
@@ -121,16 +127,122 @@ class HotelRoomDefaults
         });
     }
 
-    public static function normalizeCategory(?string $value): string
+    /**
+     * The category name as it is spelled in the team's list, whatever case it arrived in.
+     *
+     * Without a team only the five defaults are known, so anything else falls back to
+     * Classic — the same answer this gave before teams could add categories of their own.
+     */
+    public static function normalizeCategory(?string $value, ?StudentGroup $membership = null): string
     {
         $raw = mb_strtolower(trim((string) $value));
+        $known = $membership ? array_keys(self::floorsFor($membership)) : array_keys(self::CATEGORY_FLOORS);
 
-        foreach (array_keys(self::CATEGORY_FLOORS) as $category) {
+        foreach ($known as $category) {
             if (mb_strtolower($category) === $raw) {
                 return $category;
             }
         }
 
         return 'Classic';
+    }
+
+    /** Every category the team has, defaults first, as name => hundreds block. */
+    public static function floorsFor(StudentGroup $membership): array
+    {
+        $floors = self::CATEGORY_FLOORS;
+
+        foreach (self::customCategories($membership->group_name, $membership->faculty_id) as $category) {
+            $floors[$category->name] = $category->floor_number;
+        }
+
+        return $floors;
+    }
+
+    /**
+     * The category list the browser works from: name, opening rate and description, in
+     * the order the tabs should appear.
+     */
+    public static function categoriesFor(StudentGroup $membership): array
+    {
+        return self::categoriesForTeam($membership->group_name, $membership->faculty_id);
+    }
+
+    /**
+     * The same list for a team read by name rather than through a membership — the
+     * published portfolio serves visitors who have no membership of their own.
+     */
+    public static function categoriesForTeam(string $groupName, $facultyId): array
+    {
+        $categories = [];
+
+        foreach (self::CATEGORY_FLOORS as $name => $floor) {
+            $categories[] = [
+                'name' => $name,
+                // The hundreds block goes down with it so the Add Room form can preview
+                // the number the room will be given without guessing at it.
+                'floor' => $floor,
+                'rate' => self::CATEGORY_RATES[$name],
+                'description' => self::CATEGORY_DESCRIPTIONS[$name],
+            ];
+        }
+
+        foreach (self::customCategories($groupName, $facultyId) as $category) {
+            $categories[] = [
+                'name' => $category->name,
+                'floor' => $category->floor_number,
+                'rate' => $category->rate,
+                'description' => $category->description,
+            ];
+        }
+
+        return $categories;
+    }
+
+    /**
+     * Adds a category to the team's list and hands it back.
+     *
+     * Returns null when the name is already taken — case and surrounding spaces do not
+     * make a second category, or the same rooms would end up split across two tabs.
+     */
+    public static function createCategory(
+        StudentGroup $membership,
+        string $name,
+        ?int $rate = null,
+        ?string $description = null
+    ): ?HotelRoomCategory {
+        $clean = trim($name);
+        if ($clean === '') {
+            return null;
+        }
+
+        $floors = self::floorsFor($membership);
+
+        foreach (array_keys($floors) as $existing) {
+            if (mb_strtolower($existing) === mb_strtolower($clean)) {
+                return null;
+            }
+        }
+
+        return HotelRoomCategory::create([
+            'group_name'   => $membership->group_name,
+            'faculty_id'   => $membership->faculty_id,
+            'group_id'     => $membership->group_id,
+            'name'         => $clean,
+            // The next free hundreds block, so its rooms number past every category
+            // already in use rather than into one of them.
+            'floor_number' => (int) max($floors) + 1,
+            'rate'         => $rate ?? 0,
+            'description'  => $description,
+        ]);
+    }
+
+    /** @return \Illuminate\Support\Collection<int, HotelRoomCategory> */
+    private static function customCategories(string $groupName, $facultyId)
+    {
+        return HotelRoomCategory::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->orderBy('floor_number')
+            ->get();
     }
 }

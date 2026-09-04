@@ -846,8 +846,56 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ->orderBy('hotel_room_id')
             ->get()
             ->map(fn (HotelRoom $room) => $room->toTemplateArray());
-        return response()->json(['rooms' => $rooms]);
+
+        // The categories ride along with the rooms rather than sitting behind their own
+        // request: every screen that lists rooms also draws the category tabs, and both
+        // are polled together, so a category one member adds shows up on the others'
+        // screens on the next poll without a second round trip.
+        return response()->json([
+            'rooms' => $rooms,
+            'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+        ]);
     })->name('hotel.rooms.index');
+
+    /**
+     * A category the team invented — "Executive", "Cabana" — on top of the five it
+     * started with. Adding one only opens a tab; the rooms in it are created through
+     * /hotel/rooms like any other.
+     */
+    Route::post('/hotel/room-categories', function (Request $request) {
+        $authUser = auth()->user();
+        $student  = $authUser?->student;
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
+        if (!$membership) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        $data = $request->validate([
+            'name'        => 'required|string|max:60',
+            'rate'        => 'nullable|integer|min:1',
+            'description' => 'nullable|string|max:2000',
+        ]);
+
+        $category = \App\Support\HotelRoomDefaults::createCategory(
+            $membership,
+            $data['name'],
+            $data['rate'] ?? null,
+            $data['description'] ?? null
+        );
+
+        if (!$category) {
+            return response()->json(['message' => 'That category already exists.'], 422);
+        }
+
+        return response()->json([
+            'category'   => [
+                'name' => $category->name,
+                'rate' => $category->rate,
+                'description' => $category->description,
+            ],
+            'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+        ], 201);
+    })->name('hotel.room-categories.store');
 
     /**
      * Guests Front Desk has registered that Room Management has not checked in yet.
@@ -910,7 +958,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         foreach (['name', 'category', 'price', 'description'] as $field) {
             if (array_key_exists($field, $data)) {
-                $room->{$field} = $field === 'price' ? (int) $data[$field] : $data[$field];
+                $room->{$field} = match ($field) {
+                    'price' => (int) $data[$field],
+                    // Kept to a category the team actually has, so an edit cannot strand a
+                    // room under a tab that is not drawn anywhere.
+                    'category' => \App\Support\HotelRoomDefaults::normalizeCategory($data[$field], $membership),
+                    default => $data[$field],
+                };
             }
         }
 
@@ -957,7 +1011,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         // The name is the category's next free number, never whatever the browser sent
         // — that is what keeps Classic 111 following Classic 110 without anyone typing.
-        $category = \App\Support\HotelRoomDefaults::normalizeCategory($data['category']);
+        $category = \App\Support\HotelRoomDefaults::normalizeCategory($data['category'], $membership);
 
         $room = HotelRoom::create([
             'group_name'  => $membership->group_name,

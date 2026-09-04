@@ -109,7 +109,12 @@ class PublicSiteController extends Controller
             ->get()
             ->map(fn (HotelRoom $room) => $room->toPublicArray());
 
-        return response()->json(['rooms' => $rooms]);
+        return response()->json([
+            'rooms' => $rooms,
+            // Read, not written: the team's own categories decide which tabs a visitor
+            // sees, so a room in one the team invented is not filed under Classic.
+            'categories' => \App\Support\HotelRoomDefaults::categoriesForTeam($groupName, $facultyId),
+        ]);
     }
 
     public function menus(string $slug)

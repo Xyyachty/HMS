@@ -826,14 +826,20 @@
 const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• DATA â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-const ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
+// What every team starts with. Room Management can add categories of its own from the
+// Rooms section, and the server sends the full list down with the rooms — these five
+// only stand in until that first response lands.
+const DEFAULT_ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
+let ROOM_CATEGORIES = DEFAULT_ROOM_CATEGORIES.slice();
+/* Module-level rather than a prop: normalizeRoomCategory() is called from a dozen
+   render paths that would all have to thread the list through. The App keeps the
+   categories in state as well, so a change still triggers the re-render. */
+function setRoomCategoryNames(names) {
+  if (Array.isArray(names) && names.length) ROOM_CATEGORIES = names.slice();
+}
 // Housekeeping condition only — occupancy lives on the booking (see room.reservation
 // and the Rooms page calendar), not on the room's own status.
 const ROOM_STATUSES = ['Available', 'Cleaning', 'Maintenance'];
-const ROOM_TABS = ROOM_CATEGORIES;
-// The Rooms page also gets an "All" tab in front of the categories so Front Desk can
-// see every room Room Management created without switching tabs.
-const ROOM_PAGE_TABS = ['All', ...ROOM_CATEGORIES];
 const MENU_CATEGORIES = ['Main Dishes', 'Appetizers', 'Soups', 'Desserts', 'Beverages'];
 const MENU_TABS = MENU_CATEGORIES;
 
@@ -1847,22 +1853,25 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
 
   const handleAddRoom = (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
-    // No iframe prompt — add immediately so Design mode always works.
-    if (onAddRoom) {
-      onAddRoom({
-        name: 'New Suite',
-        label: 'Classic',
-        category: 'Classic',
-        price: 250,
-        desc: 'Add a short description for this room.',
-        img: 'https://picsum.photos/seed/room' + Date.now() + '/800/600.jpg',
-        amenities: [
-          { icon: 'fa-bed', text: 'Bed' },
-          { icon: 'fa-wifi', text: 'WiFi' },
-        ],
-      });
-    }
-    if (onToast) onToast('Room card added — click the pencil to edit');
+    // No iframe prompt — add immediately so Design mode always works. Categories are
+    // picked on the Rooms page, where the tabs are; here a card lands in the first one.
+    if (!onAddRoom) return;
+    const category = (ROOM_CATEGORIES && ROOM_CATEGORIES[0]) || 'Classic';
+    Promise.resolve(onAddRoom({
+      name: 'New Suite',
+      label: category,
+      category,
+      price: 250,
+      desc: 'Add a short description for this room.',
+      img: 'https://picsum.photos/seed/room' + Date.now() + '/800/600.jpg',
+      amenities: [
+        { icon: 'fa-bed', text: 'Bed' },
+        { icon: 'fa-wifi', text: 'WiFi' },
+      ],
+    })).then((room) => {
+      if (!onToast) return;
+      onToast(room ? `${room.name} added under ${category}` : 'Could not add that room. Please try again.');
+    });
   };
 
   return (
@@ -1983,7 +1992,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ROOMS PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function RoomTabBar({ tabs, active, onChange, items, getKey, allKey }) {
+function RoomTabBar({ tabs, active, onChange, items, getKey, allKey, extra }) {
   const keyFn = getKey || ((it) => normalizeRoomCategory(it.category || it.label));
   const counts = useMemo(() => {
     const map = {};
@@ -2011,6 +2020,9 @@ function RoomTabBar({ tabs, active, onChange, items, getKey, allKey }) {
           <span className="tab-count">{counts[tab] || 0}</span>
         </button>
       ))}
+      {/* Room Management's "add a category" control sits in the tab row itself, since a
+          category is nothing but a tab until a room is put in it. */}
+      {extra || null}
     </div>
   );
 }
@@ -2684,21 +2696,29 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
   );
 }
 
-function RoomsPage({ onNavigate, onToast, rooms, addons, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement }) {
+function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement }) {
   const list = rooms && rooms.length ? rooms : [];
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
   const [tab, setTab] = useState('All');
   const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const categoryNames = (categories && categories.length) ? categories : DEFAULT_ROOM_CATEGORIES;
+  const tabs = useMemo(() => ['All', ...categoryNames], [categoryNames]);
   const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
   const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
   const showRoomManagement = !!canManageRooms;
 
+  // A tab that was removed under us (another member renamed the inventory) must not
+  // leave the page filtering on something that no longer exists.
+  useEffect(() => {
+    if (tab !== 'All' && tabs.indexOf(tab) === -1) setTab('All');
+  }, [tabs, tab]);
+
   const handleAdd = (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     // "All" isn't a real category — a card added while on that tab still needs one.
-    const category = tab === 'All' ? 'Classic' : tab;
-    onAddRoom({
+    const category = tab === 'All' ? (categoryNames[0] || 'Classic') : tab;
+    Promise.resolve(onAddRoom({
       name: 'New Suite',
       label: category,
       category,
@@ -2710,8 +2730,34 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, canEditRooms, canManage
         { icon: 'fa-bed', text: 'Bed' },
         { icon: 'fa-wifi', text: 'WiFi' },
       ],
+    })).then((room) => {
+      if (!onToast) return;
+      onToast(room
+        ? `${room.name} added under ${category} — it is in Manage Room too`
+        : 'Could not add that room. Please try again.');
     });
-    onToast('Room card added — click the pencil to edit');
+  };
+
+  /* Adds a category to the team's inventory, not just to this page: it is saved
+     against the team, so it is a tab on Manage Room too and rooms can be added under
+     it from either screen. */
+  const handleAddCategory = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (typeof onAddCategory !== 'function') return;
+    const name = hmsPrompt('New room category (e.g. Executive)', '');
+    if (name == null || !String(name).trim()) return;
+    const priceRaw = hmsPrompt('Starting price per 12 hrs for this category', '2000');
+    if (priceRaw == null) return;
+    const rate = Math.max(1, parseInt(String(priceRaw).replace(/,/g, ''), 10) || 2000);
+    onAddCategory(String(name).trim(), rate).then((created) => {
+      if (!created) {
+        if (onToast) onToast('That category already exists, or could not be saved.');
+        return;
+      }
+      // Land on the new tab: the next thing anybody does here is put a room in it.
+      setTab(created);
+      if (onToast) onToast(`${created} added — use Add Room Card to put rooms in it`);
+    });
   };
 
   const handleEdit = (room) => {
@@ -2800,7 +2846,23 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, canEditRooms, canManage
         <h1 className="font-display">Our Rooms & Suites</h1>
         <p>Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.</p>
       </div>
-      <RoomTabBar tabs={ROOM_PAGE_TABS} active={tab} onChange={setTab} items={list} allKey="All" />
+      <RoomTabBar
+        tabs={tabs} active={tab} onChange={setTab} items={list} allKey="All"
+        extra={canEditRooms ? (
+          <button
+            type="button"
+            className="tab-btn"
+            onClick={handleAddCategory}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Add room category"
+            data-hms-no-edit="1"
+            data-hms-action="add-room-category"
+            style={{ borderStyle: 'dashed', borderColor: '#f43f5e', color: '#fb7185' }}
+          >
+            + Category
+          </button>
+        ) : null}
+      />
       <section style={{ padding: '0 1.5rem 6rem', maxWidth: 1200, margin: '0 auto' }}>
         {filtered.length === 0 && !canEditRooms ? (
           <p style={{ textAlign: 'center', color: 'var(--fg-muted)', padding: '3rem 1rem' }}>No rooms found in this category.</p>
@@ -3691,6 +3753,9 @@ function App() {
     ]
   ));
   const [rooms, setRooms] = useState([]);
+  // The team's own category list — the five defaults plus whatever Room Management
+  // added. Arrives with the rooms, so both stay in step.
+  const [roomCategories, setRoomCategories] = useState(DEFAULT_ROOM_CATEGORIES);
   // Restaurant menu lives in the DB and is shared by the whole team.
   const [menus, setMenus] = useState([]);
   const [canManageMenus, setCanManageMenus] = useState(false);
@@ -3746,6 +3811,11 @@ function App() {
       .then(data => {
         if (pendingWrites.current > 0) return;
         if (Array.isArray(data.rooms)) setRooms(data.rooms);
+        if (Array.isArray(data.categories) && data.categories.length) {
+          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+          setRoomCategoryNames(names);
+          setRoomCategories(names);
+        }
         roomsHydrated.current = true;
       })
       .catch(() => {});
@@ -3948,10 +4018,53 @@ function App() {
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 
-  const addRoom = useCallback((roomFromDb) => {
-    // roomFromDb is already the shaped object returned by the API
-    setRooms(prev => [...prev, roomFromDb]);
-    return roomFromDb;
+  /* The Add Room Card button in Design mode. It writes a hotel_rooms row like the
+     Manage Room screen does — same endpoint, same numbering — so a card added while
+     customising the site is a real room the team can then work with there. */
+  const addRoom = useCallback((partial) => {
+    const category = (partial && (partial.category || partial.label)) || 'Classic';
+    pendingWrites.current += 1;
+    return fetch(hmsApi('rooms', '/students/hotel/rooms'), {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({
+        category,
+        price: Math.max(1, parseInt(String((partial && partial.price) || 250), 10) || 250),
+        description: (partial && partial.desc) || '',
+        image: (partial && partial.img) || '',
+      }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && data.room) setRooms(prev => [...prev, data.room]);
+        return data && data.room;
+      })
+      .catch(() => null)
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
+  /* A new category for the team. Resolves to its name so the Rooms page can switch to
+     the tab it just created, or to null when the name was taken. */
+  const addRoomCategory = useCallback((name, rate) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/room-categories', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ name, rate: rate || null }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && Array.isArray(data.categories)) {
+          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+          setRoomCategoryNames(names);
+          setRoomCategories(names);
+        }
+        return data && data.category ? data.category.name : null;
+      })
+      .catch(() => null)
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 
   const removeRoom = useCallback((id) => {
@@ -4097,10 +4210,12 @@ function App() {
         onToast={showToast}
         rooms={rooms}
         addons={addons}
+        categories={roomCategories}
         canEditRooms={canEditRooms}
         canManageRooms={canManageRooms}
         canReserveRooms={canReserveRooms}
         onAddRoom={addRoom}
+        onAddCategory={addRoomCategory}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
         onCreateBooking={createBooking}
