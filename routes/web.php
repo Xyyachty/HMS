@@ -231,6 +231,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // Progress Overview. Keyed by role, each row carries done/total/percent.
         $teamRoleProgress = collect();
         $upcomingDeadlines = collect();
+        $teamTasks = collect();
 
         if ($facultyId) {
             $allTasks = Task::where('faculty_id', $facultyId)
@@ -274,7 +275,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $teamTasks = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->whereIn('status', ['active', 'archived'])
-                ->get(['task_id', 'title', 'role', 'status', 'due_date', 'priority']);
+                ->get(['task_id', 'title', 'role', 'status', 'due_date', 'priority', 'assigned_to', 'student_id']);
 
             $teamRoleProgress = $teamTasks
                 ->groupBy('role')
@@ -286,6 +287,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                         'role'    => $role,
                         'total'   => $total,
                         'done'    => $done,
+                        'active'  => $total - $done,
+                        // The nearest date the team still owes something for this role.
+                        'next_due' => $tasks->where('status', 'active')
+                            ->filter(fn ($task) => $task->due_date !== null)
+                            ->sortBy('due_date')
+                            ->first()?->due_date,
                         'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
                     ];
                 })
@@ -299,6 +306,38 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->take(4)
                 ->values();
         }
+
+        /*
+         * Per-member figures for the My Team roster. A task counts toward a member
+         * when it names them outright or when it belongs to a role they hold —
+         * most faculty tasks are addressed to a department rather than a person,
+         * so the role is what usually decides.
+         */
+        $memberTaskStats = $groupMembers->mapWithKeys(function ($member) use ($teamTasks) {
+            $roles = (array) ($member->roles ?? []);
+
+            $mine = $teamTasks->filter(function ($task) use ($member, $roles) {
+                if ($task->assigned_to && (int) $task->assigned_to === (int) $member->id) {
+                    return true;
+                }
+                if ($task->student_id && (int) $task->student_id === (int) $member->student_id) {
+                    return true;
+                }
+
+                return in_array($task->role, $roles, true);
+            });
+
+            $total = $mine->count();
+            $done  = $mine->where('status', 'archived')->count();
+
+            return [
+                $member->id => [
+                    'total'   => $total,
+                    'done'    => $done,
+                    'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+                ],
+            ];
+        });
 
         $totalTasks   = array_sum($taskCounts);
         $studentRoles = $groupMembership ? $groupMembership->roles->pluck('role')->toArray() : [];
@@ -390,6 +429,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'pendingTasksCount', 'completionRate', 'recentTasks',
             'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
             'myActivityLogs', 'conceptPayload', 'teamRoleProgress', 'upcomingDeadlines',
+            'memberTaskStats',
             'studentDisplayName', 'studentClass', 'student'
         ));
     })->name('dashboard');
