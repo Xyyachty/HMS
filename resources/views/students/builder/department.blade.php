@@ -1367,8 +1367,17 @@
             } catch (e) { /* ignore */ }
         }
 
-        setInterval(syncGroupPresence, 8000);
-        setInterval(syncTemplateFromServer, 5000);
+        /* Both of these cost a database connection each time, and Supabase's pooler
+           has a fixed number to hand out across everyone on the site — see
+           render.yaml. A backgrounded tab polls nothing; returning to it syncs at
+           once, so the numbers are still right the moment anybody looks. */
+        setInterval(function () { if (!document.hidden) syncGroupPresence(); }, 20000);
+        setInterval(function () { if (!document.hidden) syncTemplateFromServer(); }, 15000);
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) return;
+            syncGroupPresence();
+            syncTemplateFromServer();
+        });
         document.addEventListener('DOMContentLoaded', function () {
             syncGroupPresence();
             syncTemplateFromServer();

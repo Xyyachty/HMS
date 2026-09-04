@@ -93,6 +93,22 @@ return [
             // 'prefer' silently accepts an unencrypted connection if offered.
             'sslmode' => env('DB_SSLMODE', 'require'),
             'sslrootcert' => env('DB_SSLROOTCERT'),
+            /*
+             * Emulated prepares, because production talks to Supabase through the
+             * transaction pooler (port 6543), which hands a different server
+             * connection to each transaction. A server-side prepared statement is
+             * bound to the connection that created it, so the next statement on a
+             * different one fails with "prepared statement ... does not exist" —
+             * or collides with a name another client already used.
+             *
+             * The search path cannot be a session SET for the same reason. It is
+             * set on the postgres role itself (ALTER ROLE ... SET search_path), so
+             * every backend starts with extensions on the path and citext resolves
+             * whichever connection a statement lands on.
+             */
+            'options' => [
+                PDO::ATTR_EMULATE_PREPARES => true,
+            ],
         ],
 
         'sqlsrv' => [

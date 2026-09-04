@@ -414,8 +414,15 @@
                 });
             } catch (e) { /* ignore */ }
         }
-        setInterval(syncGroupPresence, 8000);
+        /* Every poll on this page costs a database connection, and Supabase's pooler
+           hands out a limited number of them across all of us — see render.yaml. So
+           nothing polls while the tab is in the background, where nobody is reading
+           the answer anyway; coming back to the tab refreshes it immediately. */
+        setInterval(function () { if (!document.hidden) syncGroupPresence(); }, 20000);
         document.addEventListener('DOMContentLoaded', syncGroupPresence);
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) syncGroupPresence();
+        });
 
         // Staff Tools nav badges. One request for the whole sidebar, and it only goes
         // out when this page actually rendered a badge — a role with none bails first.
@@ -481,7 +488,10 @@
         // Anything that wants to force a refresh without a write.
         window.refreshNavBadges = syncNavBadges;
 
-        setInterval(syncNavBadges, 8000);
+        // Badges already refresh after every write (see the fetch wrapper above), so
+        // the timer is only there to catch a teammate's write. Backgrounded tabs sit
+        // it out — the visibilitychange handler below covers coming back.
+        setInterval(function () { if (!document.hidden) syncNavBadges(); }, 20000);
         document.addEventListener('DOMContentLoaded', syncNavBadges);
         // Coming back to the tab is the other moment the numbers are likely stale.
         window.addEventListener('focus', syncNavBadges);

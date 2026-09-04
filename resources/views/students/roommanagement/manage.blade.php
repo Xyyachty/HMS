@@ -1423,7 +1423,10 @@ function App() {
 
   useEffect(() => {
     fetchRooms();
-    const id = setInterval(fetchRooms, 8000);
+    // Not while the tab is in the background: every poll takes one of the database
+    // connections Supabase's pooler shares between all of us (see render.yaml), and
+    // nobody is reading a screen they cannot see. Focus brings it straight back.
+    const id = setInterval(() => { if (!document.hidden) fetchRooms(); }, 12000);
     window.addEventListener('focus', fetchRooms);
     return () => { clearInterval(id); window.removeEventListener('focus', fetchRooms); };
   }, [fetchRooms]);

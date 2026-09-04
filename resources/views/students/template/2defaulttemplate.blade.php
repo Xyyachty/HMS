@@ -3727,7 +3727,7 @@ function App() {
   const roomsHydrated = useRef(false);
   const fetchRooms = useCallback(() => {
     if (pendingWrites.current > 0) return;
-    fetch(hmsApi('rooms', '/students/hotel/rooms'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    return fetch(hmsApi('rooms', '/students/hotel/rooms'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
@@ -3746,7 +3746,7 @@ function App() {
   // now is computed server-side, so the picker never has to work it out itself.
   const fetchAddons = useCallback(() => {
     if (pendingWrites.current > 0) return;
-    fetch(hmsApi('addons', '/students/hotel/addons'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    return fetch(hmsApi('addons', '/students/hotel/addons'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
@@ -3759,7 +3759,7 @@ function App() {
   // the Housekeeping Amenities screen holds, closures and repairs included.
   const fetchAmenities = useCallback(() => {
     if (pendingWrites.current > 0) return;
-    fetch(hmsApi('amenities', '/students/hotel/amenities'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    return fetch(hmsApi('amenities', '/students/hotel/amenities'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
@@ -3771,7 +3771,7 @@ function App() {
   // The server decides who may edit the menu — the client only mirrors that answer.
   const fetchMenus = useCallback(() => {
     if (pendingWrites.current > 0) return;
-    fetch(hmsApi('menus', '/students/hotel/menus'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    return fetch(hmsApi('menus', '/students/hotel/menus'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
@@ -3784,9 +3784,17 @@ function App() {
   // Poll so Front Desk arrivals, room status changes, menu edits and Housekeeping's
   // add-on stock all cross over between sessions.
   useEffect(() => {
-    const refresh = () => { fetchRooms(); fetchMenus(); fetchAddons(); fetchAmenities(); };
+    /* One at a time, not four at once. Each of these takes a database connection for
+       as long as it runs, and Supabase's pooler has a fixed number to hand out across
+       every open tab (see render.yaml) — firing the four together turned one reader
+       into four simultaneous claims on that pool. Chained, a tab holds one at a time.
+       Nothing polls while the tab is in the background; coming back refreshes it. */
+    const refresh = () => Promise.resolve(fetchRooms())
+      .then(() => fetchMenus())
+      .then(() => fetchAddons())
+      .then(() => fetchAmenities());
     refresh();
-    const id = setInterval(refresh, 8000);
+    const id = setInterval(() => { if (!document.hidden) refresh(); }, 12000);
     window.addEventListener('focus', refresh);
     return () => {
       clearInterval(id);

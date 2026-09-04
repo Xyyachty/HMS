@@ -34,8 +34,21 @@ services:
         value: pgsql
       - key: DB_PG_HOST
         value: aws-0-ap-southeast-1.pooler.supabase.com
+      # 6543 is Supabase's transaction pooler, not the session pooler on 5432.
+      # Session mode holds one Postgres connection per client for as long as the
+      # client is connected, and the free tier allows fifteen of them — the Room
+      # Management page alone polls eight endpoints in bursts, so a few open tabs
+      # exhausted the pool and every request came back
+      #   SQLSTATE[08006] FATAL: (EMAXCONNSESSION) max clients reached in session mode
+      # Transaction mode returns the connection at the end of each transaction, so
+      # the same fifteen server connections serve hundreds of clients.
+      #
+      # Two things must hold for it. Prepared statements are emulated (see the
+      # pgsql connection in config/database.php), and the search path is set on the
+      # postgres role rather than per session, since a transaction-pooled statement
+      # may land on a connection that never ran the session SET.
       - key: DB_PG_PORT
-        value: "5432"
+        value: "6543"
       - key: DB_PG_DATABASE
         value: postgres
       # Not a secret, and set here rather than by hand on purpose. Supabase's pooler
