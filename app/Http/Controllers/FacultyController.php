@@ -59,12 +59,64 @@ class FacultyController extends Controller
                 ->get()
             : collect();
 
+        // One pass over every task this faculty owns feeds the per-team progress
+        // bars, the deadline list and the supporting figures on the stat cards.
+        $allTasks = $facultyId
+            ? Task::where('faculty_id', $facultyId)
+                ->whereIn('status', ['active', 'archived'])
+                ->get(['task_id', 'title', 'group_name', 'role', 'status', 'due_date'])
+            : collect();
+
+        $completedTasks = $allTasks->where('status', 'archived')->count();
+        $completionRate = $allTasks->count() > 0
+            ? (int) round(($completedTasks / $allTasks->count()) * 100)
+            : 0;
+        $overdueTasks = $allTasks
+            ->where('status', 'active')
+            ->filter(fn ($task) => $task->due_date && $task->due_date->isPast())
+            ->count();
+
+        // Teams come from the roster rather than from the tasks, so a team with
+        // nothing assigned yet still shows up at 0%.
+        $teamProgress = $facultyId
+            ? StudentGroup::where('faculty_id', $facultyId)
+                ->distinct()
+                ->orderBy('group_name')
+                ->pluck('group_name')
+                ->values()
+                ->map(function ($name, $index) use ($allTasks) {
+                    $tasks = $allTasks->where('group_name', $name);
+                    $total = $tasks->count();
+                    $done  = $tasks->where('status', 'archived')->count();
+
+                    return [
+                        'name'    => $name,
+                        'label'   => 'TEAM ' . str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT),
+                        'total'   => $total,
+                        'done'    => $done,
+                        'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+                    ];
+                })
+            : collect();
+
+        $upcomingDeadlines = $allTasks
+            ->where('status', 'active')
+            ->filter(fn ($task) => $task->due_date !== null)
+            ->sortBy('due_date')
+            ->take(4)
+            ->values();
+
         return view('faculty.dashboard', compact(
             'totalStudents',
             'totalTeams',
             'assignedTasks',
             'recentActivity',
-            'roleLabels'
+            'roleLabels',
+            'teamProgress',
+            'upcomingDeadlines',
+            'completedTasks',
+            'completionRate',
+            'overdueTasks'
         ));
     }
 
