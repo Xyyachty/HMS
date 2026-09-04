@@ -71,6 +71,67 @@ class DeanController extends Controller
             'housekeeping' => 'Housekeeping',
         ];
 
+        // One pass over every task in the system feeds the progress bars, the
+        // deadline list and the completion figure on the Teams card.
+        $allTasks = Task::whereIn('status', ['active', 'archived'])
+            ->get(['task_id', 'title', 'faculty_id', 'group_name', 'role', 'status', 'due_date']);
+
+        $completedTasks = $allTasks->where('status', 'archived')->count();
+        $completionRate = $allTasks->count() > 0
+            ? (int) round(($completedTasks / $allTasks->count()) * 100)
+            : 0;
+
+        // Faculty display names, resolved once so the panels below can label a
+        // team with the instructor who owns it.
+        $facultyNames = Faculty::with('user')
+            ->get()
+            ->mapWithKeys(function ($faculty) {
+                $user = $faculty->user;
+                $name = trim(implode(' ', array_filter([
+                    $user?->first_name,
+                    $user?->last_name,
+                ]))) ?: ($user?->name ?? 'Faculty');
+
+                return [$faculty->user_information_id => $name];
+            });
+
+        // Teams come from the roster rather than from the tasks, so a team with
+        // nothing assigned still shows up at 0%. Ordered by how far behind it is.
+        $teamProgress = StudentGroup::query()
+            ->select('faculty_id', 'group_name')
+            ->distinct()
+            ->orderBy('group_name')
+            ->get()
+            ->values()
+            ->map(function ($team, $index) use ($allTasks, $facultyNames) {
+                $tasks = $allTasks
+                    ->where('faculty_id', $team->faculty_id)
+                    ->where('group_name', $team->group_name);
+                $total = $tasks->count();
+                $done  = $tasks->where('status', 'archived')->count();
+
+                return [
+                    'name'    => $team->group_name,
+                    'faculty' => $facultyNames[$team->faculty_id] ?? 'Unassigned',
+                    'label'   => 'TEAM ' . str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT),
+                    'total'   => $total,
+                    'done'    => $done,
+                    'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+                ];
+            });
+
+        $upcomingDeadlines = $allTasks
+            ->where('status', 'active')
+            ->filter(fn ($task) => $task->due_date !== null)
+            ->sortBy('due_date')
+            ->take(4)
+            ->values()
+            ->map(function ($task) use ($facultyNames) {
+                $task->faculty_name = $facultyNames[$task->faculty_id] ?? null;
+
+                return $task;
+            });
+
         return view('dean.dashboard', compact(
             'totalStudents',
             'totalFaculty',
@@ -80,7 +141,11 @@ class DeanController extends Controller
             'teamsThisMonth',
             'recentStudents',
             'recentActivity',
-            'roleLabels'
+            'roleLabels',
+            'teamProgress',
+            'upcomingDeadlines',
+            'completedTasks',
+            'completionRate'
         ));
     }
 
