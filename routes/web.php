@@ -227,6 +227,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $pendingTasksCount = 0;
         $completionRate = 0;
         $recentTasks = collect();
+        // Per-role progress across this student's own team — the dashboard's Task
+        // Progress Overview. Keyed by role, each row carries done/total/percent.
+        $teamRoleProgress = collect();
+        $upcomingDeadlines = collect();
 
         if ($facultyId) {
             $allTasks = Task::where('faculty_id', $facultyId)
@@ -264,6 +268,36 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->latest('updated_at')
                 ->take(12)
                 ->get();
+
+            // One pass over the team's tasks feeds both the per-role progress bars
+            // and the deadline list, so the dashboard costs a single extra query.
+            $teamTasks = Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
+                ->whereIn('status', ['active', 'archived'])
+                ->get(['task_id', 'title', 'role', 'status', 'due_date', 'priority']);
+
+            $teamRoleProgress = $teamTasks
+                ->groupBy('role')
+                ->map(function ($tasks, $role) {
+                    $total = $tasks->count();
+                    $done  = $tasks->where('status', 'archived')->count();
+
+                    return [
+                        'role'    => $role,
+                        'total'   => $total,
+                        'done'    => $done,
+                        'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+                    ];
+                })
+                ->sortByDesc('percent')
+                ->values();
+
+            $upcomingDeadlines = $teamTasks
+                ->where('status', 'active')
+                ->filter(fn ($task) => $task->due_date !== null)
+                ->sortBy('due_date')
+                ->take(4)
+                ->values();
         }
 
         $totalTasks   = array_sum($taskCounts);
@@ -355,7 +389,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'studentRoles', 'myRoleTasks', 'completedTasksCount',
             'pendingTasksCount', 'completionRate', 'recentTasks',
             'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
-            'myActivityLogs', 'conceptPayload',
+            'myActivityLogs', 'conceptPayload', 'teamRoleProgress', 'upcomingDeadlines',
             'studentDisplayName', 'studentClass', 'student'
         ));
     })->name('dashboard');

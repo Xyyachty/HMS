@@ -307,117 +307,253 @@
             @endphp
 
             <!-- ==================== HOME SECTION ==================== -->
+            @php
+                // Everything the home cards and panels read, derived once here so the
+                // markup below stays declarative.
+                $homeRoleLabels = [
+                    'front_desk'            => 'Front Desk',
+                    'restaurant_management' => 'Restaurant Services',
+                    'room_management'       => 'Room Management',
+                    'maintenance'           => 'Maintenance',
+                    'housekeeping'          => 'Housekeeping',
+                ];
+                $homeRoleTints = [
+                    'front_desk'            => ['bg' => 'bg-orange-50',  'text' => 'text-orange-500',  'bar' => 'bg-orange-500'],
+                    'restaurant_management' => ['bg' => 'bg-amber-50',   'text' => 'text-amber-500',   'bar' => 'bg-amber-500'],
+                    'room_management'       => ['bg' => 'bg-pink-50',    'text' => 'text-brand',       'bar' => 'bg-brand'],
+                    'maintenance'           => ['bg' => 'bg-violet-50',  'text' => 'text-violet-500',  'bar' => 'bg-violet-500'],
+                    'housekeeping'          => ['bg' => 'bg-teal-50',    'text' => 'text-teal-500',    'bar' => 'bg-teal-500'],
+                ];
+                $homeTint = fn($role, $key) => $homeRoleTints[$role][$key] ?? ($key === 'bar' ? 'bg-slate-400' : ($key === 'text' ? 'text-slate-400' : 'bg-slate-50'));
+
+                $homeRecentActivities = ($selfActivityLogs ?? collect())->take(5);
+                $homeTeamProgress     = ($teamRoleProgress ?? collect());
+                $homeDeadlines        = ($upcomingDeadlines ?? collect());
+
+                $homeMemberCount   = ($groupMembers ?? collect())->count();
+                $homeActiveTasks   = $pendingTasksCount ?? 0;
+                $homeMyPending     = !empty($studentRoles) ? $myRoleTasks->count() : 0;
+                $homeTotalTasks    = ($completedTasksCount ?? 0) + ($pendingTasksCount ?? 0);
+                // Only the tasks this student actually owns can be "late" for them.
+                $homeOverdueCount  = !empty($studentRoles)
+                    ? $myRoleTasks->filter(fn($t) => $t->due_date && $t->due_date->isPast())->count()
+                    : 0;
+            @endphp
+
             <div id="home-section" class="section-content fade-in space-y-4">
                 <!-- Welcome -->
                 <div>
                     <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">Welcome back, {{ $studentDisplayName ?? (auth()->user()->name ?? 'Student') }}</h2>
+                    <p class="text-sm text-slate-500 mt-0.5">Here's what's happening with your team today.</p>
                 </div>
 
                 {{-- Stats Row. Each card opens the section that owns its number, through the
                      same showSection() the sidebar calls — so the sidebar highlight, the
                      breadcrumb and the ?section= URL all follow along for free. --}}
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <!-- Team -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <!-- Team members -->
                     <button type="button" onclick="showSection('group')" aria-label="Open My Team"
                             class="stat-card bg-white rounded-2xl p-4 border border-slate-100 text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
-                        <div class="flex items-center mb-3">
-                            <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
-                                <span class="iconify text-violet-500 text-lg" data-icon="mdi:office-building-outline"></span>
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-full bg-violet-500 flex items-center justify-center shrink-0">
+                                <span class="iconify text-white text-xl" data-icon="mdi:account-group-outline"></span>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Team Members</p>
+                                <p class="text-3xl font-extrabold text-slate-900 leading-tight">{{ $homeMemberCount }}</p>
+                                <p class="text-[11px] text-slate-400 font-medium truncate">{{ $group->name ?? 'No team yet' }}</p>
                             </div>
                         </div>
-                        <p class="text-xl font-extrabold text-slate-900 truncate">{{ $group->name ?? '—' }}</p>
-                        <p class="text-xs text-slate-400 font-medium mt-1">
-                            Team Name
-                            @if(!empty($studentClass))
-                                · {{ $studentClass->name }}
-                            @endif
-                        </p>
-                    </button>
-
-                    <!-- Role -->
-                    <button type="button" onclick="showSection('profile')" aria-label="Open My Profile"
-                            class="stat-card bg-white rounded-2xl p-4 border border-slate-100 text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
-                        <div class="flex items-center mb-3">
-                            <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
-                                <span class="iconify text-rose-500 text-lg" data-icon="{{ !empty($studentRoles) ? $myRoleIcon : 'mdi:account-question-outline' }}"></span>
-                            </div>
+                        <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
+                            <span class="iconify text-slate-300 text-sm" data-icon="mdi:school-outline"></span>
+                            <span class="text-[11px] font-semibold text-slate-500 truncate">{{ $studentClass->name ?? 'Hotel Management Simulation' }}</span>
                         </div>
-                        <p class="text-base font-extrabold text-slate-900 truncate leading-tight">{{ $myRoleLabel }}</p>
-                        <p class="text-xs text-slate-400 font-medium mt-1">Assigned Role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
                     </button>
 
-                    <!-- Active Tasks -->
+                    <!-- Active tasks (team) -->
                     <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
                             class="stat-card bg-white rounded-2xl p-4 border border-slate-100 text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
-                                <span class="iconify text-amber-500 text-lg" data-icon="mdi:clipboard-text-outline"></span>
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+                                <span class="iconify text-white text-xl" data-icon="mdi:clipboard-text-outline"></span>
                             </div>
-                            @if(!empty($studentRoles) && $myRoleTasks->count() > 0)
-                                <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Needs Attention</span>
+                            <div class="min-w-0">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Active Tasks</p>
+                                <p class="text-3xl font-extrabold text-slate-900 leading-tight">{{ $homeActiveTasks }}</p>
+                                <p class="text-[11px] text-slate-400 font-medium truncate">Currently in progress</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
+                            <span class="iconify text-slate-300 text-sm" data-icon="mdi:account-check-outline"></span>
+                            <span class="text-[11px] font-semibold text-slate-500 truncate">{{ $homeMyPending }} assigned to your role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</span>
+                        </div>
+                    </button>
+
+                    <!-- Pending tasks (mine) -->
+                    <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
+                            class="stat-card bg-white rounded-2xl p-4 border border-slate-100 text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-full bg-brand flex items-center justify-center shrink-0">
+                                <span class="iconify text-white text-xl" data-icon="mdi:clock-outline"></span>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Pending Tasks</p>
+                                <p class="text-3xl font-extrabold text-slate-900 leading-tight"><span data-task-count="active">{{ $homeMyPending }}</span></p>
+                                <p class="text-[11px] text-slate-400 font-medium truncate">Awaiting submission</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
+                            @if($homeOverdueCount > 0)
+                                <span class="iconify text-red-400 text-sm" data-icon="mdi:alert-circle-outline"></span>
+                                <span class="text-[11px] font-semibold text-red-500 truncate">{{ $homeOverdueCount }} past due date</span>
+                            @else
+                                <span class="iconify text-emerald-400 text-sm" data-icon="mdi:check-circle-outline"></span>
+                                <span class="text-[11px] font-semibold text-emerald-500 truncate">Nothing overdue</span>
                             @endif
                         </div>
-                        <p class="text-2xl font-extrabold text-slate-900"><span data-task-count="active">{{ !empty($studentRoles) ? $myRoleTasks->count() : 0 }}</span></p>
-                        <p class="text-xs text-slate-400 font-medium mt-1">Active Tasks</p>
                     </button>
 
-                    <!-- Completed -->
+                    <!-- Completion rate -->
                     <button type="button" onclick="showSection('reports')" aria-label="Open Reports"
                             class="stat-card bg-white rounded-2xl p-4 border border-slate-100 text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
-                        <div class="flex items-center mb-3">
-                            <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                                <span class="iconify text-emerald-500 text-lg" data-icon="mdi:check-circle-outline"></span>
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                                <span class="iconify text-white text-xl" data-icon="mdi:trending-up"></span>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Completion Rate</p>
+                                <p class="text-3xl font-extrabold text-slate-900 leading-tight">{{ $completionRate ?? 0 }}%</p>
+                                <p class="text-[11px] text-slate-400 font-medium truncate">Team average</p>
                             </div>
                         </div>
-                        <p class="text-2xl font-extrabold text-slate-900"><span data-task-count="completed">{{ $myCompletedTasks->count() ?? 0 }}</span></p>
-                        <p class="text-xs text-slate-400 font-medium mt-1">Completed</p>
+                        <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
+                            <span class="iconify text-slate-300 text-sm" data-icon="mdi:check-all"></span>
+                            <span class="text-[11px] font-semibold text-slate-500 truncate">
+                                <span data-task-count="completed">{{ $completedTasksCount ?? 0 }}</span> of {{ $homeTotalTasks }} tasks done
+                            </span>
+                        </div>
                     </button>
                 </div>
 
-                <!-- Recent Activities -->
-                @php
-                    $homeRoleLabels = [
-                        'front_desk' => 'Front Desk',
-                        'restaurant_management' => 'Restaurant',
-                        'room_management' => 'Room Mgmt',
-                        'maintenance' => 'Maintenance',
-                        'housekeeping' => 'Housekeeping',
-                    ];
-                    $homeRecentActivities = ($selfActivityLogs ?? collect())->take(6);
-                @endphp
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div class="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
-                        <span class="iconify text-brand text-lg" data-icon="mdi:history"></span>
-                        <p class="text-sm font-bold text-slate-800">Recent Activities</p>
-                    </div>
-                    <div class="divide-y divide-slate-50">
-                        @forelse($homeRecentActivities as $task)
-                            <div class="px-5 py-3.5 flex items-start gap-3">
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $task->status === 'archived' ? 'bg-emerald-50 text-emerald-500' : 'bg-blue-50 text-blue-500' }}">
-                                    <span class="iconify text-lg" data-icon="{{ $task->status === 'archived' ? 'mdi:check-circle-outline' : 'mdi:clipboard-plus-outline' }}"></span>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-bold text-slate-800 truncate">
-                                        {{ $task->status === 'archived' ? 'Completed' : 'Assigned' }}: {{ $task->title }}
-                                    </p>
-                                    <p class="text-xs text-slate-400 mt-0.5">
-                                        {{ $homeRoleLabels[$task->role] ?? $task->role }}
-                                        · {{ optional($task->updated_at)->diffForHumans() }}
-                                    </p>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="px-5 py-12 text-center">
-                                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                                    <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
-                                </div>
-                                <p class="text-sm font-semibold text-slate-400">No recent activity</p>
-                                <p class="text-xs text-slate-300 mt-1">Your assigned and completed tasks will appear here.</p>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
+                <!-- Three-panel row: activity, team progress, deadlines -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
+                    <!-- Recent Activity -->
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
+                            <p class="text-sm font-bold text-slate-800">Recent Activity</p>
+                            <button type="button" onclick="showSection('activity')"
+                                    class="text-[11px] font-bold text-brand hover:text-brand-dark transition-colors">View All</button>
+                        </div>
+                        <div class="divide-y divide-slate-50 flex-1">
+                            @forelse($homeRecentActivities as $task)
+                                @php
+                                    $isDone = $task->status === 'archived';
+                                    $needsRevision = !$isDone && filled($task->feedback ?? null);
+                                @endphp
+                                <div class="px-5 py-3 flex items-start gap-3">
+                                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
+                                        <span class="iconify text-lg" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-[13px] font-bold text-slate-800 leading-snug line-clamp-2">{{ $task->title }}</p>
+                                        <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ $homeRoleLabels[$task->role] ?? $task->role }}</p>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <p class="text-[10px] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
+                                        <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isDone ? 'text-emerald-500' : ($needsRevision ? 'text-red-500' : 'text-blue-500') }}">
+                                            <span class="w-1.5 h-1.5 rounded-full {{ $isDone ? 'bg-emerald-500' : ($needsRevision ? 'bg-red-500' : 'bg-blue-500') }}"></span>
+                                            {{ $isDone ? 'Completed' : ($needsRevision ? 'Revision' : 'Assigned') }}
+                                        </p>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="px-5 py-12 text-center">
+                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-400">No recent activity</p>
+                                    <p class="text-xs text-slate-300 mt-1">Your assigned and completed tasks will appear here.</p>
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    {{-- Task Progress Overview — this student's own team only, broken down by
+                         the role that owns each task, so a member can see where the team
+                         still has work outstanding. --}}
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-slate-800">Task Progress Overview</p>
+                                <p class="text-[11px] text-slate-400 truncate">{{ $group->name ?? 'Your team' }}</p>
+                            </div>
+                            <button type="button" onclick="showSection('reports')"
+                                    class="text-[11px] font-bold text-brand hover:text-brand-dark transition-colors shrink-0">View Report</button>
+                        </div>
+                        <div class="divide-y divide-slate-50 flex-1">
+                            @forelse($homeTeamProgress as $row)
+                                <div class="px-5 py-3.5 flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $homeTint($row['role'], 'bg') }} {{ $homeTint($row['role'], 'text') }}">
+                                        <span class="iconify text-lg" data-icon="{{ $roleIcons[$row['role']] ?? 'mdi:account-outline' }}"></span>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-[13px] font-bold text-slate-800 truncate">{{ $homeRoleLabels[$row['role']] ?? $row['role'] }}</p>
+                                        <p class="text-[11px] text-slate-400 mt-0.5">{{ $row['done'] }} of {{ $row['total'] }} tasks</p>
+                                    </div>
+                                    <div class="w-16 sm:w-24 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
+                                        <div class="h-full rounded-full {{ $homeTint($row['role'], 'bar') }}" style="width: {{ $row['percent'] }}%"></div>
+                                    </div>
+                                    <p class="text-[13px] font-extrabold text-slate-700 w-10 text-right shrink-0">{{ $row['percent'] }}%</p>
+                                </div>
+                            @empty
+                                <div class="px-5 py-12 text-center">
+                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:chart-timeline-variant"></span>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-400">No tasks yet</p>
+                                    <p class="text-xs text-slate-300 mt-1">Progress appears once your faculty assigns work.</p>
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <!-- Upcoming Deadlines -->
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
+                            <p class="text-sm font-bold text-slate-800">Upcoming Deadlines</p>
+                            <button type="button" onclick="showSection('tasks')"
+                                    class="text-[11px] font-bold text-brand hover:text-brand-dark transition-colors">View All</button>
+                        </div>
+                        <div class="divide-y divide-slate-50 flex-1">
+                            @forelse($homeDeadlines as $task)
+                                @php $isLate = $task->due_date && $task->due_date->isPast(); @endphp
+                                <div class="px-5 py-3.5 flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
+                                        <span class="iconify text-lg" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-[13px] font-bold text-slate-800 truncate">{{ $task->title }}</p>
+                                        <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ $homeRoleLabels[$task->role] ?? $task->role }}</p>
+                                    </div>
+                                    <div class="shrink-0 w-11 rounded-lg border py-1 text-center {{ $isLate ? 'border-red-100 bg-red-50' : 'border-pink-100 bg-brand-soft' }}">
+                                        <p class="text-[9px] font-bold uppercase tracking-wide {{ $isLate ? 'text-red-400' : 'text-brand-light' }}">{{ $task->due_date->format('M') }}</p>
+                                        <p class="text-[13px] font-extrabold leading-tight {{ $isLate ? 'text-red-500' : 'text-brand' }}">{{ $task->due_date->format('j') }}</p>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="px-5 py-12 text-center">
+                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:calendar-blank-outline"></span>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-400">No upcoming deadlines</p>
+                                    <p class="text-xs text-slate-300 mt-1">Tasks with a due date will show up here.</p>
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
 
