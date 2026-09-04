@@ -364,8 +364,24 @@
     return out;
   }
 
-  function setSiteColor(area, bg) {
+  /**
+   * 'site' / 'header' / 'footer' / 'roomModal' / 'experience' stay shared chrome
+   * (see the comment above SITE_COLOR_AREAS) — any editor may recolour them.
+   * 'rooms', 'dining' and 'amenities' are a specific role's own page, so only
+   * that role's editor may recolour them; everyone else still sees the colour
+   * applied, they just can't change it from the Background Colours dialog.
+   */
+  const SITE_COLOR_AREA_PAGES = { dining: 'restaurant', amenities: 'amenities' };
+
+  function canEditSiteColorArea(area) {
     if (!canEditSiteColors()) return false;
+    const page = SITE_COLOR_AREA_PAGES[area];
+    if (!page) return true;
+    return editablePages().indexOf(page) !== -1;
+  }
+
+  function setSiteColor(area, bg) {
+    if (!canEditSiteColorArea(area)) return false;
     if (SITE_COLOR_AREAS.indexOf(area) === -1) return false;
     const next = getSiteColors();
     const clean = String(bg == null ? '' : bg).trim().slice(0, 32);
@@ -384,8 +400,9 @@
   }
 
   function canEditMenuCardStyle() {
-    const pages = editablePages();
-    return canEdit() && (pages.indexOf('restaurant') !== -1 || pages.indexOf('home') !== -1);
+    // Restaurant Services owns the Menu cards exclusively, same as Room
+    // Management owns room cards (see canEditRooms).
+    return canEdit() && editablePages().indexOf('restaurant') !== -1;
   }
 
   function getBrandName() {
@@ -988,6 +1005,7 @@
     getSiteColors,
     setSiteColor,
     canEditSiteColors,
+    canEditSiteColorArea,
     getRooms,
     setRooms,
     addRoom,

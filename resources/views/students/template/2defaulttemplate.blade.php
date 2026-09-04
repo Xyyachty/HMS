@@ -2354,36 +2354,47 @@ function SiteColorsModal({ open, colors, onPick, onClose }) {
           area adjust so they stay readable.
         </p>
 
-        {SITE_COLOR_AREAS.map((area) => (
+        {SITE_COLOR_AREAS.map((area) => {
+          const editable = window.HMSSiteContent && window.HMSSiteContent.canEditSiteColorArea
+            ? window.HMSSiteContent.canEditSiteColorArea(area.id)
+            : true;
+          return (
           <div key={area.id} className="site-color-row">
             <div className="site-color-name">
               <span>{area.label}</span>
-              {colors && colors[area.id]
+              {editable && colors && colors[area.id]
                 ? <button type="button" className="site-color-clear" onClick={() => onPick(area.id, '')}>Reset</button>
                 : null}
             </div>
-            <div className="site-color-swatches">
-              {CARD_COLOR_PRESETS.map((hex) => (
-                <button
-                  key={hex}
-                  type="button"
-                  className={`card-color-swatch${colors && colors[area.id] === hex ? ' is-active' : ''}`}
-                  style={{ background: hex }}
-                  title={hex}
-                  aria-label={area.label + ': use ' + hex}
-                  onClick={() => onPick(area.id, hex)}
-                ></button>
-              ))}
-              <input
-                type="color"
-                className="site-color-input"
-                title={'Custom colour for ' + area.label}
-                value={(colors && parseColorToRgb(colors[area.id])) ? colors[area.id] : '#1f1b14'}
-                onChange={(e) => onPick(area.id, e.target.value)}
-              />
-            </div>
+            {editable ? (
+              <div className="site-color-swatches">
+                {CARD_COLOR_PRESETS.map((hex) => (
+                  <button
+                    key={hex}
+                    type="button"
+                    className={`card-color-swatch${colors && colors[area.id] === hex ? ' is-active' : ''}`}
+                    style={{ background: hex }}
+                    title={hex}
+                    aria-label={area.label + ': use ' + hex}
+                    onClick={() => onPick(area.id, hex)}
+                  ></button>
+                ))}
+                <input
+                  type="color"
+                  className="site-color-input"
+                  title={'Custom colour for ' + area.label}
+                  value={(colors && parseColorToRgb(colors[area.id])) ? colors[area.id] : '#1f1b14'}
+                  onChange={(e) => onPick(area.id, e.target.value)}
+                />
+              </div>
+            ) : (
+              <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
+                Managed by that section's own role &mdash; preview only.
+              </p>
+            )}
           </div>
-        ))}
+          );
+        })}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.4rem' }}>
           <button type="button" className="btn-primary" onClick={onClose}>Done</button>
