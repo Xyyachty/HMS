@@ -2625,7 +2625,6 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
                 <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
                   data-hms-no-edit="1"
                   onClick={e => e.stopPropagation()}>
-                  <CardColorButton kind="room" label="Card colour (all room cards)" />
                   <button type="button" title="Change image" onClick={() => pickImageFile((url) => { if (url && onEditRoom) onEditRoom(room.id, { img: url }); if (onToast) onToast('Room image updated'); })}
                     style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
                   <button type="button" title="Remove room" onClick={() => onRemoveRoom && onRemoveRoom(room.id)}
@@ -2703,9 +2702,7 @@ function RoomCard({ room, onSelect, canEdit, onEdit, onRemove, onChangeImage }) 
     <div className="room-card" style={{ position: 'relative' }} onClick={() => onSelect(room.id)}>
       {canEdit && (
         <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }} data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
-          <CardColorButton kind="room" label="Card colour (all room cards)" />
           <button type="button" title="Change image" onClick={() => onChangeImage && onChangeImage(room)} style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
-          <button type="button" title="Edit room" onClick={() => onEdit(room)} style={toolBtnStyle('edit')}><i className="fa-solid fa-pen" style={{fontSize:10}}></i></button>
           <button type="button" title="Remove room" onClick={() => onRemove(room.id)} style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
         </div>
       )}
