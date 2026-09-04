@@ -2042,6 +2042,83 @@ function HeaderEditModal({ edit, onSave, onCancel }) {
 }
 
 
+/* Adding a room category, in the same dialog the header edits use rather than the
+   browser's own prompt — which announces the hostname, cannot be styled, and asks
+   for the two fields one after the other with no way back. Errors land under the
+   name field, so a name already taken keeps what was typed instead of losing it. */
+function AddCategoryModal({ open, saving, error, onSubmit, onCancel }) {
+  const [name, setName] = React.useState('');
+  const [rate, setRate] = React.useState('2000');
+
+  React.useEffect(() => {
+    if (open) { setName(''); setRate('2000'); }
+  }, [open]);
+
+  if (!open) return null;
+
+  const priceValue = Math.max(1, parseInt(String(rate).replace(/,/g, ''), 10) || 0);
+  const canSave = !!name.trim() && priceValue > 0 && !saving;
+  const submit = () => { if (canSave) onSubmit(name.trim(), priceValue); };
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+  };
+
+  return ReactDOM.createPortal(
+    <div
+      className="room-modal-overlay header-modal-overlay"
+      data-hms-no-edit="1"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Add room category"
+      onClick={onCancel}
+    >
+      <div className="room-modal" style={{ width: 'min(420px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '1rem' }}>Add Room Category</h3>
+
+        <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>
+          Category name
+        </label>
+        <input
+          className="header-modal-field"
+          type="text"
+          value={name}
+          maxLength={60}
+          autoFocus
+          placeholder="e.g. Executive"
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={onKeyDown}
+        />
+        {error ? (
+          <p className="header-modal-hint" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p>
+        ) : null}
+
+        <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', margin: '1rem 0 0.4rem' }}>
+          Starting price per 12 hrs
+        </label>
+        <input
+          className="header-modal-field"
+          type="number"
+          min="1"
+          step="1"
+          value={rate}
+          onChange={(e) => setRate(e.target.value)}
+          onKeyDown={onKeyDown}
+        />
+        <p className="header-modal-hint">A new tab appears for the category. Rooms added under it start at this price.</p>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={!canSave} onClick={submit}>
+            {saving ? 'Saving…' : 'Add Category'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function MobileMenu({ open, onClose, onNav, links, cardImages }) {
   const items = [
     ...(links || []),
@@ -2764,6 +2841,9 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
   const list = rooms && rooms.length ? rooms : [];
   const [tab, setTab] = useState('All');
   const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [categorySaving, setCategorySaving] = useState(false);
+  const [categoryError, setCategoryError] = useState('');
   const categoryNames = (categories && categories.length) ? categories : DEFAULT_ROOM_CATEGORIES;
   const tabs = useMemo(() => ['All', ...categoryNames], [categoryNames]);
   const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
@@ -2799,19 +2879,18 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
   /* Adds a category to the team's inventory, not just to this page: it is saved
      against the team, so it is a tab on Manage Room too and rooms can be added under
      it from either screen. */
-  const handleAddCategory = (e) => {
-    if (e && e.stopPropagation) e.stopPropagation();
+  const submitCategory = (name, rate) => {
     if (typeof onAddCategory !== 'function') return;
-    const name = hmsPrompt('New room category (e.g. Executive)', '');
-    if (name == null || !String(name).trim()) return;
-    const priceRaw = hmsPrompt('Starting price per 12 hrs for this category', '2000');
-    if (priceRaw == null) return;
-    const rate = Math.max(1, parseInt(String(priceRaw).replace(/,/g, ''), 10) || 2000);
-    onAddCategory(String(name).trim(), rate).then((created) => {
+    setCategorySaving(true);
+    setCategoryError('');
+    onAddCategory(name, rate).then((created) => {
+      setCategorySaving(false);
       if (!created) {
-        if (onToast) onToast('That category already exists, or could not be saved.');
+        // Kept open with the typed name still in it — the fix is usually one word.
+        setCategoryError('That name is already taken, or it could not be saved.');
         return;
       }
+      setCategoryOpen(false);
       // Land on the new tab: the next thing anybody does here is put a room in it.
       setTab(created);
       if (onToast) onToast(`${created} added — use Add Room Card to put rooms in it`);
@@ -2910,7 +2989,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
           <button
             type="button"
             className="tab-btn"
-            onClick={handleAddCategory}
+            onClick={(e) => { e.stopPropagation(); setCategoryError(''); setCategoryOpen(true); }}
             onMouseDown={(e) => e.stopPropagation()}
             title="Add room category"
             data-hms-no-edit="1"
@@ -2944,12 +3023,19 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
                 }}>
                 <span style={{ width: 52, height: 52, borderRadius: 14, border: '1.5px solid #e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>+</span>
                 <span style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 12 }}>Add Room Card</span>
-                <span style={{ fontSize: 11, opacity: 0.75 }}>Added under {tab === 'All' ? 'Classic' : tab}</span>
+                <span style={{ fontSize: 11, opacity: 0.75 }}>Added under {tab === 'All' ? (categoryNames[0] || 'Classic') : tab}</span>
               </button>
             )}
           </div>
         )}
       </section>
+      <AddCategoryModal
+        open={categoryOpen}
+        saving={categorySaving}
+        error={categoryError}
+        onSubmit={submitCategory}
+        onCancel={() => { setCategoryOpen(false); setCategoryError(''); }}
+      />
       {showRoomManagement && (
         <div style={{ textAlign: 'center', padding: '0 1.5rem 2.5rem' }}>
           <button className="btn-ghost" onClick={() => onOpenRoomManagement && onOpenRoomManagement('manage-room')}>
