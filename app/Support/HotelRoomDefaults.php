@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\HotelRoom;
 use App\Models\HotelRoomCategory;
 use App\Models\StudentGroup;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -224,17 +225,23 @@ class HotelRoomDefaults
             }
         }
 
-        return HotelRoomCategory::create([
-            'group_name'   => $membership->group_name,
-            'faculty_id'   => $membership->faculty_id,
-            'group_id'     => $membership->group_id,
-            'name'         => $clean,
-            // The next free hundreds block, so its rooms number past every category
-            // already in use rather than into one of them.
-            'floor_number' => (int) max($floors) + 1,
-            'rate'         => $rate ?? 0,
-            'description'  => $description,
-        ]);
+        try {
+            return HotelRoomCategory::create([
+                'group_name'   => $membership->group_name,
+                'faculty_id'   => $membership->faculty_id,
+                'group_id'     => $membership->group_id,
+                'name'         => $clean,
+                // The next free hundreds block, so its rooms number past every category
+                // already in use rather than into one of them.
+                'floor_number' => (int) max($floors) + 1,
+                'rate'         => $rate ?? 0,
+                'description'  => $description,
+            ]);
+        } catch (UniqueConstraintViolationException $e) {
+            // Two members adding the same category at once: the check above passed for
+            // both, and the index caught the loser. That is a taken name, not a fault.
+            return null;
+        }
     }
 
     /** @return \Illuminate\Support\Collection<int, HotelRoomCategory> */
