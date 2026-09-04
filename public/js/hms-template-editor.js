@@ -78,6 +78,34 @@
     return editablePages.indexOf(getCurrentPage()) !== -1;
   }
 
+  /**
+   * Rooms and the Restaurant menu each get a preview strip embedded on the Home
+   * page (data-hms-section="rooms" / "dining"), so Front Desk owning the Home
+   * page must not also unlock those other roles' sections just because they
+   * render there. Anything without one of these tags is chrome (hero, footer)
+   * or the page's own content, and stays governed by canEditCurrentPage() alone.
+   */
+  const SECTION_OWNER_PAGE = { rooms: 'rooms', dining: 'restaurant' };
+
+  function sectionOwnerPage(el) {
+    let node = el;
+    while (node && node !== document.body) {
+      if (node.hasAttribute && node.hasAttribute('data-hms-section')) {
+        return SECTION_OWNER_PAGE[node.getAttribute('data-hms-section')] || null;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  function canEditElement(el) {
+    if (!canEditCurrentPage()) return false;
+    if (!Array.isArray(editablePages)) return true;
+    const ownerPage = sectionOwnerPage(el);
+    if (!ownerPage) return true;
+    return editablePages.indexOf(ownerPage) !== -1;
+  }
+
   function blockEditToast() {
     const pages = Array.isArray(editablePages) && editablePages.length
       ? editablePages.join(', ')
@@ -1706,7 +1734,7 @@
       postToParent({ type: 'element-deselected' });
       return;
     }
-    if (!canEditCurrentPage()) {
+    if (!canEditElement(el)) {
       clearSelection();
       blockEditToast();
       return;
@@ -1724,13 +1752,13 @@
     if (!designMode || !canEdit) return;
     // The header has its own click-to-edit dialogs; never open a caret in it.
     if (isHeaderLocked(e.target)) return;
-    if (!canEditCurrentPage()) {
+    const el = findEditableAtPoint(e);
+    if (!canEditElement(el)) {
       e.preventDefault();
       e.stopPropagation();
       blockEditToast();
       return;
     }
-    const el = findEditableAtPoint(e);
     if (!el || ['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
     e.preventDefault();
     e.stopPropagation();
