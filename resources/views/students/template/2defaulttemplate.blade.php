@@ -811,6 +811,16 @@ function roomCardImg(room) {
   return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
 }
 
+/* Auto-named rooms are "<Category> <number>" (see HotelRoomDefaults::nextNameFor), so
+   the category badge above the name would just repeat its first word — "Classic" over
+   "Classic 101". Only show the badge when the name doesn't already lead with it. */
+function roomCategoryLabel(room) {
+  const label = String((room && (room.label || room.category)) || '').trim();
+  const name = String((room && room.name) || '').trim();
+  if (!label) return '';
+  return name.toLowerCase().startsWith(label.toLowerCase()) ? '' : label;
+}
+
 const EXPERIENCES = [
   { icon: 'fa-spa', title: 'Spa & Wellness', desc: 'Full-service spa with thermal pools, Hammam, and bespoke treatment rituals.', img: 'https://picsum.photos/seed/spahotel/600/400.jpg' },
   { icon: 'fa-person-swimming', title: 'Infinity Pool', desc: 'Rooftop heated pool with skyline views, private cabanas, and poolside service.', img: 'https://picsum.photos/seed/poolhotel/600/400.jpg' },
@@ -1396,9 +1406,11 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
         <div style={{ padding: '1.5rem 1.5rem 1.75rem' }}>
           {step === 'details' && (
             <>
-              <p style={{ color: 'var(--warm)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-                {room.label || room.category || 'Room'}
-              </p>
+              {roomCategoryLabel(room) && (
+                <p style={{ color: 'var(--warm)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                  {roomCategoryLabel(room)}
+                </p>
+              )}
               <h2 className="font-display" style={{ fontSize: '1.65rem', marginBottom: '1.25rem' }}>{room.name}</h2>
 
               <div style={{ display: 'grid', gap: '1rem' }}>
@@ -2812,9 +2824,11 @@ function RoomCard({ room, onSelect, canEdit, onEdit, onRemove, onChangeImage }) 
         <span className={`room-status-badge ${roomStatusClass(room.status)}`}>{normalizeRoomStatus(room.status)}</span>
       </div>
       <div style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <span className={`room-tag${isLuxe ? ' room-tag-luxe' : ''}`}>{category}</span>
-        </div>
+        {roomCategoryLabel(room) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <span className={`room-tag${isLuxe ? ' room-tag-luxe' : ''}`}>{roomCategoryLabel(room)}</span>
+          </div>
+        )}
         <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.3rem' }}>{room.name}</h3>
         <p style={{ color: 'var(--fg-muted)', fontSize: '0.8rem', fontWeight: 400, marginBottom: '0.85rem', lineHeight: 1.5 }}>{room.desc}</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.85rem' }}>

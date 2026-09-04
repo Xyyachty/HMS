@@ -914,6 +914,16 @@ function roomCardImg(room) {
   return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
 }
 
+/* Auto-named rooms are "<Category> <number>" (see HotelRoomDefaults::nextNameFor), so
+   the category badge above the name would just repeat its first word — "Classic" over
+   "Classic 101". Only show the badge when the name doesn't already lead with it. */
+function roomCategoryLabel(room) {
+  const label = String((room && (room.label || room.category)) || '').trim();
+  const name = String((room && room.name) || '').trim();
+  if (!label) return '';
+  return name.toLowerCase().startsWith(label.toLowerCase()) ? '' : label;
+}
+
 const ROOMS = [
   {
     id: 'classic', label: 'Classic', category: 'Classic', status: 'Available', name: 'Classic Queen Room', price: 180,
@@ -2455,9 +2465,11 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
         <div style={{ padding: '1.5rem 1.5rem 1.75rem' }}>
           {step === 'details' && (
             <>
-              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-                {room.label || room.category || 'Room'}
-              </p>
+              {roomCategoryLabel(room) && (
+                <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                  {roomCategoryLabel(room)}
+                </p>
+              )}
               <h2 className="font-display" style={{ fontSize: '1.65rem', marginBottom: '1.25rem' }}>{room.name}</h2>
 
               <div style={{ display: 'grid', gap: '1rem' }}>
@@ -2965,9 +2977,11 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
                 <img src={roomCardImg(room)} alt={room.name} loading="lazy" />
               </div>
               <div className="room-card-body" style={{ padding: '1.15rem 1.25rem 1.25rem' }}>
-                <p className="room-card-name" style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
-                  {room.label || room.category || 'Room'}
-                </p>
+                {roomCategoryLabel(room) && (
+                  <p className="room-card-name" style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                    {roomCategoryLabel(room)}
+                  </p>
+                )}
                 <h3 className="font-display room-card-name" style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>{room.name}</h3>
               </div>
             </div>
