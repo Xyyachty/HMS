@@ -36,8 +36,8 @@
     }
 
     .manage-head-tools { display: flex; align-items: center; gap: .75rem; margin-top: .75rem; }
-    .manage-grid { grid-template-columns: 280px minmax(0, 1fr) 300px; }
-    .mm-team-panel, .mm-team-rail { min-width: 0; }
+    .manage-grid { grid-template-columns: 280px minmax(0, 1fr); }
+    .mm-team-panel { min-width: 0; }
     .add-student-modal { max-width: 62rem; max-height: 92vh; }
     .add-student-body {
         display: grid; gap: 1.5rem;
@@ -1610,63 +1610,6 @@
                     @endforelse
                 </div>
 
-                {{-- Right: what the picked team is, and which roles it already holds. --}}
-                <div class="min-w-0">
-                    @foreach($manageTeams as $teamName => $team)
-                        <div class="mm-team-rail space-y-4{{ $teamName === $manageFirstTeam ? '' : ' hidden' }}" data-team-rail="{{ $teamName }}">
-                            <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                                <div class="flex items-center gap-3 mb-4">
-                                    <span class="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center shrink-0">
-                                        <span class="iconify text-lg" data-icon="mdi:cog-outline"></span>
-                                    </span>
-                                    <p class="text-[15px] font-bold text-slate-800">Team Details</p>
-                                </div>
-                                <dl class="space-y-3">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <dt class="text-[12px] text-slate-400 font-semibold shrink-0">Team Name</dt>
-                                        <dd class="text-[13px] font-bold text-slate-700 text-right min-w-0 truncate">{{ $teamName }}</dd>
-                                    </div>
-                                    <div class="flex items-start justify-between gap-3">
-                                        <dt class="text-[12px] text-slate-400 font-semibold shrink-0">Concept</dt>
-                                        <dd class="text-[13px] text-slate-600 text-right min-w-0">{{ $team['concept']->title ?? 'Not proposed yet' }}</dd>
-                                    </div>
-                                    <div class="flex items-start justify-between gap-3">
-                                        <dt class="text-[12px] text-slate-400 font-semibold shrink-0">Team Size</dt>
-                                        <dd class="text-[13px] text-slate-600 text-right">{{ $team['members']->count() }} members</dd>
-                                    </div>
-                                    <div class="flex items-start justify-between gap-3">
-                                        <dt class="text-[12px] text-slate-400 font-semibold shrink-0">Created On</dt>
-                                        <dd class="text-[13px] text-slate-600 text-right">{{ $team['created_at'] ?? '—' }}</dd>
-                                    </div>
-                                </dl>
-                            </div>
-
-                            <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                                <div class="flex items-center gap-3 mb-4">
-                                    <span class="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center shrink-0">
-                                        <span class="iconify text-lg" data-icon="mdi:tag-multiple-outline"></span>
-                                    </span>
-                                    <p class="text-[15px] font-bold text-slate-800">Roles in this Team</p>
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    @forelse($team['roles'] as $heldRole)
-                                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-bold bg-slate-50 border border-slate-200 text-slate-600">
-                                            <span class="w-2 h-2 rounded-full role-dot-{{ $heldRole }}"></span>
-                                            {{ $teamRoleOptions[$heldRole] ?? $heldRole }}
-                                        </span>
-                                    @empty
-                                        <span class="text-[12px] text-slate-400">No roles assigned yet.</span>
-                                    @endforelse
-                                </div>
-                            </div>
-
-                            <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4 flex items-start gap-2.5">
-                                <span class="iconify text-blue-500 text-base shrink-0 mt-0.5" data-icon="mdi:information-outline"></span>
-                                <p class="text-[12px] text-blue-700 leading-relaxed">Each team must have exactly 4 members. You can add a student if the team is not yet full.</p>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
             </div>
         </div>
 
@@ -3203,10 +3146,6 @@ function pickInsertTeam(groupName) {
     document.querySelectorAll('.mm-team-panel').forEach((panel) => {
         panel.classList.toggle('hidden', panel.dataset.teamPanel !== groupName);
     });
-    document.querySelectorAll('.mm-team-rail').forEach((rail) => {
-        rail.classList.toggle('hidden', rail.dataset.teamRail !== groupName);
-    });
-
     filterManageMembers();
     if (typeof refreshRoleAvailability === 'function') refreshRoleAvailability('insert');
 }
