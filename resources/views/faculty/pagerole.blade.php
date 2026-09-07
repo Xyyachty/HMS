@@ -298,8 +298,14 @@
 ═══════════════════════════════════════════════ --}}
 @php
     $activeTab = request('tab', 'teams');
-    $validTabs = ['teams', 'create_task'];
+    $validTabs = ['teams', 'create_task', 'team_setup'];
     if (!in_array($activeTab, $validTabs)) $activeTab = 'teams';
+
+    // A failed create/insert re-renders the page; land back on the setup screen
+    // rather than on the teams list the faculty had already left.
+    if ($errors->any() && in_array(old('_form_source'), ['create_team', 'create_teams_bulk', 'insert_student'], true)) {
+        $activeTab = 'team_setup';
+    }
 
     // If there are validation errors, keep the correct tab open
     if ($errors->has('title') || $errors->has('role') || $errors->has('priority')) {
@@ -862,18 +868,19 @@
 </div>
 
 
-<!-- Add Team Modal -->
-<div id="createTeamModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeCreateTeamModal()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full setup-modal flex flex-col overflow-hidden">
-        <!-- Modal Header -->
-        <div class="bg-white px-6 py-4 border-b border-slate-200 flex justify-between items-start rounded-t-2xl flex-shrink-0">
+<!-- ═══════ TEAM SETUP & MEMBERS (its own screen, reached from Team Setup) ═══════ -->
+<div id="panel-team_setup" class="tab-panel {{ $activeTab === 'team_setup' ? 'active' : '' }}">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <!-- Screen Header -->
+        <div class="bg-white px-6 py-5 border-b border-slate-200 flex justify-between items-start gap-3">
             <div class="min-w-0">
-                <h4 class="font-extrabold text-slate-900 text-xl leading-tight">Team Setup &amp; Members</h4>
+                <h4 class="font-extrabold text-slate-900 text-2xl leading-tight">Team Setup &amp; Members</h4>
                 <p class="text-[13px] text-slate-500 mt-1">Create multiple teams, manage team members, and assign their role(s).</p>
             </div>
-            <button onclick="closeCreateTeamModal()" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
-                <span class="iconify text-xl" data-icon="mdi:close"></span>
+            <button type="button" onclick="closeCreateTeamModal()"
+                class="h-10 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition inline-flex items-center gap-2 shrink-0">
+                <span class="iconify text-base" data-icon="mdi:arrow-left"></span>
+                Back to Teams
             </button>
         </div>
 
@@ -918,7 +925,7 @@
         </script>
 
         <!-- Tab Panel: Add Team (single or multiple) -->
-        <div id="modal-panel-add_team" class="flex-1 min-h-0 overflow-y-auto">
+        <div id="modal-panel-add_team">
             {{-- Where the wizard is: the four stages a bulk create runs through. --}}
             <div class="px-5 pt-5">
                 <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 setup-steps">
@@ -1341,7 +1348,7 @@
         </div>
 
         <!-- Tab Panel: Manage Members -->
-        <div id="modal-panel-insert" class="flex-1 min-h-0 overflow-y-auto hidden">
+        <div id="modal-panel-insert" class="hidden">
             @php
                 $manageTeamCount    = ($groups ?? collect())->count();
                 $manageStudentCount = ($groups ?? collect())->sum(fn ($members) => $members->count());
@@ -1537,8 +1544,8 @@
             </form>
         </div>
 
-        <!-- Modal Footer -->
-        <div class="px-6 py-4 bg-white border-t border-slate-200 flex justify-between gap-3 flex-shrink-0">
+        <!-- Screen Footer -->
+        <div class="px-6 py-4 bg-white border-t border-slate-200 flex justify-between gap-3">
             <button type="button" onclick="closeCreateTeamModal()"
                 class="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition font-bold text-sm">Back</button>
             <button type="button" onclick="submitActiveModalTab()"
@@ -2043,24 +2050,33 @@ function setTeamsActionHighlight(activeKey) {
     });
 }
 
+/* Team Setup is its own screen rather than a dialog, so opening and closing it
+   is navigation. Both keep the class the faculty is looking at. */
+const TEAM_SETUP_URL = @json(route('faculty.role', array_filter([
+    'class' => $activeClass->letter ?? null,
+    'tab'   => 'team_setup',
+])));
+const TEAMS_LIST_URL = @json(route('faculty.role', array_filter([
+    'class' => $activeClass->letter ?? null,
+    'tab'   => 'teams',
+])));
+
 function openCreateTeamModal() {
-    setTeamsActionHighlight('add_team');
-    document.getElementById('createTeamModal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    window.location.href = TEAM_SETUP_URL;
+}
+
+function closeCreateTeamModal() {
+    window.location.href = TEAMS_LIST_URL;
+}
+
+/* Everything opening the screen used to do, run on load instead. */
+function initTeamSetupScreen() {
     switchCreateTeamMode(currentCreateTeamMode);
     if (currentCreateTeamMode === 'multiple') {
         autoGroupStudentsIntoTeamsOfFour();
     } else {
         updateTeamSelectedCount('create');
     }
-}
-
-function closeCreateTeamModal() {
-    document.getElementById('createTeamModal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
-    // Restore highlight: Set Task stays active on create_task tab; otherwise clear Add Team highlight
-    const onSetTask = document.getElementById('panel-create_task')?.classList.contains('active');
-    setTeamsActionHighlight(onSetTask ? 'set_task' : null);
 }
 
 function switchCreateTeamMode(mode) {
@@ -3833,27 +3849,23 @@ document.addEventListener('change', function(e) {
         document.querySelectorAll('.task-group-check').forEach(master => refreshTaskCardState(master.id.replace('taskGroupCheck-', '')));
         updateSubmitState();
     }
-    // Auto-open create team modal if there are validation errors from that form
-    @if($errors->any() && in_array(old('_form_source'), ['create_teams_bulk', 'insert_student', 'create_team'], true))
-        @if(old('_form_source') === 'create_teams_bulk')
+    if (activeTab === 'team_setup') {
+        @if($errors->any() && old('_form_source') === 'create_teams_bulk')
             currentCreateTeamMode = 'multiple';
-        @elseif(old('_form_source') === 'create_team')
+        @elseif($errors->any() && old('_form_source') === 'create_team')
             currentCreateTeamMode = 'single';
         @endif
-        openCreateTeamModal();
-        @if(old('_form_source') === 'insert_student')
+        initTeamSetupScreen();
+        @if($errors->any() && old('_form_source') === 'insert_student')
             switchCreateModalTab('insert');
         @endif
         // Reflect the roles old() restored into the form as already-taken.
         refreshRoleAvailability('create');
         refreshRoleAvailability('insert');
-    @endif
-    // Open from Activity Logs "Add Team" (or ?create=1)
+    }
+    // "Add Team" from Activity Logs still arrives as ?create=1
     @if(request()->boolean('create'))
-        openCreateTeamModal();
-        const url = new URL(window.location);
-        url.searchParams.delete('create');
-        history.replaceState(null, '', url);
+        if (activeTab !== 'team_setup') openCreateTeamModal();
     @endif
 })();
 
