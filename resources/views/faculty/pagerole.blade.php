@@ -6,6 +6,174 @@
 @section('content')
 
 <style>
+    /* ── Responsive shim ──
+       The frozen build ships no breakpoint utilities, so the sm:/lg: classes
+       this page has always used resolved to nothing. Emitted here for the set
+       the markup actually references. */
+    @media (min-width: 640px) {
+        .sm\:flex-row { flex-direction: row; }
+        .sm\:flex-none { flex: none; }
+        .sm\:items-center { align-items: center; }
+        .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .sm\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+        .sm\:min-w-\[7rem\] { min-width: 7rem; }
+        .sm\:ml-auto { margin-left: auto; }
+        .sm\:px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+        .sm\:text-\[30px\] { font-size: 30px; line-height: 1.15; }
+        .sm\:w-40 { width: 10rem; }
+        .sm\:w-44 { width: 11rem; }
+        .sm\:w-auto { width: auto; }
+    }
+    @media (min-width: 1024px) {
+        .lg\:flex-row { flex-direction: row; }
+        .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .lg\:col-span-2 { grid-column: span 2 / span 2; }
+        .lg\:border-r { border-right-width: 1px; }
+        .lg\:border-b-0 { border-bottom-width: 0; }
+        .lg\:w-80 { width: 20rem; }
+    }
+
+    /* ── Manage Teams + Team Setup layout ──
+       public/css/app.css is a frozen Tailwind build with no responsive
+       utilities in it at all — every sm:/md:/lg:/xl: class resolves to nothing
+       on the faculty pages. The layout below is written out here so it does not
+       depend on that build, and the handful of spacing and size utilities the
+       markup needs are shimmed at the bottom. */
+    .tm-stat-grid {
+        display: grid; gap: 1rem;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .tm-toolbar {
+        display: flex; align-items: flex-start; gap: .75rem; flex-wrap: nowrap;
+    }
+    .tm-toolbar .tm-search { flex: 1 1 auto; min-width: 0; }
+    .tm-toolbar .tm-select { width: 11rem; flex: 0 0 auto; }
+    .tm-toolbar .tm-setup-wrap { flex: 0 0 auto; }
+    .tm-toolbar .tm-setup-wrap > button { width: auto; }
+
+    .tm-card-grid {
+        display: grid; gap: 1rem;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        align-items: start;
+    }
+    .tm-card-empty { grid-column: 1 / -1; }
+    .tm-card-cover { height: 6rem; position: relative; }
+    .tm-card-avatar {
+        position: absolute; left: 1.25rem; bottom: -1.75rem;
+        width: 3.5rem; height: 3.5rem; border-radius: 9999px;
+        border: 4px solid #fff; display: flex; align-items: center; justify-content: center;
+    }
+    .brand-gradient-subtle { background: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 50%, #FBCFE8 100%); }
+
+    /* Team Setup modal */
+    .setup-modal { max-width: 72rem; max-height: 92vh; }
+    .setup-steps { display: flex; align-items: center; gap: 1rem; flex-wrap: nowrap; }
+    .setup-step-line { flex: 1 1 auto; min-width: 1.5rem; height: 1px; background: #e2e8f0; }
+    .setup-grid {
+        display: grid; gap: 1rem;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        align-items: start;
+    }
+    .setup-field-grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .setup-role-grid { display: grid; gap: .625rem; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .manage-stat-grid { display: grid; gap: .75rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .manage-grid {
+        display: grid; gap: 1rem;
+        grid-template-columns: 280px minmax(0, 1fr);
+        align-items: start;
+    }
+
+    @media (max-width: 1279px) {
+        .tm-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .tm-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .tm-toolbar { flex-wrap: wrap; }
+        .tm-toolbar .tm-search { flex-basis: 100%; }
+        .tm-toolbar .tm-select { flex: 1 1 10rem; width: auto; }
+        .setup-grid { grid-template-columns: minmax(0, 1fr); }
+        .setup-role-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .setup-steps { flex-wrap: wrap; }
+        .setup-step-line { display: none; }
+    }
+    @media (max-width: 1023px) {
+        .setup-field-grid { grid-template-columns: minmax(0, 1fr); }
+        .manage-grid { grid-template-columns: minmax(0, 1fr); }
+        .manage-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 767px) {
+        .tm-stat-grid { grid-template-columns: minmax(0, 1fr); }
+        .tm-card-grid { grid-template-columns: minmax(0, 1fr); }
+        .setup-role-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    /* ── Utilities the frozen build never emitted ── */
+    .text-\[9px\]  { font-size: 9px; line-height: 1.3; }
+    .text-\[10px\] { font-size: 10px; line-height: 1.35; }
+    .text-\[11px\] { font-size: 11px; line-height: 1.4; }
+    .text-\[12px\] { font-size: 12px; line-height: 1.45; }
+    .text-\[13px\] { font-size: 13px; line-height: 1.45; }
+    .text-\[14px\] { font-size: 14px; line-height: 1.5; }
+    .text-\[15px\] { font-size: 15px; line-height: 1.5; }
+    .text-\[28px\] { font-size: 28px; line-height: 1.1; }
+    .text-\[30px\] { font-size: 30px; line-height: 1.15; }
+
+    .gap-1\.5 { gap: .375rem; }
+    .gap-2\.5 { gap: .625rem; }
+    .mt-0\.5 { margin-top: .125rem; }
+    .mt-1\.5 { margin-top: .375rem; }
+    .mt-2\.5 { margin-top: .625rem; }
+    .mb-1\.5 { margin-bottom: .375rem; }
+    .py-0\.5 { padding-top: .125rem; padding-bottom: .125rem; }
+    .py-1\.5 { padding-top: .375rem; padding-bottom: .375rem; }
+    .py-2\.5 { padding-top: .625rem; padding-bottom: .625rem; }
+    .px-1\.5 { padding-left: .375rem; padding-right: .375rem; }
+    .px-2\.5 { padding-left: .625rem; padding-right: .625rem; }
+    .px-3\.5 { padding-left: .875rem; padding-right: .875rem; }
+    .px-7 { padding-left: 1.75rem; padding-right: 1.75rem; }
+    .p-0\.5 { padding: .125rem; }
+    .p-3\.5 { padding: .875rem; }
+    .pt-3 { padding-top: .75rem; }
+    .pt-5 { padding-top: 1.25rem; }
+    .pt-10 { padding-top: 2.5rem; }
+    .pb-5 { padding-bottom: 1.25rem; }
+    .pb-0 { padding-bottom: 0; }
+    .pl-9 { padding-left: 2.25rem; }
+    .pl-11 { padding-left: 2.75rem; }
+    .pr-0\.5 { padding-right: .125rem; }
+    .mx-5 { margin-left: 1.25rem; margin-right: 1.25rem; }
+
+    .w-1\.5 { width: .375rem; }
+    .h-1\.5 { height: .375rem; }
+    .w-2\.5 { width: .625rem; }
+    .h-2\.5 { height: .625rem; }
+    .h-fit { height: fit-content; }
+    .max-h-\[22rem\] { max-height: 22rem; }
+    .leading-snug { line-height: 1.375; }
+    .whitespace-pre-line { white-space: pre-line; }
+    .top-1\/2 { top: 50%; }
+    .left-4 { left: 1rem; }
+    .left-5 { left: 1.25rem; }
+    .-translate-y-1\/2 { transform: translateY(-50%); }
+    .tracking-\[0\.15em\] { letter-spacing: .15em; }
+
+    .bg-brand-soft\/40 { background-color: rgba(253, 242, 248, .6); }
+    .bg-slate-50\/50 { background-color: rgba(248, 250, 252, .5); }
+    .bg-slate-50\/60 { background-color: rgba(248, 250, 252, .6); }
+    .border-brand\/10 { border-color: rgba(219, 39, 119, .1); }
+    .border-brand\/15 { border-color: rgba(219, 39, 119, .15); }
+    .shadow-brand\/20 { --tw-shadow-color: rgba(219, 39, 119, .2); }
+    .placeholder\:text-slate-400::placeholder { color: #94a3b8; }
+
+    .hover\:text-brand:hover { color: #DB2777; }
+    .hover\:border-brand\/40:hover { border-color: rgba(219, 39, 119, .4); }
+    .hover\:bg-slate-50:hover { background-color: #f8fafc; }
+    .hover\:bg-slate-100:hover { background-color: #f1f5f9; }
+    .hover\:opacity-95:hover { opacity: .95; }
+    .hover\:opacity-90:hover { opacity: .9; }
+    .focus\:outline-none:focus { outline: 2px solid transparent; outline-offset: 2px; }
+    .focus\:border-brand:focus { border-color: #DB2777; }
+
     /* ── Main tab bar ── */
     .main-tab-btn {
         position:relative; display:inline-flex; align-items:center; gap:.5rem;
@@ -204,7 +372,7 @@
             </div>
 
             <!-- Overview figures -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+            <div class="tm-stat-grid mb-5">
                 <div class="rounded-2xl border border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
                     <div class="w-14 h-14 rounded-2xl bg-brand-soft flex items-center justify-center shrink-0">
                         <span class="iconify text-brand text-2xl" data-icon="mdi:account-group-outline"></span>
@@ -245,36 +413,36 @@
 
             {{-- Toolbar. The cards are all rendered, so the search box and the three
                  selects only decide which of them stay on screen. --}}
-            <div class="flex flex-col xl:flex-row xl:items-start gap-3 mb-5">
-                <div class="relative flex-1 min-w-0">
+            <div class="tm-toolbar mb-5">
+                <div class="tm-search relative">
                     <span class="iconify absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none" data-icon="mdi:magnify"></span>
                     <input type="text" id="teamCardSearch" oninput="filterTeamCards()" placeholder="Search team name, members, or concept..."
                            class="w-full h-12 pl-11 pr-4 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
                 <select id="teamCardTeamFilter" onchange="filterTeamCards()"
-                        class="h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition xl:w-48">
+                        class="h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition tm-select">
                     <option value="all">All Teams</option>
                     @foreach($groups ?? [] as $filterName => $filterMembers)
                         <option value="{{ $filterName }}">{{ $filterName }}</option>
                     @endforeach
                 </select>
                 <select id="teamCardRoleFilter" onchange="filterTeamCards()"
-                        class="h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition xl:w-44">
+                        class="h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition tm-select">
                     <option value="all">All Roles</option>
                     @foreach($roleLabels as $filterRoleKey => $filterRoleLabel)
                         <option value="{{ $filterRoleKey }}">{{ $filterRoleLabel }}</option>
                     @endforeach
                 </select>
                 <select id="teamCardStatusFilter" onchange="filterTeamCards()"
-                        class="h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition xl:w-44">
+                        class="h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition tm-select">
                     <option value="all">All Status</option>
                     <option value="complete">Completed</option>
                     <option value="in_progress">In Progress</option>
                     <option value="not_started">Not Started</option>
                 </select>
-                <div class="shrink-0">
+                <div class="tm-setup-wrap">
                     <button type="button" onclick="openCreateTeamModal()"
-                            class="w-full xl:w-auto h-12 px-6 rounded-xl brand-gradient text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-md shadow-brand/20 hover:opacity-95 transition">
+                            class="h-12 px-6 rounded-xl brand-gradient text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-md shadow-brand/20 hover:opacity-95 transition">
                         <span class="iconify text-lg" data-icon="mdi:cog-outline"></span>
                         <span class="iconify text-base" data-icon="mdi:plus"></span>
                         Team Setup
@@ -284,7 +452,7 @@
             </div>
 
             <!-- Team cards -->
-            <div id="teamCardsGrid" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-4">
+            <div id="teamCardsGrid" class="tm-card-grid">
                 @forelse($groups ?? [] as $groupName => $groupMembers)
                     @php
                         $cardIndex  = $loop->iteration;
@@ -342,8 +510,8 @@
                          data-team-search="{{ $cardSearchBlob }}">
                         {{-- Cover strip. Teams carry no photo of their own, so the strip is
                              tinted by the first role on the roster. --}}
-                        <div class="h-24 brand-gradient-subtle relative">
-                            <div class="absolute -bottom-7 left-5 w-14 h-14 rounded-full border-4 border-white flex items-center justify-center {{ $roleCardTints[$cardLeadRole] ?? 'bg-slate-100 text-slate-400' }}">
+                        <div class="tm-card-cover brand-gradient-subtle">
+                            <div class="tm-card-avatar {{ $roleCardTints[$cardLeadRole] ?? 'bg-slate-100 text-slate-400' }}">
                                 <span class="iconify text-2xl" data-icon="{{ $roleCardIcons[$cardLeadRole] ?? 'mdi:account-group-outline' }}"></span>
                             </div>
                         </div>
@@ -413,7 +581,7 @@
                         </div>
                     </div>
                 @empty
-                    <div class="col-span-full px-5 py-12 text-center">
+                    <div class="tm-card-empty px-5 py-12 text-center">
                         <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
                             <span class="iconify text-slate-300 text-2xl" data-icon="mdi:account-group-outline"></span>
                         </div>
@@ -697,7 +865,7 @@
 <!-- Add Team Modal -->
 <div id="createTeamModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeCreateTeamModal()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full setup-modal flex flex-col overflow-hidden">
         <!-- Modal Header -->
         <div class="bg-white px-6 py-4 border-b border-slate-200 flex justify-between items-start rounded-t-2xl flex-shrink-0">
             <div class="min-w-0">
@@ -753,7 +921,7 @@
         <div id="modal-panel-add_team" class="flex-1 min-h-0 overflow-y-auto">
             {{-- Where the wizard is: the four stages a bulk create runs through. --}}
             <div class="px-5 pt-5">
-                <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 flex flex-wrap items-center gap-4">
+                <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 setup-steps">
                     @foreach([
                         ['n' => 1, 'title' => 'Team Setup',         'sub' => 'Set the number of teams'],
                         ['n' => 2, 'title' => 'Role Configuration', 'sub' => 'Roles for the teams'],
@@ -769,13 +937,13 @@
                             </div>
                         </div>
                         @if(!$loop->last)
-                            <span class="hidden xl:block h-px flex-1 min-w-[1.5rem] bg-slate-200"></span>
+                            <span class="setup-step-line"></span>
                         @endif
                     @endforeach
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4 p-5">
+            <div class="setup-grid p-5">
                 <div class="min-w-0">
             @php $unassignedStudentCount = ($students ?? collect())->count(); @endphp
             <div class="px-6 pt-5">
@@ -950,7 +1118,7 @@
                                 <p class="text-[12px] text-slate-400">Specify the number of teams and team size.</p>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="setup-field-grid">
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Number of Teams <span class="text-red-400">*</span></label>
                                 <input type="number" id="bulkTeamCount" min="0" max="40" readonly
@@ -998,7 +1166,7 @@
                                 <p class="text-[12px] text-slate-400">The roles available to every team in this simulation.</p>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2.5">
+                        <div class="setup-role-grid">
                             @foreach($teamRoleOptions as $rk => $rl)
                                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
                                     <div class="flex items-center gap-2">
@@ -1181,7 +1349,7 @@
             @endphp
 
             <!-- Figures strip -->
-            <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 p-5 pb-0">
+            <div class="manage-stat-grid p-5 pb-0">
                 <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 flex items-center gap-3">
                     <div class="w-11 h-11 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
                         <span class="iconify text-brand text-xl" data-icon="mdi:account-group-outline"></span>
@@ -1232,7 +1400,7 @@
                     </div>
                 @endif
 
-                <div class="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-4 p-5">
+                <div class="manage-grid p-5">
                     {{-- Left: the teams themselves. Clicking one drives the same select the
                          role-availability code already reads, so nothing downstream changes. --}}
                     <div class="rounded-2xl border border-slate-200 bg-white p-4 h-fit">
