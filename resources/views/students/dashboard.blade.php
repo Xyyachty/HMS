@@ -638,7 +638,7 @@
                 $teamNextDeadline = ($upcomingDeadlines ?? collect())->first()?->due_date;
                 $teamPercent      = (int) ($completionRate ?? 0);
                 // Donut geometry for the Overall Progress ring in the team header.
-                $ringRadius = 22;
+                $ringRadius = 26;
                 $ringLength = 2 * M_PI * $ringRadius;
                 $ringFilled = $ringLength * min(max($teamPercent, 0), 100) / 100;
 
@@ -652,188 +652,213 @@
                 $groupTint = fn($role, $key) => $groupRoleTints[$role][$key] ?? ($key === 'bar' ? 'bg-slate-400' : ($key === 'text' ? 'text-slate-400' : 'bg-slate-100'));
             @endphp
 
-            <div id="group-section" class="section-content hidden fade-in space-y-3">
-                <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">My Team</h2>
+            <div id="group-section" class="section-content hidden fade-in space-y-4">
+                <div>
+                    <h2 class="text-2xl sm:text-[30px] font-extrabold tracking-tight text-slate-900 leading-tight">My Team</h2>
+                    <p class="text-sm text-slate-500 mt-1">View your team details, members, tasks and progress.</p>
+                </div>
 
                 {{-- Team header. The heading, eyebrow, type line and description block
                      are repainted by paintTeamHeaderConcept() once faculty approves a
-                     concept, so their ids and their order have to stay as they are. --}}
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 sm:px-5 py-4">
-                    <div class="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
-                        <div class="flex items-start gap-4 flex-1 min-w-0">
-                            <div class="w-14 h-14 rounded-2xl bg-brand-soft flex items-center justify-center shrink-0">
-                                <span class="iconify text-brand text-2xl" data-icon="mdi:account-group-outline"></span>
+                     concept, so their ids have to stay as they are. --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 sm:px-7 py-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center gap-6">
+                        <div class="flex items-start gap-5 flex-1 min-w-0">
+                            <div class="w-[88px] h-[88px] rounded-full bg-brand-soft flex items-center justify-center shrink-0">
+                                <span class="iconify text-brand text-[42px]" data-icon="mdi:account-group"></span>
                             </div>
                             <div class="flex-1 min-w-0">
                                 @if($group)
-                                    <p id="teamHeaderEyebrow" class="text-slate-400 text-[9px] font-bold uppercase tracking-[0.15em]">Hotel Management Simulation</p>
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <h3 id="teamHeaderName" class="text-lg font-extrabold text-slate-900 leading-tight"
+                                    <div class="flex items-center gap-2.5 flex-wrap">
+                                        <h3 id="teamHeaderName" class="text-2xl font-extrabold text-slate-900 leading-tight"
                                             data-team-name="{{ $group->name }}">{{ $group->name }}</h3>
                                         @if(!empty($studentClass))
-                                            <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[9px] font-bold uppercase tracking-wider">{{ $studentClass->name }}</span>
+                                            <span class="px-2.5 py-1 rounded-lg bg-brand-soft text-brand text-[11px] font-bold uppercase tracking-wider">{{ $studentClass->name }}</span>
                                         @endif
                                     </div>
-                                    <p id="teamHeaderType" class="hidden text-[11px] font-bold text-slate-500 mt-0.5"></p>
+                                    <p id="teamHeaderEyebrow" class="text-slate-400 text-[13px] font-semibold mt-1">Hotel Management Simulation</p>
+                                    <p id="teamHeaderType" class="hidden text-[12px] font-bold text-slate-500 mt-0.5"></p>
                                 @else
-                                    <p class="text-slate-400 text-[9px] font-bold uppercase tracking-[0.15em]">Team</p>
-                                    <h3 class="text-base font-extrabold text-slate-900">Not assigned yet</h3>
+                                    <h3 class="text-2xl font-extrabold text-slate-900 leading-tight">Not assigned yet</h3>
+                                    <p class="text-slate-400 text-[13px] font-semibold mt-1">Team</p>
                                 @endif
 
                                 {{-- The approved concept's description. Painted from the same
                                      payload as the proposal cards, so there is one description
                                      of "what the team's concept is" rather than two that drift. --}}
-                                <div id="teamHeaderConcept" class="hidden mt-2"></div>
+                                <div id="teamHeaderConcept" class="hidden mt-2 max-w-lg"></div>
                             </div>
                         </div>
 
                         <!-- Team figures -->
-                        <div class="flex items-center gap-3 sm:gap-5 shrink-0 lg:border-l lg:border-slate-100 lg:pl-6 overflow-x-auto">
-                            <div class="flex items-center gap-2 shrink-0">
-                                <span class="iconify text-slate-300 text-xl" data-icon="mdi:account-multiple-outline"></span>
+                        <div class="flex items-center gap-4 sm:gap-7 shrink-0 lg:border-l lg:border-slate-100 lg:pl-7 overflow-x-auto">
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="iconify text-slate-300 text-[26px]" data-icon="mdi:account-multiple-outline"></span>
                                 <div>
-                                    <p class="text-lg font-extrabold text-slate-900 leading-none">{{ $teamMemberCount }}</p>
-                                    <p class="text-[10px] text-slate-400 font-semibold mt-0.5">Members</p>
+                                    <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamMemberCount }}</p>
+                                    <p class="text-[12px] text-slate-400 font-semibold mt-1">Members</p>
                                 </div>
                             </div>
-                            <div class="w-px h-8 bg-slate-100 shrink-0"></div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                <span class="iconify text-slate-300 text-xl" data-icon="mdi:clipboard-text-outline"></span>
+                            <div class="w-px h-11 bg-slate-100 shrink-0"></div>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="iconify text-slate-300 text-[26px]" data-icon="mdi:clipboard-text-outline"></span>
                                 <div>
-                                    <p class="text-lg font-extrabold text-slate-900 leading-none">{{ $teamTaskTotal }}</p>
-                                    <p class="text-[10px] text-slate-400 font-semibold mt-0.5">Assigned Tasks</p>
+                                    <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamTaskTotal }}</p>
+                                    <p class="text-[12px] text-slate-400 font-semibold mt-1">Assigned Tasks</p>
                                 </div>
                             </div>
-                            <div class="w-px h-8 bg-slate-100 shrink-0"></div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                <svg class="w-11 h-11 -rotate-90 shrink-0" viewBox="0 0 52 52" aria-hidden="true">
-                                    <circle cx="26" cy="26" r="{{ $ringRadius }}" fill="none" stroke="#F1F5F9" stroke-width="6"></circle>
-                                    <circle cx="26" cy="26" r="{{ $ringRadius }}" fill="none" stroke="#DB2777" stroke-width="6" stroke-linecap="round"
+                            <div class="w-px h-11 bg-slate-100 shrink-0"></div>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <svg class="w-[60px] h-[60px] -rotate-90 shrink-0" viewBox="0 0 60 60" aria-hidden="true">
+                                    <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#F1F5F9" stroke-width="7"></circle>
+                                    <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#DB2777" stroke-width="7" stroke-linecap="round"
                                             stroke-dasharray="{{ round($ringFilled, 2) }} {{ round($ringLength, 2) }}"></circle>
                                 </svg>
                                 <div>
-                                    <p class="text-lg font-extrabold text-slate-900 leading-none">{{ $teamPercent }}%</p>
-                                    <p class="text-[10px] text-slate-400 font-semibold mt-0.5">Overall Progress</p>
+                                    <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamPercent }}%</p>
+                                    <p class="text-[12px] text-slate-400 font-semibold mt-1">Overall Progress</p>
                                 </div>
                             </div>
-                            <div class="w-px h-8 bg-slate-100 shrink-0"></div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                <span class="iconify text-slate-300 text-xl" data-icon="mdi:calendar-outline"></span>
+                            <div class="w-px h-11 bg-slate-100 shrink-0"></div>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="iconify text-slate-300 text-[26px]" data-icon="mdi:calendar-outline"></span>
                                 <div>
-                                    <p class="text-sm font-extrabold text-slate-900 leading-none whitespace-nowrap">{{ $teamNextDeadline ? $teamNextDeadline->format('M j, Y') : 'None set' }}</p>
-                                    <p class="text-[10px] text-slate-400 font-semibold mt-0.5">Next Deadline</p>
+                                    <p class="text-xl font-extrabold text-slate-900 leading-none whitespace-nowrap">{{ $teamNextDeadline ? $teamNextDeadline->format('M j, Y') : 'None set' }}</p>
+                                    <p class="text-[12px] text-slate-400 font-semibold mt-1">Next Deadline</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
 
                     <!-- Team Members -->
                     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div class="px-4 sm:px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-                            <p class="text-sm font-bold text-slate-800">Team Members</p>
-                            <span class="text-xs font-bold text-brand">{{ $teamMemberCount }}</span>
+                        <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
+                            <p class="text-lg font-bold text-slate-800">Team Members</p>
+                            <span class="text-[13px] font-bold text-brand">{{ $teamMemberCount }}</span>
                         </div>
 
                         @if(isset($groupMembers) && $groupMembers->count() > 0)
-                            <!-- Column headings, on the widths that can carry them -->
-                            <div class="hidden md:flex items-center gap-3 px-5 py-2 bg-slate-50/60 border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                <span class="flex-1 min-w-0">Member</span>
-                                <span class="w-32 shrink-0">Role</span>
-                                <span class="w-12 text-center shrink-0">Tasks</span>
-                                <span class="w-24 shrink-0">Progress</span>
-                                <span class="w-20 text-right shrink-0">Last Active</span>
-                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full min-w-[620px] text-left">
+                                    <thead>
+                                        <tr class="border-b border-slate-100">
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500 w-10">#</th>
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500">Member</th>
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500">Role</th>
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500 text-center">Tasks Assigned</th>
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500 w-32">Progress</th>
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500">Last Active</th>
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($groupMembers as $index => $member)
+                                            @php
+                                                $mRoles = is_string($member)
+                                                    ? []
+                                                    : (array) ($member->roles ?? []);
+                                                if ($mRoles === [] && !empty($member->role ?? null)) {
+                                                    $mRoles = [$member->role];
+                                                }
+                                                $memberUserId  = $getMemberValue($member, 'id');
+                                                $isCurrentUser = $memberUserId === (auth()->id() ?? null);
+                                                $memberName    = $getMemberValue($member, 'name', 'Unknown');
+                                                $stats         = ($memberTaskStats ?? collect())->get($memberUserId, ['total' => 0, 'done' => 0, 'percent' => 0]);
+                                                $lastSeen      = is_object($member) ? ($member->user?->last_seen_at ?? null) : null;
+                                                $primaryRole   = $mRoles[0] ?? null;
+                                            @endphp
+                                            <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors" data-member-row data-member-id="{{ $memberUserId }}">
+                                                <td class="px-4 py-3.5 text-[13px] font-semibold text-slate-400">{{ $index + 1 }}</td>
 
-                            <div class="divide-y divide-slate-100">
-                                @foreach($groupMembers as $index => $member)
-                                    @php
-                                        $mRoles = is_string($member)
-                                            ? []
-                                            : (array) ($member->roles ?? []);
-                                        if ($mRoles === [] && !empty($member->role ?? null)) {
-                                            $mRoles = [$member->role];
-                                        }
-                                        $memberUserId  = $getMemberValue($member, 'id');
-                                        $isCurrentUser = $memberUserId === (auth()->id() ?? null);
-                                        $memberName    = $getMemberValue($member, 'name', 'Unknown');
-                                        $stats         = ($memberTaskStats ?? collect())->get($memberUserId, ['total' => 0, 'done' => 0, 'percent' => 0]);
-                                        $lastSeen      = is_object($member) ? ($member->user?->last_seen_at ?? null) : null;
-                                        $primaryRole   = $mRoles[0] ?? null;
-                                    @endphp
-                                    <div class="px-4 sm:px-5 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 transition-colors" data-member-row data-member-id="{{ $memberUserId }}">
-                                        <!-- Member -->
-                                        <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                                            @include('partials.user-avatar', [
-                                                'user'        => is_object($member) ? ($member->user ?? null) : null,
-                                                'name'        => $memberName,
-                                                'size'        => 'w-9 h-9',
-                                                'currentUser' => $isCurrentUser,
-                                            ])
-                                            <div class="min-w-0">
-                                                <p class="text-[13px] font-bold text-slate-800 truncate">
-                                                    {{ $memberName }}
-                                                    @if($isCurrentUser)
-                                                        <span class="ml-1 px-1.5 py-0.5 bg-brand-soft text-brand text-[8px] font-bold rounded-md uppercase">You</span>
+                                                <!-- Member -->
+                                                <td class="px-4 py-3.5">
+                                                    <div class="flex items-center gap-3 min-w-0">
+                                                        @include('partials.user-avatar', [
+                                                            'user'        => is_object($member) ? ($member->user ?? null) : null,
+                                                            'name'        => $memberName,
+                                                            'size'        => 'w-10 h-10',
+                                                            'currentUser' => $isCurrentUser,
+                                                        ])
+                                                        <div class="min-w-0">
+                                                            <p class="text-[13px] font-bold text-slate-800 truncate">
+                                                                {{ $memberName }}
+                                                                @if($isCurrentUser)
+                                                                    <span class="ml-1 px-1.5 py-0.5 bg-brand-soft text-brand text-[8px] font-bold rounded-md uppercase">You</span>
+                                                                @endif
+                                                            </p>
+                                                            <div class="flex items-center gap-1.5" data-presence-user="{{ $memberUserId }}">
+                                                                <span class="w-1.5 h-1.5 rounded-full member-online-dot {{ $isCurrentUser ? 'bg-emerald-400 pulse-dot' : 'bg-slate-200' }}"></span>
+                                                                <span class="text-[10px] member-online-label {{ $isCurrentUser ? 'text-emerald-600 font-semibold' : 'text-slate-400' }}">{{ $isCurrentUser ? 'Online' : 'Offline' }}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                <!-- Role -->
+                                                <td class="px-4 py-3.5">
+                                                    @if($primaryRole)
+                                                        @php
+                                                            $displayRole    = $roleLabels[$primaryRole] ?? ucfirst(str_replace('_', ' ', $primaryRole));
+                                                            $roleBadgeClass = $roleBadgeClasses[$primaryRole] ?? 'role-badge-room';
+                                                        @endphp
+                                                        <span class="inline-flex items-center {{ $roleBadgeClass }} px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap">
+                                                            {{ $displayRole }}
+                                                        </span>
+                                                        @if(count($mRoles) > 1)
+                                                            <span class="ml-1 text-[10px] font-bold text-slate-400">+{{ count($mRoles) - 1 }}</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="inline-flex items-center bg-slate-100 text-slate-400 px-2.5 py-1 rounded-lg text-[11px] font-semibold">No role</span>
                                                     @endif
-                                                </p>
-                                                <div class="flex items-center gap-1.5" data-presence-user="{{ $memberUserId }}">
-                                                    <span class="w-1.5 h-1.5 rounded-full member-online-dot {{ $isCurrentUser ? 'bg-emerald-400 pulse-dot' : 'bg-slate-200' }}"></span>
-                                                    <span class="text-[10px] member-online-label {{ $isCurrentUser ? 'text-emerald-600 font-semibold' : 'text-slate-400' }}">{{ $isCurrentUser ? 'Online' : 'Offline' }}</span>
-                                                    <span class="md:hidden text-[10px] text-slate-300">· {{ $stats['total'] }} task{{ $stats['total'] === 1 ? '' : 's' }} · {{ $stats['percent'] }}%</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                </td>
 
-                                        <!-- Role -->
-                                        <div class="hidden md:block w-32 shrink-0">
-                                            @if($primaryRole)
-                                                @php
-                                                    $displayRole    = $roleLabels[$primaryRole] ?? ucfirst(str_replace('_', ' ', $primaryRole));
-                                                    $roleBadgeClass = $roleBadgeClasses[$primaryRole] ?? 'role-badge-room';
-                                                @endphp
-                                                <span class="inline-flex items-center {{ $roleBadgeClass }} px-2 py-0.5 rounded-full text-[10px] font-semibold truncate max-w-full">
-                                                    {{ $displayRole }}
-                                                </span>
-                                                @if(count($mRoles) > 1)
-                                                    <span class="ml-1 text-[10px] font-bold text-slate-400">+{{ count($mRoles) - 1 }}</span>
-                                                @endif
-                                            @else
-                                                <span class="inline-flex items-center bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-semibold">No role</span>
-                                            @endif
-                                        </div>
+                                                <!-- Tasks assigned -->
+                                                <td class="px-4 py-3.5 text-center text-[13px] font-bold text-slate-700">{{ $stats['total'] }}</td>
 
-                                        <!-- Tasks assigned -->
-                                        <p class="hidden md:block w-12 text-center text-[13px] font-bold text-slate-700 shrink-0">{{ $stats['total'] }}</p>
+                                                <!-- Progress -->
+                                                <td class="px-4 py-3.5">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-[12px] font-bold text-slate-600 w-8 shrink-0">{{ $stats['percent'] }}%</span>
+                                                        <span class="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                                            <span class="block h-full rounded-full {{ $groupTint($primaryRole, 'bar') }}" style="width: {{ $stats['percent'] }}%"></span>
+                                                        </span>
+                                                    </div>
+                                                </td>
 
-                                        <!-- Progress -->
-                                        <div class="hidden md:flex items-center gap-2 w-24 shrink-0">
-                                            <span class="text-[11px] font-bold text-slate-500 w-8 shrink-0">{{ $stats['percent'] }}%</span>
-                                            <span class="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                                                <span class="block h-full rounded-full {{ $groupTint($primaryRole, 'bar') }}" style="width: {{ $stats['percent'] }}%"></span>
-                                            </span>
-                                        </div>
+                                                <!-- Last active -->
+                                                <td class="px-4 py-3.5">
+                                                    @if($lastSeen)
+                                                        <p class="text-[12px] font-semibold text-slate-600 whitespace-nowrap">{{ $lastSeen->format('M j, Y') }}</p>
+                                                        <p class="text-[11px] text-slate-400 whitespace-nowrap">{{ $lastSeen->format('g:i A') }}</p>
+                                                    @else
+                                                        <span class="text-[12px] text-slate-300">—</span>
+                                                    @endif
+                                                </td>
 
-                                        <!-- Last active -->
-                                        <p class="hidden md:block w-20 text-right text-[11px] font-medium text-slate-400 shrink-0">
-                                            {{ $lastSeen ? $lastSeen->format('M j, Y') : '—' }}
-                                        </p>
-
-                                        {{-- Teammates only; own history lives in the Activity Logs nav section. --}}
-                                        @if(!$isCurrentUser && $memberUserId)
-                                            <button type="button"
-                                                onclick="openMemberActivityModal({{ (int) $memberUserId }}, {{ json_encode($memberName) }})"
-                                                class="shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-500 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-brand transition"
-                                                title="View {{ $memberName }}'s activity logs">
-                                                <span class="iconify text-sm" data-icon="mdi:clipboard-text-clock-outline"></span>
-                                            </button>
-                                        @else
-                                            <span class="shrink-0 w-8"></span>
-                                        @endif
-                                    </div>
-                                @endforeach
+                                                {{-- Teammates only; own history lives in the Activity Logs nav section. --}}
+                                                <td class="px-4 py-3.5">
+                                                    <div class="flex items-center justify-end">
+                                                        @if(!$isCurrentUser && $memberUserId)
+                                                            <button type="button"
+                                                                onclick="openMemberActivityModal({{ (int) $memberUserId }}, {{ json_encode($memberName) }})"
+                                                                class="w-9 h-9 inline-flex items-center justify-center rounded-full border border-slate-200 text-slate-400 hover:text-brand hover:border-brand/40 transition"
+                                                                title="View {{ $memberName }}'s activity logs">
+                                                                <span class="iconify text-base" data-icon="mdi:clipboard-text-clock-outline"></span>
+                                                            </button>
+                                                        @else
+                                                            <span class="w-9 h-9 inline-flex items-center justify-center rounded-full bg-brand-soft text-brand" title="This is you">
+                                                                <span class="iconify text-base" data-icon="mdi:account-check-outline"></span>
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
                         @else
                             <div class="px-4 py-12 text-center">
@@ -850,58 +875,77 @@
                          to a person, so each row is one department's workload for this
                          team: how many tasks, how far along, and the nearest date due. --}}
                     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div class="px-4 sm:px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-                            <p class="text-sm font-bold text-slate-800">Assigned Tasks</p>
+                        <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
+                            <p class="text-lg font-bold text-slate-800">Assigned Tasks</p>
                             <button type="button" onclick="showSection('tasks')"
-                                    class="text-[11px] font-bold text-brand hover:text-brand-dark transition-colors">View All Tasks</button>
+                                    class="text-[12px] font-bold text-brand hover:text-brand-dark transition-colors">View All Tasks</button>
                         </div>
-                        <div class="divide-y divide-slate-100">
-                            @forelse(($teamRoleProgress ?? collect()) as $row)
-                                @php
-                                    $rowLabel = $roleLabels[$row['role']] ?? ucfirst(str_replace('_', ' ', $row['role']));
-                                    $rowStatus = $row['percent'] >= 100
-                                        ? ['label' => 'Completed',   'class' => 'bg-emerald-50 text-emerald-600']
-                                        : ($row['percent'] > 0
-                                            ? ['label' => 'In Progress', 'class' => 'bg-blue-50 text-blue-600']
-                                            : ['label' => 'Not Started', 'class' => 'bg-slate-100 text-slate-500']);
-                                @endphp
-                                <div class="px-4 sm:px-5 py-3 flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $groupTint($row['role'], 'bg') }} {{ $groupTint($row['role'], 'text') }}">
-                                        <span class="iconify text-lg" data-icon="{{ $roleIcons[$row['role']] ?? 'mdi:clipboard-text-outline' }}"></span>
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-[13px] font-bold text-slate-800 truncate">{{ $rowLabel }}</p>
-                                        <p class="text-[11px] text-slate-400 mt-0.5">{{ $row['total'] }} task{{ $row['total'] === 1 ? '' : 's' }} · {{ $row['done'] }} done</p>
-                                    </div>
-                                    <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 {{ $rowStatus['class'] }}">{{ $rowStatus['label'] }}</span>
-                                    <div class="hidden lg:block w-20 shrink-0">
-                                        <p class="text-[9px] font-bold uppercase tracking-wider text-slate-300">Due Date</p>
-                                        <p class="text-[11px] font-bold text-slate-600 whitespace-nowrap">{{ $row['next_due'] ? $row['next_due']->format('M j, Y') : '—' }}</p>
-                                    </div>
-                                    <div class="w-16 sm:w-20 shrink-0">
-                                        <p class="text-[11px] font-bold text-slate-600 text-right">{{ $row['percent'] }}%</p>
-                                        <span class="block h-1.5 mt-1 rounded-full bg-slate-100 overflow-hidden">
-                                            <span class="block h-full rounded-full {{ $groupTint($row['role'], 'bar') }}" style="width: {{ $row['percent'] }}%"></span>
-                                        </span>
-                                    </div>
+                        @if(($teamRoleProgress ?? collect())->isNotEmpty())
+                            <div class="overflow-x-auto">
+                                <table class="w-full min-w-[520px] text-left">
+                                    <thead>
+                                        <tr class="border-b border-slate-100">
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500">Task</th>
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500">Status</th>
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500">Due Date</th>
+                                            <th class="px-4 py-3 text-[12px] font-bold text-slate-500 w-28">Progress</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach(($teamRoleProgress ?? collect()) as $row)
+                                            @php
+                                                $rowLabel = $roleLabels[$row['role']] ?? ucfirst(str_replace('_', ' ', $row['role']));
+                                                $rowStatus = $row['percent'] >= 100
+                                                    ? ['label' => 'Completed',   'class' => 'bg-emerald-50 text-emerald-600']
+                                                    : ($row['percent'] > 0
+                                                        ? ['label' => 'In Progress', 'class' => 'bg-blue-50 text-blue-600']
+                                                        : ['label' => 'Not Started', 'class' => 'bg-slate-100 text-slate-500']);
+                                            @endphp
+                                            <tr class="border-b border-slate-100">
+                                                <td class="px-4 py-3.5">
+                                                    <div class="flex items-center gap-3 min-w-0">
+                                                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {{ $groupTint($row['role'], 'bg') }} {{ $groupTint($row['role'], 'text') }}">
+                                                            <span class="iconify text-lg" data-icon="{{ $roleIcons[$row['role']] ?? 'mdi:clipboard-text-outline' }}"></span>
+                                                        </div>
+                                                        <div class="min-w-0">
+                                                            <p class="text-[13px] font-bold text-slate-800 truncate">{{ $rowLabel }}</p>
+                                                            <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ $row['total'] }} task{{ $row['total'] === 1 ? '' : 's' }} &middot; {{ $row['done'] }} done</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-3.5">
+                                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap {{ $rowStatus['class'] }}">{{ $rowStatus['label'] }}</span>
+                                                </td>
+                                                <td class="px-4 py-3.5">
+                                                    <p class="text-[12px] font-semibold text-slate-600 whitespace-nowrap">{{ $row['next_due'] ? $row['next_due']->format('M j, Y') : '—' }}</p>
+                                                </td>
+                                                <td class="px-4 py-3.5">
+                                                    <p class="text-[12px] font-bold text-slate-600">{{ $row['percent'] }}%</p>
+                                                    <span class="block h-1.5 mt-1 rounded-full bg-slate-100 overflow-hidden">
+                                                        <span class="block h-full rounded-full {{ $groupTint($row['role'], 'bar') }}" style="width: {{ $row['percent'] }}%"></span>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <div class="px-5 py-12 text-center">
+                                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                    <span class="iconify text-2xl text-slate-300" data-icon="mdi:clipboard-text-outline"></span>
                                 </div>
-                            @empty
-                                <div class="px-5 py-12 text-center">
-                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:clipboard-text-outline"></span>
-                                    </div>
-                                    <p class="text-sm font-semibold text-slate-400">No tasks assigned yet</p>
-                                    <p class="text-xs text-slate-300 mt-1">Faculty tasks for your team will appear here.</p>
-                                </div>
-                            @endforelse
-                        </div>
+                                <p class="text-sm font-semibold text-slate-400">No tasks assigned yet</p>
+                                <p class="text-xs text-slate-300 mt-1">Faculty tasks for your team will appear here.</p>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
                 <div class="flex justify-center pt-1">
                     <button type="button" onclick="showSection('tasks')"
-                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-[13px] font-bold text-slate-700 hover:bg-slate-50 hover:text-brand transition-colors shadow-sm">
-                        <span class="iconify text-base" data-icon="mdi:format-list-checks"></span>
+                            class="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl bg-white border border-slate-200 text-[14px] font-bold text-slate-700 hover:bg-slate-50 hover:text-brand transition-colors shadow-sm">
+                        <span class="iconify text-lg" data-icon="mdi:format-list-checks"></span>
                         View All Team Tasks
                     </button>
                 </div>
