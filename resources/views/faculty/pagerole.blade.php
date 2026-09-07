@@ -2052,14 +2052,15 @@ function setTeamsActionHighlight(activeKey) {
 
 /* Team Setup is its own screen rather than a dialog, so opening and closing it
    is navigation. Both keep the class the faculty is looking at. */
-const TEAM_SETUP_URL = @json(route('faculty.role', array_filter([
-    'class' => $activeClass->letter ?? null,
-    'tab'   => 'team_setup',
-])));
-const TEAMS_LIST_URL = @json(route('faculty.role', array_filter([
-    'class' => $activeClass->letter ?? null,
-    'tab'   => 'teams',
-])));
+@php
+    // Built here rather than inside @json: the directive's argument parser cannot
+    // read a multi-line array literal.
+    $setupScreenQuery = array_filter(['class' => $activeClass->letter ?? null]);
+    $teamSetupUrl = route('faculty.role', $setupScreenQuery + ['tab' => 'team_setup']);
+    $teamsListUrl = route('faculty.role', $setupScreenQuery + ['tab' => 'teams']);
+@endphp
+const TEAM_SETUP_URL = @json($teamSetupUrl);
+const TEAMS_LIST_URL = @json($teamsListUrl);
 
 function openCreateTeamModal() {
     window.location.href = TEAM_SETUP_URL;
