@@ -2180,7 +2180,139 @@ class FacultyController extends Controller
             })
             ->values();
 
-        return view('faculty.reports', compact('teamReports', 'roleLabels'));
+        /*
+         * Overview figures. The report screen leads with the shape of the whole
+         * cohort before it drills into one team, so everything below is counted
+         * off the rosters and the task rows rather than re-queried per card.
+         */
+        $rosterRows = StudentGroup::with(['roles', 'student.user'])
+            ->where('faculty_id', $facultyId)
+            ->get();
+
+        $allTasks = Task::with(['student.user', 'assignedTo'])
+            ->where('faculty_id', $facultyId)
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $totalStudents   = Student::where('faculty_id', $facultyId)->count();
+        $teamNames       = $rosterRows->pluck('group_name')->filter()->unique()->values();
+        $totalTeams      = $teamNames->count();
+        $totalActivities = $allTasks->count();
+        $doneActivities  = $allTasks->where('status', 'archived')->count();
+        $overallRate     = $totalActivities > 0
+            ? (int) round(($doneActivities / $totalActivities) * 100)
+            : 0;
+
+        // The window the data actually covers, so the header states a real period
+        // rather than offering a picker nothing filters on.
+        $reportFrom = $allTasks->min('created_at');
+        $reportTo   = $allTasks->max('updated_at');
+
+        // Per-team completion. Tasks carry the team they were addressed to, so a
+        // team's bar is its own rows rather than a share of the cohort's.
+        $tasksByTeam = $allTasks->groupBy('group_name');
+        $teamPerformance = $teamNames->map(function ($name) use ($tasksByTeam) {
+            $rows  = $tasksByTeam->get($name, collect());
+            $total = $rows->count();
+            $done  = $rows->where('status', 'archived')->count();
+
+            return [
+                'team'    => $name,
+                'total'   => $total,
+                'done'    => $done,
+                'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+            ];
+        })->values();
+
+        // How many students hold each role across every team.
+        $roleParticipation = collect($roleLabels)->map(function ($label, $key) use ($rosterRows) {
+            return [
+                'role'  => $key,
+                'label' => $label,
+                'count' => $rosterRows->filter(fn ($m) => $m->roles->pluck('role')->contains($key))->count(),
+            ];
+        })->values();
+
+        /*
+         * Per-student completion. Faculty address most tasks to a department
+         * rather than a person, so a row counts toward a student when it names
+         * them outright or belongs to a role they hold on their own team — the
+         * same rule the student's own dashboard uses.
+         */
+        $studentPerformance = $rosterRows->map(function ($membership) use ($allTasks) {
+            $user  = $membership->student?->user;
+            $name  = trim(implode(' ', array_filter([
+                $user?->last_name,
+                $user?->first_name,
+                $user?->middle_name,
+            ]))) ?: ($user?->name ?? 'Student');
+
+            $roles = $membership->roles->pluck('role')->filter()->all();
+
+            $mine = $allTasks->filter(function (Task $task) use ($membership, $user, $roles) {
+                if ($task->student_id && (int) $task->student_id === (int) $membership->student_id) {
+                    return true;
+                }
+                if ($task->assigned_to && $user && (int) $task->assigned_to === (int) $user->user_id) {
+                    return true;
+                }
+
+                return $task->group_name === $membership->group_name
+                    && in_array($task->role, $roles, true);
+            });
+
+            $total = $mine->count();
+            $done  = $mine->where('status', 'archived')->count();
+
+            return [
+                'name'    => $name,
+                'team'    => $membership->group_name ?? 'Unassigned',
+                'user'    => $user,
+                'total'   => $total,
+                'done'    => $done,
+                'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+            ];
+        })
+            ->sortByDesc(fn ($row) => [$row['percent'], $row['done']])
+            ->values();
+
+        // The latest submissions across every team.
+        $teamByStudentId = $rosterRows->keyBy('student_id');
+        $recentActivities = $allTasks->take(6)->map(function (Task $task) use ($teamByStudentId, $roleLabels) {
+            $user = $task->student?->user ?? $task->assignedTo;
+            $name = trim(implode(' ', array_filter([
+                $user?->last_name,
+                $user?->first_name,
+                $user?->middle_name,
+            ]))) ?: ($user?->name ?? 'Unclaimed');
+
+            return [
+                'date'       => optional($task->updated_at)->format('M d, Y'),
+                'time'       => optional($task->updated_at)->format('g:i A'),
+                'student'    => $name,
+                'user'       => $user,
+                'team'       => $task->group_name ?: ($teamByStudentId->get((int) $task->student_id)?->group_name ?? '—'),
+                'activity'   => $task->title,
+                'role_label' => $roleLabels[$task->role] ?? $task->role,
+                'status'     => $task->status === 'archived' ? 'Completed' : 'Pending',
+            ];
+        })->values();
+
+        return view('faculty.reports', compact(
+            'teamReports',
+            'roleLabels',
+            'totalStudents',
+            'totalTeams',
+            'totalActivities',
+            'doneActivities',
+            'overallRate',
+            'reportFrom',
+            'reportTo',
+            'teamPerformance',
+            'roleParticipation',
+            'studentPerformance',
+            'recentActivities'
+        ));
     }
 
     public function activityLogs(Request $request)
