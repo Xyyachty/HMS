@@ -918,11 +918,20 @@
                 @php
                     // One entry per assigned role — a member may hold more than one.
                     $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
+
+                    // The table lists active and completed work together, so the rows are
+                    // numbered once over the pair and every row carries the same shape.
+                    $taskPriorityTints = [
+                        'high'   => 'bg-red-50 text-red-500',
+                        'medium' => 'bg-amber-50 text-amber-600',
+                        'low'    => 'bg-slate-100 text-slate-500',
+                    ];
+                    $taskRowIndex = 0;
                 @endphp
                 <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                     <div>
-                        <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Manage Tasks</h2>
-                        <p class="text-sm text-slate-400">Tasks assigned to your role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
+                        <h2 class="text-2xl sm:text-[30px] font-extrabold tracking-tight text-slate-900 leading-tight">Manage Tasks</h2>
+                        <p class="text-sm text-slate-500 mt-1">View and manage all tasks assigned to you.</p>
                     </div>
                     @if(!empty($studentRoles))
                         <div class="flex flex-wrap items-center gap-3">
@@ -933,169 +942,312 @@
                                     {{ count($myModules) > 1 ? 'Customize ' . $module['label'] : 'Customize' }}
                                 </a>
                             @endforeach
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-lg">
-                                <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
-                                <span class="text-xs font-bold text-emerald-700"><span data-task-count="completed">{{ $myCompletedTasks->count() }}</span> completed</span>
-                            </div>
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-lg">
-                                <div class="w-2 h-2 rounded-full bg-amber-400"></div>
-                                <span class="text-xs font-bold text-amber-700"><span data-task-count="active">{{ $myRoleTasks->count() }}</span> active</span>
-                            </div>
                         </div>
                     @endif
                 </div>
 
                 @if(!empty($studentRoles))
-                    {{-- Both the list and the empty state are rendered, and one of them
+                    {{-- Toolbar: search, status pills and a role filter. All three narrow the
+                         same rendered rows in the browser — the list is small enough that a
+                         round trip per keystroke would only add latency. --}}
+                    <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+                        <div class="relative flex-1 min-w-0">
+                            <input type="text" id="taskSearchInput" oninput="filterTaskRows()" placeholder="Search tasks..."
+                                   class="w-full rounded-xl border border-slate-200 bg-white pl-4 pr-10 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand">
+                            <span class="iconify absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none" data-icon="mdi:magnify"></span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2" id="taskStatusFilters">
+                            @foreach(['all' => 'All', 'active' => 'In Progress', 'revision' => 'Needs Revision', 'completed' => 'Completed'] as $value => $label)
+                                <button type="button" data-status-filter="{{ $value }}" onclick="setTaskStatusFilter('{{ $value }}')"
+                                        class="task-filter-pill px-4 py-2 rounded-xl text-[13px] font-bold border transition-colors
+                                               {{ $value === 'all' ? 'brand-gradient text-white border-transparent' : 'bg-white text-slate-600 border-slate-200 hover:border-brand/40' }}">
+                                    {{ $label }}
+                                </button>
+                            @endforeach
+                        </div>
+                        <select id="taskRoleFilter" onchange="filterTaskRows()"
+                                class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand">
+                            <option value="all">All Roles</option>
+                            @foreach($studentRoles as $role)
+                                <option value="{{ $role }}">{{ $homeRoleLabels[$role] ?? $role }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Both the table and the empty state are rendered, and one of them
                          is hidden — faculty can close the concept task while this page
                          is open, and the poller has to be able to swap them without a
                          reload. --}}
-                    <div id="activeTasksCard" class="bg-white rounded-2xl border border-slate-100 overflow-hidden{{ $myRoleTasks->count() > 0 ? '' : ' hidden' }}">
-                        <div class="px-6 py-4 border-b border-slate-100">
-                            <h3 class="text-sm font-bold text-slate-800">Active Tasks</h3>
-                        </div>
-                        <div class="divide-y divide-slate-50">
-                            @foreach($myRoleTasks as $task)
-                                @php
-                                    $isOverdue = $task->due_date && $task->due_date->isPast();
-                                    // Rows are per member; only offer submit on this student's own
-                                    // row (or an unclaimed one). Task::booted() keeps assigned_to
-                                    // in sync with student_id, so the user id is enough here.
-                                    $isMine = !$task->assigned_to || (int) $task->assigned_to === (int) auth()->id();
-                                @endphp
-                                {{-- The concept task is not a one-line tick: the whole proposal
-                                     is written on this row, so it stacks instead of sitting on
-                                     one line, and keeps #conceptPanelCard — paintTeamHeaderConcept()
-                                     hides the row by that id once faculty has chosen. --}}
-                                <div class="task-row px-4 py-3{{ $task->is_hotel_concept ? ' space-y-3' : '' }}"
-                                    @if($task->is_hotel_concept) id="conceptPanelCard" data-task-title="{{ $task->title }}" @endif>
-                                    <div class="flex items-start gap-3">
-                                    @if($task->is_hotel_concept)
-                                        {{-- No tick: this task closes on the faculty verdict, not
-                                             on a checkbox — see the guard in students.tasks.complete. --}}
-                                        <div class="mt-1 w-3 h-3 shrink-0 flex items-center justify-center">
-                                            <span class="iconify text-brand text-xs" data-icon="mdi:lightbulb-outline"></span>
-                                        </div>
-                                    @elseif($isMine)
-                                        <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0 mt-1.5 leading-none">
-                                            @csrf
-                                            <button type="submit"
-                                                class="w-3 h-3 rounded-full border-2 border-slate-200 hover:border-brand hover:bg-brand-soft cursor-pointer transition-colors"
-                                                title="Mark &quot;{{ $task->title }}&quot; as done"
-                                                aria-label="Mark {{ $task->title }} as done"></button>
-                                        </form>
-                                    @else
-                                        <div class="mt-1.5 w-3 h-3 rounded-full border-2 border-slate-100 shrink-0" title="Assigned to a teammate"></div>
-                                    @endif
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center gap-2 flex-wrap">
-                                            <p class="text-sm font-bold text-slate-800">{{ $task->title }}</p>
-                                        </div>
-                                        @if($task->description)
-                                            <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">{{ $task->description }}</p>
-                                        @endif
-                                        @if($task->needs_revision)
-                                            {{-- Sent back by faculty: active again, but carrying feedback. --}}
-                                            <div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                                <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
-                                                    <span class="iconify text-xs" data-icon="mdi:message-alert-outline"></span>
-                                                    Faculty feedback{{ $task->revision_count > 1 ? ' · revision ' . $task->revision_count : '' }}
-                                                </p>
-                                                <p class="text-xs text-amber-800 mt-1 whitespace-pre-line">{{ $task->feedback }}</p>
-                                                @if($task->feedback_at)
-                                                    <p class="text-[10px] text-amber-600 mt-1">{{ $task->feedback_at->diffForHumans() }}</p>
-                                                @endif
-                                            </div>
-                                        @endif
-                                        @if($task->due_date)
-                                            <div class="flex items-center gap-3 mt-3">
-                                                <span class="flex items-center gap-1 text-[11px] {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400' }}">
-                                                    <span class="iconify text-xs" data-icon="mdi:calendar-outline"></span>
-                                                    {{ $task->due_date->format('M d, Y g:i A') }}
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[900px] text-left">
+                                <thead>
+                                    <tr class="border-b border-slate-100 bg-white">
+                                        <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500 w-10">#</th>
+                                        <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500">Task</th>
+                                        <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500">Role</th>
+                                        <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500">Priority</th>
+                                        <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500 w-44">Progress</th>
+                                        <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500">Status</th>
+                                        <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500">Due Date</th>
+                                        <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+
+                                @foreach($myRoleTasks as $task)
+                                    @php
+                                        $taskRowIndex++;
+                                        $isOverdue = $task->due_date && $task->due_date->isPast();
+                                        // Rows are per member; only offer submit on this student's own
+                                        // row (or an unclaimed one). Task::booted() keeps assigned_to
+                                        // in sync with student_id, so the user id is enough here.
+                                        $isMine       = !$task->assigned_to || (int) $task->assigned_to === (int) auth()->id();
+                                        $needsRevision = $task->needs_revision;
+                                        // A task carries no sub-activities, so progress is what the row
+                                        // itself knows: sent back means it was submitted once already.
+                                        $rowPercent   = $needsRevision ? 50 : 0;
+                                        $rowStatusKey = $needsRevision ? 'revision' : 'active';
+                                        $rowPriority  = strtolower($task->priority ?? 'medium');
+                                        $rowModule    = \App\Support\HotelTemplateBuilder::modulesForRoles([$task->role])[0] ?? null;
+                                        $rowDetailId  = 'taskDetail' . $task->task_id;
+                                    @endphp
+                                    {{-- The concept task is not a one-line tick: the whole proposal is
+                                         written on it, so it owns its own row group and keeps
+                                         #conceptPanelCard — paintTeamHeaderConcept() hides the group by
+                                         that id once faculty has chosen, and settleConceptTaskRow()
+                                         removes it outright. --}}
+                                    <tbody @if($task->is_hotel_concept) id="conceptPanelCard" data-task-title="{{ $task->title }}" @else class="task-group" @endif>
+                                        <tr class="task-row border-b border-slate-100 align-middle"
+                                            data-task-status="{{ $rowStatusKey }}"
+                                            data-task-role="{{ $task->role }}"
+                                            data-task-text="{{ strtolower($task->title . ' ' . ($homeRoleLabels[$task->role] ?? $task->role)) }}">
+                                            <td class="px-4 py-4 text-[13px] font-semibold text-slate-400">{{ $taskRowIndex }}</td>
+                                            <td class="px-4 py-4">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
+                                                        <span class="iconify text-xl" data-icon="{{ $task->is_hotel_concept ? 'mdi:lightbulb-outline' : ($roleIcons[$task->role] ?? 'mdi:clipboard-text-outline') }}"></span>
+                                                    </div>
+                                                    <div class="min-w-0">
+                                                        <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($taskRowIndex, 2, '0', STR_PAD_LEFT) }}</p>
+                                                        <p class="text-[13px] text-slate-500 truncate max-w-[260px]">{{ $task->title }}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
+                                                    {{ $homeRoleLabels[$task->role] ?? $task->role }}
                                                 </span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    @if($task->is_hotel_concept)
-                                        {{-- One button for the pair: faculty is asked to weigh the
-                                             two against each other, so they go in together. Hidden
-                                             until both slots are filled — paintHotelConcepts()
-                                             toggles it off conceptState.can_submit. --}}
-                                        <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
-                                            class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60 hidden">
-                                            <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
-                                            <span>Submit both to Faculty</span>
-                                        </button>
-                                    @elseif($isMine)
-                                        {{-- The real affordance; the circle above is too small to be the only target. --}}
-                                        <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0">
-                                            @csrf
-                                            <button type="submit"
-                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition
-                                                    {{ $task->needs_revision
-                                                        ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100'
-                                                        : 'text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10' }}">
-                                                <span class="iconify text-sm" data-icon="{{ $task->needs_revision ? 'mdi:send-outline' : 'mdi:check-circle-outline' }}"></span>
-                                                {{ $task->needs_revision ? 'Resubmit' : 'Mark as done' }}
-                                            </button>
-                                        </form>
-                                    @else
-                                        <span class="shrink-0 text-[10px] font-semibold text-slate-300 whitespace-nowrap">Teammate's task</span>
-                                    @endif
-                                    </div>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold {{ $taskPriorityTints[$rowPriority] ?? $taskPriorityTints['medium'] }}">
+                                                    {{ ucfirst($rowPriority) }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <div class="flex items-center gap-2.5">
+                                                    <span class="text-[13px] font-extrabold text-slate-700 w-9 shrink-0">{{ $rowPercent }}%</span>
+                                                    <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden flex-1">
+                                                        <div class="h-full rounded-full {{ $homeTint($task->role, 'bar') }}" style="width: {{ $rowPercent }}%"></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold {{ $needsRevision ? 'bg-amber-50 text-amber-700' : 'bg-brand-soft text-brand' }}">
+                                                    {{ $needsRevision ? 'Needs Revision' : 'In Progress' }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                @if($task->due_date)
+                                                    <p class="text-[13px] font-semibold whitespace-nowrap {{ $isOverdue ? 'text-red-500' : 'text-slate-600' }}">{{ $task->due_date->format('M j, Y') }}</p>
+                                                    <p class="text-[11px] text-slate-400 whitespace-nowrap">{{ $task->due_date->format('g:i A') }}</p>
+                                                @else
+                                                    <span class="text-[13px] text-slate-300">—</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <div class="flex items-center justify-end gap-2">
+                                                    <button type="button" onclick="toggleTaskDetail('{{ $rowDetailId }}', this)"
+                                                            title="View details" aria-label="View details for {{ $task->title }}"
+                                                            class="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand hover:border-brand/40 transition-colors">
+                                                        <span class="iconify text-base" data-icon="mdi:eye-outline"></span>
+                                                    </button>
+                                                    @if($task->is_hotel_concept)
+                                                        {{-- One button for the pair: faculty is asked to weigh the
+                                                             two against each other, so they go in together. Hidden
+                                                             until both slots are filled — paintHotelConcepts()
+                                                             toggles it off conceptState.can_submit. --}}
+                                                        <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
+                                                                title="Submit both concepts to faculty"
+                                                                class="hidden w-9 h-9 rounded-full brand-gradient text-white flex items-center justify-center shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60">
+                                                            <span class="iconify text-base" data-icon="mdi:send-outline"></span>
+                                                        </button>
+                                                    @elseif($isMine)
+                                                        {{-- The real affordance: marks this row done, or resubmits
+                                                             it when faculty has sent it back. --}}
+                                                        <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0 leading-none">
+                                                            @csrf
+                                                            <button type="submit"
+                                                                    title="{{ $needsRevision ? 'Resubmit' : 'Mark as done' }}"
+                                                                    aria-label="{{ $needsRevision ? 'Resubmit' : 'Mark' }} {{ $task->title }}"
+                                                                    class="w-9 h-9 rounded-full flex items-center justify-center transition
+                                                                        {{ $needsRevision
+                                                                            ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100'
+                                                                            : 'text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10' }}">
+                                                                <span class="iconify text-base" data-icon="{{ $needsRevision ? 'mdi:send-outline' : 'mdi:check' }}"></span>
+                                                            </button>
+                                                        </form>
+                                                    @else
+                                                        <span class="text-[10px] font-semibold text-slate-300 whitespace-nowrap">Teammate's</span>
+                                                    @endif
+                                                    @if($rowModule)
+                                                        <a href="{{ route($rowModule['route']) }}" title="Open {{ $rowModule['label'] }}"
+                                                           class="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand hover:border-brand/40 transition-colors">
+                                                            <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
+                                                        </a>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
 
-                                    @if($task->is_hotel_concept)
-                                        @if (session('success'))
-                                            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                                                {{ session('success') }}
-                                            </div>
-                                        @endif
-                                        @if ($errors->any())
-                                            <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                                                {{ $errors->first() }}
-                                            </div>
-                                        @endif
+                                        {{-- Detail drawer: description, faculty feedback, and for the
+                                             concept task the two proposals themselves. --}}
+                                        <tr class="task-detail-row border-b border-slate-100 {{ $task->is_hotel_concept ? '' : 'hidden' }}" id="{{ $rowDetailId }}">
+                                            <td colspan="8" class="px-4 pb-5 pt-0 bg-slate-50/50">
+                                                <div class="space-y-3">
+                                                    @if($task->description)
+                                                        <p class="text-[13px] text-slate-500 leading-relaxed">{{ $task->description }}</p>
+                                                    @endif
+                                                    @if($needsRevision)
+                                                        {{-- Sent back by faculty: active again, but carrying feedback. --}}
+                                                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                                            <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
+                                                                <span class="iconify text-xs" data-icon="mdi:message-alert-outline"></span>
+                                                                Faculty feedback{{ $task->revision_count > 1 ? ' · revision ' . $task->revision_count : '' }}
+                                                            </p>
+                                                            <p class="text-xs text-amber-800 mt-1 whitespace-pre-line">{{ $task->feedback }}</p>
+                                                            @if($task->feedback_at)
+                                                                <p class="text-[10px] text-amber-600 mt-1">{{ $task->feedback_at->diffForHumans() }}</p>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+                                                    @if($task->is_hotel_concept)
+                                                        @if (session('success'))
+                                                            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                                                                {{ session('success') }}
+                                                            </div>
+                                                        @endif
+                                                        @if ($errors->any())
+                                                            <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                                                                {{ $errors->first() }}
+                                                            </div>
+                                                        @endif
 
-                                        {{-- Both proposals, side by side, so faculty's choice can be
-                                             weighed here too. Rendered from this one container by
-                                             paintHotelConcepts(), which repaints after every save
-                                             and every submit — there is no server copy of this
-                                             markup to drift from the client one. --}}
-                                        <div id="conceptPanel" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
-                                    @endif
-                                </div>
-                            @endforeach
+                                                        {{-- Both proposals, side by side, so faculty's choice can be
+                                                             weighed here too. Rendered from this one container by
+                                                             paintHotelConcepts(), which repaints after every save
+                                                             and every submit — there is no server copy of this
+                                                             markup to drift from the client one. --}}
+                                                        <div id="conceptPanel" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                                                    @elseif(!$task->description && !$needsRevision)
+                                                        <p class="text-[13px] text-slate-400">No extra details on this task.</p>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                @endforeach
+
+                                {{-- Completed work sits in the same table so one status filter covers
+                                     the lot; settleConceptTaskRow() prepends into this body. --}}
+                                <tbody id="completedTasksList">
+                                    @foreach($myCompletedTasks as $task)
+                                        @php $taskRowIndex++; @endphp
+                                        <tr class="task-row border-b border-slate-100 align-middle"
+                                            data-task-status="completed"
+                                            data-task-role="{{ $task->role }}"
+                                            data-task-text="{{ strtolower($task->title . ' ' . ($homeRoleLabels[$task->role] ?? $task->role)) }}">
+                                            <td class="px-4 py-4 text-[13px] font-semibold text-slate-400">{{ $taskRowIndex }}</td>
+                                            <td class="px-4 py-4">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+                                                        <span class="iconify text-xl" data-icon="mdi:check-decagram-outline"></span>
+                                                    </div>
+                                                    <div class="min-w-0">
+                                                        <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($taskRowIndex, 2, '0', STR_PAD_LEFT) }}</p>
+                                                        <p class="text-[13px] text-slate-400 truncate max-w-[260px]">{{ $task->title }}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
+                                                    {{ $homeRoleLabels[$task->role] ?? $task->role }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold {{ $taskPriorityTints[strtolower($task->priority ?? 'medium')] ?? $taskPriorityTints['medium'] }}">
+                                                    {{ ucfirst(strtolower($task->priority ?? 'medium')) }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <div class="flex items-center gap-2.5">
+                                                    <span class="text-[13px] font-extrabold text-slate-700 w-9 shrink-0">100%</span>
+                                                    <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden flex-1">
+                                                        <div class="h-full rounded-full bg-emerald-500" style="width: 100%"></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-600">Completed</span>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                @if($task->due_date)
+                                                    <p class="text-[13px] font-semibold text-slate-500 whitespace-nowrap">{{ $task->due_date->format('M j, Y') }}</p>
+                                                    <p class="text-[11px] text-slate-400 whitespace-nowrap">{{ $task->due_date->format('g:i A') }}</p>
+                                                @else
+                                                    <span class="text-[13px] text-slate-300">—</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <div class="flex items-center justify-end gap-2">
+                                                    <span class="w-9 h-9 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                                                        <span class="iconify text-base" data-icon="mdi:check"></span>
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100">
+                            <p class="text-[13px] text-slate-500">
+                                Showing <span id="taskVisibleCount">{{ $myRoleTasks->count() + $myCompletedTasks->count() }}</span>
+                                of {{ $myRoleTasks->count() + $myCompletedTasks->count() }} tasks
+                            </p>
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center text-slate-300">
+                                    <span class="iconify text-base" data-icon="mdi:chevron-left"></span>
+                                </span>
+                                <span class="w-9 h-9 rounded-lg brand-gradient text-white text-[13px] font-bold flex items-center justify-center">1</span>
+                                <span class="w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center text-slate-300">
+                                    <span class="iconify text-base" data-icon="mdi:chevron-right"></span>
+                                </span>
+                            </div>
                         </div>
                     </div>
+
+                    <div id="taskFilterEmpty" class="bg-white rounded-2xl border border-slate-100 px-6 py-10 text-center hidden">
+                        <p class="text-sm font-bold text-slate-500">No tasks match this filter</p>
+                        <p class="text-xs text-slate-400 mt-1">Clear the search or pick a different status.</p>
+                    </div>
+
                     <div id="activeTasksEmpty" class="bg-white rounded-2xl border border-slate-100 px-6 py-12 text-center{{ $myRoleTasks->count() > 0 ? ' hidden' : '' }}">
                         <div class="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                             <span class="iconify text-emerald-400 text-3xl" data-icon="mdi:check-decagram-outline"></span>
                         </div>
                         <p class="text-base font-bold text-slate-600">All tasks completed!</p>
                         <p class="text-sm text-slate-400 mt-1">Great job — no pending tasks for your role.</p>
-                    </div>
-
-                    <div id="completedTasksCard" class="bg-white rounded-2xl border border-slate-100 overflow-hidden{{ $myCompletedTasks->count() > 0 ? '' : ' hidden' }}">
-                        <button onclick="toggleCompletedTasks()" class="w-full px-6 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                            <h3 class="text-sm font-bold text-slate-800">Completed Tasks (<span data-task-count="completed">{{ $myCompletedTasks->count() }}</span>)</h3>
-                            <span class="iconify text-slate-400 text-lg transition-transform" data-icon="mdi:chevron-down" id="completedChevron"></span>
-                        </button>
-                        <div id="completedTasksList" class="divide-y divide-slate-50 hidden">
-                            @foreach($myCompletedTasks as $task)
-                                <div class="task-row px-6 py-4 flex items-start gap-4 opacity-60">
-                                    <div class="mt-0.5 w-3 h-3 rounded-full bg-emerald-400 shrink-0 flex items-center justify-center">
-                                        <span class="iconify text-white text-[8px]" data-icon="mdi:check"></span>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-semibold text-slate-500 line-through">{{ $task->title }}</p>
-                                        @if($task->due_date)
-                                            <p class="text-[11px] text-slate-300 mt-1">{{ $task->due_date->format('M d, Y g:i A') }}</p>
-                                        @endif
-                                    </div>
-                                    <span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Done</span>
-                                </div>
-                            @endforeach
-                        </div>
                     </div>
                 @else
                     <div class="bg-white rounded-2xl border border-slate-100 px-6 py-12 text-center">
@@ -1806,18 +1958,43 @@
 
             const list = document.getElementById('completedTasksList');
             if (list) {
-                const done = document.createElement('div');
-                done.className = 'task-row px-6 py-4 flex items-start gap-4 opacity-60';
+                const done = document.createElement('tr');
+                done.className = 'task-row border-b border-slate-100 align-middle';
+                done.dataset.taskStatus = 'completed';
+                done.dataset.taskText = title.toLowerCase();
                 done.innerHTML =
-                    '<div class="mt-0.5 w-3 h-3 rounded-full bg-emerald-400 shrink-0 flex items-center justify-center">'
-                        + '<span class="iconify text-white text-[8px]" data-icon="mdi:check"></span>'
-                    + '</div>'
-                    + '<div class="flex-1 min-w-0">'
-                        + '<p class="text-sm font-semibold text-slate-500 line-through">' + conceptEscape(title) + '</p>'
-                    + '</div>'
-                    + '<span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Done</span>';
+                    '<td class="px-4 py-4 text-[13px] font-semibold text-slate-400">&bull;</td>'
+                    + '<td class="px-4 py-4">'
+                        + '<div class="flex items-center gap-3">'
+                            + '<div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">'
+                                + '<span class="iconify text-xl" data-icon="mdi:check-decagram-outline"></span>'
+                            + '</div>'
+                            + '<div class="min-w-0">'
+                                + '<p class="text-[13px] font-extrabold text-slate-800 tracking-wide">CONCEPT</p>'
+                                + '<p class="text-[13px] text-slate-400 truncate max-w-[260px]">' + conceptEscape(title) + '</p>'
+                            + '</div>'
+                        + '</div>'
+                    + '</td>'
+                    + '<td class="px-4 py-4"><span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-pink-50 text-brand">Team</span></td>'
+                    + '<td class="px-4 py-4"><span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-600">Medium</span></td>'
+                    + '<td class="px-4 py-4">'
+                        + '<div class="flex items-center gap-2.5">'
+                            + '<span class="text-[13px] font-extrabold text-slate-700 w-9 shrink-0">100%</span>'
+                            + '<div class="h-1.5 rounded-full bg-slate-100 overflow-hidden flex-1">'
+                                + '<div class="h-full rounded-full bg-emerald-500" style="width: 100%"></div>'
+                            + '</div>'
+                        + '</div>'
+                    + '</td>'
+                    + '<td class="px-4 py-4"><span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-600">Completed</span></td>'
+                    + '<td class="px-4 py-4"><span class="text-[13px] text-slate-300">&mdash;</span></td>'
+                    + '<td class="px-4 py-4">'
+                        + '<div class="flex items-center justify-end gap-2">'
+                            + '<span class="w-9 h-9 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">'
+                                + '<span class="iconify text-base" data-icon="mdi:check"></span>'
+                            + '</span>'
+                        + '</div>'
+                    + '</td>';
                 list.prepend(done);
-                document.getElementById('completedTasksCard')?.classList.remove('hidden');
                 if (window.Iconify && typeof window.Iconify.scan === 'function') {
                     window.Iconify.scan(done);
                 }
@@ -1842,7 +2019,6 @@
             ) || 0;
 
             document.getElementById('navTasksBadge')?.classList.toggle('hidden', active === 0);
-            document.getElementById('activeTasksCard')?.classList.toggle('hidden', active === 0);
             document.getElementById('activeTasksEmpty')?.classList.toggle('hidden', active > 0);
         }
 
@@ -2316,12 +2492,55 @@
             document.body.style.overflow = '';
         }
 
-        // ── Completed tasks toggle ──
-        function toggleCompletedTasks() {
-            const list = document.getElementById('completedTasksList');
-            const chevron = document.getElementById('completedChevron');
-            list.classList.toggle('hidden');
-            chevron.style.transform = list.classList.contains('hidden') ? '' : 'rotate(180deg)';
+        /* Task table filters. Every row is already on the page, so the search box,
+           the status pills and the role select only decide which ones stay visible —
+           no round trip per keystroke. */
+        let taskStatusFilter = 'all';
+
+        function setTaskStatusFilter(value) {
+            taskStatusFilter = value;
+            document.querySelectorAll('#taskStatusFilters [data-status-filter]').forEach((btn) => {
+                const on = btn.dataset.statusFilter === value;
+                btn.className = 'task-filter-pill px-4 py-2 rounded-xl text-[13px] font-bold border transition-colors '
+                    + (on
+                        ? 'brand-gradient text-white border-transparent'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-brand/40');
+            });
+            filterTaskRows();
+        }
+
+        function filterTaskRows() {
+            const term = (document.getElementById('taskSearchInput')?.value || '').trim().toLowerCase();
+            const role = document.getElementById('taskRoleFilter')?.value || 'all';
+            let visible = 0;
+
+            document.querySelectorAll('#tasks-section tr.task-row').forEach((row) => {
+                const matches =
+                    (taskStatusFilter === 'all' || row.dataset.taskStatus === taskStatusFilter)
+                    && (role === 'all' || row.dataset.taskRole === role)
+                    && (!term || (row.dataset.taskText || '').includes(term));
+
+                row.classList.toggle('hidden', !matches);
+
+                // A hidden row must not leave its detail drawer behind.
+                const detail = row.parentElement?.querySelector('.task-detail-row');
+                if (detail && !matches) detail.classList.add('hidden');
+
+                if (matches) visible++;
+            });
+
+            const count = document.getElementById('taskVisibleCount');
+            if (count) count.textContent = String(visible);
+            document.getElementById('taskFilterEmpty')?.classList.toggle('hidden', visible > 0);
+        }
+
+        // ── Task detail drawer ──
+        function toggleTaskDetail(id, btn) {
+            const row = document.getElementById(id);
+            if (!row) return;
+            const open = !row.classList.toggle('hidden');
+            btn?.classList.toggle('text-brand', open);
+            btn?.classList.toggle('text-slate-400', !open);
         }
 
         // ── Live group presence sync ──
