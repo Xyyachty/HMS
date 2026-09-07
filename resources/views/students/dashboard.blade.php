@@ -353,16 +353,16 @@
                 $homeRingOffset = $homeRingLength - ($homeRingLength * min(100, max(0, $homeRate)) / 100);
             @endphp
 
-            <div id="home-section" class="section-content fade-in space-y-4">
+            <div id="home-section" class="section-content fade-in space-y-5">
                 <!-- Welcome -->
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+                        <h2 class="text-2xl sm:text-[32px] font-extrabold tracking-tight text-slate-900 leading-tight">
                             {{ $homeGreeting }}, {{ $homeFirstName }}! <span class="align-middle">&#128075;</span>
                         </h2>
-                        <p class="text-sm text-slate-500 mt-1">Here's your progress and tasks for today.</p>
+                        <p class="text-sm text-slate-500 mt-1.5">Here's your progress and tasks for today.</p>
                     </div>
-                    <p class="text-sm font-semibold italic text-brand shrink-0">"Learn Today. Serve Tomorrow."</p>
+                    <p class="text-sm font-semibold italic text-brand shrink-0 mt-1">"Learn Today. Serve Tomorrow."</p>
                 </div>
 
                 {{-- Stats Row. Each card opens the section that owns its number, through the
@@ -370,100 +370,101 @@
                      breadcrumb and the ?section= URL all follow along for free. --}}
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <!-- Team members -->
-                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100 flex flex-col">
+                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
-                            <div class="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center shrink-0">
-                                <span class="iconify text-violet-500 text-2xl" data-icon="mdi:account-group-outline"></span>
+                            <div class="w-14 h-14 rounded-full bg-brand flex items-center justify-center shrink-0">
+                                <span class="iconify text-white text-2xl" data-icon="mdi:account-group-outline"></span>
                             </div>
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">Team Members</p>
-                                <p class="text-4xl font-extrabold text-slate-900 leading-none mt-1.5">{{ $homeMemberCount }}</p>
+                                <p class="text-[34px] font-extrabold text-slate-900 leading-none mt-1">{{ $homeMemberCount }}</p>
                                 <p class="text-[12px] text-slate-400 font-medium mt-1.5 truncate">{{ $studentClass->name ?? $group->name ?? 'No team yet' }}</p>
+                                <button type="button" onclick="showSection('group')" aria-label="Open My Team"
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                    View Team <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
+                                </button>
                             </div>
                         </div>
-                        <button type="button" onclick="showSection('group')" aria-label="Open My Team"
-                                class="mt-4 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
-                            View Team <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
-                        </button>
                     </div>
 
                     <!-- Active tasks (team) -->
-                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100 flex flex-col">
+                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
-                            <div class="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
-                                <span class="iconify text-amber-500 text-2xl" data-icon="mdi:clipboard-text-outline"></span>
+                            <div class="w-14 h-14 rounded-full bg-violet-50 flex items-center justify-center shrink-0">
+                                <span class="iconify text-violet-500 text-2xl" data-icon="mdi:clipboard-text-outline"></span>
                             </div>
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">Active Tasks</p>
-                                <p class="text-4xl font-extrabold text-slate-900 leading-none mt-1.5">{{ $homeActiveTasks }}</p>
+                                <p class="text-[34px] font-extrabold text-slate-900 leading-none mt-1">{{ $homeActiveTasks }}</p>
                                 <p class="text-[12px] text-slate-400 font-medium mt-1.5 truncate">{{ $homeMyPending }} assigned to your role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
+                                <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                    View Tasks <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
+                                </button>
                             </div>
                         </div>
-                        <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
-                                class="mt-4 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
-                            View Tasks <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
-                        </button>
                     </div>
 
                     <!-- Pending tasks (mine) -->
-                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100 flex flex-col">
+                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
-                            <div class="w-14 h-14 rounded-2xl bg-brand-soft flex items-center justify-center shrink-0">
-                                <span class="iconify text-brand text-2xl" data-icon="mdi:clock-outline"></span>
+                            <div class="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                                <span class="iconify text-amber-500 text-2xl" data-icon="mdi:clock-outline"></span>
                             </div>
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">Pending Tasks</p>
-                                <p class="text-4xl font-extrabold text-slate-900 leading-none mt-1.5"><span data-task-count="active">{{ $homeMyPending }}</span></p>
+                                <p class="text-[34px] font-extrabold text-slate-900 leading-none mt-1"><span data-task-count="active">{{ $homeMyPending }}</span></p>
                                 @if($homeOverdueCount > 0)
                                     <p class="text-[12px] font-semibold text-red-500 mt-1.5 truncate">{{ $homeOverdueCount }} past due date</p>
                                 @else
                                     <p class="text-[12px] text-slate-400 font-medium mt-1.5 truncate">Awaiting submission</p>
                                 @endif
+                                <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                    View Pending <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
+                                </button>
                             </div>
                         </div>
-                        <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
-                                class="mt-4 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
-                            View Pending <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
-                        </button>
                     </div>
 
                     {{-- Completion rate, drawn as a ring: the same number the reports page
                          shows, read at a glance. --}}
-                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100 flex flex-col">
+                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
-                            <div class="relative w-16 h-16 shrink-0">
-                                <svg class="w-16 h-16 -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
+                            <div class="relative w-[86px] h-[86px] shrink-0">
+                                <svg class="w-[86px] h-[86px] -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
                                     <circle cx="32" cy="32" r="28" fill="none" stroke="#F1F5F9" stroke-width="7"></circle>
                                     <circle cx="32" cy="32" r="28" fill="none" stroke="#DB2777" stroke-width="7" stroke-linecap="round"
                                             stroke-dasharray="{{ $homeRingLength }}" stroke-dashoffset="{{ $homeRingOffset }}"></circle>
                                 </svg>
-                                <span class="absolute inset-0 flex items-center justify-center text-[15px] font-extrabold text-slate-900">{{ $homeRate }}%</span>
+                                <span class="absolute inset-0 flex items-center justify-center text-[20px] font-extrabold text-slate-900">{{ $homeRate }}%</span>
                             </div>
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">Overall Progress</p>
                                 <p class="text-[12px] text-slate-400 font-medium mt-1.5 leading-snug">
-                                    <span data-task-count="completed">{{ $completedTasksCount ?? 0 }}</span> of {{ $homeTotalTasks }} team tasks done.
+                                    <span data-task-count="completed">{{ $completedTasksCount ?? 0 }}</span> of {{ $homeTotalTasks }} team tasks done.<br>
+                                    {{ $homeRate >= 70 ? "You're on the right track!" : 'Keep completing tasks.' }}
                                 </p>
+                                <button type="button" onclick="showSection('reports')" aria-label="Open Reports"
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                    View Progress <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
+                                </button>
                             </div>
                         </div>
-                        <button type="button" onclick="showSection('reports')" aria-label="Open Reports"
-                                class="mt-4 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
-                            View Progress <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
-                        </button>
                     </div>
                 </div>
 
                 <!-- Three-panel row: upcoming tasks, team progress, activity -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
 
                     <!-- My Upcoming Tasks -->
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-                        <div class="px-5 py-4 flex items-center justify-between gap-2">
-                            <p class="text-base font-bold text-slate-800">My Upcoming Tasks</p>
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
+                            <p class="text-lg font-bold text-slate-800">My Upcoming Tasks</p>
                             <button type="button" onclick="showSection('tasks')"
                                     class="text-[12px] font-bold text-brand hover:text-brand-dark transition-colors">View All</button>
                         </div>
-                        <div class="px-5 pb-5 space-y-3 flex-1">
+                        <div class="divide-y divide-slate-100">
                             @forelse($homeDeadlines as $index => $task)
                                 @php
                                     $isLate    = $task->due_date && $task->due_date->isPast();
@@ -472,30 +473,30 @@
                                     $roleDone  = $roleRow['done'] ?? 0;
                                     $roleTotal = $roleRow['total'] ?? 0;
                                 @endphp
-                                <div class="rounded-2xl border border-slate-100 p-3.5">
+                                <div class="px-5 py-4">
                                     <div class="flex items-start gap-3">
                                         <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
                                             <span class="iconify text-xl" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
                                         </div>
                                         <div class="min-w-0 flex-1">
-                                            <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Task {{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</p>
-                                            <p class="text-[13px] font-bold text-slate-800 leading-snug line-clamp-2">{{ $task->title }}</p>
-                                            <span class="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
+                                            <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</p>
+                                            <p class="text-[13px] text-slate-500 leading-snug line-clamp-2">{{ $task->title }}</p>
+                                            <span class="inline-flex items-center mt-2 px-2 py-0.5 rounded-md text-[10px] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
                                                 {{ $homeRoleLabels[$task->role] ?? $task->role }}
                                             </span>
                                         </div>
                                         <div class="shrink-0 w-12 rounded-xl border py-1 text-center {{ $isLate ? 'border-red-100 bg-red-50' : 'border-pink-100 bg-brand-soft' }}">
-                                            <p class="text-[8px] font-bold uppercase tracking-wide {{ $isLate ? 'text-red-400' : 'text-brand-light' }}">{{ $isLate ? 'Late' : 'Due' }}</p>
+                                            <p class="text-[9px] font-semibold {{ $isLate ? 'text-red-400' : 'text-slate-400' }}">{{ $isLate ? 'Late' : 'Due' }}</p>
                                             <p class="text-[9px] font-bold uppercase {{ $isLate ? 'text-red-400' : 'text-brand-light' }}">{{ $task->due_date->format('M') }}</p>
-                                            <p class="text-[15px] font-extrabold leading-tight {{ $isLate ? 'text-red-500' : 'text-brand' }}">{{ $task->due_date->format('j') }}</p>
+                                            <p class="text-[15px] font-extrabold leading-tight {{ $isLate ? 'text-red-500' : 'text-slate-800' }}">{{ $task->due_date->format('j') }}</p>
                                         </div>
                                     </div>
-                                    <div class="mt-3 flex items-center gap-2.5">
-                                        <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden flex-1">
+                                    <div class="mt-3 flex items-center gap-3">
+                                        <div class="h-1.5 w-24 rounded-full bg-slate-100 overflow-hidden shrink-0">
                                             <div class="h-full rounded-full {{ $homeTint($task->role, 'bar') }}" style="width: {{ $rolePct }}%"></div>
                                         </div>
-                                        <p class="text-[11px] font-extrabold text-slate-700 shrink-0">{{ $rolePct }}%</p>
-                                        <p class="text-[11px] text-slate-400 font-medium shrink-0">{{ $roleDone }} of {{ $roleTotal }} done</p>
+                                        <p class="text-[12px] font-extrabold text-slate-700 shrink-0">{{ $rolePct }}%</p>
+                                        <p class="text-[12px] text-slate-400 font-medium truncate">{{ $roleDone }} of {{ $roleTotal }} tasks done in this role</p>
                                     </div>
                                 </div>
                             @empty
@@ -513,30 +514,30 @@
                     {{-- My Progress Overview — this student's own team only, broken down by
                          the role that owns each task, so a member can see where the team
                          still has work outstanding. --}}
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-                        <div class="px-5 py-4 flex items-center justify-between gap-2">
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
                             <div class="min-w-0">
-                                <p class="text-base font-bold text-slate-800">My Progress Overview</p>
+                                <p class="text-lg font-bold text-slate-800">My Progress Overview</p>
                                 <p class="text-[11px] text-slate-400 truncate">{{ $group->name ?? 'Your team' }}</p>
                             </div>
                             <button type="button" onclick="showSection('reports')"
                                     class="text-[12px] font-bold text-brand hover:text-brand-dark transition-colors shrink-0">View Report</button>
                         </div>
-                        <div class="px-5 pb-5 space-y-4 flex-1">
+                        <div class="px-5 pb-5 space-y-4">
                             @forelse($homeTeamProgress as $row)
                                 <div class="flex items-start gap-3">
-                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {{ $homeTint($row['role'], 'bg') }} {{ $homeTint($row['role'], 'text') }}">
-                                        <span class="iconify text-lg" data-icon="{{ $roleIcons[$row['role']] ?? 'mdi:account-outline' }}"></span>
+                                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 {{ $homeTint($row['role'], 'bg') }} {{ $homeTint($row['role'], 'text') }}">
+                                        <span class="iconify text-xl" data-icon="{{ $roleIcons[$row['role']] ?? 'mdi:account-outline' }}"></span>
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <div class="flex items-center justify-between gap-2">
-                                            <p class="text-[13px] font-bold text-slate-800 truncate">{{ $homeRoleLabels[$row['role']] ?? $row['role'] }}</p>
-                                            <p class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $row['percent'] }}%</p>
+                                        <p class="text-[14px] font-bold text-slate-800 truncate">{{ $homeRoleLabels[$row['role']] ?? $row['role'] }}</p>
+                                        <div class="mt-1.5 flex items-center gap-2.5">
+                                            <div class="h-2 rounded-full bg-slate-100 overflow-hidden flex-1">
+                                                <div class="h-full rounded-full {{ $homeTint($row['role'], 'bar') }}" style="width: {{ $row['percent'] }}%"></div>
+                                            </div>
+                                            <p class="text-[14px] font-extrabold text-slate-700 shrink-0 w-10 text-right">{{ $row['percent'] }}%</p>
                                         </div>
-                                        <div class="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
-                                            <div class="h-full rounded-full {{ $homeTint($row['role'], 'bar') }}" style="width: {{ $row['percent'] }}%"></div>
-                                        </div>
-                                        <p class="text-[11px] text-slate-400 mt-1">{{ $row['done'] }} / {{ $row['total'] }} tasks</p>
+                                        <p class="text-[11px] text-slate-400 mt-1 text-right">{{ $row['done'] }} / {{ $row['total'] }} tasks</p>
                                     </div>
                                 </div>
                             @empty
@@ -556,7 +557,7 @@
                                         <p class="text-[13px] font-bold text-brand-dark">
                                             {{ $homeRate >= 70 ? "You're on the right track!" : ($homeRate > 0 ? 'Good start — keep going!' : 'Time to get started!') }}
                                         </p>
-                                        <p class="text-[11px] text-brand-dark/70 mt-0.5">Keep completing tasks to improve your team's progress.</p>
+                                        <p class="text-[11px] text-brand-dark/70 mt-0.5">Keep completing tasks to improve your progress.</p>
                                     </div>
                                 </div>
                             @endif
@@ -564,13 +565,13 @@
                     </div>
 
                     <!-- Recent Activity -->
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-                        <div class="px-5 py-4 flex items-center justify-between gap-2">
-                            <p class="text-base font-bold text-slate-800">Recent Activity</p>
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
+                            <p class="text-lg font-bold text-slate-800">Recent Activity</p>
                             <button type="button" onclick="showSection('activity')"
                                     class="text-[12px] font-bold text-brand hover:text-brand-dark transition-colors">View All</button>
                         </div>
-                        <div class="px-5 pb-5 space-y-4 flex-1">
+                        <div class="px-5 pb-5 space-y-4">
                             @forelse($homeRecentActivities as $task)
                                 @php
                                     $isDone = $task->status === 'archived';
@@ -578,6 +579,10 @@
                                     $actionLabel = $isDone ? 'You completed task' : ($needsRevision ? 'Faculty sent back task' : 'Task assigned to you');
                                     $actionIcon  = $isDone ? 'mdi:check-circle-outline' : ($needsRevision ? 'mdi:pencil-outline' : 'mdi:file-document-outline');
                                     $actionTint  = $isDone ? 'bg-emerald-50 text-emerald-500' : ($needsRevision ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500');
+                                    $stamp       = $task->updated_at;
+                                    $stampDay    = $stamp
+                                        ? ($stamp->isToday() ? 'Today' : ($stamp->isYesterday() ? 'Yesterday' : $stamp->format('M j, Y')))
+                                        : '';
                                 @endphp
                                 <div class="flex items-start gap-3">
                                     <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 {{ $actionTint }}">
@@ -589,8 +594,8 @@
                                         <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ $homeRoleLabels[$task->role] ?? $task->role }}</p>
                                     </div>
                                     <div class="text-right shrink-0">
-                                        <p class="text-[11px] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
-                                        <p class="text-[10px] text-slate-300 font-medium whitespace-nowrap mt-0.5">{{ optional($task->updated_at)->format('g:i A') }}</p>
+                                        <p class="text-[11px] text-slate-400 font-medium whitespace-nowrap">{{ $stampDay }}</p>
+                                        <p class="text-[11px] text-slate-300 font-medium whitespace-nowrap mt-0.5">{{ optional($stamp)->format('g:i A') }}</p>
                                     </div>
                                 </div>
                             @empty
@@ -609,14 +614,14 @@
 
                 {{-- Closing banner: the same photo the landing page uses, behind a light
                      wash so the headline stays readable. --}}
-                <div class="relative rounded-2xl overflow-hidden border border-slate-100 min-h-[170px] flex items-center"
+                <div class="relative rounded-2xl overflow-hidden border border-slate-100 min-h-[185px] flex items-center"
                      style="background-image: linear-gradient(90deg, rgba(255,255,255,.97) 0%, rgba(255,255,255,.90) 38%, rgba(253,242,248,.55) 68%, rgba(157,23,77,.18) 100%), url('{{ asset('images/hotel/try.jpg') }}'); background-size: cover; background-position: center;">
                     <div class="px-6 sm:px-10 py-7 w-full flex flex-wrap items-end justify-between gap-4">
                         <div class="min-w-0 max-w-xl">
-                            <h3 class="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
+                            <h3 class="text-2xl sm:text-[38px] font-extrabold tracking-tight text-slate-900 leading-[1.1]">
                                 Great Hospitality<br class="hidden sm:block"> Starts with You.
                             </h3>
-                            <p class="text-[13px] sm:text-sm text-slate-600 mt-2">Develop your skills. Work as a team. Make every guest feel at home.</p>
+                            <p class="text-[13px] sm:text-sm text-slate-600 mt-3">Develop your skills. Work as a team. Make every guest feel at home.</p>
                         </div>
                         <p class="text-lg sm:text-2xl font-semibold italic text-brand-dark shrink-0 border-b-2 border-brand-light pb-1">
                             Same People, Brighter Stays.
