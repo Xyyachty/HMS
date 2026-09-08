@@ -588,6 +588,85 @@ function RenameCategoryModal({ from, saving, error, onSubmit, onCancel }) {
   );
 }
 
+/* A category the team invents, added from the same tab strip that renames one.
+   The rate seeds the price of every room created under it, and a category stored
+   at zero would price its rooms at nothing, so it is required here exactly as it
+   is in the site's own Add Room Category dialog — same default, same floor. */
+function AddCategoryModal({ saving, error, onSubmit, onCancel }) {
+  const [name, setName] = useState('');
+  const [rate, setRate] = useState('2000');
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+
+  const clean = name.trim();
+  const parsedRate = parseInt(String(rate).replace(/[^0-9]/g, ''), 10) || 0;
+  const canSave = !!clean && parsedRate > 0 && !saving;
+  const submit = (e) => {
+    if (e) e.preventDefault();
+    if (canSave) onSubmit(clean, parsedRate);
+  };
+
+  return (
+    <div className="room-modal-overlay" onClick={onCancel} role="dialog" aria-modal="true" aria-label="Add room category">
+      <div className="room-modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+        <form onSubmit={submit} style={{ padding: '1.5rem', position: 'relative' }} noValidate>
+          <button type="button" className="room-modal-close" onClick={onCancel} aria-label="Close">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Inventory</p>
+          <h2 className="font-display" style={{ fontSize: '1.5rem', margin: '0 0 0.35rem', color: 'var(--fg)' }}>Add room category</h2>
+          <p className="rm-panel-desc">
+            It becomes a tab here and on the hotel's Rooms page, and rooms added under it
+            are named after it — “{clean || 'New category'} 101”.
+          </p>
+
+          <label style={{ fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', margin: '1rem 0 0.4rem' }}>
+            Category name
+          </label>
+          <input
+            type="text"
+            className="booking-input"
+            value={name}
+            maxLength={60}
+            autoFocus
+            placeholder="Executive"
+            onChange={e => setName(e.target.value)}
+            style={error ? { borderColor: '#f43f5e' } : undefined}
+          />
+
+          <label style={{ fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', margin: '1rem 0 0.4rem' }}>
+            Rate per 12-hour block
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            className="booking-input"
+            value={rate}
+            maxLength={9}
+            placeholder="2000"
+            onChange={e => setRate(e.target.value)}
+          />
+
+          {error ? (
+            <p style={{ margin: '0.6rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.72rem' }}>{error}</p>
+          ) : null}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
+            <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={!canSave}>
+              {saving ? 'Adding\u2026' : 'Add category'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* Adding a room is the rare move; looking one up is the common one — so the form
    lives in a modal and the page leads with the inventory table. Same POST, same
    validation the inline form used: only where it renders changed. */
@@ -796,7 +875,7 @@ function AddRoomModal({ rooms, categories, onClose, onAdded }) {
   );
 }
 
-function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onRenameCategory, onToast }) {
+function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCategory, onRenameCategory, onToast }) {
   // The inventory list that used to be its own Room Availability section. Adding a
   // room and looking one up are the same job, so they share a screen now.
   const [tab, setTab] = useState('All');
@@ -807,6 +886,9 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onRenameC
   const [renameFrom, setRenameFrom] = useState(null);
   const [renameSaving, setRenameSaving] = useState(false);
   const [renameError, setRenameError] = useState('');
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [categorySaving, setCategorySaving] = useState(false);
+  const [categoryError, setCategoryError] = useState('');
 
   const list = rooms || [];
   const categoryNames = (categories && categories.length) ? categories : DEFAULT_ROOM_CATEGORIES;
@@ -849,6 +931,26 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onRenameC
     });
   };
 
+  /* A new category is a write against the team, so the server decides whether the
+     name is free and hands back the whole list; the tabs are redrawn from that
+     rather than from what was typed. A duplicate comes back as null, which is
+     the only failure this form can produce that is worth explaining. */
+  const handleAddCategory = (name, rate) => {
+    if (typeof onAddCategory !== 'function') return;
+    setCategorySaving(true);
+    setCategoryError('');
+    Promise.resolve(onAddCategory(name, rate)).then((created) => {
+      if (!created) {
+        setCategoryError('That category already exists.');
+        return;
+      }
+      setCategoryOpen(false);
+      setTab(created);
+      setPage(1);
+      if (onToast) onToast(`${created} added — rooms can now be created under it`);
+    }).finally(() => setCategorySaving(false));
+  };
+
   return (
     <div className="rm-panel" style={{ maxWidth: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -885,6 +987,21 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onRenameC
             </button>
           );
         })}
+        {/* Same strip, same shape as the tabs it sits beside: adding a category is
+            part of choosing one, not a separate corner of the page. Dashed so it
+            reads as "make a new one" rather than as another category. */}
+        {onAddCategory && (
+          <button
+            type="button"
+            className="room-card-tab"
+            onClick={() => { setCategoryError(''); setCategoryOpen(true); }}
+            title="Add room category"
+            aria-label="Add room category"
+            style={{ borderStyle: 'dashed', paddingLeft: '0.9rem', paddingRight: '0.9rem' }}
+          >
+            <i className="fa-solid fa-plus" style={{ fontSize: '0.72em' }}></i>
+          </button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -982,6 +1099,15 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onRenameC
           categories={categoryNames}
           onClose={() => setAddOpen(false)}
           onAdded={onSubmit}
+        />
+      )}
+
+      {categoryOpen && (
+        <AddCategoryModal
+          saving={categorySaving}
+          error={categoryError}
+          onSubmit={handleAddCategory}
+          onCancel={() => { setCategoryOpen(false); setCategoryError(''); }}
         />
       )}
 
@@ -1472,7 +1598,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   );
 }
 
-function RoomManagementPage({ initialNav, rooms, categories, onBack, onAddRoom, onRoomUpdated, onRenameCategory, onBookingAction, onToast }) {
+function RoomManagementPage({ initialNav, rooms, categories, onBack, onAddRoom, onRoomUpdated, onAddCategory, onRenameCategory, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
   const handleAddRoom = (payload) => {
@@ -1500,7 +1626,7 @@ function RoomManagementPage({ initialNav, rooms, categories, onBack, onAddRoom, 
             // Manage Room is the fallback: ?nav=rooms was the old Room Availability
             // section, whose room list lives here now, so an old link still lands
             // somewhere sensible instead of on a blank panel.
-            <ManageRoomPanel rooms={rooms} categories={categories} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} onRenameCategory={onRenameCategory} onToast={onToast} />
+            <ManageRoomPanel rooms={rooms} categories={categories} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} onAddCategory={onAddCategory} onRenameCategory={onRenameCategory} onToast={onToast} />
           )}
         </div>
       </div>
@@ -1555,6 +1681,33 @@ function App() {
   /* Renames a category for the whole team. The rooms in it are renamed with it on the
      server ("Classic 101" becomes "Standard 101"), so both come back here and on the
      hotel site's own Rooms tabs. Resolves to the stored spelling, or null when taken. */
+  /* Creates one of the team's categories. The server answers with the whole list,
+     so the tabs here and the site's Rooms tab bar agree without a reload; null
+     means the name was already taken. */
+  const addCategory = useCallback((name, rate) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/room-categories', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ name: name, rate: rate || null }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && Array.isArray(data.categories)) {
+          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+          const floors = {};
+          data.categories.forEach(c => { if (c && c.name && c.floor) floors[c.name] = c.floor; });
+          setRoomCategoryNames(names);
+          setCategoryFloors(floors);
+          setCategories(names);
+        }
+        return data && data.category ? data.category.name : null;
+      })
+      .catch(() => null)
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
   const renameCategory = useCallback((from, to) => {
     pendingWrites.current += 1;
     return fetch('/students/hotel/room-categories', {
@@ -1605,6 +1758,7 @@ function App() {
       onBack={() => { window.location.href = window.HMS_ROOMMANAGEMENT_URL; }}
       onAddRoom={addRoom}
       onRoomUpdated={replaceRoom}
+      onAddCategory={addCategory}
       onRenameCategory={renameCategory}
       onBookingAction={bookingAction}
       onToast={(msg) => window.toast && window.toast(msg)}
