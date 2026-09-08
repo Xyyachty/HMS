@@ -406,6 +406,19 @@
         .btn-primary { background: {{ $theme['primary'] }}; color: #fff; }
         .btn-primary:hover { background: {{ $theme['primary_hover'] }}; box-shadow: 0 0 20px {{ $theme['primary_glow'] }}; }
 
+        /* Submit Changes — the one button that leaves the draft behind and puts
+           the work in front of faculty, so it does not share Publish's styling. */
+        .btn-submit { background: #059669; color: #fff; border: 1px solid #047857; }
+        .btn-submit:hover { background: #047857; box-shadow: 0 0 20px rgba(5, 150, 105, 0.35); }
+        .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+
+        /* Save state, spelled out in the status bar rather than only in a toast:
+           saving, saved and submitted have to be told apart at a glance. */
+        .save-hint.is-saving { color: #fbbf24; }
+        .save-hint.is-saved { color: #34d399; }
+        .save-hint.is-submitted { color: #34d399; font-weight: 700; }
+        .save-hint.is-dirty { color: #fca5a5; }
+
         /* Save Draft — unsaved changes highlight */
         #saveDraftBtn.has-unsaved {
             background: #f8d7da;
@@ -749,7 +762,20 @@
                         <i class="fas fa-up-right-from-square"></i> View Live
                     </button>
                 @endif
+                {{-- Three separate acts, three separate buttons: keep a draft,
+                     show it to the team, hand it to faculty. --}}
+                <button class="hdr-btn btn-secondary" onclick="saveTemplateDraft(false)" id="saveDraftBtn" title="Save draft">
+                    <i class="fas fa-floppy-disk"></i> Save Draft
+                </button>
                 <button class="hdr-btn btn-primary" onclick="saveTemplateDraft(true)"><i class="fas fa-paper-plane"></i> Publish</button>
+                {{-- Saving and submitting are different acts, so they are different
+                     buttons. Everything else here keeps a draft; this one hands the
+                     work to faculty and closes the role's open tasks against a
+                     snapshot of exactly what was handed in. --}}
+                <button class="hdr-btn btn-submit" onclick="submitTemplateChanges()" id="submitChangesBtn"
+                        title="Send this work to your faculty for review">
+                    <i class="fas fa-circle-check"></i> Submit Changes
+                </button>
 
                 {{-- The Mini Portfolio: the same site, open to anyone, no login. Publish is
                      what opens it — before that the link 404s. Shown only to the role that
@@ -860,9 +886,13 @@
                 if (evt.type === 'dirty') {
                     setSaveDraftUnsaved(!!evt.dirty);
                 }
+                if (evt.type === 'saving') {
+                    setSaveState('saving');
+                }
                 if (evt.type === 'autosaved') {
-                    const status = document.getElementById('autoSaveStatus');
-                    if (status) status.textContent = 'Auto-saved · ' + new Date().toLocaleTimeString();
+                    // Autosave keeps the draft and nothing else - it must never
+                    // read as though the work has been handed in.
+                    setSaveState('saved', 'Draft auto-saved \u00b7 ' + new Date().toLocaleTimeString());
                 }
                 if (evt.type === 'mode') {
                     const designMode = evt.mode === 'build';
@@ -1233,8 +1263,7 @@
                 try {
                     await window.hmsBuilder.save(!!publish);
                     if (typeof renderHbVersions === 'function') renderHbVersions();
-                    const status = document.getElementById('autoSaveStatus');
-                    if (status) status.textContent = publish ? 'Published' : 'Draft saved';
+                    setSaveState('saved', (publish ? 'Published \u00b7 ' : 'Draft saved \u00b7 ') + new Date().toLocaleTimeString());
                     setSaveDraftUnsaved(false);
                 } catch (e) { /* toast already shown */ }
                 return;
@@ -1262,13 +1291,100 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || data.message || 'Save failed');
                 if (data.version) window.templateSyncVersion = data.version;
-                toast(publish ? 'Page published — teammates will see updates' : 'Draft saved — teammates will see updates');
-                const status = document.getElementById('autoSaveStatus');
-                if (status) status.textContent = publish ? 'Published' : 'Draft saved';
+                toast(publish ? 'Page published \u2014 teammates will see updates' : 'Draft saved \u2014 teammates will see updates');
+                setSaveState('saved', (publish ? 'Published \u00b7 ' : 'Draft saved \u00b7 ') + new Date().toLocaleTimeString());
                 setSaveDraftUnsaved(false);
             } catch (err) {
                 console.error(err);
                 toast(err.message || 'Could not save template');
+            }
+        }
+
+        /**
+         * The single place that writes the save indicator.
+         *
+         * @param {'saving'|'saved'|'submitting'|'submitted'|'dirty'|'idle'} state
+         * @param {string} [text] overrides the default wording for that state.
+         */
+        function setSaveState(state, text) {
+            const status = document.getElementById('autoSaveStatus');
+            if (!status) return;
+            const stamp = new Date().toLocaleTimeString();
+            const wording = {
+                saving: 'Saving\u2026',
+                saved: 'All changes saved \u00b7 ' + stamp,
+                submitting: 'Submitting\u2026',
+                submitted: 'Submitted for review \u00b7 ' + stamp,
+                dirty: 'Unsaved changes \u2014 Ctrl+S to save',
+                idle: 'Ready \u00b7 Ctrl+S to save',
+            };
+            status.textContent = text || wording[state] || wording.idle;
+            status.classList.remove('is-saving', 'is-saved', 'is-submitted', 'is-dirty');
+            if (state === 'saving' || state === 'submitting') status.classList.add('is-saving');
+            else if (state === 'saved') status.classList.add('is-saved');
+            else if (state === 'submitted') status.classList.add('is-submitted');
+            else if (state === 'dirty') status.classList.add('is-dirty');
+        }
+
+        /**
+         * Hand this module's website work to faculty.
+         *
+         * Kept apart from saveTemplateDraft() on purpose: a draft save is a
+         * private checkpoint, while this closes the role's open tasks and
+         * notifies the faculty, so it asks first and then says plainly what
+         * happened.
+         */
+        async function submitTemplateChanges() {
+            if (!window.HMS_CAN_EDIT_TEMPLATE) {
+                toast('View only \u2014 {{ $roleLabelFull }} role required to submit');
+                return;
+            }
+
+            const ok = window.confirm(
+                'Submit this work to your faculty for review?\n\n'
+                + 'Your open tasks for this module will be handed in as they look right now. '
+                + 'You can keep editing afterwards, but faculty reviews what you submit now.'
+            );
+            if (!ok) return;
+
+            const btn = document.getElementById('submitChangesBtn');
+            if (btn) btn.disabled = true;
+            setSaveState('submitting');
+
+            try {
+                // Flush what is on screen first, so faculty sees what the student
+                // is looking at rather than the last autosave.
+                if (typeof postToTemplate === 'function') {
+                    postToTemplate({ type: 'request-customizations' });
+                    await new Promise((r) => setTimeout(r, 200));
+                }
+
+                const res = await fetch(@json(route('students.templates.submit', ['role' => $builderRole])), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        customizations: window.templateCustomizations || {},
+                        layout: window.templateLayout || [],
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || data.message || 'Could not submit');
+
+                setSaveDraftUnsaved(false);
+                setSaveState('submitted');
+                toast(data.message || 'Submitted for faculty review');
+                if (typeof renderHbVersions === 'function') renderHbVersions();
+            } catch (err) {
+                console.error(err);
+                setSaveState('dirty', 'Not submitted \u2014 ' + (err.message || 'try again'));
+                toast(err.message || 'Could not submit your changes');
+            } finally {
+                if (btn) btn.disabled = false;
             }
         }
 
@@ -1277,10 +1393,7 @@
             if (!btn) return;
             btn.classList.toggle('has-unsaved', !!dirty);
             btn.title = dirty ? 'Unsaved changes — click to save draft' : 'Save draft';
-            const status = document.getElementById('autoSaveStatus');
-            if (status && dirty) {
-                status.textContent = 'Unsaved changes — Ctrl+S to save';
-            }
+            if (dirty) setSaveState('dirty');
         }
 
         function confirmLeaveBuilder(event) {

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\GroupSettings;
+use App\Models\HotelConcept;
 use App\Models\StudentGroup;
 use App\Models\TeamRoleTemplate;
 use App\Models\TeamRoleTemplateVersion;
@@ -81,6 +82,55 @@ class HotelTemplateBuilder
     public const HERO_SLIDES_KEY = '__heroSlides';
 
     /**
+     * The hotel's own words: tagline, description and the contact block the
+     * landing page and every footer show. One entry for the whole site, like the
+     * brand name it sits beside — the same hotel cannot have a different phone
+     * number on the Rooms page than on Home.
+     *
+     * Unset fields fall back to the team's approved concept (see
+     * hotelDefaults()), so a site reads as that concept from the first load and
+     * editing a field is what overrides it.
+     */
+    public const HOTEL_INFO_KEY = '__hotelInfo';
+    public const HOTEL_INFO_ID = 'hotel';
+
+    /** Fields of __hotelInfo, in the order the builder shows them. */
+    public const HOTEL_INFO_FIELDS = [
+        'tagline',
+        'description',
+        'phone',
+        'email',
+        'address',
+        'hours',
+    ];
+
+    /**
+     * Social profiles, each rendered as its network's icon. Kept as a list
+     * rather than one field per network so a team can leave a network out
+     * entirely instead of showing a dead icon.
+     */
+    public const SOCIAL_LINKS_KEY = '__socialLinks';
+
+    /** Networks the footer knows an icon for. */
+    public const SOCIAL_NETWORKS = [
+        'facebook' => 'Facebook',
+        'instagram' => 'Instagram',
+        'x' => 'X',
+        'tiktok' => 'TikTok',
+        'youtube' => 'YouTube',
+        'linkedin' => 'LinkedIn',
+        'website' => 'Website',
+    ];
+
+    /**
+     * Site-wide type: family, base size and text colour. Applied as CSS custom
+     * properties on every page rather than per element, so it reaches text no
+     * one has selected — including sections a role cannot edit.
+     */
+    public const TYPOGRAPHY_KEY = '__typography';
+    public const TYPOGRAPHY_ID = 'type';
+
+    /**
      * Site-content keys more than one role may write. Unlike element entries
      * these are not page-scoped, so if several rows keep a copy the merge below
      * resolves them by role order and the later role silently wins — losing the
@@ -101,6 +151,9 @@ class HotelTemplateBuilder
         self::SITE_COLORS_KEY,
         self::ROOMS_KEY,
         self::MENUS_KEY,
+        self::HOTEL_INFO_KEY,
+        self::SOCIAL_LINKS_KEY,
+        self::TYPOGRAPHY_KEY,
     ];
 
     /**
@@ -137,6 +190,55 @@ class HotelTemplateBuilder
             ['id' => 'features', 'visible' => true],
             ['id' => 'cta', 'visible' => true],
             ['id' => 'footer', 'visible' => true],
+        ];
+    }
+
+    /**
+     * What the site says about the hotel before anybody has edited it: the team's
+     * approved concept.
+     *
+     * Handed to the template as defaults rather than written into the
+     * customizations at approval time, for two reasons. A team whose faculty
+     * later approves a different concept would otherwise keep the old one's
+     * words frozen into their site; and "never edited" stays distinguishable
+     * from "edited back to the concept's wording", which is what lets a field
+     * left blank in the builder keep tracking the concept.
+     *
+     * The type line is deliberately not a tagline — it is what the concept
+     * itself calls the hotel, which is the most honest thing to show until the
+     * team writes their own.
+     */
+    public static function hotelDefaults(?string $groupName, ?int $facultyId): array
+    {
+        $defaults = [
+            'name' => self::DEFAULT_BRAND_NAME,
+            'tagline' => '',
+            'description' => '',
+        ];
+
+        if (!$groupName || !$facultyId) {
+            return $defaults;
+        }
+
+        $approved = HotelConceptDesk::approvedConcept(
+            HotelConceptDesk::conceptsFor($groupName, $facultyId)
+        );
+
+        if (!$approved) {
+            return $defaults;
+        }
+
+        $name = trim((string) $approved->title);
+        $description = trim((string) $approved->description);
+
+        $type = trim((string) $approved->hotel_type);
+
+        return [
+            'name' => $name !== '' ? $name : $defaults['name'],
+            // typeLabel() answers '—' for a concept with no type, which would read
+            // as a tagline the team never wrote.
+            'tagline' => $type !== '' ? HotelConcept::typeLabel($type) : '',
+            'description' => $description,
         ];
     }
 
@@ -441,6 +543,12 @@ class HotelTemplateBuilder
             self::ROOMS_KEY,
             self::MENUS_KEY,
             self::CARD_IMAGES_KEY,
+            // The hotel's identity is the team's, not the template's: switching
+            // Template 1 ↔ 2 redresses the site, it does not rename the hotel or
+            // drop its phone number.
+            self::HOTEL_INFO_KEY,
+            self::SOCIAL_LINKS_KEY,
+            self::TYPOGRAPHY_KEY,
         ];
         $out = [];
         foreach ($keepKeys as $key) {
@@ -546,6 +654,19 @@ class HotelTemplateBuilder
             }
 
             if ($key === self::SITE_COLORS_KEY && in_array($role, self::SITE_OWNING_ROLES, true)) {
+                if (is_array($value)) {
+                    $value['page'] = $value['page'] ?? 'home';
+                    $out[$key] = $value;
+                }
+                continue;
+            }
+
+            // The hotel's words, its social profiles and its type are one site's
+            // worth each, shown on every page, so any site-owning role may set
+            // them and claimSharedContentKeys() keeps the winner in one row.
+            if (in_array($key, [self::HOTEL_INFO_KEY, self::SOCIAL_LINKS_KEY, self::TYPOGRAPHY_KEY], true)
+                && in_array($role, self::SITE_OWNING_ROLES, true)
+            ) {
                 if (is_array($value)) {
                     $value['page'] = $value['page'] ?? 'home';
                     $out[$key] = $value;

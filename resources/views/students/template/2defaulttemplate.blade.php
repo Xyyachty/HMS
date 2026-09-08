@@ -680,6 +680,10 @@
   window.HMS_VERIFY_GUEST_URL = @json(route('students.frontdesk.verify-guest'));
   // Resolved out here: the raw block below is not compiled, so Blade never runs inside it.
   window.HMS_DEFAULT_LOGO = @json(asset('images/hotel-logo-default.svg'));
+  // The team's approved hotel concept. Every identity field the team has not
+  // written falls back to this, so the site reads as that concept from the
+  // first load instead of as the stock demo hotel.
+  window.HMS_HOTEL_DEFAULTS = @json($hotelDefaults ?? ['name' => 'SPC HOTEL', 'tagline' => '', 'description' => '']);
 </script>
 @verbatim
 <script type="text/babel">
@@ -1017,6 +1021,28 @@ function toolBtnStyle(kind) {
    header, the footer, the mobile menu and every page all read the same value —
    changing it anywhere changes it everywhere. */
 const DEFAULT_LOGO = window.HMS_DEFAULT_LOGO || '/images/hotel-logo-default.svg';
+
+/* Which icon stands for each network the team can link. The store holds the URL
+   and the network key; the page decides what that looks like. */
+const SOCIAL_ICONS = {
+  facebook: 'fa-brands fa-facebook-f',
+  instagram: 'fa-brands fa-instagram',
+  x: 'fa-brands fa-x-twitter',
+  tiktok: 'fa-brands fa-tiktok',
+  youtube: 'fa-brands fa-youtube',
+  linkedin: 'fa-brands fa-linkedin-in',
+  website: 'fa-solid fa-globe',
+};
+
+const SOCIAL_LABELS = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  x: 'X',
+  tiktok: 'TikTok',
+  youtube: 'YouTube',
+  linkedin: 'LinkedIn',
+  website: 'Website',
+};
 const LOGO_ID = 'logo';
 const LEGACY_LOGO_IDS = ['logo-home', 'logo-rooms', 'logo-restaurant'];
 
@@ -2506,11 +2532,35 @@ function siteAreaCss(selector, bg) {
   return selector + '{' + vars + paint + '}';
 }
 
-function SiteTheme({ colors }) {
+/* Site-wide type, emitted as ordinary rules rather than inline styles so a
+   per-element font the editor set still wins: inline beats a stylesheet without
+   !important, which is the precedence we want between "the whole site" and
+   "this one heading". An empty field leaves the template's own type alone. */
+function siteTypeCss(type) {
+  if (!type) return '';
+  const family = (type.family || '').trim();
+  const size = (type.size || '').trim();
+  const color = (type.color || '').trim();
+  const headingColor = (type.headingColor || '').trim();
+
+  let css = '';
+  const bodyRules = [
+    family ? 'font-family:' + family + ';' : '',
+    size ? 'font-size:' + size + ';' : '',
+    color ? 'color:' + color + ';' : '',
+  ].join('');
+  if (bodyRules) css += 'body{' + bodyRules + '}';
+  if (family) css += 'h1,h2,h3,h4,h5,h6,.font-display,.nav-bar,button,input,select,textarea{font-family:' + family + ';}';
+  if (color) css += 'p,span,li,td,th,label,a{color:inherit;}';
+  if (headingColor) css += 'h1,h2,h3,h4,h5,h6,.font-display{color:' + headingColor + ';}';
+  return css;
+}
+
+function SiteTheme({ colors, type }) {
   const css = SITE_COLOR_AREAS
     .map((area) => (colors && colors[area.id] ? siteAreaCss(area.selector, colors[area.id]) : ''))
     .filter(Boolean)
-    .join('');
+    .join('') + siteTypeCss(type);
   if (!css) return null;
   return <style data-hms-no-edit="1">{css}</style>;
 }
@@ -2755,8 +2805,15 @@ function HeroSlider({ slides, canEdit }) {
   );
 }
 
-function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides }) {
+function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo }) {
   const roomList = rooms && rooms.length ? rooms : [];
+  /* Both lines come from the team's Hotel Information, which starts as the
+     concept faculty approved and falls back to the template's own copy while
+     those fields are still blank. */
+  const info = hotelInfo || {};
+  const tagline = (info.tagline || '').trim() || 'Est. 1923';
+  const blurb = (info.description || '').trim()
+    || 'Nestled in the heart of the city, SPC Hotel offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.';
   const menuList = menus || [];
 
   const handleAddRoom = (e) => {
@@ -2787,13 +2844,13 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
           <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} />
         </div>
         <div className="hero-content">
-          <span className="section-num">Est. 1923</span>
+          <span className="section-num">{tagline}</span>
           <h1 className="font-display" data-hms-move-root="1" style={{ fontSize: '3.2rem', fontWeight: 600, lineHeight: 1.1, marginBottom: '1.25rem' }}>
             <span style={{ display: 'block' }}>A Sanctuary of</span>
             <em style={{ display: 'block', color: 'var(--warm)' }}>Timeless Luxury</em>
           </h1>
           <p style={{ color: 'var(--fg-muted)', fontSize: '0.95rem', fontWeight: 400, lineHeight: 1.7, marginBottom: '2rem', maxWidth: 400 }}>
-            Nestled in the heart of the city, SPC Hotel offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.
+            {blurb}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <button className="btn-primary" onClick={() => onNav('rooms')}>
@@ -3809,10 +3866,25 @@ function BookingPage({ onToast, rooms, onCreateBooking }) {
 
 
 /* â•â•â•â•â•â•â• FOOTER â•â•â•â•â•â•â• */
-function Footer({ onNav, cardImages, page, brandName }) {
+function Footer({ onNav, cardImages, page, brandName, hotelInfo, socialLinks }) {
   // Passed only so the footer re-renders when the shared logo changes.
   void cardImages;
   void page;
+  /* The footer is on every page, so the hotel's contact details have to come
+     from one record — otherwise Rooms and Home quote different phone numbers.
+     Blank fields keep the template's own copy, so a team that has not filled
+     the form in still has a finished-looking site. */
+  const info = hotelInfo || {};
+  const socials = Array.isArray(socialLinks) ? socialLinks : [];
+  const blurb = (info.description || '').trim()
+    || 'A sanctuary of refined hospitality. Where every guest becomes part of our story.';
+  const contactRows = [
+    { icon: 'fa-solid fa-location-dot', value: (info.address || '').trim() || '42 Rivoli Blvd, Paris' },
+    { icon: 'fa-solid fa-phone', value: (info.phone || '').trim() || '+33 1 42 60 00 00' },
+    { icon: 'fa-solid fa-envelope', value: (info.email || '').trim() || 'stay@spchotel.com' },
+    { icon: 'fa-solid fa-clock', value: (info.hours || '').trim() },
+  ].filter((row) => row.value !== '');
+
   return (
     <footer className="site-footer" data-hms-section="footer" data-hms-bg-target="1">
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -3824,18 +3896,22 @@ function Footer({ onNav, cardImages, page, brandName }) {
                   no-edit stops a double-click caret fighting the next React render. */}
               <span data-hms-brand-name="1" data-hms-no-edit="1" style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#fff' }}>{brandName}</span>
             </div>
-            <p style={{ fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem', color: 'rgba(247,244,239,0.6)' }}>A sanctuary of refined hospitality. Where every guest becomes part of our story.</p>
-            <div style={{ display: 'flex', gap: '0.65rem' }}>
-              {['fa-instagram', 'fa-facebook-f', 'fa-x-twitter'].map(icon => (
-                <a key={icon} href="#" aria-label={icon}
-                  style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color 0.2s, color 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#fff'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'rgba(247,244,239,0.5)'; }}
-                >
-                  <i className={`fa-brands ${icon}`} style={{ fontSize: '0.8rem' }}></i>
-                </a>
-              ))}
-            </div>
+            <p style={{ fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem', color: 'rgba(247,244,239,0.6)' }}>{blurb}</p>
+            {socials.length ? (
+              <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+                {socials.map((link) => (
+                  <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
+                    aria-label={SOCIAL_LABELS[link.network] || 'Website'}
+                    title={SOCIAL_LABELS[link.network] || 'Website'}
+                    style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color 0.2s, color 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#fff'; e.currentTarget.style.color = '#fff'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'rgba(247,244,239,0.5)'; }}
+                  >
+                    <i className={SOCIAL_ICONS[link.network] || SOCIAL_ICONS.website} style={{ fontSize: '0.8rem' }}></i>
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div>
             <h4 className="footer-heading">Hotel</h4>
@@ -3858,14 +3934,16 @@ function Footer({ onNav, cardImages, page, brandName }) {
           <div>
             <h4 className="footer-heading">Contact</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-              <span style={{ fontSize: '0.82rem' }}><i className="fa-solid fa-location-dot" style={{ width: 14, marginRight: '0.35rem', opacity: 0.5 }}></i>42 Rivoli Blvd, Paris</span>
-              <span style={{ fontSize: '0.82rem' }}><i className="fa-solid fa-phone" style={{ width: 14, marginRight: '0.35rem', opacity: 0.5 }}></i>+33 1 42 60 00 00</span>
-              <span style={{ fontSize: '0.82rem' }}><i className="fa-solid fa-envelope" style={{ width: 14, marginRight: '0.35rem', opacity: 0.5 }}></i>stay@spchotel.com</span>
+              {contactRows.map((row) => (
+                <span key={row.icon} style={{ fontSize: '0.82rem' }}>
+                  <i className={row.icon} style={{ width: 14, marginRight: '0.35rem', opacity: 0.5 }}></i>{row.value}
+                </span>
+              ))}
             </div>
           </div>
         </div>
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <span style={{ fontSize: '0.72rem', color: 'rgba(247,244,239,0.35)' }}>2024 SPC Hotel. All rights reserved.</span>
+          <span style={{ fontSize: '0.72rem', color: 'rgba(247,244,239,0.35)' }}>{new Date().getFullYear()} {brandName}. All rights reserved.</span>
           <div style={{ display: 'flex', gap: '1.25rem' }}>
             <a href="#" style={{ fontSize: '0.72rem' }}>Privacy Policy</a>
             <a href="#" style={{ fontSize: '0.72rem' }}>Terms of Service</a>
@@ -3915,6 +3993,18 @@ function App() {
     window.HMSSiteContent && window.HMSSiteContent.getMenuCardBg ? window.HMSSiteContent.getMenuCardBg() : ''
   ));
   const [canEditMenuColor, setCanEditMenuColor] = useState(false);
+  /* The hotel's own name, words and contact details, plus its social profiles
+     and site type. One record for the whole team, read here and passed down,
+     so no page keeps a copy of its own. */
+  const [hotelInfo, setHotelInfoState] = useState(() => (
+    window.HMSSiteContent && window.HMSSiteContent.getHotelInfo ? window.HMSSiteContent.getHotelInfo() : {}
+  ));
+  const [socialLinks, setSocialLinksState] = useState(() => (
+    window.HMSSiteContent && window.HMSSiteContent.getSocialLinks ? window.HMSSiteContent.getSocialLinks() : []
+  ));
+  const [typography, setTypographyState] = useState(() => (
+    window.HMSSiteContent && window.HMSSiteContent.getTypography ? window.HMSSiteContent.getTypography() : {}
+  ));
   const [siteColors, setSiteColorsState] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getSiteColors ? window.HMSSiteContent.getSiteColors() : {}
   ));
@@ -4052,6 +4142,9 @@ function App() {
         : false
     );
     setCanEditNav(window.HMSSiteContent.canEditNav());
+    if (window.HMSSiteContent.getHotelInfo) setHotelInfoState(window.HMSSiteContent.getHotelInfo());
+    if (window.HMSSiteContent.getSocialLinks) setSocialLinksState(window.HMSSiteContent.getSocialLinks());
+    if (window.HMSSiteContent.getTypography) setTypographyState(window.HMSSiteContent.getTypography());
     if (window.HMSSiteContent.getBrandName) setBrandNameState(window.HMSSiteContent.getBrandName());
     setCanEditBrandName(
       typeof window.HMSSiteContent.canEditBrandName === 'function'
@@ -4399,6 +4492,7 @@ function App() {
         menus={menus}
         canEditRooms={canEditRooms}
         heroSlides={heroSlides}
+        hotelInfo={hotelInfo}
         canEditHeroSlides={canEditHeroSlides}
         onAddRoom={addRoom}
         onEditRoom={editRoom}
@@ -4537,9 +4631,9 @@ function App() {
         cardImages={cardImages}
       />
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
-      <Footer onNav={navigateTo} cardImages={cardImages} page={page} brandName={brandName} />
+      <Footer onNav={navigateTo} cardImages={cardImages} page={page} brandName={brandName} hotelInfo={hotelInfo} socialLinks={socialLinks} />
       <HeaderEditModal edit={headerEditDialog} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />
-      <SiteTheme colors={siteColors} />
+      <SiteTheme colors={siteColors} type={typography} />
       <SiteColorsModal
         open={cardColorKind === 'site'}
         colors={siteColors}

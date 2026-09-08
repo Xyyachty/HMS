@@ -152,6 +152,9 @@
     if (!this.canEdit || this.mode !== 'build' || !this._dirty) return;
     if (this._autosaving) return;
     this._autosaving = true;
+    // Say so before the request goes out: an autosave that is only announced
+    // once it lands leaves the student watching a stale "unsaved" line.
+    this.onChange({ type: 'saving' });
     try {
       if (typeof window.postToTemplate === 'function') {
         window.postToTemplate({ type: 'request-customizations' });
@@ -191,6 +194,7 @@
       this.onToast('You cannot edit this template');
       return;
     }
+    this.onChange({ type: 'saving' });
     try {
       if (typeof window.postToTemplate === 'function') {
         window.postToTemplate({ type: 'request-customizations' });

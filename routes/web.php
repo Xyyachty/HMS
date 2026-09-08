@@ -620,6 +620,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::get('/templates/{role}/sync', [HotelTemplateController::class, 'sync'])->name('templates.sync');
     Route::post('/templates/{role}/save', [HotelTemplateController::class, 'save'])->name('templates.save');
     Route::post('/templates/{role}/autosave', [HotelTemplateController::class, 'autosave'])->name('templates.autosave');
+    // Saving keeps a draft; this is the separate, deliberate act of handing the
+    // work to faculty. Autosave must never reach it.
+    Route::post('/templates/{role}/submit', [HotelTemplateController::class, 'submit'])->name('templates.submit');
     Route::get('/templates/{role}/versions', [HotelTemplateController::class, 'versions'])->name('templates.versions');
     Route::post('/templates/{role}/versions/{version}/restore', [HotelTemplateController::class, 'restore'])->name('templates.restore');
 
@@ -650,6 +653,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::get('/frontdesk/template/1', function (Request $request) {
         $customizations = [];
         $canEditTemplate = false;
+        // Overwritten below once the team is known; a student with no team still
+        // renders the template, and it must not reference an unset variable.
+        $hotelDefaults = \App\Support\HotelTemplateBuilder::hotelDefaults(null, null);
         $authUser = auth()->user();
         $student = $authUser?->student;
         $roleKeys = array_keys(\App\Support\HotelTemplateBuilder::ROLES);
@@ -677,6 +683,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     (int) $groupMembership->faculty_id
                 );
                 $canEditTemplate = \App\Support\HotelTemplateBuilder::canEdit($authUser, $groupMembership, $builderRole);
+                // What the hotel is called, and what it says about itself, before
+                // anybody edits it: the concept faculty approved.
+                $hotelDefaults = \App\Support\HotelTemplateBuilder::hotelDefaults(
+                    (string) $groupMembership->group_name,
+                    (int) $groupMembership->faculty_id
+                );
             }
         }
 
@@ -684,12 +696,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ? \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole)
             : [];
 
-        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole'));
+        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole', 'hotelDefaults'));
     })->name('frontdesk.template.1');
 
     Route::get('/frontdesk/template/2', function (Request $request) {
         $customizations = [];
         $canEditTemplate = false;
+        // Overwritten below once the team is known; a student with no team still
+        // renders the template, and it must not reference an unset variable.
+        $hotelDefaults = \App\Support\HotelTemplateBuilder::hotelDefaults(null, null);
         $authUser = auth()->user();
         $student = $authUser?->student;
         $roleKeys = array_keys(\App\Support\HotelTemplateBuilder::ROLES);
@@ -717,6 +732,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     (int) $groupMembership->faculty_id
                 );
                 $canEditTemplate = \App\Support\HotelTemplateBuilder::canEdit($authUser, $groupMembership, $builderRole);
+                $hotelDefaults = \App\Support\HotelTemplateBuilder::hotelDefaults(
+                    (string) $groupMembership->group_name,
+                    (int) $groupMembership->faculty_id
+                );
             }
         }
 
@@ -724,7 +743,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ? \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole)
             : [];
 
-        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole'));
+        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole', 'hotelDefaults'));
     })->name('frontdesk.template.2');
 
     Route::post('/frontdesk/template/select', function (Request $request) {

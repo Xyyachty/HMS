@@ -18,7 +18,7 @@
 
   const USER_KEY = '__userElements';
   const DELETED_KEY = '__deleted';
-  const SITE_CONTENT_KEYS = ['__navLinks', '__brandName', '__roomCardStyle', '__menuCardStyle', '__siteColors', '__rooms', '__menus', '__cardImages', '__heroSlides'];
+  const SITE_CONTENT_KEYS = ['__navLinks', '__brandName', '__roomCardStyle', '__menuCardStyle', '__siteColors', '__rooms', '__menus', '__cardImages', '__heroSlides', '__hotelInfo', '__socialLinks', '__typography'];
 
   let designMode = false;
   let selectedEl = null;
@@ -2518,6 +2518,47 @@
       case 'load-customizations':
         customizations = normalizeCustomizations(data.customizations || {});
         applyAllCustomizations();
+        break;
+      /* The hotel's name, words, social profiles and site type are edited in the
+         builder's own form rather than by clicking the page, so the panel hands
+         them in here. Written through HMSSiteContent so they land in the same
+         customizations the rest of the editor saves, and so one write reaches
+         every page at once. */
+      case 'set-site-identity':
+        if (!canEdit) {
+          blockEditToast();
+          break;
+        }
+        if (window.HMSSiteContent) {
+          if (data.hotelInfo && typeof window.HMSSiteContent.setHotelInfo === 'function') {
+            window.HMSSiteContent.setHotelInfo(data.hotelInfo);
+          }
+          if (data.socialLinks && typeof window.HMSSiteContent.setSocialLinks === 'function') {
+            window.HMSSiteContent.setSocialLinks(data.socialLinks);
+          }
+          if (data.typography && typeof window.HMSSiteContent.setTypography === 'function') {
+            window.HMSSiteContent.setTypography(data.typography);
+          }
+        }
+        break;
+      /* The panel draws its form from whatever the site currently holds, so it
+         asks for that once the frame is up rather than keeping its own copy. */
+      case 'request-site-identity':
+        if (window.HMSSiteContent && window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            source: 'hms-template',
+            type: 'site-identity',
+            hotelInfo: window.HMSSiteContent.getHotelInfo ? window.HMSSiteContent.getHotelInfo() : {},
+            socialLinks: window.HMSSiteContent.getSocialLinks ? window.HMSSiteContent.getSocialLinks() : [],
+            typography: window.HMSSiteContent.getTypography ? window.HMSSiteContent.getTypography() : {},
+            defaults: window.HMSSiteContent.hotelDefaults ? window.HMSSiteContent.hotelDefaults() : {},
+            // Renaming the hotel belongs to whoever owns Home, the way it does
+            // when the name is edited in the header; the panel greys the field
+            // for everybody else rather than dropping their keystrokes.
+            canEditName: window.HMSSiteContent.canEditBrandName ? window.HMSSiteContent.canEditBrandName() : false,
+            canEdit: window.HMSSiteContent.canEditSiteIdentity ? window.HMSSiteContent.canEditSiteIdentity() : false,
+          }, '*');
+        }
         break;
       case 'request-customizations':
         persistUserElements();

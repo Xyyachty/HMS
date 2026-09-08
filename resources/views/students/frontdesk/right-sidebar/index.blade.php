@@ -31,6 +31,127 @@
     <!-- Scrollable Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar">
 
+        {{-- ── Hotel Information ─────────────────────────────────
+             One form for what the hotel is, rather than a click-and-type edit on
+             each page: the name, its words, its contact details and its social
+             profiles are the same wherever they appear, so they are stored once
+             for the team and every page reads that one record.
+
+             Everything here saves as a draft the moment it is typed - the
+             builder's own autosave carries it - and none of it submits anything.
+             That is what Submit Changes in the toolbar is for. --}}
+        <div class="design-section border-b border-zinc-800/60">
+            <button onclick="toggleSection('identity')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center">
+                        <i class="fas fa-hotel text-[9px] text-amber-400"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Hotel Information</span>
+                </div>
+                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-identity"></i>
+            </button>
+            <div class="section-body px-5 pb-4" id="section-identity">
+                <p class="text-[10px] text-zinc-500 mb-3 leading-relaxed">
+                    Shown on every page. Leave a field empty to keep your approved hotel concept's own wording.
+                </p>
+
+                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Hotel name</label>
+                <input type="text" id="identityName" maxlength="60" placeholder="Your hotel's name"
+                       oninput="queueIdentityPush()"
+                       class="w-full mb-3 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+
+                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Tagline</label>
+                <input type="text" id="identityTagline" maxlength="140" placeholder="A short line under the name"
+                       oninput="queueIdentityPush()"
+                       class="w-full mb-3 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+
+                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Description</label>
+                <textarea id="identityDescription" rows="4" maxlength="1200" placeholder="What the hotel is, who it serves, what makes it different."
+                          oninput="queueIdentityPush()"
+                          class="w-full mb-3 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 leading-relaxed focus:outline-none focus:border-amber-500/50"></textarea>
+
+                <p class="text-[10px] font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">Contact</p>
+                <input type="text" id="identityPhone" maxlength="40" placeholder="Phone"
+                       oninput="queueIdentityPush()"
+                       class="w-full mb-2 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+                <input type="text" id="identityEmail" maxlength="120" placeholder="Email"
+                       oninput="queueIdentityPush()"
+                       class="w-full mb-2 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+                <input type="text" id="identityAddress" maxlength="200" placeholder="Address"
+                       oninput="queueIdentityPush()"
+                       class="w-full mb-2 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+                <input type="text" id="identityHours" maxlength="120" placeholder="Front desk hours"
+                       oninput="queueIdentityPush()"
+                       class="w-full mb-3 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+
+                <p class="text-[10px] font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">Social links</p>
+                <p class="text-[10px] text-zinc-500 mb-2">Each one shows in the footer as its own icon. Blank rows are ignored.</p>
+                <div id="identitySocialRows" class="space-y-2 mb-2"></div>
+                <button type="button" onclick="addIdentitySocialRow()"
+                        class="w-full py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-300 hover:border-amber-500/40 hover:text-white transition">
+                    <i class="fas fa-plus mr-1"></i>Add social link
+                </button>
+            </div>
+        </div>
+
+        {{-- ── Hotel Branding ──────────────────────────────────
+             Type is set for the whole site here, as CSS custom properties, so it
+             reaches text nobody has selected. The logo, the slider images and the
+             background palette already have their own tools on the canvas, so
+             this section points at those rather than owning a second copy that
+             could disagree with them. --}}
+        <div class="design-section border-b border-zinc-800/60">
+            <button onclick="toggleSection('branding')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-6 h-6 rounded-md bg-fuchsia-500/15 flex items-center justify-center">
+                        <i class="fas fa-swatchbook text-[9px] text-fuchsia-400"></i>
+                    </div>
+                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Hotel Branding</span>
+                </div>
+                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-branding"></i>
+            </button>
+            <div class="section-body px-5 pb-4" id="section-branding">
+                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Font family</label>
+                <select id="brandFontFamily" onchange="queueIdentityPush(true)"
+                        class="w-full mb-3 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-fuchsia-500/50"></select>
+
+                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Base font size</label>
+                <div class="flex items-center gap-2 mb-3">
+                    <input type="range" id="brandFontSizeRange" min="12" max="22" step="1" value="16"
+                           oninput="onBrandFontSizeSlide(this.value)" class="flex-1 accent-fuchsia-500">
+                    <span id="brandFontSizeLabel" class="text-[10px] text-zinc-400 w-14 text-right">Default</span>
+                </div>
+                <button type="button" onclick="clearBrandFontSize()"
+                        class="w-full mb-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-400 hover:text-white transition">Use template size</button>
+
+                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Body text colour</label>
+                <div class="flex items-center gap-2 mb-3">
+                    <input type="color" id="brandFontColor" value="#f5f0e8" onchange="queueIdentityPush(true)"
+                           class="w-9 h-8 rounded-lg bg-zinc-800 border border-zinc-700 cursor-pointer">
+                    <button type="button" onclick="clearBrandColor('color')"
+                            class="flex-1 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-400 hover:text-white transition">Use template colour</button>
+                </div>
+
+                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Heading colour</label>
+                <div class="flex items-center gap-2 mb-3">
+                    <input type="color" id="brandHeadingColor" value="#f5f0e8" onchange="queueIdentityPush(true)"
+                           class="w-9 h-8 rounded-lg bg-zinc-800 border border-zinc-700 cursor-pointer">
+                    <button type="button" onclick="clearBrandColor('headingColor')"
+                            class="flex-1 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-400 hover:text-white transition">Use template colour</button>
+                </div>
+
+                <div class="rounded-lg border border-zinc-700/70 bg-zinc-800/50 p-2.5">
+                    <p class="text-[10px] text-zinc-400 leading-relaxed">
+                        <i class="fas fa-circle-info text-[9px] text-fuchsia-400 mr-1"></i>
+                        Logo, slider highlights and the colour palette are edited on the page itself:
+                        click the logo in the header to replace it, use the pencil on the hero slider
+                        for highlight images, and Background Colours for the palette. All three apply
+                        to every page.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- ── Element Target ── -->
         <div class="px-5 py-3 border-b border-zinc-800/60 bg-zinc-900/50">
             <div class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-zinc-800/80 border border-zinc-700/50">
@@ -776,6 +897,13 @@
             window.templateCustomizations = data.customizations || window.templateCustomizations || {};
             postToTemplate({ type: 'set-mode', mode: window.currentEditorMode });
             postToTemplate({ type: 'load-customizations', customizations: window.templateCustomizations });
+            // Draw the Hotel Information form from the site itself, so it shows
+            // what a teammate saved rather than a copy this panel kept.
+            postToTemplate({ type: 'request-site-identity' });
+        }
+
+        if (data.type === 'site-identity') {
+            fillIdentityForm(data);
         }
 
         if (data.type === 'history-state') {
@@ -880,6 +1008,262 @@
                 window.hmsBuilder.save(false);
             }
         }
+    }
+
+    /* ══════ HOTEL INFORMATION & BRANDING ══════
+       The form writes into the live site through the editor bridge, which files
+       the change under the same customizations everything else in the builder
+       saves. That is deliberate: it means identity edits ride the builder's
+       existing autosave (draft only) and its Submit Changes, instead of needing
+       a save path of their own that could disagree with them.
+
+       Keystrokes are debounced because every push repaints the iframe; a
+       dropdown or a colour swatch pushes at once, since there is no typing to
+       wait for. */
+
+    const IDENTITY_TEXT_FIELDS = {
+        identityName: 'name',
+        identityTagline: 'tagline',
+        identityDescription: 'description',
+        identityPhone: 'phone',
+        identityEmail: 'email',
+        identityAddress: 'address',
+        identityHours: 'hours',
+    };
+
+    /* Offered in the dropdown; mirrors HMSSiteContent.FONT_FAMILIES. Any CSS
+       stack still works if one arrives from a teammate's save. */
+    const BRAND_FONTS = [
+        { id: '', label: 'Template default' },
+        { id: "'Inter', system-ui, sans-serif", label: 'Inter' },
+        { id: "'Playfair Display', Georgia, serif", label: 'Playfair Display' },
+        { id: "'Montserrat', system-ui, sans-serif", label: 'Montserrat' },
+        { id: "'Lora', Georgia, serif", label: 'Lora' },
+        { id: "'Poppins', system-ui, sans-serif", label: 'Poppins' },
+        { id: "Georgia, 'Times New Roman', serif", label: 'Georgia' },
+        { id: "system-ui, -apple-system, 'Segoe UI', sans-serif", label: 'System' },
+    ];
+
+    const SOCIAL_NETWORK_OPTIONS = [
+        ['facebook', 'Facebook'],
+        ['instagram', 'Instagram'],
+        ['x', 'X'],
+        ['tiktok', 'TikTok'],
+        ['youtube', 'YouTube'],
+        ['linkedin', 'LinkedIn'],
+        ['website', 'Website'],
+    ];
+
+    let identityPushTimer = null;
+    // Blank means "the template's own size"; the slider cannot express that, so
+    // it is tracked here and only becomes a real value once the slider moves.
+    let brandFontSize = '';
+
+    function identityValue(id) {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+    }
+
+    function fillIdentityForm(data) {
+        const info = (data && data.hotelInfo) || {};
+
+        // The hotel's name is owned by whoever owns Home, like the header edit
+        // it mirrors. Show the current name to everyone, but only let that role
+        // change it, rather than accepting typing the server would discard.
+        const nameInput = document.getElementById('identityName');
+        if (nameInput) {
+            const mayRename = data && data.canEditName === true;
+            nameInput.disabled = !mayRename;
+            nameInput.title = mayRename ? '' : 'Front Desk names the hotel for the team';
+            nameInput.classList.toggle('opacity-50', !mayRename);
+        }
+        Object.keys(IDENTITY_TEXT_FIELDS).forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            // Never overwrite the box someone is typing in: the frame answers
+            // this request after every save, including the one their own
+            // keystroke just triggered.
+            if (document.activeElement === el) return;
+            el.value = info[IDENTITY_TEXT_FIELDS[id]] || '';
+        });
+
+        const select = document.getElementById('brandFontFamily');
+        if (select && !select.options.length) {
+            BRAND_FONTS.forEach((font) => {
+                const option = document.createElement('option');
+                option.value = font.id;
+                option.textContent = font.label;
+                select.appendChild(option);
+            });
+        }
+
+        const type = (data && data.typography) || {};
+        if (select && document.activeElement !== select) {
+            // A family a teammate typed that is not in the list still has to show
+            // as the current choice rather than silently reading as default.
+            if (type.family && !BRAND_FONTS.some((font) => font.id === type.family)) {
+                const option = document.createElement('option');
+                option.value = type.family;
+                option.textContent = 'Custom';
+                select.appendChild(option);
+            }
+            select.value = type.family || '';
+        }
+
+        brandFontSize = type.size || '';
+        const range = document.getElementById('brandFontSizeRange');
+        const label = document.getElementById('brandFontSizeLabel');
+        const px = parseInt(String(brandFontSize).replace(/[^0-9]/g, ''), 10);
+        if (range && !Number.isNaN(px)) range.value = String(px);
+        if (label) label.textContent = brandFontSize ? brandFontSize : 'Default';
+
+        const bodyColor = document.getElementById('brandFontColor');
+        if (bodyColor && type.color) bodyColor.value = type.color;
+        const headingColor = document.getElementById('brandHeadingColor');
+        if (headingColor && type.headingColor) headingColor.value = type.headingColor;
+
+        renderIdentitySocialRows((data && data.socialLinks) || []);
+    }
+
+    function renderIdentitySocialRows(links) {
+        const wrap = document.getElementById('identitySocialRows');
+        if (!wrap) return;
+        // Leave the rows alone while a link is being typed, for the same reason
+        // the text fields are left alone above.
+        if (wrap.contains(document.activeElement)) return;
+
+        wrap.innerHTML = '';
+        const list = Array.isArray(links) && links.length ? links : [{ network: 'facebook', url: '' }];
+        list.forEach((link) => appendIdentitySocialRow(link.network, link.url));
+    }
+
+    function appendIdentitySocialRow(network, url) {
+        const wrap = document.getElementById('identitySocialRows');
+        if (!wrap) return;
+
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-1.5 identity-social-row';
+
+        const select = document.createElement('select');
+        select.className = 'w-24 shrink-0 bg-zinc-800 border border-zinc-700 rounded-lg px-1.5 py-1.5 text-[10px] text-zinc-200 focus:outline-none focus:border-amber-500/50';
+        SOCIAL_NETWORK_OPTIONS.forEach(([value, label]) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            select.appendChild(option);
+        });
+        select.value = network || 'facebook';
+        select.addEventListener('change', () => queueIdentityPush(true));
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'https://...';
+        input.maxLength = 300;
+        input.value = url || '';
+        input.className = 'flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-[10px] text-zinc-200 focus:outline-none focus:border-amber-500/50';
+        input.addEventListener('input', () => queueIdentityPush());
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'w-7 h-7 shrink-0 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] text-zinc-500 hover:text-rose-300 hover:border-rose-500/40 transition';
+        remove.innerHTML = '<i class="fas fa-xmark"></i>';
+        remove.title = 'Remove this link';
+        remove.addEventListener('click', () => {
+            row.remove();
+            queueIdentityPush(true);
+        });
+
+        row.appendChild(select);
+        row.appendChild(input);
+        row.appendChild(remove);
+        wrap.appendChild(row);
+    }
+
+    function addIdentitySocialRow() {
+        appendIdentitySocialRow('facebook', '');
+    }
+
+    function collectIdentitySocialLinks() {
+        return Array.from(document.querySelectorAll('#identitySocialRows .identity-social-row'))
+            .map((row) => ({
+                network: row.querySelector('select') ? row.querySelector('select').value : 'website',
+                url: row.querySelector('input') ? row.querySelector('input').value.trim() : '',
+            }))
+            .filter((link) => link.url !== '');
+    }
+
+    function onBrandFontSizeSlide(value) {
+        brandFontSize = String(value) + 'px';
+        const label = document.getElementById('brandFontSizeLabel');
+        if (label) label.textContent = brandFontSize;
+        queueIdentityPush();
+    }
+
+    function clearBrandFontSize() {
+        brandFontSize = '';
+        const label = document.getElementById('brandFontSizeLabel');
+        if (label) label.textContent = 'Default';
+        queueIdentityPush(true);
+    }
+
+    function clearBrandColor(field) {
+        pushIdentity({ [field]: '' });
+    }
+
+    /** @param {boolean} [immediate] true for a dropdown, a swatch or a removal. */
+    function queueIdentityPush(immediate) {
+        if (identityPushTimer) clearTimeout(identityPushTimer);
+        if (immediate) {
+            pushIdentity();
+            return;
+        }
+        identityPushTimer = setTimeout(() => pushIdentity(), 450);
+    }
+
+    /**
+     * Hand the whole form to the site in one message.
+     *
+     * @param {object} [typeOverrides] fields to force, used by the "use template
+     *   default" buttons, which have to send an empty string rather than let the
+     *   colour input's own value stand in for "unset".
+     */
+    function pushIdentity(typeOverrides) {
+        if (identityPushTimer) {
+            clearTimeout(identityPushTimer);
+            identityPushTimer = null;
+        }
+        if (!window.HMS_CAN_EDIT_TEMPLATE) return;
+
+        const hotelInfo = {};
+        Object.keys(IDENTITY_TEXT_FIELDS).forEach((id) => {
+            hotelInfo[IDENTITY_TEXT_FIELDS[id]] = identityValue(id);
+        });
+
+        const familySelect = document.getElementById('brandFontFamily');
+        const typography = Object.assign({
+            family: familySelect ? familySelect.value : '',
+            size: brandFontSize,
+            color: identityValue('brandFontColor'),
+            headingColor: identityValue('brandHeadingColor'),
+        }, typeOverrides || {});
+
+        if (typeOverrides) {
+            // Keep the cleared field cleared on the next read-back, not repainted
+            // from the colour input that still holds its last swatch.
+            Object.keys(typeOverrides).forEach((field) => {
+                const el = field === 'color'
+                    ? document.getElementById('brandFontColor')
+                    : (field === 'headingColor' ? document.getElementById('brandHeadingColor') : null);
+                if (el && typeOverrides[field] === '') el.value = '#f5f0e8';
+            });
+        }
+
+        postToTemplate({
+            type: 'set-site-identity',
+            hotelInfo: hotelInfo,
+            socialLinks: collectIdentitySocialLinks(),
+            typography: typography,
+        });
     }
 
     window.addEventListener('message', onTemplateMessage);

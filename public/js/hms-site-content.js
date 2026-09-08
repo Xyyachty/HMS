@@ -16,7 +16,10 @@
   const ROOM_CARD_STYLE_KEY = '__roomCardStyle';
   const MENU_CARD_STYLE_KEY = '__menuCardStyle';
   const SITE_COLORS_KEY = '__siteColors';
-  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const HOTEL_INFO_KEY = '__hotelInfo';
+  const SOCIAL_LINKS_KEY = '__socialLinks';
+  const TYPOGRAPHY_KEY = '__typography';
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   /**
    * The hotel name shown in the header and the footer.
@@ -36,6 +39,45 @@
   /** Same one-item-collection shape, for the same round-trip reason. */
   const ROOM_CARD_STYLE_ID = 'room-card';
   const MENU_CARD_STYLE_ID = 'menu-card';
+  const HOTEL_INFO_ID = 'hotel';
+  const TYPOGRAPHY_ID = 'type';
+
+  /** Per-field caps: a tagline is a line, a description is a paragraph. */
+  const HOTEL_INFO_FIELDS = ['tagline', 'description', 'phone', 'email', 'address', 'hours'];
+  const HOTEL_INFO_MAX = {
+    tagline: 140,
+    description: 1200,
+    phone: 40,
+    email: 120,
+    address: 200,
+    hours: 120,
+  };
+
+  /** Networks the footer knows an icon for; mirrors HotelTemplateBuilder::SOCIAL_NETWORKS. */
+  const SOCIAL_NETWORKS = {
+    facebook: 'Facebook',
+    instagram: 'Instagram',
+    x: 'X',
+    tiktok: 'TikTok',
+    youtube: 'YouTube',
+    linkedin: 'LinkedIn',
+    website: 'Website',
+  };
+  const SOCIAL_LINKS_MAX = 8;
+
+  const TYPOGRAPHY_FIELDS = ['family', 'size', 'color', 'headingColor'];
+
+  /** Offered in the builder; any CSS stack still works if one is typed in. */
+  const FONT_FAMILIES = [
+    { id: '', label: 'Template default' },
+    { id: "'Inter', system-ui, sans-serif", label: 'Inter' },
+    { id: "'Playfair Display', Georgia, serif", label: 'Playfair Display' },
+    { id: "'Montserrat', system-ui, sans-serif", label: 'Montserrat' },
+    { id: "'Lora', Georgia, serif", label: 'Lora' },
+    { id: "'Poppins', system-ui, sans-serif", label: 'Poppins' },
+    { id: "Georgia, 'Times New Roman', serif", label: 'Georgia' },
+    { id: "system-ui, -apple-system, 'Segoe UI', sans-serif", label: 'System' },
+  ];
 
   const DEFAULT_NAV = [
     { id: 'nav-home', key: 'home', label: 'Home' },
@@ -405,12 +447,27 @@
     return canEdit() && editablePages().indexOf('restaurant') !== -1;
   }
 
+  /**
+   * What the team's approved hotel concept says, handed down by the server as
+   * HMS_HOTEL_DEFAULTS. Every identity field falls back to this, so a site the
+   * team has not touched already reads as the concept faculty approved, and a
+   * field cleared in the builder goes back to tracking it.
+   */
+  function hotelDefaults() {
+    const d = window.HMS_HOTEL_DEFAULTS;
+    return {
+      name: d && typeof d.name === 'string' && d.name.trim() ? d.name.trim() : DEFAULT_BRAND_NAME,
+      tagline: d && typeof d.tagline === 'string' ? d.tagline.trim() : '',
+      description: d && typeof d.description === 'string' ? d.description.trim() : '',
+    };
+  }
+
   function getBrandName() {
     const c = getCustomizations();
     const entry = c[BRAND_NAME_KEY];
     const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
     const name = item && typeof item.label === 'string' ? item.label.trim() : '';
-    return name || DEFAULT_BRAND_NAME;
+    return name || hotelDefaults().name;
   }
 
   function setBrandName(name) {
@@ -421,6 +478,144 @@
       page: 'home',
       items: [{ id: BRAND_NAME_ID, label: clean }],
     });
+    return true;
+  }
+
+  /* ── Hotel information ──────────────────────────────────────────────────
+     One record for the whole site: the words under the hotel's name and the
+     contact block the landing page and every footer show. Any site-owning role
+     may write it, like the logo and the background colours, because the hotel
+     has one phone number no matter whose page you are looking at. */
+
+  function canEditSiteIdentity() {
+    // Site-wide identity, not a page: anyone who may edit any page of the site
+    // may set it. The server re-checks on save (SITE_OWNING_ROLES).
+    return canEdit() && editablePages().length > 0;
+  }
+
+  function getHotelInfo() {
+    const c = getCustomizations();
+    const entry = c[HOTEL_INFO_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    const defaults = hotelDefaults();
+    const read = (field) => {
+      const value = item && typeof item[field] === 'string' ? item[field].trim() : '';
+      return value;
+    };
+
+    return {
+      // The name lives in __brandName, where the header and footer already read
+      // it; it is surfaced here so the builder can show one Hotel Information
+      // form rather than two.
+      name: getBrandName(),
+      tagline: read('tagline') || defaults.tagline,
+      description: read('description') || defaults.description,
+      phone: read('phone'),
+      email: read('email'),
+      address: read('address'),
+      hours: read('hours'),
+    };
+  }
+
+  /**
+   * Merge a partial edit into the stored record. Only the fields passed are
+   * touched, so the builder can save one input as the student leaves it
+   * without carrying the rest of the form along.
+   *
+   * A field set to the empty string is stored empty on purpose — that is how a
+   * team goes back to showing the approved concept's own words.
+   */
+  function setHotelInfo(patchFields) {
+    if (!canEditSiteIdentity()) return false;
+    if (!patchFields || typeof patchFields !== 'object') return false;
+
+    if (typeof patchFields.name === 'string') {
+      setBrandName(patchFields.name);
+    }
+
+    const c = getCustomizations();
+    const entry = c[HOTEL_INFO_KEY];
+    const current = (entry && Array.isArray(entry.items) ? entry.items[0] : null) || {};
+    const next = { id: HOTEL_INFO_ID };
+
+    HOTEL_INFO_FIELDS.forEach((field) => {
+      const incoming = Object.prototype.hasOwnProperty.call(patchFields, field)
+        ? patchFields[field]
+        : current[field];
+      next[field] = String(incoming == null ? '' : incoming).trim().slice(0, HOTEL_INFO_MAX[field] || 300);
+    });
+
+    patch(HOTEL_INFO_KEY, { page: 'home', items: [next] });
+    return true;
+  }
+
+  /* ── Social profiles ────────────────────────────────────────────────────
+     A list rather than a field per network, so a team shows only the networks
+     it actually uses instead of a row of dead icons. */
+
+  function getSocialLinks() {
+    const c = getCustomizations();
+    const entry = c[SOCIAL_LINKS_KEY];
+    const items = entry && Array.isArray(entry.items) ? entry.items : [];
+
+    return items
+      .map((item) => ({
+        id: item && item.id ? String(item.id) : uid('social'),
+        network: item && SOCIAL_NETWORKS[String(item.network)] ? String(item.network) : 'website',
+        url: item && typeof item.url === 'string' ? item.url.trim() : '',
+      }))
+      .filter((item) => item.url !== '');
+  }
+
+  function setSocialLinks(items) {
+    if (!canEditSiteIdentity()) return false;
+    const list = (Array.isArray(items) ? items : [])
+      .map((item) => ({
+        id: item && item.id ? String(item.id) : uid('social'),
+        network: item && SOCIAL_NETWORKS[String(item.network)] ? String(item.network) : 'website',
+        url: String(item && item.url != null ? item.url : '').trim().slice(0, 300),
+      }))
+      .filter((item) => item.url !== '')
+      .slice(0, SOCIAL_LINKS_MAX);
+
+    patch(SOCIAL_LINKS_KEY, { page: 'home', items: list });
+    return true;
+  }
+
+  /* ── Site typography ────────────────────────────────────────────────────
+     Applied as CSS custom properties on every page rather than per element, so
+     it reaches text nobody has selected — including sections this role cannot
+     edit. An empty field means "leave the template's own type alone". */
+
+  function getTypography() {
+    const c = getCustomizations();
+    const entry = c[TYPOGRAPHY_KEY];
+    const item = (entry && Array.isArray(entry.items) ? entry.items[0] : null) || {};
+    const read = (field) => (typeof item[field] === 'string' ? item[field].trim() : '');
+
+    return {
+      family: read('family'),
+      size: read('size'),
+      color: read('color'),
+      headingColor: read('headingColor'),
+    };
+  }
+
+  function setTypography(patchFields) {
+    if (!canEditSiteIdentity()) return false;
+    if (!patchFields || typeof patchFields !== 'object') return false;
+
+    const current = getTypography();
+    const next = { id: TYPOGRAPHY_ID };
+
+    TYPOGRAPHY_FIELDS.forEach((field) => {
+      const incoming = Object.prototype.hasOwnProperty.call(patchFields, field)
+        ? patchFields[field]
+        : current[field];
+      next[field] = String(incoming == null ? '' : incoming).trim().slice(0, 120);
+    });
+
+    patch(TYPOGRAPHY_KEY, { page: 'home', items: [next] });
     return true;
   }
 
@@ -933,10 +1128,14 @@
       roomCardBg: getRoomCardBg(),
       menuCardBg: getMenuCardBg(),
       siteColors: getSiteColors(),
+      hotelInfo: getHotelInfo(),
+      socialLinks: getSocialLinks(),
+      typography: getTypography(),
       rooms: getRooms(),
       menus: getMenus(),
       cardImages: getCardImages(),
       canEditNav: canEditNav(),
+      canEditSiteIdentity: canEditSiteIdentity(),
       canEditBrandName: canEditBrandName(),
       canEditLogo: canEditLogo(),
       canEditRooms: canEditRooms(),
@@ -996,6 +1195,20 @@
     updateNavLink,
     getBrandName,
     setBrandName,
+    HOTEL_INFO_KEY,
+    SOCIAL_LINKS_KEY,
+    TYPOGRAPHY_KEY,
+    HOTEL_INFO_FIELDS,
+    SOCIAL_NETWORKS,
+    FONT_FAMILIES,
+    hotelDefaults,
+    getHotelInfo,
+    setHotelInfo,
+    getSocialLinks,
+    setSocialLinks,
+    getTypography,
+    setTypography,
+    canEditSiteIdentity,
     getRoomCardBg,
     setRoomCardBg,
     canEditRoomCardStyle,
