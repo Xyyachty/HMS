@@ -208,7 +208,10 @@ class FacultyController extends Controller
                 'faculty_id' => $facultyId,
                 'group_id' => $group->group_id,
                 'student_id' => $studentId,
-                'role' => $roles[0], // legacy column; real roles stored in student_group_roles
+                // Legacy column; the real roles live in student_group_roles. Null
+                // when every role is already held by a teammate — see
+                // resolveMemberRoles().
+                'role' => $roles[0] ?? null,
             ]);
 
             foreach ($roles as $role) {
@@ -367,7 +370,7 @@ class FacultyController extends Controller
                         'faculty_id' => $facultyId,
                         'group_id' => $group->group_id,
                         'student_id' => $studentId,
-                        'role' => $roles[0],
+                        'role' => $roles[0] ?? null,
                     ]);
 
                     foreach ($roles as $role) {
@@ -456,9 +459,19 @@ class FacultyController extends Controller
             }
 
             if ($roles === []) {
+                // Somebody has to hold a role, so a member left blank is given one
+                // of the roles nobody has claimed yet rather than joining as a
+                // spare. Counting from $index spreads them instead of stacking
+                // everyone on the first free role.
+                //
+                // There may be none left: one member can hold several roles, and
+                // a member holding all five leaves nothing for the rest. That is
+                // a team the faculty deliberately built, not an error — the row
+                // joins with no role and picks one up when the faculty assigns
+                // it. (Dividing by an empty list here is what used to 500 the
+                // whole save.)
                 $free = array_values(array_diff($allowedRoles, array_keys($usedRoles)));
-                // Always non-empty: teams top out at 4 members against 5 roles.
-                $roles = [$free[$index % count($free)]];
+                $roles = $free === [] ? [] : [$free[$index % count($free)]];
             }
 
             foreach ($roles as $role) {
@@ -1376,7 +1389,10 @@ class FacultyController extends Controller
                 'faculty_id' => $facultyId,
                 'group_id' => $group->group_id,
                 'student_id' => $studentId,
-                'role' => $roles[0], // legacy column; real roles stored in student_group_roles
+                // Legacy column; the real roles live in student_group_roles. Null
+                // when every role is already held by a teammate — see
+                // resolveMemberRoles().
+                'role' => $roles[0] ?? null,
             ]);
 
             foreach ($roles as $role) {
