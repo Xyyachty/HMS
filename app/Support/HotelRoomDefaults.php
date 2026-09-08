@@ -263,6 +263,11 @@ class HotelRoomDefaults
                 'floor' => $floor,
                 'rate' => self::CATEGORY_RATES[$name],
                 'description' => self::CATEGORY_DESCRIPTIONS[$name],
+                // A default nobody has written down yet has none of the design work
+                // on it; the first save materialises the row and fills these in.
+                'image' => null,
+                'inclusions' => [],
+                'rooms_available' => null,
             ];
         }
 
@@ -272,6 +277,9 @@ class HotelRoomDefaults
                 'floor' => (int) $category->floor_number,
                 'rate' => $category->rate,
                 'description' => $category->description,
+                'image' => $category->image_path,
+                'inclusions' => HotelRoomCategory::splitInclusions($category->inclusions),
+                'rooms_available' => $category->rooms_available,
             ];
         }
 
@@ -293,6 +301,83 @@ class HotelRoomDefaults
      * Returns the stored spelling of the new name, or null when the name is taken or the
      * category being renamed is not one of the team's.
      */
+    /**
+     * The design stage's edit of one category: its picture, its price, its words,
+     * what the stay includes and how many rooms of it the hotel offers.
+     *
+     * Only the keys present are written, so a form can save the field it owns
+     * without carrying the rest along.
+     *
+     * ensureCategoriesFor() runs first because the five categories every team
+     * starts with are not rows until something writes them (see the migration on
+     * hotel_room_categories). Without it, editing "Classic" would have nothing to
+     * update and the work would silently vanish — the same reason renameCategory()
+     * opens with it.
+     *
+     * Returns the stored category, or null when this team has no category by that
+     * name.
+     */
+    public static function updateCategoryDetails(
+        StudentGroup $membership,
+        string $name,
+        array $attributes
+    ): ?HotelRoomCategory {
+        self::ensureCategoriesFor($membership);
+
+        $current = self::normalizeCategory($name, $membership);
+        if (mb_strtolower($current) !== mb_strtolower(trim($name))) {
+            // normalizeCategory() answers with the team's first category when it does
+            // not recognise the name, which would edit the wrong one.
+            return null;
+        }
+
+        $category = HotelRoomCategory::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->where('name', $current)
+            ->first();
+
+        if (!$category) {
+            return null;
+        }
+
+        $changes = [];
+
+        if (array_key_exists('rate', $attributes)) {
+            $rate = (int) $attributes['rate'];
+            // A category priced at nothing would hand every room created under it a
+            // rate of zero, so it is floored rather than stored as typed.
+            $changes['rate'] = max(0, $rate);
+        }
+
+        if (array_key_exists('description', $attributes)) {
+            $description = trim((string) $attributes['description']);
+            $changes['description'] = $description === '' ? null : mb_substr($description, 0, 2000);
+        }
+
+        if (array_key_exists('image', $attributes)) {
+            $image = trim((string) $attributes['image']);
+            $changes['image_path'] = $image === '' ? null : mb_substr($image, 0, 2048);
+        }
+
+        if (array_key_exists('inclusions', $attributes)) {
+            $list = HotelRoomCategory::splitInclusions($attributes['inclusions']);
+            $changes['inclusions'] = $list === [] ? null : implode("\n", $list);
+        }
+
+        if (array_key_exists('rooms_available', $attributes)) {
+            $count = $attributes['rooms_available'];
+            $changes['rooms_available'] = ($count === null || $count === '')
+                ? null
+                : max(0, min(999, (int) $count));
+        }
+
+        if ($changes !== []) {
+            $category->fill($changes)->save();
+        }
+
+        return $category->refresh();
+    }
+
     public static function renameCategory(StudentGroup $membership, string $from, string $to): ?string
     {
         self::ensureCategoriesFor($membership);

@@ -1033,6 +1033,68 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     })->name('hotel.room-categories.update');
 
     /**
+     * The design stage's edit of one room category: its picture, its rate, its
+     * words, what the stay includes and how many rooms of it the hotel offers.
+     *
+     * Separate from the PATCH above because that one renames — it moves every room
+     * in the category with it, and is the write Front Desk may also make from the
+     * site's tab bar. This one only ever touches the category's own row.
+     *
+     * Room Management's own work, so it is gated on the role rather than on any
+     * site-owning role: the categories are theirs to describe, and the Rooms page
+     * is the page they own.
+     */
+    Route::post('/hotel/room-categories/details', function (Request $request) {
+        $authUser = auth()->user();
+        $student  = $authUser?->student;
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
+        if (!$membership) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        if (!\App\Support\HotelTemplateBuilder::canEdit($authUser, $membership, 'room_management')) {
+            return response()->json([
+                'error' => 'Only Room Management can describe the room categories.',
+            ], 403);
+        }
+
+        $data = $request->validate([
+            'name'            => 'required|string|max:60',
+            'rate'            => 'sometimes|nullable|integer|min:0',
+            'description'     => 'sometimes|nullable|string|max:2000',
+            'image'           => 'sometimes|nullable|string|max:2048',
+            // Either the textarea's text or the list it stands for.
+            'inclusions'      => 'sometimes|nullable',
+            'rooms_available' => 'sometimes|nullable|integer|min:0|max:999',
+        ]);
+
+        $category = \App\Support\HotelRoomDefaults::updateCategoryDetails(
+            $membership,
+            $data['name'],
+            // Only what was actually sent, so a form saving one field leaves the
+            // rest of the category alone.
+            array_intersect_key($data, array_flip(['rate', 'description', 'image', 'inclusions', 'rooms_available']))
+        );
+
+        if (!$category) {
+            return response()->json(['message' => 'That category is not one of yours.'], 422);
+        }
+
+        return response()->json([
+            'category' => [
+                'name' => $category->name,
+                'floor' => (int) $category->floor_number,
+                'rate' => $category->rate,
+                'description' => $category->description,
+                'image' => $category->image_path,
+                'inclusions' => $category->inclusion_list,
+                'rooms_available' => $category->rooms_available,
+            ],
+            'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+        ]);
+    })->name('hotel.room-categories.details');
+
+    /**
      * Guests Front Desk has registered that Room Management has not checked in yet.
      * Count only — this is polled every few seconds for the sidebar badge, so it stays
      * a single COUNT(*) rather than reusing the full /hotel/rooms payload.

@@ -169,6 +169,15 @@ class TaskChecklist
 
         'room_management' => [
             [
+                // The step DesignTaskChain watches: approving it hands the team
+                // "Detail Every Room Category", which is not on this list because
+                // it cannot be done before the categories are agreed.
+                'title' => 'Create Your Room Categories',
+                'description' => 'Decide the room categories your hotel sells and set them up on the Rooms page — add the ones you need with the + tab, rename the starting ones that do not fit, and drop the sample wording. Get the names right first; you describe and price them once your faculty approves this.',
+                'priority' => 'high',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
                 'title' => 'Build Your Room Types',
                 'description' => 'Replace the sample rooms with the room types your hotel actually offers. Give each one its own name and describe what it includes, so a guest can tell them apart without asking.',
                 'priority' => 'high',

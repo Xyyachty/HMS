@@ -2180,22 +2180,56 @@ function AddCategoryModal({ open, saving, error, onSubmit, onCancel }) {
 /* Renaming a category, in the page's own chrome. window.prompt() would work, but it
    announces the hostname above the question — "hms-….onrender.com says" — which reads
    like the site is talking to you from outside itself. */
-function RenameCategoryModal({ open, from, saving, error, onSubmit, onCancel }) {
+/* One category and everything a guest is told about it: its name, its picture,
+   its rate, its words, what the stay includes and how many rooms of it there
+   are. This is the whole of the design task "Detail Every Room Category", so it
+   is one dialog rather than a rename here and a price somewhere else.
+
+   The name still travels on its own write, because renaming a category moves
+   every room in it too; the rest is one save against the category's own row. */
+function RenameCategoryModal({ open, from, category, saving, error, onSubmit, onCancel }) {
   const [name, setName] = React.useState('');
+  const [rate, setRate] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [image, setImage] = React.useState('');
+  const [inclusions, setInclusions] = React.useState('');
+  const [rooms, setRooms] = React.useState('');
 
   React.useEffect(() => {
-    if (open) setName(from || '');
-  }, [open, from]);
+    if (!open) return;
+    const c = category || {};
+    setName(from || '');
+    setRate(c.rate === null || c.rate === undefined ? '' : String(c.rate));
+    setDescription(c.description || '');
+    setImage(c.image || '');
+    setInclusions(Array.isArray(c.inclusions) ? c.inclusions.join('\n') : (c.inclusions || ''));
+    setRooms(c.rooms_available === null || c.rooms_available === undefined ? '' : String(c.rooms_available));
+  }, [open, from, category]);
 
   if (!open) return null;
 
   const clean = name.trim();
-  const canSave = !!clean && clean !== from && !saving;
-  const submit = () => { if (canSave) onSubmit(clean); };
+  const canSave = !!clean && !saving;
+  const submit = () => {
+    if (!canSave) return;
+    const parsedRate = parseInt(String(rate).replace(/[^0-9]/g, ''), 10);
+    const parsedRooms = parseInt(String(rooms).replace(/[^0-9]/g, ''), 10);
+    onSubmit(clean, {
+      rate: Number.isNaN(parsedRate) ? null : parsedRate,
+      description: description.trim(),
+      image: image.trim(),
+      inclusions: inclusions,
+      // Left blank means "not said yet", which is not the same as none.
+      rooms_available: Number.isNaN(parsedRooms) ? null : parsedRooms,
+    });
+  };
   const onKeyDown = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    // Enter saves from the single-line fields; the textareas need it for newlines.
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); submit(); }
     if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
   };
+
+  const fieldLabel = { display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', margin: '1rem 0 0.4rem' };
 
   return ReactDOM.createPortal(
     <div
@@ -2203,14 +2237,14 @@ function RenameCategoryModal({ open, from, saving, error, onSubmit, onCancel }) 
       data-hms-no-edit="1"
       role="dialog"
       aria-modal="true"
-      aria-label={`Rename ${from}`}
+      aria-label={`Edit ${from}`}
       onClick={onCancel}
     >
       <div className="room-modal" style={{ width: 'min(420px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '1rem' }}>Rename “{from}”</h3>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '1rem' }}>Edit “{from}”</h3>
 
         <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>
-          New name
+          Category name
         </label>
         <input
           className="header-modal-field"
@@ -2221,15 +2255,85 @@ function RenameCategoryModal({ open, from, saving, error, onSubmit, onCancel }) 
           onChange={(e) => setName(e.target.value)}
           onKeyDown={onKeyDown}
         />
+
+        <label style={fieldLabel}>Photo URL</label>
+        <input
+          className="header-modal-field"
+          type="text"
+          value={image}
+          maxLength={2048}
+          placeholder="https://… the picture guests see for this category"
+          onChange={(e) => setImage(e.target.value)}
+          onKeyDown={onKeyDown}
+        />
+        {image ? (
+          <img
+            src={image}
+            alt=""
+            style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8, marginTop: '0.5rem', display: 'block' }}
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        ) : null}
+
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <label style={fieldLabel}>Rate per night</label>
+            <input
+              className="header-modal-field"
+              type="text"
+              inputMode="numeric"
+              value={rate}
+              maxLength={9}
+              onChange={(e) => setRate(e.target.value)}
+              onKeyDown={onKeyDown}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <label style={fieldLabel}>Rooms available</label>
+            <input
+              className="header-modal-field"
+              type="text"
+              inputMode="numeric"
+              value={rooms}
+              maxLength={3}
+              placeholder="e.g. 12"
+              onChange={(e) => setRooms(e.target.value)}
+              onKeyDown={onKeyDown}
+            />
+          </div>
+        </div>
+
+        <label style={fieldLabel}>Description</label>
+        <textarea
+          className="header-modal-field"
+          rows={3}
+          value={description}
+          maxLength={2000}
+          placeholder="What this category is, in your own words."
+          onChange={(e) => setDescription(e.target.value)}
+          onKeyDown={onKeyDown}
+          style={{ resize: 'vertical', lineHeight: 1.5 }}
+        />
+
+        <label style={fieldLabel}>Inclusions — one per line</label>
+        <textarea
+          className="header-modal-field"
+          rows={4}
+          value={inclusions}
+          placeholder={'Breakfast for two\nAirport transfer\nLate checkout'}
+          onChange={(e) => setInclusions(e.target.value)}
+          onKeyDown={onKeyDown}
+          style={{ resize: 'vertical', lineHeight: 1.5 }}
+        />
         {error ? (
           <p className="header-modal-hint" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p>
         ) : null}
-        <p className="header-modal-hint">The rooms in it are renamed too — “{from} 101” becomes “{clean || 'New name'} 101”. Manage Room shows the new name as well.</p>
+        <p className="header-modal-hint">Guests see all of this on the Rooms page. Renaming also renames the rooms in the category — “{from} 101” becomes “{clean || 'New name'} 101” — and Manage Room shows the new name too.</p>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
           <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
           <button type="button" className="btn-primary" disabled={!canSave} onClick={submit}>
-            {saving ? 'Renaming…' : 'Rename'}
+            {saving ? 'Saving…' : 'Save category'}
           </button>
         </div>
       </div>
@@ -2987,7 +3091,7 @@ function RoomCard({ room, onSelect, canEdit, onEdit, onRemove, onChangeImage }) 
   );
 }
 
-function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement }) {
+function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement }) {
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
   const list = rooms && rooms.length ? rooms : [];
@@ -3053,25 +3157,49 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
     });
   };
 
-  /* Renames the category for the whole team, not just this tab: the rooms in it are
-     renamed with it, so Manage Room shows the new label on its next poll. */
-  const submitRename = (to) => {
-    if (typeof onRenameCategory !== 'function' || !renameFrom) return;
+  /* Saves one category: the name for the whole team, and the design fields the
+     Rooms page shows guests. The rename goes first and on its own, because it
+     moves every room in the category with it; the details are then written
+     against whatever name the category ended up under. */
+  const submitCategoryEdit = (to, details) => {
+    if (!renameFrom) return;
     const from = renameFrom;
     setRenameSaving(true);
     setRenameError('');
 
-    Promise.resolve(onRenameCategory(from, to)).then((renamed) => {
-      setRenameSaving(false);
+    const rename = (to !== from && typeof onRenameCategory === 'function')
+      ? Promise.resolve(onRenameCategory(from, to))
+      : Promise.resolve(from);
+
+    rename.then((renamed) => {
       if (!renamed) {
         // Kept open with the typed name still in it — the fix is usually one word.
+        setRenameSaving(false);
         setRenameError('That name is already taken. Pick another.');
-        return;
+        return null;
       }
+
+      if (typeof onUpdateCategory !== 'function') return renamed;
+
+      return Promise.resolve(onUpdateCategory(renamed, details)).then((saved) => {
+        if (!saved) {
+          setRenameSaving(false);
+          setRenameError('Those details could not be saved. Try again.');
+          return null;
+        }
+        return renamed;
+      });
+    }).then((renamed) => {
+      if (!renamed) return;
+      setRenameSaving(false);
       setRenameFrom(null);
       // Follow the rename: the tab the page was filtering on is gone by this name.
       setTab(prev => (prev === from ? renamed : prev));
-      if (onToast) onToast(`${from} is now ${renamed} — Manage Room shows it too`);
+      if (onToast) {
+        onToast(renamed === from
+          ? `${renamed} updated — guests see it on the Rooms page`
+          : `${from} is now ${renamed} — Manage Room shows it too`);
+      }
     });
   };
 
@@ -3179,6 +3307,58 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
           </button>
         ) : null}
       />
+      {/* What the team wrote about the category now on screen. Only shown on a
+          real tab, never on "All", where there is no one category to describe,
+          and only once something has actually been written — an empty band
+          would just be a hole above the room cards. */}
+      {(() => {
+        if (tab === 'All') return null;
+        const current = (categoryDetails || []).find((c) => c && c.name === tab);
+        if (!current) return null;
+        const inclusions = Array.isArray(current.inclusions) ? current.inclusions : [];
+        const hasDetail = !!(current.image || (current.description || '').trim() || inclusions.length || current.rooms_available);
+        if (!hasDetail) return null;
+
+        return (
+          <section style={{ padding: '0 1.5rem 2rem', maxWidth: 1100, margin: '0 auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: current.image ? 'minmax(0, 320px) 1fr' : '1fr', gap: '1.5rem', alignItems: 'start', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem', background: 'var(--card, transparent)' }}>
+              {current.image ? (
+                <img
+                  src={current.image}
+                  alt={tab}
+                  style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 8, display: 'block' }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : null}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <h3 className="font-display" style={{ margin: 0, fontSize: '1.4rem' }}>{tab}</h3>
+                  {current.rate ? (
+                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{formatPeso(current.rate)}</span>
+                  ) : null}
+                  {current.rooms_available ? (
+                    <span style={{ color: 'var(--fg-muted)', fontSize: '0.82rem' }}>
+                      {current.rooms_available} room{current.rooms_available === 1 ? '' : 's'} available
+                    </span>
+                  ) : null}
+                </div>
+                {(current.description || '').trim() ? (
+                  <p style={{ color: 'var(--fg-muted)', lineHeight: 1.65, margin: '0.75rem 0 0' }}>{current.description}</p>
+                ) : null}
+                {inclusions.length ? (
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0.9rem 0 0', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.25rem' }}>
+                    {inclusions.map((item) => (
+                      <li key={item} style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>
+                        <i className="fa-solid fa-check" style={{ color: 'var(--accent)', marginRight: '0.4rem', fontSize: '0.75rem' }}></i>{item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        );
+      })()}
       <section style={{ padding: '0 1.5rem 2rem', maxWidth: 1100, margin: '0 auto' }}>
         {filtered.length === 0 && !canEditRooms ? (
           <EmptyState text="No rooms found in this category." />
@@ -3218,9 +3398,10 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
       <RenameCategoryModal
         open={!!renameFrom}
         from={renameFrom}
+        category={(categoryDetails || []).find((c) => c && c.name === renameFrom) || null}
         saving={renameSaving}
         error={renameError}
-        onSubmit={submitRename}
+        onSubmit={submitCategoryEdit}
         onCancel={() => { setRenameFrom(null); setRenameError(''); }}
       />
       {showRoomManagement && (
@@ -3974,6 +4155,9 @@ function App() {
   // The team's own category list — the five defaults plus whatever Room Management
   // added. Arrives with the rooms, so both stay in step.
   const [roomCategories, setRoomCategories] = useState(DEFAULT_ROOM_CATEGORIES);
+  // The same categories as records - rate, description, photo, inclusions, how
+  // many rooms - which is what the category editor writes and reads back.
+  const [categoryDetails, setCategoryDetails] = useState([]);
   // Restaurant menu lives in the DB and is shared by the whole team.
   const [menus, setMenus] = useState([]);
   const [canManageMenus, setCanManageMenus] = useState(false);
@@ -4042,6 +4226,7 @@ function App() {
           const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
           setRoomCategoryNames(names);
           setRoomCategories(names);
+          setCategoryDetails(data.categories);
         }
         roomsHydrated.current = true;
       })
@@ -4301,10 +4486,37 @@ function App() {
           const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
           setRoomCategoryNames(names);
           setRoomCategories(names);
+          setCategoryDetails(data.categories);
         }
         return data && data.category ? data.category.name : null;
       })
       .catch(() => null)
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
+  /* Saves what the Rooms page shows about a category: its picture, its rate, its
+     words, its inclusions and how many rooms of it the hotel has. Room Management's
+     design-stage work, so the server checks that role and answers with the whole
+     list; resolves to false when it refuses. */
+  const updateRoomCategory = useCallback((name, details) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/room-categories/details', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify(Object.assign({ name: name }, details || {})),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && Array.isArray(data.categories)) {
+          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+          setRoomCategoryNames(names);
+          setRoomCategories(names);
+          setCategoryDetails(data.categories);
+        }
+        return true;
+      })
+      .catch(() => false)
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 
@@ -4325,6 +4537,7 @@ function App() {
           const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
           setRoomCategoryNames(names);
           setRoomCategories(names);
+          setCategoryDetails(data.categories);
         }
         if (data && Array.isArray(data.rooms)) setRooms(data.rooms);
         return data && data.category ? data.category.name : null;
@@ -4506,12 +4719,14 @@ function App() {
         rooms={rooms}
         addons={addons}
         categories={roomCategories}
+        categoryDetails={categoryDetails}
         canEditRooms={canEditRooms}
         canManageRooms={canManageRooms}
         canReserveRooms={canReserveRooms}
         onAddRoom={addRoom}
         onAddCategory={addRoomCategory}
         onRenameCategory={renameRoomCategory}
+        onUpdateCategory={updateRoomCategory}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
         onCreateBooking={createBooking}

@@ -1822,13 +1822,38 @@ class FacultyController extends Controller
 
         Notifier::taskFeedback($facultyUser, $task, $revise);
 
+        // Some design work only makes sense once faculty has accepted the step
+        // before it — describing the room categories once the categories are
+        // agreed. That follow-up is not on the checklist; approving its trigger is
+        // what hands it out. Nothing happens for every other task.
+        $unlocked = null;
+        if (!$revise) {
+            $unlocked = \App\Support\DesignTaskChain::unlockNext($task, $facultyUser);
+
+            if ($unlocked) {
+                ActivityLog::record(
+                    $facultyUser,
+                    ActivityLog::TASK_CREATED,
+                    'Approving "' . $task->title . '" unlocked "' . $unlocked->title
+                        . '" for ' . $unlocked->group_name . '.'
+                );
+
+                if ($unlocked->assigned_to) {
+                    Notifier::tasksAssigned($facultyUser, [$unlocked->assigned_to => 1]);
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'status' => $task->status,
             'revision_count' => (int) $task->revision_count,
+            'unlocked' => $unlocked ? ['title' => $unlocked->title, 'role' => $unlocked->role] : null,
             'message' => $revise
                 ? 'Sent back to the student with your feedback.'
-                : 'Task approved.',
+                : ($unlocked
+                    ? 'Task approved — "' . $unlocked->title . '" is now assigned to the team.'
+                    : 'Task approved.'),
         ]);
     }
 
