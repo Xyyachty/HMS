@@ -942,6 +942,56 @@
                     </div>
                 </div>
 
+                {{-- The team's two hotel concepts, proposed here rather than on the task
+                     row over in Tasks: naming the hotel and describing it is the team's
+                     own identity work, and this is the page the team reads.
+
+                     Faculty judges each proposal separately, so each card carries its own
+                     state, its own feedback and its own history. Front Desk writes each
+                     first version and hands the pair in with the one button in this
+                     header, because the pair exists so faculty can weigh them against
+                     each other.
+
+                     Once faculty decides there is nothing left to propose, so
+                     paintTeamHeaderConcept() hides this whole card — the winner has
+                     already moved up into the team header above.
+
+                     Drawn from #conceptPanel by paintHotelConcepts(), which repaints
+                     after every save and every verdict, so there is one description of
+                     this markup rather than a server copy and a client copy that
+                     drift. Gated on the team, like the dialog it opens: a member with no
+                     team has no concepts to write. --}}
+                @if($group)
+                <div id="conceptTeamCard" class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
+                        <div class="min-w-0">
+                            <h3 class="text-sm font-bold text-slate-800">Hotel Concepts</h3>
+                            <p class="text-[11px] text-slate-400">Name the hotel and describe it — two proposals for your faculty to review.</p>
+                        </div>
+                        {{-- One button for the pair. Hidden until both slots are filled;
+                             paintHotelConcepts() toggles it off conceptState.can_submit. --}}
+                        <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
+                            class="hidden shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60">
+                            <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
+                            <span>Submit both to Faculty</span>
+                        </button>
+                    </div>
+
+                    @if (session('success'))
+                        <div class="mx-5 mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                            {{ session('success') }}
+                        </div>
+                    @endif
+                    @if ($errors->any())
+                        <div class="mx-5 mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                            {{ $errors->first() }}
+                        </div>
+                    @endif
+
+                    <div id="conceptPanel" class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                </div>
+                @endif
+
                 <div class="flex justify-center pt-1">
                     <button type="button" onclick="showSection('tasks')"
                             class="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl bg-white border border-slate-200 text-[14px] font-bold text-slate-700 hover:bg-slate-50 hover:text-brand transition-colors shadow-sm">
@@ -949,12 +999,6 @@
                         View All Team Tasks
                     </button>
                 </div>
-
-                {{-- The concepts themselves are not proposed here any more. They are a
-                     Front Desk task, so they are done on that task's own row over in
-                     Tasks; what survives in this section is the approved concept in the
-                     team header above, which is the team's identity rather than a
-                     proposal. --}}
             </div>
 
             <!-- ==================== TASKS SECTION ==================== -->
@@ -1116,14 +1160,13 @@
                                                         <span class="iconify text-base" data-icon="mdi:eye-outline"></span>
                                                     </button>
                                                     @if($task->is_hotel_concept)
-                                                        {{-- One button for the pair: faculty is asked to weigh the
-                                                             two against each other, so they go in together. Hidden
-                                                             until both slots are filled — paintHotelConcepts()
-                                                             toggles it off conceptState.can_submit. --}}
-                                                        <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
-                                                                title="Submit both concepts to faculty"
-                                                                class="hidden w-9 h-9 rounded-full brand-gradient text-white flex items-center justify-center shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60">
-                                                            <span class="iconify text-base" data-icon="mdi:send-outline"></span>
+                                                        {{-- The proposals themselves live in My Team, so this row
+                                                             sends the member there rather than carrying a second
+                                                             copy of the panel and its Submit button. --}}
+                                                        <button type="button" onclick="showSection('group')"
+                                                                title="Write the concepts in My Team"
+                                                                class="w-9 h-9 rounded-full brand-gradient text-white flex items-center justify-center shadow-md shadow-brand/20 hover:opacity-90 transition">
+                                                            <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
                                                         </button>
                                                     @elseif($isMine)
                                                         {{-- The real affordance: marks this row done, or resubmits
@@ -1175,23 +1218,15 @@
                                                         </div>
                                                     @endif
                                                     @if($task->is_hotel_concept)
-                                                        @if (session('success'))
-                                                            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                                                                {{ session('success') }}
-                                                            </div>
-                                                        @endif
-                                                        @if ($errors->any())
-                                                            <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                                                                {{ $errors->first() }}
-                                                            </div>
-                                                        @endif
-
-                                                        {{-- Both proposals, side by side, so faculty's choice can be
-                                                             weighed here too. Rendered from this one container by
-                                                             paintHotelConcepts(), which repaints after every save
-                                                             and every submit — there is no server copy of this
-                                                             markup to drift from the client one. --}}
-                                                        <div id="conceptPanel" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                                                        {{-- The panel itself is in My Team, where the concepts are
+                                                             written; two containers with the same id would leave
+                                                             paintHotelConcepts() painting only whichever the browser
+                                                             matched first. --}}
+                                                        <button type="button" onclick="showSection('group')"
+                                                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-[13px] font-bold text-slate-700 hover:bg-slate-50 hover:text-brand transition-colors">
+                                                            <span class="iconify text-base" data-icon="mdi:lightbulb-outline"></span>
+                                                            Write the concepts in My Team
+                                                        </button>
                                                     @elseif(!$task->description && !$needsRevision)
                                                         <p class="text-[13px] text-slate-400">No extra details on this task.</p>
                                                     @endif
@@ -2141,6 +2176,7 @@
         function paintTeamHeaderConcept() {
             const container = document.getElementById('teamHeaderConcept');
             const panelCard = document.getElementById('conceptPanelCard');
+            const teamCard = document.getElementById('conceptTeamCard');
             const heading = document.getElementById('teamHeaderName');
             const eyebrow = document.getElementById('teamHeaderEyebrow');
             const typeLine = document.getElementById('teamHeaderType');
@@ -2149,7 +2185,10 @@
                 .map((entry) => entry.concept)
                 .find((concept) => concept && concept.status === 'approved');
 
+            // Two places to put away once a verdict lands: the task row over in Tasks,
+            // and the panel in My Team where the proposals were written.
             if (panelCard) panelCard.classList.toggle('hidden', !!approved);
+            if (teamCard) teamCard.classList.toggle('hidden', !!approved);
 
             // The team name and its type line: swapped whether or not the description
             // container exists, so a page without one still renames.
