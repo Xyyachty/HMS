@@ -2388,6 +2388,8 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
   const roomList = rooms && rooms.length ? rooms : [];
   const menuList = menus || [];
   const partnerList = partners && partners.length ? partners : DEFAULT_PARTNERS;
+  // Which brand's × has been pressed once. The second press is the confirmation.
+  const [confirmingPartner, setConfirmingPartner] = useState(null);
 
   const handleAddRoom = (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
@@ -2573,9 +2575,24 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
                     <button type="button" title={logo ? 'Change logo' : 'Upload logo'}
                       onClick={() => changeCardImg('partner', partner.id, () => onToast && onToast(name + ' logo updated'))}
                       style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
-                    <button type="button" title="Remove brand"
-                      onClick={() => onRemovePartner && onRemovePartner(partner)}
-                      style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i></button>
+                    <button type="button"
+                      title={confirmingPartner === partner.id ? 'Press again to remove ' + name : 'Remove brand'}
+                      onClick={() => {
+                        if (confirmingPartner !== partner.id) {
+                          setConfirmingPartner(partner.id);
+                          return;
+                        }
+                        setConfirmingPartner(null);
+                        if (onRemovePartner) onRemovePartner(partner);
+                      }}
+                      onBlur={() => setConfirmingPartner(null)}
+                      style={Object.assign({}, toolBtnStyle('danger'), confirmingPartner === partner.id
+                        ? { width: 'auto', padding: '0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }
+                        : null)}>
+                      {confirmingPartner === partner.id
+                        ? 'Remove?'
+                        : <i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i>}
+                    </button>
                   </div>
                 )}
               </div>
@@ -5294,13 +5311,19 @@ function App() {
   }, [rooms, canManageRooms, page, openRoomManagement]);
 
   /* A brand is named as it is added: the strip shows the name until a logo is
-     uploaded for it, so an unnamed tile would be a blank card. */
+     uploaded for it, so an unnamed tile would be a blank card.
+
+     Asked for in the site's own dialog rather than window.prompt, which paints
+     the browser's chrome and the deployment's hostname over a page the student is
+     designing. Same modal the header edits use. */
   const addPartner = () => {
+    setHeaderEdit({ kind: 'partner' });
+  };
+
+  const savePartnerName = (name) => {
     const content = window.HMSSiteContent;
     if (!content || !content.addPartner) return;
-    const name = hmsPrompt('Brand name', 'New Brand');
-    if (name === null) return;
-    const clean = String(name).trim();
+    const clean = String(name || '').trim();
     if (!clean) return;
     const added = content.addPartner(clean, DEFAULT_PARTNERS);
     if (!added) {
@@ -5311,11 +5334,12 @@ function App() {
     showToast(clean + ' added to Partner Brands');
   };
 
+  /* Two clicks rather than a browser confirm: the × asks in place and removes on
+     the second press, which keeps the question inside the page being designed. */
   const removePartner = (partner) => {
     const content = window.HMSSiteContent;
     if (!content || !content.removePartner) return;
     const name = (partner && (partner.label || partner.name)) || 'That brand';
-    if (!hmsConfirm('Remove ' + name + ' from Partner Brands?')) return;
     if (!content.removePartner(partner.id, DEFAULT_PARTNERS)) {
       showToast('Only the role that owns the Home page can remove a brand.');
       return;
@@ -5451,6 +5475,15 @@ function App() {
           maxLength: 60,
           hint: 'Shown in the header and the footer of every page.',
         }
+      : headerEdit.kind === 'partner'
+        ? {
+            mode: 'text',
+            title: 'Add Partner Brand',
+            fieldLabel: 'Brand name',
+            value: '',
+            maxLength: 40,
+            hint: 'Shown on the card until you upload that brand\'s logo.',
+          }
       : headerEdit.kind === 'nav'
         ? {
             mode: 'text',
@@ -5471,6 +5504,11 @@ function App() {
   const saveHeaderEdit = (value) => {
     const content = window.HMSSiteContent;
     if (!content || !headerEdit) return;
+    if (headerEdit.kind === 'partner') {
+      savePartnerName(value);
+      setHeaderEdit(null);
+      return;
+    }
     if (headerEdit.kind === 'brand') {
       if (content.setBrandName(value)) showToast('Hotel name updated across the whole site');
     } else if (headerEdit.kind === 'nav') {
