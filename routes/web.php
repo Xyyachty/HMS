@@ -430,7 +430,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
             'myActivityLogs', 'conceptPayload', 'teamRoleProgress', 'upcomingDeadlines',
             'memberTaskStats',
-            'studentDisplayName', 'studentClass', 'student'
+            'studentDisplayName', 'studentClass', 'student',
+            // The task rows ask it who may work a row whose named student has
+            // since given the role up — see TaskClaim.
+            'groupMembership'
         ));
     })->name('dashboard');
 
@@ -501,12 +504,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ]);
         }
 
-        // Tasks fan out one row per member, so a role match alone is not enough —
-        // without this a student could submit a teammate's row. Unclaimed rows
-        // (no member held the role at assign time) stay open to the first submitter.
-        $claimedByOther = ($task->assigned_to && (int) $task->assigned_to !== (int) $authUser->user_id)
-            || ($task->student_id && (int) $task->student_id !== (int) $student->user_information_id);
-        if ($claimedByOther) {
+        /* Tasks fan out one row per member, so a role match alone is not enough —
+           without this a student could submit a teammate's row. Unclaimed rows stay
+           open to the first submitter, and so does a row whose named student has
+           since given the role up: the team was reshuffled, nobody left can reach
+           the work, and refusing everyone would strand it. */
+        if (!\App\Support\TaskClaim::mayWork($task, $authUser, $groupMembership)) {
             return back()->withErrors(['task' => 'This task belongs to a teammate.']);
         }
 
@@ -602,9 +605,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'This task is not assigned to your role.'], 403);
         }
 
-        $claimedByOther = ($task->assigned_to && (int) $task->assigned_to !== (int) $authUser->user_id)
-            || ($task->student_id && (int) $task->student_id !== (int) $student->user_information_id);
-        if ($claimedByOther) {
+        if (!\App\Support\TaskClaim::mayWork($task, $authUser, $groupMembership)) {
             return response()->json(['message' => 'This task belongs to a teammate.'], 403);
         }
         if ($task->status !== 'active') {

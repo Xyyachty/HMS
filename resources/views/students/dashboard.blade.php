@@ -1086,10 +1086,12 @@
                                     @php
                                         $taskRowIndex++;
                                         $isOverdue = $task->due_date && $task->due_date->isPast();
-                                        // Rows are per member; only offer submit on this student's own
-                                        // row (or an unclaimed one). Task::booted() keeps assigned_to
-                                        // in sync with student_id, so the user id is enough here.
-                                        $isMine       = !$task->assigned_to || (int) $task->assigned_to === (int) auth()->id();
+                                        /* Rows are per member; the submit button belongs on this
+                                           student's own row, on an unclaimed one, and on a row whose
+                                           named student has since given the role up — the team was
+                                           reshuffled and the work would otherwise be unreachable by
+                                           anybody. The submit route asks the same question. */
+                                        $isMine       = \App\Support\TaskClaim::mayWork($task, auth()->user(), $groupMembership ?? null);
                                         $needsRevision = $task->needs_revision;
                                         // A task carries no sub-activities, so progress is what the row
                                         // itself knows: sent back means it was submitted once already.
@@ -1184,7 +1186,8 @@
                                                             </button>
                                                         </form>
                                                     @else
-                                                        <span class="text-[10px] font-semibold text-slate-300 whitespace-nowrap">Teammate's</span>
+                                                        <span class="text-[10px] font-semibold text-slate-300 whitespace-nowrap"
+                                                              title="Assigned to {{ $task->assignedTo?->name ?? 'a teammate' }}">{{ $task->assignedTo?->first_name ?? "Teammate's" }}</span>
                                                     @endif
                                                     @if($rowModule)
                                                         <a href="{{ route($rowModule['route']) }}" title="Open {{ $rowModule['label'] }}"
