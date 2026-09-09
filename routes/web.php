@@ -171,6 +171,21 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     Route::post('/tasks/{task}/feedback', [FacultyController::class, 'storeTaskFeedback'])->name('tasks.feedback');
     // Read-only render of a team's live site so faculty can see the work itself.
     Route::get('/teams/preview', [FacultyController::class, 'previewTeamSite'])->name('teams.preview');
+
+    /*
+    | What the previewed site reads while a faculty looks at it.
+    |
+    | The template fetches its rooms, menu, facilities and add-ons at runtime from
+    | endpoints that resolve the team off the signed-in student. A faculty is not
+    | one, so those answered empty and every page fell back to the template's own
+    | placeholders — a review of the room categories showed the five defaults with
+    | nothing in them however many the student had submitted. These are the same
+    | reads with the team named in the URL and checked against its owner.
+    */
+    Route::get('/teams/{group}/preview/rooms', [\App\Http\Controllers\FacultyPreviewController::class, 'rooms'])->name('teams.preview.rooms');
+    Route::get('/teams/{group}/preview/menus', [\App\Http\Controllers\FacultyPreviewController::class, 'menus'])->name('teams.preview.menus');
+    Route::get('/teams/{group}/preview/amenities', [\App\Http\Controllers\FacultyPreviewController::class, 'amenities'])->name('teams.preview.amenities');
+    Route::get('/teams/{group}/preview/addons', [\App\Http\Controllers\FacultyPreviewController::class, 'addons'])->name('teams.preview.addons');
     Route::get('/results', [FacultyController::class, 'results'])->name('results');
     Route::get('/reports', [FacultyController::class, 'reports'])->name('reports');
     Route::get('/activity', [FacultyController::class, 'activityLogs'])->name('activity');

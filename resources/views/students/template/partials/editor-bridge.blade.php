@@ -10,6 +10,11 @@
     // builder's copy of the site and the Mini Portfolio a guest visits.
     $hmsPublicSlug = $publicSlug ?? null;
 
+    // Set only by the faculty review preview. A faculty is not a student, so the
+    // /students catalogue endpoints answer them nothing; these read the same rows
+    // for the team being reviewed. Read-only, and checked against its owner.
+    $hmsPreviewGroup = $previewGroup ?? null;
+
     /* Whether the design task that opens the Amenities section is assigned to
        this student and still open. The section's own controls read it, so a
        teammate — or the assignee after they have submitted — sees the finished
@@ -98,16 +103,25 @@
     };
 @else
     window.__HMS_PUBLIC__ = false;
-    window.__HMS_API__ = {
-        rooms:      '/students/hotel/rooms',
-        addons:     '/students/hotel/addons',
-        amenities:  '/students/hotel/amenities',
-        menus:      '/students/hotel/menus',
-        roomUpdate: '/students/hotel/rooms',
-        bookings:   '/students/hotel/bookings',
-        amenityReservations: '/students/hotel/amenity-reservations',
-        amenityVisits:       '/students/hotel/amenity-visits',
-    };
+    /* The staff endpoints, unless this is a faculty preview — then the four
+       catalogue reads point at that team's own, because the /students ones answer
+       a faculty nothing. Nothing else is overridden: the preview renders with
+       editing off, so no write is reachable from it. */
+    window.__HMS_API__ = @json(array_merge([
+        'rooms'      => '/students/hotel/rooms',
+        'addons'     => '/students/hotel/addons',
+        'amenities'  => '/students/hotel/amenities',
+        'menus'      => '/students/hotel/menus',
+        'roomUpdate' => '/students/hotel/rooms',
+        'bookings'   => '/students/hotel/bookings',
+        'amenityReservations' => '/students/hotel/amenity-reservations',
+        'amenityVisits'       => '/students/hotel/amenity-visits',
+    ], $hmsPreviewGroup ? [
+        'rooms'     => route('faculty.teams.preview.rooms', ['group' => $hmsPreviewGroup]),
+        'menus'     => route('faculty.teams.preview.menus', ['group' => $hmsPreviewGroup]),
+        'amenities' => route('faculty.teams.preview.amenities', ['group' => $hmsPreviewGroup]),
+        'addons'    => route('faculty.teams.preview.addons', ['group' => $hmsPreviewGroup]),
+    ] : []));
     window.__HMS_MEDIA_UPLOAD_URL__ = @json(route('students.frontdesk.template.media'));
     window.__HMS_HOTEL_AUTH_ROUTES__ = {
         me: @json(route('students.hotel-auth.me')),

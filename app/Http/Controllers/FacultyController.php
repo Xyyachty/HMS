@@ -2046,13 +2046,16 @@ class FacultyController extends Controller
             }
         }
 
-        // Read-only: no edit permission, no editable pages.
+        // Read-only: no edit permission, no editable pages. previewGroup is what
+        // points the template's catalogue reads at this team rather than at the
+        // student endpoints a faculty cannot use — see FacultyPreviewController.
         return view('students.template.' . $selected . 'defaulttemplate', [
             'customizations' => $customizations,
             'canEditTemplate' => false,
             'editablePages' => [],
             'builderRole' => $data['role'] ?? 'front_desk',
             'reviewHighlight' => $reviewHighlight,
+            'previewGroup' => (string) $membership->group_name,
         ]);
     }
 
