@@ -55,6 +55,7 @@ class HotelSimulationAuth
                 'can_redesign' => false,
                 'editable_pages' => [],
                 'preferred_page' => 'home',
+                'stay' => ['checked_in' => false, 'booking_id' => null, 'room' => null, 'guest_name' => null],
             ];
         }
 
@@ -70,6 +71,13 @@ class HotelSimulationAuth
             'editable_pages' => $editable,
             'preferred_page' => $editable[0] ?? 'home',
             'role_label' => $auth['role_label'] ?? ($type === 'customer' ? 'Customer' : 'Staff'),
+            /* The stay behind the account, when there is one. The Amenities page
+               reads it: the pool, the spa and the function room are for the guests
+               in the building, so the booking controls appear for somebody checked
+               in and explain themselves to everybody else. */
+            'stay' => $type === 'customer'
+                ? HotelGuestStay::payload()
+                : ['checked_in' => false, 'booking_id' => null, 'room' => null, 'guest_name' => null],
         ];
     }
 

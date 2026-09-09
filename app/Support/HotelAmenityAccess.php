@@ -162,12 +162,19 @@ class HotelAmenityAccess
      * Hours and locations are starting points, not facts — every team edits them to match
      * the hotel it is designing. Images are the same deterministic stand-in the add-ons,
      * rooms and menu screens use, so a fresh list looks finished before anyone uploads.
+     *
+     * Each one carries the access type its docblock in HotelAmenity describes, because
+     * that is what decides how a guest gets at it: the pool and the gym keep a register,
+     * the spa is booked by treatment, the function room by the date, and the playground
+     * is walked into. Left unset they all defaulted to open, which is the one type
+     * nothing can be booked under.
      */
     private static function defaultAmenities(): array
     {
         return [
             [
                 'name'        => 'Swimming Pool',
+                'access_type' => 'registered',
                 'description' => 'Outdoor infinity pool with sun loungers, poolside towels and a shallow end for younger guests.',
                 'location'    => 'Rooftop, 8th Floor',
                 'opens_at'    => '06:00',
@@ -176,6 +183,8 @@ class HotelAmenityAccess
             ],
             [
                 'name'        => 'Function Room',
+                'access_type' => 'event',
+                'capacity'    => 80,
                 'description' => 'Air-conditioned hall for meetings, seminars and receptions, with projector, sound system and flexible seating.',
                 'location'    => '2nd Floor, East Wing',
                 'opens_at'    => '08:00',
@@ -184,6 +193,7 @@ class HotelAmenityAccess
             ],
             [
                 'name'        => 'Gym',
+                'access_type' => 'registered',
                 'description' => 'Fully equipped fitness centre with cardio machines, free weights and a stretching area.',
                 'location'    => 'Ground Floor, Annex',
                 'opens_at'    => '05:00',
@@ -192,6 +202,7 @@ class HotelAmenityAccess
             ],
             [
                 'name'        => 'Playground',
+                'access_type' => 'open',
                 'description' => 'Shaded outdoor play area with swings, slides and soft flooring, in view of the garden seating.',
                 'location'    => 'Garden Court',
                 'opens_at'    => '07:00',
@@ -200,6 +211,7 @@ class HotelAmenityAccess
             ],
             [
                 'name'        => 'Spa',
+                'access_type' => 'appointment',
                 'description' => 'Massage and wellness treatments in private rooms, by appointment at the front desk.',
                 'location'    => '3rd Floor',
                 'opens_at'    => '10:00',

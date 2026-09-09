@@ -4348,7 +4348,216 @@ function FacilityCarousel({ shots, name, seconds }) {
   );
 }
 
-function FacilityModal({ facility, onClose, slideSeconds }) {
+/* Booking a facility, from the page a guest is reading it on.
+
+   The desk can book anything for anybody; a guest books only their own stay, and
+   only while they are in the building — which is what the server checks too, so
+   this is the explanation rather than the guard. A facility anyone may walk into
+   has nothing to book and shows nothing.
+
+   The three kinds ask for different things because they are different bookings: a
+   pool visit is "we are going down now", a treatment is a slot the length of the
+   treatment, and a function room is a date, a party and a package. */
+function FacilityBooking({ facility, onToast }) {
+  const [auth, setAuth] = useState(() => window.__HMS_HOTEL_AUTH__ || { authenticated: false });
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({
+    date: todayIsoDate(),
+    start: '',
+    end: '',
+    serviceId: '',
+    guests: '',
+    party: '',
+    requests: '',
+  });
+
+  useEffect(() => {
+    const onAuth = (e) => setAuth((e && e.detail && e.detail.auth) || window.__HMS_HOTEL_AUTH__ || { authenticated: false });
+    window.addEventListener('hms-hotel-auth', onAuth);
+    return () => window.removeEventListener('hms-hotel-auth', onAuth);
+  }, []);
+
+  const kind = (facility && facility.accessType) || 'open';
+  if (kind === 'open') return null;
+
+  const stay = (auth && auth.stay) || {};
+  const isGuest = auth && auth.authenticated && auth.type === 'customer';
+  const canBook = isGuest && stay.checked_in === true;
+  const closed = facility.status !== 'Available';
+  const services = Array.isArray(facility.services) ? facility.services : [];
+
+  const set = (field, value) => setForm((prev) => Object.assign({}, prev, { [field]: value }));
+
+  const label = kind === 'registered' ? 'Use this facility' : (kind === 'event' ? 'Book this hall' : 'Book a treatment');
+
+  const send = () => {
+    if (busy) return;
+    setBusy(true);
+
+    const done = (message) => {
+      setBusy(false);
+      setOpen(false);
+      if (onToast) onToast(message);
+    };
+    const failed = (err) => {
+      setBusy(false);
+      if (onToast) onToast((err && err.message) ? err.message : 'That could not be booked. Please try again.');
+    };
+
+    const post = (url, body) => fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-TOKEN': hmsCsrfToken(),
+      },
+      body: JSON.stringify(body),
+    }).then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))));
+
+    if (kind === 'registered') {
+      post(hmsApi('amenityVisits', '/students/hotel/amenity-visits'), {
+        hotel_amenity_id: facility.dbId,
+        party_size: form.party ? parseInt(form.party, 10) : 1,
+        notes: form.requests || null,
+      })
+        .then(() => done('You are signed in at ' + facility.name + '. Enjoy.'))
+        .catch(failed);
+      return;
+    }
+
+    const body = {
+      hotel_amenity_id: facility.dbId,
+      kind: kind,
+      customer_name: stay.guest_name || (auth && auth.name) || 'Guest',
+      scheduled_on: form.date,
+      starts_at: form.start,
+      special_requests: form.requests || null,
+    };
+
+    if (kind === 'appointment') body.hotel_amenity_service_id = form.serviceId ? parseInt(form.serviceId, 10) : null;
+    if (kind === 'event') {
+      body.ends_at = form.end;
+      body.guest_count = form.guests ? parseInt(form.guests, 10) : 1;
+      body.package = 'Hall Only';
+    }
+
+    post(hmsApi('amenityReservations', '/students/hotel/amenity-reservations'), body)
+      .then(() => done('Requested. The front desk will confirm your booking at ' + facility.name + '.'))
+      .catch(failed);
+  };
+
+  const fieldStyle = {
+    width: '100%', padding: '0.55rem 0.7rem', borderRadius: 8,
+    border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--fg)',
+    fontFamily: 'inherit', fontSize: '0.82rem',
+  };
+  const labelStyle = {
+    display: 'block', fontSize: '0.66rem', letterSpacing: '0.12em',
+    textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.3rem',
+  };
+
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', marginTop: '1.2rem', paddingTop: '1.2rem' }} data-hms-no-edit="1">
+      {closed ? (
+        <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>
+          {facility.name} is {facility.status.toLowerCase()} at the moment, so it cannot be booked.
+        </p>
+      ) : !canBook ? (
+        <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>
+          <i className="fa-solid fa-circle-info" style={{ color: 'var(--accent)', marginRight: '0.4rem' }}></i>
+          {isGuest
+            ? 'You can book this once you have checked in at the front desk.'
+            : 'Sign in as a guest and check in to book this facility.'}
+        </p>
+      ) : !open ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
+            Booking on {stay.room ? 'room ' + stay.room : 'your stay'}.
+          </p>
+          <button type="button" className="btn-primary" onClick={() => setOpen(true)}>{label}</button>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: '0.85rem' }}>
+          {kind === 'registered' ? (
+            <div>
+              <label style={labelStyle}>How many of you</label>
+              <input type="number" min="1" max="20" style={fieldStyle} value={form.party}
+                     placeholder="1" onChange={(e) => set('party', e.target.value)} />
+            </div>
+          ) : (
+            <>
+              {kind === 'appointment' && (
+                <div>
+                  <label style={labelStyle}>Treatment</label>
+                  <select style={fieldStyle} value={form.serviceId} onChange={(e) => set('serviceId', e.target.value)}>
+                    <option value="">Choose a treatment</option>
+                    {services.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name} - {service.minutes} min - {formatPeso(service.price)}
+                      </option>
+                    ))}
+                  </select>
+                  {services.length === 0 && (
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
+                      No treatments are listed yet. Ask the front desk.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
+                <div>
+                  <label style={labelStyle}>Date</label>
+                  <input type="date" style={fieldStyle} value={form.date} min={todayIsoDate()}
+                         onChange={(e) => set('date', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Start</label>
+                  <input type="time" style={fieldStyle} value={form.start}
+                         onChange={(e) => set('start', e.target.value)} />
+                </div>
+              </div>
+
+              {kind === 'event' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
+                  <div>
+                    <label style={labelStyle}>Ends</label>
+                    <input type="time" style={fieldStyle} value={form.end}
+                           onChange={(e) => set('end', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Guests</label>
+                    <input type="number" min="1" style={fieldStyle} value={form.guests}
+                           placeholder={facility.capacity ? 'Up to ' + facility.capacity : '20'}
+                           onChange={(e) => set('guests', e.target.value)} />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          <div>
+            <label style={labelStyle}>Anything we should know</label>
+            <textarea rows="2" style={Object.assign({}, fieldStyle, { resize: 'vertical' })}
+                      value={form.requests} onChange={(e) => set('requests', e.target.value)}
+                      placeholder="Optional"></textarea>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem' }}>
+            <button type="button" className="btn-outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</button>
+            <button type="button" className="btn-primary" onClick={send} disabled={busy}>
+              {busy ? 'Sending...' : (kind === 'registered' ? 'Sign me in' : 'Request booking')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FacilityModal({ facility, onClose, slideSeconds, onToast }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -4402,13 +4611,15 @@ function FacilityModal({ facility, onClose, slideSeconds }) {
                   : 'Closed while it is being repaired. Sorry for the inconvenience.'}
             </div>
           </div>
+
+          <FacilityBooking facility={facility} onToast={onToast} />
         </div>
       </div>
     </div>
   );
 }
 
-function AmenitiesPage({ amenities, slideSeconds, canEditAmenities, onSetSlideSeconds }) {
+function AmenitiesPage({ amenities, slideSeconds, canEditAmenities, onSetSlideSeconds, onToast }) {
   const list = Array.isArray(amenities) ? amenities : [];
   const [openId, setOpenId] = useState(null);
   // Read off the live list rather than held in state, so a poll that changes a
@@ -4521,7 +4732,7 @@ function AmenitiesPage({ amenities, slideSeconds, canEditAmenities, onSetSlideSe
         )}
       </section>
 
-      {selected && <FacilityModal facility={selected} onClose={() => setOpenId(null)} slideSeconds={slideSeconds} />}
+      {selected && <FacilityModal facility={selected} onClose={() => setOpenId(null)} slideSeconds={slideSeconds} onToast={onToast} />}
     </>
   );
 }
@@ -5419,6 +5630,7 @@ function App() {
         slideSeconds={amenitySlideSeconds}
         canEditAmenities={canEditAmenities}
         onSetSlideSeconds={setSlideSeconds}
+        onToast={showToast}
       />
     ),
     booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} />,

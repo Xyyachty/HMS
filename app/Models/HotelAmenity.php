@@ -88,6 +88,12 @@ class HotelAmenity extends Model
             ->orderByDesc('hotel_complaint_id');
     }
 
+    /** What this facility offers by appointment — the spa's treatments. */
+    public function services(): HasMany
+    {
+        return $this->hasMany(HotelAmenityService::class, 'hotel_amenity_id', 'hotel_amenity_id');
+    }
+
     /** Every trip anyone has made to this facility, newest first. */
     public function visits(): HasMany
     {
@@ -261,6 +267,24 @@ class HotelAmenity extends Model
             // Every photograph of the facility, primary first: the card shows the
             // first and View Details pages through all of them.
             'images'      => $this->imageUrls(),
+
+            /* What an appointment at this facility can be booked for. Sent with the
+               facility because the website's own booking form has to offer them,
+               and an appointment cannot be made without one — the treatment is what
+               decides how long it runs. Empty for everything that is not booked by
+               appointment. */
+            'services' => $this->access_type === 'appointment'
+                ? $this->services
+                    ->filter(fn (HotelAmenityService $service) => $service->is_active)
+                    ->map(fn (HotelAmenityService $service) => [
+                        'id' => $service->hotel_amenity_service_id,
+                        'name' => $service->name,
+                        'minutes' => (int) $service->duration_minutes,
+                        'price' => (int) $service->price,
+                    ])
+                    ->values()
+                    ->all()
+                : [],
 
             // How a guest gets at it. Front Desk's screen switches its whole action area
             // on accessType rather than on the amenity's name.

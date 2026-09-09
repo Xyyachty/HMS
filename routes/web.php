@@ -2252,16 +2252,32 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!$membership) {
             return response()->json(['message' => 'Join a hotel team first.'], 404);
         }
-        if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
-            return response()->json(['message' => 'Only Front Desk staff can register amenity access.'], 403);
+        /* The desk signs anybody in; a guest signs themselves in, and only against
+           their own stay. A facility that keeps a register is still keeping one -
+           this is who walked in, recorded by the person walking in. */
+        $guestStay = \App\Support\HotelGuestStay::checkedInBooking($membership);
+        $asGuest = !\App\Support\HotelAmenityAccess::canRegister($membership);
+
+        if ($asGuest && !$guestStay) {
+            return response()->json([
+                'message' => \App\Support\HotelSimulationAuth::current()
+                    ? 'You can use a facility once you have checked in.'
+                    : 'Sign in as a guest to use a facility.',
+            ], 403);
         }
 
         $data = $request->validate([
             'hotel_amenity_id' => 'required|integer',
-            'hotel_booking_id' => 'required|integer',
+            // The desk names the stay; a guest is only ever their own, and it is
+            // read off the session rather than trusted from the form.
+            'hotel_booking_id' => [$asGuest ? 'nullable' : 'required', 'integer'],
             'party_size'       => 'nullable|integer|min:1|max:999',
             'notes'            => 'nullable|string|max:500',
         ]);
+
+        if ($asGuest) {
+            $data['hotel_booking_id'] = $guestStay->hotel_booking_id;
+        }
 
         $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
             ->where('group_name', $membership->group_name)
@@ -2361,8 +2377,19 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!$membership) {
             return response()->json(['message' => 'Join a hotel team first.'], 404);
         }
-        if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
-            return response()->json(['message' => 'Only Front Desk staff can take a booking.'], 403);
+        /* Front Desk takes a booking for anyone; a guest may take their own, but
+           only while they are actually staying. The pool, the spa and the function
+           room are for the people in the building, which is the same line the
+           desk's own screens draw. */
+        $guestStay = \App\Support\HotelGuestStay::checkedInBooking($membership);
+        $asGuest = !\App\Support\HotelAmenityAccess::canRegister($membership);
+
+        if ($asGuest && !$guestStay) {
+            return response()->json([
+                'message' => \App\Support\HotelSimulationAuth::current()
+                    ? 'You can book a facility once you have checked in.'
+                    : 'Sign in as a guest to book a facility.',
+            ], 403);
         }
 
         $data = $request->validate([
@@ -2392,6 +2419,20 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->firstOrFail();
+
+        /* A guest books their own stay and nobody else's: the booking, the name and
+           the contact details are read off the stay rather than taken from the form,
+           and it lands Pending for the desk to confirm the way a phoned-in booking
+           does. */
+        if ($asGuest) {
+            $data['hotel_booking_id'] = $guestStay->hotel_booking_id;
+            $data['customer_name'] = $guestStay->guest?->full_name ?: ($data['customer_name'] ?? 'Guest');
+            $data['contact_no'] = $guestStay->guest?->contact_no;
+            $data['email'] = $guestStay->guest?->email;
+            // Settling it is the desk's business at checkout, not something a guest
+            // ticks for themselves.
+            unset($data['charge_to_room'], $data['additional_fee'], $data['additional_note']);
+        }
 
         try {
             $reservation = \App\Support\HotelAmenityReservationDesk::book($amenity, $data, auth()->user());
