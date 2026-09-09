@@ -1444,6 +1444,207 @@ function Toast({ message, visible }) {
 /* One dialog for every header edit, so a student meets the same small box
    whichever part of the header they click. It replaces the window.prompt()
    boxes the navigation used to open, which the iframe often blocked outright. */
+/* Guest sign-in and sign-up.
+
+   A hotel account, not an HMS one: it lives in hotel_customers, is scoped to the
+   team whose hotel this is, and knows nothing about the student, faculty and
+   admin logins the rest of the system runs on. Signing in here signs you in to a
+   hotel, not to the software.
+
+   Sign-up asks for what an account needs and nothing more - a name, an email, a
+   number to ring, a password. Everything a stay actually requires (the ID, the
+   address, the dates, who to call in an emergency) is taken at the desk when the
+   room is booked, where it belongs; asking for it to open an account is how a
+   guest gives up halfway through.
+
+   The two forms are one dialog because they are one decision: nobody wants to be
+   told to go somewhere else because they picked the wrong one. */
+function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
+  const [form, setForm] = useState({
+    email: '', password: '', remember: false,
+    fullName: '', contact: '', confirm: '', agreed: false,
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [forgot, setForgot] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setError('');
+    setForgot(false);
+  }, [open, mode]);
+
+  if (!open) return null;
+
+  const set = (field, value) => setForm((prev) => Object.assign({}, prev, { [field]: value }));
+  const signingIn = mode !== 'signup';
+
+  const submit = () => {
+    if (busy) return;
+    const auth = window.HMSHotelAuth;
+    if (!auth) {
+      setError('The hotel accounts service is not available on this page.');
+      return;
+    }
+
+    if (signingIn) {
+      if (!form.email.trim() || !form.password) {
+        setError('Enter your email and password.');
+        return;
+      }
+      setBusy(true);
+      auth.customerLogin(form.email.trim(), form.password, form.remember)
+        .then((data) => { setBusy(false); onSignedIn(data && data.auth); })
+        .catch((err) => { setBusy(false); setError((err && err.message) || 'We could not sign you in.'); });
+      return;
+    }
+
+    if (!form.fullName.trim() || !form.email.trim() || !form.contact.trim()) {
+      setError('Fill in your name, email and contact number.');
+      return;
+    }
+    if (form.password.length < 4) {
+      setError('Choose a password of at least four characters.');
+      return;
+    }
+    if (form.password !== form.confirm) {
+      setError('The passwords do not match.');
+      return;
+    }
+    if (!form.agreed) {
+      setError('Please agree to the Terms and the Privacy Policy.');
+      return;
+    }
+
+    setBusy(true);
+    auth.customerSignup({
+      fullName: form.fullName.trim(),
+      email: form.email.trim(),
+      contactNumber: form.contact.trim(),
+      password: form.password,
+      passwordConfirmation: form.confirm,
+    })
+      // Signed in by the same call that made the account: a guest who has just
+      // typed their password twice should not be asked for it a third time.
+      .then((data) => { setBusy(false); onSignedIn(data && data.auth); })
+      .catch((err) => { setBusy(false); setError((err && err.message) || 'We could not create your account.'); });
+  };
+
+  const field = {
+    width: '100%', padding: '0.6rem 0.75rem', borderRadius: 8,
+    border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--fg)',
+    fontFamily: 'inherit', fontSize: '0.85rem',
+  };
+  const label = {
+    display: 'block', fontSize: '0.66rem', letterSpacing: '0.12em',
+    textTransform: 'uppercase', color: 'var(--fg-muted)', margin: '0 0 0.3rem',
+  };
+  const row = { marginBottom: '0.85rem' };
+
+  return ReactDOM.createPortal(
+    <div className="room-modal-overlay header-modal-overlay" data-hms-no-edit="1"
+         role="dialog" aria-modal="true" aria-label={signingIn ? 'Guest sign in' : 'Guest sign up'}
+         onClick={onClose}>
+      <div className="room-modal" style={{ width: 'min(420px, 100%)', padding: '1.6rem', maxHeight: '90vh', overflowY: 'auto' }}
+           onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display" style={{ fontSize: '1.4rem', margin: '0 0 0.3rem' }}>
+          {signingIn ? 'Sign in' : 'Create your account'}
+        </h3>
+        <p style={{ color: 'var(--fg-muted)', fontSize: '0.8rem', margin: '0 0 1.2rem', lineHeight: 1.55 }}>
+          {notice || (signingIn
+            ? 'Sign in to book a room and manage your stay.'
+            : 'Just enough to open an account - we take the rest when you book.')}
+        </p>
+
+        {signingIn ? (
+          <>
+            <div style={row}>
+              <label style={label}>Email address</label>
+              <input type="email" style={field} value={form.email} autoComplete="email"
+                     onChange={(e) => set('email', e.target.value)} />
+            </div>
+            <div style={row}>
+              <label style={label}>Password</label>
+              <input type="password" style={field} value={form.password} autoComplete="current-password"
+                     onChange={(e) => set('password', e.target.value)}
+                     onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.78rem', color: 'var(--fg-muted)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.remember} onChange={(e) => set('remember', e.target.checked)} />
+                Remember me
+              </label>
+              <button type="button" onClick={() => setForgot(true)}
+                      style={{ background: 'none', border: 0, padding: 0, color: 'var(--accent)', fontFamily: 'inherit', fontSize: '0.78rem', cursor: 'pointer' }}>
+                Forgot password?
+              </button>
+            </div>
+            {forgot && (
+              /* No email leaves this hotel - the front desk resets a guest's
+                 password in person, which is also how it works in the building. */
+              <p style={{ fontSize: '0.76rem', color: 'var(--fg-muted)', margin: '0 0 1rem', lineHeight: 1.55 }}>
+                Ask the front desk to reset it for you - they can set a new password on your account.
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={row}>
+              <label style={label}>Full name</label>
+              <input type="text" style={field} value={form.fullName} autoComplete="name"
+                     onChange={(e) => set('fullName', e.target.value)} />
+            </div>
+            <div style={row}>
+              <label style={label}>Email address</label>
+              <input type="email" style={field} value={form.email} autoComplete="email"
+                     onChange={(e) => set('email', e.target.value)} />
+            </div>
+            <div style={row}>
+              <label style={label}>Contact number</label>
+              <input type="tel" style={field} value={form.contact} autoComplete="tel"
+                     onChange={(e) => set('contact', e.target.value)} />
+            </div>
+            <div style={row}>
+              <label style={label}>Password</label>
+              <input type="password" style={field} value={form.password} autoComplete="new-password"
+                     onChange={(e) => set('password', e.target.value)} />
+            </div>
+            <div style={row}>
+              <label style={label}>Confirm password</label>
+              <input type="password" style={field} value={form.confirm} autoComplete="new-password"
+                     onChange={(e) => set('confirm', e.target.value)}
+                     onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.76rem', color: 'var(--fg-muted)', margin: '0 0 1rem', lineHeight: 1.5, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.agreed} style={{ marginTop: '0.2rem' }}
+                     onChange={(e) => set('agreed', e.target.checked)} />
+              <span>I agree to the Terms of Service and the Privacy Policy.</span>
+            </label>
+          </>
+        )}
+
+        {error && (
+          <p style={{ color: '#f08a99', fontSize: '0.78rem', margin: '0 0 0.9rem' }}>{error}</p>
+        )}
+
+        <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
+                onClick={submit} disabled={busy}>
+          {busy ? 'Please wait...' : (signingIn ? 'Sign in' : 'Create account')}
+        </button>
+
+        <p style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--fg-muted)', margin: '1rem 0 0' }}>
+          {signingIn ? "Don't have an account? " : 'Already have an account? '}
+          <button type="button" onClick={() => onMode(signingIn ? 'signup' : 'signin')}
+                  style={{ background: 'none', border: 0, padding: 0, color: 'var(--accent)', fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>
+            {signingIn ? 'Sign Up' : 'Sign In'}
+          </button>
+        </p>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function HeaderEditModal({ edit, onSave, onCancel }) {
   const [value, setValue] = React.useState('');
 
@@ -1788,7 +1989,7 @@ function MobileMenu({ open, onClose, onNavigate, links, cardImages, page }) {
    run at all in Design mode. Because the editor no longer swallows the click,
    each handler has to check isSiteInteractive() itself and decide between
    navigating (Preview) and opening a dialog (Design). */
-function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, onHeaderEdit, cardImages }) {
+function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, onHeaderEdit, cardImages, guest, onGuestSignIn, onGuestSignOut }) {
   // Passed only so the navigation re-renders when the shared logo changes.
   void cardImages;
 
@@ -1856,6 +2057,21 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, br
             </div>
           ))}
         </div>
+        {/* The way in for a guest. Nothing to do with the HMS login that put the
+            student here - this is the hotel's own front door. */}
+        {guest && guest.authenticated && guest.type === 'customer' ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }} data-hms-no-edit="1">
+            <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
+              {(guest.name || 'Guest').split(' ')[0]}
+            </span>
+            <button type="button" className="btn-outline" style={{ fontSize: '0.66rem', padding: '0.45rem 0.9rem' }}
+                    onClick={onGuestSignOut}>Sign out</button>
+          </div>
+        ) : (
+          <button type="button" className="btn-outline" data-hms-no-edit="1"
+                  style={{ fontSize: '0.66rem', padding: '0.45rem 0.9rem' }}
+                  onClick={onGuestSignIn}>Sign in</button>
+        )}
         <button className={`hamburger${mobileOpen ? ' active' : ''}`} onClick={onToggleMobile} aria-label="Toggle menu" data-hms-no-edit="1">
           <span></span><span></span><span></span>
         </button>
@@ -2375,7 +2591,7 @@ function HeroSlider({ slides, canEdit }) {
 }
 
 
-function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRemovePartner }) {
+function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRemovePartner, onBookNow }) {
   // Passed only so the promo, partner and team pictures re-render once one is replaced.
   void cardImages;
   /* The landing page says what the hotel is. Both lines come from the team's
@@ -2434,7 +2650,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
             <button className="btn-primary" onClick={() => onNavigate('rooms')}>
               Explore Rooms <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
             </button>
-            <button className="btn-outline" onClick={() => onNavigate('rooms')}>Book Now</button>
+            <button className="btn-outline" onClick={() => onBookNow()}>Book Now</button>
           </div>
         </div>
       </section>
@@ -2881,7 +3097,7 @@ function addonStepBtn(disabled) {
   };
 }
 
-function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast }) {
+function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -3100,7 +3316,12 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
                 {canBookRoom ? (
                   <>
                     <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
-                      onClick={() => setStep('register')}>
+                      onClick={() => {
+                        // The guest is brought back to this room, on this step: the
+                        // sign-in is a detour, not a restart.
+                        if (onRequireGuest && !onRequireGuest(() => setStep('register'))) return;
+                        setStep('register');
+                      }}>
                       Reserve Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
                     </button>
                     {!isAvailable && (
@@ -3369,7 +3590,7 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
   );
 }
 
-function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement }) {
+function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest }) {
   const list = rooms && rooms.length ? rooms : [];
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
@@ -3722,6 +3943,7 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
         onChangeStatus={handleStatusChange}
         canEditStatus={!!canManageRooms}
         canReserve={canReserveRooms !== false}
+        onRequireGuest={onRequireGuest}
         onReserve={handleReserve}
         onToast={onToast}
       />
@@ -5039,6 +5261,13 @@ function App() {
   const [canEditRooms, setCanEditRooms] = useState(false);
   const [canManageRooms, setCanManageRooms] = useState(false);
   const [canReserveRooms, setCanReserveRooms] = useState(true);
+  /* The hotel's own guest account, kept beside the HMS session rather than in it.
+     pendingGuestAction is what the guest pressed before we asked them to sign in,
+     run as soon as they have - being sent back to where you were is the whole
+     point of asking there rather than on a page of its own. */
+  const [guestAuth, setGuestAuth] = useState(() => window.__HMS_HOTEL_AUTH__ || { authenticated: false });
+  const [guestAuthModal, setGuestAuthModal] = useState(null);
+  const pendingGuestAction = useRef(null);
   const [canOrderMenu, setCanOrderMenu] = useState(false);
   const [addons, setAddons] = useState([]);
   const [amenities, setAmenities] = useState([]);
@@ -5145,6 +5374,43 @@ function App() {
     };
     window.addEventListener('hms-card-color', open);
     return () => window.removeEventListener('hms-card-color', open);
+  }, []);
+
+  useEffect(() => {
+    const onAuth = (e) => setGuestAuth((e && e.detail && e.detail.auth) || window.__HMS_HOTEL_AUTH__ || { authenticated: false });
+    window.addEventListener('hms-hotel-auth', onAuth);
+    return () => window.removeEventListener('hms-hotel-auth', onAuth);
+  }, []);
+
+  const isSignedInGuest = !!(guestAuth && guestAuth.authenticated && guestAuth.type === 'customer');
+
+  /* Ask for a sign-in, then carry on with what was asked for. Anything a guest
+     account is needed for goes through here rather than checking for itself, so
+     one rule decides it and one dialog asks. */
+  const requireGuest = useCallback((action, notice) => {
+    if (window.__HMS_HOTEL_AUTH__ && window.__HMS_HOTEL_AUTH__.type === 'customer') {
+      if (action) action();
+      return true;
+    }
+    pendingGuestAction.current = action || null;
+    setGuestAuthModal({ mode: 'signin', notice: notice || null });
+    return false;
+  }, []);
+
+  const onGuestSignedIn = useCallback((auth) => {
+    setGuestAuth(auth || window.__HMS_HOTEL_AUTH__ || { authenticated: false });
+    setGuestAuthModal(null);
+    const next = pendingGuestAction.current;
+    pendingGuestAction.current = null;
+    showToast('Welcome' + (auth && auth.name ? ', ' + String(auth.name).split(' ')[0] : '') + '.');
+    if (next) next();
+  }, []);
+
+  const guestSignOut = useCallback(() => {
+    if (!window.HMSHotelAuth) return;
+    window.HMSHotelAuth.logout()
+      .then(() => showToast('Signed out.'))
+      .catch(() => showToast('Could not sign out. Please try again.'));
   }, []);
 
   // The <title> is server-rendered outside React and would otherwise keep the placeholder.
@@ -5582,6 +5848,10 @@ function App() {
         canEditPartners={canEditPartners}
         onAddPartner={addPartner}
         onRemovePartner={removePartner}
+        onBookNow={() => requireGuest(
+          () => navigateTo('rooms'),
+          'Sign in to book a room. It takes a moment, and you will come straight back.'
+        )}
         onAddRoom={addRoom}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
@@ -5607,6 +5877,10 @@ function App() {
         onCreateBooking={createBooking}
         onRefreshAddons={fetchAddons}
         onOpenRoomManagement={openRoomManagement}
+        onRequireGuest={(action) => requireGuest(
+          action,
+          'Sign in to reserve this room. You will come straight back to it.'
+        )}
       />
     ),
     restaurant: (
@@ -5746,6 +6020,9 @@ function App() {
         canEditLogo={canEditLogo}
         onHeaderEdit={setHeaderEdit}
         cardImages={cardImages}
+        guest={guestAuth}
+        onGuestSignIn={() => setGuestAuthModal({ mode: 'signin', notice: null })}
+        onGuestSignOut={guestSignOut}
       />
       <MobileMenu
         open={mobileOpen}
@@ -5758,6 +6035,14 @@ function App() {
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
       <Footer onNavigate={navigateTo} cardImages={cardImages} page={page} brandName={brandName} hotelInfo={hotelInfo} socialLinks={socialLinks} />
       <HeaderEditModal edit={headerEditDialog} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />
+      <GuestAuthModal
+        open={!!guestAuthModal}
+        mode={guestAuthModal ? guestAuthModal.mode : 'signin'}
+        notice={guestAuthModal ? guestAuthModal.notice : null}
+        onMode={(mode) => setGuestAuthModal((prev) => Object.assign({}, prev, { mode: mode }))}
+        onClose={() => { pendingGuestAction.current = null; setGuestAuthModal(null); }}
+        onSignedIn={onGuestSignedIn}
+      />
       <SiteTheme colors={siteColors} type={typography} />
       <SiteColorsModal
         open={cardColorKind === 'site'}

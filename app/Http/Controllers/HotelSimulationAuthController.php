@@ -9,6 +9,10 @@ class HotelSimulationAuthController extends Controller
 {
     public function me(Request $request)
     {
+        // A guest who ticked "remember me" is signed back in here, before the
+        // answer is composed — this is the first call the website makes.
+        HotelSimulationAuth::restore($request->user());
+
         return response()->json(HotelSimulationAuth::payload());
     }
 
@@ -33,6 +37,20 @@ class HotelSimulationAuthController extends Controller
 
     public function customerSignup(Request $request)
     {
+        /* The sign-up asks for a full name, because that is what a guest thinks
+           they have; the account stores it in two parts because the front desk's
+           own register does. Split on the last space, which is right for most
+           names and wrong in a way nobody is harmed by: the guest is greeted by
+           the whole thing either way. */
+        if (filled($request->input('full_name')) && blank($request->input('first_name'))) {
+            $full = trim(preg_replace('/\s+/', ' ', (string) $request->input('full_name')));
+            $cut = mb_strrpos($full, ' ');
+            $request->merge([
+                'first_name' => $cut === false ? $full : mb_substr($full, 0, $cut),
+                'last_name' => $cut === false ? $full : mb_substr($full, $cut + 1),
+            ]);
+        }
+
         $data = $request->validate([
             'last_name' => ['required', 'string', 'max:60'],
             'first_name' => ['required', 'string', 'max:60'],
@@ -65,9 +83,15 @@ class HotelSimulationAuthController extends Controller
         $data = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
+            'remember' => ['nullable', 'boolean'],
         ]);
 
-        $result = HotelSimulationAuth::loginCustomer($request->user(), $data['email'], $data['password']);
+        $result = HotelSimulationAuth::loginCustomer(
+            $request->user(),
+            $data['email'],
+            $data['password'],
+            $request->boolean('remember')
+        );
         if (!($result['ok'] ?? false)) {
             return response()->json(['error' => $result['error']], $result['status'] ?? 422);
         }

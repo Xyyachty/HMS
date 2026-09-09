@@ -56,8 +56,8 @@
       applyAuth(data.auth);
       return data;
     },
-    customerLogin: async function (email, password) {
-      const data = await api(routes.customerLogin, 'POST', { email, password });
+    customerLogin: async function (email, password, remember) {
+      const data = await api(routes.customerLogin, 'POST', { email, password, remember: !!remember });
       applyAuth(data.auth);
       return data;
     },
@@ -71,6 +71,7 @@
       const data = await api(routes.customerSignup, 'POST', {
         last_name: d.lastName,
         first_name: d.firstName,
+        full_name: d.fullName,
         email: d.email,
         contact_number: d.contactNumber,
         password: d.password,
