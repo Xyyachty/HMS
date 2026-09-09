@@ -295,6 +295,51 @@
         font-weight: 500;
         white-space: nowrap;
     }
+
+    /* ── Review submission modal ──────────────────────────────────────────────
+       Sized rather than left to its content: the work pane is an iframe and two
+       absolutely-positioned panes, none of which give the flex column a height to
+       grow from, so the modal collapsed to the height of its header and its
+       buttons and hid the changes list behind three lines of scroll.
+
+       Big enough to read a page in, deliberately not full screen — the team card
+       behind it is context a faculty is reviewing against. The header, the
+       compare tabs and the verdict buttons are outside the scroller, so the only
+       thing that ever scrolls is the work itself. */
+    #taskReviewModal .review-modal-box {
+        width: min(80vw, 1200px);
+        height: min(75vh, 800px);
+    }
+
+    /* A phone has no room for the margin a desktop can spare. */
+    @media (max-width: 640px) {
+        #taskReviewModal .review-modal-box {
+            width: 95vw;
+            height: 90vh;
+        }
+    }
+
+    /* Revise and Approve stay reachable however long the feedback above them
+       runs; the column scrolls under them rather than past them. */
+    #taskReviewModal .review-modal-decision {
+        position: sticky;
+        bottom: 0;
+        background: #fff;
+        padding-bottom: 0.25rem;
+        margin-top: auto;
+    }
+
+    /* Stacked on a narrow screen, the work would be squeezed to nothing by a long
+       feedback column. It keeps the larger half and the notes scroll under it. */
+    @media (max-width: 1023px) {
+        #taskReviewModal .review-modal-work { flex: 1 1 60%; min-height: 0; }
+        #taskReviewModal .review-modal-side { flex: 1 1 40%; }
+    }
+
+    /* Its own scroller, so the notes moving does not move the work beside them. */
+    #taskReviewModal .review-modal-side {
+        overscroll-behavior: contain;
+    }
 </style>
 
 {{-- ═══════════════════════════════════════════════
@@ -787,7 +832,7 @@
 <!-- ═══════ REVIEW SUBMISSION MODAL — the student's actual work + feedback ═══════ -->
 <div id="taskReviewModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTaskReview()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div class="review-modal-box relative bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden">
 
         <div class="bg-rose-50 px-4 py-3 border-b border-rose-100 flex justify-between items-center flex-shrink-0">
             <div class="min-w-0">
@@ -803,7 +848,7 @@
         <div class="flex-1 min-h-0 flex flex-col lg:flex-row">
             <!-- The work itself: a site to look at for most tasks, the concept text
                  itself for the hotel concept — that submission has no page to render. -->
-            <div class="flex-1 min-h-0 bg-slate-100 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200">
+            <div class="review-modal-work flex-1 min-h-0 bg-slate-100 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200">
                 <div class="px-3 py-2 flex items-center justify-between gap-2 bg-white border-b border-slate-100 flex-shrink-0">
                     <span id="reviewWorkLabel" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">The team's live site</span>
                     <div class="flex items-center gap-3">
@@ -825,14 +870,14 @@
                         <p class="text-xs text-slate-400">No site to preview for this submission.</p>
                     </div>
                     <iframe id="reviewPreviewFrame" src="" title="Team site preview"
-                            class="w-full h-full border-0 bg-white hidden" style="min-height: 22rem;"></iframe>
-                    <div id="reviewConceptPane" class="absolute inset-0 overflow-y-auto bg-white p-4 hidden" style="min-height: 22rem;"></div>
-                    <div id="reviewChangesPane" class="absolute inset-0 overflow-y-auto bg-white p-3 hidden" style="min-height: 22rem;"></div>
+                            class="w-full h-full border-0 bg-white hidden"></iframe>
+                    <div id="reviewConceptPane" class="absolute inset-0 overflow-y-auto bg-white p-4 hidden"></div>
+                    <div id="reviewChangesPane" class="absolute inset-0 overflow-y-auto bg-white p-3 hidden"></div>
                 </div>
             </div>
 
             <!-- Feedback -->
-            <div class="w-full lg:w-80 shrink-0 flex flex-col min-h-0 overflow-y-auto">
+            <div class="review-modal-side w-full lg:w-80 shrink-0 flex flex-col min-h-0 overflow-y-auto">
                 <div class="p-4 space-y-3">
                     <div id="reviewStatusRow" class="flex flex-wrap items-center gap-1.5"></div>
 
@@ -845,7 +890,7 @@
                     {{-- One verdict for the whole task. The hotel concept is judged one
                          concept at a time instead, so this block hides and each concept
                          card in the left pane carries its own controls. --}}
-                    <div id="reviewDecisionBlock" class="space-y-3">
+                    <div id="reviewDecisionBlock" class="review-modal-decision space-y-3">
                         {{-- Step 1: pick a verdict. The feedback box only belongs to
                              Revise, so it stays out of the way until that is chosen. --}}
                         <div id="reviewChoiceStep" class="flex items-center justify-end gap-2 pt-2">
