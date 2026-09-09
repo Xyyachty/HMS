@@ -187,6 +187,61 @@ class PublicSiteController extends Controller
      *  - booked_by records the channel rather than a person.
      */
     /**
+     * Food, ordered by the guest reading the menu on the published site.
+     *
+     * Room service if they are checked in — billed to their room like an order the
+     * desk would place for them — and a counter order if they are not, cooked the
+     * same way and collected at the front desk. Either way the kitchen sees it in
+     * the queue it already works from.
+     */
+    public function orderFood(Request $request, string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $auth = \App\Support\HotelSimulationAuth::current();
+        if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer'
+            || strcasecmp((string) ($auth['group_name'] ?? ''), $groupName) !== 0) {
+            return response()->json(['message' => 'Sign in as a guest to order.'], 403);
+        }
+
+        $data = $request->validate([
+            'items'                => 'required|array|min:1|max:50',
+            'items.*.name'         => 'required|string|max:255',
+            'items.*.menu_item_id' => 'nullable|integer',
+            'items.*.price'        => 'nullable|integer|min:0',
+            'items.*.qty'          => 'required|integer|min:1|max:99',
+        ]);
+
+        $items = \App\Models\HotelFoodOrder::sanitizeItems($data['items']);
+        if (!$items) {
+            return response()->json(['message' => 'Add at least one menu item to the order.'], 422);
+        }
+
+        $membership = StudentGroup::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->first();
+
+        $booking = \App\Support\HotelGuestStay::checkedInBooking($membership);
+
+        $order = \App\Models\HotelFoodOrder::create([
+            'group_name'       => $groupName,
+            'faculty_id'       => $facultyId,
+            'group_id'         => $membership?->group_id,
+            'order_type'       => 'room_service',
+            'hotel_booking_id' => $booking?->hotel_booking_id,
+            'room_number'      => $booking?->room?->name,
+            'guest_name'       => $booking?->guest?->full_name ?: ($auth['name'] ?? 'Guest'),
+            'items'            => $items,
+            'total'            => \App\Models\HotelFoodOrder::totalFor($items),
+            'status'           => 'Preparing',
+            // Nobody on staff placed it: the guest did, from the website.
+            'placed_by'        => $auth['name'] ?? 'Guest (website)',
+        ]);
+
+        return response()->json(['order' => $order->toTemplateArray()], 201);
+    }
+
+    /**
      * A guest booking a facility from the published site.
      *
      * The staff endpoint behind this asks the front desk who the booking is for;

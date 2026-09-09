@@ -113,6 +113,12 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
     Route::post('/{slug}/api/amenity-visits', [PublicSiteController::class, 'enterAmenity'])
         ->middleware('throttle:10,1')
         ->name('.amenity-visits');
+
+    // Food, ordered by the guest reading the menu. Same reason as the two above:
+    // the staff endpoint sits behind the students login a visitor does not have.
+    Route::post('/{slug}/api/orders', [PublicSiteController::class, 'orderFood'])
+        ->middleware('throttle:20,1')
+        ->name('.orders');
 });
 
 // Notification bell — same feed endpoints for dean, faculty and students.
@@ -2902,17 +2908,25 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ], 422);
         }
 
+        /* A guest signed into the hotel's website orders their own food. Dine-in
+           stays the restaurant's: it is placed against a table somebody is sitting
+           at, and only the floor knows that. */
+        $guestAuth = \App\Support\HotelSimulationAuth::current();
+        $asGuest = is_array($guestAuth) && ($guestAuth['type'] ?? null) === 'customer';
+
         if ($isDineIn) {
             if (!\App\Support\HotelOrderAccess::canPlaceDineIn($membership)) {
                 return response()->json(['message' => 'Only Restaurant Services staff can take a dine-in order.'], 403);
             }
-        } elseif (!\App\Support\HotelOrderAccess::canPlace($membership)) {
+        } elseif (!$asGuest && !\App\Support\HotelOrderAccess::canPlace($membership)) {
             return response()->json(['message' => 'Only Front Desk staff can place room-service orders.'], 403);
         }
 
         $data = $request->validate([
-            'room_number'          => ($isDineIn ? 'nullable' : 'required') . '|string|max:100',
-            'guest_name'           => ($isDineIn ? 'nullable' : 'required') . '|string|max:255',
+            // A guest names neither: both are read off their account and their stay,
+            // so nobody can order to somebody else's room.
+            'room_number'          => (($isDineIn || $asGuest) ? 'nullable' : 'required') . '|string|max:100',
+            'guest_name'           => (($isDineIn || $asGuest) ? 'nullable' : 'required') . '|string|max:255',
             'dine_in_table_id'     => ($isDineIn ? 'required' : 'nullable') . '|integer',
             'items'                => 'required|array|min:1|max:50',
             'items.*.name'         => 'required|string|max:255',
@@ -2937,6 +2951,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     'message' => 'Mark the customer as arrived before taking their order.',
                 ], 422);
             }
+        } elseif ($asGuest) {
+            /* The guest's own stay decides where it goes. Checked in, and it is
+               room service billed to that room like any the desk would place;
+               not checked in, and the kitchen still cooks it - it is collected and
+               paid for at the front desk instead of being charged to a room that
+               does not exist yet. */
+            $booking = \App\Support\HotelGuestStay::checkedInBooking($membership);
+            $data['guest_name'] = $booking?->guest?->full_name ?: ($guestAuth['name'] ?? 'Guest');
+            $data['room_number'] = $booking?->room?->name;
         } else {
             // Room service is charged to a stay, so it has to resolve to one. The room
             // is identified by name (that is all the ordering screen has), and only a

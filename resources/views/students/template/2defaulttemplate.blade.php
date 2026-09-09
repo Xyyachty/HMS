@@ -1925,7 +1925,7 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
  * chosen for the whole cart, then the entire cart goes out as a single order with
  * one line per dish.
  */
-function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, onPlaceOrder, onToast }) {
+function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, onPlaceOrder, onToast, guest }) {
   const [roomId, setRoomId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -1951,13 +1951,23 @@ function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, on
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem',
   };
 
+  /* A guest orders for themselves, so there is nobody to pick: the server reads
+     their account and their stay. The desk picks the room because it is ordering
+     on somebody else's behalf. */
+  const orderingAsGuest = !!(guest && guest.authenticated && guest.type === 'customer');
+  const guestRoom = orderingAsGuest && guest.stay ? guest.stay.room : null;
+
   const submit = (e) => {
     e.preventDefault();
     if (!isSiteInteractive()) return;
     if (!cart.length) { if (onToast) onToast('Add at least one item to the order.'); return; }
-    if (!selectedRoom) { if (onToast) onToast('Select which checked-in guest this order is for.'); return; }
+    if (!orderingAsGuest && !selectedRoom) { if (onToast) onToast('Select which checked-in guest this order is for.'); return; }
     setSubmitting(true);
-    Promise.resolve(onPlaceOrder(cart, {
+    Promise.resolve(onPlaceOrder(cart, orderingAsGuest ? {
+      asGuest: true,
+      guestName: (guest && guest.name) || 'Guest',
+      roomNumber: guestRoom || null,
+    } : {
       guestName: selectedRoom.reservation.fullName || 'Guest',
       roomNumber: selectedRoom.name,
     }))
@@ -2011,7 +2021,20 @@ function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, on
                 <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '1.1rem', fontFamily: 'Cormorant Garamond, serif' }}>{formatPeso(total)}</span>
               </div>
 
-              {checkedInRooms.length === 0 ? (
+              {orderingAsGuest ? (
+                /* Ordering for yourself: nothing to choose. Where it goes is
+                   whatever the stay says, and the line below says which. */
+                <form onSubmit={submit}>
+                  <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
+                    {guestRoom
+                      ? 'Sending this to room ' + guestRoom + ', charged to your stay.'
+                      : 'The kitchen will prepare this and the front desk will hold it for you to collect.'}
+                  </p>
+                  <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }} disabled={submitting}>
+                    {submitting ? 'Placing…' : 'Place Order'} <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+                  </button>
+                </form>
+              ) : checkedInRooms.length === 0 ? (
                 <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', lineHeight: 1.6 }}>
                   No guests are checked in right now. Room Management can check a guest in from Guest Details before a room-service order can be placed.
                 </p>
@@ -3798,7 +3821,7 @@ function RestCard({ r, onToast, canEdit }) {
   );
 }
 
-function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, cardImages, rooms }) {
+function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, cardImages, rooms, guest }) {
   const [tab, setTab] = useState('All');
   void cardImages;
   const filtered = tab === 'All' ? RESTAURANTS : RESTAURANTS.filter(r => r.category === tab);
@@ -3999,6 +4022,7 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, o
         rooms={rooms}
         onPlaceOrder={placeCartOrder}
         onToast={onToast}
+        guest={guest}
       />
     </>
   );
@@ -5447,16 +5471,23 @@ function App() {
   // Room-service food order — Front Desk / Restaurant staff only (server enforces this too).
   // One order, one or many dishes. `lines` is the reviewed cart.
   const placeOrder = useCallback((lines, details) => (
-    menuRequest('/students/hotel/orders', 'POST', {
-      room_number: details.roomNumber,
-      guest_name: details.guestName,
+    // hmsApi so the published site posts to its own endpoint rather than to one
+    // behind the students login, which would bounce a guest to the HMS sign-in.
+    menuRequest(hmsApi('orders', '/students/hotel/orders'), 'POST', {
+      // A guest names neither: the server reads both off their account and their
+      // stay, so an order cannot be sent to somebody else's room.
+      room_number: details.asGuest ? undefined : details.roomNumber,
+      guest_name: details.asGuest ? undefined : details.guestName,
       // menu_item_id lets the server reconcile stock by row rather than by name,
       // so renaming a dish no longer breaks the order or its stock return.
       items: lines.map(l => ({ menu_item_id: l.dbId || null, name: l.name, price: l.price, qty: l.qty })),
     })
       .then(data => {
         const count = lines.reduce((sum, l) => sum + l.qty, 0);
-        showToast(`Order placed for Room ${details.roomNumber} — ${count} item${count === 1 ? '' : 's'}.`);
+        const where = details.roomNumber
+          ? 'Room ' + details.roomNumber
+          : 'collection at the front desk';
+        showToast(`Order placed for ${where} — ${count} item${count === 1 ? '' : 's'}.`);
         fetchMenus(); // stock changed
         return data && data.order;
       })
@@ -5582,8 +5613,9 @@ function App() {
         onToast={showToast}
         menus={menus}
         canManageMenus={canManageMenus && inRestaurantModule}
-        canOrderMenu={canOrderMenu}
+        canOrderMenu={canOrderMenu || isSignedInGuest}
         onOrderMenu={placeOrder}
+        guest={guestAuth}
         onAddMenu={addMenu}
         onEditMenu={editMenu}
         onRemoveMenu={removeMenu}
