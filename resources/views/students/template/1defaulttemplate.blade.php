@@ -361,6 +361,12 @@
   .facility-card-media { position: relative; height: 190px; flex: 0 0 190px; overflow: hidden; }
   .facility-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .facility-card.is-unavailable .facility-card-media img { filter: grayscale(0.7); }
+  /* The card's photographs, stacked on the one band and cross-fading. Absolute
+     rather than a track that slides: the band is a fixed height, so fading costs
+     no layout and a portrait shot cannot push the card taller mid-rotation. */
+  .facility-card-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 0.7s ease; }
+  .facility-card-slide.is-active { opacity: 1; }
+
   /* How many photographs this facility has, said quietly in the corner of the
      card so a guest knows View Details has more to show. */
   .facility-shot-count {
@@ -4134,6 +4140,51 @@ function ExperiencePage({ onNavigate }) {
 
    Nothing is filtered out by status. A guest who cannot find the pool on this page will
    assume the hotel has none, so a closed or broken one stays listed and says so. */
+/* The card's photographs, rotating on their own.
+
+   No arrows and no dots down here: a card is a summary, and the controls belong
+   in the modal where somebody has actually asked to look. The rotation is held
+   while the pointer is over the card, so a guest reading a description is not
+   distracted by the picture changing under it, and each card is started a beat
+   apart from its neighbours - a grid of them flipping in unison reads as the
+   page glitching rather than as photographs. */
+function FacilityCardSlides({ shots, name, offset }) {
+  const [active, setActive] = useState(0);
+  const [held, setHeld] = useState(false);
+  const many = shots.length > 1;
+
+  useEffect(() => {
+    if (!many || held) return undefined;
+    let interval = null;
+    const start = setTimeout(() => {
+      setActive((i) => (i + 1) % shots.length);
+      interval = setInterval(() => setActive((i) => (i + 1) % shots.length), 4500);
+    }, 4500 + (offset % 4) * 700);
+    return () => {
+      clearTimeout(start);
+      if (interval) clearInterval(interval);
+    };
+  }, [many, held, shots.length, offset]);
+
+  if (!many) {
+    return <img src={shots[0]} alt={name} loading="lazy" />;
+  }
+
+  return (
+    <div
+      style={{ position: 'absolute', inset: 0 }}
+      onMouseEnter={() => setHeld(true)}
+      onMouseLeave={() => setHeld(false)}
+    >
+      {shots.map((src, index) => (
+        <div key={src + index} className={'facility-card-slide' + (index === active ? ' is-active' : '')} aria-hidden={index !== active}>
+          <img src={src} alt={index === 0 ? name : ''} loading={index === 0 ? undefined : 'lazy'} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* Every photograph of a facility, primary first.
 
    The server sends the list ready-made (HotelAmenity::imageUrls); the single img
@@ -4325,7 +4376,9 @@ function AmenitiesPage({ amenities }) {
           </div>
         ) : (
           <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1.5rem' }}>
-            {list.map(item => (
+            {list.map((item, index) => {
+              const shots = amenityShots(item);
+              return (
               <div
                 key={item.id}
                 className={'facility-card' + (item.status === 'Available' ? '' : ' is-unavailable')}
@@ -4338,12 +4391,12 @@ function AmenitiesPage({ amenities }) {
                 }}
               >
                 <div className="facility-card-media">
-                  <img src={amenityShots(item)[0]} alt={item.name} loading="lazy" />
+                  <FacilityCardSlides shots={shots} name={item.name} offset={index} />
                   <span className={'facility-status ' + facilityStatusClass(item.status)}>{item.status}</span>
-                  {amenityShots(item).length > 1 && (
+                  {shots.length > 1 && (
                     <span className="facility-shot-count">
                       <i className="fa-solid fa-images" style={{ fontSize: '0.62rem' }}></i>
-                      {amenityShots(item).length}
+                      {shots.length}
                     </span>
                   )}
                 </div>
@@ -4375,7 +4428,8 @@ function AmenitiesPage({ amenities }) {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
