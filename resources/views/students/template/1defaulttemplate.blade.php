@@ -785,6 +785,73 @@
   }
   .highlight-card:hover { border-color: var(--accent); }
 
+  /* Promos, partner brands and the team: the three home sections between the
+     menu preview and the footer. They borrow the room card's shape (flex column,
+     fixed media band, body takes the rest) so a row of them keeps one height no
+     matter how long a promo title or a member's role runs. */
+  .promo-card {
+    display: flex; flex-direction: column; height: 100%;
+    border-radius: 10px; overflow: hidden;
+    background: var(--card); border: 1px solid var(--border);
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .promo-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+  .promo-card-media { position: relative; height: 170px; flex: 0 0 170px; overflow: hidden; }
+  .promo-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s; }
+  .promo-card:hover .promo-card-media img { transform: scale(1.05); }
+  .promo-card-body { flex: 1 1 auto; display: flex; flex-direction: column; padding: 1.1rem 1.15rem 1.25rem; }
+  .promo-badge {
+    position: absolute; top: 0.85rem; left: 0.85rem;
+    background: var(--accent); color: var(--bg);
+    padding: 0.2rem 0.65rem; border-radius: 4px; font-weight: 700;
+    font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  /* Three lines' worth of space whether the text fills them or not. */
+  .promo-card-desc {
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden; height: 3.72rem;
+  }
+  /* Pushed to the foot of the card so the offer line sits on one baseline
+     across the row. */
+  .promo-card-terms { margin: auto 0 0; padding-top: 0.9rem; }
+
+  /* auto-fit rather than auto-fill: empty tracks collapse, so however many
+     brands or members a team ends up with, the row they make is full width. */
+  .partner-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+  .partner-card {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    min-height: 108px; padding: 1.35rem 1rem; text-align: center;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .partner-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+  /* Greyed until hovered, so a wall of different brand colours does not fight
+     the page's own palette. */
+  .partner-card img {
+    max-height: 54px; max-width: 100%; object-fit: contain;
+    filter: grayscale(1); opacity: 0.72; transition: filter 0.3s, opacity 0.3s;
+  }
+  .partner-card:hover img { filter: none; opacity: 1; }
+  /* The wordmark a brand falls back to until someone uploads its logo. */
+  .partner-name { font-size: 1.05rem; letter-spacing: 0.08em; margin: 0; color: var(--fg-muted); transition: color 0.2s; }
+  .partner-card:hover .partner-name { color: var(--accent); }
+
+  .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.25rem; }
+  .team-card {
+    text-align: center; padding: 1.9rem 1.15rem 1.6rem;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .team-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+  .team-photo {
+    position: relative; width: 118px; height: 118px; margin: 0 auto 1.1rem;
+    border-radius: 50%; overflow: hidden; border: 1px solid var(--border);
+  }
+  .team-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .team-card:hover .team-photo { border-color: var(--accent); }
+  .team-name { font-size: 1.05rem; margin: 0 0 0.35rem; }
+  .team-role { margin: 0; color: var(--accent); font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; }
+
   @media (max-width: 768px) {
     .hamburger { display: flex; }
     .nav-links-desktop { display: none !important; }
@@ -794,6 +861,8 @@
     .grid-2 { grid-template-columns: 1fr !important; }
     .booking-flex { flex-direction: column !important; }
     .footer-grid { grid-template-columns: 1fr 1fr !important; }
+    .team-grid { grid-template-columns: 1fr 1fr !important; }
+    .partner-grid { grid-template-columns: 1fr 1fr !important; }
     .testimonial-flex { flex-direction: column !important; text-align: center; }
     .testimonial-nav { justify-content: center; }
     .page-header { padding: 7rem 1.5rem 2rem; }
@@ -1703,6 +1772,56 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, br
 
 /* Five-slide hero. Front Desk owns Home, so these follow the exact __navLinks
    pattern — page:'home', fixed count, per-slide image replace only. */
+/* The three home sections below the menu preview ship with copy of their own so
+   a team's site never shows an empty shelf. Every line is ordinary text in the
+   markup, so Design mode edits it the same way it edits the rest of the page,
+   and each picture is a card image keyed by the id here, so replacing one is a
+   per-card change instead of a new customization shape. */
+const DEFAULT_PROMOS = [
+  {
+    id: 'promo-1',
+    title: 'Weekend Escape',
+    desc: 'Two nights in a Deluxe Room with breakfast for two and a late checkout at 2 PM.',
+    offer: 'Save 20%',
+    terms: 'Friday to Sunday stays',
+    img: 'https://picsum.photos/seed/hotelweekend/800/600.jpg',
+  },
+  {
+    id: 'promo-2',
+    title: 'Dine and Stay',
+    desc: 'Any suite booked for three nights comes with a chef-curated dinner for two at the restaurant.',
+    offer: 'Free dinner',
+    terms: 'Three nights or longer',
+    img: 'https://picsum.photos/seed/hoteldinner/800/600.jpg',
+  },
+  {
+    id: 'promo-3',
+    title: 'Early Bird Rate',
+    desc: 'Reserve at least thirty days ahead and keep the low season rate whichever month you arrive.',
+    offer: '15% off',
+    terms: 'Booked 30 days ahead',
+    img: 'https://picsum.photos/seed/hotelearlybird/800/600.jpg',
+  },
+];
+
+/* A brand shows its wordmark until someone uploads a logo for it, which reads as
+   a finished strip either way rather than as three broken images. */
+const DEFAULT_PARTNERS = [
+  { id: 'partner-1', name: 'Aurelia Travel' },
+  { id: 'partner-2', name: 'Maison Cafe' },
+  { id: 'partner-3', name: 'Northwind Air' },
+  { id: 'partner-4', name: 'Verde Spa' },
+  { id: 'partner-5', name: 'Lumiere Events' },
+  { id: 'partner-6', name: 'Basilio Wines' },
+];
+
+const DEFAULT_TEAM = [
+  { id: 'team-1', name: 'Elena Marchetti', role: 'General Manager', img: 'https://picsum.photos/seed/hotelteam1/400/400.jpg' },
+  { id: 'team-2', name: 'Diego Salvador', role: 'Front Desk Supervisor', img: 'https://picsum.photos/seed/hotelteam2/400/400.jpg' },
+  { id: 'team-3', name: 'Priya Raman', role: 'Executive Chef', img: 'https://picsum.photos/seed/hotelteam3/400/400.jpg' },
+  { id: 'team-4', name: 'Noah Fitzgerald', role: 'Guest Experience Lead', img: 'https://picsum.photos/seed/hotelteam4/400/400.jpg' },
+];
+
 const DEFAULT_HERO_SLIDES = [
   { id: 'hero-slide-1', img: 'https://picsum.photos/seed/luxuryhotel/1920/1080.jpg' },
   { id: 'hero-slide-2', img: 'https://picsum.photos/seed/hotellobby/1920/1080.jpg' },
@@ -2154,7 +2273,9 @@ function HeroSlider({ slides, canEdit }) {
 }
 
 
-function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo }) {
+function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages }) {
+  // Passed only so the promo, partner and team pictures re-render once one is replaced.
+  void cardImages;
   /* The landing page says what the hotel is. Both lines come from the team's
      Hotel Information, which starts as the concept faculty approved, and fall
      back to the template's own copy while those fields are still blank. */
@@ -2297,6 +2418,86 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
               </div>
               <span style={{ fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' }}>{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}</span>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section data-hms-section="promos" data-hms-bg-target="1" style={{ padding: '2rem 1.5rem 3rem', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Offers</p>
+          <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Promos and Packages</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', alignItems: 'stretch' }}>
+          {DEFAULT_PROMOS.map(promo => (
+            <article key={promo.id} className="promo-card">
+              <div className="promo-card-media">
+                <img src={resolveCardImg('promo', promo.id, promo.img)} alt={promo.title} loading="lazy" />
+                <span className="promo-badge">{promo.offer}</span>
+                {canEditHome && (
+                  <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3 }} data-hms-no-edit="1">
+                    <button type="button" title="Change promo image"
+                      onClick={() => changeCardImg('promo', promo.id, () => onToast && onToast('Promo image updated'))}
+                      style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                  </div>
+                )}
+              </div>
+              <div className="promo-card-body">
+                <h3 className="font-display" style={{ fontSize: '1.15rem', margin: 0 }}>{promo.title}</h3>
+                <p className="promo-card-desc" style={{ color: 'var(--fg-muted)', fontSize: '0.8rem', margin: '0.55rem 0 0', lineHeight: 1.55 }}>{promo.desc}</p>
+                <p className="promo-card-terms" style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{promo.terms}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section data-hms-section="partners" data-hms-bg-target="1" style={{ padding: '2rem 1.5rem 3rem', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>In good company</p>
+          <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Partner Brands</h2>
+        </div>
+        <div className="partner-grid">
+          {DEFAULT_PARTNERS.map(partner => {
+            const logo = resolveCardImg('partner', partner.id, '');
+            return (
+              <div key={partner.id} className="partner-card">
+                {logo
+                  ? <img src={logo} alt={partner.name} loading="lazy" />
+                  : <p className="partner-name font-display">{partner.name}</p>}
+                {canEditHome && (
+                  <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 3 }} data-hms-no-edit="1">
+                    <button type="button" title={logo ? 'Change logo' : 'Upload logo'}
+                      onClick={() => changeCardImg('partner', partner.id, () => onToast && onToast(partner.name + ' logo updated'))}
+                      style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section data-hms-section="team" data-hms-bg-target="1" style={{ padding: '2rem 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>The people here</p>
+          <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Our Team</h2>
+        </div>
+        <div className="team-grid">
+          {DEFAULT_TEAM.map(member => (
+            <article key={member.id} className="team-card">
+              <div className="team-photo">
+                <img src={resolveCardImg('team', member.id, member.img)} alt={member.name} loading="lazy" />
+                {canEditHome && (
+                  <div style={{ position: 'absolute', bottom: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1">
+                    <button type="button" title="Change photo"
+                      onClick={() => changeCardImg('team', member.id, () => onToast && onToast(member.name + ' photo updated'))}
+                      style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                  </div>
+                )}
+              </div>
+              <h3 className="font-display team-name">{member.name}</h3>
+              <p className="team-role">{member.role}</p>
+            </article>
           ))}
         </div>
       </section>
@@ -4745,6 +4946,11 @@ function App() {
     }
   }, [rooms, canManageRooms, page, openRoomManagement]);
 
+  /* "May edit the Home page" - the same gate the hero slides use (see
+     canEditHeroSlides in hms-site-content.js), which is exactly what the promo,
+     partner and team pictures need before they offer a Change image button. */
+  const canEditHome = canEditHeroSlides;
+
   const pages = {
     home: (
       <HomePage
@@ -4757,6 +4963,8 @@ function App() {
         heroSlides={heroSlides}
         hotelInfo={hotelInfo}
         canEditHeroSlides={canEditHeroSlides}
+        canEditHome={canEditHome}
+        cardImages={cardImages}
         onAddRoom={addRoom}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
