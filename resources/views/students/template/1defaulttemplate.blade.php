@@ -1533,7 +1533,7 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
     })
       // Signed in by the same call that made the account: a guest who has just
       // typed their password twice should not be asked for it a third time.
-      .then((data) => { setBusy(false); onSignedIn(data && data.auth); })
+      .then((data) => { setBusy(false); onSignedIn(data && data.auth, { created: true }); })
       .catch((err) => { setBusy(false); setError((err && err.message) || 'We could not create your account.'); });
   };
 
@@ -5431,12 +5431,35 @@ function App() {
     return false;
   }, []);
 
-  const onGuestSignedIn = useCallback((auth) => {
+  const onGuestSignedIn = useCallback((auth, opts) => {
     setGuestAuth(auth || window.__HMS_HOTEL_AUTH__ || { authenticated: false });
     setGuestAuthModal(null);
     const next = pendingGuestAction.current;
     pendingGuestAction.current = null;
-    showToast('Welcome' + (auth && auth.name ? ', ' + String(auth.name).split(' ')[0] : '') + '.');
+
+    const firstName = auth && auth.name ? String(auth.name).split(' ')[0] : '';
+
+    /* A new account is worth stopping for; signing back in is not. The dialog
+       borrows the site's own palette rather than arriving in SweetAlert's white,
+       which would be the one white card on a hotel the team has recoloured. */
+    if (opts && opts.created && window.Swal) {
+      const styles = getComputedStyle(document.documentElement);
+      const pick = (name, fallback) => (styles.getPropertyValue(name) || '').trim() || fallback;
+
+      window.Swal.fire({
+        icon: 'success',
+        title: firstName ? 'Welcome, ' + firstName + '!' : 'Welcome!',
+        text: 'Your guest account is ready. You can book a room and manage your stay from here.',
+        background: pick('--card', '#181714'),
+        color: pick('--fg', '#f5f0e8'),
+        confirmButtonColor: pick('--accent', '#c9a84c'),
+        confirmButtonText: 'Start booking',
+      }).then(() => { if (next) next(); });
+
+      return;
+    }
+
+    showToast('Welcome' + (firstName ? ', ' + firstName : '') + '.');
     if (next) next();
   }, []);
 
