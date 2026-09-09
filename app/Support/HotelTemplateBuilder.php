@@ -32,9 +32,13 @@ class HotelTemplateBuilder
         'front_desk' => ['home'],
         'room_management' => ['rooms'],
         'restaurant_management' => ['restaurant'],
-        // Housekeeping also owns the add-ons catalogue the Amenities page lists,
-        // so it is the one that page's static copy belongs to as well.
-        'housekeeping' => ['experience', 'amenities'],
+        /* Housekeeping also owns the add-ons catalogue the Amenities page lists, so
+           it is the one that page's static copy belongs to as well. Amenities is
+           named first because the first page in this list is the one the builder
+           opens on (preferredPageForRole), and the facilities are the work: the
+           Experience page is written once, while the amenities are added,
+           photographed and reordered throughout. */
+        'housekeeping' => ['amenities', 'experience'],
         'maintenance' => [],
     ];
 
