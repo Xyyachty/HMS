@@ -81,6 +81,29 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
     Route::post('/{slug}/api/bookings', [PublicSiteController::class, 'book'])
         ->middleware('throttle:10,1')
         ->name('.book');
+
+    /*
+    | Guest accounts on the published site.
+    |
+    | The builder's own copies of these live in the students group, which is why a
+    | visitor to the published link had no accounts service at all: every route
+    | behind it would have bounced them to the HMS login. These are the same four
+    | actions with the hotel read from the slug instead of from a signed-in
+    | student, so a guest signs in to the hotel they are actually looking at.
+    |
+    | Throttled like the booking beside them: they are unauthenticated, and two of
+    | them write.
+    */
+    Route::get('/{slug}/api/auth/me', [\App\Http\Controllers\HotelSimulationAuthController::class, 'me'])
+        ->name('.auth.me');
+    Route::post('/{slug}/api/auth/signup', [\App\Http\Controllers\HotelSimulationAuthController::class, 'customerSignup'])
+        ->middleware('throttle:10,1')
+        ->name('.auth.signup');
+    Route::post('/{slug}/api/auth/login', [\App\Http\Controllers\HotelSimulationAuthController::class, 'customerLogin'])
+        ->middleware('throttle:20,1')
+        ->name('.auth.login');
+    Route::post('/{slug}/api/auth/logout', [\App\Http\Controllers\HotelSimulationAuthController::class, 'logout'])
+        ->name('.auth.logout');
 });
 
 // Notification bell — same feed endpoints for dean, faculty and students.

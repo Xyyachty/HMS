@@ -82,9 +82,18 @@
         menus:     @json("/hotel/{$hmsPublicSlug}/api/menus"),
         bookings:  @json("/hotel/{$hmsPublicSlug}/api/bookings"),
     };
-    // No media upload and no hotel-auth routes: both are named routes inside the
-    // students auth group, and hms-hotel-auth.js boots by calling one of them.
+    // No media upload: it is a named route inside the students auth group, and a
+    // visitor has no business uploading to the team's site anyway.
     window.__HMS_MEDIA_UPLOAD_URL__ = null;
+    /* Guest accounts, on the published site's own endpoints. The staff copies of
+       these sit behind the students login, which is what left a visitor being told
+       there was no accounts service on the page they most needed one. */
+    window.__HMS_HOTEL_AUTH_ROUTES__ = {
+        me:             @json("/hotel/{$hmsPublicSlug}/api/auth/me"),
+        customerLogin:  @json("/hotel/{$hmsPublicSlug}/api/auth/login"),
+        customerSignup: @json("/hotel/{$hmsPublicSlug}/api/auth/signup"),
+        logout:         @json("/hotel/{$hmsPublicSlug}/api/auth/logout"),
+    };
 @else
     window.__HMS_PUBLIC__ = false;
     window.__HMS_API__ = {
@@ -105,9 +114,7 @@
     };
 @endif
 </script>
-@unless ($hmsPublicSlug)
 <script src="{{ asset('js/hms-hotel-auth.js') }}"></script>
-@endunless
 <script src="{{ asset('js/hms-template-editor.js') }}?v={{ filemtime(public_path('js/hms-template-editor.js')) }}"></script>
 <script src="{{ asset('js/hms-site-content.js') }}?v={{ filemtime(public_path('js/hms-site-content.js')) }}"></script>
 @if ($hmsReviewHighlight)

@@ -47,6 +47,36 @@ class HotelSimulationAuth
         ];
     }
 
+    /**
+     * The same context, resolved from a published site's slug.
+     *
+     * The staff-facing calls read the team off the student looking at the builder.
+     * A guest on the published link has no student and no session — the slug in
+     * the URL is the only thing saying which hotel this is, and it is what the
+     * public sign-in and sign-up go by.
+     *
+     * @return array{group_name: string, faculty_id: int, group_id: mixed}|null
+     */
+    public static function teamContextForSlug(string $slug): ?array
+    {
+        $team = \App\Models\Group::resolveSlug($slug);
+        if (!$team) {
+            return null;
+        }
+
+        $groupName = (string) $team['group_name'];
+        $facultyId = (int) $team['faculty_id'];
+
+        return [
+            'group_name' => $groupName,
+            'faculty_id' => $facultyId,
+            'group_id' => StudentGroup::where('group_name', $groupName)
+                ->where('faculty_id', $facultyId)
+                ->value('group_id'),
+            'membership' => null,
+        ];
+    }
+
     public static function current(): ?array
     {
         $data = Session::get(self::SESSION_KEY);
@@ -166,9 +196,11 @@ class HotelSimulationAuth
     /**
      * @param array{first_name: string, last_name: string, email: string, contact_number: string, password: string, id_document?: string|null} $details
      */
-    public static function signupCustomer(User $viewer, array $details): array
+    public static function signupCustomer(?User $viewer, array $details, ?array $context = null): array
     {
-        $ctx = self::teamContext($viewer);
+        // $context is how the published site says which hotel this is; inside the
+        // builder there is a student to read it from instead.
+        $ctx = $context ?: ($viewer ? self::teamContext($viewer) : null);
         if (!$ctx) {
             return ['ok' => false, 'error' => 'Join a hotel team first before creating a guest account.', 'status' => 422];
         }
@@ -246,9 +278,9 @@ class HotelSimulationAuth
         return ['ok' => true, 'auth' => self::payload($auth)];
     }
 
-    public static function loginCustomer(User $viewer, string $email, string $password, bool $remember = false): array
+    public static function loginCustomer(?User $viewer, string $email, string $password, bool $remember = false, ?array $context = null): array
     {
-        $ctx = self::teamContext($viewer);
+        $ctx = $context ?: ($viewer ? self::teamContext($viewer) : null);
         if (!$ctx) {
             return ['ok' => false, 'error' => 'Join a hotel team first.', 'status' => 422];
         }
@@ -309,9 +341,9 @@ class HotelSimulationAuth
      * team would be signed into another team's site by a cookie neither of them
      * knows about.
      */
-    public static function restore(?User $viewer): void
+    public static function restore(?User $viewer, ?array $context = null): void
     {
-        if (self::current() || !$viewer) {
+        if (self::current()) {
             return;
         }
 
@@ -320,7 +352,7 @@ class HotelSimulationAuth
             return;
         }
 
-        $ctx = self::teamContext($viewer);
+        $ctx = $context ?: ($viewer ? self::teamContext($viewer) : null);
         if (!$ctx) {
             return;
         }

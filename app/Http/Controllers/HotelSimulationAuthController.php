@@ -7,11 +7,29 @@ use Illuminate\Http\Request;
 
 class HotelSimulationAuthController extends Controller
 {
-    public function me(Request $request)
+    /**
+     * The hotel this request is about.
+     *
+     * A slug in the route means the published site, where there is no student to
+     * read a team from; without one it is the builder, and the viewer's own team
+     * is the hotel. Null on the published side means the slug is not a team, which
+     * the callers answer as a 404 rather than explaining.
+     */
+    private function context(Request $request, ?string $slug): ?array
     {
+        return $slug === null ? null : HotelSimulationAuth::teamContextForSlug($slug);
+    }
+
+    public function me(Request $request, ?string $slug = null)
+    {
+        $context = $this->context($request, $slug);
+        if ($slug !== null && !$context) {
+            abort(404);
+        }
+
         // A guest who ticked "remember me" is signed back in here, before the
         // answer is composed — this is the first call the website makes.
-        HotelSimulationAuth::restore($request->user());
+        HotelSimulationAuth::restore($request->user(), $context);
 
         return response()->json(HotelSimulationAuth::payload());
     }
@@ -35,8 +53,13 @@ class HotelSimulationAuthController extends Controller
         ]);
     }
 
-    public function customerSignup(Request $request)
+    public function customerSignup(Request $request, ?string $slug = null)
     {
+        $context = $this->context($request, $slug);
+        if ($slug !== null && !$context) {
+            abort(404);
+        }
+
         /* The sign-up asks for a full name, because that is what a guest thinks
            they have; the account stores it in two parts because the front desk's
            own register does. Split on the last space, which is right for most
@@ -71,7 +94,7 @@ class HotelSimulationAuthController extends Controller
             'id_document.max' => 'That image is too large. Please choose a smaller one.',
         ]);
 
-        $result = HotelSimulationAuth::signupCustomer($request->user(), $data);
+        $result = HotelSimulationAuth::signupCustomer($request->user(), $data, $context);
 
         if (!($result['ok'] ?? false)) {
             return response()->json(['error' => $result['error']], $result['status'] ?? 422);
@@ -84,8 +107,13 @@ class HotelSimulationAuthController extends Controller
         ]);
     }
 
-    public function customerLogin(Request $request)
+    public function customerLogin(Request $request, ?string $slug = null)
     {
+        $context = $this->context($request, $slug);
+        if ($slug !== null && !$context) {
+            abort(404);
+        }
+
         $data = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
@@ -96,7 +124,8 @@ class HotelSimulationAuthController extends Controller
             $request->user(),
             $data['email'],
             $data['password'],
-            $request->boolean('remember')
+            $request->boolean('remember'),
+            $context
         );
         if (!($result['ok'] ?? false)) {
             return response()->json(['error' => $result['error']], $result['status'] ?? 422);
@@ -109,7 +138,7 @@ class HotelSimulationAuthController extends Controller
         ]);
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request, ?string $slug = null)
     {
         HotelSimulationAuth::clear();
 
