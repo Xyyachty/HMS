@@ -82,6 +82,16 @@ class HotelTemplateBuilder
     public const HERO_SLIDES_KEY = '__heroSlides';
 
     /**
+     * The partner brands on the Home page, one entry per brand: an id and the
+     * name shown until someone uploads that brand's logo, which is an ordinary
+     * card image keyed by the same id.
+     *
+     * Front Desk's, like the rest of Home. Not a shared content key: another
+     * role has no reason to write it, and page ownership already says so.
+     */
+    public const PARTNERS_KEY = '__partners';
+
+    /**
      * The hotel's own words: tagline, description and the contact block the
      * landing page and every footer show. One entry for the whole site, like the
      * brand name it sits beside — the same hotel cannot have a different phone

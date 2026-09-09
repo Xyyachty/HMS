@@ -845,6 +845,21 @@
   .partner-name { font-size: 1.05rem; letter-spacing: 0.08em; margin: 0; color: var(--fg-muted); transition: color 0.2s; }
   .partner-card:hover .partner-name { color: var(--accent); }
 
+  /* The same dashed invitation the Add Room Card tile uses, sized for this
+     strip so it sits in the grid as one more brand rather than a banner. */
+  .partner-add {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    min-height: 108px; padding: 1.35rem 1rem; cursor: pointer;
+    border: 2px dashed #f43f5e; border-radius: 10px;
+    background: rgba(244,63,94,0.06); color: #fb7185;
+    font-family: 'Outfit', sans-serif; transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .partner-add:hover { background: rgba(244,63,94,0.12); transform: translateY(-2px); }
+  .partner-add-mark {
+    width: 34px; height: 34px; border-radius: 10px; border: 1.5px solid #f43f5e;
+    display: flex; align-items: center; justify-content: center; font-size: 20px; line-height: 1;
+  }
+
   .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.25rem; }
   .team-card {
     text-align: center; padding: 1.9rem 1.15rem 1.6rem;
@@ -1816,13 +1831,20 @@ const DEFAULT_PROMOS = [
 /* A brand shows its wordmark until someone uploads a logo for it, which reads as
    a finished strip either way rather than as three broken images. */
 const DEFAULT_PARTNERS = [
-  { id: 'partner-1', name: 'Aurelia Travel' },
-  { id: 'partner-2', name: 'Maison Cafe' },
-  { id: 'partner-3', name: 'Northwind Air' },
-  { id: 'partner-4', name: 'Verde Spa' },
-  { id: 'partner-5', name: 'Lumiere Events' },
-  { id: 'partner-6', name: 'Basilio Wines' },
+  { id: 'partner-1', label: 'Aurelia Travel' },
+  { id: 'partner-2', label: 'Maison Cafe' },
+  { id: 'partner-3', label: 'Northwind Air' },
+  { id: 'partner-4', label: 'Verde Spa' },
+  { id: 'partner-5', label: 'Lumiere Events' },
+  { id: 'partner-6', label: 'Basilio Wines' },
 ];
+
+/* The store writes "label" (TemplateDiff prints that field in a faculty review);
+   the template's own six were written with "name". Both are read here so a team
+   that saved a list before this rename still shows its brands. */
+function partnerName(partner) {
+  return (partner && (partner.label || partner.name)) || 'Brand';
+}
 
 const DEFAULT_TEAM = [
   { id: 'team-1', name: 'Elena Marchetti', role: 'General Manager', img: 'https://picsum.photos/seed/hotelteam1/400/400.jpg' },
@@ -2282,7 +2304,7 @@ function HeroSlider({ slides, canEdit }) {
 }
 
 
-function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages }) {
+function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRemovePartner }) {
   // Passed only so the promo, partner and team pictures re-render once one is replaced.
   void cardImages;
   /* The landing page says what the hotel is. Both lines come from the team's
@@ -2294,6 +2316,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
     || 'Nestled in the heart of the city, SPC Hotel offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.';
   const roomList = rooms && rooms.length ? rooms : [];
   const menuList = menus || [];
+  const partnerList = partners && partners.length ? partners : DEFAULT_PARTNERS;
 
   const handleAddRoom = (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
@@ -2466,23 +2489,41 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
           <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Partner Brands</h2>
         </div>
         <div className="partner-grid">
-          {DEFAULT_PARTNERS.map(partner => {
+          {partnerList.map(partner => {
             const logo = resolveCardImg('partner', partner.id, '');
+            const name = partnerName(partner);
             return (
               <div key={partner.id} className="partner-card">
                 {logo
-                  ? <img src={logo} alt={partner.name} loading="lazy" />
-                  : <p className="partner-name font-display">{partner.name}</p>}
-                {canEditHome && (
-                  <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 3 }} data-hms-no-edit="1">
+                  ? <img src={logo} alt={name} loading="lazy" />
+                  : <p className="partner-name font-display">{name}</p>}
+                {canEditPartners && (
+                  <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, display: 'flex', gap: 6 }} data-hms-no-edit="1">
                     <button type="button" title={logo ? 'Change logo' : 'Upload logo'}
-                      onClick={() => changeCardImg('partner', partner.id, () => onToast && onToast(partner.name + ' logo updated'))}
+                      onClick={() => changeCardImg('partner', partner.id, () => onToast && onToast(name + ' logo updated'))}
                       style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                    <button type="button" title="Remove brand"
+                      onClick={() => onRemovePartner && onRemovePartner(partner)}
+                      style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i></button>
                   </div>
                 )}
               </div>
             );
           })}
+          {canEditPartners && (
+            <button
+              type="button"
+              onClick={() => onAddPartner && onAddPartner()}
+              onMouseDown={(e) => e.stopPropagation()}
+              title="Add partner brand"
+              data-hms-no-edit="1"
+              data-hms-action="add-partner"
+              className="partner-add"
+            >
+              <span className="partner-add-mark">+</span>
+              <span style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 11 }}>Add Brand</span>
+            </button>
+          )}
         </div>
       </section>
 
@@ -4572,6 +4613,8 @@ function App() {
   ));
   const [canEditHeroSlides, setCanEditHeroSlides] = useState(false);
   const [canEditAmenities, setCanEditAmenities] = useState(false);
+  const [partners, setPartnersState] = useState(DEFAULT_PARTNERS);
+  const [canEditPartners, setCanEditPartners] = useState(false);
 
 
   // In-flight room writes — a poll that lands mid-write would show stale data.
@@ -4684,6 +4727,12 @@ function App() {
     setCanEditAmenities(
       typeof window.HMSSiteContent.canEditAmenities === 'function'
         ? window.HMSSiteContent.canEditAmenities()
+        : false
+    );
+    if (window.HMSSiteContent.getPartners) setPartnersState(window.HMSSiteContent.getPartners(DEFAULT_PARTNERS));
+    setCanEditPartners(
+      typeof window.HMSSiteContent.canEditPartners === 'function'
+        ? window.HMSSiteContent.canEditPartners()
         : false
     );
     setCanEditNav(window.HMSSiteContent.canEditNav());
@@ -5033,6 +5082,37 @@ function App() {
     }
   }, [rooms, canManageRooms, page, openRoomManagement]);
 
+  /* A brand is named as it is added: the strip shows the name until a logo is
+     uploaded for it, so an unnamed tile would be a blank card. */
+  const addPartner = () => {
+    const content = window.HMSSiteContent;
+    if (!content || !content.addPartner) return;
+    const name = hmsPrompt('Brand name', 'New Brand');
+    if (name === null) return;
+    const clean = String(name).trim();
+    if (!clean) return;
+    const added = content.addPartner(clean, DEFAULT_PARTNERS);
+    if (!added) {
+      showToast('Only the role that owns the Home page can add a brand.');
+      return;
+    }
+    setPartnersState(content.getPartners(DEFAULT_PARTNERS));
+    showToast(clean + ' added to Partner Brands');
+  };
+
+  const removePartner = (partner) => {
+    const content = window.HMSSiteContent;
+    if (!content || !content.removePartner) return;
+    const name = (partner && (partner.label || partner.name)) || 'That brand';
+    if (!hmsConfirm('Remove ' + name + ' from Partner Brands?')) return;
+    if (!content.removePartner(partner.id, DEFAULT_PARTNERS)) {
+      showToast('Only the role that owns the Home page can remove a brand.');
+      return;
+    }
+    setPartnersState(content.getPartners(DEFAULT_PARTNERS));
+    showToast(name + ' removed');
+  };
+
   /* "May edit the Home page" - the same gate the hero slides use (see
      canEditHeroSlides in hms-site-content.js), which is exactly what the promo,
      partner and team pictures need before they offer a Change image button. */
@@ -5052,6 +5132,10 @@ function App() {
         canEditHeroSlides={canEditHeroSlides}
         canEditHome={canEditHome}
         cardImages={cardImages}
+        partners={partners}
+        canEditPartners={canEditPartners}
+        onAddPartner={addPartner}
+        onRemovePartner={removePartner}
         onAddRoom={addRoom}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}

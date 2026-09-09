@@ -19,7 +19,8 @@
   const HOTEL_INFO_KEY = '__hotelInfo';
   const SOCIAL_LINKS_KEY = '__socialLinks';
   const TYPOGRAPHY_KEY = '__typography';
-  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const PARTNERS_KEY = '__partners';
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, PARTNERS_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   /**
    * The hotel name shown in the header and the footer.
@@ -652,6 +653,62 @@
     setHeroSlides(list);
   }
 
+  /* ── Partner brands ───────────────────────────────────────────────────────
+     The strip of names on the Home page, below the promos. Front Desk owns Home,
+     so it owns these; a logo for one is an ordinary card image keyed by the id
+     here, which is why a brand carries a name and nothing else.
+
+     The template's own six are passed in as the fallback rather than written to
+     the row at load: a team that has never touched the strip stores nothing, and
+     still sees a finished section. The first edit writes the whole list. */
+  const PARTNER_NAME_MAX = 40;
+
+  function canEditPartners() {
+    return canEdit() && editablePages().indexOf('home') !== -1;
+  }
+
+  function getPartners(fallback) {
+    const c = getCustomizations();
+    const entry = c[PARTNERS_KEY];
+    if (entry && Array.isArray(entry.items) && entry.items.length) {
+      return entry.items.map((item) => Object.assign({}, item));
+    }
+    return (fallback || []).map((item) => Object.assign({}, item));
+  }
+
+  function setPartners(items) {
+    if (!canEditPartners()) return false;
+    patch(PARTNERS_KEY, {
+      page: 'home',
+      items: (items || []).map((item) => ({
+        id: item.id || uid('partner'),
+        // "label", not "name": TemplateDiff::itemTitle() prints this field in the
+        // faculty review, and an id there tells a reviewer nothing.
+        label: String(item.label || item.name || '').trim().slice(0, PARTNER_NAME_MAX),
+      })),
+    });
+    return true;
+  }
+
+  function addPartner(name, fallbackDefaults) {
+    if (!canEditPartners()) return null;
+    const entry = { id: uid('partner'), label: String(name || 'New Brand').trim().slice(0, PARTNER_NAME_MAX) };
+    const list = getPartners(fallbackDefaults).concat([entry]);
+    return setPartners(list) ? entry : null;
+  }
+
+  function updatePartner(id, patchData, fallbackDefaults) {
+    const list = getPartners(fallbackDefaults).map((item) => (
+      item.id === id ? Object.assign({}, item, patchData) : item
+    ));
+    return setPartners(list);
+  }
+
+  function removePartner(id, fallbackDefaults) {
+    const list = getPartners(fallbackDefaults).filter((item) => item.id !== id);
+    return setPartners(list);
+  }
+
   function getRooms(fallback) {
     const c = getCustomizations();
     const entry = c[ROOMS_KEY];
@@ -1168,6 +1225,7 @@
       canEditMenus: canEditMenus(),
       canEditExperiences: canEditExperiences(),
       canEditAmenities: canEditAmenities(),
+      canEditPartners: canEditPartners(),
     };
   }
 
@@ -1278,6 +1336,12 @@
     canEditRooms,
     canEditMenus,
     canEditAmenities,
+    canEditPartners,
+    getPartners,
+    setPartners,
+    addPartner,
+    updatePartner,
+    removePartner,
     getAmenityVideo,
     setAmenityVideo,
     canEditExperiences,
