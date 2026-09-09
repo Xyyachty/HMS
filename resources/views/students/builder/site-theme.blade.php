@@ -38,34 +38,9 @@
     html[data-ops-site-themed] ::-webkit-scrollbar-track { background: {{ $p['warm'] }}; }
     html[data-ops-site-themed] ::-webkit-scrollbar-thumb { background: {{ $p['border'] }}; }
 
-    {{-- Department shell only: the tool grid, the editor tabs and the design
-         panel down the right-hand side. --}}
+    {{-- The Staff Tools grid on a department dashboard is content, so it
+         follows. The editor tabs and the design panel beside them do not: they
+         are the editing tools themselves, and tinting their inputs made the
+         controls look like part of the hotel being edited. --}}
     html[data-ops-site-themed] .tool-card:hover { background: {{ $p['card'] }}; border-color: {{ $p['border'] }}; }
-    html[data-ops-site-themed] #editorModeTabs { background: {{ $p['warm'] }} !important; border-color: {{ $p['border'] }} !important; }
-    html[data-ops-site-themed] .mode-tab { color: {{ $p['muted'] }} !important; }
-    html[data-ops-site-themed] .mode-tab.active-tab {
-        background: {{ $p['card'] }} !important;
-        border: 1px solid {{ $p['border'] }} !important;
-        color: {{ $p['fg'] }} !important;
-    }
-    html[data-ops-site-themed] .settings-card { background: {{ $p['card'] }}; border-color: {{ $p['border'] }}; }
-    html[data-ops-site-themed] .settings-label { color: {{ $p['muted'] }}; }
-    html[data-ops-site-themed] .settings-input,
-    html[data-ops-site-themed] .settings-select,
-    html[data-ops-site-themed] .style-input {
-        background: {{ $p['card'] }}; border-color: {{ $p['border'] }}; color: {{ $p['fg'] }};
-    }
-    html[data-ops-site-themed] .settings-input:focus,
-    html[data-ops-site-themed] .style-input:focus { border-color: {{ $p['accent'] }}; }
-    html[data-ops-site-themed] .style-input option { background: {{ $p['card'] }}; color: {{ $p['fg'] }}; }
-    html[data-ops-site-themed] #hbLayoutList > div,
-    html[data-ops-site-themed] #hbVersionList > div {
-        background: {{ $p['card'] }} !important; border-color: {{ $p['border'] }} !important;
-    }
-    html[data-ops-site-themed] #hbLayoutList .text-zinc-300,
-    html[data-ops-site-themed] #hbVersionList .text-zinc-200 { color: {{ $p['fg'] }} !important; }
-    html[data-ops-site-themed] #hbLayoutList p.text-zinc-600,
-    html[data-ops-site-themed] #hbVersionList p.text-zinc-600 { color: {{ $p['muted'] }} !important; }
-    html[data-ops-site-themed] #hbLayoutList button.text-zinc-500,
-    html[data-ops-site-themed] #hbVersionList button.text-zinc-500 { color: {{ $p['muted'] }} !important; }
 </style>
