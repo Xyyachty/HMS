@@ -484,6 +484,23 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ]);
         }
 
+        /* Website work waits on the concept. Everything a design task asks for -
+           the hotel's name, its palette, the photographs, the words - is the
+           concept faculty approved made concrete, so handing one in before that
+           decision is handing in a guess. The builder already refuses to save
+           against an unapproved team; this is the same rule at the other end. */
+        if (\App\Support\TaskChecklist::isSiteTitle((string) $task->title)
+            && !\App\Support\HotelConceptDesk::hasApprovedConcept(
+                $groupMembership->group_name,
+                (int) $groupMembership->faculty_id
+            )
+        ) {
+            return back()->withErrors([
+                'task' => 'Your faculty has not approved a hotel concept yet. '
+                    . 'Website tasks unlock once one of your two concepts is approved.',
+            ]);
+        }
+
         // Tasks fan out one row per member, so a role match alone is not enough —
         // without this a student could submit a teammate's row. Unclaimed rows
         // (no member held the role at assign time) stay open to the first submitter.

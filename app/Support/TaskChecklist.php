@@ -1157,6 +1157,27 @@ class TaskChecklist
         return $task;
     }
 
+    /**
+     * Whether a task by this title is website work.
+     *
+     * Asked of a saved task row, which keeps no scope of its own - it is a copy of
+     * a checklist entry made at assignment time. Anything not on the checklist
+     * (the hotel concept, the chained follow-up) answers site, which is what both
+     * of those are.
+     */
+    public static function isSiteTitle(string $title): bool
+    {
+        foreach (self::TASKS as $tasks) {
+            foreach ($tasks as $task) {
+                if (strcasecmp($task['title'], $title) === 0) {
+                    return ($task['scope'] ?? self::SCOPE_SITE) === self::SCOPE_SITE;
+                }
+            }
+        }
+
+        return true;
+    }
+
     /** What finishing one task means, or null when none is written for it. */
     public static function completionFor(string $title): ?string
     {

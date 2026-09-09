@@ -61,7 +61,35 @@ class HotelConceptDesk
      */
     public const TASK_KIND = 'hotel_concept';
     public const TASK_TITLE = 'Propose Two Hotel Concepts';
-    public const TASK_DESCRIPTION = 'Propose two hotel concepts your team could build: for each one, its title, its type and what makes it different. Write both here, improve them as often as you like, then submit the pair to your faculty, who reviews each concept separately and approves one.';
+    public const TASK_DESCRIPTION = "Propose two hotel concepts your team could build: for each one, its title, its type and what makes it different. Write both here, improve them as often as you like, then submit the pair to your faculty, who reviews each concept separately and approves one.\n\nActivities:\n1. Create two hotel concepts - two different themes and identities, not one idea written twice.\n2. Define each concept: the hotel's name, its type, its theme, the guests it is for, and a short description.\n3. Submit both concepts to your faculty for review.\n4. Answer the decision: revise and resubmit a concept sent back, and note the one your team will build.";
+
+    /**
+     * The same four, as a list.
+     *
+     * Written here rather than in TaskChecklist because this task is not on the
+     * checklist: it is seeded for every Front Desk student the moment they hold
+     * the role (ensureTaskFor), and faculty never ticks it out of a list.
+     *
+     * @var list<string>
+     */
+    public const TASK_ACTIVITIES = [
+        'Create two hotel concepts - two different themes and identities, not one idea written twice.',
+        "Define each concept: the hotel's name, its type, its theme, the guests it is for, and a short description.",
+        'Submit both concepts to your faculty for review.',
+        'Answer the decision: revise and resubmit a concept sent back, and note the one your team will build.',
+    ];
+
+    /** What finishing it means, in the sentence the review screens print. */
+    public const TASK_COMPLETION = 'Both concepts are written in full and submitted, and your faculty has approved one of them.';
+
+    /** The four in the shape a task row stores them. */
+    public static function taskActivities(): array
+    {
+        return array_map(
+            fn (string $text) => ['text' => $text, 'done' => false],
+            self::TASK_ACTIVITIES
+        );
+    }
 
     public const STATUS_DRAFT = 'draft';
     public const STATUS_SUBMITTED = 'submitted';
@@ -351,6 +379,12 @@ class HotelConceptDesk
                 ])->save();
             }
 
+            // Seeded before tasks carried their activities. Filled in rather than
+            // rewritten, so a student who has already ticked one keeps the tick.
+            if (Task::supportsActivities() && $existing->activityList() === []) {
+                $existing->forceFill(['activities' => self::taskActivities()])->save();
+            }
+
             // Seeded before tasks named their team, or the member has since moved.
             // Stamp it now so it reads as this team's rather than as everyone's.
             if (blank($existing->group_name) && filled($membership->group_name)) {
@@ -363,7 +397,7 @@ class HotelConceptDesk
             return;
         }
 
-        Task::create([
+        $payload = [
             'faculty_id' => $membership->faculty_id,
             // Named like any other task so the team reads it as theirs and nobody
             // else picks it up, rather than being inferred from student_id.
@@ -380,7 +414,13 @@ class HotelConceptDesk
             'due_date' => null,
             'priority' => 'high',
             'status' => 'active',
-        ]);
+        ];
+
+        if (Task::supportsActivities()) {
+            $payload['activities'] = self::taskActivities();
+        }
+
+        Task::create($payload);
     }
 
     /** Seed the task for every Front Desk member of one team. */
