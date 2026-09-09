@@ -15,6 +15,32 @@
     // for the team being reviewed. Read-only, and checked against its owner.
     $hmsPreviewGroup = $previewGroup ?? null;
 
+    /* Built here rather than inside the @json below: Blade parses a directive's
+       argument by matching brackets, and a multi-line array with nested ones is
+       more than it can follow — it read the array's '[' as unclosed and the whole
+       template 500'd. */
+    $hmsApiMap = [
+        'rooms'      => '/students/hotel/rooms',
+        'addons'     => '/students/hotel/addons',
+        'amenities'  => '/students/hotel/amenities',
+        'menus'      => '/students/hotel/menus',
+        'roomUpdate' => '/students/hotel/rooms',
+        'bookings'   => '/students/hotel/bookings',
+        'amenityReservations' => '/students/hotel/amenity-reservations',
+        'amenityVisits'       => '/students/hotel/amenity-visits',
+    ];
+
+    /* Root-relative, like the public map below: an absolute route() bakes in
+       APP_URL, which is the deployed host even when the app is being run
+       somewhere else — the preview would then fetch across origins, without the
+       session, and answer nothing. */
+    if ($hmsPreviewGroup) {
+        $hmsApiMap['rooms']     = route('faculty.teams.preview.rooms', ['group' => $hmsPreviewGroup], false);
+        $hmsApiMap['menus']     = route('faculty.teams.preview.menus', ['group' => $hmsPreviewGroup], false);
+        $hmsApiMap['amenities'] = route('faculty.teams.preview.amenities', ['group' => $hmsPreviewGroup], false);
+        $hmsApiMap['addons']    = route('faculty.teams.preview.addons', ['group' => $hmsPreviewGroup], false);
+    }
+
     /* Whether the design task that opens the Amenities section is assigned to
        this student and still open. The section's own controls read it, so a
        teammate — or the assignee after they have submitted — sees the finished
@@ -107,21 +133,7 @@
        catalogue reads point at that team's own, because the /students ones answer
        a faculty nothing. Nothing else is overridden: the preview renders with
        editing off, so no write is reachable from it. */
-    window.__HMS_API__ = @json(array_merge([
-        'rooms'      => '/students/hotel/rooms',
-        'addons'     => '/students/hotel/addons',
-        'amenities'  => '/students/hotel/amenities',
-        'menus'      => '/students/hotel/menus',
-        'roomUpdate' => '/students/hotel/rooms',
-        'bookings'   => '/students/hotel/bookings',
-        'amenityReservations' => '/students/hotel/amenity-reservations',
-        'amenityVisits'       => '/students/hotel/amenity-visits',
-    ], $hmsPreviewGroup ? [
-        'rooms'     => route('faculty.teams.preview.rooms', ['group' => $hmsPreviewGroup]),
-        'menus'     => route('faculty.teams.preview.menus', ['group' => $hmsPreviewGroup]),
-        'amenities' => route('faculty.teams.preview.amenities', ['group' => $hmsPreviewGroup]),
-        'addons'    => route('faculty.teams.preview.addons', ['group' => $hmsPreviewGroup]),
-    ] : []));
+    window.__HMS_API__ = @json($hmsApiMap);
     window.__HMS_MEDIA_UPLOAD_URL__ = @json(route('students.frontdesk.template.media'));
     window.__HMS_HOTEL_AUTH_ROUTES__ = {
         me: @json(route('students.hotel-auth.me')),
