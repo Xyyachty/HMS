@@ -1976,10 +1976,14 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             // mimetypes rather than the "video" rule: a browser labels a .mov as
             // quicktime and a .mkv as matroska, and neither plays everywhere, so the
             // three formats <video> can be relied on are named outright.
-            'video' => ['required', 'file', 'mimetypes:video/mp4,video/webm,video/ogg', 'max:20480'],
+            // 50 MB is Supabase Storage's own per-object ceiling on the free plan,
+            // so a larger file would be refused after the whole upload had gone up
+            // the wire. The container's PHP limits are set above it in
+            // docker/uploads.ini; PHP's stock 2M would reject this first.
+            'video' => ['required', 'file', 'mimetypes:video/mp4,video/webm,video/ogg', 'max:51200'],
         ], [
             'video.mimetypes' => 'Use an MP4, WebM or OGG file.',
-            'video.max'       => 'That video is too large. Keep it under 20 MB.',
+            'video.max'       => 'That video is too large. Keep it under 50 MB.',
         ]);
 
         $folder = 'hotel-media/' . $membership->faculty_id . '/' . $membership->group_name . '/videos';

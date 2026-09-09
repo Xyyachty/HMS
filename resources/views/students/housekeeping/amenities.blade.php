@@ -160,9 +160,10 @@ const { useState, useEffect, useCallback, useRef } = React;
 const PER_PAGE = 5;
 const IMAGE_MAX_DIMENSION = 1280;
 const IMAGE_MAX_BYTES = 600 * 1024;
-/* Matches the 20 MB the upload route accepts, so an oversized file is refused
-   here rather than after the whole thing has gone up the wire. */
-const VIDEO_MAX_BYTES = 20 * 1024 * 1024;
+/* Matches the 50 MB the upload route accepts - itself Supabase Storage's own
+   per-object ceiling - so an oversized file is refused here rather than after the
+   whole thing has gone up the wire. */
+const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 
 const CONFIG = window.HMS_AMENITIES || {};
 const STATUSES = CONFIG.statuses || ['Available', 'Temporarily Closed', 'Under Maintenance'];
@@ -274,7 +275,7 @@ function pickVideoFile(onStart, onPicked, onError) {
     if (input.parentNode) input.parentNode.removeChild(input);
     if (!file) return;
     if (file.size > VIDEO_MAX_BYTES) {
-      onError('That video is too large. Keep it under 20 MB.');
+      onError('That video is too large. Keep it under 50 MB.');
       return;
     }
     const body = new FormData();
@@ -584,7 +585,7 @@ function AmenityModal({ amenity, onClose, onSaved }) {
                 )}
               </div>
               <p style={{ margin: '0.35rem 0 0', color: 'var(--fg-muted)', fontSize: '0.7rem' }}>
-                MP4, WebM or OGG, up to 20 MB. This is what plays on the hotel site.
+                MP4, WebM or OGG, up to 50 MB. This is what plays on the hotel site.
               </p>
               {errorText('video')}
               {form.video && !videoUploading && (
