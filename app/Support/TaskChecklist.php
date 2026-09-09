@@ -21,12 +21,17 @@ namespace App\Support;
  *                judged by opening the department page instead.
  *
  * The two kinds are not interleaved. A team customises its site before it runs
- * the hotel, so Tasks 1 and 2 (the first SITE_STEPS positions) are website work
- * for every role, and the ops work starts at Task 3 for all of them at once.
- * allByStep() enforces that rather than trusting these arrays to be counted out
- * by hand. Each role gets exactly two site tasks: the first builds the content,
- * the second gives it its pictures, prices and copy and matches the page to the
- * rest of the site.
+ * the hotel, so the leading positions are website work for every role and the ops
+ * work starts at the same number for all of them at once — past the longest site
+ * list any one role has, never earlier than SITE_STEPS. allByStep() works that
+ * out rather than trusting these arrays to be counted out by hand, so adding
+ * design work to one role moves the whole simulation back a step instead of
+ * leaving that role building its page while another is already running the hotel.
+ *
+ * Roles do not have the same amount of design work, because they do not own the
+ * same amount of the site: Front Desk holds the home page and the chrome every
+ * other page inherits — the palette, the type, the footer — while Maintenance owns
+ * no page at all (ROLE_EDITABLE_PAGES) and so has no website work to be given.
  *
  * The ops list is the simulation itself, in the order the server enforces it —
  * a stay runs Booked → Arrived → Checked In → Checked Out, and checking out
@@ -70,6 +75,49 @@ class TaskChecklist
             [
                 'title' => 'Design the Home Page',
                 'description' => 'Customise the page a guest lands on: pick the five photographs that rotate across the top, rewrite the headline and the introduction under them so they describe your hotel rather than the sample text, and rename the links in the top menu so they read the way your hotel would label them.',
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+
+            [
+                'title' => 'Write Your Hotel\'s Story',
+                'description' => "Replace the sample words with your own: the tagline over the headline, the paragraph introducing the hotel, and the contact block every footer prints - address, phone, email and the hours the desk keeps. These are one record for the whole site, so what you write here is what the Rooms page and the Restaurant page say too.",
+                'priority' => 'high',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Choose the Site\'s Colours',
+                'description' => "Open Background Colours from the toolbar and give the site its own palette. Start with the main website colour - the text, cards and borders follow it automatically - then set the header and the footer if they should stand apart from it. Pick a background your text still reads against.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Set the Site\'s Typography',
+                'description' => "Choose the typeface the whole site is set in, the size body text is read at, and the colours for ordinary text and for headings. Type is site-wide: it reaches pages your role cannot otherwise edit, so choose something legible at a paragraph's length, not only in a heading.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Add Your Social Profiles',
+                'description' => "Put the hotel's social accounts in the footer. Add only the networks the hotel actually uses - each one shows as its own icon, and an account nobody keeps is worse than a missing one.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Fill In the Promos Section',
+                'description' => "Write the offers the hotel is running on the Home page: a picture for each, the name of the offer, what it includes in a sentence or two, the saving it carries, and the condition it comes with. Three cards is what the section is built for.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Build the Partner Brands Strip',
+                'description' => "List the businesses the hotel works with - the travel agency, the cafe, the airline. Add a card per brand and upload each one's logo; a brand with no logo yet shows its name instead, so the strip is never half empty. Remove the sample brands you are not using.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Introduce Your Team',
+                'description' => "Put four real people in Our Team: a photograph of each, their full name, and the position they hold. This is the section a guest reads to see who runs the hotel, so use the roles your team actually assigned.",
                 'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
@@ -192,6 +240,18 @@ class TaskChecklist
 
             // Build the inventory first, then work the rooms that are sold.
             [
+                'title' => 'Style the Rooms Page',
+                'description' => "Give the Rooms page its own look: the colour behind the room cards, the colour of the cards themselves, and the colour of the booking popup that opens when a guest picks one. The card colour is shared with the preview on the Home page, so it sets the tone in both places at once.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'List What Each Room Includes',
+                'description' => "Set the amenity chips under every room - the bed, the view, the bath, the wifi - so a guest can compare two rooms without opening either. Use the icons that match what is actually in the room rather than leaving the sample set.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
                 'title' => 'Add a Room to the Inventory',
                 'description' => 'Use Add Room in Manage Room to put a new room in the hotel: its category, price, description and photo. The room number comes from the category sequence — you do not type it.',
                 'priority' => 'high',
@@ -244,6 +304,18 @@ class TaskChecklist
             ],
 
             // The kitchen: stock it, lay out the room, then run the orders.
+            [
+                'title' => 'Organise the Menu into Categories',
+                'description' => "Sort the menu into the sections a diner reads it by - starters, mains, desserts, drinks - and name them the way your restaurant would. The tabs on the Restaurant page and the preview on the Home page both follow these, so a dish in the wrong section is in the wrong section twice.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Style the Menu Cards',
+                'description' => "Set the colour of the dish cards and the background of the Restaurant section behind them. The card colour carries to the dining preview on the Home page, so check both before you call it done.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
             [
                 'title' => 'Add Dishes to the Menu',
                 'description' => 'Use Manage Menu to add a dish the kitchen can actually serve: name, category, price, how many you hold, a short description and a photo.',
@@ -313,6 +385,19 @@ class TaskChecklist
             [
                 'title' => 'Write the Experience Page',
                 'description' => 'Write the Experience page so it tells a guest what staying at your hotel is like, and lay it out so it matches the rest of the site.',
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+
+            [
+                'title' => 'Colour the Amenities and Experience Pages',
+                'description' => "Give your two pages their own backgrounds from Background Colours. They are the pages guests read after the rooms, so they should look like the same hotel - close enough to the site's palette to belong to it, different enough to be their own.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Illustrate the Experience Page',
+                'description' => "Photograph the Experience page: a picture for each thing you describe, so the page shows the stay rather than only claiming it. Replace every sample image; a page of stock photographs reads as a page nobody wrote.",
                 'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
@@ -453,18 +538,24 @@ class TaskChecklist
     {
         $byStep = [];
 
-        foreach (self::all() as $role => $tasks) {
-            $siteCount = count(array_filter(
+        // Where the simulation starts, for everybody at once: past the longest
+        // list of website work any one role has. Measured across all roles rather
+        // than per role, or a role with more design work would still be building
+        // its page in the same numbered step another was already running the
+        // hotel in, and a step would stop meaning one stage. Never below
+        // SITE_STEPS, so the two reserved website positions stand even if every
+        // role's site list were shorter than that.
+        $opsStart = max(self::SITE_STEPS, ...array_map(
+            fn ($tasks) => count(array_filter(
                 $tasks,
                 fn ($task) => ($task['scope'] ?? self::SCOPE_SITE) === self::SCOPE_SITE
-            ));
+            )),
+            array_values(self::all())
+        ));
 
+        foreach (self::all() as $role => $tasks) {
             $siteStep = 0;
-            // Never below SITE_STEPS, so ops starts at Task 3 even for a role
-            // with no site work at all; never below the site tasks a role
-            // actually has, so giving one a third website task widens the site
-            // range instead of colliding with its first ops task.
-            $opsStep = max(self::SITE_STEPS, $siteCount);
+            $opsStep = $opsStart;
 
             foreach ($tasks as $task) {
                 $isSite = ($task['scope'] ?? self::SCOPE_SITE) === self::SCOPE_SITE;
