@@ -361,13 +361,15 @@
   .facility-card-media { position: relative; height: 190px; flex: 0 0 190px; overflow: hidden; }
   .facility-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .facility-card.is-unavailable .facility-card-media img { filter: grayscale(0.7); }
-  /* A clip keeps its own shape instead of the image band's fixed height: the
-     browser's controls sit inside the frame, and letterboxing a 16:9 video into
-     190px would crop whatever the amenity is meant to be showing. The ratio is
-     what makes it responsive - the band is always the card's width. */
-  .facility-card-media.is-video { height: auto; flex: 0 0 auto; aspect-ratio: 16 / 9; background: #000; }
-  .facility-card-media video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
-  .facility-card.is-unavailable .facility-card-media video { filter: grayscale(0.7); }
+  /* How many photographs this facility has, said quietly in the corner of the
+     card so a guest knows View Details has more to show. */
+  .facility-shot-count {
+    position: absolute; right: 0.85rem; bottom: 0.85rem;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.2rem 0.55rem; border-radius: 4px;
+    background: rgba(12,11,9,0.78); color: var(--fg);
+    font-size: 0.62rem; letter-spacing: 0.08em;
+  }
   .facility-status {
     position: absolute; top: 0.85rem; left: 0.85rem;
     padding: 0.22rem 0.7rem; border-radius: 4px;
@@ -413,8 +415,48 @@
   }
   .facility-modal-img { position: relative; height: 260px; overflow: hidden; }
   .facility-modal-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .facility-modal-img.is-video { height: auto; aspect-ratio: 16 / 9; background: #000; }
-  .facility-modal-img video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+  /* The carousel keeps the still band's height and slides inside it: every shot
+     is absolutely placed on the same frame and cross-fades, so the modal does
+     not jump as a portrait photograph follows a landscape one. */
+  .facility-carousel { position: relative; height: 260px; overflow: hidden; background: #000; }
+  .facility-slide {
+    position: absolute; inset: 0; opacity: 0; transition: opacity 0.55s ease;
+    pointer-events: none;
+  }
+  .facility-slide.is-active { opacity: 1; pointer-events: auto; }
+  .facility-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .facility-carousel-btn {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 34px; height: 34px; border-radius: 50%; z-index: 2;
+    border: 1px solid rgba(245,240,232,0.25); background: rgba(12,11,9,0.6); color: var(--fg);
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .facility-carousel-btn:hover { background: rgba(12,11,9,0.85); border-color: var(--accent); color: var(--accent); }
+  .facility-carousel-btn.prev { left: 0.75rem; }
+  .facility-carousel-btn.next { right: 0.75rem; }
+  .facility-dots {
+    position: absolute; left: 0; right: 0; bottom: 0.7rem; z-index: 2;
+    display: flex; justify-content: center; gap: 6px;
+  }
+  .facility-dot {
+    width: 7px; height: 7px; border-radius: 50%; padding: 0; cursor: pointer;
+    border: none; background: rgba(245,240,232,0.45); transition: background 0.2s, width 0.2s;
+  }
+  .facility-dot.is-active { background: var(--accent); width: 18px; border-radius: 999px; }
+  /* Thumbnails scroll rather than shrink: eight of them squeezed into the modal's
+     width would be too small to tell apart. */
+  .facility-thumbs {
+    display: flex; gap: 0.5rem; padding: 0.85rem 1.6rem 0; overflow-x: auto;
+  }
+  .facility-thumb {
+    flex: 0 0 auto; width: 66px; height: 46px; padding: 0; cursor: pointer;
+    border-radius: 6px; overflow: hidden; background: none;
+    border: 1px solid var(--border); opacity: 0.6;
+    transition: opacity 0.2s, border-color 0.2s;
+  }
+  .facility-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .facility-thumb.is-active, .facility-thumb:hover { opacity: 1; border-color: var(--accent); }
   .facility-modal-close {
     position: absolute; top: 0.75rem; right: 0.75rem;
     width: 34px; height: 34px; border-radius: 8px;
@@ -4092,51 +4134,17 @@ function ExperiencePage({ onNavigate }) {
 
    Nothing is filtered out by status. A guest who cannot find the pool on this page will
    assume the hotel has none, so a closed or broken one stays listed and says so. */
-/* Amenity clips.
-   Housekeeping stores one link per facility (see setAmenityVideo in
-   hms-site-content.js). Until it does, a card plays a stand-in from this pool,
-   picked by the amenity's own id so a facility keeps the same clip on every
-   load - the same role picsum images play for a room that has no photograph
-   yet. These are Google's long-standing public sample files; they are
-   placeholders, and a team replaces one with "Set video" in Design mode. */
-const DEFAULT_AMENITY_CLIPS = [
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-];
+/* Every photograph of a facility, primary first.
 
-function amenityVideoSrc(item) {
-  // What Housekeeping uploaded on the facility itself comes first: it is the
-  // amenity's own clip, stored with the row, so it is right for every team that
-  // can see this hotel rather than only for the one whose customizations these
-  // are. The pasted link is the fallback, and the stand-in the last resort.
-  if (item && item.video) return item.video;
-  const id = String((item && item.id) || '');
-  const stored = window.HMSSiteContent && typeof window.HMSSiteContent.getAmenityVideo === 'function'
-    ? window.HMSSiteContent.getAmenityVideo(id, '')
-    : '';
-  if (stored) return stored;
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) % 100000;
-  return DEFAULT_AMENITY_CLIPS[hash % DEFAULT_AMENITY_CLIPS.length];
-}
-
-/* Asked for as a link rather than a file: the customization row holds the URL,
-   so a clip costs the same as a caption no matter how long it runs. */
-function setAmenityVideoFor(item, onDone) {
-  const content = window.HMSSiteContent;
-  if (!content || typeof content.setAmenityVideo !== 'function') return;
-  const current = typeof content.getAmenityVideo === 'function' ? content.getAmenityVideo(String(item.id), '') : '';
-  const next = hmsPrompt("Paste the link to this amenity's video (MP4 or WebM):", current);
-  if (next === null) return;
-  const clean = String(next).trim();
-  if (!clean) return;
-  if (!content.setAmenityVideo(String(item.id), clean)) {
-    if (onDone) onDone('That link could not be saved. Use a full https:// address.');
-    return;
-  }
-  if (onDone) onDone('Video updated for ' + item.name);
+   The server sends the list ready-made (HotelAmenity::imageUrls); the single img
+   is the fallback for a row saved before galleries existed, and the seeded
+   stand-in the last resort, so a card is never an empty frame. */
+function amenityShots(item) {
+  const list = (item && Array.isArray(item.images) ? item.images : []).filter(Boolean);
+  if (list.length) return list;
+  if (item && item.img) return [item.img];
+  const seed = encodeURIComponent((item && (item.id || item.name)) || 'amenity');
+  return ['https://picsum.photos/seed/amenity-' + seed + '/900/600.jpg'];
 }
 
 function facilityStatusClass(status) {
@@ -4151,6 +4159,90 @@ function facilityStatusClass(status) {
    Deliberately NOT shown: the repair notes on the row. Those are Maintenance's working
    comments to Housekeeping, and the amenity's own status already tells a guest what
    they need to know. */
+/* The facility's photographs, one frame, cross-fading.
+
+   It advances on its own every five seconds because most facilities have two or
+   three shots and nobody would press an arrow to see them; it stops while the
+   pointer is over it or a thumbnail has focus, so it cannot slide out from under
+   somebody who is looking at a particular photograph. A single shot renders as a
+   plain picture: no arrows, no dots, no timer. */
+function FacilityCarousel({ shots, name }) {
+  const [active, setActive] = useState(0);
+  const [held, setHeld] = useState(false);
+  const many = shots.length > 1;
+
+  useEffect(() => {
+    if (!many || held) return undefined;
+    const id = setInterval(() => setActive((i) => (i + 1) % shots.length), 5000);
+    return () => clearInterval(id);
+  }, [many, held, shots.length]);
+
+  // A facility whose gallery shrank while the modal was open must not be left
+  // pointing past the end of the list.
+  useEffect(() => {
+    if (active > shots.length - 1) setActive(0);
+  }, [shots.length, active]);
+
+  const step = (delta) => setActive((i) => (i + delta + shots.length) % shots.length);
+
+  return (
+    <>
+      <div
+        className="facility-carousel"
+        onMouseEnter={() => setHeld(true)}
+        onMouseLeave={() => setHeld(false)}
+        aria-roledescription="carousel"
+        aria-label={name + ' photographs'}
+      >
+        {shots.map((src, index) => (
+          <div key={src + index} className={'facility-slide' + (index === active ? ' is-active' : '')} aria-hidden={index !== active}>
+            <img src={src} alt={name + ' photo ' + (index + 1)} loading={index === 0 ? undefined : 'lazy'} />
+          </div>
+        ))}
+        {many && (
+          <>
+            <button type="button" className="facility-carousel-btn prev" onClick={() => step(-1)} aria-label="Previous photo">
+              <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.75rem' }}></i>
+            </button>
+            <button type="button" className="facility-carousel-btn next" onClick={() => step(1)} aria-label="Next photo">
+              <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.75rem' }}></i>
+            </button>
+            <div className="facility-dots">
+              {shots.map((src, index) => (
+                <button
+                  key={'dot' + index}
+                  type="button"
+                  className={'facility-dot' + (index === active ? ' is-active' : '')}
+                  onClick={() => setActive(index)}
+                  aria-label={'Show photo ' + (index + 1)}
+                  aria-current={index === active}
+                ></button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      {many && (
+        <div className="facility-thumbs" onFocus={() => setHeld(true)} onBlur={() => setHeld(false)}>
+          {shots.map((src, index) => (
+            <button
+              key={'thumb' + index}
+              type="button"
+              className={'facility-thumb' + (index === active ? ' is-active' : '')}
+              onClick={() => setActive(index)}
+              onMouseEnter={() => setHeld(true)}
+              onMouseLeave={() => setHeld(false)}
+              aria-label={'Show photo ' + (index + 1)}
+            >
+              <img src={src} alt="" loading="lazy" />
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 function FacilityModal({ facility, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -4167,15 +4259,8 @@ function FacilityModal({ facility, onClose }) {
   return (
     <div className="facility-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true" aria-label={facility.name}>
       <div className="facility-modal" onClick={e => e.stopPropagation()}>
-        <div className="facility-modal-img is-video">
-          <video
-            src={amenityVideoSrc(facility)}
-            poster={facility.img || undefined}
-            controls
-            playsInline
-            preload="metadata"
-            aria-label={facility.name + ' video'}
-          ></video>
+        <div style={{ position: 'relative' }}>
+          <FacilityCarousel shots={amenityShots(facility)} name={facility.name} />
           <button type="button" className="facility-modal-close" onClick={onClose} aria-label="Close">
             <i className="fa-solid fa-xmark"></i>
           </button>
@@ -4218,7 +4303,7 @@ function FacilityModal({ facility, onClose }) {
   );
 }
 
-function AmenitiesPage({ amenities, canEditAmenities, onToast }) {
+function AmenitiesPage({ amenities }) {
   const list = Array.isArray(amenities) ? amenities : [];
   const [openId, setOpenId] = useState(null);
   // Read off the live list rather than held in state, so a poll that changes a
@@ -4252,26 +4337,14 @@ function AmenitiesPage({ amenities, canEditAmenities, onToast }) {
                   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(item.id); }
                 }}
               >
-                {/* The clip owns its clicks: playing, scrubbing or going full
-                    screen must not also open the details modal behind it. */}
-                <div className="facility-card-media is-video"
-                  onClick={e => e.stopPropagation()}
-                  onKeyDown={e => e.stopPropagation()}>
-                  <video
-                    src={amenityVideoSrc(item)}
-                    poster={item.img || undefined}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    aria-label={item.name + ' video'}
-                  ></video>
+                <div className="facility-card-media">
+                  <img src={amenityShots(item)[0]} alt={item.name} loading="lazy" />
                   <span className={'facility-status ' + facilityStatusClass(item.status)}>{item.status}</span>
-                  {canEditAmenities && (
-                    <div style={{ position: 'absolute', top: '0.85rem', right: '0.85rem', zIndex: 3 }} data-hms-no-edit="1">
-                      <button type="button" title="Set video link"
-                        onClick={() => setAmenityVideoFor(item, msg => onToast && onToast(msg))}
-                        style={toolBtnStyle('image')}><i className="fa-solid fa-video" style={{ fontSize: 11 }}></i></button>
-                    </div>
+                  {amenityShots(item).length > 1 && (
+                    <span className="facility-shot-count">
+                      <i className="fa-solid fa-images" style={{ fontSize: '0.62rem' }}></i>
+                      {amenityShots(item).length}
+                    </span>
                   )}
                 </div>
                 <div className="facility-card-body">
@@ -4289,9 +4362,17 @@ function AmenitiesPage({ amenities, canEditAmenities, onToast }) {
                     </div>
                   )}
                   {item.description && <p className="facility-card-desc">{item.description}</p>}
-                  <span style={{ marginTop: 'auto', paddingTop: '0.6rem', color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  {/* A button, not a caption: the whole card already opens the
+                      modal, but a guest reading with a keyboard or a screen reader
+                      needs something that says so and can be pressed. */}
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    style={{ marginTop: 'auto', alignSelf: 'flex-start', fontSize: '0.68rem', padding: '0.5rem 0.95rem' }}
+                    onClick={e => { e.stopPropagation(); setOpenId(item.id); }}
+                  >
                     View details <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.62rem' }}></i>
-                  </span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -4614,7 +4695,6 @@ function App() {
     window.HMSSiteContent ? window.HMSSiteContent.getHeroSlides(DEFAULT_HERO_SLIDES) : DEFAULT_HERO_SLIDES
   ));
   const [canEditHeroSlides, setCanEditHeroSlides] = useState(false);
-  const [canEditAmenities, setCanEditAmenities] = useState(false);
   const [partners, setPartnersState] = useState(DEFAULT_PARTNERS);
   const [canEditPartners, setCanEditPartners] = useState(false);
 
@@ -4724,11 +4804,6 @@ function App() {
     setCanEditHeroSlides(
       typeof window.HMSSiteContent.canEditHeroSlides === 'function'
         ? window.HMSSiteContent.canEditHeroSlides()
-        : false
-    );
-    setCanEditAmenities(
-      typeof window.HMSSiteContent.canEditAmenities === 'function'
-        ? window.HMSSiteContent.canEditAmenities()
         : false
     );
     if (window.HMSSiteContent.getPartners) setPartnersState(window.HMSSiteContent.getPartners(DEFAULT_PARTNERS));
@@ -5180,7 +5255,7 @@ function App() {
       />
     ),
     experience: <ExperiencePage onNavigate={navigateTo} />,
-    amenities: <AmenitiesPage amenities={amenities} canEditAmenities={canEditAmenities} onToast={showToast} />,
+    amenities: <AmenitiesPage amenities={amenities} />,
     booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} />,
   };
 

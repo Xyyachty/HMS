@@ -1839,9 +1839,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             // Nullable is "no limit", which is not the same fact as 0.
             'capacity'    => 'nullable|integer|min:0|max:9999',
             'image'       => 'nullable|string|max:900000',
-            // The clip is uploaded on its own (see the video route below) and
-            // comes back here as the path that upload returned, never as bytes.
-            'video'       => 'nullable|string|max:2048',
+            // Extra photographs, compressed in the browser before they are sent
+            // (see compressImageDataUrl on the Housekeeping screen) so a gallery
+            // costs about what one uncompressed upload used to.
+            'gallery'     => 'nullable|array|max:' . \App\Models\HotelAmenity::GALLERY_MAX,
+            'gallery.*'   => 'nullable|string|max:900000',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
         ]);
@@ -1869,11 +1871,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ),
         ];
 
-        if (\App\Models\HotelAmenity::supportsVideo()) {
-            $attributes['video'] = \App\Support\HotelImageStore::persist(
-                $data['video'] ?? null,
-                $membership->faculty_id,
-                $membership->group_name
+        if (\App\Models\HotelAmenity::supportsGallery()) {
+            $attributes['gallery'] = \App\Support\HotelAmenityGallery::persist(
+                $data['gallery'] ?? [],
+                $membership
             );
         }
 
@@ -1910,9 +1911,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             // Nullable is "no limit", which is not the same fact as 0.
             'capacity'    => 'sometimes|nullable|integer|min:0|max:9999',
             'image'       => 'sometimes|nullable|string|max:900000',
-            // Uploaded on its own (see the video route below); what arrives
-            // here is the path that upload returned, never the bytes.
-            'video'       => 'sometimes|nullable|string|max:2048',
+            // Compressed in the browser before they are sent, so a gallery costs
+            // about what one uncompressed upload used to.
+            'gallery'     => 'sometimes|nullable|array|max:' . \App\Models\HotelAmenity::GALLERY_MAX,
+            'gallery.*'   => 'nullable|string|max:900000',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
         ]);
@@ -1942,65 +1944,16 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $membership->faculty_id,
             $membership->group_name
         );
-        if (array_key_exists('video', $data) && \App\Models\HotelAmenity::supportsVideo()) {
-            $amenity->video = \App\Support\HotelImageStore::persist(
-                $data['video'],
-                $membership->faculty_id,
-                $membership->group_name
+        if (array_key_exists('gallery', $data) && \App\Models\HotelAmenity::supportsGallery()) {
+            $amenity->gallery = \App\Support\HotelAmenityGallery::persist(
+                $data['gallery'],
+                $membership
             );
         }
         $amenity->save();
 
         return response()->json(['item' => $amenity->toTemplateArray($amenity->repairs()->first())]);
     })->name('hotel.amenities.update');
-
-    /*
-    | The clip a facility plays on the Amenities page.
-    |
-    | Its own multipart endpoint rather than a field on the save above: a video sent
-    | as a base64 string would be a third larger than the file and would have to fit
-    | in one JSON body, which is what the request size limits exist to stop. The form
-    | uploads first, gets a path back, and saves that path with the rest of the
-    | amenity.
-    */
-    Route::post('/hotel/amenities/video', function (Request $request) {
-        $membership = \App\Support\HotelAmenityAccess::membership();
-        if (!$membership) {
-            return response()->json(['message' => 'Join a hotel team first.'], 404);
-        }
-        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
-            return response()->json(['message' => 'Only Housekeeping staff can upload amenity videos.'], 403);
-        }
-
-        $request->validate([
-            // mimetypes rather than the "video" rule: a browser labels a .mov as
-            // quicktime and a .mkv as matroska, and neither plays everywhere, so the
-            // three formats <video> can be relied on are named outright.
-            // 50 MB is Supabase Storage's own per-object ceiling on the free plan,
-            // so a larger file would be refused after the whole upload had gone up
-            // the wire. The container's PHP limits are set above it in
-            // docker/uploads.ini; PHP's stock 2M would reject this first.
-            'video' => ['required', 'file', 'mimetypes:video/mp4,video/webm,video/ogg', 'max:51200'],
-        ], [
-            'video.mimetypes' => 'Use an MP4, WebM or OGG file.',
-            'video.max'       => 'That video is too large. Keep it under 50 MB.',
-        ]);
-
-        $folder = 'hotel-media/' . $membership->faculty_id . '/' . $membership->group_name . '/videos';
-        $path = $request->file('video')->store($folder, \App\Support\HotelImageStore::disk());
-
-        ActivityLog::record(
-            auth()->user(),
-            ActivityLog::OUTPUT_UPLOADED,
-            'Uploaded amenity video "' . basename($path) . '".'
-        );
-
-        // The path is what the amenity row stores; the URL is what the form previews.
-        return response()->json([
-            'path' => $path,
-            'url'  => \App\Support\HotelImageStore::url($path),
-        ], 201);
-    })->name('hotel.amenities.video');
 
     /*
     | Housekeeping hands a broken facility to Maintenance. Files a hotel_complaints row

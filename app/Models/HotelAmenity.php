@@ -64,14 +64,19 @@ class HotelAmenity extends Model
         'setup_fee',
         'capacity',
         'image',
-        'video',
+        'gallery',
     ];
 
     protected $casts = [
         'rate'      => 'integer',
         'setup_fee' => 'integer',
         'capacity'  => 'integer',
+        // A list of media-disk paths, the same kind of value `image` holds.
+        'gallery'   => 'array',
     ];
+
+    /** At most this many extra photographs beside the primary one. */
+    public const GALLERY_MAX = 8;
 
     /**
      * Every repair ever requested for this amenity, newest first, so first() is the one
@@ -91,21 +96,46 @@ class HotelAmenity extends Model
     }
 
     /**
-     * Whether this database has the `video` column yet.
+     * Whether this database has the `gallery` column yet.
      *
      * Asked because the column arrives in a migration of its own: between pulling
-     * the code and running that migration, a save carrying a video would be an
+     * the code and running that migration, a save carrying a gallery would be an
      * INSERT against a column that is not there. Answered once per request.
      */
-    public static function supportsVideo(): bool
+    public static function supportsGallery(): bool
     {
         static $has = null;
 
         if ($has === null) {
-            $has = \Illuminate\Support\Facades\Schema::hasColumn('hotel_amenities', 'video');
+            $has = \Illuminate\Support\Facades\Schema::hasColumn('hotel_amenities', 'gallery');
         }
 
         return $has;
+    }
+
+    /**
+     * Every photograph of this facility, primary first, as URLs.
+     *
+     * The primary one is not repeated if it also appears in the gallery: the
+     * front-end pages straight through this list, and a duplicate would read as
+     * the carousel stalling on the first slide.
+     *
+     * @return list<string>
+     */
+    public function imageUrls(): array
+    {
+        $paths = self::supportsGallery() && is_array($this->gallery) ? $this->gallery : [];
+        array_unshift($paths, $this->image);
+
+        $urls = [];
+        foreach ($paths as $path) {
+            $url = \App\Support\HotelImageStore::url(is_string($path) ? $path : '');
+            if ($url !== '' && !in_array($url, $urls, true)) {
+                $urls[] = $url;
+            }
+        }
+
+        return $urls;
     }
 
     public static function normalizeAccessType(?string $value): string
@@ -228,10 +258,9 @@ class HotelAmenity extends Model
             'hours'       => $this->hoursLabel() ?? '',
             'status'      => $this->status,
             'img'         => \App\Support\HotelImageStore::url($this->image),
-            // The clip the Amenities page plays. The photograph stays on as its
-            // poster frame, so a card still looks finished before anyone presses
-            // play and the staff lists keep the thumbnail they already show.
-            'video'       => \App\Support\HotelImageStore::url($this->video),
+            // Every photograph of the facility, primary first: the card shows the
+            // first and View Details pages through all of them.
+            'images'      => $this->imageUrls(),
 
             // How a guest gets at it. Front Desk's screen switches its whole action area
             // on accessType rather than on the amenity's name.
