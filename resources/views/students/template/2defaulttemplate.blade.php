@@ -381,11 +381,24 @@
      no layout and a portrait shot cannot push the card taller mid-rotation. */
   .facility-card-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 0.7s ease; }
   .facility-card-slide.is-active { opacity: 1; }
+  /* Which photograph of the set is showing. Smaller than the modal's, and low
+     enough in the frame to stay clear of the status chip in the corner. */
+  .facility-card-dots {
+    position: absolute; left: 0; right: 0; bottom: 0.7rem; z-index: 2;
+    display: flex; justify-content: center; gap: 5px;
+  }
+  .facility-card-dot {
+    width: 6px; height: 6px; padding: 0; border: none; border-radius: 50%;
+    background: rgba(245,240,232,0.5); cursor: pointer;
+    box-shadow: 0 0 3px rgba(0,0,0,0.5);
+    transition: background 0.25s, width 0.25s;
+  }
+  .facility-card-dot.is-active { background: var(--accent); width: 15px; border-radius: 999px; }
 
   /* How many photographs this facility has, said quietly in the corner of the
      card so a guest knows View Details has more to show. */
   .facility-shot-count {
-    position: absolute; right: 0.85rem; bottom: 0.85rem;
+    position: absolute; right: 0.85rem; bottom: 1.5rem;
     display: inline-flex; align-items: center; gap: 0.35rem;
     padding: 0.2rem 0.55rem; border-radius: 4px;
     background: rgba(12,11,9,0.78); color: var(--fg);
@@ -430,7 +443,9 @@
     to { opacity: 1; }
   }
   .facility-modal {
-    width: min(560px, 100%);
+    /* Wider than a plain details dialog because the carousel is the point of it:
+       the photographs are what a guest opened this to see. */
+    width: min(720px, 100%);
     max-height: min(90vh, 720px);
     overflow: auto;
     background: var(--card);
@@ -447,7 +462,13 @@
   /* The carousel keeps the still band's height and slides inside it: every shot
      is absolutely placed on the same frame and cross-fades, so the modal does
      not jump as a portrait photograph follows a landscape one. */
-  .facility-carousel { position: relative; height: 260px; overflow: hidden; background: #000; }
+  /* Taller on a tall window, never taller than the modal can show: the height is
+     the frame every slide is fitted to, so it is what keeps the carousel from
+     resizing as the photographs change. */
+  .facility-carousel {
+    position: relative; height: clamp(220px, 40vh, 400px);
+    overflow: hidden; background: #000;
+  }
   .facility-slide {
     position: absolute; inset: 0; opacity: 0; transition: opacity 0.55s ease;
     pointer-events: none;
@@ -3855,6 +3876,20 @@ function FacilityCardSlides({ shots, name, offset }) {
           <img src={src} alt={index === 0 ? name : ''} loading={index === 0 ? undefined : 'lazy'} />
         </div>
       ))}
+      {/* The clicks stop here: the card opens the modal, and jumping to a
+          photograph is not a request to leave the card. */}
+      <div className="facility-card-dots" onClick={e => e.stopPropagation()}>
+        {shots.map((src, index) => (
+          <button
+            key={'dot' + index}
+            type="button"
+            className={'facility-card-dot' + (index === active ? ' is-active' : '')}
+            onClick={() => setActive(index)}
+            aria-label={'Show photo ' + (index + 1) + ' of ' + name}
+            aria-current={index === active}
+          ></button>
+        ))}
+      </div>
     </div>
   );
 }
