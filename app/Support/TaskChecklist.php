@@ -504,12 +504,459 @@ class TaskChecklist
      *
      * @return array<string, list<array{title: string, description: string, priority: string, scope: string}>>
      */
+
+    /**
+     * The four activities each task is worked through as, keyed by the task's
+     * title.
+     *
+     * Kept beside the tasks rather than inside them so the entries above stay
+     * readable as a list of work, and appended to the description on the way out
+     * (see withActivities) rather than stored twice: a task row is a copy of a
+     * description made at assignment time, so anything a student has to read
+     * while doing the work has to be in that text.
+     *
+     * @var array<string, list<string>>
+     */
+    private const ACTIVITIES = [
+        'Brand Your Hotel' => [
+            'Upload your own logo in place of the default mark in the header.',
+            'Rename the hotel: replace the placeholder name with your team\'s.',
+            'Check the footer and the mobile menu carry the same logo and name.',
+            'Open View Live and confirm the branding is right on every page.',
+        ],
+        'Design the Home Page' => [
+            'Replace the five photographs that rotate across the top of the page.',
+            'Rewrite the headline and the line above it so they name your hotel.',
+            'Rewrite the introduction under the headline in your own words.',
+            'Rename the links in the top menu to the wording your hotel would use.',
+        ],
+        'Write Your Hotel\'s Story' => [
+            'Write the tagline that sits above the headline on the landing page.',
+            'Write the paragraph introducing the hotel, in two or three sentences.',
+            'Fill in the contact block: address, phone number, email and hours.',
+            'Check the footer on another page shows the same details.',
+        ],
+        'Choose the Site\'s Colours' => [
+            'Open Background Colours from the toolbar in Design mode.',
+            'Set the main website colour and watch the cards and text follow it.',
+            'Set the header and the footer if they should stand apart from it.',
+            'Read a paragraph on each page to confirm the text still has contrast.',
+        ],
+        'Set the Site\'s Typography' => [
+            'Choose the typeface the whole site is set in.',
+            'Set the size body text is read at.',
+            'Set the colour of ordinary text and the colour of headings.',
+            'Check a long paragraph and a heading on two different pages.',
+        ],
+        'Add Your Social Profiles' => [
+            'List the networks the hotel actually keeps an account on.',
+            'Add each one with its address in the footer editor.',
+            'Leave out the networks you do not use rather than adding dead icons.',
+            'Open the footer and click each icon to confirm it goes where it should.',
+        ],
+        'Fill In the Promos Section' => [
+            'Upload a photograph for each of the three promo cards.',
+            'Name each offer and write what it includes in a sentence or two.',
+            'Set the saving or benefit each one carries.',
+            'Write the condition under each offer - the dates or the minimum stay.',
+        ],
+        'Build the Partner Brands Strip' => [
+            'Decide which businesses the hotel works with.',
+            'Add a card per brand with Add Brand and name it.',
+            'Upload each brand\'s logo so it fills its card.',
+            'Remove the sample brands your hotel is not partnered with.',
+        ],
+        'Introduce Your Team' => [
+            'Agree which four people the section will show.',
+            'Upload a photograph for each of them.',
+            'Write each name in full.',
+            'Give each the position they actually hold on your team.',
+        ],
+        'Check Room Availability' => [
+            'Open the Rooms page as a guest would see it.',
+            'Read the availability calendar on a room card.',
+            'Pick out the dates that room is already booked.',
+            'Name a room that is free for the dates the guest asked about.',
+        ],
+        'Register a Guest' => [
+            'Press Reserve Now on a room that is free for those dates.',
+            'Fill in the guest\'s full name, contact number and email.',
+            'Record the government or passport ID you verified.',
+            'Set the check-in and check-out dates and times.',
+        ],
+        'Add Add-ons to a Reservation' => [
+            'Open the Add-ons expander while registering the guest.',
+            'Read what Housekeeping\'s catalogue has in stock.',
+            'Add what the guest asked for and set how many.',
+            'Confirm the total on the reservation includes them.',
+        ],
+        'Process the Reservation Payment' => [
+            'Open the Process Payment step of the reservation.',
+            'Choose full or partial payment and enter the amount.',
+            'Record the method, the payer name and a reference.',
+            'Press Complete Reservation to actually book the room.',
+        ],
+        'Mark a Guest as Arrived' => [
+            'Find the booking in Guest Information.',
+            'Check the dates and the ID against the guest in front of you.',
+            'Press Arrive.',
+            'Tell Room Management the guest is ready to be checked in.',
+        ],
+        'Reserve a Dine-in Table' => [
+            'Open Dine-in Tables and find one that seats the party.',
+            'Enter the customer\'s name and contact number.',
+            'Set the date and time they are coming.',
+            'Save the hold and confirm the table now reads as reserved.',
+        ],
+        'Seat a Reserved Table' => [
+            'Find the reserved table when the customer arrives.',
+            'Check the booking name against who is standing there.',
+            'Press Customer Arrived.',
+            'Confirm the table is seated so the kitchen can take an order.',
+        ],
+        'Take a Room Service Order' => [
+            'Find the checked-in room the order is for.',
+            'Add the dishes from the menu with their quantities.',
+            'Write any note the kitchen needs about the order.',
+            'Place the order and confirm it reaches the restaurant queue.',
+        ],
+        'File a Guest Complaint' => [
+            'Take down what the guest is unhappy about, in their words.',
+            'Choose the category that routes it to the right department.',
+            'Attach the room or facility it concerns.',
+            'File it and tell the guest who is picking it up.',
+        ],
+        'Follow Up on a Resolved Complaint' => [
+            'Open a complaint the department has marked resolved.',
+            'Read what they recorded as the fix.',
+            'Check with the guest that it is actually settled.',
+            'Close it, or send it back with what is still wrong.',
+        ],
+        'Check a Guest Out' => [
+            'Find the stay in Guest Information.',
+            'Confirm the room and the dates against the booking.',
+            'Press Check Out.',
+            'Confirm the room has gone to Housekeeping for inspection.',
+        ],
+        'Add an Extra Charge to the Final Bill' => [
+            'Open the bill for the stay you are settling.',
+            'Add the charge with a description of what it is for.',
+            'Enter the amount and check it against what was used.',
+            'Confirm the new total is what you will ask the guest for.',
+        ],
+        'Settle the Final Bill' => [
+            'Read the bill through with the guest.',
+            'Take the payment and record the method and reference.',
+            'Mark the bill settled.',
+            'Confirm the stay now reads as closed.',
+        ],
+        'Review the Revenue Reports' => [
+            'Open Reports and set the period you are looking at.',
+            'Read what rooms took against what the restaurant took.',
+            'Pick out the busiest day in the period.',
+            'Say in a sentence what the numbers tell you about the week.',
+        ],
+        'Create Your Room Categories' => [
+            'Decide the categories your hotel sells rooms in.',
+            'Add each one with the name a guest would recognise.',
+            'Set the opening rate a new room of that category starts from.',
+            'Remove any sample category your hotel does not offer.',
+        ],
+        'Build Your Room Types' => [
+            'Add a room card for each type the hotel has.',
+            'Put every card under the category it belongs to.',
+            'Name each one the way it appears on the door.',
+            'Check the Rooms page reads as your hotel rather than the sample.',
+        ],
+        'Photograph and Price Every Room' => [
+            'Upload a photograph of each room type.',
+            'Set the price for the stay length the site quotes.',
+            'Write a description of the room in your own words.',
+            'Compare two cards side by side and make them consistent.',
+        ],
+        'Style the Rooms Page' => [
+            'Set the background colour behind the room cards.',
+            'Set the colour of the cards themselves.',
+            'Set the colour of the booking popup that opens from a card.',
+            'Check the room preview on the Home page still looks right.',
+        ],
+        'List What Each Room Includes' => [
+            'Decide the four things worth naming on each room.',
+            'Set the amenity chips on every card to match them.',
+            'Choose icons that fit what is actually in the room.',
+            'Read two cards together and confirm a guest could choose between them.',
+        ],
+        'Add a Room to the Inventory' => [
+            'Open Manage Rooms in the department tools.',
+            'Add the room with its number and its category.',
+            'Set its floor and its starting status.',
+            'Confirm it appears on the room board.',
+        ],
+        'Update a Room\'s Details' => [
+            'Find the room on the board.',
+            'Change what is wrong - the category, the floor, the rate.',
+            'Save and read the row back.',
+            'Check the site\'s Rooms page shows the change.',
+        ],
+        'Check a Guest In' => [
+            'Find the guest Front Desk has marked arrived.',
+            'Confirm the room is clean and available.',
+            'Check them in against that room.',
+            'Confirm the room now reads as occupied.',
+        ],
+        'Monitor Occupancy' => [
+            'Open the room board and read the whole strip.',
+            'Count what is occupied against what is free.',
+            'Pick out the rooms held by a reservation that has not arrived.',
+            'Say which rooms you could still sell today.',
+        ],
+        'Update a Room\'s Status' => [
+            'Find the room whose state has changed.',
+            'Set the status that describes it now.',
+            'Write the reason where the screen asks for one.',
+            'Confirm the desk can see the new state.',
+        ],
+        'Release a Room After Maintenance' => [
+            'Find the room Maintenance has finished with.',
+            'Read what they recorded as the repair.',
+            'Check the room is fit to sell.',
+            'Put it back to available.',
+        ],
+        'Build Your Menu' => [
+            'Decide what your restaurant serves.',
+            'Add a card for each dish with its name.',
+            'Write a short line under each saying what it is.',
+            'Remove the sample dishes you are not serving.',
+        ],
+        'Photograph and Price the Menu' => [
+            'Upload a photograph for each dish.',
+            'Set the price of every one.',
+            'Rewrite any description that no longer matches the picture.',
+            'Check the dining preview on the Home page reads well.',
+        ],
+        'Organise the Menu into Categories' => [
+            'Decide the sections a diner reads your menu by.',
+            'Name each section the way your restaurant would.',
+            'Move every dish into the section it belongs to.',
+            'Check the tabs and the Home page preview both follow them.',
+        ],
+        'Style the Menu Cards' => [
+            'Set the colour of the dish cards.',
+            'Set the background of the Restaurant section behind them.',
+            'Check the cards still read against their new background.',
+            'Look at the dining preview on the Home page before you finish.',
+        ],
+        'Add Dishes to the Menu' => [
+            'Open the menu in the department tools.',
+            'Add the dish with its name, price and category.',
+            'Say how many portions the kitchen is holding.',
+            'Confirm it appears on the site\'s Restaurant page.',
+        ],
+        'Keep Menu Stock Current' => [
+            'Read the menu for anything the kitchen has run out of.',
+            'Set what is finished to unavailable.',
+            'Put back what has been restocked.',
+            'Check the site is not offering a dish you cannot cook.',
+        ],
+        'Set Up Your Dining Tables' => [
+            'Add each table the restaurant has.',
+            'Set how many the table seats.',
+            'Number them the way the floor is laid out.',
+            'Confirm Front Desk can hold one of them.',
+        ],
+        'Take a Dine-In Order' => [
+            'Open a table that has been seated.',
+            'Add what the customers ordered, with quantities.',
+            'Note anything the kitchen needs to know.',
+            'Send the order and confirm it lands in the queue.',
+        ],
+        'Move an Order Through the Kitchen' => [
+            'Pick up an order the kitchen has received.',
+            'Mark it preparing when the kitchen starts.',
+            'Mark it ready when it goes on the pass.',
+            'Mark it served once it reaches the table.',
+        ],
+        'Fulfil a Room Service Order' => [
+            'Find the room service order Front Desk placed.',
+            'Cook it in the same queue as the dine-in work.',
+            'Mark it ready for delivery.',
+            'Close it once it has gone to the room.',
+        ],
+        'Cancel a Dine-In Order' => [
+            'Find the order that has to be cancelled.',
+            'Record why it is being cancelled.',
+            'Cancel it before the kitchen commits to it.',
+            'Confirm the bill for that table no longer carries it.',
+        ],
+        'Bill and Close a Dine-In Table' => [
+            'Read the order back to the customers at the table.',
+            'Produce the bill for what they had.',
+            'Take the payment and record it.',
+            'Close the table so it can be seated again.',
+        ],
+        'Customize Hotel Amenities' => [
+            'Add the facilities your hotel actually has, and remove the ones it does not.',
+            'Give each its location, opening hours, availability and description.',
+            'Upload several photographs of every facility.',
+            'Open View Details on a card and check the carousel reads well.',
+        ],
+        'Build the Amenities Page' => [
+            'Read the page against the add-ons you lend out.',
+            'Write the heading and the introduction in your own words.',
+            'Make sure every facility a guest can use is listed.',
+            'Check the page against the rest of the site before you finish.',
+        ],
+        'Write the Experience Page' => [
+            'Decide what staying at your hotel is actually like.',
+            'Write each section of the page in your own words.',
+            'Cut the sample copy that does not describe your hotel.',
+            'Lay the page out so it matches the rest of the site.',
+        ],
+        'Colour the Amenities and Experience Pages' => [
+            'Open Background Colours in Design mode.',
+            'Set the background of the Amenities page.',
+            'Set the background of the Experience page.',
+            'Check both still look like the same hotel as the Home page.',
+        ],
+        'Illustrate the Experience Page' => [
+            'List the things the page describes.',
+            'Find or take a photograph for each of them.',
+            'Replace every sample image on the page.',
+            'Read the page through and cut any picture that adds nothing.',
+        ],
+        'Stock the Add-ons Catalogue' => [
+            'List what a guest can ask to borrow.',
+            'Add each item with a short description.',
+            'Set how many of each you hold.',
+            'Confirm Front Desk can lend one while registering a guest.',
+        ],
+        'Watch the Room Board' => [
+            'Open Room Inspections and read the strip across the top.',
+            'Say which rooms are ready to sell.',
+            'Say which are waiting on cleaning.',
+            'Say which are out with Maintenance.',
+        ],
+        'Start a Room Inspection' => [
+            'Find a room raised for inspection after a checkout.',
+            'Press Start inspection to pick it up.',
+            'Walk the room.',
+            'Confirm it now reads as being inspected.',
+        ],
+        'Record What You Found' => [
+            'Choose what the room needs from the list.',
+            'Write a note describing what you saw.',
+            'Be specific about anything damaged or missing.',
+            'Save it so the next person reads the same thing.',
+        ],
+        'Report an Issue to Maintenance' => [
+            'Choose the category the fault belongs to.',
+            'Describe the fault in enough detail to act on.',
+            'Send it, and watch the room go out to maintenance.',
+            'Confirm the inspection is waiting on the repair.',
+        ],
+        'Re-inspect After a Repair' => [
+            'Pick the room back up when Maintenance closes the repair.',
+            'Check the work they recorded was actually done.',
+            'Walk the rest of the room again.',
+            'Either report another issue or carry on to finish it.',
+        ],
+        'Complete an Inspection' => [
+            'Clean the room.',
+            'Replace the linens, the towels and the amenities.',
+            'Mark the inspection completed.',
+            'Confirm the room is back to available.',
+        ],
+        'Work a Housekeeping Complaint' => [
+            'Take a complaint that belongs to housekeeping.',
+            'Move it to In Progress when you start.',
+            'Write what you did in the note.',
+            'Resolve it, or hand it to Maintenance if it is a repair.',
+        ],
+        'Receive a Maintenance Request' => [
+            'Open the maintenance queue.',
+            'Read the request and what the reporter described.',
+            'Check which room or facility it concerns.',
+            'Acknowledge it so the reporter knows it was seen.',
+        ],
+        'Prioritise the Queue' => [
+            'Read every open request.',
+            'Judge which ones stop a room being sold.',
+            'Order the queue by what has to be fixed first.',
+            'Say why the top one is at the top.',
+        ],
+        'Start a Repair' => [
+            'Pick up the request at the top of the queue.',
+            'Mark it In Progress so nobody duplicates the work.',
+            'Confirm the room or facility is out of use while you work.',
+            'Do the repair.',
+        ],
+        'Record the Repair' => [
+            'Write what was actually wrong.',
+            'Write what you did about it.',
+            'Note anything that will need doing again.',
+            'Save it against the request.',
+        ],
+        'Close a Repair' => [
+            'Check the work is finished.',
+            'Close the request.',
+            'Confirm the room comes back for a final inspection.',
+            'Confirm the reporter can see it is done.',
+        ],
+        'Hand a Request to Housekeeping' => [
+            'Read a request that turns out not to be a repair.',
+            'Say why it belongs to housekeeping.',
+            'Hand it over.',
+            'Confirm it has left your queue and reached theirs.',
+        ],
+    ];
+
+    /**
+     * A task with its activities written into the description, as
+     * "Activities:" and four numbered lines. Every reader of the checklist goes
+     * through here, so the Create Task tab, the row it saves and the student's
+     * copy all carry the same four steps.
+     *
+     * A task with no activities listed is returned untouched rather than given an
+     * empty heading.
+     */
+    private static function withActivities(array $task): array
+    {
+        $steps = self::ACTIVITIES[$task['title'] ?? ''] ?? [];
+
+        if ($steps === []) {
+            return $task;
+        }
+
+        $lines = [];
+        foreach ($steps as $i => $step) {
+            $lines[] = ($i + 1) . '. ' . $step;
+        }
+
+        // Also handed back as a list, for any screen that would rather render the
+        // steps than print them.
+        $task['activities'] = $steps;
+        $task['description'] = rtrim($task['description'] ?? '')
+            . "\n\nActivities:\n"
+            . implode("\n", $lines);
+
+        return $task;
+    }
+
+    /** The activities for one task title, or an empty list when it has none. */
+    public static function activitiesFor(string $title): array
+    {
+        return self::ACTIVITIES[$title] ?? [];
+    }
+
     public static function all(): array
     {
         $out = [];
 
         foreach (array_keys(HotelTemplateBuilder::ROLES) as $role) {
-            $out[$role] = self::TASKS[$role] ?? [];
+            $out[$role] = array_map(
+                fn (array $task) => self::withActivities($task),
+                self::TASKS[$role] ?? []
+            );
         }
 
         return $out;
@@ -571,7 +1018,10 @@ class TaskChecklist
     /** @return list<array{title: string, description: string, priority: string, scope: string}> */
     public static function forRole(string $role): array
     {
-        return self::TASKS[$role] ?? [];
+        return array_map(
+            fn (array $task) => self::withActivities($task),
+            self::TASKS[$role] ?? []
+        );
     }
 
     /** Short label for the scope badge on each checklist card. */

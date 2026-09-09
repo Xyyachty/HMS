@@ -1202,7 +1202,9 @@
                                             <td colspan="8" class="px-4 pb-5 pt-0 bg-slate-50/50">
                                                 <div class="space-y-3">
                                                     @if($task->description)
-                                                        <p class="text-[13px] text-slate-500 leading-relaxed">{{ $task->description }}</p>
+                                                        {{-- pre-line: the description carries the task's four activities as numbered
+                                                             lines, and they have to survive as lines. --}}
+                                                        <p class="text-[13px] text-slate-500 leading-relaxed whitespace-pre-line">{{ $task->description }}</p>
                                                     @endif
                                                     @if($needsRevision)
                                                         {{-- Sent back by faculty: active again, but carrying feedback. --}}

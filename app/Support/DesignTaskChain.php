@@ -42,7 +42,11 @@ class DesignTaskChain
     public const NEXT = [
         'room_management' => [
             'title' => 'Detail Every Room Category',
-            'description' => 'Now that your categories are approved, give each one what a guest needs to choose it: a photo of the room, the nightly rate, a description in your own words, what the stay includes, and how many rooms of that category the hotel has. Open the Rooms page in the builder and edit each category in turn.',
+            'description' => "Now that your categories are approved, give each one what a guest needs to choose it: a photo of the room, the nightly rate, a description in your own words, what the stay includes, and how many rooms of that category the hotel has. Open the Rooms page in the builder and edit each category in turn.\n\nActivities:\n"
+                . "1. Upload a photograph of a room in each category.\n"
+                . "2. Set the nightly rate for every one.\n"
+                . "3. Write what the stay includes, one item per line.\n"
+                . "4. Say how many rooms of that category the hotel has.",
             'priority' => 'high',
         ],
     ];

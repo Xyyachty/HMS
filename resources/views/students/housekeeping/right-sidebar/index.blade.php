@@ -42,7 +42,8 @@
                 @forelse($tasks as $task)
                 <div class="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
                     <p class="text-xs font-bold text-white mb-1">{{ $task->title }}</p>
-                    <p class="text-[10px] text-zinc-500">{{ $task->description ?? 'No description' }}</p>
+                    {{-- pre-line: the description ends in the task's four numbered activities. --}}
+                    <p class="text-[10px] text-zinc-500 whitespace-pre-line">{{ $task->description ?? 'No description' }}</p>
                     <div class="flex items-center justify-between mt-2">
                         @if($task->due_date)
                         <span class="text-[10px] text-zinc-600 ml-auto">

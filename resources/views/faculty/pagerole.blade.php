@@ -2128,7 +2128,9 @@
                                                     {{ $isOps ? $rMeta['label'] : 'Website' }}
                                                 </span>
                                             </div>
-                                            <p class="text-xs text-slate-500 mt-0.5">{{ $task['description'] }}</p>
+                                            {{-- pre-line: a checklist description ends in its four numbered activities,
+                                                 which have to read as four lines rather than one paragraph. --}}
+                                            <p class="text-xs text-slate-500 mt-0.5 whitespace-pre-line">{{ $task['description'] }}</p>
                                             {{-- The headcount hint the department step used to carry. Filled by
                                                  updateRoleMemberCounts() once a team is picked. --}}
                                             <p class="text-[11px] font-semibold text-slate-400 mt-1">
