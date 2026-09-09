@@ -4169,23 +4169,24 @@ function ExperiencePage({ onNavigate }) {
    distracted by the picture changing under it, and each card is started a beat
    apart from its neighbours - a grid of them flipping in unison reads as the
    page glitching rather than as photographs. */
-function FacilityCardSlides({ shots, name, offset }) {
+function FacilityCardSlides({ shots, name, offset, seconds }) {
   const [active, setActive] = useState(0);
   const [held, setHeld] = useState(false);
   const many = shots.length > 1;
 
   useEffect(() => {
     if (!many || held) return undefined;
+    const every = Math.min(5, Math.max(3, seconds || 4)) * 1000;
     let interval = null;
     const start = setTimeout(() => {
       setActive((i) => (i + 1) % shots.length);
-      interval = setInterval(() => setActive((i) => (i + 1) % shots.length), 4500);
-    }, 4500 + (offset % 4) * 700);
+      interval = setInterval(() => setActive((i) => (i + 1) % shots.length), every);
+    }, every + (offset % 4) * 700);
     return () => {
       clearTimeout(start);
       if (interval) clearInterval(interval);
     };
-  }, [many, held, shots.length, offset]);
+  }, [many, held, shots.length, offset, seconds]);
 
   if (!many) {
     return <img src={shots[0]} alt={name} loading="lazy" />;
@@ -4252,16 +4253,17 @@ function facilityStatusClass(status) {
    pointer is over it or a thumbnail has focus, so it cannot slide out from under
    somebody who is looking at a particular photograph. A single shot renders as a
    plain picture: no arrows, no dots, no timer. */
-function FacilityCarousel({ shots, name }) {
+function FacilityCarousel({ shots, name, seconds }) {
   const [active, setActive] = useState(0);
   const [held, setHeld] = useState(false);
   const many = shots.length > 1;
 
   useEffect(() => {
     if (!many || held) return undefined;
-    const id = setInterval(() => setActive((i) => (i + 1) % shots.length), 5000);
+    const every = Math.min(5, Math.max(3, seconds || 4)) * 1000;
+    const id = setInterval(() => setActive((i) => (i + 1) % shots.length), every);
     return () => clearInterval(id);
-  }, [many, held, shots.length]);
+  }, [many, held, shots.length, seconds]);
 
   // A facility whose gallery shrank while the modal was open must not be left
   // pointing past the end of the list.
@@ -4329,7 +4331,7 @@ function FacilityCarousel({ shots, name }) {
   );
 }
 
-function FacilityModal({ facility, onClose }) {
+function FacilityModal({ facility, onClose, slideSeconds }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -4346,7 +4348,7 @@ function FacilityModal({ facility, onClose }) {
     <div className="facility-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true" aria-label={facility.name}>
       <div className="facility-modal" onClick={e => e.stopPropagation()}>
         <div style={{ position: 'relative' }}>
-          <FacilityCarousel shots={amenityShots(facility)} name={facility.name} />
+          <FacilityCarousel shots={amenityShots(facility)} name={facility.name} seconds={slideSeconds} />
           <button type="button" className="facility-modal-close" onClick={onClose} aria-label="Close">
             <i className="fa-solid fa-xmark"></i>
           </button>
@@ -4389,7 +4391,7 @@ function FacilityModal({ facility, onClose }) {
   );
 }
 
-function AmenitiesPage({ amenities }) {
+function AmenitiesPage({ amenities, slideSeconds, canEditAmenities, onSetSlideSeconds }) {
   const list = Array.isArray(amenities) ? amenities : [];
   const [openId, setOpenId] = useState(null);
   // Read off the live list rather than held in state, so a poll that changes a
@@ -4403,6 +4405,39 @@ function AmenitiesPage({ amenities }) {
         <h1 className="font-display">Hotel Amenities</h1>
         <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
       </div>
+      {canEditAmenities && (
+        /* Design mode only, and only for the student the Amenities task landed
+           on. Three to five seconds is the whole range: outside it the rotation
+           either flickers or is never seen. */
+        <div
+          data-hms-no-edit="1"
+          style={{
+            maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem 1.25rem',
+            display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ color: 'var(--fg-muted)', fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            <i className="fa-solid fa-images" style={{ color: 'var(--accent)', marginRight: '0.45rem' }}></i>
+            Photos change every
+          </span>
+          {[3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onSetSlideSeconds && onSetSlideSeconds(n)}
+              style={{
+                padding: '0.3rem 0.75rem', borderRadius: 999, cursor: 'pointer',
+                border: '1px solid ' + (n === slideSeconds ? 'var(--accent)' : 'var(--border)'),
+                background: n === slideSeconds ? 'var(--accent)' : 'transparent',
+                color: n === slideSeconds ? 'var(--bg)' : 'var(--fg-muted)',
+                fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: n === slideSeconds ? 700 : 400,
+              }}
+            >
+              {n}s
+            </button>
+          ))}
+        </div>
+      )}
       <section style={{ padding: '0 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
         {list.length === 0 ? (
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '4rem 1.5rem', textAlign: 'center', color: 'var(--fg-muted)' }}>
@@ -4426,7 +4461,7 @@ function AmenitiesPage({ amenities }) {
                 }}
               >
                 <div className="facility-card-media">
-                  <FacilityCardSlides shots={shots} name={item.name} offset={index} />
+                  <FacilityCardSlides shots={shots} name={item.name} offset={index} seconds={slideSeconds} />
                   <span className={'facility-status ' + facilityStatusClass(item.status)}>{item.status}</span>
                   {shots.length > 1 && (
                     <span className="facility-shot-count">
@@ -4469,7 +4504,7 @@ function AmenitiesPage({ amenities }) {
         )}
       </section>
 
-      {selected && <FacilityModal facility={selected} onClose={() => setOpenId(null)} />}
+      {selected && <FacilityModal facility={selected} onClose={() => setOpenId(null)} slideSeconds={slideSeconds} />}
     </>
   );
 }
@@ -4786,6 +4821,8 @@ function App() {
   const [canEditHeroSlides, setCanEditHeroSlides] = useState(false);
   const [partners, setPartnersState] = useState(DEFAULT_PARTNERS);
   const [canEditPartners, setCanEditPartners] = useState(false);
+  const [amenitySlideSeconds, setAmenitySlideSeconds] = useState(4);
+  const [canEditAmenities, setCanEditAmenities] = useState(false);
 
 
   // In-flight room writes — a poll that lands mid-write would show stale data.
@@ -4899,6 +4936,12 @@ function App() {
     setCanEditPartners(
       typeof window.HMSSiteContent.canEditPartners === 'function'
         ? window.HMSSiteContent.canEditPartners()
+        : false
+    );
+    if (window.HMSSiteContent.getAmenitySlideSeconds) setAmenitySlideSeconds(window.HMSSiteContent.getAmenitySlideSeconds());
+    setCanEditAmenities(
+      typeof window.HMSSiteContent.canEditAmenities === 'function'
+        ? window.HMSSiteContent.canEditAmenities()
         : false
     );
     setCanEditNav(window.HMSSiteContent.canEditNav());
@@ -5344,7 +5387,14 @@ function App() {
       />
     ),
     experience: <ExperiencePage onNavigate={navigateTo} />,
-    amenities: <AmenitiesPage amenities={amenities} />,
+    amenities: (
+      <AmenitiesPage
+        amenities={amenities}
+        slideSeconds={amenitySlideSeconds}
+        canEditAmenities={canEditAmenities}
+        onSetSlideSeconds={setSlideSeconds}
+      />
+    ),
     booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} />,
   };
 
@@ -5353,6 +5403,19 @@ function App() {
     if (window.HMSSiteContent.setRoomCardBg(hex)) {
       showToast(hex ? 'Room card colour updated' : 'Room cards back to the template colour');
     }
+  };
+
+  /* One value for the whole section, saved to the team's site the moment it is
+     picked, so a teammate opening the page sees the same pace. */
+  const setSlideSeconds = (seconds) => {
+    const content = window.HMSSiteContent;
+    if (!content || !content.setAmenitySlideSeconds) return;
+    if (!content.setAmenitySlideSeconds(seconds)) {
+      showToast('Only the student assigned the Amenities task can change this.');
+      return;
+    }
+    setAmenitySlideSeconds(content.getAmenitySlideSeconds());
+    showToast('Amenity photos now change every ' + seconds + ' seconds');
   };
 
   const pickSiteColor = (area, hex) => {

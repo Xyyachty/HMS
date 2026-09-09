@@ -92,6 +92,12 @@ class HotelTemplateBuilder
     public const PARTNERS_KEY = '__partners';
 
     /**
+     * How long an amenity card holds each of its photographs, in seconds.
+     * Housekeeping's, page-scoped to 'amenities' like the rest of that page.
+     */
+    public const AMENITY_SLIDER_KEY = '__amenitySlider';
+
+    /**
      * The hotel's own words: tagline, description and the contact block the
      * landing page and every footer show. One entry for the whole site, like the
      * brand name it sits beside — the same hotel cannot have a different phone

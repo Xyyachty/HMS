@@ -9,6 +9,19 @@
     // Set only by PublicSiteController. Its presence is the difference between the
     // builder's copy of the site and the Mini Portfolio a guest visits.
     $hmsPublicSlug = $publicSlug ?? null;
+
+    /* Whether the design task that opens the Amenities section is assigned to
+       this student and still open. The section's own controls read it, so a
+       teammate — or the assignee after they have submitted — sees the finished
+       cards without the tools that change them. A guest on the Mini Portfolio is
+       never asked the question. */
+    $hmsAmenityTask = null;
+    if (!$hmsPublicSlug && $hmsCanEdit) {
+        $hmsAmenityMembership = \App\Support\HotelAmenityAccess::membership();
+        $hmsAmenityTask = $hmsAmenityMembership
+            ? \App\Support\AmenityTaskDesk::payload($hmsAmenityMembership)
+            : null;
+    }
 @endphp
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <script>
@@ -16,6 +29,7 @@
     window.__HMS_CAN_EDIT__ = @json($hmsCanEdit);
     window.__HMS_EDITABLE_PAGES__ = @json($hmsEditablePages);
     window.__HMS_BUILDER_ROLE__ = @json($hmsBuilderRole);
+    window.__HMS_AMENITY_TASK__ = @json($hmsAmenityTask);
     try {
         // Design tools only belong inside the builder iframe. A standalone tab
         // (e.g. "View Live") is always the read-only live site, regardless of
@@ -23,10 +37,12 @@
         if (!window.parent || window.parent === window) {
             window.__HMS_CAN_EDIT__ = false;
             window.__HMS_EDITABLE_PAGES__ = [];
+            window.__HMS_AMENITY_TASK__ = null;
         }
     } catch (e) {
         window.__HMS_CAN_EDIT__ = false;
         window.__HMS_EDITABLE_PAGES__ = [];
+        window.__HMS_AMENITY_TASK__ = null;
     }
     window.__HMS_CURRENT_PAGE__ = 'home';
     // Set only on the faculty Before/After preview — drives hms-review-highlight.js.

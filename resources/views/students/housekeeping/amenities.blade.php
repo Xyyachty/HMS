@@ -1118,11 +1118,36 @@ function ServicesPanel({ services, amenities, canManage, onSaved }) {
   );
 }
 
-function AmenitiesPanel({ amenities, loading, canManage, onSaved }) {
+/* The one line that says why the buttons are missing, in the colour that says
+   whether it is a wait, a lock or somebody else's turn. */
+function TaskNotice({ task }) {
+  if (!task || !task.message) return null;
+  const done = task.state === 'approved';
+  const tone = done
+    ? { fg: '#7bd88f', bg: 'rgba(123,216,143,0.1)', border: 'rgba(123,216,143,0.3)', icon: 'fa-circle-check' }
+    : task.state === 'submitted'
+      ? { fg: '#e8c369', bg: 'rgba(232,195,105,0.1)', border: 'rgba(232,195,105,0.3)', icon: 'fa-paper-plane' }
+      : { fg: 'var(--fg-muted)', bg: 'rgba(255,255,255,0.03)', border: 'var(--border)', icon: 'fa-lock' };
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
+      margin: '0 0 1rem', padding: '0.8rem 1rem', borderRadius: 8,
+      background: tone.bg, border: '1px solid ' + tone.border, color: tone.fg,
+      fontSize: '0.78rem', lineHeight: 1.55,
+    }}>
+      <i className={'fa-solid ' + tone.icon} style={{ marginTop: '0.15rem' }}></i>
+      <span>{task.message}</span>
+    </div>
+  );
+}
+
+function AmenitiesPanel({ amenities, loading, canManage, canCustomize, task, onSaved, onRemoved }) {
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState(null);     // an amenity row, or 'new'
   const [repairing, setRepairing] = useState(null); // an amenity row
   const [verifyingId, setVerifyingId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
 
   const totalPages = Math.max(1, Math.ceil(amenities.length / PER_PAGE));
   // The list only ever grows or reorders; clamp for the slice rather than resetting
@@ -1134,6 +1159,41 @@ function AmenitiesPanel({ amenities, loading, canManage, onSaved }) {
     setEditing(null);
     setRepairing(null);
     onSaved(item);
+  };
+
+  /* Asked for first: a facility is a page on the team's site, and a mis-click
+     here would take it off every teammate's copy of it too. */
+  const handleRemove = (amenity) => {
+    const ask = window.Swal
+      ? window.Swal.fire({
+          title: 'Remove ' + amenity.name + '?',
+          text: 'It disappears from your team\'s Amenities page. This cannot be undone.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Remove',
+          background: '#181714',
+          color: '#f5f0e8',
+          confirmButtonColor: '#be123c',
+          cancelButtonColor: '#3f3f46',
+        }).then(r => r.isConfirmed)
+      : Promise.resolve(window.confirm('Remove ' + amenity.name + '?'));
+
+    ask.then((ok) => {
+      if (!ok) return;
+      setRemovingId(amenity.dbId);
+      fetch(CONFIG.storeUrl + '/' + amenity.dbId, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      })
+        .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
+        .then(() => {
+          onRemoved(amenity);
+          swal('success', 'Removed', amenity.name + ' is no longer on your Amenities page.');
+        })
+        .catch(err => swal('error', 'Error', (err && err.message) ? err.message : 'Failed to remove. Please try again.'))
+        .finally(() => setRemovingId(null));
+    });
   };
 
   const handleVerify = (amenity) => {
@@ -1164,12 +1224,14 @@ function AmenitiesPanel({ amenities, loading, canManage, onSaved }) {
               open, closed for now, or under repair.
             </p>
           </div>
-          {canManage && (
+          {canCustomize && (
             <button type="button" className="btn-outline" onClick={() => setEditing('new')}>
               <i className="fa-solid fa-plus" style={{ fontSize: '0.65rem' }}></i> Add Amenity
             </button>
           )}
         </div>
+
+        <TaskNotice task={task} />
 
         {loading ? (
           <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Loading amenities…</p>
@@ -1233,15 +1295,27 @@ function AmenitiesPanel({ amenities, loading, canManage, onSaved }) {
                       />
                     </td>
                     <td style={{ verticalAlign: 'top' }}>
-                      {canManage ? (
-                        <button
-                          type="button"
-                          className="btn-outline"
-                          style={{ fontSize: '0.68rem', padding: '0.4rem 0.8rem' }}
-                          onClick={() => setEditing(amenity)}
-                        >
-                          <i className="fa-solid fa-pen" style={{ fontSize: '0.65rem' }}></i> Update
-                        </button>
+                      {canCustomize ? (
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            style={{ fontSize: '0.68rem', padding: '0.4rem 0.8rem' }}
+                            onClick={() => setEditing(amenity)}
+                          >
+                            <i className="fa-solid fa-pen" style={{ fontSize: '0.65rem' }}></i> Update
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            style={{ fontSize: '0.68rem', padding: '0.4rem 0.8rem', color: '#fb7185', borderColor: 'rgba(244,63,94,0.5)' }}
+                            disabled={removingId === amenity.dbId}
+                            onClick={() => handleRemove(amenity)}
+                          >
+                            <i className="fa-solid fa-trash" style={{ fontSize: '0.65rem' }}></i>
+                            {removingId === amenity.dbId ? ' Removing…' : ' Remove'}
+                          </button>
+                        </div>
                       ) : (
                         <span style={{ opacity: 0.5, fontSize: '0.72rem' }}>&mdash;</span>
                       )}
@@ -1314,6 +1388,11 @@ function App() {
   const [reservations, setReservations] = useState([]);
   const [services, setServices] = useState([]);
   const [canManage, setCanManage] = useState(false);
+  /* Holding the Housekeeping role is what canManage answers; whether the design
+     task that opens this section is assigned to you and still open is a separate
+     question, and it is the one the Add / Update / Remove buttons ask. */
+  const [canCustomize, setCanCustomize] = useState(false);
+  const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   // A poll landing mid-save would overwrite the row the user just changed with the
   // list as it was before. Fetches stand down while a write is in flight.
@@ -1329,6 +1408,8 @@ function App() {
       .then(data => {
         setAmenities(data.items || []);
         setCanManage(!!data.can_manage);
+        setCanCustomize(!!data.can_customize);
+        setTask(data.task || null);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -1367,6 +1448,13 @@ function App() {
     });
   }, []);
 
+  /* Dropped from the list here rather than refetched, for the same reason as
+     handleSaved: the poll would race the delete and put the row back for a beat. */
+  const handleRemoved = useCallback((amenity) => {
+    setAmenities(prev => prev.filter(a => a.dbId !== amenity.dbId));
+    setServices(prev => prev.filter(s => s.amenityId !== amenity.dbId));
+  }, []);
+
   const handleReservationChanged = useCallback((reservation) => {
     setReservations(prev => prev.map(r => (r.id === reservation.id ? reservation : r)));
   }, []);
@@ -1384,7 +1472,10 @@ function App() {
         amenities={amenities}
         loading={loading}
         canManage={canManage}
+        canCustomize={canCustomize}
+        task={task}
         onSaved={handleSaved}
+        onRemoved={handleRemoved}
       />
 
       <ServicesPanel

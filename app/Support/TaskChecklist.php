@@ -296,6 +296,15 @@ class TaskChecklist
 
         'housekeeping' => [
             [
+                // The gate on the facilities list: nobody may add, edit,
+                // photograph or remove an amenity until this lands on them. See
+                // AmenityTaskDesk, which reads a task row back by this title.
+                'title' => 'Customize Hotel Amenities',
+                'description' => "Add and customize the hotel's amenities displayed in the default template. Give each one its name, where it is, the hours it keeps, whether it is open, and a description a guest can read, then photograph it: the card cycles through every picture you upload and View Details opens them in a carousel.",
+                'priority' => 'high',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
                 'title' => 'Build the Amenities Page',
                 'description' => 'Fill in the Amenities page with what your hotel actually offers, so it matches the add-ons you lend out.',
                 'priority' => 'high',

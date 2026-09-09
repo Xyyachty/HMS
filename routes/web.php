@@ -1814,6 +1814,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         return response()->json([
             'items'      => $items,
             'can_manage' => \App\Support\HotelAmenityAccess::canManage($membership),
+            // Whether the facilities may be changed, and the sentence saying why
+            // not when they may not — the screen prints it above the table.
+            'can_customize' => \App\Support\HotelAmenityAccess::canCustomize($membership),
+            'task' => \App\Support\AmenityTaskDesk::payload($membership),
         ]);
     })->name('hotel.amenities.index');
 
@@ -1824,6 +1828,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
         if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
             return response()->json(['message' => 'Only Housekeeping staff can add amenities.'], 403);
+        }
+        if (!\App\Support\HotelAmenityAccess::canCustomize($membership)) {
+            return response()->json([
+                'message' => \App\Support\AmenityTaskDesk::payload($membership)['message'],
+            ], 403);
         }
 
         $data = $request->validate([
@@ -1892,6 +1901,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
             return response()->json(['message' => 'Only Housekeeping staff can edit amenities.'], 403);
         }
+        if (!\App\Support\HotelAmenityAccess::canCustomize($membership)) {
+            return response()->json([
+                'message' => \App\Support\AmenityTaskDesk::payload($membership)['message'],
+            ], 403);
+        }
 
         $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $id)
             ->where('group_name', $membership->group_name)
@@ -1954,6 +1968,58 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json(['item' => $amenity->toTemplateArray($amenity->repairs()->first())]);
     })->name('hotel.amenities.update');
+
+    /*
+    | Removing a facility the hotel turned out not to have.
+    |
+    | Refused once anything has happened at it — a visit, a booking, a repair —
+    | because those rows are the simulation's record of the stay and deleting the
+    | facility under them would leave them pointing at nothing. Closing it
+    | (Temporarily Closed) is the way to retire one that has been used.
+    */
+    Route::delete('/hotel/amenities/{id}', function ($id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can remove amenities.'], 403);
+        }
+        if (!\App\Support\HotelAmenityAccess::canCustomize($membership)) {
+            return response()->json([
+                'message' => \App\Support\AmenityTaskDesk::payload($membership)['message'],
+            ], 403);
+        }
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        if ($amenity->visits()->exists()
+            || $amenity->repairs()->exists()
+            || \App\Models\HotelAmenityReservation::where('hotel_amenity_id', $amenity->hotel_amenity_id)->exists()
+        ) {
+            return response()->json([
+                'message' => 'This facility has already been used, so it cannot be removed. Set it to Temporarily Closed instead.',
+            ], 422);
+        }
+
+        // Its treatments go with it: a service belongs to the facility that gives
+        // it, and orphaned rows would hold the foreign key open.
+        \App\Models\HotelAmenityService::where('hotel_amenity_id', $amenity->hotel_amenity_id)->delete();
+
+        $name = $amenity->name;
+        $amenity->delete();
+
+        ActivityLog::record(
+            auth()->user(),
+            ActivityLog::OUTPUT_UPLOADED,
+            'Removed the amenity "' . $name . '".'
+        );
+
+        return response()->json(['success' => true]);
+    })->name('hotel.amenities.destroy');
 
     /*
     | Housekeeping hands a broken facility to Maintenance. Files a hotel_complaints row

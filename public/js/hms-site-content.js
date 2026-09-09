@@ -20,7 +20,8 @@
   const SOCIAL_LINKS_KEY = '__socialLinks';
   const TYPOGRAPHY_KEY = '__typography';
   const PARTNERS_KEY = '__partners';
-  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, PARTNERS_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const AMENITY_SLIDER_KEY = '__amenitySlider';
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, PARTNERS_KEY, AMENITY_SLIDER_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   /**
    * The hotel name shown in the header and the footer.
@@ -703,6 +704,52 @@
     return setPartners(list);
   }
 
+  /* ── Amenity slider speed ─────────────────────────────────────────────────
+     How long an amenity card holds each photograph before it fades to the next.
+     Housekeeping's, like the facilities themselves, and bounded to the three to
+     five seconds the brief asks for: faster reads as a flicker, slower and a
+     guest never sees the second picture.
+
+     One value for the whole section rather than one per amenity — a row of cards
+     ticking at different speeds reads as the page struggling, not as design. */
+  const AMENITY_SLIDER_ID = 'amenity-slider';
+  const AMENITY_SLIDE_DEFAULT = 4;
+  const AMENITY_SLIDE_MIN = 3;
+  const AMENITY_SLIDE_MAX = 5;
+
+  /**
+   * The Amenities section is opened by a task, not by holding the role: the
+   * server says whether this student is the one it landed on, and the same answer
+   * gates the speed control that sits beside the cards.
+   */
+  function canEditAmenities() {
+    if (!canEdit() || editablePages().indexOf('amenities') === -1) return false;
+    const task = window.__HMS_AMENITY_TASK__;
+    // No answer at all is the older bootstrap, before the task existed. Falling
+    // back to the page permission keeps a team mid-project working.
+    if (!task) return true;
+    return task.editable === true;
+  }
+
+  function getAmenitySlideSeconds() {
+    const c = getCustomizations();
+    const entry = c[AMENITY_SLIDER_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    const value = item ? parseFloat(item.value) : NaN;
+    if (isNaN(value)) return AMENITY_SLIDE_DEFAULT;
+    return Math.min(AMENITY_SLIDE_MAX, Math.max(AMENITY_SLIDE_MIN, value));
+  }
+
+  function setAmenitySlideSeconds(seconds) {
+    if (!canEditAmenities()) return false;
+    const value = Math.min(AMENITY_SLIDE_MAX, Math.max(AMENITY_SLIDE_MIN, parseFloat(seconds) || AMENITY_SLIDE_DEFAULT));
+    patch(AMENITY_SLIDER_KEY, {
+      page: 'amenities',
+      items: [{ id: AMENITY_SLIDER_ID, value: String(value) }],
+    });
+    return true;
+  }
+
   function getRooms(fallback) {
     const c = getCustomizations();
     const entry = c[ROOMS_KEY];
@@ -1199,6 +1246,7 @@
       canEditMenus: canEditMenus(),
       canEditExperiences: canEditExperiences(),
       canEditPartners: canEditPartners(),
+      canEditAmenities: canEditAmenities(),
     };
   }
 
@@ -1309,6 +1357,9 @@
     canEditRooms,
     canEditMenus,
     canEditPartners,
+    canEditAmenities,
+    getAmenitySlideSeconds,
+    setAmenitySlideSeconds,
     getPartners,
     setPartners,
     addPartner,

@@ -47,6 +47,20 @@ class HotelAmenityAccess
         return count(array_intersect(self::roles($membership), self::MANAGE_ROLES)) > 0;
     }
 
+    /**
+     * A member may *change* the facilities when they hold the role and the design
+     * task that opens the section is theirs and still open. Holding the role is no
+     * longer enough on its own — see AmenityTaskDesk.
+     *
+     * canManage() is left as the plain role question because the ops routes still
+     * ask it: reporting a facility broken and verifying the repair afterwards is
+     * running the hotel, not designing it.
+     */
+    public static function canCustomize(StudentGroup $membership, $user = null): bool
+    {
+        return self::canManage($membership) && AmenityTaskDesk::canCustomize($membership, $user);
+    }
+
     /** A member may register guests into a facility when they are on the front desk. */
     public static function canRegister(StudentGroup $membership): bool
     {
