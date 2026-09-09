@@ -67,6 +67,16 @@ class TaskChecklist
     private const TASKS = [
         'front_desk' => [
             [
+                // Task 01's Front Desk activity. The row itself is seeded by
+                // HotelConceptDesk the moment a student holds the role, so
+                // assigning this step claims that row rather than writing a
+                // second one — see FacultyController::storeTask.
+                'title' => HotelConceptDesk::TASK_TITLE,
+                'description' => HotelConceptDesk::TASK_DESCRIPTION,
+                'priority' => 'high',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
                 'title' => 'Brand Your Hotel',
                 'description' => "Give the site your hotel's identity: replace the default logo with your own, and the placeholder name in the header with your team's hotel name. Both are single site-wide values — the header, the footer and every page read them.",
                 'priority' => 'high',
@@ -595,6 +605,7 @@ class TaskChecklist
      * @var array<string, string>
      */
     private const COMPLETION = [
+        HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_COMPLETION,
         'Brand Your Hotel' => 'Your own logo and hotel name appear in the header, the footer and the mobile menu on every page.',
         'Design the Home Page' => 'The photographs, the headline, the introduction and the menu links are all your own.',
         'Write Your Hotel\'s Story' => 'The tagline, the introduction and the whole contact block are filled in and correct.',
@@ -634,8 +645,12 @@ class TaskChecklist
     ];
 
     /**
-     * The four activities each task is worked through as, keyed by the task's
-     * title.
+     * The four steps one activity is worked through as, keyed by its title.
+     *
+     * An activity is one role's share of a task — Task 01 holds four of them, one
+     * per role that owns part of the site — and these are the steps the student
+     * holding it works through. Four steps of one activity, never four activities
+     * for one role.
      *
      * Kept beside the tasks rather than inside them so the entries above stay
      * readable as a list of work, and appended to the description on the way out
@@ -646,6 +661,7 @@ class TaskChecklist
      * @var array<string, list<string>>
      */
     private const ACTIVITIES = [
+        HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_ACTIVITIES,
         'Write the Rooms Page Introduction' => [
             'Rewrite the eyebrow line over the heading.',
             'Rewrite the heading in your hotel\'s own words.',
@@ -1151,7 +1167,7 @@ class TaskChecklist
         // own, not the paragraph with the list printed under it twice.
         $task['summary'] = rtrim($task['description'] ?? '');
         $task['description'] = rtrim($task['description'] ?? '')
-            . "\n\nActivities:\n"
+            . "\n\nSteps:\n"
             . implode("\n", $lines);
 
         return $task;

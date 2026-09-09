@@ -61,26 +61,26 @@ class HotelConceptDesk
      */
     public const TASK_KIND = 'hotel_concept';
     public const TASK_TITLE = 'Propose Two Hotel Concepts';
-    public const TASK_DESCRIPTION = "Propose two hotel concepts your team could build: for each one, its title, its type and what makes it different. Write both here, improve them as often as you like, then submit the pair to your faculty, who reviews each concept separately and approves one.\n\nActivities:\n1. Create two hotel concepts - two different themes and identities, not one idea written twice.\n2. Define each concept: the hotel's name, its type, its theme, the guests it is for, and a short description.\n3. Submit both concepts to your faculty for review.\n4. Answer the decision: revise and resubmit a concept sent back, and note the one your team will build.";
+    public const TASK_DESCRIPTION = "Propose two hotel concepts your team could build, different from each other in theme and in identity. For each one give the hotel's name, its type, its theme, the guests it is for, the colours it would be built in, the design style that goes with them, and a short description tying the seven together. Write both here, improve them as often as you like, then submit the pair to your faculty, who reviews each concept separately and approves one.\n\nSteps:\n1. Create two hotel concepts - two different themes and identities, not one idea written twice.\n2. Name each one and set its type, its theme and the guests it is for.\n3. Describe the colours and the design style each concept would be built in.\n4. Submit both concepts, then answer the decision - revise a returned concept, or note the approved one your team will build.";
 
     /**
-     * The same four, as a list.
+     * The four steps this one activity is worked through as.
      *
-     * Written here rather than in TaskChecklist because this task is not on the
-     * checklist: it is seeded for every Front Desk student the moment they hold
-     * the role (ensureTaskFor), and faculty never ticks it out of a list.
+     * Written here as well as on the checklist entry that names it, because the
+     * row is seeded for every Front Desk student the moment they hold the role
+     * (ensureTaskFor) rather than waiting to be ticked out of a list.
      *
      * @var list<string>
      */
     public const TASK_ACTIVITIES = [
         'Create two hotel concepts - two different themes and identities, not one idea written twice.',
-        "Define each concept: the hotel's name, its type, its theme, the guests it is for, and a short description.",
-        'Submit both concepts to your faculty for review.',
-        'Answer the decision: revise and resubmit a concept sent back, and note the one your team will build.',
+        'Name each one and set its type, its theme and the guests it is for.',
+        'Describe the colours and the design style each concept would be built in.',
+        'Submit both concepts, then answer the decision - revise a returned concept, or note the approved one your team will build.',
     ];
 
     /** What finishing it means, in the sentence the review screens print. */
-    public const TASK_COMPLETION = 'Both concepts are written in full and submitted, and your faculty has approved one of them.';
+    public const TASK_COMPLETION = 'Both concepts carry all seven details, both are submitted, and your faculty has approved one of them.';
 
     /** The four in the shape a task row stores them. */
     public static function taskActivities(): array

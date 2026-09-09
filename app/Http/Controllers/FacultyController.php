@@ -1524,6 +1524,17 @@ class FacultyController extends Controller
                     $priority = $validated['task_priorities'][$role][$index] ?? 'medium';
 
                     if ($title) {
+                        /* The hotel concept is not an ordinary row. It is seeded for
+                           every Front Desk student the moment they hold the role, has
+                           its own submit and review path, and heads the list on its
+                           own. Ticking it in Task 01 makes sure that row exists for
+                           this team rather than writing a second one beside it, which
+                           would leave two copies of the same work on one student. */
+                        if (strcasecmp($title, \App\Support\HotelConceptDesk::TASK_TITLE) === 0) {
+                            \App\Support\HotelConceptDesk::ensureTasksForTeam($groupName, (int) $facultyId);
+                            continue;
+                        }
+
                         // Only this team's holders of the role. Assigning used to read
                         // every team under the faculty, so one tick handed the same task
                         // to everybody at once.

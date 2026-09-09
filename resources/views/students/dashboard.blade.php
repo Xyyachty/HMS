@@ -1208,16 +1208,16 @@
                                                     @endif
                                                     @php $activities = $task->activityList(); @endphp
                                                     @if($activities)
-                                                        {{-- The task broken into the four steps it is done in. Ticked
-                                                             as the student works, and all four have to be ticked
-                                                             before the task can be handed in - the submit route
-                                                             checks the same thing the button does. --}}
+                                                        {{-- This role's own activity, broken into the four steps it
+                                                             is done in. Ticked as the student works, and all four
+                                                             have to be ticked before it can be handed in - the
+                                                             submit route checks the same thing the button does. --}}
                                                         <div class="rounded-xl border border-slate-200 bg-white px-3 py-2.5"
                                                              data-activity-panel data-task="{{ $task->task_id }}">
                                                             <div class="flex items-center justify-between gap-2">
                                                                 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
                                                                     <span class="iconify text-xs" data-icon="mdi:format-list-checks"></span>
-                                                                    Activities
+                                                                    Steps
                                                                 </p>
                                                                 <p class="text-[10px] font-bold text-slate-400" data-activity-count>
                                                                     {{ $task->activitiesDoneCount() }} of {{ count($activities) }} done
@@ -1241,7 +1241,7 @@
                                                                 <p class="text-[11px] text-slate-400 mt-2" data-activity-hint>
                                                                     {{ $task->activitiesComplete()
                                                                         ? 'All four done - you can submit this task.'
-                                                                        : 'Tick each activity as you finish it. All four are needed before you can submit.' }}
+                                                                        : 'Tick each step as you finish it. All four are needed before you can submit.' }}
                                                                 </p>
                                                             @endif
                                                         </div>
@@ -2801,7 +2801,7 @@ document.addEventListener('change', function (e) {
             if (hint) {
                 hint.textContent = data.complete
                     ? 'All four done - you can submit this task.'
-                    : 'Tick each activity as you finish it. All four are needed before you can submit.';
+                    : 'Tick each step as you finish it. All four are needed before you can submit.';
             }
         })
         .catch(err => {

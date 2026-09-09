@@ -519,6 +519,12 @@
                             }
                         }
                         $cardPercent = $cardTaskTotal > 0 ? (int) round(($cardTaskDone / $cardTaskTotal) * 100) : 0;
+
+                        /* The same rows counted by task rather than by row: a task is
+                           one step of the project and its activities are one role's
+                           share each, so it is finished only once every role given an
+                           activity in it has handed theirs in. */
+                        $cardSteps = \App\Support\TaskStepProgress::forRows($cardTaskRows);
                         $cardStatusKey = $cardPercent >= 100 ? 'complete' : ($cardPercent > 0 ? 'in_progress' : 'not_started');
 
                         $cardSearchBlob = strtolower(
@@ -584,7 +590,13 @@
                                 <div class="h-2 mt-2 rounded-full bg-slate-100 overflow-hidden">
                                     <div class="h-full rounded-full brand-gradient" style="width: {{ $cardPercent }}%"></div>
                                 </div>
-                                <p class="text-[11px] text-slate-400 mt-1.5">{{ $cardTaskDone }} of {{ $cardTaskTotal }} task{{ $cardTaskTotal === 1 ? '' : 's' }} completed</p>
+                                <p class="text-[11px] text-slate-400 mt-1.5">{{ $cardTaskDone }} of {{ $cardTaskTotal }} activit{{ $cardTaskTotal === 1 ? 'y' : 'ies' }} handed in</p>
+                                {{-- And the same rows read by task: a task is finished only
+                                     when every role given an activity in it has handed theirs
+                                     in, which is not the same as most activities being done. --}}
+                                @if($cardSteps['total'] > 0)
+                                    <p class="text-[11px] text-slate-400">{{ $cardSteps['finished'] }} of {{ $cardSteps['total'] }} task{{ $cardSteps['total'] === 1 ? '' : 's' }} complete</p>
+                                @endif
                             </div>
 
                             <div class="mt-5 flex items-center gap-2.5">
@@ -2130,10 +2142,12 @@
                                             </div>
                                             <p class="text-xs text-slate-500 mt-0.5">{{ $task['summary'] ?? $task['description'] }}</p>
                                             @if(!empty($task['activities']))
-                                                {{-- The four steps the student works through, and what the
-                                                     row has to show before it can be handed in. Assigning
-                                                     this activity assigns all four with it. --}}
-                                                <ol class="mt-2 space-y-1 list-decimal list-inside">
+                                                {{-- One activity is one role's share of the task. These are the
+                                                     steps the student holding it works through, and the line
+                                                     under them is what the work has to show before it is
+                                                     handed in. --}}
+                                                <p class="text-[9px] font-bold uppercase tracking-wider text-slate-400 mt-2">Steps</p>
+                                                <ol class="mt-1 space-y-1 list-decimal list-inside">
                                                     @foreach($task['activities'] as $activity)
                                                         <li class="text-[11px] text-slate-500 leading-relaxed">{{ $activity }}</li>
                                                     @endforeach
