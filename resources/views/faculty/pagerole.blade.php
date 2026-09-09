@@ -2128,9 +2128,23 @@
                                                     {{ $isOps ? $rMeta['label'] : 'Website' }}
                                                 </span>
                                             </div>
-                                            {{-- pre-line: a checklist description ends in its four numbered activities,
-                                                 which have to read as four lines rather than one paragraph. --}}
-                                            <p class="text-xs text-slate-500 mt-0.5 whitespace-pre-line">{{ $task['description'] }}</p>
+                                            <p class="text-xs text-slate-500 mt-0.5">{{ $task['summary'] ?? $task['description'] }}</p>
+                                            @if(!empty($task['activities']))
+                                                {{-- The four steps the student works through, and what the
+                                                     row has to show before it can be handed in. Assigning
+                                                     this activity assigns all four with it. --}}
+                                                <ol class="mt-2 space-y-1 list-decimal list-inside">
+                                                    @foreach($task['activities'] as $activity)
+                                                        <li class="text-[11px] text-slate-500 leading-relaxed">{{ $activity }}</li>
+                                                    @endforeach
+                                                </ol>
+                                            @endif
+                                            @if(!empty($task['completion']))
+                                                <p class="text-[11px] text-slate-500 mt-2">
+                                                    <span class="font-bold uppercase tracking-wider text-[9px] text-slate-400">Done when</span>
+                                                    <span class="block mt-0.5">{{ $task['completion'] }}</span>
+                                                </p>
+                                            @endif
                                             {{-- The headcount hint the department step used to carry. Filled by
                                                  updateRoleMemberCounts() once a team is picked. --}}
                                             <p class="text-[11px] font-semibold text-slate-400 mt-1">

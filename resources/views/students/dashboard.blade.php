@@ -1206,6 +1206,46 @@
                                                              lines, and they have to survive as lines. --}}
                                                         <p class="text-[13px] text-slate-500 leading-relaxed whitespace-pre-line">{{ $task->description }}</p>
                                                     @endif
+                                                    @php $activities = $task->activityList(); @endphp
+                                                    @if($activities)
+                                                        {{-- The task broken into the four steps it is done in. Ticked
+                                                             as the student works, and all four have to be ticked
+                                                             before the task can be handed in - the submit route
+                                                             checks the same thing the button does. --}}
+                                                        <div class="rounded-xl border border-slate-200 bg-white px-3 py-2.5"
+                                                             data-activity-panel data-task="{{ $task->task_id }}">
+                                                            <div class="flex items-center justify-between gap-2">
+                                                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                                                                    <span class="iconify text-xs" data-icon="mdi:format-list-checks"></span>
+                                                                    Activities
+                                                                </p>
+                                                                <p class="text-[10px] font-bold text-slate-400" data-activity-count>
+                                                                    {{ $task->activitiesDoneCount() }} of {{ count($activities) }} done
+                                                                </p>
+                                                            </div>
+                                                            <ul class="mt-2 space-y-1.5">
+                                                                @foreach($activities as $i => $activity)
+                                                                    <li class="flex items-start gap-2">
+                                                                        <input type="checkbox"
+                                                                               class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30 disabled:opacity-50"
+                                                                               data-activity-check
+                                                                               data-index="{{ $i }}"
+                                                                               @checked($activity['done'])
+                                                                               @disabled($task->status !== 'active')>
+                                                                        <span class="text-[13px] leading-relaxed {{ $activity['done'] ? 'text-slate-400 line-through' : 'text-slate-600' }}"
+                                                                              data-activity-text>{{ $i + 1 }}. {{ $activity['text'] }}</span>
+                                                                    </li>
+                                                                @endforeach
+                                                            </ul>
+                                                            @if($task->status === 'active')
+                                                                <p class="text-[11px] text-slate-400 mt-2" data-activity-hint>
+                                                                    {{ $task->activitiesComplete()
+                                                                        ? 'All four done - you can submit this task.'
+                                                                        : 'Tick each activity as you finish it. All four are needed before you can submit.' }}
+                                                                </p>
+                                                            @endif
+                                                        </div>
+                                                    @endif
                                                     @if($needsRevision)
                                                         {{-- Sent back by faculty: active again, but carrying feedback. --}}
                                                         <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
@@ -2720,5 +2760,59 @@
             });
         </script>
     @endif
+
+<script>
+/* One request per tick, so a student's progress survives leaving the page. The
+   box is put back the way it was if the write fails - showing a tick that was
+   never stored would be worse than showing none. */
+document.addEventListener('change', function (e) {
+    const box = e.target.closest('[data-activity-check]');
+    if (!box) return;
+
+    const panel = box.closest('[data-activity-panel]');
+    if (!panel) return;
+
+    const taskId = panel.dataset.task;
+    const index = box.dataset.index;
+    const wanted = box.checked;
+    box.disabled = true;
+
+    fetch('{{ url('/students/tasks') }}/' + taskId + '/activities/' + index, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({ done: wanted }),
+    })
+        .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
+        .then(data => {
+            const label = box.parentElement.querySelector('[data-activity-text]');
+            if (label) {
+                label.classList.toggle('line-through', wanted);
+                label.classList.toggle('text-slate-400', wanted);
+                label.classList.toggle('text-slate-600', !wanted);
+            }
+            const count = panel.querySelector('[data-activity-count]');
+            if (count) count.textContent = data.done + ' of ' + data.total + ' done';
+            const hint = panel.querySelector('[data-activity-hint]');
+            if (hint) {
+                hint.textContent = data.complete
+                    ? 'All four done - you can submit this task.'
+                    : 'Tick each activity as you finish it. All four are needed before you can submit.';
+            }
+        })
+        .catch(err => {
+            box.checked = !wanted;
+            const message = (err && err.message) ? err.message : 'That could not be saved. Please try again.';
+            if (window.Swal) window.Swal.fire({ icon: 'error', title: 'Not saved', text: message });
+            else alert(message);
+        })
+        .finally(() => { box.disabled = false; });
+});
+</script>
+
 </body>
 </html>

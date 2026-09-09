@@ -252,6 +252,30 @@ class TaskChecklist
                 'scope' => self::SCOPE_SITE,
             ],
             [
+                'title' => 'Write the Rooms Page Introduction',
+                'description' => "Write the words above the room cards: the small line over the heading, the heading itself, and the paragraph under it. They are what a guest reads before any price, so say what kind of rooms these are rather than repeating the word Rooms.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Name the Category Tabs',
+                'description' => "The tabs across the Rooms page are how a guest narrows the list. Name them the way your hotel sells rooms, put them in the order you want them read, and make sure the tab a room sits under is the one a guest would look for it in.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Set the Room Booking Popup',
+                'description' => "The popup that opens from a room card is where a guest decides. Check what it shows - the photograph, the price, what the room includes, the availability calendar - and set its colour so it reads as part of your site rather than a dialog on top of it.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Check the Rooms Page on a Phone',
+                'description' => "Most guests will read this page on a phone. Narrow the window until the cards stack and look for what breaks: a name that wraps badly, a price that leaves the card, a photograph cropped to nothing.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
                 'title' => 'Add a Room to the Inventory',
                 'description' => 'Use Add Room in Manage Room to put a new room in the hotel: its category, price, description and photo. The room number comes from the category sequence — you do not type it.',
                 'priority' => 'high',
@@ -313,6 +337,36 @@ class TaskChecklist
             [
                 'title' => 'Style the Menu Cards',
                 'description' => "Set the colour of the dish cards and the background of the Restaurant section behind them. The card colour carries to the dining preview on the Home page, so check both before you call it done.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Write the Restaurant Page Introduction',
+                'description' => "Write the words above the menu: the small line over the heading, the heading, and the paragraph under it. Say what kind of kitchen this is - the food, the room, the hours a guest can eat - rather than repeating the word Menu.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Write Every Dish Description',
+                'description' => "A price and a photograph are not enough to choose by. Give each dish a line that says what it actually is - what is in it, how it is cooked, how big it is - in the voice the rest of the site is written in.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Make the Dish Photographs Consistent',
+                'description' => "A menu photographed six different ways reads as six different restaurants. Frame the dishes the same way - the same distance, the same light, the same plate if you can - and replace the ones that do not match.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Check the Restaurant Page on a Phone',
+                'description' => "Narrow the window until the dish cards stack and read the page as a guest with a phone would: names that wrap, prices that leave the card, tabs that no longer fit on one line.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Review the Restaurant Page Against the Site',
+                'description' => "Open the Home page and the Restaurant page one after the other. They should look like the same hotel: the same typeface, the same kind of photograph, prices written the same way, headings in the same voice.",
                 'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
@@ -404,6 +458,30 @@ class TaskChecklist
 
             // One inspection, start to finish. It opens by itself when Front
             // Desk checks a guest out, and ends with the room sellable again.
+            [
+                'title' => 'Write the Amenities Page Introduction',
+                'description' => "Write the words above the facility cards: the small line over the heading, the heading, and the paragraph under it. Say what a guest can actually use and how they get at it, rather than repeating the word Amenities.",
+                'priority' => 'medium',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Set the Amenity Photo Pace',
+                'description' => "Each amenity card cycles through its photographs on its own. Set how long a card holds each one - three, four or five seconds - from the control beside the cards in Design mode, and check the result on a card with several pictures.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Check Your Pages on a Phone',
+                'description' => "Narrow the window until the cards stack and read both your pages as a guest with a phone would: headings that wrap badly, photographs cropped to nothing, a carousel that no longer fits.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
+            [
+                'title' => 'Review Your Pages Against the Site',
+                'description' => "Open the Home page, then Amenities, then Experience. All three should look like the same hotel: the same typeface, the same kind of photograph, headings written in the same voice.",
+                'priority' => 'low',
+                'scope' => self::SCOPE_SITE,
+            ],
             [
                 'title' => 'Stock the Add-ons Catalogue',
                 'description' => 'Fill the Add-ons list with what guests can ask for, and set how many of each you hold. Front Desk lends from this list while registering a guest.',
@@ -505,6 +583,56 @@ class TaskChecklist
      * @return array<string, list<array{title: string, description: string, priority: string, scope: string}>>
      */
 
+
+    /**
+     * What "finished" means for a website task, in one sentence, keyed by title.
+     *
+     * Written for the design work because that is what a faculty review opens the
+     * site to check; the staff-tool tasks are judged by the rows they leave in the
+     * department's screens and carry none. A task with no requirement listed is
+     * shown without one rather than with an empty heading.
+     *
+     * @var array<string, string>
+     */
+    private const COMPLETION = [
+        'Brand Your Hotel' => 'Your own logo and hotel name appear in the header, the footer and the mobile menu on every page.',
+        'Design the Home Page' => 'The photographs, the headline, the introduction and the menu links are all your own.',
+        'Write Your Hotel\'s Story' => 'The tagline, the introduction and the whole contact block are filled in and correct.',
+        'Choose the Site\'s Colours' => 'The site carries your palette and every page\'s text still reads against it.',
+        'Set the Site\'s Typography' => 'One typeface, one body size and your own text and heading colours across the site.',
+        'Add Your Social Profiles' => 'Every icon in the footer belongs to an account the hotel actually keeps.',
+        'Fill In the Promos Section' => 'Three offers, each with its picture, its name, what it includes and its condition.',
+        'Build the Partner Brands Strip' => 'Every card is a real partner, with a logo or its name, and no sample brands remain.',
+        'Introduce Your Team' => 'Four people, each with a photograph, a full name and the position they hold.',
+        'Create Your Room Categories' => 'The categories are the ones your hotel sells, each with an opening rate.',
+        'Build Your Room Types' => 'Every room type the hotel has is on the page, under the right category.',
+        'Photograph and Price Every Room' => 'Every room card carries its own photograph, its price and its own description.',
+        'Style the Rooms Page' => 'The section, the cards and the booking popup all sit in your palette.',
+        'List What Each Room Includes' => 'Every room card names what is in the room, with icons that match.',
+        'Build Your Menu' => 'Every dish the restaurant serves is on the page and no sample dish remains.',
+        'Photograph and Price the Menu' => 'Every dish carries its own photograph and its price.',
+        'Organise the Menu into Categories' => 'Every dish sits in a named section, and the tabs read as your restaurant\'s.',
+        'Style the Menu Cards' => 'The dish cards and the section behind them sit in your palette.',
+        'Customize Hotel Amenities' => 'Every facility the hotel has is listed, described, and photographed more than once.',
+        'Build the Amenities Page' => 'The page lists every facility a guest can use, in your own words.',
+        'Write the Experience Page' => 'The page describes your hotel\'s stay, with no sample copy left on it.',
+        'Colour the Amenities and Experience Pages' => 'Both pages carry a background of their own that still belongs to the site.',
+        'Illustrate the Experience Page' => 'Every section of the page carries a picture, and none of them are the samples.',
+        'Write the Rooms Page Introduction' => 'The heading and its introduction are your own words, with no sample copy left on the page.',
+        'Name the Category Tabs' => 'Every tab is named in your own words and every room is filed under the right one.',
+        'Set the Room Booking Popup' => 'The popup shows your own content and its colour belongs to your palette.',
+        'Check the Rooms Page on a Phone' => 'The page reads cleanly in one column with nothing overflowing or cropped away.',
+        'Write the Restaurant Page Introduction' => 'The heading and its introduction are your own words, with no sample copy left on the page.',
+        'Write Every Dish Description' => 'Every dish on the menu has its own description and none of the sample lines remain.',
+        'Make the Dish Photographs Consistent' => 'The menu reads as one set of photographs rather than a collection.',
+        'Check the Restaurant Page on a Phone' => 'The page reads cleanly in one column with the tabs and every card intact.',
+        'Review the Restaurant Page Against the Site' => 'The two pages read as one hotel, with any remaining difference a deliberate one.',
+        'Write the Amenities Page Introduction' => 'The heading and its introduction are your own words, with no sample copy left on the page.',
+        'Set the Amenity Photo Pace' => 'The pace is set for the team and a card with several photographs reads comfortably at it.',
+        'Check Your Pages on a Phone' => 'Both pages read cleanly in one column with the carousel and every card intact.',
+        'Review Your Pages Against the Site' => 'Your two pages sit with the rest of the site rather than beside it.',
+    ];
+
     /**
      * The four activities each task is worked through as, keyed by the task's
      * title.
@@ -518,6 +646,84 @@ class TaskChecklist
      * @var array<string, list<string>>
      */
     private const ACTIVITIES = [
+        'Write the Rooms Page Introduction' => [
+            'Rewrite the eyebrow line over the heading.',
+            'Rewrite the heading in your hotel\'s own words.',
+            'Write the paragraph under it in two or three sentences.',
+            'Read it back against the Home page so the two sound like one hotel.',
+        ],
+        'Name the Category Tabs' => [
+            'Read the tabs as a guest would and note any that do not fit.',
+            'Rename each tab to the wording your hotel uses.',
+            'Check every room sits under the tab a guest would look in.',
+            'Confirm the first tab is the one you want opened by default.',
+        ],
+        'Set the Room Booking Popup' => [
+            'Open a room card and read the popup as a guest would.',
+            'Fix anything in it that still reads as sample content.',
+            'Set the popup\'s colour from Background Colours.',
+            'Check it against a second room before you finish.',
+        ],
+        'Check the Rooms Page on a Phone' => [
+            'Narrow the browser until the room cards stack in one column.',
+            'Read every card for text that wraps or overflows.',
+            'Open the booking popup at that width and check it fits.',
+            'Fix what breaks and check again.',
+        ],
+        'Write the Restaurant Page Introduction' => [
+            'Rewrite the eyebrow line over the heading.',
+            'Rewrite the heading in your restaurant\'s own words.',
+            'Write the paragraph under it in two or three sentences.',
+            'Read it against the Home page so the two sound like one hotel.',
+        ],
+        'Write Every Dish Description' => [
+            'Read every dish card for a description still carrying sample text.',
+            'Write what each dish is, in one line.',
+            'Keep the lines a similar length so the cards sit evenly.',
+            'Read three of them together and cut any word doing no work.',
+        ],
+        'Make the Dish Photographs Consistent' => [
+            'Look at the menu as a grid and pick out the photographs that do not fit.',
+            'Replace them with pictures framed like the rest.',
+            'Check every card fills its picture area without stretching.',
+            'Look at the dining preview on the Home page as well.',
+        ],
+        'Check the Restaurant Page on a Phone' => [
+            'Narrow the browser until the dish cards stack in one column.',
+            'Read every card for text that wraps or overflows.',
+            'Check the category tabs still work at that width.',
+            'Fix what breaks and check again.',
+        ],
+        'Review the Restaurant Page Against the Site' => [
+            'Open the Home page, then the Restaurant page, and compare them.',
+            'Note every difference that is not deliberate.',
+            'Fix the ones that make the pages look unrelated.',
+            'Check the dining section on Home matches the page it previews.',
+        ],
+        'Write the Amenities Page Introduction' => [
+            'Rewrite the eyebrow line over the heading.',
+            'Rewrite the heading in your hotel\'s own words.',
+            'Write the paragraph under it in two or three sentences.',
+            'Read it against the Home page so the two sound like one hotel.',
+        ],
+        'Set the Amenity Photo Pace' => [
+            'Open the Amenities page in Design mode.',
+            'Set the pace from the control above the cards.',
+            'Watch a card with several photographs cycle right through.',
+            'Open View Details and check the carousel reads at that pace too.',
+        ],
+        'Check Your Pages on a Phone' => [
+            'Narrow the browser until the amenity cards stack in one column.',
+            'Read every card for text that wraps or overflows.',
+            'Open View Details at that width and check the carousel fits.',
+            'Do the same for the Experience page.',
+        ],
+        'Review Your Pages Against the Site' => [
+            'Open the Home page and then each of your two pages in turn.',
+            'Note every difference that is not deliberate.',
+            'Fix the ones that make the pages look unrelated.',
+            'Read all three headings aloud and check they sound like one writer.',
+        ],
         'Brand Your Hotel' => [
             'Upload your own logo in place of the default mark in the header.',
             'Rename the hotel: replace the placeholder name with your team\'s.',
@@ -924,6 +1130,10 @@ class TaskChecklist
         $steps = self::ACTIVITIES[$task['title'] ?? ''] ?? [];
 
         if ($steps === []) {
+            $task['activities'] = [];
+            $task['completion'] = self::COMPLETION[$task['title'] ?? ''] ?? null;
+            $task['summary'] = rtrim($task['description'] ?? '');
+
             return $task;
         }
 
@@ -935,11 +1145,22 @@ class TaskChecklist
         // Also handed back as a list, for any screen that would rather render the
         // steps than print them.
         $task['activities'] = $steps;
+        $task['completion'] = self::COMPLETION[$task['title'] ?? ''] ?? null;
+        // The description as written, before the activities were appended: a
+        // screen rendering the four as their own list wants the paragraph on its
+        // own, not the paragraph with the list printed under it twice.
+        $task['summary'] = rtrim($task['description'] ?? '');
         $task['description'] = rtrim($task['description'] ?? '')
             . "\n\nActivities:\n"
             . implode("\n", $lines);
 
         return $task;
+    }
+
+    /** What finishing one task means, or null when none is written for it. */
+    public static function completionFor(string $title): ?string
+    {
+        return self::COMPLETION[$title] ?? null;
     }
 
     /** The activities for one task title, or an empty list when it has none. */

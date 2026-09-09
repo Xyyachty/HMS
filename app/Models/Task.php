@@ -26,6 +26,9 @@ class Task extends Model
         'kind',
         'title',
         'description',
+        // The four activities this task is worked through as, copied off the
+        // checklist when it was assigned: [['text' => …, 'done' => bool], …].
+        'activities',
         'due_date',
         'priority',
         'status',
@@ -45,7 +48,72 @@ class Task extends Model
         'due_date' => 'datetime',
         'feedback_at' => 'datetime',
         'revision_count' => 'integer',
+        'activities' => 'array',
     ];
+
+    /**
+     * Whether this database has the `activities` column yet.
+     *
+     * The column arrives in a migration of its own, so between pulling the code
+     * and running that migration a write carrying activities would be an INSERT
+     * against a column that is not there. Answered once per request.
+     */
+    public static function supportsActivities(): bool
+    {
+        static $has = null;
+
+        if ($has === null) {
+            $has = \Illuminate\Support\Facades\Schema::hasColumn('tasks', 'activities');
+        }
+
+        return $has;
+    }
+
+    /**
+     * The activities as a list of ['text' => string, 'done' => bool].
+     *
+     * Shaped here rather than trusted from the column: rows written before the
+     * column existed hold null, and an older row could hold plain strings.
+     *
+     * @return list<array{text: string, done: bool}>
+     */
+    public function activityList(): array
+    {
+        $raw = is_array($this->activities) ? $this->activities : [];
+        $out = [];
+
+        foreach ($raw as $item) {
+            if (is_string($item)) {
+                $out[] = ['text' => $item, 'done' => false];
+                continue;
+            }
+            if (is_array($item) && filled($item['text'] ?? null)) {
+                $out[] = ['text' => (string) $item['text'], 'done' => (bool) ($item['done'] ?? false)];
+            }
+        }
+
+        return $out;
+    }
+
+    /** How many of the activities are ticked. */
+    public function activitiesDoneCount(): int
+    {
+        return count(array_filter($this->activityList(), fn ($a) => $a['done']));
+    }
+
+    /**
+     * Whether the work may be submitted yet.
+     *
+     * A task carrying no activities — one assigned before they existed — is
+     * submittable as it always was, rather than being locked by a list it never
+     * had.
+     */
+    public function activitiesComplete(): bool
+    {
+        $list = $this->activityList();
+
+        return $list === [] || $this->activitiesDoneCount() === count($list);
+    }
 
     public function feedbackBy()
     {

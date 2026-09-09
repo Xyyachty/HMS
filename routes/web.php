@@ -497,6 +497,19 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return back()->withErrors(['task' => 'This task has already been submitted.']);
         }
 
+        /* All four activities first. They are the task broken into the steps it is
+           actually done in, so handing the work in with one untouched is handing in
+           work that is not finished. A task assigned before activities existed
+           carries none and submits as it always did. */
+        if (!$task->activitiesComplete()) {
+            $left = count($task->activityList()) - $task->activitiesDoneCount();
+
+            return back()->withErrors([
+                'task' => 'Finish all four activities first — ' . $left
+                    . ' still to go. Tick each one as you complete it.',
+            ]);
+        }
+
         // Freeze the work as handed in, so the faculty review can show what changed
         // between this submission and the last one. The previous anchor slides down
         // to become the "Before" side.
@@ -539,6 +552,70 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return back()->with('success', 'Task marked as completed.');
     })->name('tasks.complete');
+
+    /*
+    | Ticking one activity of a task.
+    |
+    | Its own route rather than a field on the submit, because the point of the
+    | four is that a student marks them as they go: the ticks are how far along the
+    | work is, and they have to survive leaving the page. Only the student holding
+    | the task may set them, and only while it is theirs to work on — a submitted
+    | or approved task is a record, not a checklist.
+    */
+    Route::post('/tasks/{task}/activities/{index}', function (Request $request, $task, $index) {
+        $authUser = auth()->user();
+        $student = $authUser?->student;
+        if (!$student) {
+            return response()->json(['message' => 'Student account not found.'], 404);
+        }
+
+        $task = Task::findOrFail($task);
+        $groupMembership = StudentGroup::with('roles')
+            ->where('student_id', $student->user_information_id)
+            ->first();
+
+        if (!$groupMembership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (filled($task->group_name)
+            && strcasecmp((string) $task->group_name, (string) $groupMembership->group_name) !== 0) {
+            return response()->json(['message' => 'That task belongs to another team.'], 403);
+        }
+        if (!in_array($task->role, $groupMembership->roles->pluck('role')->toArray(), true)) {
+            return response()->json(['message' => 'This task is not assigned to your role.'], 403);
+        }
+
+        $claimedByOther = ($task->assigned_to && (int) $task->assigned_to !== (int) $authUser->user_id)
+            || ($task->student_id && (int) $task->student_id !== (int) $student->user_information_id);
+        if ($claimedByOther) {
+            return response()->json(['message' => 'This task belongs to a teammate.'], 403);
+        }
+        if ($task->status !== 'active') {
+            return response()->json(['message' => 'This task has already been submitted.'], 422);
+        }
+        if (!Task::supportsActivities()) {
+            return response()->json(['message' => 'Activities are not enabled yet.'], 422);
+        }
+
+        $list = $task->activityList();
+        $index = (int) $index;
+        if (!array_key_exists($index, $list)) {
+            return response()->json(['message' => 'That activity is not on this task.'], 404);
+        }
+
+        $list[$index]['done'] = $request->boolean('done');
+        $task->activities = $list;
+        $task->save();
+
+        $done = count(array_filter($list, fn ($a) => $a['done']));
+
+        return response()->json([
+            'activities' => $list,
+            'done' => $done,
+            'total' => count($list),
+            'complete' => $done === count($list),
+        ]);
+    })->name('tasks.activities.toggle');
     Route::get('/roommanagement', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'room_management');
         return view('students.roommanagement', $data);

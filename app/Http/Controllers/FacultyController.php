@@ -1543,6 +1543,20 @@ class FacultyController extends Controller
                             'status'      => 'active',
                         ];
 
+                        /* The four activities come off the checklist here rather
+                           than out of the form: they are the same four for every
+                           team assigned this task, and reading them server-side
+                           keeps a posted list from putting words in faculty's
+                           mouth. Copied onto the row so a later edit to the
+                           checklist cannot change the steps under a student who
+                           is halfway through them. */
+                        if (Task::supportsActivities()) {
+                            $payload['activities'] = array_map(
+                                fn (string $text) => ['text' => $text, 'done' => false],
+                                \App\Support\TaskChecklist::activitiesFor($title)
+                            );
+                        }
+
                         // Nobody on this team fills the role yet. The row is still the
                         // team's — it carries group_name — so it waits for whoever takes
                         // the role rather than showing up on every team's dashboard.
