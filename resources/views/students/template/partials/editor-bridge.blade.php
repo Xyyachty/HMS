@@ -81,6 +81,8 @@
         amenities: @json("/hotel/{$hmsPublicSlug}/api/amenities"),
         menus:     @json("/hotel/{$hmsPublicSlug}/api/menus"),
         bookings:  @json("/hotel/{$hmsPublicSlug}/api/bookings"),
+        amenityReservations: @json("/hotel/{$hmsPublicSlug}/api/amenity-reservations"),
+        amenityVisits:       @json("/hotel/{$hmsPublicSlug}/api/amenity-visits"),
     };
     // No media upload: it is a named route inside the students auth group, and a
     // visitor has no business uploading to the team's site anyway.
@@ -103,6 +105,8 @@
         menus:      '/students/hotel/menus',
         roomUpdate: '/students/hotel/rooms',
         bookings:   '/students/hotel/bookings',
+        amenityReservations: '/students/hotel/amenity-reservations',
+        amenityVisits:       '/students/hotel/amenity-visits',
     };
     window.__HMS_MEDIA_UPLOAD_URL__ = @json(route('students.frontdesk.template.media'));
     window.__HMS_HOTEL_AUTH_ROUTES__ = {

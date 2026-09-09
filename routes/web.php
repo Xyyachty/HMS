@@ -104,6 +104,15 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
         ->name('.auth.login');
     Route::post('/{slug}/api/auth/logout', [\App\Http\Controllers\HotelSimulationAuthController::class, 'logout'])
         ->name('.auth.logout');
+
+    // Facilities, booked by the guest reading the page. Both refuse anyone who is
+    // not signed into this hotel, and both write, so both are throttled.
+    Route::post('/{slug}/api/amenity-reservations', [PublicSiteController::class, 'bookAmenity'])
+        ->middleware('throttle:10,1')
+        ->name('.amenity-reservations');
+    Route::post('/{slug}/api/amenity-visits', [PublicSiteController::class, 'enterAmenity'])
+        ->middleware('throttle:10,1')
+        ->name('.amenity-visits');
 });
 
 // Notification bell — same feed endpoints for dean, faculty and students.
@@ -2275,18 +2284,17 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!$membership) {
             return response()->json(['message' => 'Join a hotel team first.'], 404);
         }
-        /* The desk signs anybody in; a guest signs themselves in, and only against
-           their own stay. A facility that keeps a register is still keeping one -
-           this is who walked in, recorded by the person walking in. */
+        /* The desk signs anybody in; a guest signs themselves in. Signing in to the
+           website is what is asked of them, not checking in to a room: the pool and
+           the gym are used by guests who arrive before their room is ready and by
+           guests eating here without staying, and the register's job is to say who
+           is inside either way. A stay is attached when there is one. */
+        $guestAuth = \App\Support\HotelSimulationAuth::current();
         $guestStay = \App\Support\HotelGuestStay::checkedInBooking($membership);
         $asGuest = !\App\Support\HotelAmenityAccess::canRegister($membership);
 
-        if ($asGuest && !$guestStay) {
-            return response()->json([
-                'message' => \App\Support\HotelSimulationAuth::current()
-                    ? 'You can use a facility once you have checked in.'
-                    : 'Sign in as a guest to use a facility.',
-            ], 403);
+        if ($asGuest && (!is_array($guestAuth) || ($guestAuth['type'] ?? null) !== 'customer')) {
+            return response()->json(['message' => 'Sign in as a guest to use a facility.'], 403);
         }
 
         $data = $request->validate([
@@ -2299,7 +2307,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ]);
 
         if ($asGuest) {
-            $data['hotel_booking_id'] = $guestStay->hotel_booking_id;
+            // Their own stay or none at all — never one they typed.
+            $data['hotel_booking_id'] = $guestStay?->hotel_booking_id;
+            $data['guest_name'] = $guestAuth['name'] ?? 'Guest';
         }
 
         $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
@@ -2307,11 +2317,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ->where('faculty_id', $membership->faculty_id)
             ->firstOrFail();
 
-        $booking = HotelBooking::with(['guest', 'room'])
-            ->where('hotel_booking_id', $data['hotel_booking_id'])
-            ->where('group_name', $membership->group_name)
-            ->where('faculty_id', $membership->faculty_id)
-            ->firstOrFail();
+        $booking = filled($data['hotel_booking_id'] ?? null)
+            ? HotelBooking::with(['guest', 'room'])
+                ->where('hotel_booking_id', $data['hotel_booking_id'])
+                ->where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->firstOrFail()
+            : null;
 
         try {
             $visit = \App\Support\HotelAmenityVisitDesk::registerEntry($amenity, $booking, $data, auth()->user());
@@ -2400,19 +2412,17 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!$membership) {
             return response()->json(['message' => 'Join a hotel team first.'], 404);
         }
-        /* Front Desk takes a booking for anyone; a guest may take their own, but
-           only while they are actually staying. The pool, the spa and the function
-           room are for the people in the building, which is the same line the
-           desk's own screens draw. */
+        /* Front Desk takes a booking for anyone; a guest takes their own once they
+           have an account. Asking them to be checked in first had it backwards: a
+           treatment or a hall is booked before you arrive, which is the whole
+           reason a hotel takes bookings. The stay is attached when there is one,
+           and that is what lets the desk put it on the room. */
+        $guestAuth = \App\Support\HotelSimulationAuth::current();
         $guestStay = \App\Support\HotelGuestStay::checkedInBooking($membership);
         $asGuest = !\App\Support\HotelAmenityAccess::canRegister($membership);
 
-        if ($asGuest && !$guestStay) {
-            return response()->json([
-                'message' => \App\Support\HotelSimulationAuth::current()
-                    ? 'You can book a facility once you have checked in.'
-                    : 'Sign in as a guest to book a facility.',
-            ], 403);
+        if ($asGuest && (!is_array($guestAuth) || ($guestAuth['type'] ?? null) !== 'customer')) {
+            return response()->json(['message' => 'Sign in as a guest to book a facility.'], 403);
         }
 
         $data = $request->validate([
@@ -2448,10 +2458,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
            and it lands Pending for the desk to confirm the way a phoned-in booking
            does. */
         if ($asGuest) {
-            $data['hotel_booking_id'] = $guestStay->hotel_booking_id;
-            $data['customer_name'] = $guestStay->guest?->full_name ?: ($data['customer_name'] ?? 'Guest');
-            $data['contact_no'] = $guestStay->guest?->contact_no;
-            $data['email'] = $guestStay->guest?->email;
+            $data['hotel_booking_id'] = $guestStay?->hotel_booking_id;
+            $data['customer_name'] = $guestStay?->guest?->full_name
+                ?: ($guestAuth['name'] ?? ($data['customer_name'] ?? 'Guest'));
+            $data['contact_no'] = $guestStay?->guest?->contact_no;
+            $data['email'] = $guestStay?->guest?->email ?: ($guestAuth['email'] ?? null);
             // Settling it is the desk's business at checkout, not something a guest
             // ticks for themselves.
             unset($data['charge_to_room'], $data['additional_fee'], $data['additional_note']);

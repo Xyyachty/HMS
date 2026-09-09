@@ -64,9 +64,16 @@ class HotelAmenityVisitDesk
      * of facility you sign into at all, is it open, is this a real checked-in guest, are
      * they already inside, is there room.
      */
+    /**
+     * @param HotelBooking|null $booking The stay this entry belongs to, when there
+     *        is one. A guest signed into the website who has not checked in yet is
+     *        still a guest at the pool: the register records who is inside, and a
+     *        name with no room is a truer answer than no row at all. $data must
+     *        then carry guest_name.
+     */
     public static function registerEntry(
         HotelAmenity $amenity,
-        HotelBooking $booking,
+        ?HotelBooking $booking,
         array $data,
         ?User $actor
     ): HotelAmenityVisit {
@@ -88,13 +95,21 @@ class HotelAmenityVisitDesk
             );
         }
 
-        if ($booking->status !== 'Checked In') {
+        if ($booking && $booking->status !== 'Checked In') {
             throw new \RuntimeException('That guest has not checked in yet.');
+        }
+
+        $guestName = $booking
+            ? ($booking->guest?->full_name ?: 'Guest')
+            : trim((string) ($data['guest_name'] ?? ''));
+
+        if ($guestName === '') {
+            throw new \RuntimeException('Say who is going in.');
         }
 
         $partySize = max(1, (int) ($data['party_size'] ?? 1));
 
-        return DB::transaction(function () use ($amenity, $booking, $data, $partySize, $actor) {
+        return DB::transaction(function () use ($amenity, $booking, $data, $partySize, $actor, $guestName) {
             // Lock the amenity, not the visits. Two desks polling the same screen could
             // otherwise both read a gym with one space left and both let a party in — and
             // locking the visit rows would not stop that, because Postgres takes no lock
@@ -102,15 +117,17 @@ class HotelAmenityVisitDesk
             // queues behind this one row instead.
             HotelAmenity::whereKey($amenity->hotel_amenity_id)->lockForUpdate()->first();
 
+            // Matched on the stay when there is one, and on the name when there is
+            // not: two walk-ins called Maria are two people, but one guest pressing
+            // the button twice is one.
             $alreadyInside = HotelAmenityVisit::where('hotel_amenity_id', $amenity->hotel_amenity_id)
-                ->where('hotel_booking_id', $booking->hotel_booking_id)
+                ->when($booking, fn ($q) => $q->where('hotel_booking_id', $booking->hotel_booking_id))
+                ->when(!$booking, fn ($q) => $q->whereNull('hotel_booking_id')->where('guest_name', $guestName))
                 ->inside()
                 ->exists();
 
             if ($alreadyInside) {
-                throw new \RuntimeException(
-                    ($booking->guest?->full_name ?: 'That guest') . ' is already registered in ' . $amenity->name . '.'
-                );
+                throw new \RuntimeException($guestName . ' is already registered in ' . $amenity->name . '.');
             }
 
             if ($amenity->capacity !== null) {
@@ -132,11 +149,11 @@ class HotelAmenityVisitDesk
                 'faculty_id'       => $amenity->faculty_id,
                 'group_id'         => $amenity->group_id,
                 'hotel_amenity_id' => $amenity->hotel_amenity_id,
-                'hotel_booking_id' => $booking->hotel_booking_id,
+                'hotel_booking_id' => $booking?->hotel_booking_id,
                 // Snapshots: renaming the Gym must not rewrite last month's register.
                 'amenity_name'     => $amenity->name,
-                'guest_name'       => $booking->guest?->full_name ?: 'Guest',
-                'room_name'        => $booking->room?->name,
+                'guest_name'       => $guestName,
+                'room_name'        => $booking?->room?->name,
                 'party_size'       => $partySize,
                 'entered_at'       => now(),
                 'registered_by'    => $actor?->name,

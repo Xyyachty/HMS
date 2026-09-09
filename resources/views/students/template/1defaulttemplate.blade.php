@@ -4638,8 +4638,11 @@ function FacilityBooking({ facility, onToast }) {
   if (kind === 'open') return null;
 
   const stay = (auth && auth.stay) || {};
+  // Signing in is what booking asks for. A stay is attached when the guest has
+  // one - it is what lets the desk put the bill on the room - but a treatment or
+  // a hall is booked before you arrive, not after.
   const isGuest = auth && auth.authenticated && auth.type === 'customer';
-  const canBook = isGuest && stay.checked_in === true;
+  const canBook = isGuest;
   const closed = facility.status !== 'Available';
   const services = Array.isArray(facility.services) ? facility.services : [];
 
@@ -4723,14 +4726,14 @@ function FacilityBooking({ facility, onToast }) {
       ) : !canBook ? (
         <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>
           <i className="fa-solid fa-circle-info" style={{ color: 'var(--accent)', marginRight: '0.4rem' }}></i>
-          {isGuest
-            ? 'You can book this once you have checked in at the front desk.'
-            : 'Sign in as a guest and check in to book this facility.'}
+          Sign in to your guest account to book this facility.
         </p>
       ) : !open ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
           <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
-            Booking on {stay.room ? 'room ' + stay.room : 'your stay'}.
+            {stay.room
+              ? 'Booking on room ' + stay.room + '.'
+              : 'The front desk will confirm and settle this when you arrive.'}
           </p>
           <button type="button" className="btn-primary" onClick={() => setOpen(true)}>{label}</button>
         </div>

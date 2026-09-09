@@ -13,6 +13,7 @@ use App\Support\HotelAddonDesk;
 use App\Support\HotelBookingDesk;
 use App\Support\HotelTemplateBuilder;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * The Mini Portfolio: a team's hotel site as a guest meets it.
@@ -185,6 +186,109 @@ class PublicSiteController extends Controller
      *  - the room must be Available, not merely free on the dates;
      *  - booked_by records the channel rather than a person.
      */
+    /**
+     * A guest booking a facility from the published site.
+     *
+     * The staff endpoint behind this asks the front desk who the booking is for;
+     * here there is only ever one answer - the guest signed into this hotel - so
+     * it is read off the session and nothing about who is taken from the request.
+     * Everything else the desk's own booking does, this does: the same desk class,
+     * the same clash and opening-hours checks, and the same Pending status waiting
+     * for the desk to confirm it.
+     */
+    public function bookAmenity(Request $request, string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $auth = \App\Support\HotelSimulationAuth::current();
+        if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer'
+            || strcasecmp((string) ($auth['group_name'] ?? ''), $groupName) !== 0) {
+            return response()->json(['message' => 'Sign in as a guest to book a facility.'], 403);
+        }
+
+        $data = $request->validate([
+            'hotel_amenity_id'         => 'required|integer',
+            'kind'                     => ['required', Rule::in(\App\Models\HotelAmenityReservation::KINDS)],
+            'scheduled_on'             => 'required|date_format:Y-m-d',
+            'starts_at'                => 'required|date_format:H:i',
+            'ends_at'                  => 'nullable|date_format:H:i',
+            'special_requests'         => 'nullable|string|max:2000',
+            'hotel_amenity_service_id' => 'nullable|integer',
+            'guest_count'              => 'nullable|integer|min:1|max:9999',
+            'package'                  => ['nullable', Rule::in(\App\Models\HotelAmenityReservation::PACKAGES)],
+        ]);
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->firstOrFail();
+
+        $stay = \App\Support\HotelGuestStay::checkedInBooking(
+            \App\Models\StudentGroup::where('group_name', $groupName)->where('faculty_id', $facultyId)->first()
+        );
+
+        $data['customer_name'] = $auth['name'] ?? 'Guest';
+        $data['email'] = $auth['email'] ?? null;
+        $data['hotel_booking_id'] = $stay?->hotel_booking_id;
+
+        try {
+            $reservation = \App\Support\HotelAmenityReservationDesk::book($amenity, $data, null);
+        } catch (\RuntimeException $e) {
+            $clash = str_contains($e->getMessage(), 'already taken');
+
+            return response()->json(['message' => $e->getMessage()], $clash ? 409 : 422);
+        }
+
+        return response()->json(['reservation' => $reservation->toTemplateArray()], 201);
+    }
+
+    /**
+     * Signing yourself into a facility that keeps a register — the pool, the gym.
+     *
+     * The register records who is inside; a guest with no stay yet is still inside
+     * it, so the visit is written with their name and no room rather than refused.
+     */
+    public function enterAmenity(Request $request, string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $auth = \App\Support\HotelSimulationAuth::current();
+        if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer'
+            || strcasecmp((string) ($auth['group_name'] ?? ''), $groupName) !== 0) {
+            return response()->json(['message' => 'Sign in as a guest to use a facility.'], 403);
+        }
+
+        $data = $request->validate([
+            'hotel_amenity_id' => 'required|integer',
+            'party_size'       => 'nullable|integer|min:1|max:999',
+            'notes'            => 'nullable|string|max:500',
+        ]);
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->firstOrFail();
+
+        $membership = \App\Models\StudentGroup::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->first();
+
+        $data['guest_name'] = $auth['name'] ?? 'Guest';
+
+        try {
+            $visit = \App\Support\HotelAmenityVisitDesk::registerEntry(
+                $amenity,
+                \App\Support\HotelGuestStay::checkedInBooking($membership),
+                $data,
+                null
+            );
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['visit' => $visit->toTemplateArray()], 201);
+    }
+
     public function book(Request $request, string $slug)
     {
         [$groupName, $facultyId] = $this->publishedTeam($slug);
