@@ -834,13 +834,15 @@
     transition: border-color 0.2s, transform 0.2s;
   }
   .partner-card:hover { border-color: var(--accent); transform: translateY(-3px); }
-  /* Greyed until hovered, so a wall of different brand colours does not fight
-     the page's own palette. */
+  /* A brand that has uploaded a picture fills its card: a logo boxed at 54px in
+     the middle of a tile reads as a stamp rather than as the brand. The padding
+     goes with it, so the image meets the card's own rounded edge. */
+  .partner-card.has-logo { padding: 0; min-height: 150px; overflow: hidden; }
   .partner-card img {
-    max-height: 54px; max-width: 100%; object-fit: contain;
-    filter: grayscale(1); opacity: 0.72; transition: filter 0.3s, opacity 0.3s;
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; display: block; transition: transform 0.4s;
   }
-  .partner-card:hover img { filter: none; opacity: 1; }
+  .partner-card:hover img { transform: scale(1.05); }
   /* The wordmark a brand falls back to until someone uploads its logo. */
   .partner-name { font-size: 1.05rem; letter-spacing: 0.08em; margin: 0; color: var(--fg-muted); transition: color 0.2s; }
   .partner-card:hover .partner-name { color: var(--accent); }
@@ -2493,7 +2495,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
             const logo = resolveCardImg('partner', partner.id, '');
             const name = partnerName(partner);
             return (
-              <div key={partner.id} className="partner-card">
+              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')}>
                 {logo
                   ? <img src={logo} alt={name} loading="lazy" />
                   : <p className="partner-name font-display">{name}</p>}
