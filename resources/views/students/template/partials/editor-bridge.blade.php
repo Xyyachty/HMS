@@ -15,6 +15,16 @@
        teammate — or the assignee after they have submitted — sees the finished
        cards without the tools that change them. A guest on the Mini Portfolio is
        never asked the question. */
+    /* The page this role actually works on. Front Desk owns the home page, Room
+       Management the rooms, Restaurant the menu, Housekeeping its two — so opening
+       every one of them on Home means every student but one lands on somebody
+       else's work and has to navigate out of it. Guests and the Mini Portfolio are
+       not asked: a visitor always starts at the front of the site. */
+    $hmsInitialPage = 'home';
+    if (!$hmsPublicSlug && $hmsBuilderRole) {
+        $hmsInitialPage = \App\Support\HotelTemplateBuilder::preferredPageForRole($hmsBuilderRole);
+    }
+
     $hmsAmenityTask = null;
     if (!$hmsPublicSlug && $hmsCanEdit) {
         $hmsAmenityMembership = \App\Support\HotelAmenityAccess::membership();
@@ -44,7 +54,10 @@
         window.__HMS_EDITABLE_PAGES__ = [];
         window.__HMS_AMENITY_TASK__ = null;
     }
-    window.__HMS_CURRENT_PAGE__ = 'home';
+    /* Read once, as the page the app opens on, so the role's own section is what
+       paints rather than what it navigates to a moment later. */
+    window.__HMS_INITIAL_PAGE__ = @json($hmsInitialPage);
+    window.__HMS_CURRENT_PAGE__ = window.__HMS_INITIAL_PAGE__;
     // Set only on the faculty Before/After preview — drives hms-review-highlight.js.
     window.__HMS_REVIEW_HIGHLIGHT__ = @json($hmsReviewHighlight);
     window.__HMS_CSRF__ = @json(csrf_token());

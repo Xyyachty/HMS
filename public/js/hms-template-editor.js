@@ -2470,6 +2470,39 @@
     }
   });
 
+  /**
+   * Take the parent to a page, even when it asked before the page could listen.
+   *
+   * The template is a React app compiled in the browser by Babel, and it
+   * registers __HMS_NAVIGATE__ only once it has mounted. The builder posts its
+   * navigate on the iframe's load event, which fires first — so the message was
+   * arriving at an app that could not yet answer it, and was dropped in silence.
+   * That is why every role opened on the home page whatever section it owned.
+   *
+   * The request is held instead and retried until the app is up, and given up on
+   * after a few seconds so a page that never mounts does not leave a timer
+   * running for the life of the tab.
+   */
+  function navigateTemplateTo(page) {
+    if (!page) return;
+
+    if (typeof window.__HMS_NAVIGATE__ === 'function') {
+      window.__HMS_NAVIGATE__(page);
+      return;
+    }
+
+    let waited = 0;
+    const tick = setInterval(function () {
+      waited += 100;
+      if (typeof window.__HMS_NAVIGATE__ === 'function') {
+        clearInterval(tick);
+        window.__HMS_NAVIGATE__(page);
+      } else if (waited >= 8000) {
+        clearInterval(tick);
+      }
+    }, 100);
+  }
+
   window.addEventListener('message', function (event) {
     const data = event.data || {};
     if (!data || data.source !== 'hms-parent') return;
@@ -2491,9 +2524,7 @@
         clearSelection();
         break;
       case 'navigate-page':
-        if (typeof window.__HMS_NAVIGATE__ === 'function' && data.page) {
-          window.__HMS_NAVIGATE__(data.page);
-        }
+        navigateTemplateTo(data.page);
         break;
       case 'apply-edit':
         if (!canEditCurrentPage()) {

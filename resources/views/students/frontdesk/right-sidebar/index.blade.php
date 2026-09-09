@@ -6,9 +6,26 @@
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
                     <i class="fas fa-palette text-white text-xs"></i>
                 </div>
+                @php
+                    /* Which part of the site this student may actually write. The
+                       canvas opens on it, and saying so here stops the panel reading
+                       as a set of controls over the whole site when it is not. */
+                    $panelRole = $builderRole ?? 'front_desk';
+                    $panelPages = \App\Support\HotelTemplateBuilder::editablePagesForRole($panelRole);
+                    $panelPageLabels = [
+                        'home' => 'Home', 'rooms' => 'Rooms', 'restaurant' => 'Restaurant',
+                        'amenities' => 'Amenities', 'experience' => 'Experience',
+                    ];
+                    $panelScope = implode(' & ', array_map(
+                        fn ($page) => $panelPageLabels[$page] ?? ucfirst($page),
+                        $panelPages
+                    ));
+                @endphp
                 <div>
                     <h2 class="text-sm font-bold text-white tracking-wide">Design Panel</h2>
-                    <p class="text-[10px] text-zinc-500 mt-0.5">Style &amp; customize elements</p>
+                    <p class="text-[10px] text-zinc-500 mt-0.5">
+                        {{ $panelScope !== '' ? 'Editing ' . $panelScope : 'Style & customize elements' }}
+                    </p>
                 </div>
             </div>
             <div class="flex items-center gap-1">
@@ -31,6 +48,7 @@
     <!-- Scrollable Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar">
 
+        @if($panelScope !== '')
         {{-- ── Hotel Information ─────────────────────────────────
              One form for what the hotel is, rather than a click-and-type edit on
              each page: the name, its words, its contact details and its social
@@ -151,6 +169,8 @@
                 </div>
             </div>
         </div>
+
+        @endif
 
         <!-- ── Element Target ── -->
         <div class="px-5 py-3 border-b border-zinc-800/60 bg-zinc-900/50">

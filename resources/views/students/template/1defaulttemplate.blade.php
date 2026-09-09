@@ -4745,7 +4745,9 @@ function Footer({ onNavigate, cardImages, page, brandName, hotelInfo, socialLink
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• APP â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */ 
 function App() {
-  const [page, setPage] = useState('home');
+  /* The section this student's role owns, named by the bridge. A guest, and any
+     role with no page of its own, still opens on the front of the site. */
+  const [page, setPage] = useState(() => window.__HMS_INITIAL_PAGE__ || 'home');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [toast, setToast] = useState({ message: '', visible: false });
   const toastTimer = useRef(null);
