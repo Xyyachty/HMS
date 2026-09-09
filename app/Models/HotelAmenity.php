@@ -64,6 +64,7 @@ class HotelAmenity extends Model
         'setup_fee',
         'capacity',
         'image',
+        'video',
     ];
 
     protected $casts = [
@@ -87,6 +88,24 @@ class HotelAmenity extends Model
     {
         return $this->hasMany(HotelAmenityVisit::class, 'hotel_amenity_id', 'hotel_amenity_id')
             ->orderByDesc('hotel_amenity_visit_id');
+    }
+
+    /**
+     * Whether this database has the `video` column yet.
+     *
+     * Asked because the column arrives in a migration of its own: between pulling
+     * the code and running that migration, a save carrying a video would be an
+     * INSERT against a column that is not there. Answered once per request.
+     */
+    public static function supportsVideo(): bool
+    {
+        static $has = null;
+
+        if ($has === null) {
+            $has = \Illuminate\Support\Facades\Schema::hasColumn('hotel_amenities', 'video');
+        }
+
+        return $has;
     }
 
     public static function normalizeAccessType(?string $value): string
@@ -209,6 +228,10 @@ class HotelAmenity extends Model
             'hours'       => $this->hoursLabel() ?? '',
             'status'      => $this->status,
             'img'         => \App\Support\HotelImageStore::url($this->image),
+            // The clip the Amenities page plays. The photograph stays on as its
+            // poster frame, so a card still looks finished before anyone presses
+            // play and the staff lists keep the thumbnail they already show.
+            'video'       => \App\Support\HotelImageStore::url($this->video),
 
             // How a guest gets at it. Front Desk's screen switches its whole action area
             // on accessType rather than on the amenity's name.

@@ -3781,6 +3781,11 @@ const DEFAULT_AMENITY_CLIPS = [
 ];
 
 function amenityVideoSrc(item) {
+  // What Housekeeping uploaded on the facility itself comes first: it is the
+  // amenity's own clip, stored with the row, so it is right for every team that
+  // can see this hotel rather than only for the one whose customizations these
+  // are. The pasted link is the fallback, and the stand-in the last resort.
+  if (item && item.video) return item.video;
   const id = String((item && item.id) || '');
   const stored = window.HMSSiteContent && typeof window.HMSSiteContent.getAmenityVideo === 'function'
     ? window.HMSSiteContent.getAmenityVideo(id, '')

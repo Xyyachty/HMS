@@ -141,6 +141,7 @@
     backUrl: @json(route($backRoute)),
     indexUrl: @json(route('students.hotel.amenities.index')),
     storeUrl: @json(route('students.hotel.amenities.store')),
+    videoUrl: @json(route('students.hotel.amenities.video')),
     statuses: @json(\App\Models\HotelAmenity::STATUSES),
     accessTypes: @json(\App\Models\HotelAmenity::ACCESS_TYPES),
     reservationsUrl: @json(route('students.hotel.amenity-reservations.index')),
@@ -159,6 +160,9 @@ const { useState, useEffect, useCallback, useRef } = React;
 const PER_PAGE = 5;
 const IMAGE_MAX_DIMENSION = 1280;
 const IMAGE_MAX_BYTES = 600 * 1024;
+/* Matches the 20 MB the upload route accepts, so an oversized file is refused
+   here rather than after the whole thing has gone up the wire. */
+const VIDEO_MAX_BYTES = 20 * 1024 * 1024;
 
 const CONFIG = window.HMS_AMENITIES || {};
 const STATUSES = CONFIG.statuses || ['Available', 'Temporarily Closed', 'Under Maintenance'];
@@ -251,6 +255,48 @@ function pickImageFile(onPicked) {
   input.click();
 }
 
+/**
+ * The clip the Amenities page plays for this facility.
+ *
+ * Uploaded on pick rather than carried in the save: a video read into a data-URL
+ * would be a third larger than the file and would have to fit in the same JSON
+ * body as the rest of the form. What comes back is a stored path, and that is
+ * what the amenity saves.
+ */
+function pickVideoFile(onStart, onPicked, onError) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'video/mp4,video/webm,video/ogg';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', function () {
+    const file = input.files && input.files[0];
+    if (input.parentNode) input.parentNode.removeChild(input);
+    if (!file) return;
+    if (file.size > VIDEO_MAX_BYTES) {
+      onError('That video is too large. Keep it under 20 MB.');
+      return;
+    }
+    const body = new FormData();
+    body.append('video', file);
+    if (onStart) onStart();
+    fetch(CONFIG.videoUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: body,
+    })
+      .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
+      .then(data => onPicked(data.path || '', data.url || ''))
+      .catch(err => {
+        const msg = (err && (err.message || (err.errors && err.errors.video && err.errors.video[0])))
+          || 'That video could not be uploaded. Please try again.';
+        onError(msg);
+      });
+  });
+  input.click();
+}
+
 function validateAmenityForm(form) {
   const errors = {};
   if (!String(form.name || '').trim()) errors.name = 'Name is required.';
@@ -295,7 +341,9 @@ function AmenityModal({ amenity, onClose, onSaved }) {
     setupFee: amenity && amenity.setupFee ? String(amenity.setupFee) : '',
     capacity: amenity && amenity.capacity !== null && amenity.capacity !== undefined ? String(amenity.capacity) : '',
     img: (amenity && amenity.img) || '',
+    video: (amenity && amenity.video) || '',
   }));
+  const [videoUploading, setVideoUploading] = useState(false);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -343,6 +391,7 @@ function AmenityModal({ amenity, onClose, onSaved }) {
         // Handed back as-is when untouched: the server collapses an existing
         // storage path to the one it already holds rather than re-uploading.
         image: form.img || '',
+        video: form.video || '',
       }),
     })
       .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
@@ -513,7 +562,46 @@ function AmenityModal({ amenity, onClose, onSaved }) {
             )}
 
             <div>
-              <label style={fieldLabel}>Photo</label>
+              <label style={fieldLabel}>Video</label>
+              <div
+                onClick={() => {
+                  if (videoUploading) return;
+                  pickVideoFile(
+                    () => setVideoUploading(true),
+                    (path, url) => { setVideoUploading(false); update('video', url || path); },
+                    (msg) => { setVideoUploading(false); setErrors(prev => Object.assign({}, prev, { video: msg })); }
+                  );
+                }}
+                style={{ border: '1.5px dashed var(--border)', borderRadius: 8, cursor: videoUploading ? 'wait' : 'pointer', overflow: 'hidden' }}
+              >
+                {form.video ? (
+                  <video src={form.video} controls preload="metadata" style={{ width: '100%', maxHeight: 180, display: 'block', background: '#000' }}></video>
+                ) : (
+                  <div style={{ height: 92, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--fg-muted)' }}>
+                    <i className={videoUploading ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-film'} style={{ fontSize: '1.4rem', color: 'var(--accent)', opacity: 0.7 }}></i>
+                    <span style={{ fontSize: '0.75rem' }}>{videoUploading ? 'Uploading video...' : 'Click to upload video'}</span>
+                  </div>
+                )}
+              </div>
+              <p style={{ margin: '0.35rem 0 0', color: 'var(--fg-muted)', fontSize: '0.7rem' }}>
+                MP4, WebM or OGG, up to 20 MB. This is what plays on the hotel site.
+              </p>
+              {errorText('video')}
+              {form.video && !videoUploading && (
+                <button
+                  type="button"
+                  onClick={() => update('video', '')}
+                  style={{ background: 'none', border: 'none', color: 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.72rem', padding: '0.4rem 0 0', fontFamily: 'Outfit, sans-serif' }}
+                >
+                  Remove video
+                </button>
+              )}
+            </div>
+
+            <div>
+              {/* Still worth having: it is the poster frame the card shows before
+                  anyone presses play, and the thumbnail these staff lists print. */}
+              <label style={fieldLabel}>Poster photo</label>
               <div
                 onClick={() => pickImageFile(url => { if (url) update('img', url); })}
                 style={{ border: '1.5px dashed var(--border)', borderRadius: 8, cursor: 'pointer', overflow: 'hidden' }}
