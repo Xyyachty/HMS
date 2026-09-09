@@ -281,6 +281,12 @@
     return canEdit() && editablePages().indexOf('experience') !== -1;
   }
 
+  function canEditAmenities() {
+    // Housekeeping owns the Amenities page: the facilities themselves are its
+    // hotel_amenities rows, so the clip that shows one is its call too.
+    return canEdit() && editablePages().indexOf('amenities') !== -1;
+  }
+
   /**
    * One logo for the whole site, under a single key — see cardImageKey('brand',
    * 'logo'). It is deliberately not gated on a particular page: there is no page
@@ -1094,6 +1100,26 @@
     patch(CARD_IMAGES_KEY, { map: map });
   }
 
+  /**
+   * The clip shown for one facility on the Amenities page.
+   *
+   * Rides in the card-image map rather than in a key of its own: it is the same
+   * one-URL-per-card shape, so it inherits that map's merging and its per-role
+   * filtering for free. A link is stored, never the file - a video data-URL
+   * would be megabytes of customization on every page load.
+   */
+  function getAmenityVideo(id, fallback) {
+    return getCardImage('amenityVideo', id, fallback);
+  }
+
+  function setAmenityVideo(id, url) {
+    if (!canEditAmenities()) return false;
+    const clean = String(url == null ? '' : url).trim();
+    if (!/^https?:\/\//i.test(clean)) return false;
+    setCardImage('amenityVideo', id, clean);
+    return true;
+  }
+
   /** Open a file picker and return an image data-URL (works inside the builder iframe). */
   function pickImageFile(onPicked) {
     const input = document.createElement('input');
@@ -1141,6 +1167,7 @@
       canEditRooms: canEditRooms(),
       canEditMenus: canEditMenus(),
       canEditExperiences: canEditExperiences(),
+      canEditAmenities: canEditAmenities(),
     };
   }
 
@@ -1250,6 +1277,9 @@
     canEditBrandName,
     canEditRooms,
     canEditMenus,
+    canEditAmenities,
+    getAmenityVideo,
+    setAmenityVideo,
     canEditExperiences,
     canEditLogo,
     canAccess,

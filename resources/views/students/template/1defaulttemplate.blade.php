@@ -361,6 +361,13 @@
   .facility-card-media { position: relative; height: 190px; flex: 0 0 190px; overflow: hidden; }
   .facility-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .facility-card.is-unavailable .facility-card-media img { filter: grayscale(0.7); }
+  /* A clip keeps its own shape instead of the image band's fixed height: the
+     browser's controls sit inside the frame, and letterboxing a 16:9 video into
+     190px would crop whatever the amenity is meant to be showing. The ratio is
+     what makes it responsive - the band is always the card's width. */
+  .facility-card-media.is-video { height: auto; flex: 0 0 auto; aspect-ratio: 16 / 9; background: #000; }
+  .facility-card-media video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+  .facility-card.is-unavailable .facility-card-media video { filter: grayscale(0.7); }
   .facility-status {
     position: absolute; top: 0.85rem; left: 0.85rem;
     padding: 0.22rem 0.7rem; border-radius: 4px;
@@ -406,6 +413,8 @@
   }
   .facility-modal-img { position: relative; height: 260px; overflow: hidden; }
   .facility-modal-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .facility-modal-img.is-video { height: auto; aspect-ratio: 16 / 9; background: #000; }
+  .facility-modal-img video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
   .facility-modal-close {
     position: absolute; top: 0.75rem; right: 0.75rem;
     width: 34px; height: 34px; border-radius: 8px;
@@ -4040,6 +4049,48 @@ function ExperiencePage({ onNavigate }) {
 
    Nothing is filtered out by status. A guest who cannot find the pool on this page will
    assume the hotel has none, so a closed or broken one stays listed and says so. */
+/* Amenity clips.
+   Housekeeping stores one link per facility (see setAmenityVideo in
+   hms-site-content.js). Until it does, a card plays a stand-in from this pool,
+   picked by the amenity's own id so a facility keeps the same clip on every
+   load - the same role picsum images play for a room that has no photograph
+   yet. These are Google's long-standing public sample files; they are
+   placeholders, and a team replaces one with "Set video" in Design mode. */
+const DEFAULT_AMENITY_CLIPS = [
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+];
+
+function amenityVideoSrc(item) {
+  const id = String((item && item.id) || '');
+  const stored = window.HMSSiteContent && typeof window.HMSSiteContent.getAmenityVideo === 'function'
+    ? window.HMSSiteContent.getAmenityVideo(id, '')
+    : '';
+  if (stored) return stored;
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) % 100000;
+  return DEFAULT_AMENITY_CLIPS[hash % DEFAULT_AMENITY_CLIPS.length];
+}
+
+/* Asked for as a link rather than a file: the customization row holds the URL,
+   so a clip costs the same as a caption no matter how long it runs. */
+function setAmenityVideoFor(item, onDone) {
+  const content = window.HMSSiteContent;
+  if (!content || typeof content.setAmenityVideo !== 'function') return;
+  const current = typeof content.getAmenityVideo === 'function' ? content.getAmenityVideo(String(item.id), '') : '';
+  const next = hmsPrompt("Paste the link to this amenity's video (MP4 or WebM):", current);
+  if (next === null) return;
+  const clean = String(next).trim();
+  if (!clean) return;
+  if (!content.setAmenityVideo(String(item.id), clean)) {
+    if (onDone) onDone('That link could not be saved. Use a full https:// address.');
+    return;
+  }
+  if (onDone) onDone('Video updated for ' + item.name);
+}
+
 function facilityStatusClass(status) {
   if (status === 'Available') return 'is-available';
   if (status === 'Temporarily Closed') return 'is-closed';
@@ -4068,8 +4119,15 @@ function FacilityModal({ facility, onClose }) {
   return (
     <div className="facility-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true" aria-label={facility.name}>
       <div className="facility-modal" onClick={e => e.stopPropagation()}>
-        <div className="facility-modal-img">
-          <img src={facility.img} alt={facility.name} />
+        <div className="facility-modal-img is-video">
+          <video
+            src={amenityVideoSrc(facility)}
+            poster={facility.img || undefined}
+            controls
+            playsInline
+            preload="metadata"
+            aria-label={facility.name + ' video'}
+          ></video>
           <button type="button" className="facility-modal-close" onClick={onClose} aria-label="Close">
             <i className="fa-solid fa-xmark"></i>
           </button>
@@ -4112,7 +4170,7 @@ function FacilityModal({ facility, onClose }) {
   );
 }
 
-function AmenitiesPage({ amenities }) {
+function AmenitiesPage({ amenities, canEditAmenities, onToast }) {
   const list = Array.isArray(amenities) ? amenities : [];
   const [openId, setOpenId] = useState(null);
   // Read off the live list rather than held in state, so a poll that changes a
@@ -4146,9 +4204,27 @@ function AmenitiesPage({ amenities }) {
                   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(item.id); }
                 }}
               >
-                <div className="facility-card-media">
-                  <img src={item.img} alt={item.name} />
+                {/* The clip owns its clicks: playing, scrubbing or going full
+                    screen must not also open the details modal behind it. */}
+                <div className="facility-card-media is-video"
+                  onClick={e => e.stopPropagation()}
+                  onKeyDown={e => e.stopPropagation()}>
+                  <video
+                    src={amenityVideoSrc(item)}
+                    poster={item.img || undefined}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    aria-label={item.name + ' video'}
+                  ></video>
                   <span className={'facility-status ' + facilityStatusClass(item.status)}>{item.status}</span>
+                  {canEditAmenities && (
+                    <div style={{ position: 'absolute', top: '0.85rem', right: '0.85rem', zIndex: 3 }} data-hms-no-edit="1">
+                      <button type="button" title="Set video link"
+                        onClick={() => setAmenityVideoFor(item, msg => onToast && onToast(msg))}
+                        style={toolBtnStyle('image')}><i className="fa-solid fa-video" style={{ fontSize: 11 }}></i></button>
+                    </div>
+                  )}
                 </div>
                 <div className="facility-card-body">
                   <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{item.name}</h3>
@@ -4490,6 +4566,7 @@ function App() {
     window.HMSSiteContent ? window.HMSSiteContent.getHeroSlides(DEFAULT_HERO_SLIDES) : DEFAULT_HERO_SLIDES
   ));
   const [canEditHeroSlides, setCanEditHeroSlides] = useState(false);
+  const [canEditAmenities, setCanEditAmenities] = useState(false);
 
 
   // In-flight room writes — a poll that lands mid-write would show stale data.
@@ -4597,6 +4674,11 @@ function App() {
     setCanEditHeroSlides(
       typeof window.HMSSiteContent.canEditHeroSlides === 'function'
         ? window.HMSSiteContent.canEditHeroSlides()
+        : false
+    );
+    setCanEditAmenities(
+      typeof window.HMSSiteContent.canEditAmenities === 'function'
+        ? window.HMSSiteContent.canEditAmenities()
         : false
     );
     setCanEditNav(window.HMSSiteContent.canEditNav());
@@ -5007,7 +5089,7 @@ function App() {
       />
     ),
     experience: <ExperiencePage onNavigate={navigateTo} />,
-    amenities: <AmenitiesPage amenities={amenities} />,
+    amenities: <AmenitiesPage amenities={amenities} canEditAmenities={canEditAmenities} onToast={showToast} />,
     booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} />,
   };
 
