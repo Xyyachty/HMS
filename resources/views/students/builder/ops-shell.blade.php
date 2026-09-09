@@ -1,5 +1,15 @@
+@php
+    /* The background the team picked for their site, turned into the same
+       palette the landing page derives, so the staff pages follow the hotel
+       instead of staying stock near-black. Null until a team picks a colour,
+       and then the shell keeps the stock palette it has always had. */
+    $opsSitePalette = \App\Support\SitePalette::forBackground(
+        \App\Support\SitePalette::siteBackground($templateCustomizations ?? []),
+        ($selectedTemplate ?? null) === '2' ? '2' : '1'
+    );
+@endphp
 <!DOCTYPE html>
-<html lang="en" data-ops-theme="{{ ($selectedTemplate ?? null) === '2' ? '2' : '1' }}">
+<html lang="en" data-ops-theme="{{ ($selectedTemplate ?? null) === '2' ? '2' : '1' }}"@if($opsSitePalette) data-ops-site-themed="1"@endif>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -282,6 +292,9 @@
         }
     </style>
     @yield('head-extra')
+@if($opsSitePalette)
+    @include('students.builder.site-theme', ['p' => $opsSitePalette])
+@endif
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
