@@ -7,7 +7,12 @@
      [data-ops-site-themed] attribute on <html>, which keeps every rule here one
      step more specific than the stock rule and the Template 2 theme it replaces,
      and more specific than the :root palettes the pages declare. Selectors that
-     only exist in one of the two shells are harmless in the other. --}}
+     only exist in one of the two shells are harmless in the other.
+
+     The top bar and the left sidebar are deliberately left out: they are the
+     system's own chrome, the same on every team's screen, and recolouring them
+     made the hotel's colour read as the application's. Only the working area
+     below and beside them follows the hotel. --}}
 <style>
     html[data-ops-site-themed] {
         --bg: {{ $p['bg'] }};
@@ -20,16 +25,6 @@
         --accent: {{ $p['accent'] }};
     }
     html[data-ops-site-themed] body { background: {{ $p['bg'] }}; color: {{ $p['fg'] }}; }
-    html[data-ops-site-themed] .topbar {
-        background: {{ $p['warm'] }};
-        border-bottom: 1px solid {{ $p['border'] }};
-    }
-    html[data-ops-site-themed] .hms-logo-text {
-        background: linear-gradient(135deg, {{ $p['fg'] }} 0%, {{ $p['muted'] }} 100%);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    html[data-ops-site-themed] .w-px.h-5.bg-zinc-800 { background: {{ $p['border'] }}; }
-    html[data-ops-site-themed] .sidebar-base { background: {{ $p['warm'] }}; border-color: {{ $p['border'] }}; }
     html[data-ops-site-themed] .content-bg,
     html[data-ops-site-themed] .canvas-bg {
         background: {{ $p['bg'] }};
@@ -39,32 +34,6 @@
         background: {{ $p['warm'] }};
         border-top: 1px solid {{ $p['border'] }};
         color: {{ $p['muted'] }};
-    }
-    html[data-ops-site-themed] .module-menu,
-    html[data-ops-site-themed] .profile-dropdown,
-    html[data-ops-site-themed] #toast {
-        background: {{ $p['card'] }};
-        border: 1px solid {{ $p['border'] }};
-        color: {{ $p['fg'] }};
-    }
-    html[data-ops-site-themed] .module-menu-label { color: {{ $p['muted'] }}; }
-    html[data-ops-site-themed] .module-menu a,
-    html[data-ops-site-themed] .dd-item { color: {{ $p['muted'] }}; }
-    html[data-ops-site-themed] .module-menu a:hover,
-    html[data-ops-site-themed] .dd-item:hover {
-        background: {{ $p['border'] }};
-        color: {{ $p['fg'] }};
-    }
-    html[data-ops-site-themed] .dd-item i { color: {{ $p['muted'] }}; }
-    html[data-ops-site-themed] .dd-divider { background: {{ $p['border'] }}; }
-    html[data-ops-site-themed] .hdr-btn.btn-secondary {
-        background: {{ $p['card'] }};
-        color: {{ $p['fg'] }};
-        border: 1px solid {{ $p['border'] }};
-    }
-    html[data-ops-site-themed] .hdr-btn.btn-secondary:hover {
-        background: {{ $p['border'] }};
-        color: {{ $p['fg'] }};
     }
     html[data-ops-site-themed] ::-webkit-scrollbar-track { background: {{ $p['warm'] }}; }
     html[data-ops-site-themed] ::-webkit-scrollbar-thumb { background: {{ $p['border'] }}; }
@@ -99,25 +68,4 @@
     html[data-ops-site-themed] #hbVersionList p.text-zinc-600 { color: {{ $p['muted'] }} !important; }
     html[data-ops-site-themed] #hbLayoutList button.text-zinc-500,
     html[data-ops-site-themed] #hbVersionList button.text-zinc-500 { color: {{ $p['muted'] }} !important; }
-
-    {{-- The shared left-sidebar partial paints itself with Tailwind zinc
-         utilities, so it is recoloured by class rather than by editing it. --}}
-    html[data-ops-site-themed] #leftSidebar { background: {{ $p['warm'] }}; border-color: {{ $p['border'] }} !important; }
-    html[data-ops-site-themed] #leftSidebar .text-white,
-    html[data-ops-site-themed] #leftSidebar .text-zinc-200 { color: {{ $p['fg'] }}; }
-    html[data-ops-site-themed] #leftSidebar .text-zinc-500,
-    html[data-ops-site-themed] #leftSidebar .text-zinc-600 { color: {{ $p['muted'] }}; }
-    html[data-ops-site-themed] #leftSidebar .border-zinc-800,
-    html[data-ops-site-themed] #leftSidebar .border-zinc-700 { border-color: {{ $p['border'] }}; }
-    html[data-ops-site-themed] #leftSidebar .bg-zinc-800 { background: {{ $p['card'] }}; }
-    html[data-ops-site-themed] #leftSidebar .bg-zinc-950\/80 { background: {{ $p['bg'] }}; }
-    html[data-ops-site-themed] #leftSidebar #backToTasksBtn {
-        background: {{ $p['card'] }};
-        color: {{ $p['fg'] }};
-        border-color: {{ $p['border'] }};
-    }
-    html[data-ops-site-themed] #leftSidebar #backToTasksBtn:hover {
-        background: {{ $p['border'] }};
-        color: {{ $p['fg'] }};
-    }
 </style>
