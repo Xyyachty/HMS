@@ -1463,6 +1463,8 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
   const [form, setForm] = useState({
     email: '', password: '', remember: false,
     fullName: '', contact: '', confirm: '', agreed: false,
+    // The ID as a data-URL, shrunk by pickImageFile before it ever reaches state.
+    idDoc: '',
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -1511,6 +1513,10 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
       setError('The passwords do not match.');
       return;
     }
+    if (!form.idDoc) {
+      setError('Upload a photo of your valid ID.');
+      return;
+    }
     if (!form.agreed) {
       setError('Please agree to the Terms and the Privacy Policy.');
       return;
@@ -1523,6 +1529,7 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
       contactNumber: form.contact.trim(),
       password: form.password,
       passwordConfirmation: form.confirm,
+      idDocument: form.idDoc,
     })
       // Signed in by the same call that made the account: a guest who has just
       // typed their password twice should not be asked for it a third time.
@@ -1553,7 +1560,7 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
         <p style={{ color: 'var(--fg-muted)', fontSize: '0.8rem', margin: '0 0 1.2rem', lineHeight: 1.55 }}>
           {notice || (signingIn
             ? 'Sign in to book a room and manage your stay.'
-            : 'Just enough to open an account - we take the rest when you book.')}
+            : 'Your details and a photo of your ID - the rest we take when you book.')}
         </p>
 
         {signingIn ? (
@@ -1615,6 +1622,33 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
                      onChange={(e) => set('confirm', e.target.value)}
                      onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
             </div>
+            {/* The ID the front desk will check against you at the door. Taken
+                here so a guest arrives already verified on paper; the physical
+                card is still asked for at check-in. */}
+            <div style={row}>
+              <label style={label}>Valid ID</label>
+              <div onClick={() => pickImageFile((url) => { if (url) set('idDoc', url); })}
+                   style={{ border: '1.5px dashed var(--border)', borderRadius: 8, cursor: 'pointer', overflow: 'hidden' }}>
+                {form.idDoc ? (
+                  <img src={form.idDoc} alt="Your ID" style={{ width: '100%', maxHeight: 150, objectFit: 'cover', display: 'block' }} />
+                ) : (
+                  <div style={{ height: 84, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', color: 'var(--fg-muted)' }}>
+                    <i className="fa-solid fa-id-card" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}></i>
+                    <span style={{ fontSize: '0.75rem' }}>Click to upload a photo of your ID</span>
+                  </div>
+                )}
+              </div>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.7rem', color: 'var(--fg-muted)' }}>
+                Passport, driver's licence or any government ID. Shown only to the front desk.
+              </p>
+              {form.idDoc && (
+                <button type="button" onClick={() => set('idDoc', '')}
+                        style={{ background: 'none', border: 0, padding: '0.35rem 0 0', color: 'var(--fg-muted)', fontFamily: 'inherit', fontSize: '0.72rem', cursor: 'pointer' }}>
+                  Remove
+                </button>
+              )}
+            </div>
+
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.76rem', color: 'var(--fg-muted)', margin: '0 0 1rem', lineHeight: 1.5, cursor: 'pointer' }}>
               <input type="checkbox" checked={form.agreed} style={{ marginTop: '0.2rem' }}
                      onChange={(e) => set('agreed', e.target.checked)} />

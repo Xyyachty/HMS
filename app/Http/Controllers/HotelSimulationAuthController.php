@@ -61,8 +61,14 @@ class HotelSimulationAuthController extends Controller
             // 'confirmed' pairs this with password_confirmation, so the two
             // fields are checked here rather than trusted from the browser.
             'password' => ['required', 'string', 'min:4', 'max:100', 'confirmed'],
+            /* A photograph of the guest's ID, shrunk in the browser before it is
+               sent — the same ceiling every other picture on the site is held to,
+               which is generous for a passport page and small enough to post. */
+            'id_document' => ['required', 'string', 'max:900000'],
         ], [
             'password.confirmed' => 'The passwords do not match.',
+            'id_document.required' => 'Upload a photo of your valid ID.',
+            'id_document.max' => 'That image is too large. Please choose a smaller one.',
         ]);
 
         $result = HotelSimulationAuth::signupCustomer($request->user(), $data);

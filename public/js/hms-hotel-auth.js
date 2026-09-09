@@ -76,6 +76,7 @@
         contact_number: d.contactNumber,
         password: d.password,
         password_confirmation: d.passwordConfirmation,
+        id_document: d.idDocument,
       });
       applyAuth(data.auth);
       return data;

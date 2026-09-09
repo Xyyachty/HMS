@@ -164,7 +164,7 @@ class HotelSimulationAuth
     }
 
     /**
-     * @param array{first_name: string, last_name: string, email: string, contact_number: string, password: string} $details
+     * @param array{first_name: string, last_name: string, email: string, contact_number: string, password: string, id_document?: string|null} $details
      */
     public static function signupCustomer(User $viewer, array $details): array
     {
@@ -204,7 +204,7 @@ class HotelSimulationAuth
             }
         }
 
-        $customer = HotelCustomer::create([
+        $attributes = [
             'group_name' => $ctx['group_name'],
             'faculty_id' => $ctx['faculty_id'],
             'group_id' => $ctx['group_id'],
@@ -214,7 +214,21 @@ class HotelSimulationAuth
             'contact_number' => $contactNumber,
             'email' => $email,
             'password' => Hash::make($password),
-        ]);
+        ];
+
+        /* The ID arrives as a data-URL the browser already shrank, and is written
+           to the media disk like every other picture: the column keeps the path.
+           Stored against the account rather than checked here — verifying it is
+           the front desk's job at check-in, and this is what they open to do it. */
+        if (HotelCustomer::supportsIdDocument()) {
+            $attributes['id_document'] = HotelImageStore::persist(
+                $details['id_document'] ?? null,
+                $ctx['faculty_id'],
+                $ctx['group_name']
+            );
+        }
+
+        $customer = HotelCustomer::create($attributes);
 
         $auth = [
             'type' => 'customer',
