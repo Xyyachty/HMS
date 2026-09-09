@@ -2375,19 +2375,6 @@
       return;
     }
     rail.innerHTML = '';
-    sections.forEach((section) => {
-      const id = section.getAttribute('data-hms-section') || 'section';
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = id;
-      btn.className = id === activeSectionId ? 'active' : '';
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        focusSection(id);
-      });
-      rail.appendChild(btn);
-    });
 
     // Background colours belong to the whole site, not to whichever element is
     // selected, so the rail carries them rather than the Design Panel — the rail
