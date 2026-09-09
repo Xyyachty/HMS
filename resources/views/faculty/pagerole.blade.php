@@ -2005,10 +2005,18 @@
             <div class="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
                 <span class="iconify text-brand text-xl" data-icon="mdi:clipboard-plus-outline"></span>
             </div>
-            <div>
+            <div class="min-w-0">
                 <h3 class="font-bold text-brand text-base">Set New Task</h3>
                 <p class="text-xs text-slate-400 mt-0.5">Pick a team, tick the tasks, set a due date, and assign - all on one page.</p>
             </div>
+            {{-- The way out. Same button the Team Setup screen carries, in the same
+                 corner, because this screen is reached the same way and had no way
+                 back at all. It asks first when there is a half-filled form to lose. --}}
+            <button type="button" onclick="leaveSetTaskScreen()"
+                class="ml-auto h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-bold hover:bg-slate-50 transition inline-flex items-center gap-2 shrink-0">
+                <span class="iconify text-base" data-icon="mdi:arrow-left"></span>
+                Back to Teams
+            </button>
         </div>
 
         <form method="POST" action="{{ route('faculty.tasks.store') }}" id="taskAssignForm">
@@ -2367,6 +2375,37 @@ function openCreateTeamModal() {
 }
 
 function closeCreateTeamModal() {
+    window.location.href = TEAMS_LIST_URL;
+}
+
+/**
+ * Leaving Set Task.
+ *
+ * The form is not saved anywhere until Set Tasks is pressed, so walking away
+ * with tasks ticked or a deadline typed loses them. It only asks when there is
+ * something to lose: a faculty who opened the screen and thought better of it
+ * should not have to answer for it.
+ */
+function setTaskFormHasEntries() {
+    const form = document.getElementById('taskAssignForm');
+    if (!form) return false;
+
+    if (form.querySelector('.task-check:checked')) return true;
+
+    const due = form.querySelector('input[name="due_date"]');
+    if (due && due.value) return true;
+
+    // A team picked on its own is not work to lose - it is one click, and the
+    // screen reopens on it anyway.
+    return false;
+}
+
+function leaveSetTaskScreen() {
+    if (setTaskFormHasEntries()
+        && !window.confirm('Your unsaved task selections will be lost. Do you want to continue?')) {
+        return;
+    }
+
     window.location.href = TEAMS_LIST_URL;
 }
 
