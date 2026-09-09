@@ -2526,6 +2526,12 @@
       case 'navigate-page':
         navigateTemplateTo(data.page);
         break;
+      /* Background Colours, opened from the Design Panel instead of by hunting for
+         the pill floating over the canvas. Same dialog either way — the event is
+         what the pill dispatches. */
+      case 'open-site-colors':
+        window.dispatchEvent(new CustomEvent('hms-card-color', { detail: 'site' }));
+        break;
       case 'apply-edit':
         if (!canEditCurrentPage()) {
           blockEditToast();

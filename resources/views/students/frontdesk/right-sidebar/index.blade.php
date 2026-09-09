@@ -158,13 +158,22 @@
                             class="flex-1 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-400 hover:text-white transition">Use template colour</button>
                 </div>
 
+                {{-- The palette used to be reachable only through a pill floating over
+                     the canvas, which meant scrolling to find it before any colour
+                     could be picked. Same dialog, one click, from where the rest of
+                     the site-wide design already lives. --}}
+                <button type="button" onclick="openSiteColours()"
+                        class="w-full mb-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-[11px] font-semibold text-zinc-200 hover:border-fuchsia-500/50 hover:text-white transition flex items-center justify-center gap-2">
+                    <i class="fas fa-palette text-[10px] text-fuchsia-400"></i>
+                    Background colours
+                </button>
+
                 <div class="rounded-lg border border-zinc-700/70 bg-zinc-800/50 p-2.5">
                     <p class="text-[10px] text-zinc-400 leading-relaxed">
                         <i class="fas fa-circle-info text-[9px] text-fuchsia-400 mr-1"></i>
-                        Logo, slider highlights and the colour palette are edited on the page itself:
-                        click the logo in the header to replace it, use the pencil on the hero slider
-                        for highlight images, and Background Colours for the palette. All three apply
-                        to every page.
+                        The logo and the slider highlights are edited on the page itself: click the
+                        logo in the header to replace it, and use the pencil on the hero slider for
+                        its images. Both apply to every page, as the colours above do.
                     </p>
                 </div>
             </div>
@@ -714,6 +723,16 @@
         const frame = document.getElementById('templateFrame');
         if (!frame || !frame.contentWindow) return;
         frame.contentWindow.postMessage(Object.assign({ source: 'hms-parent' }, payload), '*');
+    }
+
+    /* The palette dialog lives in the template, because that is where the colours
+       are applied and previewed. The panel only asks for it. */
+    function openSiteColours() {
+        if (window.currentEditorMode === 'preview') {
+            if (typeof toast === 'function') toast('Switch to Design to change the colours');
+            return;
+        }
+        postToTemplate({ type: 'open-site-colors' });
     }
 
     function toggleSection(id) {
