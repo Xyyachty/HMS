@@ -1468,33 +1468,42 @@ class FacultyController extends Controller
             return back()->withErrors(['title' => 'Faculty account not found.'])->withInput();
         }
 
+        /* One tick can now hand the same work to several teams, or to every team in
+           the block — a checklist step is written for the course, not for one team,
+           and setting it twenty times over was the same form filled twenty times.
+           group_name is still read for anything posting the older single field. */
         $validated = $request->validate([
-            'group_name' => ['required', 'string'],
+            'group_names' => ['required_without:group_name', 'array', 'min:1'],
+            'group_names.*' => ['string'],
+            'group_name' => ['required_without:group_names', 'string'],
             'tasks' => ['nullable', 'array'],
             'tasks.*' => ['array'],
             'task_titles' => ['nullable', 'array'],
             'task_descriptions' => ['nullable', 'array'],
             'due_date' => ['nullable', 'date', 'after_or_equal:today'],
         ], [
-            'group_name.required' => 'Pick the team this task is for.',
+            'group_names.required_without' => 'Pick at least one team this task is for.',
+            'group_name.required_without' => 'Pick at least one team this task is for.',
         ]);
 
-        // A team is one (group_name, faculty_id) pair, so the name is only a team
-        // once it is read under this faculty. Checked here rather than with a bare
-        // exists rule, which would accept another faculty's team of the same name.
-        $teamMembers = StudentGroup::with(['student', 'roles'])
+        $requested = array_values(array_unique(array_filter(
+            $validated['group_names'] ?? [$validated['group_name'] ?? null]
+        )));
+
+        /* A team is one (group_name, faculty_id) pair, so a name is only a team once
+           it is read under this faculty — checked here rather than with a bare exists
+           rule, which would accept another faculty's team of the same name. Every
+           requested team is fetched at once and grouped, so twenty teams is one query
+           rather than twenty. */
+        $membersByTeam = StudentGroup::with(['student', 'roles'])
             ->where('faculty_id', $facultyId)
-            ->where('group_name', $validated['group_name'])
-            ->get();
+            ->whereIn('group_name', $requested)
+            ->get()
+            ->groupBy('group_name');
 
-        if ($teamMembers->isEmpty()) {
-            return back()->withErrors(['group_name' => 'That team is not one of yours.'])->withInput();
+        if ($membersByTeam->isEmpty()) {
+            return back()->withErrors(['group_name' => 'None of those teams are yours.'])->withInput();
         }
-
-        // Read back off a membership row so the stored name matches the team's own
-        // casing, and group_id travels with it the way every team-owned table carries it.
-        $groupName = $teamMembers->first()->group_name;
-        $groupId = $teamMembers->first()->group_id;
 
         // Check if any tasks were selected
         $tasksCreated = 0;
@@ -1510,86 +1519,95 @@ class FacultyController extends Controller
         // than once per task row.
         $baselineVersionIds = [];
 
-        if (!empty($validated['tasks']) && is_array($validated['tasks'])) {
-            foreach ($validated['tasks'] as $role => $taskIndices) {
-                if (!is_array($taskIndices)) continue;
+        // The names as their own rows spell them, in the order they were asked for.
+        $teamNames = [];
 
-                foreach ($taskIndices as $index) {
-                    $title = $validated['task_titles'][$role][$index] ?? null;
-                    $description = $validated['task_descriptions'][$role][$index] ?? null;
+        foreach ($membersByTeam as $teamMembers) {
+            $groupName = $teamMembers->first()->group_name;
+            $groupId = $teamMembers->first()->group_id;
+            $teamNames[] = $groupName;
 
-                    if ($title) {
-                        /* The hotel concept is not an ordinary row. It is seeded for
-                           every Front Desk student the moment they hold the role, has
-                           its own submit and review path, and heads the list on its
-                           own. Ticking it in Task 01 makes sure that row exists for
-                           this team rather than writing a second one beside it, which
-                           would leave two copies of the same work on one student. */
-                        if (strcasecmp($title, \App\Support\HotelConceptDesk::TASK_TITLE) === 0) {
-                            \App\Support\HotelConceptDesk::ensureTasksForTeam($groupName, (int) $facultyId);
-                            continue;
-                        }
+            if (!empty($validated['tasks']) && is_array($validated['tasks'])) {
+                foreach ($validated['tasks'] as $role => $taskIndices) {
+                    if (!is_array($taskIndices)) continue;
 
-                        // Only this team's holders of the role. Assigning used to read
-                        // every team under the faculty, so one tick handed the same task
-                        // to everybody at once.
-                        $members = $teamMembers->filter(
-                            fn ($member) => $member->roles->contains('role', $role)
-                        );
+                    foreach ($taskIndices as $index) {
+                        $title = $validated['task_titles'][$role][$index] ?? null;
+                        $description = $validated['task_descriptions'][$role][$index] ?? null;
 
-                        $payload = [
-                            'faculty_id'  => $facultyId,
-                            'group_name'  => $groupName,
-                            'group_id'    => $groupId,
-                            'role'        => $role,
-                            'title'       => $title,
-                            'description' => User::cleanOptional($description),
-                            'due_date'    => $validated['due_date'] ?? null,
-                            'status'      => 'active',
-                        ];
+                        if ($title) {
+                            /* The hotel concept is not an ordinary row. It is seeded for
+                               every Front Desk student the moment they hold the role, has
+                               its own submit and review path, and heads the list on its
+                               own. Ticking it in Task 01 makes sure that row exists for
+                               this team rather than writing a second one beside it, which
+                               would leave two copies of the same work on one student. */
+                            if (strcasecmp($title, \App\Support\HotelConceptDesk::TASK_TITLE) === 0) {
+                                \App\Support\HotelConceptDesk::ensureTasksForTeam($groupName, (int) $facultyId);
+                                continue;
+                            }
 
-                        /* The four activities come off the checklist here rather
-                           than out of the form: they are the same four for every
-                           team assigned this task, and reading them server-side
-                           keeps a posted list from putting words in faculty's
-                           mouth. Copied onto the row so a later edit to the
-                           checklist cannot change the steps under a student who
-                           is halfway through them. */
-                        if (Task::supportsActivities()) {
-                            $payload['activities'] = array_map(
-                                fn (string $text) => ['text' => $text, 'done' => false],
-                                \App\Support\TaskChecklist::activitiesFor($title)
+                            // Only this team's holders of the role. Assigning used to read
+                            // every team under the faculty, so one tick handed the same task
+                            // to everybody at once.
+                            $members = $teamMembers->filter(
+                                fn ($member) => $member->roles->contains('role', $role)
                             );
-                        }
 
-                        // Nobody on this team fills the role yet. The row is still the
-                        // team's — it carries group_name — so it waits for whoever takes
-                        // the role rather than showing up on every team's dashboard.
-                        if ($members->isEmpty()) {
-                            Task::create($payload);
-                            $tasksCreated++;
-                        } else {
-                            foreach ($members as $member) {
-                                $assigneeUserId = $member->student?->user_id;
+                            $payload = [
+                                'faculty_id'  => $facultyId,
+                                'group_name'  => $groupName,
+                                'group_id'    => $groupId,
+                                'role'        => $role,
+                                'title'       => $title,
+                                'description' => User::cleanOptional($description),
+                                'due_date'    => $validated['due_date'] ?? null,
+                                'status'      => 'active',
+                            ];
 
-                                $baselineKey = $member->group_name . '|' . $role;
-                                if (!array_key_exists($baselineKey, $baselineVersionIds)) {
-                                    $baselineVersionIds[$baselineKey] = \App\Support\HotelTemplateBuilder::snapshotForReview(
-                                        \App\Support\HotelTemplateBuilder::ensureTemplate($member, $role),
-                                        $facultyUser,
-                                        'Assigned'
-                                    );
-                                }
+                            /* The four activities come off the checklist here rather
+                               than out of the form: they are the same four for every
+                               team assigned this task, and reading them server-side
+                               keeps a posted list from putting words in faculty's
+                               mouth. Copied onto the row so a later edit to the
+                               checklist cannot change the steps under a student who
+                               is halfway through them. */
+                            if (Task::supportsActivities()) {
+                                $payload['activities'] = array_map(
+                                    fn (string $text) => ['text' => $text, 'done' => false],
+                                    \App\Support\TaskChecklist::activitiesFor($title)
+                                );
+                            }
 
-                                Task::create(array_merge($payload, [
-                                    'student_id'  => $member->student_id,
-                                    'assigned_to' => $assigneeUserId,
-                                    'previous_version_id' => $baselineVersionIds[$baselineKey],
-                                ]));
+                            // Nobody on this team fills the role yet. The row is still the
+                            // team's — it carries group_name — so it waits for whoever takes
+                            // the role rather than showing up on every team's dashboard.
+                            if ($members->isEmpty()) {
+                                Task::create($payload);
                                 $tasksCreated++;
+                            } else {
+                                foreach ($members as $member) {
+                                    $assigneeUserId = $member->student?->user_id;
 
-                                if ($assigneeUserId) {
-                                    $assignedCounts[$assigneeUserId] = ($assignedCounts[$assigneeUserId] ?? 0) + 1;
+                                    $baselineKey = $member->group_name . '|' . $role;
+                                    if (!array_key_exists($baselineKey, $baselineVersionIds)) {
+                                        $baselineVersionIds[$baselineKey] = \App\Support\HotelTemplateBuilder::snapshotForReview(
+                                            \App\Support\HotelTemplateBuilder::ensureTemplate($member, $role),
+                                            $facultyUser,
+                                            'Assigned'
+                                        );
+                                    }
+
+                                    Task::create(array_merge($payload, [
+                                        'student_id'  => $member->student_id,
+                                        'assigned_to' => $assigneeUserId,
+                                        'previous_version_id' => $baselineVersionIds[$baselineKey],
+                                    ]));
+                                    $tasksCreated++;
+
+                                    if ($assigneeUserId) {
+                                        $assignedCounts[$assigneeUserId] = ($assignedCounts[$assigneeUserId] ?? 0) + 1;
+                                    }
                                 }
                             }
                         }
@@ -1602,9 +1620,13 @@ class FacultyController extends Controller
             return back()->withErrors(['tasks' => 'Please select at least one task from the checklist.'])->withInput();
         }
 
+        $teamLabel = count($teamNames) === 1
+            ? $teamNames[0]
+            : count($teamNames) . ' teams';
+
         ActivityLog::recordFor(
             ActivityLog::TASK_CREATED,
-            'Created ' . $tasksCreated . ' task assignment(s) for ' . $groupName . '.'
+            'Created ' . $tasksCreated . ' task assignment(s) for ' . $teamLabel . '.'
         );
 
         Notifier::tasksAssigned(auth()->user(), $assignedCounts);
@@ -1614,7 +1636,7 @@ class FacultyController extends Controller
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'create_task',
             'class' => $request->input('class'),
-        ]))->with('success', $tasksCreated . ' task(s) assigned to ' . $groupName . '.');
+        ]))->with('success', $tasksCreated . ' task(s) assigned to ' . $teamLabel . '.');
     }
 
     /**

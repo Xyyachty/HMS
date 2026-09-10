@@ -2036,16 +2036,25 @@
                      $tasksByRole, which shadowed the controller's real task rows for
                      everything below it. --}}
 
-                {{-- ═══════ TEAM ═══════
-                     A task belongs to one team. The radio is a real form field, unlike
-                     the department, which reaches the server as the tasks[] key. --}}
+                {{-- ═══════ TEAMS ═══════
+                     A checklist step is written for the course rather than for one
+                     team, so it can be handed to any number of them at once. The
+                     checkboxes are real form fields, unlike the department, which
+                     reaches the server as the tasks[] key. --}}
                 <div>
                     <div class="flex items-center gap-2 mb-3">
                         <span class="w-6 h-6 rounded-lg bg-brand text-white text-[11px] font-bold flex items-center justify-center shrink-0">1</span>
-                        <div>
-                            <h4 class="text-sm font-bold text-slate-700">Which team is this task for?</h4>
-                            <p class="text-xs text-slate-400">Only the team you pick will see it</p>
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-bold text-slate-700">Which teams is this task for?</h4>
+                            <p class="text-xs text-slate-400">Pick one, several, or every team in this block</p>
                         </div>
+                        @unless(($groups ?? collect())->isEmpty())
+                            <label class="ml-auto shrink-0 inline-flex items-center gap-2 h-9 px-3 rounded-xl border border-slate-200 bg-white text-[12px] font-bold text-slate-600 hover:border-brand/40 cursor-pointer transition">
+                                <input type="checkbox" id="taskAllTeams" onchange="toggleAllTeams(this.checked)"
+                                       class="rounded border-slate-300 text-brand focus:ring-brand/30">
+                                All teams
+                            </label>
+                        @endunless
                     </div>
 
                     @if(($groups ?? collect())->isEmpty())
@@ -2059,10 +2068,10 @@
                             @foreach($groups as $groupName => $members)
                                 <label data-team="{{ $groupName }}"
                                     class="task-team-btn group p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-brand/40 hover:shadow-md transition-all cursor-pointer flex items-start gap-3 text-left has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
-                                    <input type="radio" name="group_name" value="{{ $groupName }}"
-                                        onchange="selectTeam(this.value)"
-                                        {{ old('group_name') === $groupName ? 'checked' : '' }}
-                                        class="mt-0.5 text-brand focus:ring-brand/30 task-team-radio">
+                                    <input type="checkbox" name="group_names[]" value="{{ $groupName }}"
+                                        onchange="onTeamToggled()"
+                                        {{ in_array($groupName, (array) old('group_names', []), true) ? 'checked' : '' }}
+                                        class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30 task-team-radio">
                                     <span class="min-w-0">
                                         <span class="block text-sm font-bold text-slate-700 truncate">{{ $groupName }}</span>
                                         <span class="block text-[10px] text-slate-400 mt-0.5">
@@ -4059,16 +4068,35 @@ function onUpdateMemberToggle(checkbox) {
 // One page, no steps: team, tasks and due date are all on screen at once, and the
 // summary at the foot updates as they are filled in. It used to be a five-screen
 // wizard, which cost a click per screen to reach the assign button.
-let selectedTeam = null;
+let selectedTeams = [];
 
 // How many members of each team hold each role, so a task row can say who is
 // actually there to receive it.
 const TEAM_ROLE_COUNTS = @json($teamRoleCounts ?? []);
 
-function selectTeam(groupName) {
-    selectedTeam = groupName;
+/* Every team that is ticked, in the order they appear. One name or twenty, the
+   rest of the form behaves the same — the summary and the headcount hints read
+   this list rather than a single name. */
+function selectedTeamNames() {
+    return Array.from(document.querySelectorAll('#taskTeamSelector input[name="group_names[]"]:checked'))
+        .map((box) => box.value);
+}
+
+function onTeamToggled() {
+    const boxes = Array.from(document.querySelectorAll('#taskTeamSelector input[name="group_names[]"]'));
+    const all = document.getElementById('taskAllTeams');
+    if (all) all.checked = boxes.length > 0 && boxes.every((box) => box.checked);
+
+    selectedTeams = selectedTeamNames();
     updateRoleMemberCounts();
     updateSubmitState();
+}
+
+function toggleAllTeams(on) {
+    document.querySelectorAll('#taskTeamSelector input[name="group_names[]"]').forEach((box) => {
+        box.checked = !!on;
+    });
+    onTeamToggled();
 }
 
 // The headcount hint the department step used to carry on its cards. A task row
@@ -4076,14 +4104,24 @@ function selectTeam(groupName) {
 // nobody fills is still assignable — the task waits for whoever takes it — so
 // this informs rather than blocks.
 function updateRoleMemberCounts() {
-    const counts = (selectedTeam && TEAM_ROLE_COUNTS[selectedTeam]) || {};
+    // Summed across the teams picked: with three teams chosen, "4 members" is the
+    // four students who will actually receive this role's activity.
+    const counts = {};
+    selectedTeams.forEach((team) => {
+        const teamCounts = TEAM_ROLE_COUNTS[team] || {};
+        Object.keys(teamCounts).forEach((role) => {
+            counts[role] = (counts[role] || 0) + (teamCounts[role] || 0);
+        });
+    });
+
+    const picked = selectedTeams.length > 0;
 
     document.querySelectorAll('[data-role-count]').forEach(el => {
         const n = counts[el.dataset.roleCount] || 0;
-        el.textContent = selectedTeam
+        el.textContent = picked
             ? ' · ' + (n > 0 ? n + (n === 1 ? ' member' : ' members') : 'nobody holds this')
             : '';
-        el.classList.toggle('text-amber-500', !!selectedTeam && n === 0);
+        el.classList.toggle('text-amber-500', picked && n === 0);
     });
 }
 
@@ -4190,7 +4228,7 @@ function updateSubmitState() {
     const checked = Array.from(document.querySelectorAll('.task-check:checked'));
 
     const btn = document.getElementById('submitTasksBtn');
-    if (btn) btn.disabled = !selectedTeam || checked.length === 0;
+    if (btn) btn.disabled = selectedTeams.length === 0 || checked.length === 0;
 
     updateSummary(checked);
 }
@@ -4198,7 +4236,10 @@ function updateSubmitState() {
 function updateSummary(checked) {
     checked = checked || Array.from(document.querySelectorAll('.task-check:checked'));
 
-    document.getElementById('reviewTeamName').textContent = selectedTeam || '—';
+    document.getElementById('reviewTeamName').textContent =
+        selectedTeams.length === 0 ? '—'
+        : selectedTeams.length === 1 ? selectedTeams[0]
+        : selectedTeams.length + ' teams';
 
     document.getElementById('reviewTaskCount').textContent =
         checked.length + ' task' + (checked.length !== 1 ? 's' : '');
@@ -4222,7 +4263,9 @@ function updateSummary(checked) {
 }
 
 function resetTaskWizard() {
-    selectedTeam = null;
+    selectedTeams = [];
+    const allTeams = document.getElementById('taskAllTeams');
+    if (allTeams) allTeams.checked = false;
     document.querySelectorAll('.task-team-radio').forEach(r => r.checked = false);
     document.querySelectorAll('.task-check').forEach(cb => cb.checked = false);
     document.querySelectorAll('.task-group-check').forEach(master => {
@@ -4251,10 +4294,9 @@ document.addEventListener('change', function(e) {
 (function() {
     const activeTab = '{{ $activeTab }}';
     if (activeTab === 'create_task') {
-        // A failed submit re-renders with the team still ticked; pick it back up so
+        // A failed submit re-renders with the teams still ticked; read them back so
         // the summary and the headcount hints match what is on the form.
-        const checkedTeam = document.querySelector('.task-team-radio:checked');
-        if (checkedTeam) selectTeam(checkedTeam.value);
+        onTeamToggled();
         filterTaskCards('all');
         document.querySelectorAll('.task-group-check').forEach(master => refreshTaskCardState(master.id.replace('taskGroupCheck-', '')));
         updateSubmitState();
