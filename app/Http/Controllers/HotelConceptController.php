@@ -86,6 +86,10 @@ class HotelConceptController extends Controller
         $validated = $request->validate([
             'slot' => ['required', 'integer', Rule::in(HotelConceptDesk::SLOTS)],
             'title' => ['required', 'string', 'max:150'],
+            // A line, not a paragraph — it is printed above a headline and inside a
+            // footer, and a sentence that wraps there reads as a mistake. Optional
+            // because a team may not have found its words yet.
+            'tagline' => ['nullable', 'string', 'max:120'],
             'description' => ['required', 'string', 'max:5000'],
             'hotel_type' => ['required', Rule::in(array_keys(HotelConcept::HOTEL_TYPES))],
         ]);
@@ -130,8 +134,13 @@ class HotelConceptController extends Controller
                 ]);
             } else {
                 foreach (array_keys(HotelConcept::TRACKED_FIELDS) as $field) {
-                    if ((string) $concept->{$field} !== (string) $validated[$field]) {
-                        $changes[$field] = ['from' => $concept->{$field}, 'to' => $validated[$field]];
+                    if ($field === 'tagline' && !HotelConcept::supportsTagline()) {
+                        continue;
+                    }
+                    $was = (string) ($concept->{$field} ?? '');
+                    $now = trim((string) ($validated[$field] ?? ''));
+                    if ($was !== $now) {
+                        $changes[$field] = ['from' => $concept->{$field}, 'to' => $validated[$field] ?? null];
                     }
                 }
 
@@ -141,12 +150,18 @@ class HotelConceptController extends Controller
                 }
             }
 
-            $concept->fill([
+            $attributes = [
                 'title' => $validated['title'],
                 'description' => $validated['description'],
                 'hotel_type' => $validated['hotel_type'],
                 'updated_by' => $authUser->user_id,
-            ]);
+            ];
+
+            if (HotelConcept::supportsTagline()) {
+                $attributes['tagline'] = trim((string) ($validated['tagline'] ?? '')) ?: null;
+            }
+
+            $concept->fill($attributes);
             // A team created before groups existed can still be missing this.
             $concept->group_id = $concept->group_id ?: $membership->group_id;
             $concept->save();
@@ -158,6 +173,7 @@ class HotelConceptController extends Controller
                 'action' => $isNew ? HotelConceptRevision::CREATED : HotelConceptRevision::UPDATED,
                 'field_changes' => $changes,
                 'title' => $concept->title,
+                'tagline' => HotelConcept::supportsTagline() ? $concept->tagline : null,
                 'description' => $concept->description,
                 'hotel_type' => $concept->hotel_type,
             ]);
@@ -378,6 +394,7 @@ class HotelConceptController extends Controller
                 'slot_label' => HotelConceptDesk::slotLabel($slot),
                 'concept' => $concept ? [
                     'title' => $concept->title,
+                    'tagline' => $concept->tagline,
                     'description' => $concept->description,
                     'hotel_type' => $concept->hotel_type,
                     'hotel_type_label' => $concept->hotel_type_label,

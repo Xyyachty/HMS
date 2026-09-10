@@ -27,6 +27,7 @@ class HotelConceptRevision extends Model
         'action',
         'field_changes',
         'title',
+        'tagline',
         'description',
         'hotel_type',
     ];

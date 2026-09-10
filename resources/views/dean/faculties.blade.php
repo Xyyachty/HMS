@@ -645,6 +645,7 @@
             ? '<div class="rounded-lg border border-slate-200 bg-slate-50/70 p-3">' +
                 '<div class="flex items-start justify-between gap-2 flex-wrap">' +
                     '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>' +
+                    (concept.tagline ? '<p class="text-[11px] italic text-brand">' + escHtml(concept.tagline) + '</p>' : '') +
                     '<div class="flex items-center gap-1.5 flex-wrap">' + statusBadge +
                         '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
                             + escHtml(concept.hotel_type_label) + '</span>' +

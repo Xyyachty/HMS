@@ -253,11 +253,18 @@ class HotelTemplateBuilder
 
         $type = trim((string) $approved->hotel_type);
 
+        // What the team wrote, and only its type's label as a stand-in for a concept
+        // proposed before there was a field to write one in — typeLabel() answers
+        // '—' for a concept with no type at all, which would read as a tagline
+        // nobody wrote.
+        $tagline = trim((string) ($approved->tagline ?? ''));
+        if ($tagline === '') {
+            $tagline = $type !== '' ? HotelConcept::typeLabel($type) : '';
+        }
+
         return [
             'name' => $name !== '' ? $name : $defaults['name'],
-            // typeLabel() answers '—' for a concept with no type, which would read
-            // as a tagline the team never wrote.
-            'tagline' => $type !== '' ? HotelConcept::typeLabel($type) : '',
+            'tagline' => $tagline,
             'description' => $description,
         ];
     }

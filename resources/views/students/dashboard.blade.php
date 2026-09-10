@@ -1789,6 +1789,18 @@
                             class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                     </div>
                     <div>
+                        {{-- The line the hotel introduces itself with. It is printed
+                             above the headline on the landing page and inside every
+                             footer, so it is a line and not a paragraph. --}}
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                            Tagline <span class="text-slate-300 font-semibold normal-case tracking-normal">— optional</span>
+                        </label>
+                        <input name="tagline" type="text" maxlength="120"
+                            placeholder="e.g. Where the sea meets stillness"
+                            class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                        <p class="text-[10px] text-slate-400 mt-1">Shown above the headline on your hotel's landing page and in its footer.</p>
+                    </div>
+                    <div>
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Type</label>
                         <select name="hotel_type" required
                             class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
@@ -1939,6 +1951,7 @@
             // Always open on the stored concept, not on a half-typed abandoned edit.
             form.querySelector('input[name="slot"]').value = editingSlot;
             form.querySelector('input[name="title"]').value = concept?.title ?? '';
+            form.querySelector('input[name="tagline"]').value = concept?.tagline ?? '';
             form.querySelector('select[name="hotel_type"]').value = concept?.hotel_type ?? '';
             form.querySelector('textarea[name="description"]').value = concept?.description ?? '';
 
@@ -2302,6 +2315,9 @@
             const body = concept
                 ? officialRibbon
                     + '<h4 class="text-sm font-extrabold text-slate-800 mt-1">' + conceptEscape(concept.title) + '</h4>'
+                    + (concept.tagline
+                        ? '<p class="text-[11px] italic text-brand">' + conceptEscape(concept.tagline) + '</p>'
+                        : '')
                     + '<p class="text-[11px] font-bold text-slate-500">' + conceptEscape(concept.hotel_type_label) + '</p>'
                     + '<p class="text-xs text-slate-500 leading-relaxed mt-1.5 whitespace-pre-line">' + conceptEscape(concept.description) + '</p>'
                 : '<p class="text-sm font-bold text-slate-400 mt-1">Not proposed yet</p>'
