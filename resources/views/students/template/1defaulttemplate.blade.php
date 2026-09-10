@@ -2687,7 +2687,11 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
 
   return (
     <>
-      <section className="hero" data-hms-section="hero" data-hms-bg-target="1">
+      {/* Fixed where it is. The carousel's photographs are absolutely placed
+          inside it and the header sits directly above it, so dragging the hero
+          pulls the rotation out from under itself and leaves a gap under the
+          bar. Its colours, spacing and background still edit. */}
+      <section className="hero" data-hms-section="hero" data-hms-bg-target="1" data-hms-no-move="1">
         <div className="hero-bg" data-hms-bg-target="1">
           <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} />
         </div>

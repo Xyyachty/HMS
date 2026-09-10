@@ -302,6 +302,18 @@
      rotates through, say. It is not content and it is not a container a student
      arranges: it is where a component draws, so it is passed over and the thing
      behind it is what a click selects. */
+  /* Pinned where the page puts it. Everything else about it still edits - its
+     colours, its spacing, the pictures inside it - but it does not move, because
+     what sits above and inside it is placed relative to where it is. */
+  function isMoveLocked(el) {
+    // The element itself, never what it contains: a headline or a button inside
+    // a pinned section is still the student's to place.
+    if (!el || el.nodeType !== 1 || !el.hasAttribute) return false;
+    if (el.hasAttribute('data-hms-no-move')) return true;
+    const root = resolveEditableRoot(el);
+    return !!(root && root !== el && root.hasAttribute && root.hasAttribute('data-hms-no-move'));
+  }
+
   function isBackgroundLayer(el) {
     return !!(el && el.nodeType === 1 && el.hasAttribute && el.hasAttribute('data-hms-bg-layer'));
   }
@@ -553,7 +565,7 @@
     box.style.width = width + 'px';
     box.style.height = height + 'px';
     const moveHandle = ui.querySelector('.hms-move-handle');
-    moveHandle.style.display = 'flex';
+    moveHandle.style.display = isMoveLocked(el) ? 'none' : 'flex';
     moveHandle.style.left = Math.max(8, Math.min(window.innerWidth - 80, left + width / 2)) + 'px';
     moveHandle.style.top = Math.max(28, top) + 'px';
 
@@ -998,6 +1010,25 @@
     slot.nodeValue = text;
   }
 
+  /* Where an element sits, as an entry records it. A pinned element keeps
+     everything else it has been given and simply has none of this. */
+  const PLACEMENT_PROPS = ['position', 'top', 'left', 'right', 'bottom', 'transform'];
+
+  function stripPlacement(entry) {
+    if (!entry) return false;
+    let had = false;
+    PLACEMENT_PROPS.forEach((prop) => {
+      if (entry[prop] != null) { delete entry[prop]; had = true; }
+    });
+    if (entry.freePosition) { had = true; }
+    if (entry.moveMode) { had = true; }
+    if (entry.keepFixed) { had = true; }
+    entry.freePosition = false;
+    delete entry.moveMode;
+    delete entry.keepFixed;
+    return had;
+  }
+
   function saveElementState(el) {
     if (!el) return;
     // Last line of defence: nothing header-shaped is ever written to customizations,
@@ -1041,6 +1072,10 @@
       entry.freePosition = true;
     }
 
+    if (isMoveLocked(el)) {
+      stripPlacement(entry);
+    }
+
     // Images owned by the shared site-content store (e.g. the brand logo) keep
     // their src there so one change updates every place that renders it.
     // Styling and moving them still records normally.
@@ -1070,6 +1105,14 @@
   /* Undo what a stored entry had already painted on, without touching what the
      component itself sets - a slide's own photograph is written inline by the
      page, so background-image is left exactly as it is. */
+  function clearPlacementStyles(el) {
+    if (!el || !el.style) return;
+    PLACEMENT_PROPS.forEach((prop) => el.style.removeProperty(prop));
+    el.removeAttribute('data-hms-free-position');
+    el.removeAttribute('data-hms-move-mode');
+    el.removeAttribute('data-hms-keep-fixed');
+  }
+
   function clearAppliedStyles(el) {
     if (!el || !el.style) return;
     STYLE_PROPS.forEach((prop) => {
@@ -1307,6 +1350,13 @@
         return;
       }
 
+      // A drag saved before the element was pinned. The rest of the entry - its
+      // colours, its spacing - is the student's work and stays.
+      if (isMoveLocked(el) && stripPlacement(customizations[id])) {
+        clearPlacementStyles(el);
+        migrated = true;
+      }
+
       /* A slide dragged out of place, or hidden, before the carousel's layers
          were left to the carousel. Kept, the hero jumps or goes blank when that
          slide's turn comes round and the slider looks stuck. */
@@ -1443,7 +1493,7 @@
 
   function onMoveHandleDown(e) {
     if (!designMode || !canEdit || !selectedEl) return;
-    if (isHeaderLocked(selectedEl)) return;
+    if (isHeaderLocked(selectedEl) || isMoveLocked(selectedEl)) return;
     if (!canEditCurrentPage()) return;
     if (e.button !== 0) return;
 
