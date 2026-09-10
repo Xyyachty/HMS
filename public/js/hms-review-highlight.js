@@ -86,18 +86,38 @@
   }
 
   /**
-   * Laid out, on screen, and actually painted. A collapsed or hidden copy of an
-   * element — the same logo inside a closed mobile menu, say — has to be skipped
-   * or it draws a box over empty space.
+   * Laid out, on screen, and actually painted.
+   *
+   * "Painted" has to include what an ancestor is doing. The closed mobile menu is
+   * a full-screen overlay held at opacity 0, and the logo inside it is opacity 1
+   * on its own — so checking the element alone passed it, and a second CHANGED
+   * box was drawn over blank hero where an invisible menu happens to sit.
    */
+  function isVisibleThroughAncestors(el) {
+    // Chrome answers this properly; the walk below is for everything else.
+    if (typeof el.checkVisibility === 'function') {
+      try {
+        return el.checkVisibility({ opacityProperty: true, visibilityProperty: true, contentVisibilityAuto: true });
+      } catch (e) { /* older signature — fall through to the walk */ }
+    }
+
+    let node = el;
+    while (node && node.nodeType === 1 && node !== document.documentElement) {
+      const style = window.getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) {
+        return false;
+      }
+      node = node.parentElement;
+    }
+
+    return true;
+  }
+
   function isPaintable(el) {
     const rect = el.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return false;
 
-    const style = window.getComputedStyle(el);
-    if (style.visibility === 'hidden' || style.display === 'none' || parseFloat(style.opacity) === 0) {
-      return false;
-    }
+    if (!isVisibleThroughAncestors(el)) return false;
 
     // Off-screen entirely: boxes are drawn in viewport space, so there is
     // nothing to show until it scrolls in.
