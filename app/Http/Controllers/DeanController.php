@@ -464,139 +464,48 @@ class DeanController extends Controller
         return redirect()->route('dean.users')->with('success', 'User updated successfully.');
     }
 
+    /**
+     * The dean's three reports: completed work, how each student is doing, and
+     * the activity log behind both.
+     *
+     * All three datasets are handed to the page at once and the screen switches
+     * between them without a reload — they are the same few hundred rows, and a
+     * filter that has to wait on the server is a filter nobody uses. The grouping
+     * itself lives in DeanReportDesk, which reads it off the task rows.
+     */
     public function reports()
     {
         ActivityLog::recordFor(ActivityLog::REPORT_GENERATED, 'Generated the dean performance report.');
 
-        $roleLabels = [
-            'front_desk' => 'Front Desk',
-            'restaurant_management' => 'Restaurant',
-            'room_management' => 'Room',
-            'maintenance' => 'Maintenance',
-            'housekeeping' => 'Housekeeping',
-        ];
+        $completedRows = \App\Support\DeanReportDesk::completedTasks();
+        $studentRows = \App\Support\DeanReportDesk::studentPerformance();
+        $activityRows = \App\Support\DeanReportDesk::activityLogs();
 
-        $completedTasks = Task::with(['faculty.user', 'student.user', 'assignedTo'])
-            ->where('status', 'archived')
-            ->orderByDesc('updated_at')
-            ->get();
+        // The filter lists are built from what is actually in the reports, so a
+        // team with nothing to show is not offered as a filter that finds nothing.
+        $teamOptions = collect($completedRows)->pluck('team_name')
+            ->merge(collect($studentRows)->pluck('team_name'))
+            ->merge(collect($activityRows)->pluck('team_name'))
+            ->filter(fn ($name) => $name !== '' && $name !== '—')
+            ->unique()->sort()->values()->all();
 
-        $membershipByStudentId = StudentGroup::with(['roles', 'student.user', 'faculty.user'])
-            ->get()
-            ->groupBy('student_id');
+        $taskOptions = collect($completedRows)->pluck('task_title')
+            ->filter()->unique()->sort()->values()->all();
 
-        $teamMembersByKey = StudentGroup::with(['roles', 'student.user'])
-            ->get()
-            ->groupBy(fn ($m) => ((int) ($m->faculty_id ?? 0)) . '::' . ($m->group_name ?? 'Unassigned'));
+        $statusOptions = collect($completedRows)->pluck('status')
+            ->filter()->unique()->sort()->values()->all();
 
-        $buckets = [];
+        $roleOptions = \App\Support\DeanReportDesk::ROLE_LABELS;
 
-        foreach ($completedTasks as $task) {
-            $studentId = $task->student_id ? (int) $task->student_id : null;
-            if (!$studentId && $task->assigned_to) {
-                $studentId = Student::where('user_id', $task->assigned_to)->value('user_information_id');
-                $studentId = $studentId ? (int) $studentId : null;
-            }
-
-            $membership = $studentId
-                ? ($membershipByStudentId->get($studentId)?->first())
-                : null;
-
-            $facultyId = (int) ($task->faculty_id ?? $membership?->faculty_id ?? 0);
-            $teamName = $membership?->group_name ?: 'Unassigned';
-            $key = $facultyId . '::' . $teamName;
-
-            $fUser = $task->faculty?->user ?? $membership?->faculty?->user;
-            $facultyName = trim(implode(' ', array_filter([
-                $fUser?->last_name,
-                $fUser?->first_name,
-            ]))) ?: ($fUser?->name ?? '—');
-
-            $studentUser = $task->student?->user ?? $task->assignedTo;
-            $studentName = trim(implode(' ', array_filter([
-                $studentUser?->last_name,
-                $studentUser?->first_name,
-                $studentUser?->middle_name,
-            ]))) ?: ($studentUser?->name ?? '—');
-
-            if (!isset($buckets[$key])) {
-                $buckets[$key] = [
-                    'id' => $key,
-                    'team_name' => $teamName,
-                    'faculty_id' => $facultyId,
-                    'faculty_name' => $facultyName,
-                    'page_roles' => [],
-                    'assigned_at' => $task->created_at,
-                    'completed_at' => $task->updated_at,
-                    'tasks' => [],
-                    'members' => [],
-                ];
-            }
-
-            $roleKey = (string) ($task->role ?? '');
-            if ($roleKey !== '') {
-                $buckets[$key]['page_roles'][$roleKey] = $roleLabels[$roleKey] ?? $roleKey;
-            }
-
-            if ($task->created_at && (!$buckets[$key]['assigned_at'] || $task->created_at->lt($buckets[$key]['assigned_at']))) {
-                $buckets[$key]['assigned_at'] = $task->created_at;
-            }
-            if ($task->updated_at && (!$buckets[$key]['completed_at'] || $task->updated_at->gt($buckets[$key]['completed_at']))) {
-                $buckets[$key]['completed_at'] = $task->updated_at;
-            }
-
-            $buckets[$key]['tasks'][] = [
-                'title' => $task->title,
-                'description' => $task->description,
-                'student_name' => $studentName,
-                'role' => $roleKey,
-                'role_label' => $roleLabels[$roleKey] ?? $roleKey,
-                'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
-                'completed_at' => optional($task->updated_at)->format('M d, Y'),
-            ];
-        }
-
-        foreach ($buckets as $key => &$bucket) {
-            $members = $teamMembersByKey->get($key, collect());
-            $bucket['members'] = $members->map(function ($m) use ($roleLabels) {
-                $user = $m->student?->user;
-                $name = trim(implode(' ', array_filter([
-                    $user?->last_name,
-                    $user?->first_name,
-                    $user?->middle_name,
-                ]))) ?: ($user?->name ?? 'Member');
-
-                $roles = $m->roles->pluck('role')->filter()->values();
-                if ($roles->isEmpty() && $m->role) {
-                    $roles = collect([$m->role]);
-                }
-
-                return [
-                    'name' => $name,
-                    'roles' => $roles->map(fn ($r) => $roleLabels[$r] ?? $r)->values()->all(),
-                ];
-            })->values()->all();
-
-            $bucket['page_name'] = !empty($bucket['page_roles'])
-                ? implode(', ', array_values($bucket['page_roles']))
-                : '—';
-            $bucket['assigned_date'] = optional($bucket['assigned_at'])->format('M d, Y') ?? '—';
-            $bucket['date_completed'] = optional($bucket['completed_at'])->format('M d, Y') ?? '—';
-            $bucket['completed_sort'] = optional($bucket['completed_at'])->timestamp ?? 0;
-            $bucket['task_count'] = count($bucket['tasks']);
-            unset($bucket['page_roles'], $bucket['assigned_at'], $bucket['completed_at']);
-        }
-        unset($bucket);
-
-        $teamReports = collect($buckets)
-            ->sortByDesc('completed_sort')
-            ->map(function ($row) {
-                unset($row['completed_sort']);
-                return $row;
-            })
-            ->values();
-
-        return view('dean.reports', compact('teamReports', 'roleLabels'));
+        return view('dean.reports', compact(
+            'completedRows',
+            'studentRows',
+            'activityRows',
+            'teamOptions',
+            'taskOptions',
+            'statusOptions',
+            'roleOptions'
+        ));
     }
 
     public function bulkUpload(Request $request)
