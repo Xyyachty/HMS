@@ -405,7 +405,8 @@
                                     <p class="text-[11px] text-slate-400">{{ $row['role_label'] }}</p>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap {{ $row['status'] === 'Completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-700' }}">
+                                    {{-- Only handed-in work reaches this table, so the badge has one colour. --}}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap bg-emerald-50 text-emerald-600">
                                         {{ $row['status'] }}
                                     </span>
                                 </td>
@@ -603,7 +604,8 @@
                                 <p class="text-[11px] text-slate-400">{{ $row['role_label'] }}</p>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap {{ $row['status'] === 'Completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-700' }}">
+                                {{-- Only handed-in work reaches this table, so the badge has one colour. --}}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap bg-emerald-50 text-emerald-600">
                                     {{ $row['status'] }}
                                 </span>
                             </td>

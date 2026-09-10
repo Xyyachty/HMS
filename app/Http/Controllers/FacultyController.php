@@ -2358,27 +2358,33 @@ class FacultyController extends Controller
             ->sortByDesc(fn ($row) => [$row['percent'], $row['done']])
             ->values();
 
-        // The latest submissions across every team.
+        /* The latest submissions across every team. Submissions, so work that has
+           actually been handed in: a task still being worked on is not a
+           submission, and a report that lists it as one is a to-do list. */
         $teamByStudentId = $rosterRows->keyBy('student_id');
-        $recentActivities = $allTasks->take(6)->map(function (Task $task) use ($teamByStudentId, $roleLabels) {
-            $user = $task->student?->user ?? $task->assignedTo;
-            $name = trim(implode(' ', array_filter([
-                $user?->last_name,
-                $user?->first_name,
-                $user?->middle_name,
-            ]))) ?: ($user?->name ?? 'Unclaimed');
+        $recentActivities = $allTasks
+            ->where('status', 'archived')
+            ->take(6)
+            ->map(function (Task $task) use ($teamByStudentId, $roleLabels) {
+                $user = $task->student?->user ?? $task->assignedTo;
+                $name = trim(implode(' ', array_filter([
+                    $user?->last_name,
+                    $user?->first_name,
+                    $user?->middle_name,
+                ]))) ?: ($user?->name ?? 'Unclaimed');
 
-            return [
-                'date'       => optional($task->updated_at)->format('M d, Y'),
-                'time'       => optional($task->updated_at)->format('g:i A'),
-                'student'    => $name,
-                'user'       => $user,
-                'team'       => $task->group_name ?: ($teamByStudentId->get((int) $task->student_id)?->group_name ?? '—'),
-                'activity'   => $task->title,
-                'role_label' => $roleLabels[$task->role] ?? $task->role,
-                'status'     => $task->status === 'archived' ? 'Completed' : 'Pending',
-            ];
-        })->values();
+                return [
+                    'date'       => optional($task->updated_at)->format('M d, Y'),
+                    'time'       => optional($task->updated_at)->format('g:i A'),
+                    'student'    => $name,
+                    'user'       => $user,
+                    'team'       => $task->group_name ?: ($teamByStudentId->get((int) $task->student_id)?->group_name ?? '—'),
+                    'activity'   => $task->title,
+                    'role_label' => $roleLabels[$task->role] ?? $task->role,
+                    'status'     => 'Completed',
+                ];
+            })
+            ->values();
 
         return view('faculty.reports', compact(
             'teamReports',

@@ -94,7 +94,6 @@ class DeanReportDesk
                     'completed_at' => null,
                     'submitted_count' => 0,
                     'approved_count' => 0,
-                    'overdue' => false,
                 ];
             }
 
@@ -107,6 +106,17 @@ class DeanReportDesk
                 $group['roles'][$roleKey] = ($group['roles'][$roleKey] ?? 0) + ($submitted ? 1 : 0);
             }
 
+            /* A report is a record of work done. An activity still being worked on
+               is not part of one: it is not listed, not counted, and not exported,
+               and it turns up in the diary the team works from instead. */
+            if (!$submitted) {
+                if ($task->created_at && (!$group['assigned_at'] || $task->created_at->lt($group['assigned_at']))) {
+                    $group['assigned_at'] = $task->created_at;
+                }
+                unset($group);
+                continue;
+            }
+
             $group['activity_titles'][(string) $task->title] = true;
 
             $group['activities'][] = [
@@ -115,7 +125,8 @@ class DeanReportDesk
                 'title' => (string) $task->title,
                 'description' => self::firstParagraph((string) $task->description),
                 'student_name' => self::personName($task->student?->user ?? $task->assignedTo) ?: 'Unclaimed',
-                'status' => $approved ? 'Approved' : ($submitted ? 'Submitted' : 'In Progress'),
+                // Handed in either way; this says whether faculty has signed it off.
+                'status' => $approved ? 'Approved' : 'Awaiting approval',
                 'assigned_date' => optional($task->created_at)->format('M d, Y'),
                 'submitted_date' => $submitted ? optional($task->updated_at)->format('M d, Y g:i A') : null,
                 'reviewed_date' => optional($task->feedback_at)->format('M d, Y g:i A'),
@@ -124,14 +135,9 @@ class DeanReportDesk
                 'has_comparison' => (bool) $task->submitted_version_id,
             ];
 
-            if ($submitted) {
-                $group['submitted_count']++;
-            }
+            $group['submitted_count']++;
             if ($approved) {
                 $group['approved_count']++;
-            }
-            if (!$submitted && $task->due_date && $task->due_date->isPast()) {
-                $group['overdue'] = true;
             }
 
             if ($task->created_at && (!$group['assigned_at'] || $task->created_at->lt($group['assigned_at']))) {
@@ -152,11 +158,10 @@ class DeanReportDesk
                 continue;
             }
 
-            $total = count($group['activities']);
             $group['task_description'] = implode(' · ', array_keys($group['activity_titles']));
             $group['roles'] = self::roleBadges($group['roles']);
             $group['total_activities'] = array_sum(array_column($group['roles'], 'count'));
-            $group['status'] = self::statusFor($group, $total);
+            $group['status'] = 'Completed';
             $group['assigned_date'] = optional($group['assigned_at'])->format('M d, Y') ?? '—';
             $group['completed_date'] = optional($group['completed_at'])->format('M d, Y') ?? '—';
             $group['assigned_sort'] = optional($group['assigned_at'])->timestamp ?? 0;
@@ -164,7 +169,7 @@ class DeanReportDesk
 
             unset(
                 $group['assigned_at'], $group['completed_at'], $group['activity_titles'],
-                $group['submitted_count'], $group['approved_count'], $group['overdue']
+                $group['submitted_count'], $group['approved_count']
             );
 
             $rows[] = $group;
@@ -362,21 +367,6 @@ class DeanReportDesk
         }
 
         return $out;
-    }
-
-    private static function statusFor(array $group, int $total): string
-    {
-        if ($group['overdue']) {
-            return 'Overdue';
-        }
-        if ($group['approved_count'] === $total && $total > 0) {
-            return 'Completed';
-        }
-        if ($group['submitted_count'] === $total && $total > 0) {
-            return 'Submitted';
-        }
-
-        return 'In Progress';
     }
 
     private static function performanceStatus(int $assigned, int $submitted, int $approved, int $percent): string

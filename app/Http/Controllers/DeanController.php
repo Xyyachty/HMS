@@ -492,7 +492,11 @@ class DeanController extends Controller
         $taskOptions = collect($completedRows)->pluck('task_title')
             ->filter()->unique()->sort()->values()->all();
 
+        /* Completed tasks are all completed, so the filter would offer one choice
+           on that tab. It earns its place on Student Performance, whose rows say
+           how far along each student is, so it offers what all three tabs hold. */
         $statusOptions = collect($completedRows)->pluck('status')
+            ->merge(collect($studentRows)->pluck('status'))
             ->filter()->unique()->sort()->values()->all();
 
         $roleOptions = \App\Support\DeanReportDesk::ROLE_LABELS;

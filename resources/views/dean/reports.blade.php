@@ -398,12 +398,12 @@ function rpGo(page) { rpPage = page; rpRender(); }
 function rpSetPerPage(value) { rpPerPage = parseInt(value, 10) || 10; rpPage = 1; rpRender(); }
 
 /* ── Row templates ──────────────────────────────────────────────────────── */
+/* Completed tasks are the only tasks reported, so the tints left here are for
+   the approval line inside the modal and for how far along each student is. */
 const RP_STATUS_TINT = {
     'Completed': 'bg-emerald-50 text-emerald-700',
     'Approved': 'bg-emerald-50 text-emerald-700',
-    'Submitted': 'bg-sky-50 text-sky-700',
-    'In Progress': 'bg-amber-50 text-amber-700',
-    'Overdue': 'bg-rose-50 text-rose-700',
+    'Awaiting approval': 'bg-sky-50 text-sky-700',
     'Awaiting review': 'bg-sky-50 text-sky-700',
     'On track': 'bg-indigo-50 text-indigo-700',
     'Behind': 'bg-rose-50 text-rose-700',
