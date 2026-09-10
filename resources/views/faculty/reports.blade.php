@@ -492,7 +492,6 @@
                     <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:24%">Page Name</th>
                     <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Assigned Date</th>
                     <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Date Completed</th>
-                    <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:12%">Final Grade</th>
                     <th class="text-center px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Action</th>
                 </tr>
             </thead>
@@ -508,11 +507,6 @@
                         </td>
                         <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{{ $report['assigned_date'] }}</td>
                         <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{{ $report['date_completed'] }}</td>
-                        <td class="px-4 py-3">
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                {{ $report['final_grade'] }}
-                            </span>
-                        </td>
                         <td class="px-4 py-3 text-center">
                             <button
                                 type="button"
@@ -638,7 +632,7 @@
         </div>
 
         <div class="overflow-y-auto flex-1 p-4 space-y-4">
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
                     <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
                     <p id="teamReportAssigned" class="text-sm font-semibold text-slate-700 mt-0.5">—</p>
@@ -650,10 +644,6 @@
                 <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
                     <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tasks</p>
                     <p id="teamReportTaskCount" class="text-sm font-semibold text-slate-700 mt-0.5">0</p>
-                </div>
-                <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Final Grade</p>
-                    <p id="teamReportGrade" class="text-sm font-semibold text-amber-700 mt-0.5">TBA</p>
                 </div>
             </div>
 
@@ -728,7 +718,6 @@
         document.getElementById('teamReportAssigned').textContent = report.assigned_date || '—';
         document.getElementById('teamReportCompleted').textContent = report.date_completed || '—';
         document.getElementById('teamReportTaskCount').textContent = String(report.task_count ?? (report.tasks || []).length);
-        document.getElementById('teamReportGrade').textContent = report.final_grade || 'TBA';
 
         const membersBody = document.getElementById('teamReportMembersBody');
         const members = report.members || [];

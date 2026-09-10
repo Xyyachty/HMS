@@ -584,7 +584,6 @@ class DeanController extends Controller
             $bucket['date_completed'] = optional($bucket['completed_at'])->format('M d, Y') ?? '—';
             $bucket['completed_sort'] = optional($bucket['completed_at'])->timestamp ?? 0;
             $bucket['task_count'] = count($bucket['tasks']);
-            $bucket['final_grade'] = 'TBA';
             unset($bucket['page_roles'], $bucket['assigned_at'], $bucket['completed_at']);
         }
         unset($bucket);
