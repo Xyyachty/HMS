@@ -856,8 +856,18 @@
         if (typeof toast === 'function') toast('Styles reset for selection');
     }
 
-    function resetAllDesign() {
-        if (!confirm('Reset all design customizations? This will restore the page to its original default appearance.')) return;
+    async function resetAllDesign() {
+        /* Asked in the app's own dialog rather than the browser's, which prints the
+           deployment's hostname over the site being designed. askConfirm lives in the
+           shell this panel is loaded into. */
+        const ok = typeof askConfirm === 'function'
+            ? await askConfirm(
+                'Reset all design customizations?',
+                'This restores the page to its original default appearance. Anything styled by hand is lost.',
+                'Reset everything'
+              )
+            : confirm('Reset all design customizations? This will restore the page to its original default appearance.');
+        if (!ok) return;
         postToTemplate({ type: 'reset-all' });
         window.selectedElementId = null;
         window.templateCustomizations = {};

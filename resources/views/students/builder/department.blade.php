@@ -89,6 +89,7 @@
     @endphp
     <title>Hotel Management System | {{ $moduleLabel }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
@@ -1340,6 +1341,38 @@
         }
 
         /**
+         * Ask before something that cannot be taken back quietly.
+         *
+         * window.confirm paints the deployment's hostname over the page a student
+         * is designing - "hms-9ojw.onrender.com says" above the question - which
+         * reads as the browser interrupting rather than as the app asking. This is
+         * the same question in the builder's own panel, and it falls back to the
+         * browser dialog only if the bundle failed to load: a question that never
+         * appears is worse than an ugly one.
+         */
+        async function askConfirm(title, text, confirmText) {
+            if (!window.Swal) return window.confirm(title + '\n\n' + text);
+
+            const result = await window.Swal.fire({
+                title: title,
+                text: text,
+                icon: 'question',
+                iconColor: '#22d3ee',
+                background: '#18181b',
+                color: '#fafafa',
+                showCancelButton: true,
+                confirmButtonText: confirmText || 'Continue',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#0891b2',
+                cancelButtonColor: '#3f3f46',
+                reverseButtons: true,
+                focusCancel: true,
+            });
+
+            return result.isConfirmed;
+        }
+
+        /**
          * Hand this module's website work to faculty.
          *
          * Kept apart from saveTemplateDraft() on purpose: a draft save is a
@@ -1353,10 +1386,11 @@
                 return;
             }
 
-            const ok = window.confirm(
-                'Submit this work to your faculty for review?\n\n'
-                + 'Your open tasks for this module will be handed in as they look right now. '
-                + 'You can keep editing afterwards, but faculty reviews what you submit now.'
+            const ok = await askConfirm(
+                'Submit this work for review?',
+                'Your open tasks for this module will be handed in as they look right now. '
+                + 'You can keep editing afterwards, but faculty reviews what you submit now.',
+                'Submit for review'
             );
             if (!ok) return;
 
