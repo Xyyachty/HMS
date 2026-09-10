@@ -83,7 +83,7 @@
     <div id="blockTabBar" class="hidden px-4 md:px-6 pt-3 pb-3 border-b border-slate-100 bg-slate-50/60 flex-wrap gap-2">
         <button type="button" onclick="switchBlockTab('')" data-block-tab=""
             class="block-tab-btn px-3.5 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:text-brand transition">
-            All Blocks
+            All
         </button>
         @foreach ($blockTabs as $letter)
             <button type="button" onclick="switchBlockTab('{{ $letter }}')" data-block-tab="{{ $letter }}"
