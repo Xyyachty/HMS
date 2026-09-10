@@ -138,9 +138,8 @@
                     <th class="rp-th w-10">#</th>
                     <th class="rp-th">Team</th>
                     <th class="rp-th">Task</th>
-                    <th class="rp-th">Included Roles (No. of Activities)</th>
                     <th class="rp-th text-center">Total<br>Activities</th>
-                    <th class="rp-th">Assigned Date</th>
+                    <th class="rp-th">Date Assigned</th>
                     <th class="rp-th">Date Completed</th>
                     <th class="rp-th">Status</th>
                     <th class="rp-th">Action</th>
@@ -433,17 +432,15 @@ function rpRowHtml(row, index) {
 }
 
 function rpCompletedRow(row, index) {
-    const roles = (row.roles || []).map((r) =>
-        '<span class="rp-chip ' + (RP_ROLE_TINT[r.label] || 'bg-slate-100 text-slate-600') + '">' +
-        rpEsc(r.label) + ' (' + r.count + ')</span>').join(' ') || '<span class="text-slate-300 text-xs">—</span>';
-
+    /* The role badges are not a column any more. The roles still decide what the
+       role filter matches and how View Details breaks the task down, so the data
+       stays on the row — only the cell is gone. */
     return '<tr class="rp-row">' +
         '<td class="rp-td text-slate-400 font-semibold">' + index + '</td>' +
         '<td class="rp-td"><p class="font-bold text-slate-800">' + rpEsc(row.team_name) + '</p>' +
             '<p class="text-[11px] text-slate-400">' + row.member_count + ' member' + (row.member_count === 1 ? '' : 's') + '</p></td>' +
         '<td class="rp-td"><p class="font-extrabold text-slate-800 text-[12px] tracking-wide">' + rpEsc(row.task_title) + '</p>' +
             '<p class="text-[11px] text-slate-400 line-clamp-2">' + rpEsc(row.task_description) + '</p></td>' +
-        '<td class="rp-td"><div class="flex flex-wrap gap-1">' + roles + '</div></td>' +
         '<td class="rp-td text-center font-extrabold text-slate-700">' + row.total_activities + '</td>' +
         '<td class="rp-td whitespace-nowrap">' + rpEsc(row.assigned_date) + '</td>' +
         '<td class="rp-td whitespace-nowrap">' + rpEsc(row.completed_date) + '</td>' +
