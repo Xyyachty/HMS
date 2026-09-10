@@ -2692,10 +2692,13 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
           pulls the rotation out from under itself and leaves a gap under the
           bar. Its colours, spacing and background still edit. */}
       <section className="hero" data-hms-section="hero" data-hms-bg-target="1" data-hms-no-move="1">
-        <div className="hero-bg" data-hms-bg-target="1">
+        {/* Full-bleed layers of the hero, pinned with it: each fills the hero
+            exactly, so dragging one looks like dragging the hero and leaves the
+            photographs sitting away from the words they belong to. */}
+        <div className="hero-bg" data-hms-bg-target="1" data-hms-no-move="1">
           <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} />
         </div>
-        <div className="hero-overlay"></div>
+        <div className="hero-overlay" data-hms-no-move="1"></div>
         <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 1.5rem', maxWidth: 760 }}>
           <p data-hms-content-kind="hotelInfo" data-hms-content-id="tagline" style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '1.25rem' }}>{tagline}</p>
           <h1 className="font-display hero-title" data-hms-move-root="1" style={{ fontSize: '4.2rem', fontWeight: 900, lineHeight: 1.08, marginBottom: '1.25rem', textAlign: 'center' }}>

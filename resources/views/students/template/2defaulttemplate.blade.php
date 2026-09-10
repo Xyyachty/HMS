@@ -3326,7 +3326,9 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
           pulls the rotation out from under itself and leaves a gap under the
           bar. Its colours, spacing and background still edit. */}
       <div className="hero-split" data-hms-section="hero" data-hms-no-move="1">
-        <div className="hero-img" data-hms-bg-target="1">
+        {/* The hero's own picture panel, pinned with it: it fills its half of
+            the hero exactly, so dragging it looks like dragging the hero. */}
+        <div className="hero-img" data-hms-bg-target="1" data-hms-no-move="1">
           <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} />
         </div>
         <div className="hero-content">
