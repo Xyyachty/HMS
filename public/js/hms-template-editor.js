@@ -298,11 +298,20 @@
     };
   }
 
+  /* A layer a component paints and repaints - the photographs a carousel
+     rotates through, say. It is not content and it is not a container a student
+     arranges: it is where a component draws, so it is passed over and the thing
+     behind it is what a click selects. */
+  function isBackgroundLayer(el) {
+    return !!(el && el.nodeType === 1 && el.hasAttribute && el.hasAttribute('data-hms-bg-layer'));
+  }
+
   function isEditableTarget(el, allowContainers) {
     if (!el || el === document.body || el === document.documentElement) return false;
     if (isEditorChrome(el)) return false;
     if (el.id === 'hms-user-canvas' || el.id === 'hms-section-rail') return false;
     if (el.closest('[data-hms-no-edit]')) return false;
+    if (isBackgroundLayer(el)) return false;
 
     const tag = el.tagName;
     if (['SCRIPT', 'STYLE', 'LINK', 'META', 'NOSCRIPT', 'HTML', 'HEAD'].includes(tag)) return false;
@@ -361,7 +370,7 @@
           // isEditableTarget entirely — without this it hands back the header.
           if (isHeaderLocked(container)) return null;
           while (container && container !== document.body) {
-            if (container.hasAttribute('data-hms-no-edit')) {
+            if (container.hasAttribute('data-hms-no-edit') || isBackgroundLayer(container)) {
               container = container.parentElement;
               continue;
             }
@@ -392,7 +401,7 @@
       let container = textParent || event.target;
       if (isHeaderLocked(container)) return null;
       while (container && container !== document.body) {
-        if (container.hasAttribute('data-hms-no-edit')) {
+        if (container.hasAttribute('data-hms-no-edit') || isBackgroundLayer(container)) {
           container = container.parentElement;
           continue;
         }
@@ -931,20 +940,21 @@
     return el.childElementCount === 0 || el.getAttribute('data-hms-text') === '1';
   }
 
-  /* The hotel's name is React's to render, from the one value the team stores.
-     A text edit saved on an ancestor - the footer as a whole, say - writes into
-     the first text node it finds, and in the footer that node is the name
-     itself, so a name typed there once would sit on top of the shared value and
-     win every re-render afterwards. The name is read and written past, not
-     through: the slot is left to React and the rest of the element still
-     edits. */
-  function brandSlotOwner(node) {
+  /* Text the page owns rather than the student: the hotel's name, the line built
+     from it, and the tool chrome a component paints (a carousel's dots, a
+     "Change image" button). A text edit saved on an ancestor writes into the
+     first text node it finds, which in the footer is the name itself and in the
+     hero is a button's label, so an edit made once would sit on top of what the
+     page renders and win every re-render after. Those slots are read and written
+     past; the rest of the element still edits. */
+  function lockedSlotOwner(node) {
     const el = node && node.nodeType === 3 ? node.parentElement : node;
-    return (el && el.closest && el.closest('[data-hms-brand-name],[data-hms-brand-text]')) || null;
+    return (el && el.closest
+      && el.closest('[data-hms-brand-name],[data-hms-brand-text],[data-hms-no-edit]')) || null;
   }
 
   function isBrandLocked(node) {
-    return !!brandSlotOwner(node);
+    return !!lockedSlotOwner(node);
   }
 
   /**
@@ -954,7 +964,7 @@
    * would name the hotel "2026 Something. All rights reserved."
    */
   function adoptStrandedBrandName(text, slot) {
-    const owner = brandSlotOwner(slot);
+    const owner = lockedSlotOwner(slot);
     if (!owner || !owner.hasAttribute('data-hms-brand-name')) return;
     const name = String(text == null ? '' : text).trim();
     if (!name) return;
@@ -990,8 +1000,9 @@
 
   function saveElementState(el) {
     if (!el) return;
-    // Last line of defence: nothing header-shaped is ever written to customizations.
-    if (isHeaderLocked(el)) return;
+    // Last line of defence: nothing header-shaped is ever written to customizations,
+    // and nothing a component repaints for itself.
+    if (isHeaderLocked(el) || isBackgroundLayer(el)) return;
     if (!canEditCurrentPage()) {
       blockEditToast();
       return;
@@ -1054,6 +1065,17 @@
     customizations[id] = entry;
     rebuildFreePosSheet();
     notifyChanged();
+  }
+
+  /* Undo what a stored entry had already painted on, without touching what the
+     component itself sets - a slide's own photograph is written inline by the
+     page, so background-image is left exactly as it is. */
+  function clearAppliedStyles(el) {
+    if (!el || !el.style) return;
+    STYLE_PROPS.forEach((prop) => {
+      if (prop === 'background-image') return;
+      el.style.removeProperty(prop);
+    });
   }
 
   function applyEntry(el, entry) {
@@ -1281,6 +1303,18 @@
       // stale text entry would fight every re-render.
       if (isHeaderLocked(el) || el.hasAttribute('data-hms-brand-name')) {
         delete customizations[id];
+        migrated = true;
+        return;
+      }
+
+      /* A slide dragged out of place, or hidden, before the carousel's layers
+         were left to the carousel. Kept, the hero jumps or goes blank when that
+         slide's turn comes round and the slider looks stuck. */
+      if (isBackgroundLayer(el)) {
+        delete customizations[id];
+        clearAppliedStyles(el);
+        el.removeAttribute('data-hms-free-position');
+        el.removeAttribute('data-hms-move-mode');
         migrated = true;
         return;
       }

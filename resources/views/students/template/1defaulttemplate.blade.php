@@ -2609,6 +2609,11 @@ function HeroSlider({ slides, canEdit }) {
       {list.map((slide, i) => (
         <div
           key={slide.id}
+          /* The carousel owns where these sit and which one is showing. Dragging
+             or hiding one by hand pins it out of place or blanks the hero when
+             its turn comes round, so the layer is not selectable and the hero
+             behind it is what a click reaches. Change image replaces them. */
+          data-hms-bg-layer="1"
           className={`hero-slide${i === active ? ' is-active' : ''}`}
           style={{ backgroundImage: 'url(' + slide.img + ')' }}
         ></div>
