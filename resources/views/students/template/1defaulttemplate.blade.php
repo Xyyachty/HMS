@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>SPC HOTEL</title>
+<title>{{ $hotelDefaults['name'] ?? 'SPC HOTEL' }}</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
@@ -1182,11 +1182,21 @@ const EXPERIENCES = [
   { icon: 'fa-car', title: 'Concierge & Transport', desc: 'Private chauffeur, airport transfers, and curated city experiences on demand.' },
 ];
 
+/* Sample copy names the hotel, and a team that renames theirs must not be left
+   reading about SPC Hotel in its own testimonials. The placeholder is written as
+   a token and filled in at render from the one stored name, so there is nothing
+   to keep in step by hand. */
+const HOTEL_TOKEN = /\{hotel\}/g;
+
+function withHotelName(text, brandName) {
+  return String(text == null ? '' : text).replace(HOTEL_TOKEN, brandName || 'SPC HOTEL');
+}
+
 const TESTIMONIALS = [
-  { text: '"SPC Hotel redefines what luxury hospitality means. From the moment we arrived, every interaction felt personal and every detail was impeccable."', name: 'Catherine Morel', role: 'Travel Editor, Conde Nast', img: 'https://picsum.photos/seed/guest1/100/100.jpg' },
-  { text: '"I have stayed at hundreds of hotels worldwide, and SPC Hotel stands apart. The Presidential Suite is a masterpiece of design."', name: 'Alexander Reinhardt', role: 'CEO, Meridian Group', img: 'https://picsum.photos/seed/guest2/100/100.jpg' },
+  { text: '"{hotel} redefines what luxury hospitality means. From the moment we arrived, every interaction felt personal and every detail was impeccable."', name: 'Catherine Morel', role: 'Travel Editor, Conde Nast', img: 'https://picsum.photos/seed/guest1/100/100.jpg' },
+  { text: '"I have stayed at hundreds of hotels worldwide, and {hotel} stands apart. The Presidential Suite is a masterpiece of design."', name: 'Alexander Reinhardt', role: 'CEO, Meridian Group', img: 'https://picsum.photos/seed/guest2/100/100.jpg' },
   { text: '"Dinner at Lumiere was one of the most extraordinary culinary experiences of my life. The tasting menu was poetry on a plate."', name: 'Isabelle Fontaine', role: 'Michelin Guide Inspector', img: 'https://picsum.photos/seed/guest3/100/100.jpg' },
-  { text: '"We chose SPC Hotel for our anniversary and it exceeded every expectation. The spa, the rooftop pool, the Gilded Bar \u2014 pure magic."', name: 'David & Sarah Chen', role: 'Returning Guests', img: 'https://picsum.photos/seed/guest4/100/100.jpg' }
+  { text: '"We chose {hotel} for our anniversary and it exceeded every expectation. The spa, the rooftop pool, the Gilded Bar \u2014 pure magic."', name: 'David & Sarah Chen', role: 'Returning Guests', img: 'https://picsum.photos/seed/guest4/100/100.jpg' }
 ];
 
 const LUMIERE_MENU = [
@@ -1995,13 +2005,19 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
   );
 }
 
-function MobileMenu({ open, onClose, onNavigate, links, cardImages, page }) {
+function MobileMenu({ open, onClose, onNavigate, links, cardImages, page, brandName }) {
   const items = [...(links || [])];
   // Passed only so the menu re-renders when the shared logo changes.
   void cardImages;
   return (
     <div className={`mobile-menu${open ? ' open' : ''}`}>
       <BrandLogo size={54} />
+      {/* The hotel's name belongs here too: on a phone this menu is the header,
+          and a logo on its own says nothing to a guest who has just arrived. */}
+      <span data-hms-brand-name="1" data-hms-no-edit="1"
+        style={{ fontSize: '0.9rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', marginTop: '-0.75rem' }}>
+        {brandName}
+      </span>
       {items.map(item => (
         <button key={item.id || item.key} onClick={() => { onNavigate(item.key); onClose(); }}>
           {item.label}
@@ -2625,7 +2641,7 @@ function HeroSlider({ slides, canEdit }) {
 }
 
 
-function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRemovePartner, onBookNow }) {
+function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRemovePartner, onBookNow, brandName }) {
   // Passed only so the promo, partner and team pictures re-render once one is replaced.
   void cardImages;
   /* The landing page says what the hotel is. Both lines come from the team's
@@ -2634,7 +2650,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
   const info = hotelInfo || {};
   const tagline = (info.tagline || '').trim() || 'Boutique Luxury';
   const blurb = (info.description || '').trim()
-    || 'Nestled in the heart of the city, SPC Hotel offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.';
+    || ('Nestled in the heart of the city, ' + (brandName || 'SPC HOTEL') + ' offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.');
   const roomList = rooms && rooms.length ? rooms : [];
   const menuList = menus || [];
   const partnerList = partners && partners.length ? partners : DEFAULT_PARTNERS;
@@ -4394,9 +4410,11 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• EXPERIENCE PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function ExperiencePage({ onNavigate }) {
+function ExperiencePage({ onNavigate, brandName }) {
   const [idx, setIdx] = useState(0);
+  // The quote as the hotel's own guests would have written it.
   const t = TESTIMONIALS[idx];
+  const quote = withHotelName(t.text, brandName);
 
   return (
     <>
@@ -4421,7 +4439,7 @@ function ExperiencePage({ onNavigate }) {
             <img src={t.img} alt="Guest" style={{ width: 72, height: 72, borderRadius: '50%', border: '2px solid var(--accent)', objectFit: 'cover', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 220 }}>
               <i className="fa-solid fa-quote-left" style={{ color: 'var(--accent)', opacity: 0.35, fontSize: '1.3rem', marginBottom: '0.6rem', display: 'block' }}></i>
-              <p className="font-display" style={{ fontSize: '1.05rem', fontStyle: 'italic', lineHeight: 1.6, marginBottom: '0.75rem' }}>{t.text}</p>
+              <p className="font-display" style={{ fontSize: '1.05rem', fontStyle: 'italic', lineHeight: 1.6, marginBottom: '0.75rem' }}>{quote}</p>
               <div>
                 <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{t.name}</span>
                 <span style={{ color: 'var(--fg-muted)', fontSize: '0.75rem', marginLeft: '0.4rem' }}>{t.role}</span>
@@ -5946,7 +5964,8 @@ function App() {
         onAddRoom={addRoom}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
-      />
+        brandName={brandName}
+        />
     ),
     rooms: (
       <RoomsPage
@@ -5989,7 +6008,7 @@ function App() {
         rooms={rooms}
       />
     ),
-    experience: <ExperiencePage onNavigate={navigateTo} />,
+    experience: <ExperiencePage onNavigate={navigateTo} brandName={brandName} />,
     amenities: (
       <AmenitiesPage
         amenities={amenities}
@@ -6123,7 +6142,8 @@ function App() {
         links={navLinks}
         cardImages={cardImages}
         page={page}
-      />
+        brandName={brandName}
+        />
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
       <Footer onNavigate={navigateTo} cardImages={cardImages} page={page} brandName={brandName} hotelInfo={hotelInfo} socialLinks={socialLinks} />
       <HeaderEditModal edit={headerEditDialog} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />

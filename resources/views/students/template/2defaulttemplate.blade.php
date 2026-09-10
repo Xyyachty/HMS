@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>SPC HOTEL</title>
+<title>{{ $hotelDefaults['name'] ?? 'SPC HOTEL' }}</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
@@ -913,11 +913,21 @@ const EXPERIENCES = [
   { icon: 'fa-car', title: 'Concierge & Transport', desc: 'Private chauffeur, airport transfers, and curated city experiences on demand.', img: 'https://picsum.photos/seed/luxurycar/600/400.jpg' }
 ];
 
+/* Sample copy names the hotel, and a team that renames theirs must not be left
+   reading about SPC Hotel in its own testimonials. The placeholder is written as
+   a token and filled in at render from the one stored name, so there is nothing
+   to keep in step by hand. */
+const HOTEL_TOKEN = /\{hotel\}/g;
+
+function withHotelName(text, brandName) {
+  return String(text == null ? '' : text).replace(HOTEL_TOKEN, brandName || 'SPC HOTEL');
+}
+
 const TESTIMONIALS = [
-  { text: 'SPC Hotel redefines what luxury hospitality means. From the moment we arrived, every interaction felt personal and every detail was impeccable.', name: 'Catherine Morel', role: 'Travel Editor, Conde Nast', img: 'https://picsum.photos/seed/guest1/100/100.jpg' },
-  { text: 'I have stayed at hundreds of hotels worldwide, and SPC Hotel stands apart. The Presidential Suite is a masterpiece of design.', name: 'Alexander Reinhardt', role: 'CEO, Meridian Group', img: 'https://picsum.photos/seed/guest2/100/100.jpg' },
+  { text: '{hotel} redefines what luxury hospitality means. From the moment we arrived, every interaction felt personal and every detail was impeccable.', name: 'Catherine Morel', role: 'Travel Editor, Conde Nast', img: 'https://picsum.photos/seed/guest1/100/100.jpg' },
+  { text: 'I have stayed at hundreds of hotels worldwide, and {hotel} stands apart. The Presidential Suite is a masterpiece of design.', name: 'Alexander Reinhardt', role: 'CEO, Meridian Group', img: 'https://picsum.photos/seed/guest2/100/100.jpg' },
   { text: 'Dinner at Lumiere was one of the most extraordinary culinary experiences of my life. The tasting menu was poetry on a plate.', name: 'Isabelle Fontaine', role: 'Michelin Guide Inspector', img: 'https://picsum.photos/seed/guest3/100/100.jpg' },
-  { text: 'We chose SPC Hotel for our anniversary and it exceeded every expectation. The spa, the rooftop pool, the Gilded Bar \u2014 pure magic.', name: 'David & Sarah Chen', role: 'Returning Guests', img: 'https://picsum.photos/seed/guest4/100/100.jpg' }
+  { text: 'We chose {hotel} for our anniversary and it exceeded every expectation. The spa, the rooftop pool, the Gilded Bar \u2014 pure magic.', name: 'David & Sarah Chen', role: 'Returning Guests', img: 'https://picsum.photos/seed/guest4/100/100.jpg' }
 ];
 
 const LUMIERE_MENU = [
@@ -2684,7 +2694,7 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
   );
 }
 
-function MobileMenu({ open, onClose, onNav, links, cardImages }) {
+function MobileMenu({ open, onClose, onNav, links, cardImages, brandName }) {
   const items = [
     ...(links || []),
     { key: 'booking', label: 'Book Now' },
@@ -2694,6 +2704,12 @@ function MobileMenu({ open, onClose, onNav, links, cardImages }) {
   return (
     <div className={`mobile-menu${open ? ' open' : ''}`}>
       <BrandLogo size={54} />
+      {/* The hotel's name belongs here too: on a phone this menu is the header,
+          and a logo on its own says nothing to a guest who has just arrived. */}
+      <span data-hms-brand-name="1" data-hms-no-edit="1"
+        style={{ fontSize: '0.9rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', marginTop: '-0.75rem' }}>
+        {brandName}
+      </span>
       {items.map(i => <button key={i.id || i.key} onClick={() => { onNav(i.key); onClose(); }}>{i.label}</button>)}
     </div>
   );
@@ -3236,7 +3252,7 @@ function HeroSlider({ slides, canEdit }) {
           key={slide.id}
           className={`hero-slide-img${i === active ? ' is-active' : ''}`}
           src={slide.img}
-          alt="SPC Hotel"
+          alt={brandName}
         />
       ))}
       <div className="hero-dots" data-hms-no-edit="1">
@@ -3266,7 +3282,7 @@ function HeroSlider({ slides, canEdit }) {
   );
 }
 
-function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, onBookNow }) {
+function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, onBookNow, brandName }) {
   const roomList = rooms && rooms.length ? rooms : [];
   /* Both lines come from the team's Hotel Information, which starts as the
      concept faculty approved and falls back to the template's own copy while
@@ -3274,7 +3290,7 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
   const info = hotelInfo || {};
   const tagline = (info.tagline || '').trim() || 'Est. 1923';
   const blurb = (info.description || '').trim()
-    || 'Nestled in the heart of the city, SPC Hotel offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.';
+    || ('Nestled in the heart of the city, ' + (brandName || 'SPC HOTEL') + ' offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.');
   const menuList = menus || [];
 
   const handleAddRoom = (e) => {
@@ -4030,9 +4046,11 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, o
 
 
 /* â•â•â•â•â•â•â• EXPERIENCE â•â•â•â•â•â•â• */
-function ExperiencePage({ onNav, canEdit, onToast, cardImages }) {
+function ExperiencePage({ onNav, canEdit, onToast, cardImages, brandName }) {
   const [idx, setIdx] = useState(0);
+  // The quote as the hotel's own guests would have written it.
   const t = TESTIMONIALS[idx];
+  const quote = withHotelName(t.text, brandName);
   void cardImages;
   const guestImg = resolveCardImg('testimonial', String(idx), t.img);
   return (
@@ -4077,7 +4095,7 @@ function ExperiencePage({ onNav, canEdit, onToast, cardImages }) {
           <div className="testi-flex" style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
             <img src={guestImg} alt="Guest" style={{ width: 68, height: 68, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', objectFit: 'cover', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 220 }}>
-              <p className="font-display" style={{ fontSize: '1.2rem', fontStyle: 'italic', lineHeight: 1.6, marginBottom: '0.85rem', color: 'rgba(247,244,239,0.95)' }}>{t.text}</p>
+              <p className="font-display" style={{ fontSize: '1.2rem', fontStyle: 'italic', lineHeight: 1.6, marginBottom: '0.85rem', color: 'rgba(247,244,239,0.95)' }}>{quote}</p>
               <div>
                 <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{t.name}</span>
                 <span style={{ opacity: 0.6, fontSize: '0.78rem', marginLeft: '0.4rem' }}>{t.role}</span>
@@ -4748,7 +4766,7 @@ function BookingPage({ onToast, rooms, onCreateBooking }) {
         <div className="booking-card">
           <div className="booking-layout" style={{ display: 'flex' }}>
             <div className="booking-sidebar" style={{ flex: '0 0 280px' }}>
-              <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem' }}>Why SPC Hotel</h3>
+              <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem' }}>Why {brandName}</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {[
                   { icon: 'fa-shield-halved', text: 'Free cancellation up to 48h before check-in' },
@@ -5579,7 +5597,8 @@ function App() {
           () => navigateTo('rooms'),
           'Sign in to book a room. It takes a moment, and you will come straight back.'
         )}
-      />
+        brandName={brandName}
+        />
     ),
     rooms: (
       <RoomsPage
@@ -5623,7 +5642,7 @@ function App() {
         rooms={rooms}
       />
     ),
-    experience: <ExperiencePage onNav={navigateTo} onToast={showToast} canEdit={canEditExperiences} cardImages={cardImages} />,
+    experience: <ExperiencePage onNav={navigateTo} onToast={showToast} canEdit={canEditExperiences} cardImages={cardImages} brandName={brandName} />,
     amenities: (
       <AmenitiesPage
         amenities={amenities}
@@ -5742,7 +5761,8 @@ function App() {
         onNav={navigateTo}
         links={navLinks}
         cardImages={cardImages}
-      />
+        brandName={brandName}
+        />
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
       <Footer onNav={navigateTo} cardImages={cardImages} page={page} brandName={brandName} hotelInfo={hotelInfo} socialLinks={socialLinks} />
       <HeaderEditModal edit={headerEditDialog} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />
