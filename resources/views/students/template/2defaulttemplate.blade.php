@@ -4923,7 +4923,7 @@ function Footer({ onNav, cardImages, page, brandName, hotelInfo, socialLinks }) 
           </div>
         </div>
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <span style={{ fontSize: '0.72rem', color: 'rgba(247,244,239,0.35)' }}>{new Date().getFullYear()} {brandName}. All rights reserved.</span>
+          <span data-hms-brand-text="1" data-hms-no-edit="1" style={{ fontSize: '0.72rem', color: 'rgba(247,244,239,0.35)' }}>{new Date().getFullYear()} {brandName}. All rights reserved.</span>
           <div style={{ display: 'flex', gap: '1.25rem' }}>
             <a href="#" style={{ fontSize: '0.72rem' }}>Privacy Policy</a>
             <a href="#" style={{ fontSize: '0.72rem' }}>Terms of Service</a>

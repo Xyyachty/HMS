@@ -931,21 +931,61 @@
     return el.childElementCount === 0 || el.getAttribute('data-hms-text') === '1';
   }
 
+  /* The hotel's name is React's to render, from the one value the team stores.
+     A text edit saved on an ancestor - the footer as a whole, say - writes into
+     the first text node it finds, and in the footer that node is the name
+     itself, so a name typed there once would sit on top of the shared value and
+     win every re-render afterwards. The name is read and written past, not
+     through: the slot is left to React and the rest of the element still
+     edits. */
+  function brandSlotOwner(node) {
+    const el = node && node.nodeType === 3 ? node.parentElement : node;
+    return (el && el.closest && el.closest('[data-hms-brand-name],[data-hms-brand-text]')) || null;
+  }
+
+  function isBrandLocked(node) {
+    return !!brandSlotOwner(node);
+  }
+
+  /**
+   * Carry a name stranded in an old per-element edit over to the one value the
+   * whole site reads. Only from the name's own slot: the copyright line is
+   * built from the name rather than being it, and adopting that whole sentence
+   * would name the hotel "2026 Something. All rights reserved."
+   */
+  function adoptStrandedBrandName(text, slot) {
+    const owner = brandSlotOwner(slot);
+    if (!owner || !owner.hasAttribute('data-hms-brand-name')) return;
+    const name = String(text == null ? '' : text).trim();
+    if (!name) return;
+    const content = window.HMSSiteContent;
+    if (!content || typeof content.setBrandName !== 'function') return;
+    if (typeof content.hasStoredBrandName === 'function' && content.hasStoredBrandName()) return;
+    content.setBrandName(name);
+  }
+
+  /** The node an element's text is read from and written back into. */
+  function textSlot(el) {
+    if (!el) return null;
+    return textIsWholeElement(el) ? el : firstTextNode(el);
+  }
+
   /** Read the editable text of an element, including multi-child ones. */
   function readEditableText(el) {
-    if (textIsWholeElement(el)) return el.innerText;
-    const node = firstTextNode(el);
-    return node ? node.nodeValue : null;
+    const slot = textSlot(el);
+    if (!slot || isBrandLocked(slot)) return null;
+    return slot === el ? el.innerText : slot.nodeValue;
   }
 
   /** Write text back into the same slot readEditableText took it from. */
   function writeEditableText(el, text) {
-    if (textIsWholeElement(el)) {
+    const slot = textSlot(el);
+    if (!slot || isBrandLocked(slot)) return;
+    if (slot === el) {
       el.textContent = text;
       return;
     }
-    const node = firstTextNode(el);
-    if (node) node.nodeValue = text;
+    slot.nodeValue = text;
   }
 
   function saveElementState(el) {
@@ -1243,6 +1283,16 @@
         delete customizations[id];
         migrated = true;
         return;
+      }
+
+      // A name typed into the footer back when the header and the footer were
+      // edited apart. It was a rename, so keep it: adopt it as the team's one
+      // name, unless the team has since set one properly, and drop the entry's
+      // text either way. The rest of the entry - a drag, a colour - stays.
+      if (customizations[id].text != null && isBrandLocked(textSlot(el))) {
+        adoptStrandedBrandName(customizations[id].text, textSlot(el));
+        delete customizations[id].text;
+        migrated = true;
       }
 
       // Re-key legacy ephemeral [data-hms-id="el-…"] entries to structural selectors.

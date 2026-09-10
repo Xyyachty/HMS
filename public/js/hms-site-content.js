@@ -472,6 +472,19 @@
     return name || hotelDefaults().name;
   }
 
+  /**
+   * Whether the team has ever stored a name of its own, as opposed to reading
+   * the concept faculty approved. The editor asks before adopting a name typed
+   * into the footer back when the two were separate: a team that has since
+   * named its hotel properly must not have that overwritten by an old edit.
+   */
+  function hasStoredBrandName() {
+    const c = getCustomizations();
+    const entry = c[BRAND_NAME_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    return !!(item && typeof item.label === 'string' && item.label.trim());
+  }
+
   function setBrandName(name) {
     if (!canEditBrandName()) return false;
     const clean = String(name == null ? '' : name).trim().slice(0, BRAND_NAME_MAX);
@@ -1298,6 +1311,7 @@
     renameNavLink,
     updateNavLink,
     getBrandName,
+    hasStoredBrandName,
     setBrandName,
     HOTEL_INFO_KEY,
     SOCIAL_LINKS_KEY,

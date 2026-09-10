@@ -5260,7 +5260,7 @@ function Footer({ onNavigate, cardImages, page, brandName, hotelInfo, socialLink
           </div>
         </div>
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', fontWeight: 300 }}>{new Date().getFullYear()} {brandName}. All rights reserved.</span>
+          <span data-hms-brand-text="1" data-hms-no-edit="1" style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', fontWeight: 300 }}>{new Date().getFullYear()} {brandName}. All rights reserved.</span>
           <div style={{ display: 'flex', gap: '1.25rem' }}>
             <a href="#" style={{ fontSize: '0.72rem', fontWeight: 300 }}>Privacy Policy</a>
             <a href="#" style={{ fontSize: '0.72rem', fontWeight: 300 }}>Terms of Service</a>
