@@ -1143,7 +1143,13 @@
         ['position', 'left', 'top', 'right', 'bottom'].forEach(function (p) {
           if (!entry.keepFixed) el.style.removeProperty(p);
         });
-        if (entry.transform) clampTransformIntoBounds(el);
+        /* Not clamped here. Where a student put something is a decision, and
+           this runs again on every render - on coming back to a page, the hero's
+           photographs are still loading and the box everything is measured
+           against is not its final size, so clamping now nudges the element by
+           a different amount each time and it drifts. The drop clamps, which is
+           the moment the student can see what happened, so what is stored is
+           already inside its section. */
       } else if (entry.keepFixed || entry.position === 'fixed') {
         el.setAttribute('data-hms-keep-fixed', '1');
         ensurePositioningContext(el);
@@ -1348,6 +1354,19 @@
         delete customizations[id];
         migrated = true;
         return;
+      }
+
+      /* A translation saved together with the coordinates it replaced. Both
+         describe where the element sits and they disagree, so which one wins
+         depends on the order things are applied in. The translation is the one
+         the student made; the coordinates are what it was moved away from. */
+      if (customizations[id].moveMode === 'transform' && customizations[id].transform) {
+        ['position', 'left', 'top', 'right', 'bottom'].forEach(function (prop) {
+          if (customizations[id][prop] != null) {
+            delete customizations[id][prop];
+            migrated = true;
+          }
+        });
       }
 
       // A drag saved before the element was pinned. The rest of the entry - its
@@ -1808,6 +1827,11 @@
           const t = getElementTranslate(el);
           setElementTranslate(el, t.x, t.y);
           clampTransformIntoBounds(el);
+          // Say which kind of move this was, so saveElementState records a
+          // translation alone rather than one on top of stale coordinates.
+          if (el && !el.hasAttribute('data-hms-user')) {
+            el.setAttribute('data-hms-move-mode', 'transform');
+          }
         } else if (el && el.getAttribute('data-hms-keep-fixed') === '1') {
           const er = getVisualRect(el);
           setPosImportant(el, 'position', 'fixed');
