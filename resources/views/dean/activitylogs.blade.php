@@ -1,6 +1,7 @@
 @extends('dean.layouts.app')
 
 @section('page_title', 'Activity Logs')
+@section('page_subtitle', 'Every action taken across the simulation, newest first.')
 @section('activity_active', 'active')
 
 @section('content')

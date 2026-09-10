@@ -1,6 +1,7 @@
 @extends('dean.layouts.app')
 
 @section('page_title', 'List of Teams Information')
+@section('page_subtitle', 'Faculty, their teams, and the hotel concept each team is building.')
 @section('faculties_active', 'active')
 
 @section('content')

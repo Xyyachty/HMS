@@ -1,6 +1,7 @@
 @extends('dean.layouts.app')
 
 @section('page_title', 'Reports')
+@section('page_subtitle', 'Completed tasks and performance records of every team.')
 @section('reports_active', 'active')
 
 @section('content')
@@ -36,13 +37,10 @@
     .rp-td { padding: .85rem 1rem; font-size: .78rem; color: #475569; vertical-align: top; }
 </style>
 
-{{-- ═══════ Header ═══════ --}}
-<div class="flex flex-wrap items-start justify-between gap-3 mb-5">
-    <div class="min-w-0">
-        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Reports</h1>
-        <p class="text-[13px] text-slate-500 mt-1">View completed tasks and performance records of all teams in the hotel simulation.</p>
-    </div>
-    <nav class="flex items-center gap-1.5 text-[12px] font-semibold text-slate-400 shrink-0" aria-label="Breadcrumb">
+{{-- The page's name and what it is for are the header bar's job (page_title and
+     page_subtitle above); printing them again here only pushed the reports down. --}}
+<div class="flex justify-end mb-4">
+    <nav class="flex items-center gap-1.5 text-[12px] font-semibold text-slate-400" aria-label="Breadcrumb">
         <a href="{{ route('dean.dashboard') }}" class="hover:text-brand transition">Home</a>
         <span class="iconify text-sm" data-icon="mdi:chevron-right"></span>
         <span class="text-brand">Reports</span>

@@ -162,7 +162,10 @@
                     </button>
                     <div>
                         <h2 class="text-xl font-bold text-slate-900 tracking-tight">@yield('page_title', 'Dashboard')</h2>
-                        <p class="text-xs text-slate-400 font-light">Welcome back, {{ $deanDisplayName }}</p>
+                        {{-- A greeting is worth reading once, on the page you land on.
+                             Repeated under every heading it says nothing, so each page
+                             says what it is instead and only the dashboard says hello. --}}
+                        <p class="text-xs text-slate-400 font-light">@yield('page_subtitle', 'Welcome back, ' . $deanDisplayName)</p>
                     </div>
                 </div>
 

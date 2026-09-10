@@ -1,6 +1,7 @@
 @extends('dean.layouts.app')
 
 @section('page_title', 'List of User Management')
+@section('page_subtitle', 'Deans, faculty and students with access to the system.')
 @section('users_active', 'active')
 
 @push('styles')
