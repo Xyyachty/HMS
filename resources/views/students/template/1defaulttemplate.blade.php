@@ -2672,12 +2672,12 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
         </div>
         <div className="hero-overlay"></div>
         <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 1.5rem', maxWidth: 760 }}>
-          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '1.25rem' }}>{tagline}</p>
+          <p data-hms-content-kind="hotelInfo" data-hms-content-id="tagline" style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '1.25rem' }}>{tagline}</p>
           <h1 className="font-display hero-title" data-hms-move-root="1" style={{ fontSize: '4.2rem', fontWeight: 900, lineHeight: 1.08, marginBottom: '1.25rem', textAlign: 'center' }}>
             <span style={{ display: 'block' }}>Where Elegance</span>
             <span style={{ display: 'block', color: 'var(--accent)', fontStyle: 'italic', fontWeight: 400 }}>Meets Comfort</span>
           </h1>
-          <p style={{ color: 'var(--fg-muted)', fontSize: '1.05rem', fontWeight: 300, maxWidth: 480, margin: '0 auto 2.25rem', lineHeight: 1.7 }}>
+          <p data-hms-content-kind="hotelInfo" data-hms-content-id="description" style={{ color: 'var(--fg-muted)', fontSize: '1.05rem', fontWeight: 300, maxWidth: 480, margin: '0 auto 2.25rem', lineHeight: 1.7 }}>
             {blurb}
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -5197,7 +5197,7 @@ function Footer({ onNavigate, cardImages, page, brandName, hotelInfo, socialLink
             </div>
             <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', fontWeight: 300, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem' }}>{blurb}</p>
             {socials.length ? (
-              <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+              <div data-hms-content-kind="socialLinks" data-hms-content-id="all" style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
                 {socials.map((link) => (
                   <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
                     aria-label={SOCIAL_LABELS[link.network] || 'Website'}

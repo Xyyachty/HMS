@@ -400,6 +400,43 @@ class TemplateDiff
         ];
     }
 
+    /**
+     * Where in the After preview a change to one of these values shows.
+     *
+     * Most collections had no selector at all, so a hotel renamed, a tagline
+     * rewritten or a hero photograph replaced was listed in Changes and outlined
+     * nowhere — which is most of what a website task actually is. These are the
+     * ones that paint to a node the preview can point at; the rest (typography,
+     * the palette) are site-wide by nature and have nothing to box.
+     *
+     * The nodes are marked in both templates with the same attributes the site
+     * logo already used.
+     */
+    private static function collectionSelector(string $jsonName, array $item): ?string
+    {
+        switch ($jsonName) {
+            case 'brandName':
+                return '[data-hms-brand-name]';
+            case 'heroSlides':
+                /* Whichever slide is showing: the photographs are the change, and
+                   the band they rotate in is the thing to box. Both skins are
+                   named because they paint the hero differently — .hero-bg in one,
+                   .hero-img in the other — and only one of the two ever matches. */
+                return '.hero-bg, .hero-img';
+            case 'socialLinks':
+                return '[data-hms-content-kind="socialLinks"]';
+            case 'hotelInfo':
+                return '[data-hms-content-kind="hotelInfo"]';
+            case 'siteColors':
+            case 'typography':
+                // Site-wide by nature — every page carries them, so there is no
+                // one element that changed.
+                return null;
+        }
+
+        return null;
+    }
+
     private static function userElementSelector(string $id): string
     {
         return '[data-hms-id="' . $id . '"]';
@@ -511,7 +548,8 @@ class TemplateDiff
             // placeholder became, the way the logo is already reported.
             if ($jsonName === 'brandName') {
                 $changes[] = [
-                    'type' => 'modified', 'scope' => 'collection_item', 'key' => null, 'hms_id' => null,
+                    'type' => 'modified', 'scope' => 'collection_item',
+                    'key' => self::collectionSelector($jsonName, $item), 'hms_id' => null,
                     'page' => $item['page'] ?? 'home',
                     'label' => $label,
                     'fields' => [[
@@ -524,7 +562,8 @@ class TemplateDiff
                 continue;
             }
             $changes[] = [
-                'type' => 'added', 'scope' => 'collection_item', 'key' => null, 'hms_id' => null,
+                'type' => 'added', 'scope' => 'collection_item',
+                'key' => self::collectionSelector($jsonName, $item), 'hms_id' => null,
                 'page' => $item['page'] ?? 'home',
                 'label' => $label . ': ' . self::itemTitle($item),
                 'fields' => [],
@@ -535,7 +574,8 @@ class TemplateDiff
                 continue;
             }
             $changes[] = [
-                'type' => 'removed', 'scope' => 'collection_item', 'key' => null, 'hms_id' => null,
+                'type' => 'removed', 'scope' => 'collection_item',
+                'key' => self::collectionSelector($jsonName, $item), 'hms_id' => null,
                 'page' => $item['page'] ?? 'home',
                 'label' => $label . ': ' . self::itemTitle($item),
                 'fields' => [],
@@ -557,7 +597,8 @@ class TemplateDiff
                 continue;
             }
             $changes[] = [
-                'type' => 'modified', 'scope' => 'collection_item', 'key' => null, 'hms_id' => null,
+                'type' => 'modified', 'scope' => 'collection_item',
+                'key' => self::collectionSelector($jsonName, $afterItem), 'hms_id' => null,
                 'page' => $afterItem['page'] ?? $beforeItem['page'] ?? 'home',
                 'label' => $label . ': ' . self::itemTitle($afterItem),
                 'fields' => $fields,

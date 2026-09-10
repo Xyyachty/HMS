@@ -3305,7 +3305,7 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
           <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} />
         </div>
         <div className="hero-content">
-          <span className="section-num">{tagline}</span>
+          <span className="section-num" data-hms-content-kind="hotelInfo" data-hms-content-id="tagline">{tagline}</span>
           <h1 className="font-display" data-hms-move-root="1" style={{ fontSize: '3.2rem', fontWeight: 600, lineHeight: 1.1, marginBottom: '1.25rem' }}>
             <span style={{ display: 'block' }}>A Sanctuary of</span>
             <em style={{ display: 'block', color: 'var(--warm)' }}>Timeless Luxury</em>
@@ -4858,9 +4858,9 @@ function Footer({ onNav, cardImages, page, brandName, hotelInfo, socialLinks }) 
                   no-edit stops a double-click caret fighting the next React render. */}
               <span data-hms-brand-name="1" data-hms-no-edit="1" style={{ fontSize: '1.05rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#fff' }}>{brandName}</span>
             </div>
-            <p style={{ fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem', color: 'rgba(247,244,239,0.6)' }}>{blurb}</p>
+            <p style={{ fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem', color: 'rgba(247,244,239,0.6)' }} data-hms-content-kind="hotelInfo" data-hms-content-id="description">{blurb}</p>
             {socials.length ? (
-              <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+              <div data-hms-content-kind="socialLinks" data-hms-content-id="all" style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
                 {socials.map((link) => (
                   <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
                     aria-label={SOCIAL_LABELS[link.network] || 'Website'}
