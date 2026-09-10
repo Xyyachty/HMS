@@ -723,12 +723,10 @@
    * gates the speed control that sits beside the cards.
    */
   function canEditAmenities() {
-    if (!canEdit() || editablePages().indexOf('amenities') === -1) return false;
-    const task = window.__HMS_AMENITY_TASK__;
-    // No answer at all is the older bootstrap, before the task existed. Falling
-    // back to the page permission keeps a team mid-project working.
-    if (!task) return true;
-    return task.editable === true;
+    // Owning the page is the whole test. It briefly also required the
+    // "Customize Hotel Amenities" task to be assigned and to be yours, which shut
+    // the section for every team whose faculty had not handed it out.
+    return canEdit() && editablePages().indexOf('amenities') !== -1;
   }
 
   function getAmenitySlideSeconds() {

@@ -1118,8 +1118,9 @@ function ServicesPanel({ services, amenities, canManage, onSaved }) {
   );
 }
 
-/* The one line that says why the buttons are missing, in the colour that says
-   whether it is a wait, a lock or somebody else's turn. */
+/* Where the amenities task has got to. Not a refusal — the buttons are there for
+   any Housekeeping member — so it is drawn as a note, in the colour of the state
+   it is reporting. */
 function TaskNotice({ task }) {
   if (!task || !task.message) return null;
   const done = task.state === 'approved';

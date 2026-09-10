@@ -48,17 +48,21 @@ class HotelAmenityAccess
     }
 
     /**
-     * A member may *change* the facilities when they hold the role and the design
-     * task that opens the section is theirs and still open. Holding the role is no
-     * longer enough on its own — see AmenityTaskDesk.
+     * A member may change the facilities when they hold the role. That is all.
      *
-     * canManage() is left as the plain role question because the ops routes still
-     * ask it: reporting a facility broken and verifying the repair afterwards is
-     * running the hotel, not designing it.
+     * This briefly also required the "Customize Hotel Amenities" task to be
+     * assigned and to be theirs, which locked the section for every team whose
+     * faculty had not handed it out — including teams working ahead of the
+     * checklist, which is most of them. The task remains on the checklist as work
+     * to be reviewed; it no longer decides who may open the screen.
+     *
+     * Kept as its own name rather than folded into canManage() so the routes still
+     * read as "may this person customize", and so the rule has one place to change
+     * if it is ever tightened again.
      */
     public static function canCustomize(StudentGroup $membership, $user = null): bool
     {
-        return self::canManage($membership) && AmenityTaskDesk::canCustomize($membership, $user);
+        return self::canManage($membership);
     }
 
     /** A member may register guests into a facility when they are on the front desk. */

@@ -7,22 +7,17 @@ use App\Models\Task;
 use App\Models\User;
 
 /**
- * The task that opens the Amenities section for editing.
+ * Where "Customize Hotel Amenities" stands for a team.
  *
- * The facilities list is Housekeeping's, but holding the role is no longer enough
- * to change it: faculty hands out "Customize Hotel Amenities" the way it hands out
- * every other piece of design work, and only the student it lands on may add,
- * edit, photograph or remove a facility. Everybody else on the team — Housekeeping
- * included — reads the same rows and sees the same site.
+ * It reports; it does not gate. The facilities list belongs to Housekeeping and
+ * holding that role is the whole test for changing it — this class exists so the
+ * screen can say whether the task has been handed out, is with faculty, or is
+ * approved, which is the part a student cannot read off the table itself.
  *
- * Editing is open only while that task is live. Once it is submitted it is with
- * faculty, and once approved it is finished: both leave the list read-only, so a
- * team cannot rewrite the work faculty is reviewing or has already accepted. A
- * task sent back for changes is `active` again and reopens by itself.
- *
- * Ops work is deliberately outside this. Marking a facility out for repair, or
- * verifying the repair afterwards, is running the hotel rather than designing it,
- * and those routes keep the plain role check they always had.
+ * It did gate, briefly: only the student the task landed on could add a facility,
+ * and only while it was open. That left every team whose faculty had not assigned
+ * it unable to add anything at all, which is backwards — the checklist is what the
+ * work is reviewed against, not permission to begin it.
  */
 class AmenityTaskDesk
 {
@@ -34,20 +29,20 @@ class AmenityTaskDesk
     /** Nobody has been given the work yet. */
     public const STATE_UNASSIGNED = 'unassigned';
 
-    /** Assigned and open: the assignee may edit. */
+    /** Assigned and open. */
     public const STATE_ACTIVE = 'active';
 
-    /** Submitted and with faculty. Read-only until it comes back or is approved. */
+    /** Submitted and with faculty. */
     public const STATE_SUBMITTED = 'submitted';
 
-    /** Faculty accepted it. Locked. */
+    /** Faculty accepted it. */
     public const STATE_APPROVED = 'approved';
 
     /**
      * The team's copy of the task, newest first.
      *
-     * Scoped to the team rather than the student: the state of the section is the
-     * team's fact, and a teammate has to be told why the buttons are missing.
+     * Scoped to the team rather than the student: how far this work has got is the
+     * team's fact, and every member of it reads the same line.
      */
     public static function taskFor(?StudentGroup $membership): ?Task
     {
@@ -87,44 +82,19 @@ class AmenityTaskDesk
     /**
      * Whether this user may change the facilities right now.
      *
-     * Administrators are outside the workflow: the role exists to run and repair
-     * the simulation, and locking it out of a team's data would leave nobody able
-     * to unstick a team that has locked itself out.
+     * Holding the role is the whole test. It once also required this task to be
+     * assigned and to be theirs; that left every team whose faculty had not handed
+     * it out unable to add a single facility, which is not what the checklist is
+     * for. The task still tracks and reviews the work — it does not hold the door.
      */
     public static function canCustomize(?StudentGroup $membership, ?User $user = null): bool
     {
-        if (!$membership) {
-            return false;
-        }
-
-        if (in_array('administrator', HotelAmenityAccess::roles($membership), true)) {
-            return true;
-        }
-
-        $task = self::taskFor($membership);
-        if (self::stateFor($task) !== self::STATE_ACTIVE) {
-            return false;
-        }
-
-        $user = $user ?: auth()->user();
-        if (!$user) {
-            return false;
-        }
-
-        // An unclaimed row — faculty assigned the task to the team without naming a
-        // member — is open to whoever holds the role, the same reading the rest of
-        // the task screens give an unclaimed task.
-        if (!$task->assigned_to && !$task->student_id) {
-            return true;
-        }
-
-        return (int) $task->assigned_to === (int) $user->user_id
-            || (int) $task->student_id === (int) ($user->student?->user_information_id ?? 0);
+        return $membership !== null && HotelAmenityAccess::canManage($membership);
     }
 
     /**
-     * Everything the Housekeeping screen needs to explain itself: whether the
-     * buttons are there, and the one sentence saying why when they are not.
+     * What the Housekeeping screen prints above the table: whether this member may
+     * edit, and where the task has got to.
      *
      * @return array{state: string, editable: bool, assignee: string|null, title: string, message: string}
      */
@@ -146,26 +116,24 @@ class AmenityTaskDesk
 
     private static function message(string $state, bool $editable, ?string $assignee): string
     {
-        if ($editable) {
-            return '';
-        }
-
+        /* Not a refusal any more — the buttons are there either way. This says
+           where the work stands, which is the part a student cannot see from the
+           table itself. */
         if ($state === self::STATE_UNASSIGNED) {
-            return 'Your faculty has not assigned "' . self::TASK_TITLE . '" yet. '
-                . 'The amenities below are read-only until they do.';
+            return '';
         }
 
         if ($state === self::STATE_SUBMITTED) {
             return '"' . self::TASK_TITLE . '" has been submitted and is with your faculty. '
-                . 'The amenities are read-only until it is approved or sent back.';
+                . 'Anything you change now is not part of what they are reviewing.';
         }
 
         if ($state === self::STATE_APPROVED) {
-            return '"' . self::TASK_TITLE . '" is approved and closed, so the amenities are locked.';
+            return '"' . self::TASK_TITLE . '" is approved. You can still add and edit facilities.';
         }
 
         return '"' . self::TASK_TITLE . '" is assigned to '
-            . ($assignee ?: 'another member of your team')
-            . '. You can see their work here but only they can change it.';
+            . ($assignee ?: 'your team')
+            . '. Hand it in from your dashboard when the facilities are ready.';
     }
 }
