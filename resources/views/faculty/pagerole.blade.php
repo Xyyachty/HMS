@@ -1590,7 +1590,7 @@
                                 </div>
                                 <button type="button" onclick='openAddStudentModal(@json($teamName))'
                                         class="h-10 px-4 rounded-xl brand-gradient text-white text-[12px] font-bold inline-flex items-center gap-1.5 shadow-md shadow-brand/20 hover:opacity-95 transition shrink-0">
-                                    <span class="iconify text-base" data-icon="mdi:plus"></span> Add Student
+                                    <span class="iconify text-base" data-icon="mdi:account-arrow-right-outline"></span> Insert to Team
                                 </button>
                             </div>
 
@@ -1703,8 +1703,8 @@
                         <span class="iconify text-xl" data-icon="mdi:account-plus-outline"></span>
                     </span>
                     <div class="min-w-0">
-                        <h4 class="font-extrabold text-slate-900 text-lg leading-tight">Add Student to Team</h4>
-                        <p class="text-[12px] text-slate-500 mt-0.5">Select a student and assign their role(s).</p>
+                        <h4 class="font-extrabold text-slate-900 text-lg leading-tight">Insert Student into Team</h4>
+                        <p class="text-[12px] text-slate-500 mt-0.5">Pick a student already enrolled in your class and assign their role(s).</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeAddStudentModal()"
@@ -1826,12 +1826,12 @@
                     class="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition">Cancel</button>
                 <div class="flex items-center gap-3">
                     <span class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] text-blue-700 leading-snug">
-                        Each team must have exactly 4 members. You can add a student if the team is not yet full.
+                        Each team must have exactly 4 members. You can insert a student while the team is not yet full.
                     </span>
                     <button type="submit"
                         class="px-6 py-2.5 brand-gradient text-white rounded-xl font-bold text-sm hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2">
                         <span id="insertSelectedCount" class="hidden">0 selected</span>
-                        Add Student
+                        Insert to Team
                     </button>
                 </div>
             </div>
@@ -1898,7 +1898,7 @@
                     <div>
                         <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                             <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Members & Roles <span class="text-red-400">*</span></label>
-                            <span class="text-[11px] text-slate-400 sm:ml-auto">Only students already on this team. Use Add Team → Insert to add more.</span>
+                            <span class="text-[11px] text-slate-400 sm:ml-auto">Only students already on this team. Use Insert to Team to add more.</span>
                         </div>
                         <div class="relative mb-2">
                             <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
@@ -1963,7 +1963,7 @@
                                 <div id="updateNoMembersNote" class="hidden flex flex-col items-center gap-2 py-10 text-slate-400">
                                     <span class="iconify text-3xl text-slate-200" data-icon="mdi:account-group-outline"></span>
                                     <p class="text-sm font-semibold">No members on this team</p>
-                                    <p class="text-xs text-slate-300">Use Add Team → Insert to add students.</p>
+                                    <p class="text-xs text-slate-300">Use Insert to Team to put students on it.</p>
                                 </div>
                             </div>
                         </div>
@@ -3277,7 +3277,9 @@ function filterManageMembers() {
     });
 }
 
-// ── Add Student to Team ──
+/* ── Insert a student into a team ──
+   Enrolling a student into the class is a different act, done on Manage Students;
+   this only takes one who is already enrolled and puts them on a team. */
 function openAddStudentModal(groupName) {
     if (groupName) pickInsertTeam(groupName);
     document.getElementById('addStudentModal')?.classList.remove('hidden');
@@ -3304,7 +3306,7 @@ function switchCreateModalTab(tabId) {
 
     const submitLabel = document.getElementById('createModalSubmitLabel');
     if (submitLabel) {
-        submitLabel.textContent = tabId === 'add_team' ? 'Create Teams' : 'Add Student';
+        submitLabel.textContent = tabId === 'add_team' ? 'Create Teams' : 'Insert to Team';
     }
 
     if (tabId === 'add_team') {
