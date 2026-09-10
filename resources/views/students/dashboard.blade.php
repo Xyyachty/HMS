@@ -1009,11 +1009,6 @@
 
                     // The table lists active and completed work together, so the rows are
                     // numbered once over the pair and every row carries the same shape.
-                    $taskPriorityTints = [
-                        'high'   => 'bg-red-50 text-red-500',
-                        'medium' => 'bg-amber-50 text-amber-600',
-                        'low'    => 'bg-slate-100 text-slate-500',
-                    ];
                     $taskRowIndex = 0;
                 @endphp
                 <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -1074,7 +1069,6 @@
                                         <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500 w-10">#</th>
                                         <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500">Task</th>
                                         <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500">Role</th>
-                                        <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500">Priority</th>
                                         <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500 w-44">Progress</th>
                                         <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500">Status</th>
                                         <th class="px-4 py-3.5 text-[12px] font-bold text-slate-500">Due Date</th>
@@ -1097,7 +1091,6 @@
                                         // itself knows: sent back means it was submitted once already.
                                         $rowPercent   = $needsRevision ? 50 : 0;
                                         $rowStatusKey = $needsRevision ? 'revision' : 'active';
-                                        $rowPriority  = strtolower($task->priority ?? 'medium');
                                         $rowModule    = \App\Support\HotelTemplateBuilder::modulesForRoles([$task->role])[0] ?? null;
                                         $rowDetailId  = 'taskDetail' . $task->task_id;
                                     @endphp
@@ -1126,11 +1119,6 @@
                                             <td class="px-4 py-4">
                                                 <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
                                                     {{ $homeRoleLabels[$task->role] ?? $task->role }}
-                                                </span>
-                                            </td>
-                                            <td class="px-4 py-4">
-                                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold {{ $taskPriorityTints[$rowPriority] ?? $taskPriorityTints['medium'] }}">
-                                                    {{ ucfirst($rowPriority) }}
                                                 </span>
                                             </td>
                                             <td class="px-4 py-4">
@@ -1202,7 +1190,7 @@
                                         {{-- Detail drawer: description, faculty feedback, and for the
                                              concept task the two proposals themselves. --}}
                                         <tr class="task-detail-row border-b border-slate-100 {{ $task->is_hotel_concept ? '' : 'hidden' }}" id="{{ $rowDetailId }}">
-                                            <td colspan="8" class="px-4 pb-5 pt-0 bg-slate-50/50">
+                                            <td colspan="7" class="px-4 pb-5 pt-0 bg-slate-50/50">
                                                 <div class="space-y-3">
                                                     @if($task->description)
                                                         {{-- pre-line: the description carries the task's four activities as numbered
@@ -1305,11 +1293,6 @@
                                             <td class="px-4 py-4">
                                                 <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
                                                     {{ $homeRoleLabels[$task->role] ?? $task->role }}
-                                                </span>
-                                            </td>
-                                            <td class="px-4 py-4">
-                                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold {{ $taskPriorityTints[strtolower($task->priority ?? 'medium')] ?? $taskPriorityTints['medium'] }}">
-                                                    {{ ucfirst(strtolower($task->priority ?? 'medium')) }}
                                                 </span>
                                             </td>
                                             <td class="px-4 py-4">

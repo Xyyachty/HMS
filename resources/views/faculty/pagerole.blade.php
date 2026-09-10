@@ -230,11 +230,6 @@
     }
     .btn-sendback:hover { background:#BE123C; }
 
-    /* ── Priority badges ── */
-    .badge-high   { background:#FEF2F2; color:#B91C1C; border:1px solid #FECACA; }
-    .badge-medium { background:#FFFBEB; color:#B45309; border:1px solid #FDE68A; }
-    .badge-low    { background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; }
-
     /* ── Student list in form ── */
     .student-row { transition:all .2s ease; }
     .student-row:hover { background:#FDF2F8 !important; }
@@ -370,7 +365,7 @@
     }
 
     // If there are validation errors, keep the correct tab open
-    if ($errors->has('title') || $errors->has('role') || $errors->has('priority')) {
+    if ($errors->has('title') || $errors->has('role')) {
         $activeTab = 'create_task';
     }
 @endphp
@@ -2220,7 +2215,6 @@
                                         </div>
                                         <input type="hidden" name="task_titles[{{ $rKey }}][{{ $step }}]" value="{{ $task['title'] }}">
                                         <input type="hidden" name="task_descriptions[{{ $rKey }}][{{ $step }}]" value="{{ $task['description'] }}">
-                                        <input type="hidden" name="task_priorities[{{ $rKey }}][{{ $step }}]" value="{{ $task['priority'] }}">
                                     </label>
                                 @endforeach
                             </div>

@@ -5,11 +5,6 @@
 
 @section('content')
 <style>
-    /* ── Priority badges ── */
-    .badge-high   { background:#FEF2F2; color:#B91C1C; border:1px solid #FECACA; }
-    .badge-medium { background:#FFFBEB; color:#B45309; border:1px solid #FDE68A; }
-    .badge-low    { background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; }
-
     /* ── Role tab colours ── */
     .tab-btn { transition: all .25s ease; }
     .tab-btn.active-tab {
@@ -298,7 +293,6 @@
                     class="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm
                            focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
             </div>
-            <input type="hidden" name="priority" value="medium">
 
         </div>
 

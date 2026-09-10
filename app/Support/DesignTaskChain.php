@@ -47,7 +47,6 @@ class DesignTaskChain
                 . "2. Set the nightly rate for every one.\n"
                 . "3. Write what the stay includes, one item per line.\n"
                 . "4. Say how many rooms of that category the hotel has.",
-            'priority' => 'high',
         ],
     ];
 
@@ -95,7 +94,6 @@ class DesignTaskChain
             'assigned_to' => $approved->assigned_to,
             'title' => $next['title'],
             'description' => $next['description'],
-            'priority' => $next['priority'],
             'status' => 'active',
             // The approved work is where this one starts from, so the faculty review
             // of the follow-up compares against what they just accepted.

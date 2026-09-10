@@ -412,7 +412,6 @@ class HotelConceptDesk
             // No due date: this one is not on the faculty's schedule, it gates
             // everything else the team builds.
             'due_date' => null,
-            'priority' => 'high',
             'status' => 'active',
         ];
 

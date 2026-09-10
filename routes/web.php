@@ -294,7 +294,6 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 // the list regardless of the due date it does not have.
                 ->conceptFirst()
                 ->orderBy('due_date')
-                ->orderByPriority()
                 ->get();
 
             $tasksByRole = $allTasks->groupBy('role');
@@ -328,7 +327,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $teamTasks = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->whereIn('status', ['active', 'archived'])
-                ->get(['task_id', 'title', 'role', 'status', 'due_date', 'priority', 'assigned_to', 'student_id']);
+                ->get(['task_id', 'title', 'role', 'status', 'due_date', 'assigned_to', 'student_id']);
 
             $teamRoleProgress = $teamTasks
                 ->groupBy('role')

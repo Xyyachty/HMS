@@ -62,7 +62,7 @@ class TaskChecklist
      * Keyed by role, in the order they should appear under each department.
      * The two website tasks first, then the ops work that follows from them.
      *
-     * @var array<string, list<array{title: string, description: string, priority: string, scope: string}>>
+     * @var array<string, list<array{title: string, description: string, scope: string}>>
      */
     private const TASKS = [
         'front_desk' => [
@@ -73,62 +73,52 @@ class TaskChecklist
                 // second one — see FacultyController::storeTask.
                 'title' => HotelConceptDesk::TASK_TITLE,
                 'description' => HotelConceptDesk::TASK_DESCRIPTION,
-                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Brand Your Hotel',
                 'description' => "Give the site your hotel's identity: replace the default logo with your own, and the placeholder name in the header with your team's hotel name. Both are single site-wide values — the header, the footer and every page read them.",
-                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Design the Home Page',
                 'description' => 'Customise the page a guest lands on: pick the five photographs that rotate across the top, rewrite the headline and the introduction under them so they describe your hotel rather than the sample text, and rename the links in the top menu so they read the way your hotel would label them.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
 
             [
                 'title' => 'Write Your Hotel\'s Story',
                 'description' => "Replace the sample words with your own: the tagline over the headline, the paragraph introducing the hotel, and the contact block every footer prints - address, phone, email and the hours the desk keeps. These are one record for the whole site, so what you write here is what the Rooms page and the Restaurant page say too.",
-                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Choose the Site\'s Colours',
                 'description' => "Open Background Colours from the toolbar and give the site its own palette. Start with the main website colour - the text, cards and borders follow it automatically - then set the header and the footer if they should stand apart from it. Pick a background your text still reads against.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Set the Site\'s Typography',
                 'description' => "Choose the typeface the whole site is set in, the size body text is read at, and the colours for ordinary text and for headings. Type is site-wide: it reaches pages your role cannot otherwise edit, so choose something legible at a paragraph's length, not only in a heading.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Add Your Social Profiles',
                 'description' => "Put the hotel's social accounts in the footer. Add only the networks the hotel actually uses - each one shows as its own icon, and an account nobody keeps is worse than a missing one.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Fill In the Promos Section',
                 'description' => "Write the offers the hotel is running on the Home page: a picture for each, the name of the offer, what it includes in a sentence or two, the saving it carries, and the condition it comes with. Three cards is what the section is built for.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Build the Partner Brands Strip',
                 'description' => "List the businesses the hotel works with - the travel agency, the cafe, the airline. Add a card per brand and upload each one's logo; a brand with no logo yet shows its name instead, so the strip is never half empty. Remove the sample brands you are not using.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Introduce Your Team',
                 'description' => "Put four real people in Our Team: a photograph of each, their full name, and the position they hold. This is the section a guest reads to see who runs the hotel, so use the roles your team actually assigned.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
 
@@ -137,31 +127,26 @@ class TaskChecklist
             [
                 'title' => 'Check Room Availability',
                 'description' => 'Open the Rooms page and answer a guest asking what is free. Each room card has an availability calendar showing the dates already booked.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Register a Guest',
                 'description' => 'Press Reserve Now on a free room and fill in Register Guest: full name, contact number, email, the government or passport ID you verified, and the check-in and check-out dates and times.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Add Add-ons to a Reservation',
                 'description' => "Open the Add-ons expander while registering and lend the guest something extra from Housekeeping's catalogue. Anything showing Out of stock cannot be added.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Process the Reservation Payment',
                 'description' => 'Take the payment on the Process Payment step: full or partial, the amount, the method, the payer name and a reference. Complete Reservation is what actually books the room.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Mark a Guest as Arrived',
                 'description' => 'When the guest reaches the desk, find their booking in Guest Information and press Arrive. Room Management checks them into the room after that.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
 
@@ -170,31 +155,26 @@ class TaskChecklist
             [
                 'title' => 'Reserve a Dine-in Table',
                 'description' => 'Hold a table in Dine-in Tables for a customer who has rung ahead: their name, contact number, the date and time, and a party size the table can seat.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Seat a Reserved Table',
                 'description' => 'Press Customer Arrived on a reserved table when the customer turns up. The restaurant cannot take an order until the table is seated.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Take a Room Service Order',
                 'description' => 'Order from the Restaurant page, review the order, then charge it to a checked-in guest. Only a guest who is already checked in can be billed for room service.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'File a Guest Complaint',
                 'description' => 'Record what a guest reported in Complaints — the room, the guest, the category — and send it to the department that can fix it.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Follow Up on a Resolved Complaint',
                 'description' => 'The badge on Complaints counts the ones the department has closed. Read the resolution note and tell the guest what was done.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
 
@@ -202,25 +182,21 @@ class TaskChecklist
             [
                 'title' => 'Check a Guest Out',
                 'description' => 'Press Check Out in Guest Information and read the final bill with the guest: room charges, room service, add-ons and what they have already paid.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Add an Extra Charge to the Final Bill',
                 'description' => 'Put anything the guest used that is not on the bill yet — a minibar item, a late fee — onto the final bill before you settle it.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Settle the Final Bill',
                 'description' => 'Take the closing payment with a method, an amount and a reference, then check the guest out. The system refuses to check anyone out while money is still outstanding.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Review the Revenue Reports',
                 'description' => 'Read the Reports page and say where your hotel earns most — rooms, dine-in or room service.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
         ],
@@ -232,19 +208,16 @@ class TaskChecklist
                 // it cannot be done before the categories are agreed.
                 'title' => 'Create Your Room Categories',
                 'description' => 'Decide the room categories your hotel sells and set them up on the Rooms page — add the ones you need with the + tab, rename the starting ones that do not fit, and drop the sample wording. Get the names right first; you describe and price them once your faculty approves this.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Build Your Room Types',
                 'description' => 'Replace the sample rooms with the room types your hotel actually offers. Give each one its own name and describe what it includes, so a guest can tell them apart without asking.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Photograph and Price Every Room',
                 'description' => 'Give every room type its own picture — none should be left on the placeholder image — set a nightly rate you can explain, and lay the Rooms page out so it matches the rest of the site.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
 
@@ -252,73 +225,61 @@ class TaskChecklist
             [
                 'title' => 'Style the Rooms Page',
                 'description' => "Give the Rooms page its own look: the colour behind the room cards, the colour of the cards themselves, and the colour of the booking popup that opens when a guest picks one. The card colour is shared with the preview on the Home page, so it sets the tone in both places at once.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'List What Each Room Includes',
                 'description' => "Set the amenity chips under every room - the bed, the view, the bath, the wifi - so a guest can compare two rooms without opening either. Use the icons that match what is actually in the room rather than leaving the sample set.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Write the Rooms Page Introduction',
                 'description' => "Write the words above the room cards: the small line over the heading, the heading itself, and the paragraph under it. They are what a guest reads before any price, so say what kind of rooms these are rather than repeating the word Rooms.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Name the Category Tabs',
                 'description' => "The tabs across the Rooms page are how a guest narrows the list. Name them the way your hotel sells rooms, put them in the order you want them read, and make sure the tab a room sits under is the one a guest would look for it in.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Set the Room Booking Popup',
                 'description' => "The popup that opens from a room card is where a guest decides. Check what it shows - the photograph, the price, what the room includes, the availability calendar - and set its colour so it reads as part of your site rather than a dialog on top of it.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Check the Rooms Page on a Phone',
                 'description' => "Most guests will read this page on a phone. Narrow the window until the cards stack and look for what breaks: a name that wraps badly, a price that leaves the card, a photograph cropped to nothing.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Add a Room to the Inventory',
                 'description' => 'Use Add Room in Manage Room to put a new room in the hotel: its category, price, description and photo. The room number comes from the category sequence — you do not type it.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => "Update a Room's Details",
                 'description' => 'Press Update on a room and correct what is wrong — its name, category, price, description or photo. The same panel shows the dates it is already booked.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Check a Guest In',
                 'description' => 'Open Guest Details, find a guest Front Desk has marked as arrived and press Check In. Nothing can be ordered or reported against that room until you do.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Monitor Occupancy',
                 'description' => 'Read Guest Details and say how the hotel stands: which rooms hold a guest, who is still waiting to be checked in, and how long each stay has left.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => "Update a Room's Status",
                 'description' => 'Set a room to Available, Cleaning or Maintenance from Update Status on the Rooms page. Changing the status of a room with a guest in it closes their stay, so check before you do.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Release a Room After Maintenance',
                 'description' => 'Once Maintenance has closed the repair, put the room back to Available so it can be sold again.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
         ],
@@ -327,13 +288,11 @@ class TaskChecklist
             [
                 'title' => 'Build Your Menu',
                 'description' => 'Replace the sample dishes with your own menu, grouped so a guest can find what they want.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Photograph and Price the Menu',
                 'description' => 'Add a picture to every dish, set a price for every dish, and lay the Restaurant page out so it matches the rest of the site.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
 
@@ -341,91 +300,76 @@ class TaskChecklist
             [
                 'title' => 'Organise the Menu into Categories',
                 'description' => "Sort the menu into the sections a diner reads it by - starters, mains, desserts, drinks - and name them the way your restaurant would. The tabs on the Restaurant page and the preview on the Home page both follow these, so a dish in the wrong section is in the wrong section twice.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Style the Menu Cards',
                 'description' => "Set the colour of the dish cards and the background of the Restaurant section behind them. The card colour carries to the dining preview on the Home page, so check both before you call it done.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Write the Restaurant Page Introduction',
                 'description' => "Write the words above the menu: the small line over the heading, the heading, and the paragraph under it. Say what kind of kitchen this is - the food, the room, the hours a guest can eat - rather than repeating the word Menu.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Write Every Dish Description',
                 'description' => "A price and a photograph are not enough to choose by. Give each dish a line that says what it actually is - what is in it, how it is cooked, how big it is - in the voice the rest of the site is written in.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Make the Dish Photographs Consistent',
                 'description' => "A menu photographed six different ways reads as six different restaurants. Frame the dishes the same way - the same distance, the same light, the same plate if you can - and replace the ones that do not match.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Check the Restaurant Page on a Phone',
                 'description' => "Narrow the window until the dish cards stack and read the page as a guest with a phone would: names that wrap, prices that leave the card, tabs that no longer fit on one line.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Review the Restaurant Page Against the Site',
                 'description' => "Open the Home page and the Restaurant page one after the other. They should look like the same hotel: the same typeface, the same kind of photograph, prices written the same way, headings in the same voice.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Add Dishes to the Menu',
                 'description' => 'Use Manage Menu to add a dish the kitchen can actually serve: name, category, price, how many you hold, a short description and a photo.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Keep Menu Stock Current',
                 'description' => 'Every order placed takes portions off the dish. Work through Manage Menu, restock what is running down and check nothing is left sold out that you can still serve.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Set Up Your Dining Tables',
                 'description' => 'Use Manage Tables to lay out the dining room — how many tables, and how many people each one seats.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Take a Dine-In Order',
                 'description' => 'Open Orders and take a New Dine-In Order. Only a seated table can be picked — if the list is empty, seat a reserved table in Manage Tables first.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Move an Order Through the Kitchen',
                 'description' => 'Take an order from Preparing to Ready, then Delivering, then Completed. A status only ever moves forward, so do not skip a step.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Fulfil a Room Service Order',
                 'description' => 'Work the Room Service tab in Orders and run a room order through to Completed so it lands on the guest\'s bill. A room-service order cannot be cancelled.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Cancel a Dine-In Order',
                 'description' => 'Cancel a dine-in order the customer changed their mind about. The portions go back into stock — this is the only order type that can be cancelled.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Bill and Close a Dine-In Table',
                 'description' => 'Press Bill on an occupied table, take the payment with a method, amount and reference, then Mark Paid and Close Table. You cannot bill a table with food still with the kitchen.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
         ],
@@ -437,32 +381,27 @@ class TaskChecklist
                 // AmenityTaskDesk, which reads a task row back by this title.
                 'title' => 'Customize Hotel Amenities',
                 'description' => "Add and customize the hotel's amenities displayed in the default template. Give each one its name, where it is, the hours it keeps, whether it is open, and a description a guest can read, then photograph it: the card cycles through every picture you upload and View Details opens them in a carousel.",
-                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Build the Amenities Page',
                 'description' => 'Fill in the Amenities page with what your hotel actually offers, so it matches the add-ons you lend out.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Write the Experience Page',
                 'description' => 'Write the Experience page so it tells a guest what staying at your hotel is like, and lay it out so it matches the rest of the site.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
 
             [
                 'title' => 'Colour the Amenities and Experience Pages',
                 'description' => "Give your two pages their own backgrounds from Background Colours. They are the pages guests read after the rooms, so they should look like the same hotel - close enough to the site's palette to belong to it, different enough to be their own.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Illustrate the Experience Page',
                 'description' => "Photograph the Experience page: a picture for each thing you describe, so the page shows the stay rather than only claiming it. Replace every sample image; a page of stock photographs reads as a page nobody wrote.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
 
@@ -471,73 +410,61 @@ class TaskChecklist
             [
                 'title' => 'Write the Amenities Page Introduction',
                 'description' => "Write the words above the facility cards: the small line over the heading, the heading, and the paragraph under it. Say what a guest can actually use and how they get at it, rather than repeating the word Amenities.",
-                'priority' => 'medium',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Set the Amenity Photo Pace',
                 'description' => "Each amenity card cycles through its photographs on its own. Set how long a card holds each one - three, four or five seconds - from the control beside the cards in Design mode, and check the result on a card with several pictures.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Check Your Pages on a Phone',
                 'description' => "Narrow the window until the cards stack and read both your pages as a guest with a phone would: headings that wrap badly, photographs cropped to nothing, a carousel that no longer fits.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Review Your Pages Against the Site',
                 'description' => "Open the Home page, then Amenities, then Experience. All three should look like the same hotel: the same typeface, the same kind of photograph, headings written in the same voice.",
-                'priority' => 'low',
                 'scope' => self::SCOPE_SITE,
             ],
             [
                 'title' => 'Stock the Add-ons Catalogue',
                 'description' => 'Fill the Add-ons list with what guests can ask for, and set how many of each you hold. Front Desk lends from this list while registering a guest.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Watch the Room Board',
                 'description' => 'Read the room strip across the top of Room Inspections and say which rooms are ready, which are waiting on cleaning and which are out for maintenance.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Start a Room Inspection',
                 'description' => 'A room raises an inspection by itself the moment Front Desk checks its guest out. Pick one up with Start inspection.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Record What You Found',
                 'description' => 'Say what the room needs — cleaning only, damaged equipment, needs repair or missing items — and write a note describing it.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Report an Issue to Maintenance',
                 'description' => 'Send a fault you found to Maintenance with a category and a description. The room goes out to maintenance and the inspection waits until the repair is closed.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Re-inspect After a Repair',
                 'description' => 'When Maintenance closes the repair the room comes back for a final pass. Walk it again and either report another issue or finish it.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Complete an Inspection',
                 'description' => 'Clean the room, replace the linens, towels and amenities, then mark the inspection completed — that is what puts the room back to Available. It is refused while any issue is still open.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Work a Housekeeping Complaint',
                 'description' => 'Take a complaint that belongs to housekeeping from Open to In Progress to Resolved, write what you did in the note, or hand it to Maintenance if it turns out to be a repair.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
         ],
@@ -548,37 +475,31 @@ class TaskChecklist
             [
                 'title' => 'Receive a Maintenance Request',
                 'description' => 'Open Complaints and Concerns and read the queue. Requests reach you from Front Desk, when a guest reports something, and from Housekeeping, when an inspection finds a fault.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Prioritise the Queue',
                 'description' => 'Sort what is waiting and say which you would do first. A room with an open issue is out of service, so the rooms nobody can sell come before anything else.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Start a Repair',
                 'description' => 'Move a request to In Progress when you begin work on it, so the rest of the hotel can see it is being dealt with.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Record the Repair',
                 'description' => 'Write what was wrong and what you did in the note. That note is what Front Desk reads back to the guest.',
-                'priority' => 'medium',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Close a Repair',
                 'description' => 'Inspect your own work, then move the request to Resolved. Closing the last issue on a room sends it back to Housekeeping for its final pass.',
-                'priority' => 'high',
                 'scope' => self::SCOPE_OPS,
             ],
             [
                 'title' => 'Hand a Request to Housekeeping',
                 'description' => 'Send a concern to Housekeeping when it turns out to be cleaning rather than a repair. A request already closed cannot be handed over.',
-                'priority' => 'low',
                 'scope' => self::SCOPE_OPS,
             ],
         ],
@@ -590,7 +511,7 @@ class TaskChecklist
      * Ordered by HotelTemplateBuilder::ROLES so a role added there cannot be
      * silently missed here — it appears with an empty list instead.
      *
-     * @return array<string, list<array{title: string, description: string, priority: string, scope: string}>>
+     * @return array<string, list<array{title: string, description: string, scope: string}>>
      */
 
 
@@ -1237,7 +1158,7 @@ class TaskChecklist
      * Role order inside a step follows all(), which follows
      * HotelTemplateBuilder::ROLES.
      *
-     * @return array<int, array<string, array{title: string, description: string, priority: string, scope: string}>>
+     * @return array<int, array<string, array{title: string, description: string, scope: string}>>
      */
     public static function allByStep(): array
     {
@@ -1273,7 +1194,7 @@ class TaskChecklist
         return $byStep;
     }
 
-    /** @return list<array{title: string, description: string, priority: string, scope: string}> */
+    /** @return list<array{title: string, description: string, scope: string}> */
     public static function forRole(string $role): array
     {
         return array_map(

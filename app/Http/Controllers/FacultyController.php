@@ -1178,7 +1178,6 @@ class FacultyController extends Controller
         $tasksByRole = Task::where('faculty_id', $facultyId)
             ->where('status', 'active')
             ->orderBy('due_date')
-            ->orderByPriority()
             ->get()
             ->groupBy('role');
 
@@ -1274,7 +1273,6 @@ class FacultyController extends Controller
                         'description' => $task->description,
                         'role' => $task->role,
                         'role_label' => $roleLabels[$task->role] ?? $task->role,
-                        'priority' => strtolower($task->priority ?? 'medium'),
                         'status' => $task->status,
                         // The concept task is not deletable and reviews differently.
                         'is_hotel_concept' => $task->is_hotel_concept,
@@ -1452,7 +1450,6 @@ class FacultyController extends Controller
             ->when($activeTeam, fn ($q) => $q->where('group_name', $activeTeam))
             ->conceptFirst()
             ->orderBy('due_date')
-            ->orderByPriority()
             ->get()
             ->groupBy('role');
 
@@ -1477,7 +1474,6 @@ class FacultyController extends Controller
             'tasks.*' => ['array'],
             'task_titles' => ['nullable', 'array'],
             'task_descriptions' => ['nullable', 'array'],
-            'task_priorities' => ['nullable', 'array'],
             'due_date' => ['nullable', 'date', 'after_or_equal:today'],
         ], [
             'group_name.required' => 'Pick the team this task is for.',
@@ -1521,7 +1517,6 @@ class FacultyController extends Controller
                 foreach ($taskIndices as $index) {
                     $title = $validated['task_titles'][$role][$index] ?? null;
                     $description = $validated['task_descriptions'][$role][$index] ?? null;
-                    $priority = $validated['task_priorities'][$role][$index] ?? 'medium';
 
                     if ($title) {
                         /* The hotel concept is not an ordinary row. It is seeded for
@@ -1549,7 +1544,6 @@ class FacultyController extends Controller
                             'role'        => $role,
                             'title'       => $title,
                             'description' => User::cleanOptional($description),
-                            'priority'    => $priority,
                             'due_date'    => $validated['due_date'] ?? null,
                             'status'      => 'active',
                         ];
@@ -1723,7 +1717,6 @@ class FacultyController extends Controller
             'description' => $task->description,
             'role' => $task->role,
             'role_label' => $task->role_label,
-            'priority' => $task->priority,
             'status' => $task->status,
             'needs_revision' => $task->needs_revision,
             'is_hotel_concept' => $task->is_hotel_concept,
@@ -2204,7 +2197,6 @@ class FacultyController extends Controller
                 'role_label' => $roleLabels[$roleKey] ?? $roleKey,
                 'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
                 'completed_at' => optional($task->updated_at)->format('M d, Y'),
-                'priority' => strtolower($task->priority ?? 'medium'),
             ];
         }
 

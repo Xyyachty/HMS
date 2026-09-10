@@ -30,7 +30,6 @@ class Task extends Model
         // checklist when it was assigned: [['text' => …, 'done' => bool], …].
         'activities',
         'due_date',
-        'priority',
         'status',
         'feedback',
         'feedback_at',
@@ -206,17 +205,6 @@ class Task extends Model
         return $query->orderByRaw(
             "CASE WHEN kind = ? THEN 0 ELSE 1 END",
             [HotelConceptDesk::TASK_KIND]
-        );
-    }
-
-    /**
-     * Highest priority first. Written as a CASE rather than MySQL's FIELD(),
-     * which does not exist in PostgreSQL.
-     */
-    public function scopeOrderByPriority($query)
-    {
-        return $query->orderByRaw(
-            "CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END"
         );
     }
 
