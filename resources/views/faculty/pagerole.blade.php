@@ -1523,7 +1523,11 @@
                     <div class="space-y-2">
                         @forelse($manageTeams as $teamName => $team)
                             <button type="button" data-team-pick="{{ $teamName }}"
-                                    onclick="pickInsertTeam(@json($teamName))"
+                                    {{-- The name is read off the element rather than written into the
+                                         handler: @json emits a quoted string, and a quoted string inside a
+                                         double-quoted attribute closes it — which is why every team but the
+                                         one the server rendered open refused to be clicked. --}}
+                                    onclick="pickInsertTeam(this.dataset.teamPick)"
                                     class="insert-team-pick w-full text-left rounded-xl border border-slate-200 bg-white px-3 py-2.5 hover:border-brand/40 transition flex items-center gap-3">
                                 <span class="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center shrink-0">
                                     <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
@@ -1584,7 +1588,7 @@
                                     <p class="text-[15px] font-bold text-slate-800">Team Members</p>
                                     <p class="text-[12px] text-slate-400">Manage the students in this team. You can assign or update their role(s).</p>
                                 </div>
-                                <button type="button" onclick="openAddStudentModal(@json($teamName))"
+                                <button type="button" onclick='openAddStudentModal(@json($teamName))'
                                         class="h-10 px-4 rounded-xl brand-gradient text-white text-[12px] font-bold inline-flex items-center gap-1.5 shadow-md shadow-brand/20 hover:opacity-95 transition shrink-0">
                                     <span class="iconify text-base" data-icon="mdi:plus"></span> Add Student
                                 </button>
@@ -1639,7 +1643,7 @@
                                                         </button>
                                                         @if($member['user_id'])
                                                             <button type="button"
-                                                                    onclick="window.location.href=@json(route('faculty.activity.user', ['user' => 0])).replace(/0$/, '{{ $member['user_id'] }}')"
+                                                                    onclick='window.location.href=@json(route("faculty.activity.user", ["user" => 0])).replace(/0$/, "{{ $member["user_id"] }}")'
                                                                     title="View {{ $member['name'] }}'s activity"
                                                                     class="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand hover:border-brand/40 transition">
                                                                 <span class="iconify text-base" data-icon="mdi:clipboard-text-clock-outline"></span>
