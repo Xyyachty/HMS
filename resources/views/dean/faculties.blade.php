@@ -402,10 +402,14 @@
                      can be changed from User Management afterwards. --}}
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
-                    <select name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">
-                        <option value="active" {{ old('status', 'active') === 'active' ? 'selected' : '' }}>Active</option>
-                        <option value="inactive" {{ old('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
-                    </select>
+                    {{-- Active, and not a choice: an account created switched off is
+                         an account nobody can sign in to, which is a thing to do to an
+                         existing account rather than a way to open one. Deactivating
+                         is on the update form. --}}
+                    <input type="hidden" name="status" value="active">
+                    <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                    </div>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>

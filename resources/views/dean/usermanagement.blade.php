@@ -274,10 +274,12 @@
                  update form below is for. --}}
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
-                <select name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
+                {{-- Active, and not a choice - see the Faculties page. Deactivating an
+                     account is what the update form below is for. --}}
+                <input type="hidden" name="status" value="active">
+                <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                </div>
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>

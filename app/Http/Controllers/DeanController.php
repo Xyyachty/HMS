@@ -317,9 +317,13 @@ class DeanController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:30'],
-            'status' => ['required', 'in:active,inactive'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
+
+        /* Active, whatever arrives. An account created switched off is one
+           nobody can sign in to; deactivating is done to an account that
+           exists, on the update form. */
+        $status = 'active';
 
         /* The block is not asked for. It is always the next free class letter,
            so there was nothing for the dean to decide and picking the one
@@ -347,7 +351,7 @@ class DeanController extends Controller
         Faculty::create([
             'user_id' => $user->user_id,
             'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
-            'status' => $validated['status'],
+            'status' => $status,
             'block' => $block,
         ]);
 
@@ -371,9 +375,11 @@ class DeanController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:30'],
             'role' => ['required', 'in:faculty,student'],
-            'status' => ['required', 'in:active,inactive'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
+
+        // Active, whatever arrives - see storeFaculty().
+        $status = 'active';
 
         $fullName = trim(implode(' ', array_filter([
             $validated['first_name'],
@@ -392,7 +398,7 @@ class DeanController extends Controller
             'email_verified_at' => now(),
         ];
 
-        $userData['status'] = $validated['status'];
+        $userData['status'] = $status;
         $userData['phone_number'] = User::cleanOptional($validated['phone_number'] ?? null);
 
         $user = User::create($userData);
@@ -402,7 +408,7 @@ class DeanController extends Controller
             Faculty::create([
                 'user_id' => $user->user_id,
                 'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
-                'status' => $validated['status'],
+                'status' => $status,
                 'block' => Faculty::nextAvailableBlock(),
             ]);
         }
