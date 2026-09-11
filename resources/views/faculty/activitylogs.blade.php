@@ -31,10 +31,13 @@
                 <span class="iconify text-base" data-icon="mdi:clipboard-plus-outline"></span>
                 Set Task
             </a>
+            {{-- The same screen the Teams page opens, under the same name. --}}
             <a href="{{ route('faculty.role', array_merge($classQuery, ['tab' => 'teams', 'create' => 1])) }}"
-               class="h-10 px-4 rounded-xl text-sm font-bold bg-brand text-white hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap">
-                <span class="iconify text-base" data-icon="mdi:plus"></span>
-                Add Team
+               title="Create new team(s) or modify teams"
+               class="h-10 px-4 rounded-xl text-sm font-bold brand-gradient text-white hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap">
+                <span class="iconify text-base" data-icon="mdi:cog-outline"></span>
+                <span class="iconify text-sm" data-icon="mdi:plus"></span>
+                Team Setup
             </a>
         </div>
     </div>

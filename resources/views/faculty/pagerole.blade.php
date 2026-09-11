@@ -67,8 +67,6 @@
     }
     .tm-toolbar .tm-search { flex: 1 1 auto; min-width: 0; }
     .tm-toolbar .tm-select { width: 11rem; flex: 0 0 auto; }
-    .tm-toolbar .tm-setup-wrap { flex: 0 0 auto; }
-    .tm-toolbar .tm-setup-wrap > button { width: auto; }
 
     .tm-card-grid {
         display: grid; gap: 1rem;
@@ -503,15 +501,6 @@
                     <option value="in_progress">In Progress</option>
                     <option value="not_started">Not Started</option>
                 </select>
-                <div class="tm-setup-wrap">
-                    <button type="button" onclick="openCreateTeamModal()"
-                            class="h-12 px-6 rounded-xl brand-gradient text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-md shadow-brand/20 hover:opacity-95 transition">
-                        <span class="iconify text-lg" data-icon="mdi:cog-outline"></span>
-                        <span class="iconify text-base" data-icon="mdi:plus"></span>
-                        Team Setup
-                    </button>
-                    <p class="text-[11px] text-slate-400 text-center mt-1.5">Create new team(s) or modify teams</p>
-                </div>
             </div>
 
             <!-- Team cards -->
@@ -4317,7 +4306,7 @@ document.addEventListener('change', function(e) {
         refreshRoleAvailability('create');
         refreshRoleAvailability('insert');
     }
-    // "Add Team" from Activity Logs still arrives as ?create=1
+    // "Team Setup" from Activity Logs still arrives as ?create=1
     @if(request()->boolean('create'))
         if (activeTab !== 'team_setup') openCreateTeamModal();
     @endif

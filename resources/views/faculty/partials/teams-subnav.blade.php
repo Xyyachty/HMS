@@ -1,4 +1,4 @@
-{{-- Shared Teams chrome (matches Teams list): Block tabs + Set Task + Add Team --}}
+{{-- Shared Teams chrome (matches Teams list): Block tabs + Set Task + Team Setup --}}
 @php
     $teamsSubTab = $teamsSubTab ?? request('tab', 'teams');
     $classes = $classes ?? collect();
@@ -62,10 +62,16 @@
             <span class="iconify text-base" data-icon="mdi:clipboard-plus-outline"></span>
             Set Task
         </a>
-        <button type="button" data-action-btn="add_team" onclick="openCreateTeamModal()"
-            class="teams-action-btn h-10 px-4 rounded-xl text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:border-brand/40 hover:text-brand">
-            <span class="iconify text-base" data-icon="mdi:plus"></span>
-            Add Team
+        {{-- Team Setup, where Add Team used to be. They opened the same screen under
+             two names in two places, which read as two different things to do.
+             Deliberately not a .teams-action-btn: that class is driven by
+             setTeamsActionHighlight(), which would paint over the gradient. --}}
+        <button type="button" onclick="openCreateTeamModal()"
+            title="Create new team(s) or modify teams"
+            class="h-10 px-4 rounded-xl brand-gradient text-white text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap shadow-md shadow-brand/20 hover:opacity-95">
+            <span class="iconify text-base" data-icon="mdi:cog-outline"></span>
+            <span class="iconify text-sm" data-icon="mdi:plus"></span>
+            Team Setup
         </button>
     </div>
 </div>
