@@ -396,17 +396,10 @@
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
                     <input name="phone_number" type="text" value="{{ old('phone_number') }}" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Block</label>
-                    <select name="block" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">
-                        <option value="">Select block</option>
-                        @forelse (($availableBlocks ?? []) as $letter)
-                            <option value="{{ $letter }}" {{ old('block') === $letter ? 'selected' : '' }}>Block {{ $letter }}</option>
-                        @empty
-                            <option value="" disabled>No blocks available</option>
-                        @endforelse
-                    </select>
-                </div>
+                {{-- No block to choose. It is always the next free class letter, so
+                     there was nothing to decide here and picking one already taken
+                     stopped the account being created. It is assigned on save and
+                     can be changed from User Management afterwards. --}}
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
                     <select name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">

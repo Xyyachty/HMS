@@ -93,6 +93,35 @@ class Faculty extends UserInformation
         ));
     }
 
+    /**
+     * The block a faculty being created should get.
+     *
+     * The dean is not asked for it: a block is only ever "the next free letter",
+     * so there was nothing to decide and a wrong answer stopped the account
+     * being made at all. The first unused class letter, or a new one past the
+     * last if every existing letter is spoken for.
+     */
+    public static function nextAvailableBlock(): string
+    {
+        $free = static::availableBlocks();
+        if ($free !== []) {
+            return $free[0];
+        }
+
+        $letters = static::existingClassLetters();
+        $taken = static::query()
+            ->whereNotNull('block')
+            ->where('block', '!=', '')
+            ->pluck('block')
+            ->map(fn ($b) => strtoupper((string) $b))
+            ->all();
+
+        $all = array_unique(array_merge($letters, $taken));
+        sort($all);
+
+        return FacultyClass::nextLetter((string) (end($all) ?: 'A'));
+    }
+
     /** Options for a faculty update dropdown: available class letters + their current block. */
     public static function selectableBlocksForFaculty(?int $facultyId = null, ?string $currentBlock = null): array
     {

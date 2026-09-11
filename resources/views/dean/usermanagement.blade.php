@@ -263,24 +263,15 @@
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Role</label>
                 {{-- This modal only ever adds faculty (the Add Faculty button is hidden on the
-                     Students tab), so the role is fixed rather than chosen. Kept as a hidden
-                     input under the same id so toggleCreateBlockField() still reads it. --}}
+                     Students tab), so the role is fixed rather than chosen. --}}
                 <input type="hidden" name="role" id="createUserRole" value="faculty">
                 <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center text-slate-500 font-semibold">
                     Faculty
                 </div>
             </div>
-            <div id="createBlockField">
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Block</label>
-                <select name="block" id="createUserBlock" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
-                    <option value="">Select block</option>
-                    @forelse ($availableBlocks as $letter)
-                        <option value="{{ $letter }}">Block {{ $letter }}</option>
-                    @empty
-                        <option value="" disabled>No blocks available</option>
-                    @endforelse
-                </select>
-            </div>
+            {{-- No block to choose: it is always the next free class letter, so it
+                 is assigned on save. Changing one is what the Block field on the
+                 update form below is for. --}}
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
                 <select name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
@@ -435,19 +426,6 @@
     let currentBlock = ''; // '' = all blocks, '__none__' = students with no block
     const BLOCK_COLUMN_INDEX = 3;
 
-    function toggleCreateBlockField() {
-        const role = document.getElementById('createUserRole')?.value;
-        const field = document.getElementById('createBlockField');
-        const select = document.getElementById('createUserBlock');
-        if (!field || !select) return;
-        const isFaculty = role === 'faculty';
-        field.classList.toggle('hidden', !isFaculty);
-        select.required = isFaculty;
-        if (!isFaculty) {
-            select.value = '';
-        }
-    }
-
     function syncSeenUserIds() {
         if (!usersTable) return;
         usersTable.rows({ page: 'all' }).nodes().to$().each(function () {
@@ -495,7 +473,6 @@
         });
 
         syncSeenUserIds();
-        toggleCreateBlockField();
         switchTab('faculty');
     });
 

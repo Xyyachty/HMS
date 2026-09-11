@@ -317,10 +317,15 @@ class DeanController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:30'],
-            'block' => ['required', 'string', 'in:' . implode(',', Faculty::existingClassLetters() ?: ['A']), 'unique:user_information,block'],
             'status' => ['required', 'in:active,inactive'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
+
+        /* The block is not asked for. It is always the next free class letter,
+           so there was nothing for the dean to decide and picking the one
+           already taken stopped the account being created at all. It can still
+           be changed afterwards, where changing it is the point. */
+        $block = Faculty::nextAvailableBlock();
 
         $fullName = trim(implode(' ', array_filter([
             $validated['first_name'],
@@ -343,17 +348,18 @@ class DeanController extends Controller
             'user_id' => $user->user_id,
             'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
             'status' => $validated['status'],
-            'block' => strtoupper($validated['block']),
+            'block' => $block,
         ]);
 
         ActivityLog::recordFor(
             ActivityLog::ACCOUNT_CREATED,
-            'Created faculty account for ' . $fullName . ' (block ' . strtoupper($validated['block']) . ').'
+            'Created faculty account for ' . $fullName . ' (block ' . $block . ').'
         );
 
         Notifier::accountCreated(auth()->user(), $user, 'faculty');
 
-        return redirect()->route('dean.faculties')->with('success', 'Faculty account created successfully.');
+        return redirect()->route('dean.faculties')
+            ->with('success', 'Faculty account created successfully — assigned ' . Faculty::blockLabel($block) . '.');
     }
 
     public function storeUser(Request $request)
@@ -365,13 +371,6 @@ class DeanController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:30'],
             'role' => ['required', 'in:faculty,student'],
-            'block' => [
-                'nullable',
-                'string',
-                'in:' . implode(',', Faculty::existingClassLetters() ?: ['A']),
-                'unique:user_information,block',
-                'required_if:role,faculty',
-            ],
             'status' => ['required', 'in:active,inactive'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
@@ -399,11 +398,12 @@ class DeanController extends Controller
         $user = User::create($userData);
 
         if ($validated['role'] === 'faculty') {
+            // Assigned, not asked for - see storeFaculty().
             Faculty::create([
                 'user_id' => $user->user_id,
                 'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
                 'status' => $validated['status'],
-                'block' => strtoupper($validated['block']),
+                'block' => Faculty::nextAvailableBlock(),
             ]);
         }
 
