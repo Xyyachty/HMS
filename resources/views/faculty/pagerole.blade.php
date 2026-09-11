@@ -538,6 +538,11 @@
                         }
                         $memberJson = json_encode($memberData);
 
+                        // Task Submission Indicator: submitted work sitting on this team,
+                        // unreviewed. updatePendingReviewBadges() below repaints this same
+                        // shape after every poll, so first paint and a live update read alike.
+                        $cardPendingReview = ($teamPendingReviewByGroup ?? [])[$groupName] ?? null;
+
                         $cardRoles = $groupMembers
                             ->flatMap(fn ($m) => $m->roles->pluck('role'))
                             ->filter()
@@ -611,6 +616,37 @@
                                 Team {{ str_pad($cardIndex, 2, '0', STR_PAD_LEFT) }} &ndash; {{ $groupName }}
                             </h3>
                             <p class="text-[13px] text-slate-500 mt-1 leading-snug line-clamp-2">{{ $cardConceptText }}</p>
+
+                            {{-- Task Submission Indicator. Hidden outright rather than shown
+                                 empty when nothing is waiting — updatePendingReviewBadge() below
+                                 keeps this in step with every poll, so a new submission appears
+                                 and a reviewed one disappears without a page reload. --}}
+                            <div data-pending-review-badge
+                                 class="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 {{ !$cardPendingReview ? 'hidden' : '' }}">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="flex items-start gap-2 min-w-0">
+                                        <span class="iconify text-blue-500 text-lg shrink-0 mt-0.5" data-icon="mdi:inbox-arrow-down-outline"></span>
+                                        <div class="min-w-0">
+                                            <p class="text-[12px] font-extrabold text-blue-700" data-pending-review-headline>
+                                                @if($cardPendingReview)
+                                                    New Submission &mdash; {{ $cardPendingReview['count'] }} Awaiting Review
+                                                @endif
+                                            </p>
+                                            <p class="text-[11px] text-blue-600 leading-snug mt-0.5" data-pending-review-detail>
+                                                @if($cardPendingReview && $cardPendingReview['latest'])
+                                                    {{ $cardPendingReview['latest']['student_name'] }} &middot; {{ $cardPendingReview['latest']['role_label'] }} &middot;
+                                                    "{{ $cardPendingReview['latest']['title'] }}" &middot; {{ $cardPendingReview['latest']['submitted_human'] }}
+                                                @endif
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button type="button"
+                                            onclick='openTeamModalAwaitingReview({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
+                                            class="shrink-0 h-8 px-2.5 rounded-lg bg-brand text-white text-[11px] font-bold hover:opacity-95 transition inline-flex items-center gap-1">
+                                        <span class="iconify text-xs" data-icon="mdi:eye-check-outline"></span> Review Submission
+                                    </button>
+                                </div>
+                            </div>
 
                             <div class="mt-4 space-y-3">
                                 <div class="flex items-center gap-2.5">
@@ -4560,8 +4596,12 @@ function renderTeamModalActivityPage() {
     if (nextBtn) nextBtn.disabled = teamModalActivityPage >= totalPages;
 }
 
-function openTeamModal(groupName, members, createdAt, activityLogs) {
-    const logs = Array.isArray(activityLogs) ? activityLogs : [];
+function openTeamModal(groupName, members, createdAt, activityLogs, options) {
+    options = options || {};
+    // Review Submission opens straight onto what it announced — every other
+    // caller (View Team, Update) gets the full, unfiltered activity list.
+    const logs = (Array.isArray(activityLogs) ? activityLogs : [])
+        .filter((l) => !options.onlyAwaitingReview || (l.status === 'archived' && !l.has_feedback));
     const nameSuffix = document.getElementById('modalTeamNameSuffix');
     if (nameSuffix) {
         nameSuffix.textContent = groupName ? ' — ' + groupName : '';
@@ -4608,13 +4648,66 @@ function openTeamModal(groupName, members, createdAt, activityLogs) {
     teamModalActivityPage = 1;
     renderTeamModalActivityPage();
 
-    // Always open on Members so the modal never reappears on the other tab.
-    switchTeamModalTab('members');
+    // Members by default, so the modal never reappears on the other tab; Review
+    // Submission asks for Tasks instead, already filtered above.
+    switchTeamModalTab(options.tab || 'members');
     loadTeamHotelConcept(groupName);
 
     document.getElementById('teamInfoModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
+
+/* Task Submission Indicator's Review Submission button: the same team modal,
+   opened straight onto Tasks and filtered to what is actually awaiting a
+   verdict, rather than making faculty find it in the full activity list. */
+function openTeamModalAwaitingReview(groupName, members, createdAt, activityLogs) {
+    openTeamModal(groupName, members, createdAt, activityLogs, { tab: 'tasks', onlyAwaitingReview: true });
+}
+
+/* ── Task Submission Indicator: kept live ──────────────────────────────────
+   Polled the same way the notification bell polls its unread count — every
+   submission fires that notification already (Notifier::taskSubmitted), this
+   just keeps the card badges honest without a reload: a new submission shows
+   up, and one the faculty just reviewed drops its count on the next tick. */
+const TEAM_PENDING_REVIEW_URL = @json(route('faculty.role.pending-review'));
+
+function updatePendingReviewBadges(data) {
+    document.querySelectorAll('.team-card[data-team-name]').forEach((card) => {
+        const entry = data ? data[card.dataset.teamName] : null;
+        const badge = card.querySelector('[data-pending-review-badge]');
+        if (!badge) return;
+
+        badge.classList.toggle('hidden', !entry);
+        if (!entry) return;
+
+        const headline = badge.querySelector('[data-pending-review-headline]');
+        if (headline) headline.textContent = 'New Submission — ' + entry.count + ' Awaiting Review';
+
+        const detail = badge.querySelector('[data-pending-review-detail]');
+        if (detail && entry.latest) {
+            detail.textContent = entry.latest.student_name + ' · ' + entry.latest.role_label
+                + ' · "' + entry.latest.title + '" · ' + entry.latest.submitted_human;
+        }
+    });
+}
+
+function pollPendingReview() {
+    fetch(TEAM_PENDING_REVIEW_URL, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        credentials: 'same-origin',
+    })
+        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+        .then(updatePendingReviewBadges)
+        .catch(() => {});
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // The grid exists on every tab (only its own tab-panel is hidden), so one
+    // interval keeps every card's badge current whichever tab is on screen.
+    if (document.getElementById('teamCardsGrid')) {
+        setInterval(pollPendingReview, 60000);
+    }
+});
 
 /* Centralized activity log — the server decides whether this faculty may read it. */
 const MEMBER_ACTIVITY_URL = @json(route('faculty.activity.user', ['user' => '__ID__']));

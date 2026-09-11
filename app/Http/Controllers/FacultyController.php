@@ -1094,6 +1094,7 @@ class FacultyController extends Controller
                 'roles'           => [],
                 'teamActivityByGroup' => [],
                 'conceptsByGroup' => collect(),
+                'teamPendingReviewByGroup' => [],
             ]);
         }
 
@@ -1326,6 +1327,11 @@ class FacultyController extends Controller
                 ->all();
         }
 
+        // The Task Submission Indicator on each card, first-paint — the poll
+        // endpoint recomputes this same shape afterward, so the card never has
+        // to tell an initial render apart from a live update.
+        $teamPendingReviewByGroup = $this->pendingReviewByGroup($facultyId);
+
         // The hotel concepts, so the teams list names what each team proposed. Grouped
         // rather than keyed: a team has two, and keyBy would silently keep one. The
         // full text and the edit histories stay in the Team Details modal. Once a
@@ -1355,8 +1361,70 @@ class FacultyController extends Controller
             'taskSteps',
             'teamRoleCounts',
             'teamActivityByGroup',
-            'conceptsByGroup'
+            'conceptsByGroup',
+            'teamPendingReviewByGroup'
         ));
+    }
+
+    /**
+     * Every team's tasks sitting submitted with no verdict yet - archived, but
+     * with no feedback recorded - keyed by group_name to a count and the most
+     * recent one. This is all the Task Submission Indicator on each Manage
+     * Teams card needs, and it is what /role/pending-review polls to keep that
+     * indicator live without the page reloading.
+     *
+     * The hotel concept is excluded: it carries its own submitted/needs_revision
+     * states on HotelConcept and its own review flow, not this table.
+     */
+    private function pendingReviewByGroup(int $facultyId): array
+    {
+        $tasks = Task::with('assignedTo')
+            ->where('faculty_id', $facultyId)
+            ->where('status', 'archived')
+            ->whereNull('feedback_at')
+            ->whereNull('kind')
+            ->whereNotNull('group_name')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $byGroup = [];
+        foreach ($tasks as $task) {
+            $groupName = (string) $task->group_name;
+            $byGroup[$groupName]['count'] = ($byGroup[$groupName]['count'] ?? 0) + 1;
+
+            // Rows arrived newest first, so a group's first row is its latest.
+            if (isset($byGroup[$groupName]['latest'])) {
+                continue;
+            }
+
+            $u = $task->assignedTo;
+            $studentName = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name])));
+            $studentName = $studentName !== '' ? $studentName : ($u?->name ?? 'A student');
+
+            $byGroup[$groupName]['latest'] = [
+                'task_id' => $task->task_id,
+                'student_id' => $task->student_id,
+                'student_name' => $studentName,
+                'role' => $task->role,
+                'role_label' => $task->role_label,
+                'title' => $task->title,
+                'submitted_at' => optional($task->updated_at)->format('M d, Y g:i A'),
+                'submitted_human' => optional($task->updated_at)->diffForHumans(),
+            ];
+        }
+
+        return $byGroup;
+    }
+
+    /** Polled by every team card on Manage Teams — see pendingReviewByGroup(). */
+    public function pendingReview(Request $request)
+    {
+        $facultyId = auth()->user()?->faculty?->user_information_id;
+        if (!$facultyId) {
+            return response()->json([]);
+        }
+
+        return response()->json($this->pendingReviewByGroup((int) $facultyId));
     }
 
     public function updateGroup(Request $request, $groupName)

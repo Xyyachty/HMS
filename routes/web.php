@@ -161,6 +161,10 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     Route::put('/students/{userId}', [FacultyController::class, 'updateStudent'])->name('students.update');
     Route::post('/students/bulk', [FacultyController::class, 'bulkImportStudents'])->name('students.bulk');
     Route::get('/role', [FacultyController::class, 'role'])->name('role');
+    // Polled from Manage Teams so the Task Submission Indicator on every card
+    // updates itself — new submission, or a reviewed one dropping off — without
+    // the page reloading.
+    Route::get('/role/pending-review', [FacultyController::class, 'pendingReview'])->name('role.pending-review');
     Route::post('/role/groups', [FacultyController::class, 'storeGroup'])->name('role.groups.store');
     Route::put('/role/groups/{groupName}', [FacultyController::class, 'updateGroup'])->name('role.groups.update');
     Route::get('/tasks', [FacultyController::class, 'tasks'])->name('tasks');
