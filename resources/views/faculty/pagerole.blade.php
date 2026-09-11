@@ -639,7 +639,7 @@
                                         onclick='openUpdateModal(@json($groupName), @json($memberData))'
                                         class="flex-1 h-11 rounded-xl bg-white border border-slate-200 text-slate-700 text-[13px] font-bold inline-flex items-center justify-center gap-2 hover:border-brand/40 hover:text-brand transition">
                                     <span class="iconify text-base" data-icon="mdi:pencil-outline"></span>
-                                    Edit
+                                    Update
                                 </button>
                             </div>
                         </div>
