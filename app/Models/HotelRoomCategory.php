@@ -86,8 +86,13 @@ class HotelRoomCategory extends Model
         return array_slice($out, 0, self::GALLERY_MAX);
     }
 
-    /** More than a handful is a slideshow nobody watches to the end. */
-    public const GALLERY_MAX = 8;
+    /**
+     * The extra angles stored beside image_path.
+     *
+     * A category shows three photographs of the one room design, and the first
+     * of them is image_path, so two more is the whole gallery.
+     */
+    public const GALLERY_MAX = 2;
 
     /** The inclusions as the list the browser works with, not the stored text. */
     public function getInclusionListAttribute(): array

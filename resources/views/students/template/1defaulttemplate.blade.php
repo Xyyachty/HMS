@@ -361,17 +361,7 @@
     background: transparent; cursor: default; transition: transform 0.15s, filter 0.15s;
   }
   .rn-clickable { cursor: pointer; }
-  /* The room whose photograph is up. An outline rather than another colour: the
-     colour is already saying whether the room is free. */
-  .rn-showing { box-shadow: 0 0 0 2px var(--accent); }
-  .cat-slide-tag {
-    position: absolute; right: 1.1rem; top: 1.05rem; z-index: 2;
-    padding: 0.28rem 0.6rem; border-radius: 999px;
-    background: rgba(12,11,9,0.72); border: 1px solid var(--border);
-    color: var(--fg); font-size: 0.64rem; font-weight: 700;
-    letter-spacing: 0.12em; text-transform: uppercase;
-    backdrop-filter: blur(4px);
-  }
+
   .rn-clickable:hover { transform: translateY(-1px); filter: brightness(1.15); }
   .rn-available   { background: rgba(34,197,94,0.16);  color: #4ade80; border-color: rgba(34,197,94,0.38); }
   .rn-reserved    { background: rgba(234,179,8,0.16);   color: #facc15; border-color: rgba(234,179,8,0.38); }
@@ -383,6 +373,68 @@
   .cat-inclusions { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 0.75rem 0.5rem; }
   .cat-inclusion { text-align: center; color: var(--fg-muted); font-size: 0.66rem; line-height: 1.35; }
   .cat-inclusion i { display: block; font-size: 1.05rem; color: var(--accent); margin-bottom: 0.4rem; }
+  /* -- Menu rows ---------------------------------------------------------
+     Four dishes at a time with the next one showing at the edge, so it is
+     obvious the row goes on. The card width is fixed in the track rather than
+     stretched to fit, which is what keeps the two rows lined up with each other
+     however many dishes are in either. */
+  .menu-row { position: relative; }
+  .menu-track {
+    display: flex; gap: 1.25rem;
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.25rem 0.25rem 0.5rem;
+  }
+  .menu-track::-webkit-scrollbar { display: none; }
+  .menu-track.is-dragging { scroll-behavior: auto; cursor: grabbing; scroll-snap-type: none; }
+  .menu-track.is-dragging .menu-food-card { pointer-events: none; }
+  .menu-track > .menu-food-card {
+    /* 4.3 rather than 4: the extra third is the next card showing. */
+    flex: 0 0 calc((100% - 3 * 1.25rem) / 4.3);
+    scroll-snap-align: start;
+  }
+  .menu-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 4;
+    width: 40px; height: 40px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(12,11,9,0.82); color: var(--accent);
+    border: 1px solid var(--accent); cursor: pointer;
+    transition: background 0.18s, transform 0.18s, opacity 0.18s;
+    backdrop-filter: blur(4px);
+  }
+  .menu-arrow:hover { background: var(--accent); color: #0c0b09; transform: translateY(-50%) scale(1.06); }
+  .menu-arrow.is-prev { left: -6px; }
+  .menu-arrow.is-next { right: -6px; }
+  /* Nothing further that way: the arrow goes rather than sitting there dead. */
+  .menu-arrow[hidden] { display: none; }
+
+  .menu-pager { display: flex; align-items: center; justify-content: center; gap: 0.4rem; flex-wrap: wrap; }
+  .menu-page-btn {
+    min-width: 38px; height: 38px; padding: 0 0.7rem; border-radius: 10px;
+    background: var(--card); color: var(--fg-muted);
+    border: 1px solid var(--border); cursor: pointer;
+    font-family: inherit; font-size: 0.82rem; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: border-color 0.18s, color 0.18s, background 0.18s;
+  }
+  .menu-page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .menu-page-btn.is-current { background: var(--accent); border-color: var(--accent); color: #0c0b09; }
+  .menu-page-btn:disabled { opacity: 0.35; cursor: default; }
+
+  @media (max-width: 1024px) {
+    .menu-track > .menu-food-card { flex-basis: calc((100% - 2 * 1.25rem) / 3.3); }
+  }
+  @media (max-width: 780px) {
+    .menu-track > .menu-food-card { flex-basis: calc((100% - 1.25rem) / 2.2); }
+    .menu-arrow { width: 34px; height: 34px; }
+  }
+  @media (max-width: 520px) {
+    .menu-track > .menu-food-card { flex-basis: 78%; }
+  }
+
   .cat-dates { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem; }
   .cat-date-field { display: flex; flex-direction: column; gap: 0.3rem; }
   .cat-date-field label { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-muted); }
@@ -1942,8 +1994,11 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
   const [image, setImage] = React.useState('');
   const [inclusions, setInclusions] = React.useState('');
   const [rooms, setRooms] = React.useState('');
-  // The rest of the pictures, and what a guest asks before booking.
-  const [gallery, setGallery] = React.useState('');
+  /* Three photographs of the one room design, which is what the category's
+     slider shows. Held as three slots rather than as a list, so it is obvious
+     how many there are and which one is missing. */
+  const [angle2, setAngle2] = React.useState('');
+  const [angle3, setAngle3] = React.useState('');
   const [capacity, setCapacity] = React.useState('');
   const [bedType, setBedType] = React.useState('');
   const [roomSize, setRoomSize] = React.useState('');
@@ -1957,7 +2012,9 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
     setImage(c.image || '');
     setInclusions(Array.isArray(c.inclusions) ? c.inclusions.join('\n') : (c.inclusions || ''));
     setRooms(c.rooms_available === null || c.rooms_available === undefined ? '' : String(c.rooms_available));
-    setGallery(Array.isArray(c.gallery) ? c.gallery.join('\n') : (c.gallery || ''));
+    const extra = Array.isArray(c.gallery) ? c.gallery : [];
+    setAngle2(extra[0] || '');
+    setAngle3(extra[1] || '');
     setCapacity(c.capacity === null || c.capacity === undefined ? '' : String(c.capacity));
     setBedType(c.bed_type || '');
     setRoomSize(c.room_size || '');
@@ -1979,7 +2036,7 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
       inclusions: inclusions,
       // Left blank means "not said yet", which is not the same as none.
       rooms_available: Number.isNaN(parsedRooms) ? null : parsedRooms,
-      gallery: gallery.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
+      gallery: [angle2, angle3].map((url) => url.trim()).filter(Boolean),
       capacity: Number.isNaN(parsedCapacity) ? null : parsedCapacity,
       bed_type: bedType.trim(),
       room_size: roomSize.trim(),
@@ -2018,7 +2075,7 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
           onKeyDown={onKeyDown}
         />
 
-        <label style={fieldLabel}>Photo URL</label>
+        <label style={fieldLabel}>Photo 1 of 3 \u2014 the main angle</label>
         <input
           className="header-modal-field"
           type="text"
@@ -2129,18 +2186,30 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
           </div>
         </div>
 
-        <label style={fieldLabel}>More photos, one URL per line</label>
-        <textarea
+        <label style={fieldLabel}>Photo 2 of 3</label>
+        <input
           className="header-modal-field"
-          rows={3}
-          value={gallery}
-          placeholder={'https://\u2026/bathroom.jpg\nhttps://\u2026/view.jpg'}
-          onChange={(e) => setGallery(e.target.value)}
+          type="text"
+          value={angle2}
+          maxLength={2048}
+          placeholder="https://\u2026 the same room from another angle"
+          onChange={(e) => setAngle2(e.target.value)}
           onKeyDown={onKeyDown}
-          style={{ resize: 'vertical', lineHeight: 1.5 }}
+        />
+
+        <label style={fieldLabel}>Photo 3 of 3</label>
+        <input
+          className="header-modal-field"
+          type="text"
+          value={angle3}
+          maxLength={2048}
+          placeholder="https://\u2026 and a third"
+          onChange={(e) => setAngle3(e.target.value)}
+          onKeyDown={onKeyDown}
         />
         <p className="header-modal-hint" style={{ marginTop: '0.35rem' }}>
-          These slide behind the photo above, on the card and in the details window.
+          Three angles of the one room design. Every room in this category shows
+          these three, so they do not need a photograph each.
         </p>
         {error ? (
           <p className="header-modal-hint" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p>
@@ -3830,38 +3899,43 @@ const CATEGORY_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1611892440504
 /* One picture of a room is a picture of one corner of it, so the card slides
    through whatever the team has given the category: its own photograph first,
    then the gallery, and the rooms' own pictures to fall back on. */
+/** A category shows three photographs of itself. */
+const CATEGORY_ANGLES = 3;
+
+/**
+ * The pictures one category slides through.
+ *
+ * Rooms in a category are the same room, so the pictures belong to the category
+ * and every room in it shares them: three angles of the one design rather than
+ * a photograph each of eleven identical rooms. A team that has not taken its
+ * three yet falls back to a room's own picture, which is a photograph of the
+ * category whoever uploaded it meant it that way or not.
+ */
 function categorySlides(detail, roomsIn) {
   const out = [];
   const seen = {};
 
-  /* The category's own photographs lead, and only these are de-duplicated:
-     they are pictures of the category, so the same one twice is a mistake. */
-  const pushShared = (value) => {
+  const push = (value) => {
     const url = String(value == null ? '' : value).trim();
-    if (url && !seen[url]) {
+    if (url && !seen[url] && out.length < CATEGORY_ANGLES) {
       seen[url] = true;
-      out.push({ key: 'cat-' + out.length, src: url, room: null });
+      out.push({ key: 'angle-' + out.length, src: url });
     }
   };
 
   if (detail) {
-    pushShared(detail.image);
-    (Array.isArray(detail.gallery) ? detail.gallery : []).forEach(pushShared);
+    push(detail.image);
+    (Array.isArray(detail.gallery) ? detail.gallery : []).forEach(push);
   }
 
-  /* Then one slide per room, in the order the rooms come in, whether or not two
-     rooms happen to share a photograph: 101 and 102 are different rooms, and a
-     card that skips 102 because it looks like 101 is hiding a room. */
-  (roomsIn || []).forEach((room) => {
-    if (!room) return;
-    out.push({
-      key: String(room.id),
-      src: String(room.img || '').trim() || CATEGORY_FALLBACK_IMAGE,
-      room: room,
-    });
-  });
+  // Nothing written for the category yet: one room's picture stands for all of
+  // them, because that is what it is a picture of.
+  if (!out.length) {
+    const firstRoom = (roomsIn || []).find((room) => room && String(room.img || '').trim());
+    push(firstRoom ? firstRoom.img : CATEGORY_FALLBACK_IMAGE);
+  }
 
-  return out.length ? out : [{ key: 'fallback', src: CATEGORY_FALLBACK_IMAGE, room: null }];
+  return out;
 }
 
 /* Rooms are called "<Category> 101", so the number is what is worth showing in a
@@ -3993,8 +4067,6 @@ function CategorySlides({ slides, index, onIndex, interval }) {
     if (count && index >= count) onIndex(0);
   }, [count, index, onIndex]);
 
-  const current = list[index] || list[0] || null;
-
   return (
     <>
       {list.map((slide, i) => (
@@ -4006,14 +4078,6 @@ function CategorySlides({ slides, index, onIndex, interval }) {
         ></div>
       ))}
 
-      {/* Which room this is. Without it the picture is of a room the guest
-          cannot name, and the numbers below it are a separate list. */}
-      {current && current.room ? (
-        <span className="cat-slide-tag" data-hms-no-edit="1">
-          Room {roomNumberLabel(current.room)}
-        </span>
-      ) : null}
-
       {count > 1 ? (
         <div className="cat-dots" data-hms-no-edit="1">
           {list.map((slide, i) => (
@@ -4021,7 +4085,7 @@ function CategorySlides({ slides, index, onIndex, interval }) {
               key={'dot-' + slide.key + '-' + i}
               type="button"
               className={'cat-dot' + (i === index ? ' is-active' : '')}
-              aria-label={slide.room ? ('Room ' + roomNumberLabel(slide.room)) : ('Photo ' + (i + 1))}
+              aria-label={'Photo ' + (i + 1)}
               onClick={(e) => { e.stopPropagation(); onIndex(i); }}
             ></button>
           ))}
@@ -4033,7 +4097,7 @@ function CategorySlides({ slides, index, onIndex, interval }) {
 
 /* The right half: how many rooms there are, which of them are free for the
    dates asked about, and what the stay includes. */
-function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPickRoom, staff, compact, activeRoomId }) {
+function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPickRoom, staff, compact }) {
   const total = roomsIn.length || detail?.rooms_available || 0;
   const states = roomsIn.map((room) => roomStateForDates(room, checkIn, checkOut));
   const freeCount = states.filter((state) => state === 'Available').length;
@@ -4071,14 +4135,9 @@ function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPi
               <button
                 key={room.id}
                 type="button"
-                className={
-                  ROOM_STATE_CLASS[state]
-                  + (onPickRoom ? ' rn-clickable' : '')
-                  + (room.id === activeRoomId ? ' rn-showing' : '')
-                }
+                className={ROOM_STATE_CLASS[state] + (onPickRoom ? ' rn-clickable' : '')}
                 title={room.name + ' \u2014 ' + state}
                 aria-label={room.name + ', ' + state}
-                aria-current={room.id === activeRoomId ? 'true' : undefined}
                 tabIndex={onPickRoom ? 0 : -1}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -4112,17 +4171,7 @@ function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPi
 
 function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPickRoom, staff, canEdit, onEditCategory, onAddRoom }) {
   const slides = useMemo(() => categorySlides(detail, roomsIn), [detail, roomsIn]);
-  /* Held here rather than inside the slider, because the room numbers on the
-     other half of the card are the same choice said another way: the number
-     lights up as its room comes round, and pressing a number brings its room
-     up. */
   const [slide, setSlide] = useState(0);
-  const showing = slides[slide] && slides[slide].room ? slides[slide].room.id : null;
-
-  const showRoom = (room) => {
-    const at = slides.findIndex((item) => item.room && item.room.id === room.id);
-    if (at !== -1) setSlide(at);
-  };
   // What a stay actually starts at, which is the cheapest room in it rather than
   // the category's headline rate when the two have drifted apart.
   const prices = roomsIn.map((room) => Number(room.price) || 0).filter((n) => n > 0);
@@ -4178,10 +4227,9 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
           checkIn={checkIn}
           checkOut={checkOut}
           onOpen={onOpen}
-          // On the card a number shows you the room; opening one to work on it
-          // is the details window's job.
-          onPickRoom={showRoom}
-          activeRoomId={showing}
+          // Guests read this grid. Opening a room to work on it is staff's, and
+          // it happens in the details window.
+          onPickRoom={staff ? onPickRoom : null}
           staff={staff}
           compact
         />
@@ -4204,7 +4252,6 @@ function shortText(value, max) {
 function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, onClose, onBook, onPickRoom, staff, canReserve }) {
   const slides = useMemo(() => categorySlides(detail, roomsIn), [detail, roomsIn]);
   const [slide, setSlide] = useState(0);
-  const showing = slides[slide] && slides[slide].room ? slides[slide].room.id : null;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -4281,14 +4328,8 @@ function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, o
               checkIn={checkIn}
               checkOut={checkOut}
               onOpen={null}
-              /* Here a number brings its room up in the pictures above, and for
-                 staff it is also the way into the room itself. */
-              onPickRoom={(room) => {
-                const at = slides.findIndex((item) => item.room && item.room.id === room.id);
-                if (at !== -1) setSlide(at);
-                if (staff && onPickRoom) onPickRoom(room);
-              }}
-              activeRoomId={showing}
+              // Staff open a room from its number; a guest reads it.
+              onPickRoom={staff ? onPickRoom : null}
               staff={staff}
             />
           </div>
@@ -4984,6 +5025,208 @@ function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, on
   );
 }
 
+/* -- The menu, two rows at a time ----------------------------------------
+   Four dishes across with the next one showing at the edge. The page holds a
+   fixed number so the footer stays where it is rather than being pushed down a
+   course at a time, and each row slides through its own share of them. */
+
+const MENU_ROW_SIZE = 8;                       // dishes per row on a page
+const MENU_PAGE_SIZE = MENU_ROW_SIZE * 2;      // two rows to a page
+
+/**
+ * One page of a category, split into the two rows that show it.
+ *
+ * Split down the middle rather than filled row by row, so a page of nine is
+ * five and four instead of eight and one - two rows of roughly the same length
+ * read as a block, and one full row above a nearly empty one reads as a
+ * mistake.
+ */
+function menuPageRows(items, page) {
+  const list = items || [];
+  const pageCount = Math.max(1, Math.ceil(list.length / MENU_PAGE_SIZE));
+  const current = Math.min(Math.max(1, page || 1), pageCount);
+  const onPage = list.slice((current - 1) * MENU_PAGE_SIZE, current * MENU_PAGE_SIZE);
+  const split = Math.ceil(onPage.length / 2);
+
+  return {
+    pageCount,
+    page: current,
+    rowOne: onPage.slice(0, split),
+    rowTwo: onPage.slice(split),
+  };
+}
+
+/**
+ * One sliding row.
+ *
+ * The track is an ordinary scroll container, so a touch swipe and a trackpad's
+ * sideways flick already work and cost nothing; the arrows and the drag are
+ * what has to be added for a mouse. Each row keeps its own scroll position -
+ * they are separate elements, so neither can move the other.
+ */
+function MenuRow({ items, renderCard, resetKey }) {
+  const trackRef = React.useRef(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+  const drag = React.useRef(null);
+
+  const measure = React.useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    // A pixel of slack: sub-pixel widths otherwise leave an arrow enabled at
+    // the very end of a row that cannot move any further.
+    const max = el.scrollWidth - el.clientWidth;
+    setCanPrev(el.scrollLeft > 1);
+    setCanNext(el.scrollLeft < max - 1);
+  }, []);
+
+  useEffect(() => {
+    measure();
+    const el = trackRef.current;
+    if (!el) return undefined;
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [measure, items]);
+
+  /* Back to the beginning when the category or the page changes: the dish that
+     was on screen is not in this row any more, so where it had been scrolled to
+     means nothing. */
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const behavior = el.style.scrollBehavior;
+    el.style.scrollBehavior = 'auto';
+    el.scrollLeft = 0;
+    el.style.scrollBehavior = behavior;
+    measure();
+  }, [resetKey, measure]);
+
+  const step = (direction) => {
+    const el = trackRef.current;
+    if (!el) return;
+    const card = el.querySelector('.menu-food-card');
+    const width = card ? card.getBoundingClientRect().width + 20 : el.clientWidth * 0.8;
+    // Two at a time: one card at a time reads as a nudge rather than a move.
+    el.scrollBy({ left: direction * width * 2, behavior: 'smooth' });
+  };
+
+  /* Dragging with a mouse. Pointer events cover pen and touch too, but touch
+     already scrolls the track itself, so those are left alone. */
+  const onPointerDown = (e) => {
+    if (e.pointerType === 'touch' || e.button !== 0) return;
+    const el = trackRef.current;
+    if (!el) return;
+    drag.current = { x: e.clientX, left: el.scrollLeft, moved: false, id: e.pointerId };
+  };
+
+  const onPointerMove = (e) => {
+    const el = trackRef.current;
+    const state = drag.current;
+    if (!el || !state) return;
+    const dx = e.clientX - state.x;
+    if (!state.moved) {
+      if (Math.abs(dx) < 4) return;
+      state.moved = true;
+      el.classList.add('is-dragging');
+      if (el.setPointerCapture) { try { el.setPointerCapture(state.id); } catch (err) { /* ignore */ } }
+    }
+    el.scrollLeft = state.left - dx;
+    measure();
+  };
+
+  const endDrag = () => {
+    const el = trackRef.current;
+    const state = drag.current;
+    drag.current = null;
+    if (!el || !state) return;
+    if (state.moved) {
+      el.classList.remove('is-dragging');
+      if (el.releasePointerCapture) { try { el.releasePointerCapture(state.id); } catch (err) { /* ignore */ } }
+      /* Letting go at the end of a drag is still a click as far as the card
+         underneath is concerned, and it would open a dish the guest was only
+         sliding past. Swallowed once, on the way down. */
+      const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+      el.addEventListener('click', swallow, true);
+      setTimeout(() => el.removeEventListener('click', swallow, true), 0);
+    }
+  };
+
+  if (!items.length) return null;
+
+  return (
+    <div className="menu-row">
+      <button
+        type="button"
+        className="menu-arrow is-prev"
+        hidden={!canPrev}
+        aria-label="Previous dishes"
+        data-hms-no-edit="1"
+        onClick={() => step(-1)}
+      ><i className="fa-solid fa-chevron-left" style={{ fontSize: '0.8rem' }}></i></button>
+
+      <div
+        className="menu-track"
+        ref={trackRef}
+        onScroll={measure}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onPointerLeave={endDrag}
+      >
+        {items.map(renderCard)}
+      </div>
+
+      <button
+        type="button"
+        className="menu-arrow is-next"
+        hidden={!canNext}
+        aria-label="More dishes"
+        data-hms-no-edit="1"
+        onClick={() => step(1)}
+      ><i className="fa-solid fa-chevron-right" style={{ fontSize: '0.8rem' }}></i></button>
+    </div>
+  );
+}
+
+/** Previous, the page numbers, next. */
+function MenuPager({ page, pageCount, onPage }) {
+  if (pageCount < 2) return null;
+
+  const numbers = [];
+  for (let i = 1; i <= pageCount; i++) numbers.push(i);
+
+  return (
+    <div className="menu-pager" data-hms-no-edit="1">
+      <button
+        type="button"
+        className="menu-page-btn"
+        disabled={page <= 1}
+        aria-label="Previous page"
+        onClick={() => onPage(page - 1)}
+      ><i className="fa-solid fa-chevron-left" style={{ fontSize: '0.7rem' }}></i></button>
+
+      {numbers.map((n) => (
+        <button
+          key={n}
+          type="button"
+          className={'menu-page-btn' + (n === page ? ' is-current' : '')}
+          aria-current={n === page ? 'page' : undefined}
+          onClick={() => onPage(n)}
+        >{n}</button>
+      ))}
+
+      <button
+        type="button"
+        className="menu-page-btn"
+        disabled={page >= pageCount}
+        aria-label="Next page"
+        onClick={() => onPage(page + 1)}
+      ><i className="fa-solid fa-chevron-right" style={{ fontSize: '0.7rem' }}></i></button>
+    </div>
+  );
+}
+
 function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, cardImages, isDesignMode, rooms, guest }) {
   const menuList = menus || [];
   const [selectedMenuId, setSelectedMenuId] = useState(null);
@@ -4993,6 +5236,20 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
   const [cartOpen, setCartOpen] = useState(false);
   const filteredMenus = menuList.filter(item => normalizeMenuCategory(item.category) === menuTab);
   void cardImages;
+
+  /* The page of the category on screen, and the two rows it splits into. A
+     page holds a fixed number so the footer sits under the menu rather than a
+     screen and a half below it; the rows slide through the page's own dishes. */
+  const [menuPage, setMenuPage] = useState(1);
+  const { pageCount, page: currentPage, rowOne, rowTwo } = menuPageRows(filteredMenus, menuPage);
+
+  // A category read to page three, then narrowed to one page: the page being
+  // asked for no longer exists.
+  useEffect(() => { setMenuPage(1); }, [menuTab]);
+  useEffect(() => { if (menuPage !== currentPage) setMenuPage(currentPage); }, [menuPage, currentPage]);
+
+  // Both rows go back to their start when either of these changes.
+  const rowReset = menuTab + ':' + currentPage;
 
   // Keyed by dbId: adding the same dish twice bumps its quantity rather than
   // creating a second line the kitchen would read as two separate requests.
@@ -5026,6 +5283,48 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
   const cartCount = cart.reduce((sum, l) => sum + l.qty, 0);
   const cartTotal = cart.reduce((sum, l) => sum + l.price * l.qty, 0);
 
+  /* One dish. Both rows draw their cards with this, so a change to a card is a
+     change to every card rather than to whichever row it was written in. */
+  const renderMenuCard = (item) => (
+    <div
+      key={item.id || item.name}
+      className="menu-food-card"
+      style={{ position: 'relative', cursor: 'pointer' }}
+      onClick={() => setSelectedMenuId(item.id)}
+    >
+      {canEditMenuColor && (
+        <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
+          data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
+          <CardColorButton kind="menu" label="Card colour (all menu cards)" />
+        </div>
+      )}
+      <div className="menu-food-img">
+        <img
+          src={menuFoodImg(item)}
+          alt={item.name}
+          loading="lazy"
+          draggable={false}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            const fallback = e.currentTarget.nextElementSibling;
+            if (fallback) fallback.style.display = 'flex';
+          }}
+        />
+        <div className="menu-food-img-fallback" style={{ display: 'none' }}>
+          <i className="fa-solid fa-utensils" style={{ fontSize: '1.6rem', color: 'var(--accent)' }}></i>
+        </div>
+        <div className="menu-food-price">{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '\u2014')}</div>
+      </div>
+      <div className="menu-food-body">
+        <p style={{ margin: '0 0 0.35rem', color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          {normalizeMenuCategory(item.category)}
+        </p>
+        <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 0.4rem' }}>{item.name}</h3>
+        <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.8rem', fontWeight: 300, lineHeight: 1.5 }}>{item.sub}</p>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <div className="page-header">
@@ -5042,48 +5341,21 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
         getKey={(item) => normalizeMenuCategory(item.category)}
       />
 
-      <section style={{ padding: '0 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
+      <section style={{ padding: '0 1.5rem 3rem', maxWidth: 1200, margin: '0 auto' }}>
         {filteredMenus.length === 0 ? (
           <p style={{ textAlign: 'center', color: 'var(--fg-muted)', padding: '2rem 1rem' }}>
             No items in {menuTab} yet.
           </p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}>
-            {filteredMenus.map(item => (
-              <div key={item.id || item.name} className="menu-food-card" style={{ position: 'relative', cursor: 'pointer' }}
-                onClick={() => setSelectedMenuId(item.id)}>
-                {canEditMenuColor && (
-                  <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
-                    data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
-                    <CardColorButton kind="menu" label="Card colour (all menu cards)" />
-                  </div>
-                )}
-                <div className="menu-food-img">
-                  <img
-                    src={menuFoodImg(item)}
-                    alt={item.name}
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      const fallback = e.currentTarget.nextElementSibling;
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
-                  />
-                  <div className="menu-food-img-fallback" style={{ display: 'none' }}>
-                    <i className="fa-solid fa-utensils" style={{ fontSize: '1.6rem', color: 'var(--accent)' }}></i>
-                  </div>
-                  <div className="menu-food-price">{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}</div>
-                </div>
-                <div className="menu-food-body">
-                  <p style={{ margin: '0 0 0.35rem', color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                    {normalizeMenuCategory(item.category)}
-                  </p>
-                  <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 0.4rem' }}>{item.name}</h3>
-                  <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.8rem', fontWeight: 300, lineHeight: 1.5 }}>{item.sub}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <>
+            <div style={{ display: 'grid', gap: '1.25rem' }}>
+              <MenuRow items={rowOne} resetKey={rowReset} renderCard={renderMenuCard} />
+              <MenuRow items={rowTwo} resetKey={rowReset} renderCard={renderMenuCard} />
+            </div>
+            <div style={{ marginTop: '2rem' }}>
+              <MenuPager page={currentPage} pageCount={pageCount} onPage={setMenuPage} />
+            </div>
+          </>
         )}
       </section>
       {canOrderMenu && cartCount > 0 && (
