@@ -339,9 +339,13 @@
                     ? $myRoleTasks->filter(fn($t) => $t->due_date && $t->due_date->isPast())->count()
                     : 0;
 
-                // Greeting follows the local clock so the page reads like a daily brief.
-                $homeHour = (int) now()->format('G');
-                $homeGreeting = $homeHour < 12 ? 'Good morning' : ($homeHour < 18 ? 'Good afternoon' : 'Good evening');
+                // Greeting follows Philippine time, not the server's own timezone
+                // (production runs on UTC) — refreshHomeGreeting() below keeps it
+                // live client-side the same way past the first paint.
+                $homeManilaHour = (int) now('Asia/Manila')->format('G');
+                $homeGreeting = ($homeManilaHour >= 5 && $homeManilaHour < 12)
+                    ? 'Good morning'
+                    : (($homeManilaHour >= 12 && $homeManilaHour < 18) ? 'Good afternoon' : 'Good evening');
                 $homeFirstName = trim(explode(' ', trim($studentDisplayName ?? (auth()->user()->name ?? 'Student')))[0]);
 
                 // The upcoming-task rows show how far the owning role has got, so the
@@ -358,7 +362,10 @@
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                         <h2 class="text-2xl sm:text-[32px] font-extrabold tracking-tight text-slate-900 leading-tight">
-                            {{ $homeGreeting }}, {{ $homeFirstName }}! <span class="align-middle">&#128075;</span>
+                            {{-- refreshHomeGreeting() rewrites this text on a timer, so the
+                                 greeting turns over on its own when the Manila hour crosses
+                                 5am/12pm/6pm without the student refreshing. --}}
+                            <span id="homeGreetingText">{{ $homeGreeting }}, {{ $homeFirstName }}!</span> <span class="align-middle">&#128075;</span>
                         </h2>
                         <p class="text-sm text-slate-500 mt-1.5">Here's your progress and tasks for today.</p>
                     </div>
@@ -1891,6 +1898,35 @@
 
         /* The concept form posts and redirects back here, so the section the
            student was reading has to survive the round trip. */
+
+        /* ── Live greeting ──────────────────────────────────────────────────
+           Server-rendered in Manila time on load; from then on this keeps it
+           turning over at 5am/12pm/6pm Manila time without a refresh, reading
+           the clock through Intl rather than the server's own timezone. */
+        const HOME_FIRST_NAME = @json($homeFirstName);
+
+        function homeGreetingWord() {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Manila', hour: 'numeric', hour12: false,
+            }).formatToParts(new Date());
+            // Some engines report midnight as hour "24" under hour12:false.
+            const hour = Number(parts.find((p) => p.type === 'hour')?.value || 0) % 24;
+
+            if (hour >= 5 && hour < 12) return 'Good morning';
+            if (hour >= 12 && hour < 18) return 'Good afternoon';
+            return 'Good evening';
+        }
+
+        function refreshHomeGreeting() {
+            const el = document.getElementById('homeGreetingText');
+            if (el) el.textContent = homeGreetingWord() + ', ' + HOME_FIRST_NAME + '!';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshHomeGreeting();
+            setInterval(refreshHomeGreeting, 60000);
+        });
+
         (function restoreSection() {
             let section = null;
             try {
