@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Models\UserInformation;
 use App\Support\HotelConceptDesk;
 use App\Support\Notifier;
+use App\Support\TaskChecklist;
 use App\Support\StudentWelcomeMailer;
 use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -1624,6 +1625,32 @@ class FacultyController extends Controller
             return back()->withErrors([
                 'group_name' => 'No teams are available. Please create a team and assign students before setting tasks.',
             ])->withInput();
+        }
+
+        /* Task 01 is the hotel concept, alone, and it gates everything after it:
+           a team cannot so much as pick a Default Template until faculty approves
+           one of its two proposals (HotelConceptDesk::hasApprovedConcept), so
+           handing out Task 02 or later first hands out work that cannot be
+           started. Refused for the whole post rather than quietly dropped per
+           team — a Set Task that reports success and creates nothing is exactly
+           the failure this screen has already been fixed for once. */
+        $setsLaterSteps = collect($validated['tasks'] ?? [])
+            ->filter(fn ($indices) => is_array($indices))
+            ->flatten()
+            ->contains(fn ($index) => (int) $index >= TaskChecklist::CONCEPT_STEPS);
+
+        if ($setsLaterSteps) {
+            $lockedTeams = $membersByTeam->keys()->reject(
+                fn ($groupName) => HotelConceptDesk::hasApprovedConcept((string) $groupName, (int) $facultyId)
+            );
+
+            if ($lockedTeams->isNotEmpty()) {
+                return back()->withErrors([
+                    'group_name' => 'Task 02 and later stay locked until a hotel concept is approved for '
+                        . $lockedTeams->implode(', ')
+                        . '. Set Task 01 first, then approve one of that team\'s two proposals.',
+                ])->withInput();
+            }
         }
 
         // Check if any tasks were selected

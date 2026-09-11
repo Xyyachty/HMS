@@ -59,6 +59,20 @@ class TaskChecklist
     public const SITE_STEPS = 2;
 
     /**
+     * How many leading task numbers the hotel concept holds on its own.
+     *
+     * Task 01 is the concept and nothing else. It is not one stage among
+     * several: the team cannot even pick a Default Template until faculty
+     * approves one of the two proposals (HotelConceptDesk::hasApprovedConcept),
+     * so every other piece of site work waits on it. Sharing its number with
+     * the other roles' first tasks handed out work that could not be started.
+     *
+     * FacultyController::storeTask enforces the same rule on assignment — no
+     * step past this one can be set on a team with no approved concept.
+     */
+    public const CONCEPT_STEPS = 1;
+
+    /**
      * Keyed by role, in the order they should appear under each department.
      * The two website tasks first, then the ops work that follows from them.
      *
@@ -568,10 +582,11 @@ class TaskChecklist
     /**
      * The four steps one activity is worked through as, keyed by its title.
      *
-     * An activity is one role's share of a task — Task 01 holds four of them, one
-     * per role that owns part of the site — and these are the steps the student
-     * holding it works through. Four steps of one activity, never four activities
-     * for one role.
+     * An activity is one role's share of a task — a numbered step holds one per
+     * role that has work in it — and these are the steps the student holding it
+     * works through. Four steps of one activity, never four activities for one
+     * role. Task 01 is the exception in the other direction: the hotel concept
+     * holds it alone, so it carries exactly one activity, Front Desk's.
      *
      * Kept beside the tasks rather than inside them so the entries above stay
      * readable as a list of work, and appended to the description on the way out
@@ -1145,12 +1160,13 @@ class TaskChecklist
      * The same checklist pivoted: step index => [role => task].
      *
      * Position N is the same stage for every role, so the Create Task tab can
-     * hand out "Task 1" to a whole team in one tick. The first SITE_STEPS
-     * positions are the website build and hold nothing else: a role's site
-     * tasks fill them in order, and its ops tasks start after them, so Task 3
-     * is where the simulation begins for everybody at once. Maintenance owns no
-     * page of the site, so it simply has no card in Tasks 1 and 2 and its queue
-     * opens at Task 3 with the rest.
+     * hand out "Task 2" to a whole team in one tick. Step 0 is the one
+     * exception and holds the hotel concept by itself: it gates the rest of the
+     * site work, so nothing shares its number. Every other role's site tasks
+     * start at step 1 and fill in order, and the ops tasks start after the
+     * longest of those lists, so the simulation begins for everybody at once.
+     * Maintenance owns no page of the site, so it has no card in the site steps
+     * at all and its queue opens with everyone else's.
      *
      * A step is only as wide as the roles that still have work at that position,
      * so the later ones hold fewer entries as the shorter lists run out.
@@ -1168,22 +1184,31 @@ class TaskChecklist
         // list of website work any one role has. Measured across all roles rather
         // than per role, or a role with more design work would still be building
         // its page in the same numbered step another was already running the
-        // hotel in, and a step would stop meaning one stage. Never below
-        // SITE_STEPS, so the two reserved website positions stand even if every
-        // role's site list were shorter than that.
-        $opsStart = max(self::SITE_STEPS, ...array_map(
-            fn ($tasks) => count(array_filter(
+        // hotel in, and a step would stop meaning one stage. The concept's own
+        // reserved step is added back on, since every role's site list now begins
+        // after it. Never below the reserved positions, so they stand even if
+        // every role's site list were shorter than that.
+        $opsStart = max(self::CONCEPT_STEPS + self::SITE_STEPS, ...array_map(
+            fn ($tasks) => self::CONCEPT_STEPS + count(array_filter(
                 $tasks,
                 fn ($task) => ($task['scope'] ?? self::SCOPE_SITE) === self::SCOPE_SITE
+                    && !self::isConceptTitle($task['title'] ?? '')
             )),
             array_values(self::all())
         ));
 
         foreach (self::all() as $role => $tasks) {
-            $siteStep = 0;
+            // Every role's site work starts past the concept's own step — the
+            // concept is Task 01 by itself, whoever holds it.
+            $siteStep = self::CONCEPT_STEPS;
             $opsStep = $opsStart;
 
             foreach ($tasks as $task) {
+                if (self::isConceptTitle($task['title'] ?? '')) {
+                    $byStep[0][$role] = $task;
+                    continue;
+                }
+
                 $isSite = ($task['scope'] ?? self::SCOPE_SITE) === self::SCOPE_SITE;
                 $byStep[$isSite ? $siteStep++ : $opsStep++][$role] = $task;
             }
@@ -1192,6 +1217,12 @@ class TaskChecklist
         ksort($byStep);
 
         return $byStep;
+    }
+
+    /** Whether a title is the hotel concept, which owns Task 01 alone. */
+    public static function isConceptTitle(string $title): bool
+    {
+        return strcasecmp($title, HotelConceptDesk::TASK_TITLE) === 0;
     }
 
     /** @return list<array{title: string, description: string, scope: string}> */

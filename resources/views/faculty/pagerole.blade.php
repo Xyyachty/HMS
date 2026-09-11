@@ -2161,8 +2161,17 @@
                                     // Manage Teams reads, so the two never disagree about a team.
                                     $teamAssignedRoles = $members->flatMap(fn ($m) => $m->roles->pluck('role'))->filter()->unique();
                                     $teamMissingRoleCount = count($roleLabels) - $teamAssignedRoles->count();
+
+                                    /* Task 01 gates the rest. Read off the concepts already
+                                       loaded for the cards rather than asking the database
+                                       again per team — visibleConcepts() leaves only the
+                                       approved one once faculty has chosen. */
+                                    $teamConceptApproved = \App\Support\HotelConceptDesk::isDecided(
+                                        ($conceptsByGroup ?? collect())->get($groupName, collect())
+                                    );
                                 @endphp
                                 <label data-team="{{ $groupName }}"
+                                    data-concept-approved="{{ $teamConceptApproved ? '1' : '0' }}"
                                     @if(!$hasStudents) title="No students are assigned to {{ $groupName }} yet." @endif
                                     class="task-team-btn group p-4 rounded-xl border-2 transition-all flex items-start gap-3 text-left
                                     {{ $hasStudents
@@ -2185,6 +2194,11 @@
                                         @if($hasStudents && $teamMissingRoleCount > 0)
                                             <span class="block text-[10px] mt-1 text-amber-600 font-semibold leading-snug">
                                                 This team still has an unassigned role. Assign all required roles before setting role-specific tasks.
+                                            </span>
+                                        @endif
+                                        @if($hasStudents && !$teamConceptApproved)
+                                            <span class="block text-[10px] mt-1 text-amber-600 font-semibold leading-snug">
+                                                Task 01 only &mdash; Task 02 and later unlock once you approve this team's hotel concept.
                                             </span>
                                         @endif
                                     </span>
@@ -2216,6 +2230,11 @@
                             Select All
                         </button>
                     </div>
+
+                    {{-- Why the later cards are greyed out, when they are. Filled by
+                         applyConceptLock() as teams are ticked. --}}
+                    <p id="taskConceptLockNote"
+                       class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700 leading-snug"></p>
 
                     {{-- Search + category filter, purely client-side over the cards below. --}}
                     <div class="flex flex-wrap items-center gap-2 mb-3">
@@ -4364,7 +4383,63 @@ function selectAllVisibleTasks() {
 // ── Summary + submit ───────────────────────────
 // Assigning needs a team and at least one task; the server checks the team too,
 // but there is no reason to let the button be pressed without one.
+/* Task 01 is the hotel concept and it gates the rest, so a team with no
+   approved concept can only be given Task 01. Applied as the teams are ticked
+   rather than only on submit: storeTask() refuses the post either way, but
+   being refused after filling the form in is a worse way to find out.
+
+   The number is CONCEPT_STEPS, read from the checklist rather than written as 1
+   here, so reserving a second introductory step later moves both at once. */
+const CONCEPT_STEPS = @json(\App\Support\TaskChecklist::CONCEPT_STEPS);
+
+function lockedTeamNames() {
+    return Array.from(document.querySelectorAll('#taskTeamSelector input[name="group_names[]"]:checked'))
+        .map((box) => box.closest('[data-team]'))
+        .filter((label) => label && label.dataset.conceptApproved !== '1')
+        .map((label) => label.dataset.team);
+}
+
+function applyConceptLock() {
+    const locked = lockedTeamNames();
+    const note = document.getElementById('taskConceptLockNote');
+
+    if (note) {
+        note.textContent = locked.length
+            ? 'Task 02 and later are locked: ' + locked.join(', ')
+              + (locked.length === 1 ? ' has' : ' have') + ' no approved hotel concept yet.'
+            : '';
+        note.classList.toggle('hidden', locked.length === 0);
+    }
+
+    document.querySelectorAll('.task-card').forEach((card) => {
+        const step = Number(String(card.id).replace('taskCard-', ''));
+        const lockedStep = locked.length > 0 && step >= CONCEPT_STEPS;
+
+        // opacity-60, not 50: the frozen public/css/app.css build has no
+        // opacity-50 rule in it at all, so the card would not dim.
+        card.classList.toggle('opacity-60', lockedStep);
+        card.querySelectorAll('input[type="checkbox"]').forEach((box) => {
+            box.disabled = lockedStep;
+            // A step that just locked must not stay ticked, or the form would
+            // post what the server is about to refuse.
+            if (lockedStep && box.checked) {
+                box.checked = false;
+                box.indeterminate = false;
+            }
+        });
+    });
+
+    // The details modal holds the same boxes for each role in that step.
+    document.querySelectorAll('.task-step-check').forEach((box) => {
+        const lockedStep = locked.length > 0 && Number(box.value) >= CONCEPT_STEPS;
+        box.disabled = lockedStep;
+        if (lockedStep && box.checked) box.checked = false;
+    });
+}
+
 function updateSubmitState() {
+    applyConceptLock();
+
     const checked = Array.from(document.querySelectorAll('.task-check:checked'));
 
     const btn = document.getElementById('submitTasksBtn');
