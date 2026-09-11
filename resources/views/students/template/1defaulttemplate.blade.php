@@ -361,6 +361,17 @@
     background: transparent; cursor: default; transition: transform 0.15s, filter 0.15s;
   }
   .rn-clickable { cursor: pointer; }
+  /* The room whose photograph is up. An outline rather than another colour: the
+     colour is already saying whether the room is free. */
+  .rn-showing { box-shadow: 0 0 0 2px var(--accent); }
+  .cat-slide-tag {
+    position: absolute; right: 1.1rem; top: 1.05rem; z-index: 2;
+    padding: 0.28rem 0.6rem; border-radius: 999px;
+    background: rgba(12,11,9,0.72); border: 1px solid var(--border);
+    color: var(--fg); font-size: 0.64rem; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    backdrop-filter: blur(4px);
+  }
   .rn-clickable:hover { transform: translateY(-1px); filter: brightness(1.15); }
   .rn-available   { background: rgba(34,197,94,0.16);  color: #4ade80; border-color: rgba(34,197,94,0.38); }
   .rn-reserved    { background: rgba(234,179,8,0.16);   color: #facc15; border-color: rgba(234,179,8,0.38); }
@@ -3819,20 +3830,38 @@ const CATEGORY_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1611892440504
 /* One picture of a room is a picture of one corner of it, so the card slides
    through whatever the team has given the category: its own photograph first,
    then the gallery, and the rooms' own pictures to fall back on. */
-function categoryImages(detail, roomsIn) {
+function categorySlides(detail, roomsIn) {
   const out = [];
-  const push = (value) => {
+  const seen = {};
+
+  /* The category's own photographs lead, and only these are de-duplicated:
+     they are pictures of the category, so the same one twice is a mistake. */
+  const pushShared = (value) => {
     const url = String(value == null ? '' : value).trim();
-    if (url && out.indexOf(url) === -1) out.push(url);
+    if (url && !seen[url]) {
+      seen[url] = true;
+      out.push({ key: 'cat-' + out.length, src: url, room: null });
+    }
   };
 
   if (detail) {
-    push(detail.image);
-    (Array.isArray(detail.gallery) ? detail.gallery : []).forEach(push);
+    pushShared(detail.image);
+    (Array.isArray(detail.gallery) ? detail.gallery : []).forEach(pushShared);
   }
-  (roomsIn || []).forEach((room) => push(room && room.img));
 
-  return out.length ? out : [CATEGORY_FALLBACK_IMAGE];
+  /* Then one slide per room, in the order the rooms come in, whether or not two
+     rooms happen to share a photograph: 101 and 102 are different rooms, and a
+     card that skips 102 because it looks like 101 is hiding a room. */
+  (roomsIn || []).forEach((room) => {
+    if (!room) return;
+    out.push({
+      key: String(room.id),
+      src: String(room.img || '').trim() || CATEGORY_FALLBACK_IMAGE,
+      room: room,
+    });
+  });
+
+  return out.length ? out : [{ key: 'fallback', src: CATEGORY_FALLBACK_IMAGE, room: null }];
 }
 
 /* Rooms are called "<Category> 101", so the number is what is worth showing in a
@@ -3949,39 +3978,51 @@ function AvailabilityLegend() {
 /* The pictures, sliding on their own. Each card keeps its own place in the
    sequence so two cards side by side do not change together, which reads as a
    page-wide flicker rather than as one room after another. */
-function CategorySlides({ images, interval }) {
-  const [index, setIndex] = useState(0);
+function CategorySlides({ slides, index, onIndex, interval }) {
+  const list = slides || [];
+  const count = list.length;
 
   useEffect(() => {
-    if (!images || images.length < 2) return undefined;
-    const id = setInterval(() => setIndex((i) => (i + 1) % images.length), interval || 4000);
+    if (count < 2) return undefined;
+    const id = setInterval(() => onIndex((index + 1) % count), interval || 4000);
     return () => clearInterval(id);
-  }, [images, interval]);
+  }, [count, index, onIndex, interval]);
 
-  // A gallery trimmed down to fewer pictures than the one on screen.
+  // A category that has lost a room has fewer slides than the one on screen.
   useEffect(() => {
-    if (images && index >= images.length) setIndex(0);
-  }, [images, index]);
+    if (count && index >= count) onIndex(0);
+  }, [count, index, onIndex]);
+
+  const current = list[index] || list[0] || null;
 
   return (
     <>
-      {(images || []).map((src, i) => (
+      {list.map((slide, i) => (
         <div
-          key={src + i}
+          key={slide.key + '-' + i}
           data-hms-bg-layer="1"
           className={'cat-slide' + (i === index ? ' is-active' : '')}
-          style={{ backgroundImage: 'url(' + src + ')' }}
+          style={{ backgroundImage: 'url(' + slide.src + ')' }}
         ></div>
       ))}
-      {(images || []).length > 1 ? (
+
+      {/* Which room this is. Without it the picture is of a room the guest
+          cannot name, and the numbers below it are a separate list. */}
+      {current && current.room ? (
+        <span className="cat-slide-tag" data-hms-no-edit="1">
+          Room {roomNumberLabel(current.room)}
+        </span>
+      ) : null}
+
+      {count > 1 ? (
         <div className="cat-dots" data-hms-no-edit="1">
-          {images.map((src, i) => (
+          {list.map((slide, i) => (
             <button
-              key={'dot' + i}
+              key={'dot-' + slide.key + '-' + i}
               type="button"
               className={'cat-dot' + (i === index ? ' is-active' : '')}
-              aria-label={'Photo ' + (i + 1)}
-              onClick={(e) => { e.stopPropagation(); setIndex(i); }}
+              aria-label={slide.room ? ('Room ' + roomNumberLabel(slide.room)) : ('Photo ' + (i + 1))}
+              onClick={(e) => { e.stopPropagation(); onIndex(i); }}
             ></button>
           ))}
         </div>
@@ -3992,7 +4033,7 @@ function CategorySlides({ images, interval }) {
 
 /* The right half: how many rooms there are, which of them are free for the
    dates asked about, and what the stay includes. */
-function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPickRoom, staff, compact }) {
+function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPickRoom, staff, compact, activeRoomId }) {
   const total = roomsIn.length || detail?.rooms_available || 0;
   const states = roomsIn.map((room) => roomStateForDates(room, checkIn, checkOut));
   const freeCount = states.filter((state) => state === 'Available').length;
@@ -4030,14 +4071,18 @@ function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPi
               <button
                 key={room.id}
                 type="button"
-                className={ROOM_STATE_CLASS[state] + (staff ? ' rn-clickable' : '')}
-                title={room.name + ' — ' + state}
+                className={
+                  ROOM_STATE_CLASS[state]
+                  + (onPickRoom ? ' rn-clickable' : '')
+                  + (room.id === activeRoomId ? ' rn-showing' : '')
+                }
+                title={room.name + ' \u2014 ' + state}
                 aria-label={room.name + ', ' + state}
-                tabIndex={staff ? 0 : -1}
+                aria-current={room.id === activeRoomId ? 'true' : undefined}
+                tabIndex={onPickRoom ? 0 : -1}
                 onClick={(e) => {
                   e.stopPropagation();
-                  // Guests read this grid; staff open the room from it.
-                  if (staff && onPickRoom) onPickRoom(room);
+                  if (onPickRoom) onPickRoom(room);
                 }}
               >
                 {roomNumberLabel(room)}
@@ -4066,7 +4111,18 @@ function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPi
 }
 
 function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPickRoom, staff, canEdit, onEditCategory, onAddRoom }) {
-  const images = useMemo(() => categoryImages(detail, roomsIn), [detail, roomsIn]);
+  const slides = useMemo(() => categorySlides(detail, roomsIn), [detail, roomsIn]);
+  /* Held here rather than inside the slider, because the room numbers on the
+     other half of the card are the same choice said another way: the number
+     lights up as its room comes round, and pressing a number brings its room
+     up. */
+  const [slide, setSlide] = useState(0);
+  const showing = slides[slide] && slides[slide].room ? slides[slide].room.id : null;
+
+  const showRoom = (room) => {
+    const at = slides.findIndex((item) => item.room && item.room.id === room.id);
+    if (at !== -1) setSlide(at);
+  };
   // What a stay actually starts at, which is the cheapest room in it rather than
   // the category's headline rate when the two have drifted apart.
   const prices = roomsIn.map((room) => Number(room.price) || 0).filter((n) => n > 0);
@@ -4076,7 +4132,7 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
   return (
     <article className="cat-card" data-hms-category={name}>
       <div className="cat-media">
-        <CategorySlides images={images} interval={4200} />
+        <CategorySlides slides={slides} index={slide} onIndex={setSlide} interval={4200} />
 
         {canEdit ? (
           <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 3, display: 'flex', gap: 6 }}
@@ -4122,7 +4178,10 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
           checkIn={checkIn}
           checkOut={checkOut}
           onOpen={onOpen}
-          onPickRoom={onPickRoom}
+          // On the card a number shows you the room; opening one to work on it
+          // is the details window's job.
+          onPickRoom={showRoom}
+          activeRoomId={showing}
           staff={staff}
           compact
         />
@@ -4143,7 +4202,9 @@ function shortText(value, max) {
 /* Everything the category is, for a guest who has decided to look properly:
    the pictures at size, what it costs, what fits in it, and what is free. */
 function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, onClose, onBook, onPickRoom, staff, canReserve }) {
-  const images = useMemo(() => categoryImages(detail, roomsIn), [detail, roomsIn]);
+  const slides = useMemo(() => categorySlides(detail, roomsIn), [detail, roomsIn]);
+  const [slide, setSlide] = useState(0);
+  const showing = slides[slide] && slides[slide].room ? slides[slide].room.id : null;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -4179,7 +4240,7 @@ function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, o
         onClick={(e) => e.stopPropagation()}
       >
         <div className="cat-media" style={{ minHeight: 320, borderRadius: '10px 10px 0 0', overflow: 'hidden' }}>
-          <CategorySlides images={images} interval={4500} />
+          <CategorySlides slides={slides} index={slide} onIndex={setSlide} interval={4500} />
           <div className="cat-media-body">
             <h3 className="font-display" style={{ margin: 0, fontSize: '1.9rem', fontWeight: 700 }}>{name}</h3>
           </div>
@@ -4220,7 +4281,14 @@ function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, o
               checkIn={checkIn}
               checkOut={checkOut}
               onOpen={null}
-              onPickRoom={onPickRoom}
+              /* Here a number brings its room up in the pictures above, and for
+                 staff it is also the way into the room itself. */
+              onPickRoom={(room) => {
+                const at = slides.findIndex((item) => item.room && item.room.id === room.id);
+                if (at !== -1) setSlide(at);
+                if (staff && onPickRoom) onPickRoom(room);
+              }}
+              activeRoomId={showing}
               staff={staff}
             />
           </div>
