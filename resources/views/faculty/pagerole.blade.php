@@ -87,7 +87,7 @@
     .setup-steps { display: flex; align-items: center; gap: 1rem; flex-wrap: nowrap; }
     .setup-step-line { flex: 1 1 auto; min-width: 1.5rem; height: 1px; background: #e2e8f0; }
     .setup-grid {
-        display: grid; gap: 1rem;
+        display: grid; gap: .75rem;
         grid-template-columns: minmax(0, 1fr) 300px;
         align-items: start;
     }
@@ -930,10 +930,10 @@
 <div id="panel-team_setup" class="tab-panel {{ $activeTab === 'team_setup' ? 'active' : '' }}">
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <!-- Screen Header -->
-        <div class="bg-white px-6 py-5 border-b border-slate-200 flex justify-between items-start gap-3">
+        <div class="bg-white px-5 py-3 border-b border-slate-200 flex justify-between items-start gap-3">
             <div class="min-w-0">
                 <h4 class="font-extrabold text-slate-900 text-2xl leading-tight">Team Setup &amp; Members</h4>
-                <p class="text-[13px] text-slate-500 mt-1">Create multiple teams, manage team members, and assign their role(s).</p>
+                <p class="text-[13px] text-slate-500 mt-0.5">Create multiple teams, manage team members, and assign their role(s).</p>
             </div>
             <button type="button" onclick="closeCreateTeamModal()"
                 class="h-10 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition inline-flex items-center gap-2 shrink-0">
@@ -943,13 +943,13 @@
         </div>
 
         <!-- Modal Tabs -->
-        <div class="flex gap-2 px-6 pt-4 bg-slate-50 border-b border-slate-200 flex-shrink-0">
+        <div class="flex gap-2 px-5 pt-2.5 bg-slate-50 border-b border-slate-200 flex-shrink-0">
             <button onclick="switchCreateModalTab('add_team')" id="modal-tab-add_team"
-                class="px-6 py-3 text-sm font-bold text-center transition rounded-t-xl bg-white border-b-2 border-brand text-brand">
+                class="px-5 py-2.5 text-sm font-bold text-center transition rounded-t-xl bg-white border-b-2 border-brand text-brand">
                 <span class="iconify inline-block mr-1.5" data-icon="mdi:account-multiple-plus-outline"></span> Create Multiple Teams
             </button>
             <button onclick="switchCreateModalTab('insert')" id="modal-tab-insert"
-                class="px-6 py-3 text-sm font-bold text-center transition rounded-t-xl bg-white border-b-2 border-transparent text-slate-400 hover:text-slate-600">
+                class="px-5 py-2.5 text-sm font-bold text-center transition rounded-t-xl bg-white border-b-2 border-transparent text-slate-400 hover:text-slate-600">
                 <span class="iconify inline-block mr-1.5" data-icon="mdi:account-arrow-right-outline"></span> Manage Members
             </button>
         </div>
@@ -985,8 +985,8 @@
         <!-- Tab Panel: Add Team (single or multiple) -->
         <div id="modal-panel-add_team">
             {{-- Where the wizard is: the four stages a bulk create runs through. --}}
-            <div class="px-5 pt-5">
-                <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 setup-steps">
+            <div class="px-5 pt-3">
+                <div class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 setup-steps">
                     @foreach([
                         ['n' => 1, 'title' => 'Team Setup',         'sub' => 'Set the number of teams'],
                         ['n' => 2, 'title' => 'Role Configuration', 'sub' => 'Roles for the teams'],
@@ -1008,11 +1008,11 @@
                 </div>
             </div>
 
-            <div class="setup-grid p-5">
+            <div class="setup-grid p-4">
                 <div class="min-w-0">
             @php $unassignedStudentCount = ($students ?? collect())->count(); @endphp
-            <div class="px-6 pt-5">
-                <div class="rounded-xl border {{ $unassignedStudentCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700' }} px-4 py-2.5 flex items-center gap-2 text-xs font-bold mb-4">
+            <div class="px-5 pt-3">
+                <div class="rounded-xl border {{ $unassignedStudentCount > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700' }} px-4 py-2.5 flex items-center gap-2 text-xs font-bold mb-3">
                     <span class="iconify text-base shrink-0" data-icon="{{ $unassignedStudentCount > 0 ? 'mdi:account-alert-outline' : 'mdi:check-circle-outline' }}"></span>
                     @if($unassignedStudentCount > 0)
                         {{ $unassignedStudentCount }} student{{ $unassignedStudentCount === 1 ? '' : 's' }} not yet assigned to a team{{ $activeClass ? ' in ' . $activeClass->name : '' }}
@@ -1022,11 +1022,13 @@
                 </div>
                 <div class="inline-flex w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1">
                     <button type="button" id="createModeSingleBtn" onclick="switchCreateTeamMode('single')"
-                        class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-brand shadow-sm border border-brand/10">
+                        @disabled($unassignedStudentCount === 0)
+                        class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-brand shadow-sm border border-brand/10 disabled:opacity-50 disabled:cursor-not-allowed">
                         Single Team
                     </button>
                     <button type="button" id="createModeMultiBtn" onclick="switchCreateTeamMode('multiple')"
-                        class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition text-slate-500 hover:text-slate-700">
+                        @disabled($unassignedStudentCount === 0)
+                        class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition text-slate-500 hover:text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
                         Multiple Teams
                     </button>
                 </div>
@@ -1044,27 +1046,26 @@
                     </div>
                 @endif
 
-                <div class="p-6 space-y-5">
-                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                        Create one team. Maximum <strong>4 members</strong> per team.
-                    </div>
-
+                <div class="p-5 space-y-4">
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Team Name <span class="text-red-400">*</span></label>
                         <input name="group_name" type="text" placeholder="e.g. Front Desk Team A"
                             value="{{ old('_form_source') === 'create_team' ? old('group_name') : '' }}"
-                            class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                            @disabled($unassignedStudentCount === 0)
+                            class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition disabled:opacity-60 disabled:cursor-not-allowed">
                     </div>
 
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div class="relative flex-1">
                             <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
                             <input type="text" id="createStudentSearch" placeholder="Search students by name or ID..."
-                                class="w-full h-10 pl-10 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
+                                @disabled($unassignedStudentCount === 0)
+                                class="w-full h-10 pl-10 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition disabled:opacity-60 disabled:cursor-not-allowed"
                                 oninput="filterTeamStudentList('create')">
                         </div>
                         <button type="button" id="createRandomizeBtn"
-                            class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand/40 hover:text-brand transition inline-flex items-center justify-center gap-1.5 shrink-0">
+                            @disabled($unassignedStudentCount === 0)
+                            class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand/40 hover:text-brand transition inline-flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed">
                             <span class="iconify" data-icon="mdi:shuffle-variant"></span> Randomize 4
                         </button>
                         <span id="createSelectedCount" class="text-xs font-bold text-slate-500 whitespace-nowrap sm:min-w-[7rem] text-right">0 / 4 selected</span>
@@ -1088,6 +1089,9 @@
                         @endforeach
                     </div>
 
+                    {{-- Nothing to tick when nobody is unassigned - the banner above already
+                         says so, so the empty scroll box collapses rather than repeating it. --}}
+                    @if($unassignedStudentCount > 0)
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Members & Roles <span class="text-red-400">*</span></label>
@@ -1154,6 +1158,7 @@
                             </div>
                         </div>
                     </div>
+                    @endif
                 </div>
             </form>
 
@@ -1345,15 +1350,15 @@
                 </div>
 
                 {{-- Right rail: what the save will produce, counted off the same rosters. --}}
-                <aside class="space-y-4">
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5">
+                <aside class="space-y-3">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4">
                         <div class="flex items-center gap-3">
                             <span class="w-10 h-10 rounded-xl bg-brand-soft text-brand flex items-center justify-center shrink-0">
                                 <span class="iconify text-lg" data-icon="mdi:account-multiple-outline"></span>
                             </span>
                             <p class="text-[14px] font-bold text-slate-800">Unassigned Students ({{ $unassignedStudentCount }})</p>
                         </div>
-                        <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 flex items-start gap-2.5">
+                        <div class="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 flex items-start gap-2.5">
                             <span class="iconify text-slate-400 text-base shrink-0 mt-0.5" data-icon="mdi:information-outline"></span>
                             <p class="text-[12px] text-slate-500">
                                 @if($unassignedStudentCount > 0)
@@ -1365,9 +1370,9 @@
                         </div>
                     </div>
 
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                        <p class="text-[14px] font-bold text-slate-800 mb-3">Team Summary</p>
-                        <div class="space-y-3">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p class="text-[14px] font-bold text-slate-800 mb-2.5">Team Summary</p>
+                        <div class="space-y-2.5">
                             <div class="flex items-center justify-between gap-2">
                                 <span class="text-[13px] text-slate-500 flex items-center gap-2">
                                     <span class="iconify text-slate-300 text-base" data-icon="mdi:account-group-outline"></span> Teams to create
@@ -1395,7 +1400,7 @@
                         </div>
                     </div>
 
-                    <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4 flex items-start gap-2.5">
+                    <div class="rounded-2xl border border-blue-100 bg-blue-50 p-3.5 flex items-start gap-2.5">
                         <span class="iconify text-blue-500 text-base shrink-0 mt-0.5" data-icon="mdi:information-outline"></span>
                         <p class="text-[12px] text-blue-700 leading-relaxed">
                             After creating the teams, you can further manage members, assign additional students, or edit roles using the "Manage Members" tab.
@@ -1659,11 +1664,12 @@
         </div>
 
         <!-- Screen Footer -->
-        <div class="px-6 py-4 bg-white border-t border-slate-200 flex justify-between gap-3">
-            <button type="button" onclick="closeCreateTeamModal()"
-                class="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition font-bold text-sm">Back</button>
-            <button type="button" onclick="submitActiveModalTab()"
-                class="px-7 py-3 brand-gradient text-white rounded-xl font-bold text-sm hover:opacity-95 transition shadow-md shadow-brand/20 flex items-center gap-2">
+        <div class="px-5 py-3 bg-white border-t border-slate-200 flex justify-end gap-3">
+            {{-- The header's own Back to Teams already leaves the screen; a second
+                 Back down here was the same exit typed twice. --}}
+            <button type="button" onclick="submitActiveModalTab()" id="createModalSubmitBtn"
+                @disabled($unassignedStudentCount === 0)
+                class="px-7 py-3 brand-gradient text-white rounded-xl font-bold text-sm hover:opacity-95 transition shadow-md shadow-brand/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                 <span id="createModalSubmitLabel">Create Teams</span>
                 <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
             </button>
