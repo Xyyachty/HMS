@@ -17,21 +17,22 @@ use Illuminate\Support\Facades\DB;
  *
  * A team proposes two concepts, and each one moves through states of its own:
  *
- *   draft          proposed; Front Desk keeps improving it
- *   submitted      handed to faculty; still editable while they read
- *   needs_revision sent back with feedback; Front Desk edits again
+ *   draft          proposed; any team member keeps improving it
+ *   submitted      handed to faculty; locked for the whole team while they read
+ *   needs_revision sent back with feedback; unlocked for the whole team again
  *   approved       the team's official concept, final and read-only
- *   not_selected   the other one, once faculty picked; still editable, never official
+ *   not_selected   the other one, once faculty picked; closed, never official
  *
- * Everything except approved stays open, because Front Desk is asked to keep
- * improving both proposals right up until faculty chooses between them. Approval
- * is the one irreversible step: it settles which concept the team builds.
+ * Only draft and needs_revision stay open. Submitted locks the moment it is
+ * handed over — faculty reads exactly what was submitted, not a moving target —
+ * and approval is the one irreversible step: it settles which concept the team
+ * builds.
  *
  * The states are per concept because faculty judges each one separately — one can
  * come back for another round while the other waits. What is shared is the
- * handover: Front Desk submits the pair in one action, because the point of two
- * concepts is that faculty compares them, and the choice itself, which lands on
- * both concepts at once.
+ * handover: any team member submits the pair in one action, because the point of
+ * two concepts is that faculty compares them, and the choice itself, which lands
+ * on both concepts at once.
  *
  * This class exists because each transition touches two places at once — the
  * concept rows and the team's task rows — and three unrelated callers need the
@@ -100,8 +101,8 @@ class HotelConceptDesk
     /** The badge each state prints, and the only accepted values. */
     public const STATUSES = [
         self::STATUS_DRAFT => 'Draft',
-        self::STATUS_SUBMITTED => 'With faculty for review',
-        self::STATUS_NEEDS_REVISION => 'Needs revision',
+        self::STATUS_SUBMITTED => 'Under Review',
+        self::STATUS_NEEDS_REVISION => 'Revision Required',
         self::STATUS_APPROVED => 'Approved',
         self::STATUS_NOT_SELECTED => 'Not selected',
     ];
@@ -109,13 +110,13 @@ class HotelConceptDesk
     /**
      * States in which a concept is open for edits.
      *
-     * Front Desk keeps improving a concept while it sits with faculty and after it
-     * comes back for revision. The choice closes both concepts at once: the
+     * A concept locks the moment it is submitted — faculty is reading exactly
+     * what was handed in, not a moving target — and unlocks again only if it
+     * comes back needing revision. The choice closes both concepts at once: the
      * approved one because it is final, the other because it is out of the run.
      */
     private const EDITABLE_STATUSES = [
         self::STATUS_DRAFT,
-        self::STATUS_SUBMITTED,
         self::STATUS_NEEDS_REVISION,
     ];
 
@@ -143,18 +144,19 @@ class HotelConceptDesk
     /**
      * Who may write a concept.
      *
-     * Front Desk alone, first version and every version after it. The concepts are
-     * proposed on the Front Desk task row in the student's Tasks section, and a
-     * teammate without the role never sees that row — so the gate has to say the
-     * same thing, or the endpoint would still accept a write nobody can reach.
+     * The task is seeded on Front Desk's row, but the concepts are the team's own
+     * identity work — any current member of the team may propose or improve
+     * either one, not just whoever holds the role. $isTeamMember is a plain
+     * membership check (are they on this team at all), not a role check.
      *
-     * Editing stays open while the pair sits with faculty and after one comes back
-     * for revision. Faculty's choice ends it either way: the approved concept is
-     * final, the other is out of the run.
+     * Editing is open while a concept is a draft and again after it comes back
+     * for revision. It locks the moment it is submitted — faculty reads exactly
+     * what was handed in — and faculty's choice ends it for good either way: the
+     * approved concept is final, the other is out of the run.
      */
-    public static function canEdit(?HotelConcept $concept, array $roleKeys): bool
+    public static function canEdit(?HotelConcept $concept, bool $isTeamMember): bool
     {
-        if (!in_array(self::OWNING_ROLE, $roleKeys, true)) {
+        if (!$isTeamMember) {
             return false;
         }
 
@@ -166,14 +168,16 @@ class HotelConceptDesk
     /**
      * Whether the team can hand their concepts in.
      *
-     * Both slots have to be filled: faculty is being asked to weigh two proposals
-     * against each other, and one is not a choice. Beyond that there has to be
-     * something new to hand in — a pair already sitting with faculty and untouched
-     * since, or a pair already decided, submits nothing.
+     * Any team member may submit, the same as any team member may edit — the
+     * pair is the team's, not one member's. Both slots have to be filled: faculty
+     * is being asked to weigh two proposals against each other, and one is not a
+     * choice. Beyond that there has to be something new to hand in — a pair
+     * already sitting with faculty and untouched since, or a pair already
+     * decided, submits nothing.
      */
-    public static function canSubmit(Collection $concepts, array $roleKeys): bool
+    public static function canSubmit(Collection $concepts, bool $isTeamMember): bool
     {
-        if (!in_array(self::OWNING_ROLE, $roleKeys, true)) {
+        if (!$isTeamMember) {
             return false;
         }
 
@@ -272,27 +276,31 @@ class HotelConceptDesk
         ], true))->values();
     }
 
-    /** Why an edit was refused, so the dashboard can say something useful. */
-    public static function editRefusal(?HotelConcept $concept, array $roleKeys): string
+    /**
+     * Why an edit was refused, so the dashboard can say something useful.
+     *
+     * Only reached with a concept in hand: canEdit lets a blank slot through for
+     * any team member, so a refusal always means either the caller is not on the
+     * team, or this slot's status has already left EDITABLE_STATUSES.
+     */
+    public static function editRefusal(?HotelConcept $concept, bool $isTeamMember): string
     {
-        if (!in_array(self::OWNING_ROLE, $roleKeys, true)) {
-            return 'Only the Front Desk members of this team can write a hotel concept.';
+        if (!$isTeamMember) {
+            return 'Only members of this team can write a hotel concept.';
         }
 
-        if (!$concept) {
-            return 'Only the Front Desk members of this team can propose a hotel concept.';
-        }
-
-        return self::status($concept) === self::STATUS_NOT_SELECTED
-            ? 'Your faculty chose the other concept, so this one is closed.'
-            : 'Your faculty approved this concept, so it is final and can no longer be edited.';
+        return match (self::status($concept)) {
+            self::STATUS_SUBMITTED => 'This Hotel Concept has been submitted and is awaiting faculty review. Editing is temporarily disabled.',
+            self::STATUS_NOT_SELECTED => 'Your faculty chose the other concept, so this one is closed.',
+            default => 'Your faculty approved this concept, so it is final and can no longer be edited.',
+        };
     }
 
     /** Why a submit was refused. */
-    public static function submitRefusal(Collection $concepts, array $roleKeys): string
+    public static function submitRefusal(Collection $concepts, bool $isTeamMember): string
     {
-        if (!in_array(self::OWNING_ROLE, $roleKeys, true)) {
-            return 'Only the Front Desk members of this team can submit the concepts to your faculty.';
+        if (!$isTeamMember) {
+            return 'Only members of this team can submit the concepts to your faculty.';
         }
 
         if (!self::allSlotsFilled($concepts)) {

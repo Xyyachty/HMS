@@ -457,21 +457,23 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $studentClass = $student?->facultyClass;
 
-        // The team's first task: two hotel concepts. Read by the whole team in My
-        // Team; who may write each depends on what state that one is in, so
-        // HotelConceptDesk decides — Front Desk proposes each first version, then
-        // everyone improves them, and each locks while faculty holds it. The
-        // controller enforces the same rules on write.
+        // The team's first task: two hotel concepts. Read and edited by the whole
+        // team in My Team, whichever role each member holds; who may write each
+        // depends only on what state it is in, which HotelConceptDesk decides, and
+        // it locks for everyone once submitted. The controller enforces the same
+        // rules on write.
         //
         // Handed to the view as one payload rather than loose variables per slot:
         // the same shape the save and submit endpoints return, so the Blade and the
-        // JS that repaints it read identical keys.
+        // JS that repaints it read identical keys. $groupMembership rather than a
+        // role: being on the team is what earns a write here now, not what role
+        // that membership carries.
         $conceptPayload = HotelConceptController::payload(
             HotelConceptController::forTeam(
                 $groupMembership?->group_name,
                 $facultyId ? (int) $facultyId : null
             ),
-            $studentRoles
+            (bool) $groupMembership
         );
 
         return view('students.dashboard', compact(

@@ -120,7 +120,7 @@ class HotelConcept extends Model
         return $this->belongsTo(User::class, 'reviewed_by', 'user_id');
     }
 
-    /** Faculty's final choice for the team. The only status that is read-only. */
+    /** Faculty's final choice for the team — locked for good, unlike a submitted concept's temporary lock. */
     public function isLocked(): bool
     {
         return $this->status === HotelConceptDesk::STATUS_APPROVED;

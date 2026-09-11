@@ -969,11 +969,13 @@
                             <p class="text-[11px] text-slate-400">Name the hotel and describe it — two proposals for your faculty to review.</p>
                         </div>
                         {{-- One button for the pair. Hidden until both slots are filled;
-                             paintHotelConcepts() toggles it off conceptState.can_submit. --}}
+                             paintHotelConcepts() toggles it off conceptState.can_submit and
+                             relabels it Resubmit whenever a slot is coming back from
+                             revision rather than going in for the first time. --}}
                         <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
                             class="hidden shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60">
                             <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
-                            <span>Submit both to Faculty</span>
+                            <span id="conceptSubmitAllLabel">Submit both to Faculty</span>
                         </button>
                     </div>
 
@@ -2008,7 +2010,7 @@
         };
 
         const CONCEPT_NOTICE_TEXT = {
-            submitted: 'Submitted to your faculty. You can still improve it until they choose.',
+            submitted: 'This Hotel Concept has been submitted and is awaiting faculty review. Editing is temporarily disabled.',
             needs_revision: 'Your faculty asked for changes.',
             approved: 'Your faculty approved this concept. It is your official hotel concept and is no longer editable.',
         };
@@ -2030,6 +2032,13 @@
             if (submitBtn) {
                 submitBtn.classList.toggle('hidden', !conceptState?.can_submit);
                 submitBtn.disabled = false;
+
+                // Resubmit rather than Submit once any slot is answering a revision
+                // request — same button, same action, different moment.
+                const isResubmit = (conceptState?.slots || [])
+                    .some((entry) => entry.concept?.status === 'needs_revision');
+                const label = document.getElementById('conceptSubmitAllLabel');
+                if (label) label.textContent = isResubmit ? 'Resubmit to Faculty' : 'Submit both to Faculty';
             }
 
             paintTeamHeaderConcept();
@@ -2390,15 +2399,19 @@
             }).join('');
         }
 
-        /* Hand both concepts to faculty. The team can keep improving either one
-           afterward — submitting only starts the review, it does not lock anything. */
+        /* Hand both concepts to faculty. Submitting locks them for the whole team
+           immediately — nobody can edit again until faculty sends one back for
+           revision, or approves one and closes the pair for good. */
         async function submitHotelConcepts() {
+            const isResubmit = (conceptState?.slots || [])
+                .some((entry) => entry.concept?.status === 'needs_revision');
+
             const confirmed = await Swal.fire({
                 icon: 'question',
-                title: 'Submit your hotel concepts?',
-                text: 'Submit your hotel concepts to your faculty? You can keep improving either concept until your faculty approves one.',
+                title: isResubmit ? 'Resubmit your hotel concepts?' : 'Submit your hotel concepts?',
+                text: 'This locks both concepts for your whole team until your faculty reviews them.',
                 showCancelButton: true,
-                confirmButtonText: 'Submit',
+                confirmButtonText: isResubmit ? 'Resubmit' : 'Submit',
                 confirmButtonColor: '#DB2777',
                 cancelButtonText: 'Cancel',
             }).then(result => result.isConfirmed);

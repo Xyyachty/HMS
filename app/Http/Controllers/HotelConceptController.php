@@ -13,19 +13,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
- * Front Desk's first task: propose the team's two hotel concepts.
+ * The team's first task: propose two hotel concepts.
  *
- * The concepts belong to the team, not to the member who typed them. Front Desk
- * proposes each first version, then every member may improve either, and Front
- * Desk hands both to faculty at once. Every save leaves a revision behind, so the
- * team and their faculty can see who changed what, and when.
+ * The concepts belong to the team, not to the member who typed them. The task is
+ * seeded on Front Desk's row, but any current member may write either concept
+ * while it is open, and any member hands both to faculty at once. Every save
+ * leaves a revision behind, so the team and their faculty can see who changed
+ * what, and when.
  *
  * Who may write at any moment is decided by HotelConceptDesk, which also owns
  * every status change; this controller owns the reads and the edit history.
  */
 class HotelConceptController extends Controller
 {
-    /** The role that owns this task. Kept as an alias for existing callers. */
+    /** The role the task is seeded on. Kept as an alias for existing callers. */
     public const OWNING_ROLE = HotelConceptDesk::OWNING_ROLE;
 
     /** History rows kept per concept. */
@@ -67,8 +68,8 @@ class HotelConceptController extends Controller
      *
      * The slot says which of the two is being written. The gate reads that slot's
      * stored concept first, because who may write depends on what state it is in:
-     * Front Desk owns both concepts throughout, and keeps editing while faculty
-     * holds them — the verdict is what closes them.
+     * any current member of the team may edit while a concept is open — the
+     * submission is what closes it, and the verdict is what closes it for good.
      */
     public function store(Request $request)
     {
@@ -95,19 +96,18 @@ class HotelConceptController extends Controller
         ]);
 
         $slot = (int) $validated['slot'];
-        $roles = $membership->roles->pluck('role')->all();
         $existing = self::conceptAt(
             self::forTeam($membership->group_name, (int) $membership->faculty_id, 1),
             $slot
         );
 
-        if (!HotelConceptDesk::canEdit($existing, $roles)) {
-            return $this->refuse($request, HotelConceptDesk::editRefusal($existing, $roles));
+        if (!HotelConceptDesk::canEdit($existing, true)) {
+            return $this->refuse($request, HotelConceptDesk::editRefusal($existing, true));
         }
 
-        $saved = DB::transaction(function () use ($validated, $slot, $membership, $authUser, $roles) {
-            // Locked for the length of the save: two Front Desk members hitting Save
-            // on the same slot must not both read "nothing here yet" and insert.
+        $saved = DB::transaction(function () use ($validated, $slot, $membership, $authUser) {
+            // Locked for the length of the save: two teammates hitting Save on the
+            // same slot must not both read "nothing here yet" and insert.
             $concept = HotelConcept::where('group_name', $membership->group_name)
                 ->where('faculty_id', $membership->faculty_id)
                 ->where('slot', $slot)
@@ -120,7 +120,7 @@ class HotelConceptController extends Controller
             // The gate above read outside the lock. A teammate who submitted in the
             // meantime must win, or this save would edit a concept faculty is
             // already reading.
-            if ($concept && !HotelConceptDesk::canEdit($concept, $roles)) {
+            if ($concept && !HotelConceptDesk::canEdit($concept, true)) {
                 return null;
             }
 
@@ -211,7 +211,7 @@ class HotelConceptController extends Controller
         // the history from this payload, so it hands back stored rows, not input.
         if ($request->expectsJson()) {
             return response()->json(array_merge(
-                self::payload(self::forTeam($membership->group_name, (int) $membership->faculty_id), $roles),
+                self::payload(self::forTeam($membership->group_name, (int) $membership->faculty_id), true),
                 ['saved' => $saved, 'message' => $message]
             ));
         }
@@ -222,10 +222,9 @@ class HotelConceptController extends Controller
     /**
      * Hand both of the team's concepts to faculty for review.
      *
-     * Front Desk owns this step — they own the task — even though every member may
-     * have edited what is being handed in. Both go at once, because the two exist
-     * so faculty can weigh them against each other; a concept already approved is
-     * left where it is.
+     * Any team member may submit — the pair belongs to the team, the same as
+     * editing does. Both go at once, because the two exist so faculty can weigh
+     * them against each other; a concept already approved is left where it is.
      */
     public function submit(Request $request)
     {
@@ -240,19 +239,17 @@ class HotelConceptController extends Controller
             return $this->refuse($request, 'You are not on a team yet, so there is no concept to submit.');
         }
 
-        $roles = $membership->roles->pluck('role')->all();
-
         // Locked for the same reason as the save: two members hitting Submit at
         // once must not both write a submission revision.
-        $result = DB::transaction(function () use ($membership, $authUser, $roles) {
+        $result = DB::transaction(function () use ($membership, $authUser) {
             $concepts = HotelConcept::where('group_name', $membership->group_name)
                 ->where('faculty_id', $membership->faculty_id)
                 ->orderBy('slot')
                 ->lockForUpdate()
                 ->get();
 
-            if (!HotelConceptDesk::canSubmit($concepts, $roles)) {
-                return HotelConceptDesk::submitRefusal($concepts, $roles);
+            if (!HotelConceptDesk::canSubmit($concepts, true)) {
+                return HotelConceptDesk::submitRefusal($concepts, true);
             }
 
             $count = HotelConceptDesk::submittableConcepts($concepts)->count();
@@ -271,7 +268,7 @@ class HotelConceptController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json(array_merge(
-                self::payload(self::forTeam($membership->group_name, (int) $membership->faculty_id), $roles),
+                self::payload(self::forTeam($membership->group_name, (int) $membership->faculty_id), true),
                 ['saved' => true, 'message' => $message]
             ));
         }
@@ -303,7 +300,7 @@ class HotelConceptController extends Controller
 
         return response()->json(self::payload(
             self::forTeam($membership->group_name, (int) $membership->faculty_id),
-            $membership->roles->pluck('role')->all()
+            true
         ));
     }
 
@@ -366,12 +363,13 @@ class HotelConceptController extends Controller
      * losing concept stops being a proposal, and an empty-looking slot there
      * would read as an invitation to write one, which is exactly what it is not.
      *
-     * $viewerRoles is the team roles of whoever is asking, so the student dashboard
-     * can repaint each slot's Edit button and the shared Submit button from the same
-     * response that repaints the concepts. Faculty and the dean pass nothing: they
-     * never edit, and every flag comes back false.
+     * $viewerIsTeamMember says whether whoever is asking is on this team at all —
+     * not which role they hold, since any member may now edit — so the student
+     * dashboard can repaint each slot's Edit button and the shared Submit button
+     * from the same response that repaints the concepts. Faculty and the dean
+     * pass nothing: they are never team members, and every flag comes back false.
      */
-    public static function payload(array $team, array $viewerRoles = []): array
+    public static function payload(array $team, bool $viewerIsTeamMember = false): array
     {
         $concepts = $team['concepts'] ?? collect();
         $histories = $team['histories'] ?? [];
@@ -410,7 +408,7 @@ class HotelConceptController extends Controller
                     'updated_by' => $concept->editor ? self::displayName($concept->editor) : null,
                     'created_by' => $concept->creator ? self::displayName($concept->creator) : null,
                 ] : null,
-                'can_edit' => HotelConceptDesk::canEdit($concept, $viewerRoles),
+                'can_edit' => HotelConceptDesk::canEdit($concept, $viewerIsTeamMember),
                 // Faculty state, not viewer state — true for any caller once both
                 // slots exist and nobody has been chosen yet.
                 'can_review' => HotelConceptDesk::canReview($concepts, $slot),
@@ -421,7 +419,7 @@ class HotelConceptController extends Controller
         return [
             'slots' => $slots,
             // One button for the pair: they are handed in together.
-            'can_submit' => HotelConceptDesk::canSubmit($concepts, $viewerRoles),
+            'can_submit' => HotelConceptDesk::canSubmit($concepts, $viewerIsTeamMember),
             'all_slots_filled' => HotelConceptDesk::allSlotsFilled($concepts),
             'decided' => HotelConceptDesk::isDecided($concepts),
             'approved_slot' => HotelConceptDesk::approvedConcept($concepts)?->slot,
