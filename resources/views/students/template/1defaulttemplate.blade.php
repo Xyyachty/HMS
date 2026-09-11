@@ -314,6 +314,80 @@
   .room-card-img { position: relative; height: 240px; flex: 0 0 240px; overflow: hidden; }
   .room-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s; }
   .room-card:hover .room-card-img img { transform: scale(1.05); }
+
+  /* ── Room categories ──────────────────────────────────────────────────
+     A guest chooses a kind of room, not a room: the left half is what the
+     category looks like and costs, the right half is how much of it is free.
+     Two halves of one card rather than two cards, because neither answers
+     anything on its own. */
+  .cat-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--card);
+    border: 1px solid var(--border);
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  }
+  .cat-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 20px 45px -30px rgba(0,0,0,0.95); }
+  .cat-media { position: relative; min-height: 300px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .cat-slide {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    opacity: 0; transition: opacity 1.1s ease;
+  }
+  .cat-slide.is-active { opacity: 1; }
+  .cat-media::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(8,7,6,0.94) 0%, rgba(8,7,6,0.55) 45%, rgba(8,7,6,0.05) 100%);
+  }
+  .cat-media-body { position: relative; z-index: 2; padding: 1.25rem 1.35rem 1.35rem; }
+  .cat-dots { position: absolute; left: 1.35rem; top: 1.15rem; z-index: 2; display: flex; gap: 5px; }
+  .cat-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(245,240,232,0.38); border: 0; padding: 0; cursor: pointer; transition: all 0.2s; }
+  .cat-dot.is-active { background: var(--accent); width: 18px; border-radius: 3px; }
+  .cat-panel {
+    padding: 1.2rem 1.35rem 1.35rem;
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 1.05rem;
+  }
+  .cat-panel-title { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+  .cat-rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 0.45rem; }
+  /* Not a button for a guest: it says what is free, it does not choose. Staff
+     get the pointer because for them it opens the room. */
+  .rn {
+    height: 34px; border-radius: 8px; border: 1px solid transparent;
+    font-size: 0.76rem; font-weight: 700; letter-spacing: 0.02em;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; cursor: default; transition: transform 0.15s, filter 0.15s;
+  }
+  .rn-clickable { cursor: pointer; }
+  .rn-clickable:hover { transform: translateY(-1px); filter: brightness(1.15); }
+  .rn-available   { background: rgba(34,197,94,0.16);  color: #4ade80; border-color: rgba(34,197,94,0.38); }
+  .rn-reserved    { background: rgba(234,179,8,0.16);   color: #facc15; border-color: rgba(234,179,8,0.38); }
+  .rn-occupied    { background: rgba(244,63,94,0.16);   color: #fb7185; border-color: rgba(244,63,94,0.38); }
+  .rn-maintenance { background: rgba(148,163,184,0.14); color: #94a3b8; border-color: rgba(148,163,184,0.32); }
+  .cat-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; font-size: 0.68rem; color: var(--fg-muted); }
+  .cat-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .cat-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .cat-inclusions { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 0.75rem 0.5rem; }
+  .cat-inclusion { text-align: center; color: var(--fg-muted); font-size: 0.66rem; line-height: 1.35; }
+  .cat-inclusion i { display: block; font-size: 1.05rem; color: var(--accent); margin-bottom: 0.4rem; }
+  .cat-dates { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem; }
+  .cat-date-field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .cat-date-field label { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-muted); }
+  .cat-date-field input {
+    background: var(--card); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.5rem 0.7rem; font-size: 0.8rem; font-family: inherit;
+    color-scheme: dark;
+  }
+  .cat-date-field input:focus { outline: none; border-color: var(--accent); }
+
+  /* The panel is a column of its own only while there is room for one. */
+  @media (max-width: 900px) {
+    .cat-card { grid-template-columns: 1fr; }
+    .cat-panel { border-left: 0; border-top: 1px solid var(--border); }
+    .cat-media { min-height: 240px; }
+  }
   /* Shorter band for the home page's preview cards. */
   .room-card-media { position: relative; height: 180px; flex: 0 0 180px; overflow: hidden; }
   .room-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -1857,6 +1931,11 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
   const [image, setImage] = React.useState('');
   const [inclusions, setInclusions] = React.useState('');
   const [rooms, setRooms] = React.useState('');
+  // The rest of the pictures, and what a guest asks before booking.
+  const [gallery, setGallery] = React.useState('');
+  const [capacity, setCapacity] = React.useState('');
+  const [bedType, setBedType] = React.useState('');
+  const [roomSize, setRoomSize] = React.useState('');
 
   React.useEffect(() => {
     if (!open) return;
@@ -1867,6 +1946,10 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
     setImage(c.image || '');
     setInclusions(Array.isArray(c.inclusions) ? c.inclusions.join('\n') : (c.inclusions || ''));
     setRooms(c.rooms_available === null || c.rooms_available === undefined ? '' : String(c.rooms_available));
+    setGallery(Array.isArray(c.gallery) ? c.gallery.join('\n') : (c.gallery || ''));
+    setCapacity(c.capacity === null || c.capacity === undefined ? '' : String(c.capacity));
+    setBedType(c.bed_type || '');
+    setRoomSize(c.room_size || '');
   }, [open, from, category]);
 
   if (!open) return null;
@@ -1877,6 +1960,7 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
     if (!canSave) return;
     const parsedRate = parseInt(String(rate).replace(/[^0-9]/g, ''), 10);
     const parsedRooms = parseInt(String(rooms).replace(/[^0-9]/g, ''), 10);
+    const parsedCapacity = parseInt(String(capacity).replace(/[^0-9]/g, ''), 10);
     onSubmit(clean, {
       rate: Number.isNaN(parsedRate) ? null : parsedRate,
       description: description.trim(),
@@ -1884,6 +1968,10 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
       inclusions: inclusions,
       // Left blank means "not said yet", which is not the same as none.
       rooms_available: Number.isNaN(parsedRooms) ? null : parsedRooms,
+      gallery: gallery.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
+      capacity: Number.isNaN(parsedCapacity) ? null : parsedCapacity,
+      bed_type: bedType.trim(),
+      room_size: roomSize.trim(),
     });
   };
   const onKeyDown = (e) => {
@@ -1988,6 +2076,61 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
           onKeyDown={onKeyDown}
           style={{ resize: 'vertical', lineHeight: 1.5 }}
         />
+
+        {/* The three facts a guest weighs one category against another on. */}
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 90px', minWidth: 0 }}>
+            <label style={fieldLabel}>Sleeps</label>
+            <input
+              className="header-modal-field"
+              type="text"
+              inputMode="numeric"
+              value={capacity}
+              maxLength={2}
+              placeholder="e.g. 2"
+              onChange={(e) => setCapacity(e.target.value)}
+              onKeyDown={onKeyDown}
+            />
+          </div>
+          <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+            <label style={fieldLabel}>Bed</label>
+            <input
+              className="header-modal-field"
+              type="text"
+              value={bedType}
+              maxLength={80}
+              placeholder="e.g. 1 King bed"
+              onChange={(e) => setBedType(e.target.value)}
+              onKeyDown={onKeyDown}
+            />
+          </div>
+          <div style={{ flex: '1 1 110px', minWidth: 0 }}>
+            <label style={fieldLabel}>Room size</label>
+            <input
+              className="header-modal-field"
+              type="text"
+              value={roomSize}
+              maxLength={40}
+              placeholder="e.g. 32 sqm"
+              onChange={(e) => setRoomSize(e.target.value)}
+              onKeyDown={onKeyDown}
+            />
+          </div>
+        </div>
+
+        <label style={fieldLabel}>More photos, one URL per line</label>
+        <textarea
+          className="header-modal-field"
+          rows={3}
+          value={gallery}
+          placeholder={'https://\u2026/bathroom.jpg\nhttps://\u2026/view.jpg'}
+          onChange={(e) => setGallery(e.target.value)}
+          onKeyDown={onKeyDown}
+          style={{ resize: 'vertical', lineHeight: 1.5 }}
+        />
+        <p className="header-modal-hint" style={{ marginTop: '0.35rem' }}>
+          These slide behind the photo above, on the card and in the details window.
+        </p>
         {error ? (
           <p className="header-modal-hint" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p>
         ) : null}
@@ -3159,7 +3302,7 @@ function addonStepBtn(disabled) {
   };
 }
 
-function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest }) {
+function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -3169,10 +3312,24 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
     contactNo: '',
     email: '',
     idNumber: '',
-    checkIn: '',
+    // The stay the guest asked about on the Rooms page. They chose these dates
+    // to find this room, so asking for them a second time is asking twice.
+    checkIn: stayFrom || '',
     checkInTime: '',
-    checkOut: '',
+    checkOut: stayTo || '',
   });
+
+  /* A guest who changes the dates on the page and opens another room gets the
+     dates they are now looking at, but nothing they have typed here is
+     overwritten while they are filling the form in. */
+  useEffect(() => {
+    if (step !== 'details') return;
+    setGuestForm((prev) => (
+      prev.checkIn === (stayFrom || '') && prev.checkOut === (stayTo || '')
+        ? prev
+        : Object.assign({}, prev, { checkIn: stayFrom || '', checkOut: stayTo || '' })
+    ));
+  }, [room && room.id, stayFrom, stayTo]);
   const [paymentForm, setPaymentForm] = useState({
     type: 'full',
     amount: '',
@@ -3652,12 +3809,458 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
   );
 }
 
+/* ── Room categories, as a guest reads them ───────────────────────────────
+   A guest books a kind of room. Which of the eleven Deluxe rooms they end up in
+   is the front desk's business at check-in, so the numbers here say how much of
+   the category is free rather than offering a choice of room. */
+
+const CATEGORY_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1200&q=80';
+
+/* One picture of a room is a picture of one corner of it, so the card slides
+   through whatever the team has given the category: its own photograph first,
+   then the gallery, and the rooms' own pictures to fall back on. */
+function categoryImages(detail, roomsIn) {
+  const out = [];
+  const push = (value) => {
+    const url = String(value == null ? '' : value).trim();
+    if (url && out.indexOf(url) === -1) out.push(url);
+  };
+
+  if (detail) {
+    push(detail.image);
+    (Array.isArray(detail.gallery) ? detail.gallery : []).forEach(push);
+  }
+  (roomsIn || []).forEach((room) => push(room && room.img));
+
+  return out.length ? out : [CATEGORY_FALLBACK_IMAGE];
+}
+
+/* Rooms are called "<Category> 101", so the number is what is worth showing in a
+   grid this small. A room named by hand keeps whatever it was called. */
+function roomNumberLabel(room) {
+  const name = String((room && room.name) || '').trim();
+  const match = name.match(/(\d{1,5})\s*$/);
+  return match ? match[1] : (name || '—');
+}
+
+function isInHouseBooking(status) {
+  const raw = String(status || '').trim().toLowerCase();
+  return raw === 'checked in' || raw === 'arrived';
+}
+
+/**
+ * What a room is, for the dates the guest asked about.
+ *
+ * Not the room's current status: a room free today is not free for a week in
+ * March that somebody already booked, and a room occupied tonight is free the
+ * week after. With no dates chosen it answers for today, which is the only
+ * honest thing to say before being asked.
+ */
+function roomStateForDates(room, checkIn, checkOut) {
+  const base = normalizeRoomStatus(room && room.status);
+  // Out of service is out of service whatever the dates say.
+  if (base === 'Maintenance' || base === 'Cleaning') return 'Maintenance';
+
+  const ranges = (room && room.bookedRanges) || [];
+  if (!checkIn || !checkOut || checkOut <= checkIn) {
+    const today = todayStr();
+    const now = ranges.filter((r) => r && r.from <= today && today < r.to);
+    if (!now.length) return 'Available';
+    return now.some((r) => isInHouseBooking(r.status)) ? 'Occupied' : 'Reserved';
+  }
+
+  // Half-open ranges on both sides: a stay ending the morning another begins
+  // does not clash.
+  const hits = ranges.filter((r) => r && r.from < checkOut && checkIn < r.to);
+  if (!hits.length) return 'Available';
+  return hits.some((r) => isInHouseBooking(r.status)) ? 'Occupied' : 'Reserved';
+}
+
+const ROOM_STATE_CLASS = {
+  Available: 'rn rn-available',
+  Reserved: 'rn rn-reserved',
+  Occupied: 'rn rn-occupied',
+  Maintenance: 'rn rn-maintenance',
+};
+
+const ROOM_STATE_DOT = {
+  Available: '#4ade80',
+  Reserved: '#facc15',
+  Occupied: '#fb7185',
+  Maintenance: '#94a3b8',
+};
+
+/* An inclusion is written in the team's own words, so the icon is matched to
+   what they wrote rather than chosen from a fixed list they would have to
+   learn. Anything unrecognised still shows, under a tick. */
+const INCLUSION_ICONS = [
+  [/wi-?fi|internet|wireless/i, 'fa-wifi'],
+  [/breakfast|coffee|brunch/i, 'fa-mug-saucer'],
+  [/air ?con|aircon|a\/c|climate|cooling/i, 'fa-snowflake'],
+  [/smart ?tv|television|\btv\b|netflix|cable/i, 'fa-tv'],
+  [/bath|shower|toilet|toiletries/i, 'fa-bath'],
+  [/park/i, 'fa-square-parking'],
+  [/pool|swim/i, 'fa-person-swimming'],
+  [/gym|fitness/i, 'fa-dumbbell'],
+  [/transfer|shuttle|airport|pick-?up/i, 'fa-van-shuttle'],
+  [/safe|vault|lock/i, 'fa-lock'],
+  [/desk|work|laptop/i, 'fa-laptop'],
+  [/view|balcony|terrace|garden/i, 'fa-mountain-sun'],
+  [/checkout|check-out|late/i, 'fa-clock'],
+  [/mini ?bar|fridge|refrigerator/i, 'fa-wine-glass'],
+  [/laundry|linen|housekeep/i, 'fa-shirt'],
+  [/dinner|lunch|meal|restaurant|dining/i, 'fa-utensils'],
+];
+
+function inclusionIcon(text) {
+  const value = String(text || '');
+  for (let i = 0; i < INCLUSION_ICONS.length; i++) {
+    if (INCLUSION_ICONS[i][0].test(value)) return INCLUSION_ICONS[i][1];
+  }
+  return 'fa-check';
+}
+
+function InclusionIcons({ items, limit }) {
+  const list = (items || []).slice(0, limit || 5);
+  if (!list.length) return null;
+
+  return (
+    <div className="cat-inclusions">
+      {list.map((item) => (
+        <div key={item} className="cat-inclusion" title={item}>
+          <i className={'fa-solid ' + inclusionIcon(item)}></i>
+          {item}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AvailabilityLegend() {
+  return (
+    <div className="cat-legend" aria-hidden="true">
+      {['Available', 'Reserved', 'Occupied', 'Maintenance'].map((state) => (
+        <span key={state}><i style={{ background: ROOM_STATE_DOT[state] }}></i>{state}</span>
+      ))}
+    </div>
+  );
+}
+
+/* The pictures, sliding on their own. Each card keeps its own place in the
+   sequence so two cards side by side do not change together, which reads as a
+   page-wide flicker rather than as one room after another. */
+function CategorySlides({ images, interval }) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (!images || images.length < 2) return undefined;
+    const id = setInterval(() => setIndex((i) => (i + 1) % images.length), interval || 4000);
+    return () => clearInterval(id);
+  }, [images, interval]);
+
+  // A gallery trimmed down to fewer pictures than the one on screen.
+  useEffect(() => {
+    if (images && index >= images.length) setIndex(0);
+  }, [images, index]);
+
+  return (
+    <>
+      {(images || []).map((src, i) => (
+        <div
+          key={src + i}
+          data-hms-bg-layer="1"
+          className={'cat-slide' + (i === index ? ' is-active' : '')}
+          style={{ backgroundImage: 'url(' + src + ')' }}
+        ></div>
+      ))}
+      {(images || []).length > 1 ? (
+        <div className="cat-dots" data-hms-no-edit="1">
+          {images.map((src, i) => (
+            <button
+              key={'dot' + i}
+              type="button"
+              className={'cat-dot' + (i === index ? ' is-active' : '')}
+              aria-label={'Photo ' + (i + 1)}
+              onClick={(e) => { e.stopPropagation(); setIndex(i); }}
+            ></button>
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/* The right half: how many rooms there are, which of them are free for the
+   dates asked about, and what the stay includes. */
+function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPickRoom, staff, compact }) {
+  const total = roomsIn.length || detail?.rooms_available || 0;
+  const states = roomsIn.map((room) => roomStateForDates(room, checkIn, checkOut));
+  const freeCount = states.filter((state) => state === 'Available').length;
+  const shown = compact ? roomsIn.slice(0, 12) : roomsIn;
+
+  return (
+    <>
+      <div className="cat-panel-title">
+        <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Room Availability</h4>
+        {onOpen ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onOpen(); }}
+            style={{ background: 'none', border: 0, color: 'var(--accent)', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+          >
+            View all <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.62rem' }}></i>
+          </button>
+        ) : null}
+      </div>
+
+      <p style={{ margin: '-0.6rem 0 0', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
+        {total ? (
+          <>
+            {total} room{total === 1 ? '' : 's'} in this category
+            {roomsIn.length ? <> · <span style={{ color: freeCount ? '#4ade80' : '#fb7185' }}>{freeCount} free{checkIn && checkOut ? ' for your dates' : ' today'}</span></> : null}
+          </>
+        ) : 'No rooms have been added to this category yet.'}
+      </p>
+
+      {shown.length ? (
+        <div className="cat-rooms">
+          {shown.map((room, i) => {
+            const state = states[roomsIn.indexOf(room)] || 'Available';
+            return (
+              <button
+                key={room.id}
+                type="button"
+                className={ROOM_STATE_CLASS[state] + (staff ? ' rn-clickable' : '')}
+                title={room.name + ' — ' + state}
+                aria-label={room.name + ', ' + state}
+                tabIndex={staff ? 0 : -1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Guests read this grid; staff open the room from it.
+                  if (staff && onPickRoom) onPickRoom(room);
+                }}
+              >
+                {roomNumberLabel(room)}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {compact && roomsIn.length > shown.length ? (
+        <p style={{ margin: '-0.5rem 0 0', color: 'var(--fg-muted)', fontSize: '0.7rem' }}>
+          +{roomsIn.length - shown.length} more
+        </p>
+      ) : null}
+
+      <AvailabilityLegend />
+
+      {(detail?.inclusions || []).length ? (
+        <div>
+          <p style={{ margin: '0 0 0.6rem', fontSize: '0.82rem', fontWeight: 700 }}>Inclusions</p>
+          <InclusionIcons items={detail.inclusions} limit={compact ? 5 : 40} />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPickRoom, staff, canEdit, onEditCategory, onAddRoom }) {
+  const images = useMemo(() => categoryImages(detail, roomsIn), [detail, roomsIn]);
+  // What a stay actually starts at, which is the cheapest room in it rather than
+  // the category's headline rate when the two have drifted apart.
+  const prices = roomsIn.map((room) => Number(room.price) || 0).filter((n) => n > 0);
+  const from = prices.length ? Math.min.apply(null, prices) : (detail?.rate || 0);
+  const capacity = detail?.capacity || 0;
+
+  return (
+    <article className="cat-card" data-hms-category={name}>
+      <div className="cat-media">
+        <CategorySlides images={images} interval={4200} />
+
+        {canEdit ? (
+          <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 3, display: 'flex', gap: 6 }}
+            data-hms-no-edit="1">
+            <button type="button" title={'Edit ' + name} onClick={(e) => { e.stopPropagation(); onEditCategory(name); }}
+              style={toolBtnStyle('image')}><i className="fa-solid fa-pen" style={{ fontSize: 11 }}></i></button>
+            <button type="button" title={'Add a room to ' + name} onClick={(e) => { e.stopPropagation(); onAddRoom(name); }}
+              style={toolBtnStyle('image')}><i className="fa-solid fa-plus" style={{ fontSize: 11 }}></i></button>
+          </div>
+        ) : null}
+
+        <div className="cat-media-body">
+          <h3 className="font-display" style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700 }}>{name}</h3>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap', margin: '0.5rem 0 0.9rem' }}>
+            {from ? (
+              <span style={{ color: 'var(--accent)', fontSize: '1.35rem', fontWeight: 700 }}>
+                {formatPeso(from)}
+                <span style={{ color: 'var(--fg-muted)', fontSize: '0.72rem', fontWeight: 400 }}> / night</span>
+              </span>
+            ) : null}
+            {capacity ? (
+              <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
+                <i className="fa-solid fa-user-group" style={{ marginRight: '0.4rem', fontSize: '0.72rem' }}></i>
+                {capacity} guest{capacity === 1 ? '' : 's'}
+              </span>
+            ) : null}
+          </div>
+          {(detail?.description || '').trim() ? (
+            <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', lineHeight: 1.6, margin: '0 0 1rem', maxWidth: '38ch' }}>
+              {shortText(detail.description, 120)}
+            </p>
+          ) : null}
+          <button type="button" className="btn-outline" onClick={(e) => { e.stopPropagation(); onOpen(); }}>
+            View More Details
+          </button>
+        </div>
+      </div>
+
+      <div className="cat-panel">
+        <CategoryAvailability
+          roomsIn={roomsIn}
+          detail={detail}
+          checkIn={checkIn}
+          checkOut={checkOut}
+          onOpen={onOpen}
+          onPickRoom={onPickRoom}
+          staff={staff}
+          compact
+        />
+      </div>
+    </article>
+  );
+}
+
+/** Cut to length on a word boundary, so a card's blurb does not end mid-word. */
+function shortText(value, max) {
+  const text = String(value || '').trim();
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const space = cut.lastIndexOf(' ');
+  return (space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[.,;:]$/, '') + '…';
+}
+
+/* Everything the category is, for a guest who has decided to look properly:
+   the pictures at size, what it costs, what fits in it, and what is free. */
+function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, onClose, onBook, onPickRoom, staff, canReserve }) {
+  const images = useMemo(() => categoryImages(detail, roomsIn), [detail, roomsIn]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const prices = roomsIn.map((room) => Number(room.price) || 0).filter((n) => n > 0);
+  const from = prices.length ? Math.min.apply(null, prices) : (detail?.rate || 0);
+  const freeRooms = roomsIn.filter((room) => roomStateForDates(room, checkIn, checkOut) === 'Available');
+  const facts = [
+    from ? { icon: 'fa-tag', label: 'From', value: formatPeso(from) + ' / night' } : null,
+    detail?.capacity ? { icon: 'fa-user-group', label: 'Sleeps', value: detail.capacity + ' guest' + (detail.capacity === 1 ? '' : 's') } : null,
+    detail?.bed_type ? { icon: 'fa-bed', label: 'Bed', value: detail.bed_type } : null,
+    detail?.room_size ? { icon: 'fa-vector-square', label: 'Room size', value: detail.room_size } : null,
+  ].filter(Boolean);
+
+  return ReactDOM.createPortal(
+    <div
+      className="room-modal-overlay header-modal-overlay"
+      data-hms-no-edit="1"
+      role="dialog"
+      aria-modal="true"
+      aria-label={name}
+      onClick={onClose}
+    >
+      <div
+        className="room-modal"
+        style={{ width: 'min(880px, 100%)', maxHeight: '90vh', overflowY: 'auto' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="cat-media" style={{ minHeight: 320, borderRadius: '10px 10px 0 0', overflow: 'hidden' }}>
+          <CategorySlides images={images} interval={4500} />
+          <div className="cat-media-body">
+            <h3 className="font-display" style={{ margin: 0, fontSize: '1.9rem', fontWeight: 700 }}>{name}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              position: 'absolute', top: '1rem', right: '1rem', zIndex: 3,
+              width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)',
+              background: 'rgba(12,11,9,0.7)', color: 'var(--fg)', cursor: 'pointer',
+            }}
+          ><i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i></button>
+        </div>
+
+        <div style={{ padding: '1.5rem' }}>
+          {facts.length ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.35rem' }}>
+              {facts.map((fact) => (
+                <div key={fact.label}>
+                  <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                    <i className={'fa-solid ' + fact.icon} style={{ color: 'var(--accent)', marginRight: '0.45rem' }}></i>{fact.label}
+                  </p>
+                  <p style={{ margin: '0.3rem 0 0', fontSize: '0.95rem', fontWeight: 600 }}>{fact.value}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {(detail?.description || '').trim() ? (
+            <p style={{ color: 'var(--fg-muted)', lineHeight: 1.7, margin: '0 0 1.5rem' }}>{detail.description}</p>
+          ) : null}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.05rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border)' }}>
+            <CategoryAvailability
+              roomsIn={roomsIn}
+              detail={detail}
+              checkIn={checkIn}
+              checkOut={checkOut}
+              onOpen={null}
+              onPickRoom={onPickRoom}
+              staff={staff}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginTop: '1.6rem' }}>
+            <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.72rem', maxWidth: '46ch' }}>
+              {/* Said plainly, because the grid above invites the opposite
+                  assumption: the numbers are what is free, not a menu. */}
+              You book the category. Your room number is assigned at check-in.
+            </p>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!freeRooms.length || !canReserve}
+              title={freeRooms.length ? '' : 'Nothing free in this category for those dates'}
+              onClick={() => onBook(freeRooms[0])}
+              style={!freeRooms.length || !canReserve ? { opacity: 0.5, cursor: 'not-allowed' } : null}
+            >
+              {freeRooms.length ? 'Book Now' : 'Fully booked'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest }) {
   const list = rooms && rooms.length ? rooms : [];
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
   const [tab, setTab] = useState('All');
   const [selectedRoomId, setSelectedRoomId] = useState(null);
+  /* The stay the guest is asking about. Every room number on the page is
+     coloured for these dates rather than for right now, so "available" means
+     available then. Empty until asked, and the page answers for today. */
+  const [checkIn, setCheckIn] = useState('');
+  const [checkOut, setCheckOut] = useState('');
+  const [openCategory, setOpenCategory] = useState(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [categorySaving, setCategorySaving] = useState(false);
   const [categoryError, setCategoryError] = useState('');
@@ -3667,8 +4270,44 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
   const [renameError, setRenameError] = useState('');
   const categoryNames = (categories && categories.length) ? categories : DEFAULT_ROOM_CATEGORIES;
   const tabs = useMemo(() => ['All', ...categoryNames], [categoryNames]);
-  const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
   const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
+
+  /* One row per category, with its rooms and whatever the team has written
+     about it. Built from the same two lists the rest of the page uses, so a
+     room added in Manage Room turns up here without a second request. */
+  const categoryRows = useMemo(() => {
+    const shownNames = tab === 'All' ? categoryNames : [tab];
+    return shownNames.map((catName) => ({
+      name: catName,
+      detail: (categoryDetails || []).find((c) => c && c.name === catName) || null,
+      roomsIn: list.filter((room) => normalizeRoomCategory(room.category || room.label) === catName),
+    }));
+  }, [tab, categoryNames, categoryDetails, list]);
+
+  const openRow = categoryRows.find((row) => row.name === openCategory)
+    || (openCategory ? {
+      name: openCategory,
+      detail: (categoryDetails || []).find((c) => c && c.name === openCategory) || null,
+      roomsIn: list.filter((room) => normalizeRoomCategory(room.category || room.label) === openCategory),
+    } : null);
+
+  // Staff read the grid as a way into a room; a guest reads it as a count.
+  const staffReadsGrid = !!(canManageRooms || canEditRooms);
+
+  /* Booking the category, not the number: the first room free for those dates
+     is the one the reservation is written against, and the front desk moves the
+     guest to whichever room is ready at check-in. */
+  const bookCategory = (room) => {
+    if (!room) return;
+    setOpenCategory(null);
+    setSelectedRoomId(room.id);
+  };
+
+  // A checkout on or before the check-in is not a stay.
+  const setStayStart = (value) => {
+    setCheckIn(value);
+    if (value && checkOut && checkOut <= value) setCheckOut(addDays(value, 1));
+  };
   const showRoomManagement = !!canManageRooms;
 
   // A tab that was removed under us (another member renamed the inventory) must not
@@ -3677,10 +4316,14 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
     if (tab !== 'All' && tabs.indexOf(tab) === -1) setTab('All');
   }, [tabs, tab]);
 
-  const handleAdd = (e) => {
+  const handleAdd = (e, forCategory) => {
     if (e && e.stopPropagation) e.stopPropagation();
     // "All" isn't a real category — a card added while on that tab still needs one.
-    const category = tab === 'All' ? (categoryNames[0] || 'Classic') : tab;
+    /* Named outright when the card asked for it: setTab has not taken effect by
+       the time this runs, so reading the tab back would file the room under
+       whichever category was on screen a moment ago. */
+    const category = forCategory
+      || (tab === 'All' ? (categoryNames[0] || 'Classic') : tab);
     Promise.resolve(onAddRoom({
       name: 'New Suite',
       label: category,
@@ -3872,116 +4515,111 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
           </button>
         ) : null}
       />
-      {/* What the team wrote about the category now on screen. Only shown on a
-          real tab, never on "All", where there is no one category to describe,
-          and only once something has actually been written — an empty band
-          would just be a hole above the room cards. */}
-      {(() => {
-        if (tab === 'All') return null;
-        const current = (categoryDetails || []).find((c) => c && c.name === tab);
-        if (!current) return null;
-        const inclusions = Array.isArray(current.inclusions) ? current.inclusions : [];
-        const hasDetail = !!(current.image || (current.description || '').trim() || inclusions.length || current.rooms_available);
-        if (!hasDetail) return null;
-
-        return (
-          <section style={{ padding: '0 1.5rem 2rem', maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: current.image ? 'minmax(0, 320px) 1fr' : '1fr', gap: '1.5rem', alignItems: 'start', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem', background: 'var(--card, transparent)' }}>
-              {current.image ? (
-                <img
-                  src={current.image}
-                  alt={tab}
-                  style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 8, display: 'block' }}
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                />
-              ) : null}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <h3 className="font-display" style={{ margin: 0, fontSize: '1.4rem' }}>{tab}</h3>
-                  {current.rate ? (
-                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{formatPeso(current.rate)}</span>
-                  ) : null}
-                  {current.rooms_available ? (
-                    <span style={{ color: 'var(--fg-muted)', fontSize: '0.82rem' }}>
-                      {current.rooms_available} room{current.rooms_available === 1 ? '' : 's'} available
-                    </span>
-                  ) : null}
-                </div>
-                {(current.description || '').trim() ? (
-                  <p style={{ color: 'var(--fg-muted)', lineHeight: 1.65, margin: '0.75rem 0 0' }}>{current.description}</p>
-                ) : null}
-                {inclusions.length ? (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: '0.9rem 0 0', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.25rem' }}>
-                    {inclusions.map((item) => (
-                      <li key={item} style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>
-                        <i className="fa-solid fa-check" style={{ color: 'var(--accent)', marginRight: '0.4rem', fontSize: '0.75rem' }}></i>{item}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            </div>
-          </section>
-        );
-      })()}
-      <section style={{ padding: '0 1.5rem 6rem', maxWidth: 1200, margin: '0 auto' }}>
-        {filtered.length === 0 && !canEditRooms ? (
-          <p style={{ textAlign: 'center', color: 'var(--fg-muted)', padding: '3rem 1rem' }}>No rooms found in this category.</p>
-        ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', alignItems: 'stretch' }}>
-          {filtered.map(room => {
-            return (
-            <div key={room.id} className="room-card" style={{ position: 'relative' }}
-              onClick={() => setSelectedRoomId(room.id)}>
-              {canEditRooms && (
-                <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
-                  data-hms-no-edit="1"
-                  onClick={e => e.stopPropagation()}>
-                  <button type="button" title="Change image" onClick={() => pickImageFile((url) => { if (url) onEditRoom(room.id, { img: url }); onToast('Room image updated'); })}
-                    style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
-                  <button type="button" title="Remove room" onClick={() => onRemoveRoom(room.id)}
-                    style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
-                </div>
-              )}
-              <div className="room-card-img">
-                <img src={roomCardImg(room)} alt={room.name} loading="lazy" />
-              </div>
-              <div className="room-card-body" style={{ padding: '1.15rem 1.25rem 1.25rem' }}>
-                {roomCategoryLabel(room) && (
-                  <p className="room-card-name" style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
-                    {roomCategoryLabel(room)}
-                  </p>
-                )}
-                <h3 className="font-display room-card-name" style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>{room.name}</h3>
-              </div>
-            </div>
-            );
-          })}
-              {canEditRooms && (
+      {/* The dates the whole page answers for. Above the cards rather than
+          inside each one: a guest is asking about one stay, not about each
+          category separately. */}
+      <section style={{ padding: '0 1.5rem 1.75rem', maxWidth: 1200, margin: '0 auto' }}>
+        <div className="cat-dates" data-hms-no-edit="1">
+          <div className="cat-date-field">
+            <label htmlFor="rp-check-in">Check in</label>
+            <input
+              id="rp-check-in"
+              type="date"
+              value={checkIn}
+              min={todayStr()}
+              onChange={(e) => setStayStart(e.target.value)}
+            />
+          </div>
+          <div className="cat-date-field">
+            <label htmlFor="rp-check-out">Check out</label>
+            <input
+              id="rp-check-out"
+              type="date"
+              value={checkOut}
+              min={checkIn ? addDays(checkIn, 1) : addDays(todayStr(), 1)}
+              onChange={(e) => setCheckOut(e.target.value)}
+            />
+          </div>
+          {checkIn && checkOut ? (
             <button
               type="button"
-              onClick={handleAdd}
-              onMouseDown={(e) => e.stopPropagation()}
-              title="Add room card"
-              data-hms-no-edit="1"
-              data-hms-action="add-room"
-              style={{
-                minHeight: 320, borderRadius: 14, border: '2px dashed #f43f5e',
-                background: 'rgba(244,63,94,0.06)', color: '#fb7185', cursor: 'pointer',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
-                fontFamily: 'Outfit, sans-serif', transition: 'transform .15s ease, background .15s ease',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.06)'; e.currentTarget.style.transform = 'none'; }}
+              className="btn-outline"
+              style={{ fontSize: '0.72rem', padding: '0.5rem 0.9rem' }}
+              onClick={() => { setCheckIn(''); setCheckOut(''); }}
             >
-              <span style={{ width: 52, height: 52, borderRadius: 14, border: '1.5px solid #f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, lineHeight: 1 }}>+</span>
-              <span style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 12 }}>Add Room Card</span>
-              <span style={{ fontSize: 11, opacity: 0.75, maxWidth: 180, textAlign: 'center' }}>Added under {tab === 'All' ? (categoryNames[0] || 'Classic') : tab}</span>
+              Clear dates
             </button>
-          )}
+          ) : null}
+          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.72rem', flex: '1 1 200px' }}>
+            {checkIn && checkOut
+              ? 'Room numbers below show what is free for these dates.'
+              : 'Pick your dates to see what is free for your stay.'}
+          </p>
         </div>
-        )}
       </section>
+
+      <section style={{ padding: '0 1.5rem 6rem', maxWidth: 1200, margin: '0 auto' }}>
+        {categoryRows.length === 0 ? (
+          <p style={{ textAlign: 'center', color: 'var(--fg-muted)', padding: '3rem 1rem' }}>No room categories yet.</p>
+        ) : (
+          <div style={{ display: 'grid', gap: '1.5rem' }}>
+            {categoryRows.map((row) => (
+              <CategoryCard
+                key={row.name}
+                name={row.name}
+                detail={row.detail}
+                roomsIn={row.roomsIn}
+                checkIn={checkIn}
+                checkOut={checkOut}
+                staff={staffReadsGrid}
+                canEdit={canEditRooms}
+                onOpen={() => setOpenCategory(row.name)}
+                onPickRoom={(room) => setSelectedRoomId(room.id)}
+                onEditCategory={(name) => { setRenameError(''); setRenameFrom(name); }}
+                onAddRoom={(name) => handleAdd(null, name)}
+              />
+            ))}
+          </div>
+        )}
+
+        {canEditRooms ? (
+          <button
+            type="button"
+            onClick={handleAdd}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Add room card"
+            data-hms-no-edit="1"
+            data-hms-action="add-room"
+            style={{
+              width: '100%', marginTop: '1.5rem', padding: '1.5rem', borderRadius: 14,
+              border: '2px dashed #f43f5e', background: 'rgba(244,63,94,0.06)', color: '#fb7185',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              fontFamily: 'Outfit, sans-serif', transition: 'transform .15s ease, background .15s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.06)'; e.currentTarget.style.transform = 'none'; }}
+          >
+            <span style={{ width: 34, height: 34, borderRadius: 10, border: '1.5px solid #f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>+</span>
+            <span style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 12 }}>
+              Add Room Card to {tab === 'All' ? (categoryNames[0] || 'Classic') : tab}
+            </span>
+          </button>
+        ) : null}
+      </section>
+
+      <CategoryDetailModal
+        open={!!openRow}
+        name={openRow ? openRow.name : ''}
+        detail={openRow ? openRow.detail : null}
+        roomsIn={openRow ? openRow.roomsIn : []}
+        checkIn={checkIn}
+        checkOut={checkOut}
+        staff={staffReadsGrid}
+        canReserve={canReserveRooms !== false}
+        onClose={() => setOpenCategory(null)}
+        onPickRoom={(room) => { setOpenCategory(null); setSelectedRoomId(room.id); }}
+        onBook={bookCategory}
+      />
       <AddCategoryModal
         open={categoryOpen}
         saving={categorySaving}
@@ -4001,6 +4639,8 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
       <RoomDetailModal
         room={selectedRoom}
         addons={addons}
+        stayFrom={checkIn}
+        stayTo={checkOut}
         onClose={() => setSelectedRoomId(null)}
         onChangeStatus={handleStatusChange}
         canEditStatus={!!canManageRooms}

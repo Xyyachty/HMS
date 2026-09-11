@@ -266,8 +266,12 @@ class HotelRoomDefaults
                 // A default nobody has written down yet has none of the design work
                 // on it; the first save materialises the row and fills these in.
                 'image' => null,
+                'gallery' => [],
                 'inclusions' => [],
                 'rooms_available' => null,
+                'capacity' => null,
+                'bed_type' => null,
+                'room_size' => null,
             ];
         }
 
@@ -278,8 +282,12 @@ class HotelRoomDefaults
                 'rate' => $category->rate,
                 'description' => $category->description,
                 'image' => $category->image_path,
+                'gallery' => $category->galleryList(),
                 'inclusions' => HotelRoomCategory::splitInclusions($category->inclusions),
                 'rooms_available' => $category->rooms_available,
+                'capacity' => HotelRoomCategory::supportsShowcase() ? $category->capacity : null,
+                'bed_type' => HotelRoomCategory::supportsShowcase() ? $category->bed_type : null,
+                'room_size' => HotelRoomCategory::supportsShowcase() ? $category->room_size : null,
             ];
         }
 
@@ -369,6 +377,45 @@ class HotelRoomDefaults
             $changes['rooms_available'] = ($count === null || $count === '')
                 ? null
                 : max(0, min(999, (int) $count));
+        }
+
+        /* The showcase fields, and only once the columns exist: production migrates
+           on deploy, so a save that arrives first writes what it can rather than
+           failing on a column that is not there yet. */
+        if (HotelRoomCategory::supportsShowcase()) {
+            if (array_key_exists('gallery', $attributes)) {
+                $gallery = $attributes['gallery'];
+                if (is_string($gallery)) {
+                    $decoded = json_decode($gallery, true);
+                    $gallery = is_array($decoded) ? $decoded : (preg_split('/\R/u', $gallery) ?: []);
+                }
+
+                $clean = [];
+                foreach (is_array($gallery) ? $gallery : [] as $item) {
+                    $url = trim((string) $item);
+                    if ($url !== '' && !in_array($url, $clean, true)) {
+                        $clean[] = mb_substr($url, 0, 2048);
+                    }
+                }
+
+                $changes['gallery'] = $clean === []
+                    ? null
+                    : array_slice($clean, 0, HotelRoomCategory::GALLERY_MAX);
+            }
+
+            if (array_key_exists('capacity', $attributes)) {
+                $capacity = $attributes['capacity'];
+                $changes['capacity'] = ($capacity === null || $capacity === '')
+                    ? null
+                    : max(1, min(99, (int) $capacity));
+            }
+
+            foreach (['bed_type' => 80, 'room_size' => 40] as $field => $limit) {
+                if (array_key_exists($field, $attributes)) {
+                    $value = trim((string) $attributes[$field]);
+                    $changes[$field] = $value === '' ? null : mb_substr($value, 0, $limit);
+                }
+            }
         }
 
         if ($changes !== []) {

@@ -1213,6 +1213,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             // Either the textarea's text or the list it stands for.
             'inclusions'      => 'sometimes|nullable',
             'rooms_available' => 'sometimes|nullable|integer|min:0|max:999',
+            // What the category shows a guest deciding between two of them.
+            'gallery'         => 'sometimes|nullable|array',
+            'gallery.*'       => 'nullable|string|max:2048',
+            'capacity'        => 'sometimes|nullable|integer|min:1|max:99',
+            'bed_type'        => 'sometimes|nullable|string|max:80',
+            'room_size'       => 'sometimes|nullable|string|max:40',
         ]);
 
         $category = \App\Support\HotelRoomDefaults::updateCategoryDetails(
@@ -1220,7 +1226,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $data['name'],
             // Only what was actually sent, so a form saving one field leaves the
             // rest of the category alone.
-            array_intersect_key($data, array_flip(['rate', 'description', 'image', 'inclusions', 'rooms_available']))
+            array_intersect_key($data, array_flip([
+                'rate', 'description', 'image', 'inclusions', 'rooms_available',
+                'gallery', 'capacity', 'bed_type', 'room_size',
+            ]))
         );
 
         if (!$category) {
@@ -1234,8 +1243,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 'rate' => $category->rate,
                 'description' => $category->description,
                 'image' => $category->image_path,
+                'gallery' => $category->galleryList(),
                 'inclusions' => $category->inclusion_list,
                 'rooms_available' => $category->rooms_available,
+                'capacity' => \App\Models\HotelRoomCategory::supportsShowcase() ? $category->capacity : null,
+                'bed_type' => \App\Models\HotelRoomCategory::supportsShowcase() ? $category->bed_type : null,
+                'room_size' => \App\Models\HotelRoomCategory::supportsShowcase() ? $category->room_size : null,
             ],
             'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
         ]);
