@@ -479,6 +479,22 @@
                     </div>
                 </div>
 
+                {{-- The one thing about the registrar's list that costs a student their
+                     account. Said here, before the file is picked, because the fix is
+                     to the spreadsheet and doing it now is cheaper than doing it after
+                     half a block has been imported without addresses. --}}
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start mt-3">
+                    <span class="iconify text-amber-500 text-xl mt-0.5 shrink-0" data-icon="mdi:alert-circle-outline"></span>
+                    <div class="text-xs text-amber-800 leading-relaxed">
+                        <p class="font-bold">Students without an email address cannot be approved or have an account created.</p>
+                        <span class="block mt-1 text-amber-700">
+                            Those rows are skipped and listed on the results step; the rest of the
+                            file still imports. Add the address to the spreadsheet and upload again,
+                            or add that student with Add Student.
+                        </span>
+                    </div>
+                </div>
+
                 <!-- Download template -->
                 <button onclick="downloadExcelTemplate()" class="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-4 py-2 rounded-xl transition mt-3">
                     <span class="iconify text-base" data-icon="mdi:file-download-outline"></span>
@@ -505,6 +521,16 @@
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-sm font-bold text-slate-700">Preview <span id="bulkPreviewCount" class="text-emerald-600"></span></p>
                     <button onclick="bulkResetToStep1()" class="text-xs text-slate-500 hover:text-brand underline">Change file</button>
+                </div>
+                {{-- Shown only when the file actually has rows without an address, and
+                     saying how many: a warning that appears every time is one nobody
+                     reads by the third block. --}}
+                <div id="bulkNoEmailNote" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2.5 items-start mb-3">
+                    <span class="iconify text-amber-500 text-lg mt-0.5 shrink-0" data-icon="mdi:email-off-outline"></span>
+                    <div class="text-xs text-amber-800 leading-relaxed">
+                        <p class="font-bold"><span id="bulkNoEmailCount"></span> Students without an email address cannot be approved or have an account created.</p>
+                        <span class="block mt-0.5 text-amber-700">They are marked below and will be skipped. Everyone else still imports.</span>
+                    </div>
                 </div>
                 <div class="overflow-x-auto rounded-xl border border-slate-200 bulk-preview-scroll">
                     <table class="w-full text-left text-xs">
@@ -1023,11 +1049,22 @@
                 <td class="px-3 py-2 font-mono text-slate-700">${cell(s.student_number)}</td>
                 <td class="px-3 py-2">${cell(s.last_name)}</td>
                 <td class="px-3 py-2">${cell(s.first_name)}</td>
-                <td class="px-3 py-2 text-slate-500">${cell(s.email)}</td>
+                <td class="px-3 py-2 ${s.email ? 'text-slate-500' : 'text-amber-700 font-semibold'}">${s.email ? cell(s.email) : 'no email'}</td>
                 <td class="px-3 py-2 text-slate-500">${cell(s.phone_number)}</td>
             `;
             tbody.appendChild(tr);
         });
+
+        // How many of them have no address, across the whole file rather than the
+        // page on screen: the faculty is deciding about the upload, not the page.
+        const missing = bulkPreviewStudents.filter((row) => !row.email).length;
+        const note = document.getElementById('bulkNoEmailNote');
+        if (note) {
+            note.classList.toggle('hidden', missing === 0);
+            note.classList.toggle('flex', missing > 0);
+            const label = document.getElementById('bulkNoEmailCount');
+            if (label) label.textContent = missing === 1 ? '1 student has no email address.' : missing + ' students have no email address.';
+        }
 
         // A single page needs no controls, and hiding them keeps the small-file case
         // looking the way it did before paging existed.
