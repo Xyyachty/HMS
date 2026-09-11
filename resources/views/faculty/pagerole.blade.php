@@ -35,7 +35,7 @@
         .lg\:w-80 { width: 20rem; }
     }
 
-    .manage-head-tools { display: flex; align-items: center; gap: .75rem; margin-top: .75rem; }
+    .manage-head-tools { display: flex; align-items: center; gap: .75rem; margin-top: .5rem; }
     .manage-grid { grid-template-columns: 280px minmax(0, 1fr); }
     .mm-team-panel { min-width: 0; }
     .add-student-modal { max-width: 62rem; max-height: 92vh; }
@@ -93,9 +93,9 @@
     }
     .setup-field-grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .setup-role-grid { display: grid; gap: .625rem; grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .manage-stat-grid { display: grid; gap: .75rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .manage-stat-grid { display: grid; gap: .625rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .manage-grid {
-        display: grid; gap: 1rem;
+        display: grid; gap: .75rem;
         grid-template-columns: 280px minmax(0, 1fr);
         align-items: start;
     }
@@ -1449,10 +1449,10 @@
             @endphp
 
             <!-- Figures strip -->
-            <div class="manage-head p-5 pb-0">
+            <div class="manage-head p-4 pb-0">
                 <div class="manage-stat-grid">
-                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 flex items-center gap-3">
-                        <div class="w-11 h-11 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
+                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
                             <span class="iconify text-brand text-xl" data-icon="mdi:account-group-outline"></span>
                         </div>
                         <div class="min-w-0">
@@ -1460,8 +1460,8 @@
                             <p class="text-[12px] text-slate-500 font-semibold mt-1">Total Teams</p>
                         </div>
                     </div>
-                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 flex items-center gap-3">
-                        <div class="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
                             <span class="iconify text-blue-500 text-xl" data-icon="mdi:account-outline"></span>
                         </div>
                         <div class="min-w-0">
@@ -1469,8 +1469,8 @@
                             <p class="text-[12px] text-slate-500 font-semibold mt-1">Total Students</p>
                         </div>
                     </div>
-                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 flex items-center gap-3">
-                        <div class="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
                             <span class="iconify text-rose-500 text-xl" data-icon="mdi:account-alert-outline"></span>
                         </div>
                         <div class="min-w-0">
@@ -1478,8 +1478,8 @@
                             <p class="text-[12px] text-slate-500 font-semibold mt-1">Unassigned Students</p>
                         </div>
                     </div>
-                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 flex items-center gap-3">
-                        <div class="w-11 h-11 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
                             <span class="iconify text-violet-500 text-xl" data-icon="mdi:tag-multiple-outline"></span>
                         </div>
                         <div class="min-w-0">
@@ -1503,11 +1503,11 @@
                 </div>
             </div>
 
-            <div class="manage-grid p-5">
+            <div class="manage-grid p-4">
                 {{-- Left: the teams themselves. Picking one drives every other column
                      and the hidden group_name the insert form posts. --}}
                 <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div class="flex items-center justify-between gap-2 mb-3">
+                    <div class="flex items-center justify-between gap-2 mb-2.5">
                         <p class="text-[15px] font-bold text-slate-800">Teams</p>
                         <button type="button" onclick="switchCreateModalTab('add_team')"
                                 class="h-9 px-3 rounded-xl brand-gradient text-white text-[12px] font-bold inline-flex items-center gap-1.5 shadow-md shadow-brand/20 hover:opacity-95 transition">
@@ -1552,9 +1552,9 @@
                         @endphp
                         <div class="mm-team-panel rounded-2xl border border-slate-200 bg-white overflow-hidden{{ $teamName === $manageFirstTeam ? '' : ' hidden' }}"
                              data-team-panel="{{ $teamName }}">
-                            <div class="px-5 pt-5 pb-4 flex flex-wrap items-start justify-between gap-3 border-b border-slate-100">
+                            <div class="px-4 pt-4 pb-3 flex flex-wrap items-start justify-between gap-3 border-b border-slate-100">
                                 <div class="flex items-start gap-3 min-w-0">
-                                    <span class="w-12 h-12 rounded-full bg-brand-soft text-brand flex items-center justify-center shrink-0">
+                                    <span class="w-11 h-11 rounded-full bg-brand-soft text-brand flex items-center justify-center shrink-0">
                                         <span class="iconify text-2xl" data-icon="mdi:account-group"></span>
                                     </span>
                                     <div class="min-w-0">
@@ -1577,7 +1577,7 @@
                                 </div>
                             </div>
 
-                            <div class="px-5 pt-4 pb-3 flex flex-wrap items-start justify-between gap-3">
+                            <div class="px-4 pt-3 pb-2.5 flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="text-[15px] font-bold text-slate-800">Team Members</p>
                                     <p class="text-[12px] text-slate-400">Manage the students in this team. You can assign or update their role(s).</p>
@@ -1592,19 +1592,19 @@
                                 <table class="w-full text-left">
                                     <thead>
                                         <tr class="border-b border-slate-100 bg-slate-50/60">
-                                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500 w-10">#</th>
-                                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Student Name</th>
-                                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Student ID</th>
-                                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Role(s)</th>
-                                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500 text-right">Actions</th>
+                                            <th class="px-4 py-2 text-[12px] font-bold text-slate-500 w-10">#</th>
+                                            <th class="px-4 py-2 text-[12px] font-bold text-slate-500">Student Name</th>
+                                            <th class="px-4 py-2 text-[12px] font-bold text-slate-500">Student ID</th>
+                                            <th class="px-4 py-2 text-[12px] font-bold text-slate-500">Role(s)</th>
+                                            <th class="px-4 py-2 text-[12px] font-bold text-slate-500 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($team['members'] as $member)
                                             <tr class="mm-member-row border-b border-slate-100"
                                                 data-member-search="{{ strtolower($member['name'] . ' ' . $member['student_number']) }}">
-                                                <td class="px-4 py-3 text-[13px] font-semibold text-slate-400">{{ $loop->iteration }}</td>
-                                                <td class="px-4 py-3">
+                                                <td class="px-4 py-2 text-[13px] font-semibold text-slate-400">{{ $loop->iteration }}</td>
+                                                <td class="px-4 py-2">
                                                     <div class="flex items-center gap-2.5 min-w-0">
                                                         @include('partials.user-avatar', [
                                                             'user'         => $member['user'],
@@ -1616,8 +1616,8 @@
                                                         <span class="text-[13px] font-semibold text-slate-700 truncate">{{ $member['name'] }}</span>
                                                     </div>
                                                 </td>
-                                                <td class="px-4 py-3 text-[12px] text-slate-500 font-mono whitespace-nowrap">{{ $member['student_number'] ?? '—' }}</td>
-                                                <td class="px-4 py-3">
+                                                <td class="px-4 py-2 text-[12px] text-slate-500 font-mono whitespace-nowrap">{{ $member['student_number'] ?? '—' }}</td>
+                                                <td class="px-4 py-2">
                                                     <div class="flex flex-wrap gap-1.5">
                                                         @forelse($member['roles'] as $mRole)
                                                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-50 border border-slate-200 text-slate-600 whitespace-nowrap">
@@ -1629,7 +1629,7 @@
                                                         @endforelse
                                                     </div>
                                                 </td>
-                                                <td class="px-4 py-3">
+                                                <td class="px-4 py-2">
                                                     <div class="flex items-center justify-end gap-2">
                                                         <button type="button" onclick='openUpdateModal(@json($teamName), @json($memberPayload))'
                                                                 class="h-9 px-3.5 rounded-xl border border-slate-200 text-slate-600 text-[12px] font-bold hover:border-brand/40 hover:text-brand transition">
