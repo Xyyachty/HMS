@@ -15,6 +15,12 @@
     }
 
     $setTaskHref = route('faculty.role', array_merge($classQuery, ['tab' => 'create_task']));
+
+    /* Why Set Task cannot be pressed, if it cannot. Worked out on the server -
+       the same sentence guards the page itself, so the button and the page can
+       never disagree about the reason. Null means there is somewhere to send a
+       task and the button behaves as it always did. */
+    $setTaskBlockReason = $setTaskBlockReason ?? null;
 @endphp
 
 <div class="px-4 pt-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -52,16 +58,30 @@
     </div>
 
     <div class="flex items-center gap-2 pb-3 shrink-0 ml-auto">
-        <a href="{{ $setTaskHref }}"
-           data-action-btn="set_task"
-           onclick="setTeamsActionHighlight('set_task')"
-           class="teams-action-btn h-10 px-4 rounded-xl text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap
-           {{ $isSetTask
-                ? 'is-active bg-brand text-white shadow-md shadow-brand/20 border border-transparent'
-                : 'bg-white text-slate-600 border border-slate-200 hover:border-brand/40 hover:text-brand' }}">
-            <span class="iconify text-base" data-icon="mdi:clipboard-plus-outline"></span>
-            Set Task
-        </a>
+        @if($setTaskBlockReason)
+            {{-- A button rather than a link: a disabled <a> is still a link, and
+                 still goes where it points. The reason is the tooltip. --}}
+            <button type="button" disabled
+                    title="{{ $setTaskBlockReason }}"
+                    aria-disabled="true"
+                    aria-describedby="setTaskBlockedNote"
+                    class="h-10 px-4 rounded-xl text-sm font-bold inline-flex items-center gap-2 whitespace-nowrap
+                           bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed">
+                <span class="iconify text-base" data-icon="mdi:clipboard-alert-outline"></span>
+                Set Task
+            </button>
+        @else
+            <a href="{{ $setTaskHref }}"
+               data-action-btn="set_task"
+               onclick="setTeamsActionHighlight('set_task')"
+               class="teams-action-btn h-10 px-4 rounded-xl text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap
+               {{ $isSetTask
+                    ? 'is-active bg-brand text-white shadow-md shadow-brand/20 border border-transparent'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-brand/40 hover:text-brand' }}">
+                <span class="iconify text-base" data-icon="mdi:clipboard-plus-outline"></span>
+                Set Task
+            </a>
+        @endif
         {{-- Team Setup, where Add Team used to be. They opened the same screen under
              two names in two places, which read as two different things to do.
              Deliberately not a .teams-action-btn: that class is driven by
@@ -75,3 +95,14 @@
         </button>
     </div>
 </div>
+
+@if($setTaskBlockReason)
+    {{-- Said on the page as well as in the tooltip: a tooltip is only found by
+         someone who already suspects the button is disabled, and on a touch
+         screen it is not found at all. --}}
+    <div id="setTaskBlockedNote" role="status"
+         class="px-4 py-3 bg-amber-50 border-b border-amber-200 flex items-start gap-2.5">
+        <span class="iconify text-amber-500 text-lg mt-0.5 shrink-0" data-icon="mdi:information-outline"></span>
+        <p class="text-xs text-amber-800 font-semibold leading-relaxed">{{ $setTaskBlockReason }}</p>
+    </div>
+@endif

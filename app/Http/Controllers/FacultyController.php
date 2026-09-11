@@ -1166,6 +1166,44 @@ class FacultyController extends Controller
             return ($teamClassIdByName[$groupName] ?? null) === $activeClass->faculty_class_id;
         });
 
+        /* Whether Set Task has anywhere to send work.
+         *
+         * A task is handed to a team and fanned out to its members, so a block
+         * with no students, or with teams that have nobody in them, has nothing
+         * for a task to land on - and setting one there used to look like it
+         * had worked while creating nothing at all.
+         *
+         * A team with no students is not a team for this purpose: its rows have
+         * no student behind them (the student was removed), so there is no one
+         * to hand the work to.
+         */
+        $classStudentCount = Student::where('faculty_id', $facultyId)
+            ->when($activeClass, fn ($q) => $q->where('faculty_class_id', $activeClass->faculty_class_id))
+            ->count();
+
+        $teamsWithStudents = $groups->filter(
+            fn ($members) => $members->contains(fn ($member) => $member->student !== null)
+        );
+
+        $setTaskBlockReason = null;
+        if ($classStudentCount === 0) {
+            $setTaskBlockReason = 'No students are available. Please add students before setting tasks.';
+        } elseif ($teamsWithStudents->isEmpty()) {
+            $setTaskBlockReason = 'No teams are available. Please create a team and assign students before setting tasks.';
+        }
+
+        /* Typing the address of the Set Task tab is not a way around the above.
+           Sent back to the team list with the same sentence the button carries,
+           so the two never disagree about why. */
+        if ($setTaskBlockReason && request('tab') === 'create_task') {
+            return redirect()
+                ->route('faculty.role', array_filter([
+                    'class' => $activeClass?->letter,
+                    'tab' => 'teams',
+                ]))
+                ->with('error', $setTaskBlockReason);
+        }
+
         // Role definitions + task counts for the Create Task tab
         $rolesMeta = [
             'front_desk'            => ['label' => 'Front Desk',            'icon' => 'mdi:desk',                  'color' => 'text-rose-500',  'bg' => 'bg-rose-50'],
@@ -1309,6 +1347,7 @@ class FacultyController extends Controller
             'openClass',
             'classCapacity',
             'teamCountsByClass',
+            'setTaskBlockReason',
             'rolesMeta',
             'tasksByRole',
             'taskCounts',
@@ -1503,6 +1542,20 @@ class FacultyController extends Controller
 
         if ($membersByTeam->isEmpty()) {
             return back()->withErrors(['group_name' => 'None of those teams are yours.'])->withInput();
+        }
+
+        /* A team whose rows have no student behind them - everyone in it was
+           removed - has nobody to hand the work to, and a task set on it is a
+           row nobody will ever see. Dropped here rather than at the form,
+           because the form is not the only way in. */
+        $membersByTeam = $membersByTeam->filter(
+            fn ($members) => $members->contains(fn ($member) => $member->student !== null)
+        );
+
+        if ($membersByTeam->isEmpty()) {
+            return back()->withErrors([
+                'group_name' => 'No teams are available. Please create a team and assign students before setting tasks.',
+            ])->withInput();
         }
 
         // Check if any tasks were selected

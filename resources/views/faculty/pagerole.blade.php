@@ -2055,16 +2055,34 @@
                     @else
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="taskTeamSelector">
                             @foreach($groups as $groupName => $members)
+                                @php
+                                    /* Members who are still students. A row whose student was
+                                       removed leaves the team standing with nobody in it, and
+                                       a task set on it is a row nobody will ever see - the
+                                       server drops such teams too, so this is what the faculty
+                                       sees rather than the only thing stopping it. */
+                                    $liveMembers = $members->filter(fn ($member) => $member->student !== null);
+                                    $hasStudents = $liveMembers->isNotEmpty();
+                                @endphp
                                 <label data-team="{{ $groupName }}"
-                                    class="task-team-btn group p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-brand/40 hover:shadow-md transition-all cursor-pointer flex items-start gap-3 text-left has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
+                                    @if(!$hasStudents) title="No students are assigned to {{ $groupName }} yet." @endif
+                                    class="task-team-btn group p-4 rounded-xl border-2 transition-all flex items-start gap-3 text-left
+                                    {{ $hasStudents
+                                        ? 'border-slate-200 bg-white hover:border-brand/40 hover:shadow-md cursor-pointer has-[:checked]:border-brand has-[:checked]:bg-brand-soft'
+                                        : 'border-slate-200 border-dashed bg-slate-50 cursor-not-allowed opacity-70' }}">
                                     <input type="checkbox" name="group_names[]" value="{{ $groupName }}"
                                         onchange="onTeamToggled()"
-                                        {{ in_array($groupName, (array) old('group_names', []), true) ? 'checked' : '' }}
-                                        class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30 task-team-radio">
+                                        @disabled(!$hasStudents)
+                                        {{ $hasStudents && in_array($groupName, (array) old('group_names', []), true) ? 'checked' : '' }}
+                                        class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30 task-team-radio disabled:cursor-not-allowed">
                                     <span class="min-w-0">
-                                        <span class="block text-sm font-bold text-slate-700 truncate">{{ $groupName }}</span>
-                                        <span class="block text-[10px] text-slate-400 mt-0.5">
-                                            {{ $members->count() }} {{ Str::plural('member', $members->count()) }}
+                                        <span class="block text-sm font-bold truncate {{ $hasStudents ? 'text-slate-700' : 'text-slate-400' }}">{{ $groupName }}</span>
+                                        <span class="block text-[10px] mt-0.5 {{ $hasStudents ? 'text-slate-400' : 'text-amber-600 font-semibold' }}">
+                                            @if($hasStudents)
+                                                {{ $liveMembers->count() }} {{ Str::plural('member', $liveMembers->count()) }}
+                                            @else
+                                                No students assigned
+                                            @endif
                                         </span>
                                     </span>
                                 </label>
