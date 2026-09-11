@@ -33,9 +33,13 @@
                 $isClosed = $classTab->status === 'closed';
                 $teamCount = $teamCountsByClass[$classTab->faculty_class_id] ?? 0;
             @endphp
-            {{-- Stay on the tab you are on. Hard-coding 'teams' threw faculty out of
-                 the Set Task wizard whenever they switched block. --}}
-            <a href="{{ route('faculty.role', ['class' => $classTab->letter, 'tab' => $teamsSubTab]) }}"
+            {{-- A block tab always opens Manage Teams for that block - Set Task is a
+                 wizard for the block you were already on, not a place block-switching
+                 stays inside. The class is carried by its letter, the id this faculty's
+                 blocks are already keyed by everywhere else in this controller - not by
+                 $classTab->name, which is a label ("Class A"), not an identifier. --}}
+            <a href="{{ route('faculty.role', ['class' => $classTab->letter, 'tab' => 'teams']) }}"
+               @if($isSetTask) onclick="return confirmLeaveSetTaskForBlockSwitch()" @endif
                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 transition
                {{ $isActiveClass
                     ? 'bg-white text-brand border-slate-200 -mb-px relative z-10'

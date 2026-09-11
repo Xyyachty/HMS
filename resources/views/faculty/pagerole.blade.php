@@ -2423,6 +2423,14 @@ function leaveSetTaskScreen() {
     window.location.href = TEAMS_LIST_URL;
 }
 
+// Same guard, for the block tabs above the wizard: switching block from Set
+// Task also leaves the form behind, so it asks the same question before the
+// tab's own href is allowed to navigate.
+function confirmLeaveSetTaskForBlockSwitch() {
+    return !setTaskFormHasEntries()
+        || window.confirm('Your unsaved task selections will be lost. Do you want to continue?');
+}
+
 /* Everything opening the screen used to do, run on load instead. */
 function initTeamSetupScreen() {
     const firstTeam = document.querySelector('.insert-team-pick')?.dataset.teamPick;
