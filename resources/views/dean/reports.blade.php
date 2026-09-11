@@ -135,7 +135,7 @@
                 <tr>
                     <th class="rp-th w-10">#</th>
                     <th class="rp-th">Team</th>
-                    <th class="rp-th">Task</th>
+                    <th class="rp-th">Assgined Task</th>
                     <th class="rp-th text-center">Total<br>Activities</th>
                     <th class="rp-th">Date Assigned</th>
                     <th class="rp-th">Date Completed</th>

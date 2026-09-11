@@ -1249,6 +1249,10 @@
     canvas.innerHTML = '';
     let restored = null;
     (customizations[USER_KEY] || []).forEach((item) => {
+      // A row that is not a record at all. One of those used to throw here, and
+      // a throw in this pass costs the whole page its saved work, not just this
+      // element.
+      if (!item || typeof item !== 'object') return;
       const itemPage = item.page || 'home';
       if (itemPage !== page) return;
       const el = buildUserElement(item);
@@ -1336,9 +1340,32 @@
   }
 
   function applyAllCustomizations() {
+    /* `applying` silences the observer that would otherwise see this function's
+       own writes and call it again. It has to come back down whatever happens:
+       left raised by a throw, nothing is ever re-applied again for the rest of
+       the visit, and every later render quietly loses the team's work. */
     applying = true;
+    try {
+      applyAllCustomizationsInner();
+    } finally {
+      applying = false;
+    }
+    updateHandles();
+  }
+
+  /* Run one step of the pass. A single entry, or a single stage, must not be
+     able to cost the page everything else that was saved. */
+  function attempt(what, fn) {
+    try {
+      fn();
+    } catch (err) {
+      if (window.console && console.warn) console.warn('[hms] ' + what + ' failed', err);
+    }
+  }
+
+  function applyAllCustomizationsInner() {
     let migrated = false;
-    Object.keys(customizations).forEach((id) => {
+    Object.keys(customizations).forEach((id) => attempt('entry ' + id, () => {
       if (id === USER_KEY || id === DELETED_KEY || SITE_CONTENT_KEYS.indexOf(id) !== -1) return;
       if (!entryBelongsToCurrentPage(customizations[id])) return;
       let el = findByKey(id);
@@ -1413,14 +1440,25 @@
       captureOriginalState(el, key);
       el.setAttribute('data-edit-id', key);
       applyEntry(el, customizations[key]);
-    });
-    applyDeleted();
-    renderUserElements();
-    cleanOrphanSpacers();
-    rebuildFreePosSheet();
-    applying = false;
-    updateHandles();
+    }));
+    attempt('applyDeleted', applyDeleted);
+    attempt('renderUserElements', renderUserElements);
+    attempt('cleanOrphanSpacers', cleanOrphanSpacers);
+    attempt('rebuildFreePosSheet', rebuildFreePosSheet);
     if (migrated) notifyChanged();
+  }
+
+  /* One pass now and a few as the page settles: a mount that lands after the
+     first pass is still covered, and the passes are identical because each one
+     reads the stored values rather than measuring what is on screen. */
+  function reapplyThroughSettle() {
+    applyAllCustomizations();
+    [16, 120, 400].forEach(function (delay) {
+      setTimeout(function () {
+        if (dragState || resizeState || textEditEl) return;
+        applyAllCustomizations();
+      }, delay);
+    });
   }
 
   function scheduleReapply() {
@@ -2831,6 +2869,14 @@
     window.__HMS_CURRENT_PAGE__ = currentPage;
     clearSelection();
     activeSectionId = null;
+    /* Put the page's own work back on, rather than waiting for the observer to
+       notice the new markup. The page that was just left and the one arriving
+       keep separate entries, so everything on screen belongs to the page that
+       has gone; one missed mutation and the arriving page shows none of its
+       own, which reads as a design that reset itself. React mounts over the
+       next few frames, so this runs again as it settles - re-applying is
+       reading the same saved values twice, and lands in the same place. */
+    reapplyThroughSettle();
     renderUserElements();
     setTimeout(syncSectionMode, 80);
     updateEditHint();
