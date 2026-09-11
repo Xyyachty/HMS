@@ -1567,7 +1567,7 @@
                                     </span>
                                     <button type="button" onclick='openUpdateModal(@json($teamName), @json($memberPayload))'
                                             class="h-10 px-4 rounded-xl border border-slate-200 text-slate-600 text-[12px] font-bold hover:border-brand/40 hover:text-brand transition inline-flex items-center gap-1.5">
-                                        <span class="iconify text-base" data-icon="mdi:pencil-outline"></span> Edit Team Info
+                                        <span class="iconify text-base" data-icon="mdi:pencil-outline"></span> Update Team Info
                                     </button>
                                 </div>
                             </div>
