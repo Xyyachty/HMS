@@ -239,6 +239,19 @@
     .role-dot-maintenance           { background:#A855F7; }
     .role-dot-housekeeping          { background:#14B8A6; }
 
+    /* Assign Remaining Role points at this checkbox's label rather than making
+       the faculty re-read every role on every member to find the open one. */
+    .role-highlight {
+        border-color: #F59E0B !important;
+        background: #FFFBEB !important;
+        box-shadow: 0 0 0 2px #FDE68A;
+        animation: role-highlight-pulse 1.4s ease-in-out 2;
+    }
+    @keyframes role-highlight-pulse {
+        0%, 100% { box-shadow: 0 0 0 2px #FDE68A; }
+        50% { box-shadow: 0 0 0 4px #FCD34D; }
+    }
+
     /* ── Teams table layout ── */
     #teamsTable {
         table-layout: fixed;
@@ -532,6 +545,25 @@
                             ->values();
                         $cardLeadRole = $cardRoles->first();
 
+                        /* Role Assignment Indicator: four members, five required roles, so
+                           one member always ends up holding two - counted off the same
+                           $cardRoles the chips above already read, not a second query. */
+                        $cardRoleTotal   = count($roleLabels);
+                        $cardRoleCount   = $cardRoles->count();
+                        $cardMissingKeys = array_diff(array_keys($roleLabels), $cardRoles->all());
+                        $cardMissingCount = count($cardMissingKeys);
+                        $cardMissingNames = array_map(fn ($k) => $roleLabels[$k] ?? $k, $cardMissingKeys);
+                        $cardRoleIndicator = $cardMissingCount === 0
+                            ? ['tone' => 'emerald', 'text' => 'All Roles Assigned']
+                            : ($cardMissingCount === 1
+                                ? ['tone' => 'amber', 'text' => '1 Role Still Unassigned']
+                                : ['tone' => 'rose', 'text' => 'Roles Incomplete']);
+                        $cardRoleToneClasses = [
+                            'emerald' => ['border-emerald-200', 'bg-emerald-50', 'text-emerald-700'],
+                            'amber'   => ['border-amber-200', 'bg-amber-50', 'text-amber-700'],
+                            'rose'    => ['border-rose-200', 'bg-rose-50', 'text-rose-700'],
+                        ][$cardRoleIndicator['tone']];
+
                         $teamConcepts   = ($conceptsByGroup ?? collect())->get($groupName, collect());
                         $cardConcept    = $teamConcepts->first();
                         $cardConceptText = $cardConcept
@@ -609,6 +641,25 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+
+                            {{-- Role Assignment Indicator: five required roles on a four-person
+                                 team always leaves one role riding along on a second member -
+                                 this says how far that redistribution has gotten. --}}
+                            <div class="mt-4 rounded-xl border {{ implode(' ', $cardRoleToneClasses) }} px-3 py-2.5">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="text-[12px] font-extrabold">Roles Assigned: {{ $cardRoleCount }}/{{ $cardRoleTotal }}</p>
+                                    <span class="text-[10px] font-bold uppercase tracking-wide">{{ $cardRoleIndicator['text'] }}</span>
+                                </div>
+                                @if($cardMissingCount > 0)
+                                    <p class="text-[11px] mt-1 opacity-90">Missing: {{ implode(', ', $cardMissingNames) }}</p>
+                                    <button type="button"
+                                            onclick='openRoleAssignment({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode(array_values($cardMissingKeys)[0]) }})'
+                                            class="mt-2 w-full h-8 rounded-lg bg-white border {{ $cardRoleToneClasses[0] }} text-[11px] font-bold inline-flex items-center justify-center gap-1.5 hover:opacity-80 transition">
+                                        <span class="iconify text-sm" data-icon="mdi:account-key-outline"></span>
+                                        Assign Remaining Role
+                                    </button>
+                                @endif
                             </div>
 
                             <div class="mt-5">
@@ -2069,6 +2120,11 @@
                                        sees rather than the only thing stopping it. */
                                     $liveMembers = $members->filter(fn ($member) => $member->student !== null);
                                     $hasStudents = $liveMembers->isNotEmpty();
+
+                                    // Same five-role count the Role Assignment Indicator on
+                                    // Manage Teams reads, so the two never disagree about a team.
+                                    $teamAssignedRoles = $members->flatMap(fn ($m) => $m->roles->pluck('role'))->filter()->unique();
+                                    $teamMissingRoleCount = count($roleLabels) - $teamAssignedRoles->count();
                                 @endphp
                                 <label data-team="{{ $groupName }}"
                                     @if(!$hasStudents) title="No students are assigned to {{ $groupName }} yet." @endif
@@ -2090,6 +2146,11 @@
                                                 No students assigned
                                             @endif
                                         </span>
+                                        @if($hasStudents && $teamMissingRoleCount > 0)
+                                            <span class="block text-[10px] mt-1 text-amber-600 font-semibold leading-snug">
+                                                This team still has an unassigned role. Assign all required roles before setting role-specific tasks.
+                                            </span>
+                                        @endif
                                     </span>
                                 </label>
                             @endforeach
@@ -3997,6 +4058,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // ── Open Update Team modal (members of this team only) ──────────
 function openUpdateModal(groupName, memberData) {
+    // A highlight left over from a previous team's missing role has no business
+    // pointing at this one.
+    document.querySelectorAll('.role-highlight').forEach(el => el.classList.remove('role-highlight'));
+
     const form = document.getElementById('updateTeamForm');
     form.action = '/faculty/role/groups/' + encodeURIComponent(groupName);
 
@@ -4060,6 +4125,22 @@ function openUpdateModal(groupName, memberData) {
 function closeUpdateModal() {
     document.getElementById('updateTeamModal').classList.add('hidden');
     document.body.style.overflow = 'auto';
+}
+
+/* Role Assignment Indicator's "Assign Remaining Role" button: same Update
+   Team screen the card's own Update button opens, just pointed at the one
+   role the team is missing so it does not have to be hunted for. */
+function openRoleAssignment(groupName, memberData, missingRoleKey) {
+    openUpdateModal(groupName, memberData);
+    highlightMissingRole(missingRoleKey);
+}
+
+function highlightMissingRole(roleKey) {
+    if (!roleKey) return;
+    // Only the roles this team's own members can tick - a role checkbox
+    // belonging to a hidden (non-member) row is not what needs pointing at.
+    document.querySelectorAll('.update-student-row[data-is-team-member="1"] .update-role-checkbox[value="' + roleKey + '"]')
+        .forEach(cb => cb.closest('label')?.classList.add('role-highlight'));
 }
 
 function filterUpdateStudentList() {
