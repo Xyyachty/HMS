@@ -1024,7 +1024,7 @@
                     <button type="button" id="createModeSingleBtn" onclick="switchCreateTeamMode('single')"
                         @disabled($unassignedStudentCount === 0)
                         class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-brand shadow-sm border border-brand/10 disabled:opacity-50 disabled:cursor-not-allowed">
-                        Single Team
+                        One Team
                     </button>
                     <button type="button" id="createModeMultiBtn" onclick="switchCreateTeamMode('multiple')"
                         @disabled($unassignedStudentCount === 0)
