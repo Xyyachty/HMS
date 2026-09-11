@@ -15,18 +15,18 @@ use Illuminate\Validation\Rule;
 /**
  * The team's first task: propose two hotel concepts.
  *
- * The concepts belong to the team, not to the member who typed them. The task is
- * seeded on Front Desk's row, but any current member may write either concept
- * while it is open, and any member hands both to faculty at once. Every save
- * leaves a revision behind, so the team and their faculty can see who changed
- * what, and when.
+ * The concepts belong to the team, not to the member who typed them. Any current
+ * member may write either concept while it is open, but the handover to faculty
+ * stays Front Desk's call. Every save leaves a revision behind, so the team and
+ * their faculty can see who changed what, and when.
  *
- * Who may write at any moment is decided by HotelConceptDesk, which also owns
- * every status change; this controller owns the reads and the edit history.
+ * Who may write, and who may submit, at any moment is decided by
+ * HotelConceptDesk, which also owns every status change; this controller owns
+ * the reads and the edit history.
  */
 class HotelConceptController extends Controller
 {
-    /** The role the task is seeded on. Kept as an alias for existing callers. */
+    /** The role that alone may submit. Kept as an alias for existing callers. */
     public const OWNING_ROLE = HotelConceptDesk::OWNING_ROLE;
 
     /** History rows kept per concept. */
@@ -96,6 +96,9 @@ class HotelConceptController extends Controller
         ]);
 
         $slot = (int) $validated['slot'];
+        // Only for the payload this hands back at the end — the save itself is
+        // gated on team membership alone, submitting stays Front Desk's call.
+        $isFrontDesk = in_array(HotelConceptDesk::OWNING_ROLE, $membership->roles->pluck('role')->all(), true);
         $existing = self::conceptAt(
             self::forTeam($membership->group_name, (int) $membership->faculty_id, 1),
             $slot
@@ -211,7 +214,7 @@ class HotelConceptController extends Controller
         // the history from this payload, so it hands back stored rows, not input.
         if ($request->expectsJson()) {
             return response()->json(array_merge(
-                self::payload(self::forTeam($membership->group_name, (int) $membership->faculty_id), true),
+                self::payload(self::forTeam($membership->group_name, (int) $membership->faculty_id), true, $isFrontDesk),
                 ['saved' => $saved, 'message' => $message]
             ));
         }
@@ -222,9 +225,11 @@ class HotelConceptController extends Controller
     /**
      * Hand both of the team's concepts to faculty for review.
      *
-     * Any team member may submit — the pair belongs to the team, the same as
-     * editing does. Both go at once, because the two exist so faculty can weigh
-     * them against each other; a concept already approved is left where it is.
+     * Front Desk alone submits, even though every member may have edited what is
+     * being handed in — the pair is everyone's to write, but the handover to
+     * faculty stays one role's call. Both go at once, because the two exist so
+     * faculty can weigh them against each other; a concept already approved is
+     * left where it is.
      */
     public function submit(Request $request)
     {
@@ -239,17 +244,19 @@ class HotelConceptController extends Controller
             return $this->refuse($request, 'You are not on a team yet, so there is no concept to submit.');
         }
 
+        $isFrontDesk = in_array(HotelConceptDesk::OWNING_ROLE, $membership->roles->pluck('role')->all(), true);
+
         // Locked for the same reason as the save: two members hitting Submit at
         // once must not both write a submission revision.
-        $result = DB::transaction(function () use ($membership, $authUser) {
+        $result = DB::transaction(function () use ($membership, $authUser, $isFrontDesk) {
             $concepts = HotelConcept::where('group_name', $membership->group_name)
                 ->where('faculty_id', $membership->faculty_id)
                 ->orderBy('slot')
                 ->lockForUpdate()
                 ->get();
 
-            if (!HotelConceptDesk::canSubmit($concepts, true)) {
-                return HotelConceptDesk::submitRefusal($concepts, true);
+            if (!HotelConceptDesk::canSubmit($concepts, $isFrontDesk)) {
+                return HotelConceptDesk::submitRefusal($concepts, $isFrontDesk);
             }
 
             $count = HotelConceptDesk::submittableConcepts($concepts)->count();
@@ -268,7 +275,7 @@ class HotelConceptController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json(array_merge(
-                self::payload(self::forTeam($membership->group_name, (int) $membership->faculty_id), true),
+                self::payload(self::forTeam($membership->group_name, (int) $membership->faculty_id), true, $isFrontDesk),
                 ['saved' => true, 'message' => $message]
             ));
         }
@@ -300,7 +307,8 @@ class HotelConceptController extends Controller
 
         return response()->json(self::payload(
             self::forTeam($membership->group_name, (int) $membership->faculty_id),
-            true
+            true,
+            in_array(HotelConceptDesk::OWNING_ROLE, $membership->roles->pluck('role')->all(), true)
         ));
     }
 
@@ -363,13 +371,13 @@ class HotelConceptController extends Controller
      * losing concept stops being a proposal, and an empty-looking slot there
      * would read as an invitation to write one, which is exactly what it is not.
      *
-     * $viewerIsTeamMember says whether whoever is asking is on this team at all —
-     * not which role they hold, since any member may now edit — so the student
-     * dashboard can repaint each slot's Edit button and the shared Submit button
-     * from the same response that repaints the concepts. Faculty and the dean
-     * pass nothing: they are never team members, and every flag comes back false.
+     * $viewerIsTeamMember gates editing — on this team at all, not which role —
+     * and $viewerIsFrontDesk gates the shared Submit button on top of that, so
+     * the student dashboard can repaint both from the same response that
+     * repaints the concepts. Faculty and the dean pass neither: they are never
+     * team members, and every flag comes back false.
      */
-    public static function payload(array $team, bool $viewerIsTeamMember = false): array
+    public static function payload(array $team, bool $viewerIsTeamMember = false, bool $viewerIsFrontDesk = false): array
     {
         $concepts = $team['concepts'] ?? collect();
         $histories = $team['histories'] ?? [];
@@ -419,7 +427,7 @@ class HotelConceptController extends Controller
         return [
             'slots' => $slots,
             // One button for the pair: they are handed in together.
-            'can_submit' => HotelConceptDesk::canSubmit($concepts, $viewerIsTeamMember),
+            'can_submit' => HotelConceptDesk::canSubmit($concepts, $viewerIsFrontDesk),
             'all_slots_filled' => HotelConceptDesk::allSlotsFilled($concepts),
             'decided' => HotelConceptDesk::isDecided($concepts),
             'approved_slot' => HotelConceptDesk::approvedConcept($concepts)?->slot,

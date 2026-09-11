@@ -73,7 +73,22 @@ class HotelConceptDeskTest extends TestCase
         $this->assertFalse(HotelConceptDesk::canSubmit($concepts, true));
     }
 
-    public function test_submit_is_refused_for_a_non_team_member_even_with_two_ready_concepts(): void
+    public function test_front_desk_can_submit_two_ready_concepts(): void
+    {
+        $concepts = collect([
+            $this->conceptWithStatus(HotelConceptDesk::STATUS_DRAFT)->forceFill(['slot' => 1]),
+            $this->conceptWithStatus(HotelConceptDesk::STATUS_DRAFT)->forceFill(['slot' => 2]),
+        ]);
+
+        $this->assertTrue(HotelConceptDesk::canSubmit($concepts, true));
+    }
+
+    /**
+     * A teammate without the role may have written every word of both
+     * concepts — editing is open to the whole team — but handing them to
+     * faculty stays Front Desk's call.
+     */
+    public function test_a_teammate_without_front_desk_cannot_submit_even_with_two_ready_concepts(): void
     {
         $concepts = collect([
             $this->conceptWithStatus(HotelConceptDesk::STATUS_DRAFT)->forceFill(['slot' => 1]),
@@ -81,5 +96,9 @@ class HotelConceptDeskTest extends TestCase
         ]);
 
         $this->assertFalse(HotelConceptDesk::canSubmit($concepts, false));
+        $this->assertStringContainsString(
+            'Front Desk',
+            HotelConceptDesk::submitRefusal($concepts, false)
+        );
     }
 }

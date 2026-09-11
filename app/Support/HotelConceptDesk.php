@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\DB;
  *
  * The states are per concept because faculty judges each one separately — one can
  * come back for another round while the other waits. What is shared is the
- * handover: any team member submits the pair in one action, because the point of
+ * handover: Front Desk submits the pair in one action, because the point of
  * two concepts is that faculty compares them, and the choice itself, which lands
  * on both concepts at once.
  *
@@ -168,16 +168,18 @@ class HotelConceptDesk
     /**
      * Whether the team can hand their concepts in.
      *
-     * Any team member may submit, the same as any team member may edit — the
-     * pair is the team's, not one member's. Both slots have to be filled: faculty
-     * is being asked to weigh two proposals against each other, and one is not a
-     * choice. Beyond that there has to be something new to hand in — a pair
-     * already sitting with faculty and untouched since, or a pair already
-     * decided, submits nothing.
+     * Any team member may edit, but Front Desk alone submits — the pair is
+     * everyone's to write, the handover to faculty stays one role's call.
+     * $isFrontDesk means both: on this team, and holding OWNING_ROLE on it.
+     *
+     * Both slots have to be filled: faculty is being asked to weigh two
+     * proposals against each other, and one is not a choice. Beyond that there
+     * has to be something new to hand in — a pair already sitting with faculty
+     * and untouched since, or a pair already decided, submits nothing.
      */
-    public static function canSubmit(Collection $concepts, bool $isTeamMember): bool
+    public static function canSubmit(Collection $concepts, bool $isFrontDesk): bool
     {
-        if (!$isTeamMember) {
+        if (!$isFrontDesk) {
             return false;
         }
 
@@ -297,10 +299,10 @@ class HotelConceptDesk
     }
 
     /** Why a submit was refused. */
-    public static function submitRefusal(Collection $concepts, bool $isTeamMember): string
+    public static function submitRefusal(Collection $concepts, bool $isFrontDesk): string
     {
-        if (!$isTeamMember) {
-            return 'Only members of this team can submit the concepts to your faculty.';
+        if (!$isFrontDesk) {
+            return 'Only the Front Desk members of this team can submit the concepts to your faculty.';
         }
 
         if (!self::allSlotsFilled($concepts)) {
