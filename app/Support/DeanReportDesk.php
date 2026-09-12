@@ -325,18 +325,7 @@ class DeanReportDesk
     /** Task title (lowercased) => its zero-based step on the checklist. */
     private static function stepByTitle(): array
     {
-        static $map = null;
-
-        if ($map === null) {
-            $map = [];
-            foreach (TaskChecklist::allByStep() as $step => $tasks) {
-                foreach ($tasks as $task) {
-                    $map[mb_strtolower($task['title'])] = $step;
-                }
-            }
-        }
-
-        return $map;
+        return TaskChecklist::stepByTitle();
     }
 
     /**

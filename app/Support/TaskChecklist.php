@@ -1225,6 +1225,44 @@ class TaskChecklist
         return strcasecmp($title, HotelConceptDesk::TASK_TITLE) === 0;
     }
 
+    /**
+     * Task title (lowercased) => its zero-based step. Built once per request:
+     * the checklist does not change inside one.
+     *
+     * @return array<string, int>
+     */
+    public static function stepByTitle(): array
+    {
+        static $map = null;
+
+        if ($map === null) {
+            $map = [];
+            foreach (self::allByStep() as $step => $tasks) {
+                foreach ($tasks as $task) {
+                    $map[mb_strtolower($task['title'])] = $step;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Which numbered step a saved task row belongs to, or null when its title is
+     * not on the checklist — a one-off a faculty wrote by hand, or the chained
+     * follow-up DesignTaskChain hands out. Callers print nothing for those
+     * rather than inventing a number.
+     *
+     * A task row keeps only a copy of the title it was assigned under, so this
+     * is the one place a row's step is decided. Reading it here rather than
+     * counting rows on screen is what keeps the student's list and the faculty's
+     * Set Task screen saying the same number for the same work.
+     */
+    public static function stepForTitle(string $title): ?int
+    {
+        return self::stepByTitle()[mb_strtolower($title)] ?? null;
+    }
+
     /** @return list<array{title: string, description: string, scope: string}> */
     public static function forRole(string $role): array
     {

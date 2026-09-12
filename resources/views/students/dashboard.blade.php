@@ -486,7 +486,13 @@
                                             <span class="iconify text-xl" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
                                         </div>
                                         <div class="min-w-0 flex-1">
-                                            <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</p>
+                                            {{-- The task's own number on the checklist, not its position in
+                                                 this list: counting rows made the same work read as a
+                                                 different task here than on the faculty's Set Task screen. --}}
+                                            @php $homeTaskStep = \App\Support\TaskChecklist::stepForTitle($task->title); @endphp
+                                            @if($homeTaskStep !== null)
+                                                <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($homeTaskStep + 1, 2, '0', STR_PAD_LEFT) }}</p>
+                                            @endif
                                             <p class="text-[13px] text-slate-500 leading-snug line-clamp-2">{{ $task->title }}</p>
                                             <span class="inline-flex items-center mt-2 px-2 py-0.5 rounded-md text-[10px] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
                                                 {{ $homeRoleLabels[$task->role] ?? $task->role }}
@@ -1120,7 +1126,12 @@
                                                         <span class="iconify text-xl" data-icon="{{ $task->is_hotel_concept ? 'mdi:lightbulb-outline' : ($roleIcons[$task->role] ?? 'mdi:clipboard-text-outline') }}"></span>
                                                     </div>
                                                     <div class="min-w-0">
-                                                        <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($taskRowIndex, 2, '0', STR_PAD_LEFT) }}</p>
+                                                        {{-- Its number on the checklist, the same one faculty set it
+                                                             by — $taskRowIndex is only this row's place in the table. --}}
+                                                        @php $rowTaskStep = \App\Support\TaskChecklist::stepForTitle($task->title); @endphp
+                                                        @if($rowTaskStep !== null)
+                                                            <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($rowTaskStep + 1, 2, '0', STR_PAD_LEFT) }}</p>
+                                                        @endif
                                                         <p class="text-[13px] text-slate-500 truncate max-w-[260px]">{{ $task->title }}</p>
                                                     </div>
                                                 </div>
@@ -1294,7 +1305,10 @@
                                                         <span class="iconify text-xl" data-icon="mdi:check-decagram-outline"></span>
                                                     </div>
                                                     <div class="min-w-0">
-                                                        <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($taskRowIndex, 2, '0', STR_PAD_LEFT) }}</p>
+                                                        @php $doneTaskStep = \App\Support\TaskChecklist::stepForTitle($task->title); @endphp
+                                                        @if($doneTaskStep !== null)
+                                                            <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($doneTaskStep + 1, 2, '0', STR_PAD_LEFT) }}</p>
+                                                        @endif
                                                         <p class="text-[13px] text-slate-400 truncate max-w-[260px]">{{ $task->title }}</p>
                                                     </div>
                                                 </div>
