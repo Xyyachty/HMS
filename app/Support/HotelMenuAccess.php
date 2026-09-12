@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\HotelMenuItem;
 use App\Models\StudentGroup;
+use App\Models\Task;
 
 /**
  * Authorization + bootstrap for the hotel restaurant menu.
@@ -39,6 +40,73 @@ class HotelMenuAccess
         }
 
         return count(array_intersect($roles, self::MANAGE_ROLES)) > 0;
+    }
+
+    /** The checklist entry this page's design work is reviewed against. */
+    public const TASK_TITLE = 'Build Your Menu';
+
+    /**
+     * The team's copy of the Build Your Menu task, newest first.
+     *
+     * Scoped to the team rather than the student: how far this work has got is the
+     * team's fact, and every member of the Restaurant role reads the same line.
+     */
+    public static function taskFor(?StudentGroup $membership): ?Task
+    {
+        if (!$membership || !filled($membership->group_name)) {
+            return null;
+        }
+
+        return Task::where('faculty_id', $membership->faculty_id)
+            ->where('role', self::MANAGE_ROLE)
+            ->whereRaw('LOWER(group_name) = LOWER(?)', [(string) $membership->group_name])
+            ->whereRaw('LOWER(title) = LOWER(?)', [self::TASK_TITLE])
+            ->orderByDesc('task_id')
+            ->first();
+    }
+
+    /**
+     * Whether the menu is sitting with faculty right now.
+     *
+     * 'archived' is this app's "submitted" — see the tasks.complete route — and
+     * feedback_at is what separates a submission from an answered one. A task sent
+     * back for revision goes to 'active' and carries feedback, which reopens the
+     * menu with it.
+     */
+    public static function isUnderReview(?StudentGroup $membership): bool
+    {
+        return self::taskIsUnderReview(self::taskFor($membership));
+    }
+
+    /** The same question of a task already in hand, so it can be reasoned about alone. */
+    public static function taskIsUnderReview(?Task $task): bool
+    {
+        return $task && $task->status === 'archived' && $task->feedback_at === null;
+    }
+
+    /**
+     * Whether the menu's design may be changed: the role, and the work not being
+     * with faculty.
+     *
+     * The menu is read live wherever it is shown, the faculty review included, so
+     * a dish added after submitting would quietly change what is being marked.
+     * Freezing the rows at submission would do the same job; closing the door is
+     * smaller, and it is what the hotel concept already does.
+     *
+     * Deliberately not gated on the task being assigned at all. That was tried for
+     * the amenities list and reverted — see AmenityTaskDesk — because it left every
+     * team whose faculty had not handed the task out unable to build anything.
+     */
+    public static function canCustomize(StudentGroup $membership): bool
+    {
+        return self::canManage($membership) && !self::isUnderReview($membership);
+    }
+
+    /** Why the menu is closed, in the sentence the screens print. */
+    public static function lockMessage(): string
+    {
+        return 'Your menu has been submitted and is with your faculty for review. '
+            . 'It reopens if they send it back for changes.';
     }
 
     /**

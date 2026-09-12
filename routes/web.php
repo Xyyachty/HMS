@@ -1725,7 +1725,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json([
             'items'      => $items,
-            'can_manage' => \App\Support\HotelMenuAccess::canManage($membership),
+            /* Both the canvas and Manage Menu mirror this to decide whether to show
+               their tools, so a menu sitting with faculty shows none of them. */
+            'can_manage' => \App\Support\HotelMenuAccess::canCustomize($membership),
+            'under_review' => \App\Support\HotelMenuAccess::isUnderReview($membership),
+            'locked_reason' => \App\Support\HotelMenuAccess::isUnderReview($membership) ? \App\Support\HotelMenuAccess::lockMessage() : null,
             // The tabs the Restaurant page draws. Sent with the dishes so a course
             // with nothing in it yet still gets a tab to put the first dish under.
             'categories' => \App\Support\HotelMenuDefaults::categoriesFor($membership),
@@ -1743,6 +1747,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
         if (!\App\Support\HotelMenuAccess::canManage($membership)) {
             return response()->json(['message' => 'Only Restaurant staff can add a menu category.'], 403);
+        }
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
         }
 
         $data = $request->validate(['name' => 'required|string|max:60']);
@@ -1770,6 +1777,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
         if (!\App\Support\HotelMenuAccess::canManage($membership)) {
             return response()->json(['message' => 'Only Restaurant staff can rename a menu category.'], 403);
+        }
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
         }
 
         $data = $request->validate([
@@ -1804,6 +1814,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
         if (!\App\Support\HotelMenuAccess::canManage($membership)) {
             return response()->json(['message' => 'Only Restaurant Services staff can add menu items.'], 403);
+        }
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
         }
 
         $data = $request->validate([
@@ -1846,6 +1859,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'Only Restaurant Services staff can edit menu items.'], 403);
         }
 
+        /* Restocking is the kitchen's, not the design task's, so a stock-only write
+           still goes through while the menu is with faculty. Anything that would
+           change what is being reviewed - the name, picture, price, words or course
+           - waits for the verdict. */
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)
+            && array_diff(array_keys($request->all()), ['stock']) !== []) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
+        }
+
         $item = HotelMenuItem::where('hotel_menu_item_id', $id)
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
@@ -1884,6 +1906,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
         if (!\App\Support\HotelMenuAccess::canManage($membership)) {
             return response()->json(['message' => 'Only Restaurant Services staff can delete menu items.'], 403);
+        }
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
         }
 
         HotelMenuItem::where('hotel_menu_item_id', $id)

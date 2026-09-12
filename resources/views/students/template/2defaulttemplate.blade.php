@@ -4036,7 +4036,7 @@ function MenuConfirmModal({ open, title, message, confirmLabel, saving, onConfir
   );
 }
 
-function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, cardImages, rooms, guest }) {
+function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, menuLockedReason, cardImages, rooms, guest }) {
   const [tab, setTab] = useState('All');
   void cardImages;
   const filtered = tab === 'All' ? RESTAURANTS : RESTAURANTS.filter(r => r.category === tab);
@@ -4196,6 +4196,16 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, o
             <p style={{ color: 'var(--warm)', fontSize: '0.78rem', fontWeight: 600, margin: '0.35rem 0 0' }}>Synced across the team hotel website</p>
           </div>
         </div>
+        {menuLockedReason ? (
+          <p data-hms-no-edit="1" style={{
+            maxWidth: 1100, margin: '0 auto 1.25rem', padding: '0.7rem 1rem', borderRadius: 10,
+            border: '1px solid rgba(251,191,36,0.45)', background: 'rgba(251,191,36,0.10)',
+            color: 'var(--fg-muted)', fontSize: '0.78rem', textAlign: 'center',
+          }}>
+            <i className="fa-solid fa-lock" style={{ marginRight: 8, opacity: 0.8 }}></i>
+            {menuLockedReason}
+          </p>
+        ) : null}
         <TabBar
           tabs={menuTabs}
           active={menuTab}
@@ -5272,6 +5282,7 @@ function App() {
   // Restaurant menu lives in the DB and is shared by the whole team.
   const [menus, setMenus] = useState([]);
   const [canManageMenus, setCanManageMenus] = useState(false);
+  const [menuLockedReason, setMenuLockedReason] = useState('');
   /* The team's own courses. Starts on the five constants so the tabs are drawn
      before the first fetch lands, and on a published site that never fetches. */
   const [menuCategories, setMenuCategories] = useState(MENU_CATEGORIES);
@@ -5390,6 +5401,9 @@ function App() {
         if (Array.isArray(data.items)) setMenus(data.items);
         if (Array.isArray(data.categories) && data.categories.length) setMenuCategories(data.categories);
         setCanManageMenus(data.can_manage === true);
+        // Why the menu tools are gone, when they are - the server decides, the page
+        // only repeats it.
+        setMenuLockedReason(data.locked_reason || '');
       })
       .catch(() => {});
   }, []);
@@ -5966,6 +5980,7 @@ function App() {
         onToast={showToast}
         menus={menus}
         canManageMenus={canManageMenus && inRestaurantModule && isDesignMode}
+        menuLockedReason={menuLockedReason}
         canOrderMenu={canOrderMenu || isSignedInGuest}
         onOrderMenu={placeOrder}
         guest={guestAuth}
