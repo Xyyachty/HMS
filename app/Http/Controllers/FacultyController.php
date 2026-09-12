@@ -1096,6 +1096,7 @@ class FacultyController extends Controller
                 'teamActivityByGroup' => [],
                 'conceptsByGroup' => collect(),
                 'teamPendingReviewByGroup' => [],
+                'teamHeldSteps' => collect(),
             ]);
         }
 
@@ -1333,6 +1334,22 @@ class FacultyController extends Controller
         // to tell an initial render apart from a live update.
         $teamPendingReviewByGroup = $this->pendingReviewByGroup($facultyId);
 
+        /* Which numbered steps each team already holds, so Set Task can grey out
+           work they have been given instead of letting it be sent a second time.
+           storeTask refuses a duplicate either way; this is so the faculty sees
+           it before filling the form in. Two columns, one query. */
+        $teamHeldSteps = Task::where('faculty_id', $facultyId)
+            ->whereNotNull('group_name')
+            ->get(['group_name', 'title'])
+            ->groupBy('group_name')
+            ->map(fn ($rows) => $rows->pluck('title')
+                ->map(fn ($title) => TaskChecklist::stepForTitle((string) $title))
+                // Not ->filter(): step 0 is Task 01 and would be dropped as falsy.
+                ->reject(fn ($step) => $step === null)
+                ->unique()
+                ->values()
+                ->all());
+
         // The hotel concepts, so the teams list names what each team proposed. Grouped
         // rather than keyed: a team has two, and keyBy would silently keep one. The
         // full text and the edit histories stay in the Team Details modal. Once a
@@ -1363,7 +1380,8 @@ class FacultyController extends Controller
             'teamRoleCounts',
             'teamActivityByGroup',
             'conceptsByGroup',
-            'teamPendingReviewByGroup'
+            'teamPendingReviewByGroup',
+            'teamHeldSteps'
         ));
     }
 
@@ -1653,6 +1671,28 @@ class FacultyController extends Controller
             }
         }
 
+        /* What each team already holds, by title, so the same work is never handed
+           to them twice. A team keeps a task once it is given - submitted, sent
+           back or approved, the row stays - so existence is the whole test, not
+           status. Read once for every team in the post rather than per tick.
+
+           Task 01 is the one that would be re-sent most: a team is given the
+           hotel concept the moment it exists (storeGroup), so it is already
+           there before faculty ever opens this screen. */
+        $heldTitlesByTeam = Task::where('faculty_id', $facultyId)
+            ->whereIn('group_name', $membersByTeam->keys())
+            ->get(['group_name', 'title'])
+            ->groupBy('group_name')
+            ->map(fn ($rows) => $rows->pluck('title')
+                ->filter()
+                ->map(fn ($title) => mb_strtolower((string) $title))
+                ->unique()
+                ->all());
+
+        // (team, title) pairs the post asked for that the team already has, so the
+        // faculty is told what was left alone rather than it vanishing quietly.
+        $alreadyHeld = [];
+
         // Check if any tasks were selected
         $tasksCreated = 0;
         // users.id => how many task rows landed on them, so each student gets one
@@ -1684,6 +1724,16 @@ class FacultyController extends Controller
                         $description = $validated['task_descriptions'][$role][$index] ?? null;
 
                         if ($title) {
+                            /* Already given to this team: left exactly as it stands.
+                               Re-sending it would either write a second copy of the
+                               same work beside the first, or quietly do nothing —
+                               and a student halfway through a task must not have a
+                               fresh empty one appear next to it. */
+                            if (in_array(mb_strtolower($title), $heldTitlesByTeam[$groupName] ?? [], true)) {
+                                $alreadyHeld[$groupName][$title] = true;
+                                continue;
+                            }
+
                             /* The hotel concept is not an ordinary row. It is seeded for
                                every Front Desk student the moment they hold the role, has
                                its own submit and review path, and heads the list on its
@@ -1764,6 +1814,15 @@ class FacultyController extends Controller
             }
         }
 
+        /* "Nothing was created" has two very different causes, and telling them
+           apart is the whole point: an empty tick list is a mistake to correct,
+           work the team already holds is the guard doing its job. */
+        if ($tasksCreated === 0 && $alreadyHeld !== []) {
+            return back()->withErrors([
+                'tasks' => $this->alreadyHeldMessage($alreadyHeld) . ' Nothing was assigned twice.',
+            ])->withInput();
+        }
+
         if ($tasksCreated === 0) {
             return back()->withErrors(['tasks' => 'Please select at least one task from the checklist.'])->withInput();
         }
@@ -1784,7 +1843,29 @@ class FacultyController extends Controller
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'create_task',
             'class' => $request->input('class'),
-        ]))->with('success', $tasksCreated . ' task(s) assigned to ' . $teamLabel . '.');
+        ]))->with('success', $tasksCreated . ' task(s) assigned to ' . $teamLabel . '.'
+            . ($alreadyHeld !== [] ? ' ' . $this->alreadyHeldMessage($alreadyHeld) : ''));
+    }
+
+    /**
+     * What the duplicate guard left alone, named team by team.
+     *
+     * Listed rather than counted: "2 skipped" leaves faculty guessing which tick
+     * did nothing, and the answer is usually Task 01, which every team is given
+     * the moment it exists.
+     *
+     * @param  array<string, array<string, true>>  $alreadyHeld
+     */
+    private function alreadyHeldMessage(array $alreadyHeld): string
+    {
+        $parts = [];
+        foreach ($alreadyHeld as $groupName => $titles) {
+            $parts[] = $groupName . ' already has ' . collect(array_keys($titles))
+                ->map(fn ($title) => '"' . $title . '"')
+                ->join(', ', ' and ');
+        }
+
+        return implode('; ', $parts) . '.';
     }
 
     /**

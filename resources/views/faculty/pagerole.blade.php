@@ -2231,8 +2231,9 @@
                         </button>
                     </div>
 
-                    {{-- Why the later cards are greyed out, when they are. Filled by
-                         applyConceptLock() as teams are ticked. --}}
+                    {{-- Why cards are greyed out, when they are — an unapproved concept
+                         gating Task 02+, or work the picked teams already hold. Filled
+                         by applyStepLocks() as teams are ticked. --}}
                     <p id="taskConceptLockNote"
                        class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700 leading-snug"></p>
 
@@ -4399,21 +4400,40 @@ function lockedTeamNames() {
         .map((label) => label.dataset.team);
 }
 
-function applyConceptLock() {
+/* The numbered steps each team already holds. A team keeps a task once it has
+   been given it, so anything in here would be a duplicate — storeTask refuses
+   it, and this is what stops it being ticked in the first place. */
+const TEAM_HELD_STEPS = @json($teamHeldSteps ?? []);
+
+/* A step every selected team already holds. Not "any team": ticking Task 03 for
+   one team that has it and one that does not is still a real assignment for the
+   second, and the server hands it to that one alone. */
+function heldByEverySelectedTeam(step) {
+    return selectedTeams.length > 0 && selectedTeams.every(
+        (team) => (TEAM_HELD_STEPS[team] || []).includes(step)
+    );
+}
+
+function applyStepLocks() {
     const locked = lockedTeamNames();
     const note = document.getElementById('taskConceptLockNote');
+    const reasons = [];
 
-    if (note) {
-        note.textContent = locked.length
-            ? 'Task 02 and later are locked: ' + locked.join(', ')
-              + (locked.length === 1 ? ' has' : ' have') + ' no approved hotel concept yet.'
-            : '';
-        note.classList.toggle('hidden', locked.length === 0);
+    if (locked.length) {
+        reasons.push('Task 02 and later are locked: ' + locked.join(', ')
+            + (locked.length === 1 ? ' has' : ' have') + ' no approved hotel concept yet.');
     }
 
+    const lockStep = (step) => (locked.length > 0 && step >= CONCEPT_STEPS) || heldByEverySelectedTeam(step);
+
+    const held = [];
     document.querySelectorAll('.task-card').forEach((card) => {
         const step = Number(String(card.id).replace('taskCard-', ''));
-        const lockedStep = locked.length > 0 && step >= CONCEPT_STEPS;
+        const lockedStep = lockStep(step);
+
+        if (lockedStep && heldByEverySelectedTeam(step)) {
+            held.push('Task ' + String(step + 1).padStart(2, '0'));
+        }
 
         // opacity-60, not 50: the frozen public/css/app.css build has no
         // opacity-50 rule in it at all, so the card would not dim.
@@ -4429,16 +4449,27 @@ function applyConceptLock() {
         });
     });
 
+    if (held.length) {
+        reasons.push(held.join(', ') + (held.length === 1 ? ' is' : ' are')
+            + ' already assigned' + (selectedTeams.length === 1 ? ' to ' + selectedTeams[0] : ' to every team picked')
+            + ' and cannot be sent again.');
+    }
+
+    if (note) {
+        note.textContent = reasons.join(' ');
+        note.classList.toggle('hidden', reasons.length === 0);
+    }
+
     // The details modal holds the same boxes for each role in that step.
     document.querySelectorAll('.task-step-check').forEach((box) => {
-        const lockedStep = locked.length > 0 && Number(box.value) >= CONCEPT_STEPS;
+        const lockedStep = lockStep(Number(box.value));
         box.disabled = lockedStep;
         if (lockedStep && box.checked) box.checked = false;
     });
 }
 
 function updateSubmitState() {
-    applyConceptLock();
+    applyStepLocks();
 
     const checked = Array.from(document.querySelectorAll('.task-check:checked'));
 

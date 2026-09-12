@@ -88,6 +88,34 @@ class TaskChecklistStepsTest extends TestCase
         $this->assertLessThan($firstOps, $lastSite, 'Site work must not run past the first ops step.');
     }
 
+    /**
+     * Task 01's step is 0, which is falsy — the duplicate guard in
+     * FacultyController::role() drops nulls with reject(), not filter(), for
+     * exactly this reason. Swap it for a truthy filter and Task 01 falls out of
+     * every team's held list and becomes assignable a second time.
+     */
+    public function test_the_concept_step_is_zero_and_not_null(): void
+    {
+        $step = TaskChecklist::stepForTitle(HotelConceptDesk::TASK_TITLE);
+
+        $this->assertSame(0, $step);
+        $this->assertNotNull($step);
+        $this->assertFalse((bool) $step, 'Step 0 is falsy: held-step lists must reject on null, never on truthiness.');
+    }
+
+    public function test_an_unknown_title_has_no_step(): void
+    {
+        $this->assertNull(TaskChecklist::stepForTitle('Something A Faculty Typed By Hand'));
+    }
+
+    public function test_step_lookup_ignores_title_case(): void
+    {
+        $this->assertSame(
+            TaskChecklist::stepForTitle('Build Your Menu'),
+            TaskChecklist::stepForTitle('build your menu')
+        );
+    }
+
     public function test_every_role_after_front_desk_starts_at_task_02_or_later(): void
     {
         $steps = TaskChecklist::allByStep();
