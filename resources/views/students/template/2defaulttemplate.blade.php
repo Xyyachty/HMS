@@ -3222,7 +3222,7 @@ function HeroSlidesModal({ open, slides, activeIndex, onReplace, onClose }) {
 }
 
 
-function HeroSlider({ slides, canEdit }) {
+function HeroSlider({ slides, canEdit, brandName }) {
   const list = slides && slides.length ? slides : DEFAULT_HERO_SLIDES;
   const [active, setActive] = useState(0);
   const [picking, setPicking] = useState(false);
@@ -3329,7 +3329,7 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
         {/* The hero's own picture panel, pinned with it: it fills its half of
             the hero exactly, so dragging it looks like dragging the hero. */}
         <div className="hero-img" data-hms-bg-target="1" data-hms-no-move="1">
-          <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} />
+          <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} brandName={brandName} />
         </div>
         <div className="hero-content">
           <span className="section-num" data-hms-content-kind="hotelInfo" data-hms-content-id="tagline">{tagline}</span>
