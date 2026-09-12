@@ -512,6 +512,10 @@
                         // shape after every poll, so first paint and a live update read alike.
                         $cardPendingReview = ($teamPendingReviewByGroup ?? [])[$groupName] ?? null;
 
+                        // Same idea, for the hotel concept: the team has submitted at least
+                        // one of its two proposals and faculty has not yet answered it.
+                        $cardConceptPending = ($teamConceptPendingByGroup ?? [])[$groupName] ?? null;
+
                         $cardRoles = $groupMembers
                             ->flatMap(fn ($m) => $m->roles->pluck('role'))
                             ->filter()
@@ -604,6 +608,36 @@
                                             onclick='openTeamModalAwaitingReview({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
                                             class="shrink-0 h-8 px-2.5 rounded-lg bg-brand text-white text-[11px] font-bold hover:opacity-95 transition inline-flex items-center gap-1">
                                         <span class="iconify text-xs" data-icon="mdi:eye-check-outline"></span> Review Submission
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Hotel Concept Submission Indicator. Same live-update contract
+                                 as the one above, over the concept's own submitted state rather
+                                 than a task row's. --}}
+                            <div data-concept-pending-badge
+                                 class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 {{ !$cardConceptPending ? 'hidden' : '' }}">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="flex items-start gap-2 min-w-0">
+                                        <span class="iconify text-rose-500 text-lg shrink-0 mt-0.5" data-icon="mdi:lightbulb-on-outline"></span>
+                                        <div class="min-w-0">
+                                            <p class="text-[12px] font-extrabold text-rose-700" data-concept-pending-headline>
+                                                @if($cardConceptPending)
+                                                    Hotel Concept Submitted{{ $cardConceptPending['count'] > 1 ? ' — Both Proposals' : '' }}
+                                                @endif
+                                            </p>
+                                            <p class="text-[11px] text-rose-600 leading-snug mt-0.5" data-concept-pending-detail>
+                                                @if($cardConceptPending && $cardConceptPending['latest'])
+                                                    {{ $cardConceptPending['latest']['submitted_by'] }} &middot; {{ $cardConceptPending['latest']['slot_label'] }} &middot;
+                                                    "{{ $cardConceptPending['latest']['title'] }}" &middot; {{ $cardConceptPending['latest']['submitted_human'] }}
+                                                @endif
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button type="button"
+                                            onclick='openTeamModalConceptReview({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
+                                            class="shrink-0 h-8 px-2.5 rounded-lg bg-brand text-white text-[11px] font-bold hover:opacity-95 transition inline-flex items-center gap-1">
+                                        <span class="iconify text-xs" data-icon="mdi:eye-check-outline"></span> Review Concept
                                     </button>
                                 </div>
                             </div>
@@ -4698,30 +4732,54 @@ function openTeamModalAwaitingReview(groupName, members, createdAt, activityLogs
     openTeamModal(groupName, members, createdAt, activityLogs, { tab: 'tasks', onlyAwaitingReview: true });
 }
 
-/* ── Task Submission Indicator: kept live ──────────────────────────────────
+/* Hotel Concept Submission Indicator's Review Concept button: same modal,
+   opened onto the Hotel Concept tab — loadTeamHotelConcept() (already called
+   by openTeamModal for every caller) is what actually fetches the concept
+   text and its history, this just lands on the tab that shows it. */
+function openTeamModalConceptReview(groupName, members, createdAt, activityLogs) {
+    openTeamModal(groupName, members, createdAt, activityLogs, { tab: 'concept' });
+}
+
+/* ── Submission indicators: kept live ──────────────────────────────────────
    Polled the same way the notification bell polls its unread count — every
-   submission fires that notification already (Notifier::taskSubmitted), this
-   just keeps the card badges honest without a reload: a new submission shows
-   up, and one the faculty just reviewed drops its count on the next tick. */
+   submission (task or concept) fires its own faculty notification already
+   (Notifier::taskSubmitted, Notifier::conceptsSubmitted), this just keeps the
+   card badges honest without a reload: a new submission shows up, and one the
+   faculty just reviewed drops off on the next tick. One request repaints
+   both badges, since a card's tasks and its concept share nothing but the
+   card they are drawn on. */
 const TEAM_PENDING_REVIEW_URL = @json(route('faculty.role.pending-review'));
 
+function updateSubmissionBadge(card, selectorPrefix, entry, headlineText, detailText) {
+    const badge = card.querySelector('[data-' + selectorPrefix + '-badge]');
+    if (!badge) return;
+
+    badge.classList.toggle('hidden', !entry);
+    if (!entry) return;
+
+    const headline = badge.querySelector('[data-' + selectorPrefix + '-headline]');
+    if (headline) headline.textContent = headlineText(entry);
+
+    const detail = badge.querySelector('[data-' + selectorPrefix + '-detail]');
+    if (detail && entry.latest) detail.textContent = detailText(entry.latest);
+}
+
 function updatePendingReviewBadges(data) {
+    const tasks = (data && data.tasks) || {};
+    const concepts = (data && data.concepts) || {};
+
     document.querySelectorAll('.team-card[data-team-name]').forEach((card) => {
-        const entry = data ? data[card.dataset.teamName] : null;
-        const badge = card.querySelector('[data-pending-review-badge]');
-        if (!badge) return;
+        const team = card.dataset.teamName;
 
-        badge.classList.toggle('hidden', !entry);
-        if (!entry) return;
+        updateSubmissionBadge(card, 'pending-review', tasks[team],
+            (entry) => 'New Submission — ' + entry.count + ' Awaiting Review',
+            (latest) => latest.student_name + ' · ' + latest.role_label
+                + ' · "' + latest.title + '" · ' + latest.submitted_human);
 
-        const headline = badge.querySelector('[data-pending-review-headline]');
-        if (headline) headline.textContent = 'New Submission — ' + entry.count + ' Awaiting Review';
-
-        const detail = badge.querySelector('[data-pending-review-detail]');
-        if (detail && entry.latest) {
-            detail.textContent = entry.latest.student_name + ' · ' + entry.latest.role_label
-                + ' · "' + entry.latest.title + '" · ' + entry.latest.submitted_human;
-        }
+        updateSubmissionBadge(card, 'concept-pending', concepts[team],
+            (entry) => 'Hotel Concept Submitted' + (entry.count > 1 ? ' — Both Proposals' : ''),
+            (latest) => latest.submitted_by + ' · ' + latest.slot_label
+                + ' · "' + latest.title + '" · ' + latest.submitted_human);
     });
 }
 

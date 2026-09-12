@@ -1101,6 +1101,7 @@ class FacultyController extends Controller
                 'teamActivityByGroup' => [],
                 'conceptsByGroup' => collect(),
                 'teamPendingReviewByGroup' => [],
+                'teamConceptPendingByGroup' => [],
                 'teamHeldSteps' => collect(),
             ]);
         }
@@ -1339,6 +1340,10 @@ class FacultyController extends Controller
         // to tell an initial render apart from a live update.
         $teamPendingReviewByGroup = $this->pendingReviewByGroup($facultyId);
 
+        // Its hotel-concept counterpart: a team just handed both proposals in
+        // and neither has a verdict yet.
+        $teamConceptPendingByGroup = $this->conceptPendingReviewByGroup($facultyId);
+
         /* Which numbered steps each team already holds, so Set Task can grey out
            work they have been given instead of letting it be sent a second time.
            storeTask refuses a duplicate either way; this is so the faculty sees
@@ -1386,6 +1391,7 @@ class FacultyController extends Controller
             'teamActivityByGroup',
             'conceptsByGroup',
             'teamPendingReviewByGroup',
+            'teamConceptPendingByGroup',
             'teamHeldSteps'
         ));
     }
@@ -1440,15 +1446,63 @@ class FacultyController extends Controller
         return $byGroup;
     }
 
-    /** Polled by every team card on Manage Teams — see pendingReviewByGroup(). */
+    /**
+     * Every team with a hotel concept sitting submitted, no verdict yet — the
+     * concept's own equivalent of pendingReviewByGroup(). Kept separate rather
+     * than folded into that query: a concept's "submitted" is HotelConcept.status,
+     * not Task.status, and the two tables agreeing on the word does not mean
+     * one query can read both.
+     */
+    private function conceptPendingReviewByGroup(int $facultyId): array
+    {
+        $concepts = HotelConcept::with('submitter')
+            ->where('faculty_id', $facultyId)
+            ->where('status', HotelConceptDesk::STATUS_SUBMITTED)
+            ->orderByDesc('submitted_at')
+            ->get();
+
+        $byGroup = [];
+        foreach ($concepts as $concept) {
+            $groupName = (string) $concept->group_name;
+            $byGroup[$groupName]['count'] = ($byGroup[$groupName]['count'] ?? 0) + 1;
+
+            // Rows arrived newest first, so a group's first row is its latest.
+            if (isset($byGroup[$groupName]['latest'])) {
+                continue;
+            }
+
+            $byGroup[$groupName]['latest'] = [
+                'hotel_concept_id' => $concept->hotel_concept_id,
+                'slot' => (int) $concept->slot,
+                'slot_label' => HotelConceptDesk::slotLabel($concept->slot),
+                'title' => $concept->title,
+                'submitted_by' => $concept->submitter
+                    ? \App\Http\Controllers\HotelConceptController::displayName($concept->submitter)
+                    : 'A team member',
+                'submitted_at' => optional($concept->submitted_at)->format('M d, Y g:i A'),
+                'submitted_human' => optional($concept->submitted_at)->diffForHumans(),
+            ];
+        }
+
+        return $byGroup;
+    }
+
+    /**
+     * Polled by every team card on Manage Teams — see pendingReviewByGroup()
+     * and conceptPendingReviewByGroup(). One request for both, since a card
+     * repaints both badges from the same tick.
+     */
     public function pendingReview(Request $request)
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
-            return response()->json([]);
+            return response()->json(['tasks' => [], 'concepts' => []]);
         }
 
-        return response()->json($this->pendingReviewByGroup((int) $facultyId));
+        return response()->json([
+            'tasks' => $this->pendingReviewByGroup((int) $facultyId),
+            'concepts' => $this->conceptPendingReviewByGroup((int) $facultyId),
+        ]);
     }
 
     public function updateGroup(Request $request, $groupName)
