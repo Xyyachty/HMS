@@ -62,6 +62,18 @@
     </div>
 
     <div class="flex items-center gap-2 pb-3 shrink-0 ml-auto">
+        {{-- Create Team (was Team Setup), where Add Team used to be. They opened
+             the same screen under two names in two places, which read as two
+             different things to do. Deliberately not a .teams-action-btn: that
+             class is driven by setTeamsActionHighlight(), which would paint
+             over the gradient. --}}
+        <button type="button" onclick="openCreateTeamModal()"
+            title="Create new team(s) or modify teams"
+            class="h-10 px-4 rounded-xl brand-gradient text-white text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap shadow-md shadow-brand/20 hover:opacity-95">
+            <span class="iconify text-base" data-icon="mdi:cog-outline"></span>
+            <span class="iconify text-sm" data-icon="mdi:plus"></span>
+            Create Team
+        </button>
         @if($setTaskBlockReason)
             {{-- A button rather than a link: a disabled <a> is still a link, and
                  still goes where it points. The reason is the tooltip. --}}
@@ -86,17 +98,6 @@
                 Set Task
             </a>
         @endif
-        {{-- Team Setup, where Add Team used to be. They opened the same screen under
-             two names in two places, which read as two different things to do.
-             Deliberately not a .teams-action-btn: that class is driven by
-             setTeamsActionHighlight(), which would paint over the gradient. --}}
-        <button type="button" onclick="openCreateTeamModal()"
-            title="Create new team(s) or modify teams"
-            class="h-10 px-4 rounded-xl brand-gradient text-white text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap shadow-md shadow-brand/20 hover:opacity-95">
-            <span class="iconify text-base" data-icon="mdi:cog-outline"></span>
-            <span class="iconify text-sm" data-icon="mdi:plus"></span>
-            Team Setup
-        </button>
     </div>
 </div>
 
