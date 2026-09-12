@@ -485,37 +485,6 @@
                 </div>
             </div>
 
-            {{-- Toolbar. The cards are all rendered, so the search box and the three
-                 selects only decide which of them stay on screen. --}}
-            <div class="tm-toolbar mb-5">
-                <div class="tm-search relative">
-                    <span class="iconify absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none" data-icon="mdi:magnify"></span>
-                    <input type="text" id="teamCardSearch" oninput="filterTeamCards()" placeholder="Search team name, members, or concept..."
-                           class="w-full h-12 pl-11 pr-4 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                </div>
-                <select id="teamCardTeamFilter" onchange="filterTeamCards()"
-                        class="h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition tm-select">
-                    <option value="all">All Teams</option>
-                    @foreach($groups ?? [] as $filterName => $filterMembers)
-                        <option value="{{ $filterName }}">{{ $filterName }}</option>
-                    @endforeach
-                </select>
-                <select id="teamCardRoleFilter" onchange="filterTeamCards()"
-                        class="h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition tm-select">
-                    <option value="all">All Roles</option>
-                    @foreach($roleLabels as $filterRoleKey => $filterRoleLabel)
-                        <option value="{{ $filterRoleKey }}">{{ $filterRoleLabel }}</option>
-                    @endforeach
-                </select>
-                <select id="teamCardStatusFilter" onchange="filterTeamCards()"
-                        class="h-12 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition tm-select">
-                    <option value="all">All Status</option>
-                    <option value="complete">Completed</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="not_started">Not Started</option>
-                </select>
-            </div>
-
             <!-- Team cards -->
             <div id="teamCardsGrid" class="tm-card-grid">
                 @forelse($groups ?? [] as $groupName => $groupMembers)
@@ -591,18 +560,9 @@
                            share each, so it is finished only once every role given an
                            activity in it has handed theirs in. */
                         $cardSteps = \App\Support\TaskStepProgress::forRows($cardTaskRows);
-                        $cardStatusKey = $cardPercent >= 100 ? 'complete' : ($cardPercent > 0 ? 'in_progress' : 'not_started');
-
-                        $cardSearchBlob = strtolower(
-                            $groupName . ' ' . collect($memberData)->pluck('name')->implode(' ')
-                            . ' ' . ($cardConcept->title ?? '')
-                        );
                     @endphp
                     <div class="team-card rounded-2xl border border-slate-100 bg-white overflow-hidden flex flex-col"
-                         data-team-name="{{ $groupName }}"
-                         data-team-roles="{{ $cardRoles->implode(',') }}"
-                         data-team-status="{{ $cardStatusKey }}"
-                         data-team-search="{{ $cardSearchBlob }}">
+                         data-team-name="{{ $groupName }}">
                         {{-- Cover strip. Teams carry no photo of their own, so the strip is
                              tinted by the first role on the roster. --}}
                         <div class="tm-card-cover brand-gradient-subtle">
@@ -749,11 +709,6 @@
                         </button>
                     </div>
                 @endforelse
-            </div>
-
-            <div id="teamCardsEmpty" class="hidden rounded-2xl border border-slate-100 bg-white px-5 py-10 text-center mt-4">
-                <p class="text-sm font-bold text-slate-500">No teams match this filter</p>
-                <p class="text-xs text-slate-400 mt-1">Clear the search or pick a different role or status.</p>
             </div>
 
             @if(($groups ?? collect())->isNotEmpty())
@@ -3341,30 +3296,6 @@ function renderTeamHotelConcept(data) {
             '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Edit History</p>' +
             '<div class="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-72 overflow-y-auto">' + historyRows + '</div>' +
         '</div>';
-}
-
-/* Manage Teams card filters. Every card is rendered, so the search box and the
-   three selects only decide which stay on screen. */
-function filterTeamCards() {
-    const term = (document.getElementById('teamCardSearch')?.value || '').trim().toLowerCase();
-    const team = document.getElementById('teamCardTeamFilter')?.value || 'all';
-    const role = document.getElementById('teamCardRoleFilter')?.value || 'all';
-    const status = document.getElementById('teamCardStatusFilter')?.value || 'all';
-    let visible = 0;
-
-    document.querySelectorAll('#teamCardsGrid .team-card').forEach((card) => {
-        const roles = (card.dataset.teamRoles || '').split(',').filter(Boolean);
-        const matches =
-            (team === 'all' || card.dataset.teamName === team)
-            && (role === 'all' || roles.includes(role))
-            && (status === 'all' || card.dataset.teamStatus === status)
-            && (!term || (card.dataset.teamSearch || '').includes(term));
-
-        card.classList.toggle('hidden', !matches);
-        if (matches) visible++;
-    });
-
-    document.getElementById('teamCardsEmpty')?.classList.toggle('hidden', visible > 0);
 }
 
 /* Step 3's Reset: hand every student back to Unassigned and clear their roles,
