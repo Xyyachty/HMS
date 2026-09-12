@@ -93,6 +93,33 @@ class HotelAmenityAccess
      * once — after that the DB is the only source of truth, and a team that renamed,
      * re-photographed or closed one of these is never overwritten.
      */
+    /**
+     * The same five, for a team named rather than a membership row held.
+     *
+     * The Housekeeping screen seeds on first load, but it is not the only reader:
+     * the faculty preview and the team's public site query the table straight and
+     * seed nothing, so before any student had opened that screen both showed an
+     * empty Amenities page. Called where a team is built instead, so the five are
+     * there from the moment the team is.
+     *
+     * Any one membership row stands for the team — the facilities are keyed by
+     * (group_name, faculty_id), not by member.
+     */
+    public static function seedDefaultsForTeam(?string $groupName, ?int $facultyId): void
+    {
+        if (!filled($groupName) || !$facultyId) {
+            return;
+        }
+
+        $membership = StudentGroup::where('faculty_id', $facultyId)
+            ->where('group_name', $groupName)
+            ->first();
+
+        if ($membership) {
+            self::seedDefaults($membership);
+        }
+    }
+
     public static function seedDefaults(StudentGroup $membership): void
     {
         $exists = HotelAmenity::where('group_name', $membership->group_name)

@@ -227,6 +227,11 @@ class FacultyController extends Controller
         // checklist — it is assigned the moment the team exists.
         HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
 
+        // And with the five facilities every hotel has, for the same reason: the
+        // preview and the team's public site read the table straight, so waiting
+        // for a student to open Housekeeping left both showing no amenities.
+        \App\Support\HotelAmenityAccess::seedDefaultsForTeam($validated['group_name'], (int) $facultyId);
+
         $memberCount = count($memberIds);
         $assignedRoles = collect($rolesByMember)->flatten()->unique()->values()->all();
 
@@ -1530,6 +1535,10 @@ class FacultyController extends Controller
         // A reshuffle can hand Front Desk to somebody new, and they need the task.
         // Existing rows are left alone, so a submitted concept stays submitted.
         HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
+
+        // Catches teams built before the facilities were seeded at creation. No-ops
+        // the moment the team has any amenity of its own.
+        \App\Support\HotelAmenityAccess::seedDefaultsForTeam($validated['group_name'], (int) $facultyId);
 
         ActivityLog::recordFor(
             ActivityLog::TEAM_UPDATED,
