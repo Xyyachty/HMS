@@ -144,7 +144,22 @@ class HotelAmenityAccess
             'updated_at' => $now,
         ]), self::defaultAmenities());
 
-        HotelAmenity::insert($rows);
+        /* Every row padded to the same keys before the bulk insert. insert()
+           takes its column list from the first row and then writes each row's
+           own values against it, so one default carrying a key the others do
+           not - only the Function Room has a capacity - sent 14 values into 13
+           columns and the whole seed threw. That is why teams were coming up
+           with no facilities at all: not a seed that never ran, a seed that
+           could not finish. */
+        $columns = array_keys(array_merge(...$rows));
+        $blank = array_fill_keys($columns, null);
+
+        HotelAmenity::insert(array_map(
+            // array_replace, not array_merge: keys are strings here and merge
+            // would renumber nothing but is the wrong tool for "fill the gaps".
+            fn (array $row) => array_replace($blank, $row),
+            $rows
+        ));
 
         self::seedSpaServices($membership);
     }
