@@ -5836,7 +5836,7 @@ function App() {
         onToast={showToast}
         rooms={rooms}
         menus={menus}
-        canEditRooms={canEditRooms}
+        canEditRooms={canEditRooms && isDesignMode}
         heroSlides={heroSlides}
         hotelInfo={hotelInfo}
         canEditHeroSlides={canEditHeroSlides}
@@ -5858,7 +5858,7 @@ function App() {
         addons={addons}
         categories={roomCategories}
         categoryDetails={categoryDetails}
-        canEditRooms={canEditRooms}
+        canEditRooms={canEditRooms && isDesignMode}
         canManageRooms={canManageRooms}
         canReserveRooms={canReserveRooms}
         onAddRoom={addRoom}
@@ -5881,7 +5881,7 @@ function App() {
         onNav={navigateTo}
         onToast={showToast}
         menus={menus}
-        canManageMenus={canManageMenus && inRestaurantModule}
+        canManageMenus={canManageMenus && inRestaurantModule && isDesignMode}
         canOrderMenu={canOrderMenu || isSignedInGuest}
         onOrderMenu={placeOrder}
         guest={guestAuth}

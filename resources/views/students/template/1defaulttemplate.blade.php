@@ -7260,8 +7260,8 @@ function App() {
         onToast={showToast}
         rooms={rooms}
         menus={menus}
-        canEditRooms={canEditRooms}
-        canEditMenuColor={canEditMenuColor}
+        canEditRooms={canEditRooms && isDesignMode}
+        canEditMenuColor={canEditMenuColor && isDesignMode}
         heroSlides={heroSlides}
         hotelInfo={hotelInfo}
         canEditHeroSlides={canEditHeroSlides}
@@ -7289,7 +7289,7 @@ function App() {
         addons={addons}
         categories={roomCategories}
         categoryDetails={categoryDetails}
-        canEditRooms={canEditRooms}
+        canEditRooms={canEditRooms && isDesignMode}
         canManageRooms={canManageRooms}
         canReserveRooms={canReserveRooms}
         onAddRoom={addRoom}
@@ -7312,8 +7312,8 @@ function App() {
         onNavigate={navigateTo}
         onToast={showToast}
         menus={menus}
-        canManageMenus={canManageMenus && inRestaurantModule}
-        canEditMenuColor={canEditMenuColor}
+        canManageMenus={canManageMenus && inRestaurantModule && isDesignMode}
+        canEditMenuColor={canEditMenuColor && isDesignMode}
         canOrderMenu={canOrderMenu || isSignedInGuest}
         onOrderMenu={placeOrder}
         onAddMenu={addMenu}
