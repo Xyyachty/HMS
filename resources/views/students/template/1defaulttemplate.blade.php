@@ -5240,6 +5240,149 @@ function MenuPager({ page, pageCount, onPage }) {
   );
 }
 
+/* ── The menu's own dialogs ────────────────────────────────────────────────
+   window.prompt() would work, but it announces the hostname above the
+   question — "hms-….onrender.com says" — which reads like the site is talking
+   to you from outside itself. The Rooms page already asks in the page's own
+   chrome; these are the same thing for the menu. */
+
+/* One field, asked properly. Adding a course and renaming one differ only in
+   their wording, so they share a dialog rather than having one each. */
+function MenuTextModal({ open, title, label, hint, placeholder, initial, submitLabel, saving, error, onSubmit, onCancel }) {
+  const [value, setValue] = React.useState('');
+
+  React.useEffect(() => { if (open) setValue(initial == null ? '' : String(initial)); }, [open, initial]);
+
+  if (!open) return null;
+
+  const canSave = !!value.trim() && !saving;
+  const submit = () => { if (canSave) onSubmit(value.trim()); };
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+  };
+
+  return ReactDOM.createPortal(
+    <div className="room-modal-overlay header-modal-overlay" data-hms-no-edit="1"
+      role="dialog" aria-modal="true" aria-label={title} onClick={onCancel}>
+      <div className="room-modal" style={{ width: 'min(420px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display" style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>{title}</h3>
+        <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>
+          {label}
+        </label>
+        <input className="header-modal-field" type="text" value={value} maxLength={60} autoFocus
+          placeholder={placeholder || ''} onChange={(e) => setValue(e.target.value)} onKeyDown={onKeyDown} />
+        {error ? <p className="header-modal-hint" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p> : null}
+        {hint ? <p className="header-modal-hint">{hint}</p> : null}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={!canSave} onClick={submit}>
+            {saving ? 'Saving…' : (submitLabel || 'Save')}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* A dish, in one form. This was four prompts in a row — name, then words, then
+   price, then course — where answering the third wrong meant starting again. */
+function MenuItemModal({ open, item, categories, saving, error, onSubmit, onCancel }) {
+  const [name, setName] = React.useState('');
+  const [sub, setSub] = React.useState('');
+  const [price, setPrice] = React.useState('250');
+  const [category, setCategory] = React.useState('');
+
+  React.useEffect(() => {
+    if (!open) return;
+    setName(item && item.name ? String(item.name) : '');
+    setSub(item && item.sub ? String(item.sub) : '');
+    setPrice(String((item && item.price) || 250));
+    setCategory((item && item.category) || (categories && categories[0]) || '');
+  }, [open, item, categories]);
+
+  if (!open) return null;
+
+  const priceValue = Math.max(1, parseInt(String(price).replace(/,/g, ''), 10) || 0);
+  const canSave = !!name.trim() && priceValue > 0 && !saving;
+  const submit = () => {
+    if (!canSave) return;
+    onSubmit({ name: name.trim(), description: sub.trim(), price: priceValue, category });
+  };
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+  };
+  const labelStyle = { display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', margin: '1rem 0 0.4rem' };
+
+  return ReactDOM.createPortal(
+    <div className="room-modal-overlay header-modal-overlay" data-hms-no-edit="1"
+      role="dialog" aria-modal="true" aria-label="Edit menu item" onClick={onCancel}>
+      <div className="room-modal" style={{ width: 'min(460px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display" style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>Edit Menu Item</h3>
+
+        <label style={Object.assign({}, labelStyle, { marginTop: 0 })}>Name</label>
+        <input className="header-modal-field" type="text" value={name} maxLength={120} autoFocus
+          onChange={(e) => setName(e.target.value)} onKeyDown={onKeyDown} />
+
+        <label style={labelStyle}>Short description</label>
+        <input className="header-modal-field" type="text" value={sub} maxLength={200}
+          placeholder="What is in it, in a line" onChange={(e) => setSub(e.target.value)} onKeyDown={onKeyDown} />
+
+        <label style={labelStyle}>Price</label>
+        <input className="header-modal-field" type="number" min="1" step="1" value={price}
+          onChange={(e) => setPrice(e.target.value)} onKeyDown={onKeyDown} />
+
+        <label style={labelStyle}>Course</label>
+        <select className="header-modal-field" value={category} onChange={(e) => setCategory(e.target.value)}>
+          {(categories || []).map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        {error ? <p className="header-modal-hint" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p> : null}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={!canSave} onClick={submit}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* Asking before removing, in the page's own chrome rather than the browser's. */
+function MenuConfirmModal({ open, title, message, confirmLabel, saving, onConfirm, onCancel }) {
+  React.useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  return ReactDOM.createPortal(
+    <div className="room-modal-overlay header-modal-overlay" data-hms-no-edit="1"
+      role="dialog" aria-modal="true" aria-label={title} onClick={onCancel}>
+      <div className="room-modal" style={{ width: 'min(400px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.75rem' }}>{title}</h3>
+        <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', lineHeight: 1.55, margin: 0 }}>{message}</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={saving} onClick={onConfirm}
+            style={{ background: '#f43f5e', color: '#fff' }}>
+            {saving ? 'Removing…' : (confirmLabel || 'Remove')}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, cardImages, isDesignMode, rooms, guest }) {
   const menuList = menus || [];
   const [selectedMenuId, setSelectedMenuId] = useState(null);
@@ -5307,39 +5450,24 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
   // Menu item CRUD, the same as Room Management's Add Room / Edit / Remove on
   // the Rooms page — Restaurant Management gets the matching set here, wired
   // to the same /students/hotel/menus endpoints Manage Menu already uses.
-  const handleAdd = () => {
-    const name = hmsPrompt('Menu item name', 'New Dish');
-    if (name == null || !name.trim()) return;
-    const sub = hmsPrompt('Short description', 'Add a short description') || 'Add a short description';
-    const priceRaw = hmsPrompt('Price', '250');
-    if (priceRaw == null) return;
-    const price = Math.max(1, parseInt(priceRaw, 10) || 1);
-    const categoryHint = menuTabs.join(' / ');
-    // Defaults to whichever tab is open, not always Main Dishes — a dish added
-    // while looking at Desserts is almost always meant to be one.
-    const categoryRaw = hmsPrompt('Category (' + categoryHint + ')', menuTab);
-    if (categoryRaw == null) return;
-    const category = menuCategoryKey(categoryRaw, menuTabs);
-    if (!onAddMenu) return;
-    onAddMenu({ name: name.trim(), description: sub.trim(), price, category })
-      .then(() => onToast && onToast('Menu item added'));
-  };
+  /* Dialog state. Every one of these was a window.prompt() chain, which asks in
+     the browser's chrome with the hostname above the question. */
+  const [editing, setEditing] = useState(null);
+  const [removing, setRemoving] = useState(null);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [renamingFrom, setRenamingFrom] = useState(null);
+  const [menuSaving, setMenuSaving] = useState(false);
+  const [menuError, setMenuError] = useState('');
 
-  const handleEdit = (item) => {
-    const name = hmsPrompt('Menu item name', item.name);
-    if (name == null || !name.trim()) return;
-    const sub = hmsPrompt('Short description', item.sub || '');
-    if (sub == null) return;
-    const priceRaw = hmsPrompt('Price', String(item.price || 250));
-    if (priceRaw == null) return;
-    const price = Math.max(1, parseInt(priceRaw, 10) || item.price || 1);
-    const categoryHint = menuTabs.join(' / ');
-    const categoryRaw = hmsPrompt('Category (' + categoryHint + ')', item.category || 'Main Dishes');
-    if (categoryRaw == null) return;
-    const category = menuCategoryKey(categoryRaw, menuTabs);
-    if (!onEditMenu) return;
-    onEditMenu(item.dbId, { name: name.trim(), description: sub.trim(), price, category })
-      .then(() => onToast && onToast('Menu item updated'));
+  const handleEdit = (item) => { setMenuError(''); setEditing(item); };
+
+  const submitEdit = (values) => {
+    if (!onEditMenu || !editing) return;
+    setMenuSaving(true);
+    onEditMenu(editing.dbId, values)
+      .then(() => { setEditing(null); if (onToast) onToast('Menu item updated'); })
+      .catch(() => setMenuError('Could not save that. Please try again.'))
+      .finally(() => setMenuSaving(false));
   };
 
   const handleMenuImage = (item) => {
@@ -5349,32 +5477,40 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
     });
   };
 
-  const handleRemove = (item) => {
-    if (!onRemoveMenu) return;
-    if (!hmsConfirm('Remove "' + item.name + '" from the menu?')) return;
-    onRemoveMenu(item.dbId).then(() => onToast && onToast('Menu item removed'));
+  const handleRemove = (item) => setRemoving(item);
+
+  const confirmRemove = () => {
+    if (!onRemoveMenu || !removing) return;
+    setMenuSaving(true);
+    onRemoveMenu(removing.dbId)
+      .then(() => { setRemoving(null); if (onToast) onToast('Menu item removed'); })
+      .finally(() => setMenuSaving(false));
   };
 
   /* Courses, the same pair Room Management has on the Rooms tab bar. Renaming one
-     carries every dish in it, so the tab a student is looking at is switched to the
-     new name rather than left pointing at a heading that no longer exists. */
-  const handleAddCategory = () => {
+     carries every dish in it, so the tab being looked at is switched to the new
+     name rather than left pointing at a heading that no longer exists. */
+  const submitCategory = (name) => {
     if (!onAddMenuCategory) return;
-    const name = hmsPrompt('New menu category', '');
-    if (name == null || !name.trim()) return;
-    onAddMenuCategory(name.trim()).then((created) => {
-      if (!created) return;
+    setMenuSaving(true);
+    setMenuError('');
+    onAddMenuCategory(name).then((created) => {
+      setMenuSaving(false);
+      if (!created) { setMenuError('That name is already taken, or it could not be saved.'); return; }
+      setCategoryOpen(false);
       setMenuTab(created);
       if (onToast) onToast('"' + created + '" added');
     });
   };
 
-  const handleRenameCategory = (from) => {
-    if (!onRenameMenuCategory) return;
-    const to = hmsPrompt('Rename "' + from + '" to', from);
-    if (to == null || !to.trim() || to.trim() === from) return;
-    onRenameMenuCategory(from, to.trim()).then((renamed) => {
-      if (!renamed) return;
+  const submitRename = (name) => {
+    if (!onRenameMenuCategory || !renamingFrom) return;
+    setMenuSaving(true);
+    setMenuError('');
+    onRenameMenuCategory(renamingFrom, name).then((renamed) => {
+      setMenuSaving(false);
+      if (!renamed) { setMenuError('That name is already taken, or it could not be saved.'); return; }
+      setRenamingFrom(null);
       setMenuTab(renamed);
       if (onToast) onToast('Renamed to "' + renamed + '"');
     });
@@ -5431,15 +5567,10 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
 
   return (
     <>
-      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-        <div>
-          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Culinary Arts</p>
-          <h1 className="font-display">Restaurant Menu</h1>
-          <p>Browse our courses — Main Dishes, Appetizers, Soups, Desserts, and Beverages.</p>
-        </div>
-        {canManageMenus && (
-          <button type="button" className="btn-outline" data-hms-no-edit="1" onClick={handleAdd} style={{ whiteSpace: 'nowrap' }}>+ Add menu item</button>
-        )}
+      <div className="page-header">
+        <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Culinary Arts</p>
+        <h1 className="font-display">Restaurant Menu</h1>
+        <p>Browse our courses — Main Dishes, Appetizers, Soups, Desserts, and Beverages.</p>
       </div>
 
       <RoomTabBar
@@ -5448,12 +5579,12 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
         onChange={setMenuTab}
         items={menuList}
         getKey={(item) => menuCategoryKey(item.category, menuTabs)}
-        onRenameTab={canManageMenus ? handleRenameCategory : null}
+        onRenameTab={canManageMenus ? ((name) => { setMenuError(''); setRenamingFrom(name); }) : null}
         extra={canManageMenus ? (
           <button
             type="button"
             className="tab-btn"
-            onClick={(e) => { e.stopPropagation(); handleAddCategory(); }}
+            onClick={(e) => { e.stopPropagation(); setMenuError(''); setCategoryOpen(true); }}
             onMouseDown={(e) => e.stopPropagation()}
             title="Add menu category"
             data-hms-no-edit="1"
@@ -5502,6 +5633,47 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
         </div>
       )}
 
+      <MenuTextModal
+        open={categoryOpen}
+        title="Add Menu Category"
+        label="Category name"
+        placeholder="e.g. Chef's Specials"
+        hint="A new tab appears for it. Dishes can be filed under it straight away."
+        submitLabel="Add Category"
+        saving={menuSaving}
+        error={menuError}
+        onSubmit={submitCategory}
+        onCancel={() => { setCategoryOpen(false); setMenuError(''); }}
+      />
+      <MenuTextModal
+        open={!!renamingFrom}
+        title="Rename Category"
+        label="Category name"
+        initial={renamingFrom || ''}
+        hint="Every dish in this course moves with the name."
+        submitLabel="Save Name"
+        saving={menuSaving}
+        error={menuError}
+        onSubmit={submitRename}
+        onCancel={() => { setRenamingFrom(null); setMenuError(''); }}
+      />
+      <MenuItemModal
+        open={!!editing}
+        item={editing}
+        categories={menuTabs}
+        saving={menuSaving}
+        error={menuError}
+        onSubmit={submitEdit}
+        onCancel={() => { setEditing(null); setMenuError(''); }}
+      />
+      <MenuConfirmModal
+        open={!!removing}
+        title="Remove this dish?"
+        message={removing ? ('"' + removing.name + '" comes off the menu for the whole team.') : ''}
+        saving={menuSaving}
+        onConfirm={confirmRemove}
+        onCancel={() => setRemoving(null)}
+      />
       <MenuDetailModal
         item={selectedMenu}
         onClose={() => setSelectedMenuId(null)}
