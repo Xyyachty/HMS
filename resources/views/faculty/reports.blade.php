@@ -27,46 +27,20 @@
     .rp-panel.active { display: block; }
 
     .rp-stat-grid { display: grid; gap: 1rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .rp-chart-grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
     .rp-split-grid { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 
-    /* Team performance: plain CSS columns, no chart library on this layout. */
-    .rp-bars { display: flex; align-items: flex-end; gap: 1rem; height: 190px; padding-left: 2.5rem; position: relative; }
-    .rp-bars .rp-axis { position: absolute; left: 0; top: 0; bottom: 1.75rem; width: 2.25rem; }
-    .rp-bars .rp-axis span {
-        position: absolute; right: 0; transform: translateY(-50%);
-        font-size: 10px; font-weight: 600; color: #94a3b8;
-    }
-    .rp-bar-col { flex: 1 1 0; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0; }
-    .rp-bar-track { flex: 1 1 auto; display: flex; align-items: flex-end; }
-    .rp-bar-fill { width: 100%; border-radius: .5rem .5rem 0 0; min-height: 3px; }
-    .rp-bar-value { font-size: 12px; font-weight: 800; color: #334155; text-align: center; margin-bottom: .35rem; }
-    .rp-bar-label { font-size: 11px; font-weight: 700; color: #475569; text-align: center; margin-top: .5rem; }
-    .rp-bar-sub { font-size: 10px; color: #94a3b8; text-align: center; }
-
-    .rp-donut-row { display: flex; align-items: center; gap: 1.25rem; }
-    .rp-donut { position: relative; width: 170px; height: 170px; flex: 0 0 auto; }
-    .rp-donut-center {
-        position: absolute; inset: 0; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; text-align: center;
-    }
-    .rp-legend { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: .55rem; }
-    .rp-legend-row { display: flex; align-items: center; gap: .5rem; font-size: 12px; }
+    /* Still used by the Role column on Activity Reports. */
     .rp-legend-dot { width: .625rem; height: .625rem; border-radius: 9999px; flex: 0 0 auto; }
-    .rp-legend-name { flex: 1 1 auto; min-width: 0; color: #475569; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .rp-legend-value { font-weight: 800; color: #0f172a; }
 
     .rp-track { height: .5rem; border-radius: 9999px; background: #f1f5f9; overflow: hidden; }
     .rp-track > span { display: block; height: 100%; border-radius: 9999px; }
 
     @media (max-width: 1279px) {
         .rp-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .rp-chart-grid { grid-template-columns: minmax(0, 1fr); }
         .rp-split-grid { grid-template-columns: minmax(0, 1fr); }
     }
     @media (max-width: 767px) {
         .rp-stat-grid { grid-template-columns: minmax(0, 1fr); }
-        .rp-donut-row { flex-direction: column; align-items: flex-start; }
     }
     @media print {
         .app-sidebar, .glass-header, .rp-tabs, .rp-no-print { display: none !important; }
@@ -105,7 +79,8 @@
 </style>
 
 @php
-    // Chart colours, kept to the palette already used across the portal.
+    // Chart colours, kept to the palette already used across the portal. Still
+    // read by the Role column further down on Activity Reports.
     $rpRoleColors = [
         'front_desk'            => '#FB7185',
         'restaurant_management' => '#FBBF24',
@@ -113,14 +88,9 @@
         'maintenance'           => '#A855F7',
         'housekeeping'          => '#14B8A6',
     ];
-    $rpBarColors = ['#DB2777', '#F472B6', '#FB7185', '#A855F7', '#14B8A6', '#FBBF24'];
 
     $rpRoleTotal = collect($roleParticipation)->sum('count');
-    $rpPendingActivities = max(0, ($totalActivities ?? 0) - ($doneActivities ?? 0));
     $rpTopStudents = collect($studentPerformance ?? [])->take(5);
-
-    // Donut geometry, drawn as one circle per slice with a dash offset.
-    $rpCirc = 2 * M_PI * 60;
 @endphp
 
 <div class="mb-5">
@@ -196,110 +166,6 @@
             <div class="min-w-0">
                 <p class="text-[13px] text-slate-500 font-semibold">Overall Completion Rate</p>
                 <p class="text-[28px] font-extrabold text-slate-900 leading-none mt-1">{{ $overallRate }}%</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="rp-chart-grid mb-4">
-        <!-- Team Performance -->
-        <div class="rounded-2xl border border-slate-100 bg-white p-5">
-            <p class="text-[15px] font-bold text-slate-800">Team Performance</p>
-            <p class="text-[12px] text-slate-400 mb-4">Completion rate per team.</p>
-            @if(collect($teamPerformance)->isNotEmpty())
-                <div class="rp-bars">
-                    <div class="rp-axis">
-                        @foreach([100, 80, 60, 40, 20, 0] as $tick)
-                            <span style="top: {{ $loop->index * 20 }}%">{{ $tick }}%</span>
-                        @endforeach
-                    </div>
-                    @foreach($teamPerformance as $bar)
-                        <div class="rp-bar-col">
-                            <p class="rp-bar-value">{{ $bar['percent'] }}%</p>
-                            <div class="rp-bar-track">
-                                <div class="rp-bar-fill"
-                                     style="height: {{ max($bar['percent'], 2) }}%; background: {{ $rpBarColors[$loop->index % count($rpBarColors)] }};"></div>
-                            </div>
-                            <p class="rp-bar-label truncate" title="{{ $bar['team'] }}">{{ $bar['team'] }}</p>
-                            <p class="rp-bar-sub">{{ $bar['done'] }}/{{ $bar['total'] }} tasks</p>
-                        </div>
-                    @endforeach
-                </div>
-            @else
-                <p class="text-[13px] text-slate-400 py-10 text-center">No teams to chart yet.</p>
-            @endif
-        </div>
-
-        <!-- Role Participation -->
-        <div class="rounded-2xl border border-slate-100 bg-white p-5">
-            <p class="text-[15px] font-bold text-slate-800">Role Participation</p>
-            <p class="text-[12px] text-slate-400 mb-4">Number of students assigned per role.</p>
-            <div class="rp-donut-row">
-                <div class="rp-donut">
-                    <svg viewBox="0 0 170 170" class="w-full h-full" style="transform: rotate(-90deg)" aria-hidden="true">
-                        <circle cx="85" cy="85" r="60" fill="none" stroke="#F1F5F9" stroke-width="24"></circle>
-                        @php $rpOffset = 0; @endphp
-                        @foreach($roleParticipation as $slice)
-                            @if($rpRoleTotal > 0 && $slice['count'] > 0)
-                                @php
-                                    $len = $rpCirc * $slice['count'] / $rpRoleTotal;
-                                @endphp
-                                <circle cx="85" cy="85" r="60" fill="none"
-                                        stroke="{{ $rpRoleColors[$slice['role']] ?? '#cbd5e1' }}" stroke-width="24"
-                                        stroke-dasharray="{{ round($len, 2) }} {{ round($rpCirc - $len, 2) }}"
-                                        stroke-dashoffset="{{ round(-$rpOffset, 2) }}"></circle>
-                                @php $rpOffset += $len; @endphp
-                            @endif
-                        @endforeach
-                    </svg>
-                    <div class="rp-donut-center">
-                        <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $rpRoleTotal }}</p>
-                        <p class="text-[11px] text-slate-400 font-semibold">Assignments</p>
-                    </div>
-                </div>
-                <div class="rp-legend">
-                    @foreach($roleParticipation as $slice)
-                        <div class="rp-legend-row">
-                            <span class="rp-legend-dot" style="background: {{ $rpRoleColors[$slice['role']] ?? '#cbd5e1' }}"></span>
-                            <span class="rp-legend-name">{{ $slice['label'] }}</span>
-                            <span class="rp-legend-value">{{ $slice['count'] }}</span>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-
-        <!-- Activity Completion -->
-        <div class="rounded-2xl border border-slate-100 bg-white p-5">
-            <p class="text-[15px] font-bold text-slate-800">Activity Completion</p>
-            <p class="text-[12px] text-slate-400 mb-4">Completed vs. pending activities.</p>
-            <div class="rp-donut-row">
-                <div class="rp-donut">
-                    @php
-                        $rpDoneLen = $totalActivities > 0 ? $rpCirc * $doneActivities / $totalActivities : 0;
-                    @endphp
-                    <svg viewBox="0 0 170 170" class="w-full h-full" style="transform: rotate(-90deg)" aria-hidden="true">
-                        <circle cx="85" cy="85" r="60" fill="none" stroke="#E2E8F0" stroke-width="24"></circle>
-                        <circle cx="85" cy="85" r="60" fill="none" stroke="#DB2777" stroke-width="24"
-                                stroke-dasharray="{{ round($rpDoneLen, 2) }} {{ round($rpCirc - $rpDoneLen, 2) }}"></circle>
-                    </svg>
-                    <div class="rp-donut-center">
-                        <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $totalActivities }}</p>
-                        <p class="text-[11px] text-slate-400 font-semibold">Activities</p>
-                    </div>
-                </div>
-                <div class="rp-legend">
-                    <div class="rp-legend-row">
-                        <span class="rp-legend-dot" style="background: #DB2777"></span>
-                        <span class="rp-legend-name">Completed</span>
-                        <span class="rp-legend-value">{{ $overallRate }}%</span>
-                    </div>
-                    <div class="rp-legend-row">
-                        <span class="rp-legend-dot" style="background: #E2E8F0"></span>
-                        <span class="rp-legend-name">Pending</span>
-                        <span class="rp-legend-value">{{ 100 - $overallRate }}%</span>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mt-1.5">{{ $doneActivities }} done · {{ $rpPendingActivities }} still open</p>
-                </div>
             </div>
         </div>
     </div>
