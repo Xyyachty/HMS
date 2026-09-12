@@ -5227,7 +5227,7 @@ function MenuPager({ page, pageCount, onPage }) {
   );
 }
 
-function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, cardImages, isDesignMode, rooms, guest }) {
+function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, cardImages, isDesignMode, rooms, guest }) {
   const menuList = menus || [];
   const [selectedMenuId, setSelectedMenuId] = useState(null);
   const selectedMenu = menuList.find(m => m.id === selectedMenuId) || null;
@@ -5283,6 +5283,57 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
   const cartCount = cart.reduce((sum, l) => sum + l.qty, 0);
   const cartTotal = cart.reduce((sum, l) => sum + l.price * l.qty, 0);
 
+  // Menu item CRUD, the same as Room Management's Add Room / Edit / Remove on
+  // the Rooms page — Restaurant Management gets the matching set here, wired
+  // to the same /students/hotel/menus endpoints Manage Menu already uses.
+  const handleAdd = () => {
+    const name = hmsPrompt('Menu item name', 'New Dish');
+    if (name == null || !name.trim()) return;
+    const sub = hmsPrompt('Short description', 'Add a short description') || 'Add a short description';
+    const priceRaw = hmsPrompt('Price', '250');
+    if (priceRaw == null) return;
+    const price = Math.max(1, parseInt(priceRaw, 10) || 1);
+    const categoryHint = MENU_CATEGORIES.join(' / ');
+    // Defaults to whichever tab is open, not always Main Dishes — a dish added
+    // while looking at Desserts is almost always meant to be one.
+    const categoryRaw = hmsPrompt('Category (' + categoryHint + ')', menuTab);
+    if (categoryRaw == null) return;
+    const category = normalizeMenuCategory(categoryRaw);
+    if (!onAddMenu) return;
+    onAddMenu({ name: name.trim(), description: sub.trim(), price, category })
+      .then(() => onToast && onToast('Menu item added'));
+  };
+
+  const handleEdit = (item) => {
+    const name = hmsPrompt('Menu item name', item.name);
+    if (name == null || !name.trim()) return;
+    const sub = hmsPrompt('Short description', item.sub || '');
+    if (sub == null) return;
+    const priceRaw = hmsPrompt('Price', String(item.price || 250));
+    if (priceRaw == null) return;
+    const price = Math.max(1, parseInt(priceRaw, 10) || item.price || 1);
+    const categoryHint = MENU_CATEGORIES.join(' / ');
+    const categoryRaw = hmsPrompt('Category (' + categoryHint + ')', item.category || 'Main Dishes');
+    if (categoryRaw == null) return;
+    const category = normalizeMenuCategory(categoryRaw);
+    if (!onEditMenu) return;
+    onEditMenu(item.dbId, { name: name.trim(), description: sub.trim(), price, category })
+      .then(() => onToast && onToast('Menu item updated'));
+  };
+
+  const handleMenuImage = (item) => {
+    pickImageFile((url) => {
+      if (!url || !onEditMenu) return;
+      onEditMenu(item.dbId, { image: url }).then(() => onToast && onToast('Menu image updated'));
+    });
+  };
+
+  const handleRemove = (item) => {
+    if (!onRemoveMenu) return;
+    if (!hmsConfirm('Remove "' + item.name + '" from the menu?')) return;
+    onRemoveMenu(item.dbId).then(() => onToast && onToast('Menu item removed'));
+  };
+
   /* One dish. Both rows draw their cards with this, so a change to a card is a
      change to every card rather than to whichever row it was written in. */
   const renderMenuCard = (item) => (
@@ -5292,10 +5343,17 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
       style={{ position: 'relative', cursor: 'pointer' }}
       onClick={() => setSelectedMenuId(item.id)}
     >
-      {canEditMenuColor && (
+      {(canEditMenuColor || canManageMenus) && (
         <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
           data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
-          <CardColorButton kind="menu" label="Card colour (all menu cards)" />
+          {canEditMenuColor && <CardColorButton kind="menu" label="Card colour (all menu cards)" />}
+          {canManageMenus && (
+            <>
+              <button type="button" title="Change image" onClick={() => handleMenuImage(item)} style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+              <button type="button" title="Edit item" onClick={() => handleEdit(item)} style={toolBtnStyle('edit')}><i className="fa-solid fa-pen" style={{ fontSize: 10 }}></i></button>
+              <button type="button" title="Remove item" onClick={() => handleRemove(item)} style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i></button>
+            </>
+          )}
         </div>
       )}
       <div className="menu-food-img">
@@ -5327,10 +5385,15 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
 
   return (
     <>
-      <div className="page-header">
-        <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Culinary Arts</p>
-        <h1 className="font-display">Restaurant Menu</h1>
-        <p>Browse our courses — Main Dishes, Appetizers, Soups, Desserts, and Beverages.</p>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+        <div>
+          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Culinary Arts</p>
+          <h1 className="font-display">Restaurant Menu</h1>
+          <p>Browse our courses — Main Dishes, Appetizers, Soups, Desserts, and Beverages.</p>
+        </div>
+        {canManageMenus && (
+          <button type="button" className="btn-outline" data-hms-no-edit="1" onClick={handleAdd} style={{ whiteSpace: 'nowrap' }}>+ Add menu item</button>
+        )}
       </div>
 
       <RoomTabBar
@@ -6818,6 +6881,35 @@ function App() {
       })
   ), [menuRequest, showToast, fetchMenus]);
 
+  // Menu item CRUD — Restaurant staff only (server enforces this too). Each write
+  // is followed by a re-fetch so every open tab sees the same menu.
+  const addMenu = useCallback((payload) => (
+    menuRequest('/students/hotel/menus', 'POST', payload)
+      .then(data => { fetchMenus(); return data && data.item; })
+      .catch(err => {
+        showToast((err && err.message) || 'Could not add that menu item.');
+        return Promise.reject(err);
+      })
+  ), [menuRequest, fetchMenus, showToast]);
+
+  const editMenu = useCallback((id, payload) => (
+    menuRequest('/students/hotel/menus/' + String(id).replace(/^db-/, ''), 'PATCH', payload)
+      .then(data => { fetchMenus(); return data && data.item; })
+      .catch(err => {
+        showToast((err && err.message) || 'Could not update that menu item.');
+        return Promise.reject(err);
+      })
+  ), [menuRequest, fetchMenus, showToast]);
+
+  const removeMenu = useCallback((id) => (
+    menuRequest('/students/hotel/menus/' + String(id).replace(/^db-/, ''), 'DELETE')
+      .then(data => { fetchMenus(); return data; })
+      .catch(err => {
+        showToast((err && err.message) || 'Could not remove that menu item.');
+        return Promise.reject(err);
+      })
+  ), [menuRequest, fetchMenus, showToast]);
+
   // Room Management now lives on its own dedicated page — break out of the iframe.
   const openRoomManagement = useCallback((nav) => {
     hmsNavigateTop(window.HMS_ROOM_MANAGEMENT_URL + '?nav=' + (nav || 'manage-room'));
@@ -6959,6 +7051,9 @@ function App() {
         canEditMenuColor={canEditMenuColor}
         canOrderMenu={canOrderMenu || isSignedInGuest}
         onOrderMenu={placeOrder}
+        onAddMenu={addMenu}
+        onEditMenu={editMenu}
+        onRemoveMenu={removeMenu}
         guest={guestAuth}
         cardImages={cardImages}
         isDesignMode={isDesignMode}
