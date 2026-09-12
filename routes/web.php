@@ -1712,6 +1712,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
 
         \App\Support\HotelMenuAccess::seedDefaults($membership);
+        // Materialises the five starting courses as the team's own rows, so one of
+        // them can be renamed from the tab bar like any course they added.
+        \App\Support\HotelMenuDefaults::ensureCategoriesFor($membership);
 
         $items = HotelMenuItem::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
@@ -1723,8 +1726,76 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         return response()->json([
             'items'      => $items,
             'can_manage' => \App\Support\HotelMenuAccess::canManage($membership),
+            // The tabs the Restaurant page draws. Sent with the dishes so a course
+            // with nothing in it yet still gets a tab to put the first dish under.
+            'categories' => \App\Support\HotelMenuDefaults::categoriesFor($membership),
         ]);
     })->name('hotel.menus.index');
+
+    /**
+     * A course of the team's own, added from the Restaurant tab bar — the menu's
+     * counterpart to POST /hotel/room-categories.
+     */
+    Route::post('/hotel/menu-categories', function (Request $request) {
+        $membership = \App\Support\HotelMenuAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelMenuAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant staff can add a menu category.'], 403);
+        }
+
+        $data = $request->validate(['name' => 'required|string|max:60']);
+
+        $category = \App\Support\HotelMenuDefaults::createCategory($membership, $data['name']);
+
+        if (!$category) {
+            return response()->json(['message' => 'That category already exists.'], 422);
+        }
+
+        return response()->json([
+            'category'   => ['name' => $category->name],
+            'categories' => \App\Support\HotelMenuDefaults::categoriesFor($membership),
+        ], 201);
+    })->name('hotel.menu-categories.store');
+
+    /**
+     * Renaming a course from the Restaurant tab bar. Every dish filed under it is
+     * moved with the name, the way renaming a room category carries its rooms.
+     */
+    Route::patch('/hotel/menu-categories', function (Request $request) {
+        $membership = \App\Support\HotelMenuAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelMenuAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant staff can rename a menu category.'], 403);
+        }
+
+        $data = $request->validate([
+            'from' => 'required|string|max:60',
+            'to'   => 'required|string|max:60',
+        ]);
+
+        $renamed = \App\Support\HotelMenuDefaults::renameCategory($membership, $data['from'], $data['to']);
+
+        if (!$renamed) {
+            return response()->json(['message' => 'That name is already taken, or that category is not one of yours.'], 422);
+        }
+
+        $items = HotelMenuItem::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($item) => $item->toTemplateArray());
+
+        return response()->json([
+            'category'   => ['name' => $renamed],
+            'categories' => \App\Support\HotelMenuDefaults::categoriesFor($membership),
+            'items'      => $items,
+        ]);
+    })->name('hotel.menu-categories.update');
 
     Route::post('/hotel/menus', function (Request $request) {
         $membership = \App\Support\HotelMenuAccess::membership();
@@ -1750,7 +1821,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'group_name'  => $membership->group_name,
             'faculty_id'  => $membership->faculty_id,
             'name'        => trim($data['name']),
-            'category'    => HotelMenuItem::normalizeCategory($data['category']),
+            // Against the team's own courses, not the five constants - a dish filed
+            // under a course they added must not be collapsed back into Main Dishes.
+            'category'    => \App\Support\HotelMenuDefaults::normalizeCategory($data['category'], $membership),
             'price'       => (int) $data['price'],
             'stock'       => (int) ($data['stock'] ?? 0),
             'description' => $data['description'] ?? null,
@@ -1790,7 +1863,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ]);
 
         if (array_key_exists('name', $data))        $item->name        = trim($data['name']);
-        if (array_key_exists('category', $data))    $item->category    = HotelMenuItem::normalizeCategory($data['category']);
+        if (array_key_exists('category', $data))    $item->category    = \App\Support\HotelMenuDefaults::normalizeCategory($data['category'], $membership);
         if (array_key_exists('price', $data))       $item->price       = (int) $data['price'];
         if (array_key_exists('stock', $data))       $item->stock       = (int) $data['stock'];
         if (array_key_exists('description', $data)) $item->description = $data['description'];

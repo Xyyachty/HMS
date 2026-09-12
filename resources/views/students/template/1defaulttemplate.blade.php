@@ -1169,6 +1169,19 @@ function normalizeMenuCategory(value) {
   return 'Main Dishes';
 }
 
+/* The tab a dish belongs under, against the team's own course list.
+   normalizeMenuCategory() only knows the five constants and answers "Main Dishes"
+   for anything else, which would file every dish in a course the team invented
+   under the wrong tab. Falls back to it for the legacy Dining/Bar labels. */
+function menuCategoryKey(value, tabs) {
+  const raw = String(value || '').trim().toLowerCase();
+  const list = (tabs && tabs.length) ? tabs : MENU_CATEGORIES;
+  const match = list.find(c => String(c).toLowerCase() === raw);
+  if (match) return match;
+  const legacy = normalizeMenuCategory(value);
+  return list.indexOf(legacy) !== -1 ? legacy : (list[0] || legacy);
+}
+
 function normalizeRoomStatus(value) {
   const raw = String(value || 'Available').trim().toLowerCase();
   const match = ROOM_STATUSES.find(s => s.toLowerCase() === raw);
@@ -5227,14 +5240,22 @@ function MenuPager({ page, pageCount, onPage }) {
   );
 }
 
-function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, cardImages, isDesignMode, rooms, guest }) {
+function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, cardImages, isDesignMode, rooms, guest }) {
   const menuList = menus || [];
   const [selectedMenuId, setSelectedMenuId] = useState(null);
   const selectedMenu = menuList.find(m => m.id === selectedMenuId) || null;
-  const [menuTab, setMenuTab] = useState('Main Dishes');
+  // The team's courses, falling back to the five constants until the first fetch.
+  const menuTabs = (menuCategories && menuCategories.length) ? menuCategories : MENU_TABS;
+  const [menuTab, setMenuTab] = useState(menuTabs[0] || 'Main Dishes');
+
+  // A course renamed or removed under us must not leave the page filtering on a
+  // tab that no longer exists.
+  useEffect(() => {
+    if (menuTabs.indexOf(menuTab) === -1) setMenuTab(menuTabs[0] || 'Main Dishes');
+  }, [menuTabs, menuTab]);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const filteredMenus = menuList.filter(item => normalizeMenuCategory(item.category) === menuTab);
+  const filteredMenus = menuList.filter(item => menuCategoryKey(item.category, menuTabs) === menuTab);
   void cardImages;
 
   /* The page of the category on screen, and the two rows it splits into. A
@@ -5293,12 +5314,12 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
     const priceRaw = hmsPrompt('Price', '250');
     if (priceRaw == null) return;
     const price = Math.max(1, parseInt(priceRaw, 10) || 1);
-    const categoryHint = MENU_CATEGORIES.join(' / ');
+    const categoryHint = menuTabs.join(' / ');
     // Defaults to whichever tab is open, not always Main Dishes — a dish added
     // while looking at Desserts is almost always meant to be one.
     const categoryRaw = hmsPrompt('Category (' + categoryHint + ')', menuTab);
     if (categoryRaw == null) return;
-    const category = normalizeMenuCategory(categoryRaw);
+    const category = menuCategoryKey(categoryRaw, menuTabs);
     if (!onAddMenu) return;
     onAddMenu({ name: name.trim(), description: sub.trim(), price, category })
       .then(() => onToast && onToast('Menu item added'));
@@ -5312,10 +5333,10 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
     const priceRaw = hmsPrompt('Price', String(item.price || 250));
     if (priceRaw == null) return;
     const price = Math.max(1, parseInt(priceRaw, 10) || item.price || 1);
-    const categoryHint = MENU_CATEGORIES.join(' / ');
+    const categoryHint = menuTabs.join(' / ');
     const categoryRaw = hmsPrompt('Category (' + categoryHint + ')', item.category || 'Main Dishes');
     if (categoryRaw == null) return;
-    const category = normalizeMenuCategory(categoryRaw);
+    const category = menuCategoryKey(categoryRaw, menuTabs);
     if (!onEditMenu) return;
     onEditMenu(item.dbId, { name: name.trim(), description: sub.trim(), price, category })
       .then(() => onToast && onToast('Menu item updated'));
@@ -5332,6 +5353,31 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
     if (!onRemoveMenu) return;
     if (!hmsConfirm('Remove "' + item.name + '" from the menu?')) return;
     onRemoveMenu(item.dbId).then(() => onToast && onToast('Menu item removed'));
+  };
+
+  /* Courses, the same pair Room Management has on the Rooms tab bar. Renaming one
+     carries every dish in it, so the tab a student is looking at is switched to the
+     new name rather than left pointing at a heading that no longer exists. */
+  const handleAddCategory = () => {
+    if (!onAddMenuCategory) return;
+    const name = hmsPrompt('New menu category', '');
+    if (name == null || !name.trim()) return;
+    onAddMenuCategory(name.trim()).then((created) => {
+      if (!created) return;
+      setMenuTab(created);
+      if (onToast) onToast('"' + created + '" added');
+    });
+  };
+
+  const handleRenameCategory = (from) => {
+    if (!onRenameMenuCategory) return;
+    const to = hmsPrompt('Rename "' + from + '" to', from);
+    if (to == null || !to.trim() || to.trim() === from) return;
+    onRenameMenuCategory(from, to.trim()).then((renamed) => {
+      if (!renamed) return;
+      setMenuTab(renamed);
+      if (onToast) onToast('Renamed to "' + renamed + '"');
+    });
   };
 
   /* One dish. Both rows draw their cards with this, so a change to a card is a
@@ -5375,7 +5421,7 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
       </div>
       <div className="menu-food-body">
         <p style={{ margin: '0 0 0.35rem', color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-          {normalizeMenuCategory(item.category)}
+          {menuCategoryKey(item.category, menuTabs)}
         </p>
         <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 0.4rem' }}>{item.name}</h3>
         <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.8rem', fontWeight: 300, lineHeight: 1.5 }}>{item.sub}</p>
@@ -5397,11 +5443,26 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
       </div>
 
       <RoomTabBar
-        tabs={MENU_TABS}
+        tabs={menuTabs}
         active={menuTab}
         onChange={setMenuTab}
         items={menuList}
-        getKey={(item) => normalizeMenuCategory(item.category)}
+        getKey={(item) => menuCategoryKey(item.category, menuTabs)}
+        onRenameTab={canManageMenus ? handleRenameCategory : null}
+        extra={canManageMenus ? (
+          <button
+            type="button"
+            className="tab-btn"
+            onClick={(e) => { e.stopPropagation(); handleAddCategory(); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Add menu category"
+            data-hms-no-edit="1"
+            data-hms-action="add-menu-category"
+            style={{ borderStyle: 'dashed', borderColor: '#f43f5e', color: '#fb7185' }}
+          >
+            + Category
+          </button>
+        ) : null}
       />
 
       <section style={{ padding: '0 1.5rem 3rem', maxWidth: 1200, margin: '0 auto' }}>
@@ -6328,6 +6389,9 @@ function App() {
   // Restaurant menu lives in the DB and is shared by the whole team.
   const [menus, setMenus] = useState([]);
   const [canManageMenus, setCanManageMenus] = useState(false);
+  /* The team's own courses. Starts on the five constants so the tabs are drawn
+     before the first fetch lands, and on a published site that never fetches. */
+  const [menuCategories, setMenuCategories] = useState(MENU_CATEGORIES);
   const [inRestaurantModule, setInRestaurantModule] = useState(true);
   // Restaurant menu CRUD only lives on the dedicated management page, and that
   // page is only reachable from Preview — Design mode is layout-editing only.
@@ -6446,6 +6510,7 @@ function App() {
       .then(data => {
         if (pendingWrites.current > 0) return;
         if (Array.isArray(data.items)) setMenus(data.items);
+        if (Array.isArray(data.categories) && data.categories.length) setMenuCategories(data.categories);
         setCanManageMenus(data.can_manage === true);
       })
       .catch(() => {});
@@ -6910,6 +6975,34 @@ function App() {
       })
   ), [menuRequest, fetchMenus, showToast]);
 
+  /* A course of the team's own, and renaming one of the five it started with. The
+     same pair Room Management has on the Rooms tab bar; the rename carries every
+     dish filed under the old name, which the server does in one transaction. */
+  const addMenuCategory = useCallback((name) => (
+    menuRequest('/students/hotel/menu-categories', 'POST', { name })
+      .then(data => {
+        if (data && Array.isArray(data.categories)) setMenuCategories(data.categories);
+        return data && data.category ? data.category.name : null;
+      })
+      .catch(err => {
+        showToast((err && err.message) || 'Could not add that category.');
+        return null;
+      })
+  ), [menuRequest, showToast]);
+
+  const renameMenuCategory = useCallback((from, to) => (
+    menuRequest('/students/hotel/menu-categories', 'PATCH', { from, to })
+      .then(data => {
+        if (data && Array.isArray(data.categories)) setMenuCategories(data.categories);
+        if (data && Array.isArray(data.items)) setMenus(data.items);
+        return data && data.category ? data.category.name : null;
+      })
+      .catch(err => {
+        showToast((err && err.message) || 'Could not rename that category.');
+        return null;
+      })
+  ), [menuRequest, showToast]);
+
   // Room Management now lives on its own dedicated page — break out of the iframe.
   const openRoomManagement = useCallback((nav) => {
     hmsNavigateTop(window.HMS_ROOM_MANAGEMENT_URL + '?nav=' + (nav || 'manage-room'));
@@ -7054,6 +7147,9 @@ function App() {
         onAddMenu={addMenu}
         onEditMenu={editMenu}
         onRemoveMenu={removeMenu}
+        menuCategories={menuCategories}
+        onAddMenuCategory={addMenuCategory}
+        onRenameMenuCategory={renameMenuCategory}
         guest={guestAuth}
         cardImages={cardImages}
         isDesignMode={isDesignMode}
