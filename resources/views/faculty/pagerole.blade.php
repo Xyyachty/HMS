@@ -1594,13 +1594,9 @@
                 {{-- Left: the teams themselves. Picking one drives every other column
                      and the hidden group_name the insert form posts. --}}
                 <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div class="flex items-center justify-between gap-2 mb-2.5">
-                        <p class="text-[15px] font-bold text-slate-800">Teams</p>
-                        <button type="button" onclick="switchCreateModalTab('add_team')"
-                                class="h-9 px-3 rounded-xl brand-gradient text-white text-[12px] font-bold inline-flex items-center gap-1.5 shadow-md shadow-brand/20 hover:opacity-95 transition">
-                            <span class="iconify text-base" data-icon="mdi:plus"></span> Add Team
-                        </button>
-                    </div>
+                    {{-- Same destination as the Create Multiple Teams tab above,
+                         so a second button down here to jump to it was one too many. --}}
+                    <p class="text-[15px] font-bold text-slate-800 mb-2.5">Teams</p>
                     <div class="space-y-2">
                         @forelse($manageTeams as $teamName => $team)
                             <button type="button" data-team-pick="{{ $teamName }}"
@@ -3453,10 +3449,11 @@ function switchCreateModalTab(tabId) {
     const addTeamBtn = document.getElementById('modal-tab-add_team');
     const insertBtn = document.getElementById('modal-tab-insert');
 
-    const submitLabel = document.getElementById('createModalSubmitLabel');
-    if (submitLabel) {
-        submitLabel.textContent = tabId === 'add_team' ? 'Create Teams' : 'Insert to Team';
-    }
+    // The footer button is Create Teams' submit. Manage Members already has its
+    // own Insert to Team, once per team panel and again on the Add Student
+    // dialog itself — a third copy down here was one button too many.
+    const submitBtn = document.getElementById('createModalSubmitBtn');
+    if (submitBtn) submitBtn.classList.toggle('hidden', tabId !== 'add_team');
 
     if (tabId === 'add_team') {
         addTeamBtn.classList.add('border-brand', 'text-brand');
