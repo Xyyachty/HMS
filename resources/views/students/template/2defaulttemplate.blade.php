@@ -4589,7 +4589,13 @@ function FacilityModal({ facility, onClose, slideSeconds, onToast }) {
   );
 }
 
-function AmenitiesPage({ amenities, slideSeconds, canEditAmenities, onSetSlideSeconds, onToast }) {
+/* How long an amenity card holds each photograph. A fixed pace now: the
+   3s/4s/5s picker that used to set it called HMSSiteContent.setAmenitySlideSeconds,
+   which was never implemented, so every click returned at the guard and every
+   team sat on this default regardless. */
+const AMENITY_SLIDE_SECONDS = 4;
+
+function AmenitiesPage({ amenities, slideSeconds, onToast }) {
   const list = Array.isArray(amenities) ? amenities : [];
   const [openId, setOpenId] = useState(null);
   // Read off the live list rather than held in state, so a poll that changes a
@@ -4603,39 +4609,6 @@ function AmenitiesPage({ amenities, slideSeconds, canEditAmenities, onSetSlideSe
         <h1 className="font-display">Hotel Amenities</h1>
         <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
       </div>
-      {canEditAmenities && (
-        /* Design mode only, and only for the student the Amenities task landed
-           on. Three to five seconds is the whole range: outside it the rotation
-           either flickers or is never seen. */
-        <div
-          data-hms-no-edit="1"
-          style={{
-            maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem 1.25rem',
-            display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap',
-          }}
-        >
-          <span style={{ color: 'var(--fg-muted)', fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-            <i className="fa-solid fa-images" style={{ color: 'var(--accent)', marginRight: '0.45rem' }}></i>
-            Photos change every
-          </span>
-          {[3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => onSetSlideSeconds && onSetSlideSeconds(n)}
-              style={{
-                padding: '0.3rem 0.75rem', borderRadius: 999, cursor: 'pointer',
-                border: '1px solid ' + (n === slideSeconds ? 'var(--accent)' : 'var(--border)'),
-                background: n === slideSeconds ? 'var(--accent)' : 'transparent',
-                color: n === slideSeconds ? 'var(--bg)' : 'var(--fg-muted)',
-                fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: n === slideSeconds ? 700 : 400,
-              }}
-            >
-              {n}s
-            </button>
-          ))}
-        </div>
-      )}
       <section style={{ padding: '2.5rem 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
         {list.length === 0 ? (
           <div style={{ background: 'var(--card)', borderRadius: 10, padding: '4rem 1.5rem', textAlign: 'center', color: 'var(--fg-muted)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
@@ -5028,8 +5001,6 @@ function App() {
     window.HMSSiteContent ? window.HMSSiteContent.getHeroSlides(DEFAULT_HERO_SLIDES) : DEFAULT_HERO_SLIDES
   ));
   const [canEditHeroSlides, setCanEditHeroSlides] = useState(false);
-  const [amenitySlideSeconds, setAmenitySlideSeconds] = useState(4);
-  const [canEditAmenities, setCanEditAmenities] = useState(false);
 
   // In-flight room writes — a poll that lands mid-write would show stale data.
   const pendingWrites = useRef(0);
@@ -5205,12 +5176,6 @@ function App() {
     setCanEditHeroSlides(
       typeof window.HMSSiteContent.canEditHeroSlides === 'function'
         ? window.HMSSiteContent.canEditHeroSlides()
-        : false
-    );
-    if (window.HMSSiteContent.getAmenitySlideSeconds) setAmenitySlideSeconds(window.HMSSiteContent.getAmenitySlideSeconds());
-    setCanEditAmenities(
-      typeof window.HMSSiteContent.canEditAmenities === 'function'
-        ? window.HMSSiteContent.canEditAmenities()
         : false
     );
     setCanEditNav(window.HMSSiteContent.canEditNav());
@@ -5657,9 +5622,7 @@ function App() {
     amenities: (
       <AmenitiesPage
         amenities={amenities}
-        slideSeconds={amenitySlideSeconds}
-        canEditAmenities={canEditAmenities}
-        onSetSlideSeconds={setSlideSeconds}
+        slideSeconds={AMENITY_SLIDE_SECONDS}
         onToast={showToast}
       />
     ),
@@ -5671,19 +5634,6 @@ function App() {
     if (window.HMSSiteContent.setRoomCardBg(hex)) {
       showToast(hex ? 'Room card colour updated' : 'Room cards back to the template colour');
     }
-  };
-
-  /* One value for the whole section, saved to the team's site the moment it is
-     picked, so a teammate opening the page sees the same pace. */
-  const setSlideSeconds = (seconds) => {
-    const content = window.HMSSiteContent;
-    if (!content || !content.setAmenitySlideSeconds) return;
-    if (!content.setAmenitySlideSeconds(seconds)) {
-      showToast('Only the student assigned the Amenities task can change this.');
-      return;
-    }
-    setAmenitySlideSeconds(content.getAmenitySlideSeconds());
-    showToast('Amenity photos now change every ' + seconds + ' seconds');
   };
 
   const pickSiteColor = (area, hex) => {
