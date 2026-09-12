@@ -82,7 +82,17 @@ class FacultyPreviewController extends Controller
             ->get()
             ->map(fn (HotelMenuItem $item) => $item->toTemplateArray());
 
-        return response()->json(['items' => $items]);
+        /* The courses too, not just the dishes. Without them the review renders the
+           five constants, so a course the team named itself has no tab and its dishes
+           fall into whichever one is first — the faculty would be reviewing a menu the
+           student never built. */
+        return response()->json([
+            'items' => $items,
+            'categories' => \App\Support\HotelMenuDefaults::categoriesForTeam(
+                $membership->group_name,
+                $membership->faculty_id
+            ),
+        ]);
     }
 
     public function amenities(Request $request, string $group)

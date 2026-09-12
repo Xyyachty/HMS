@@ -130,8 +130,13 @@ class PublicSiteController extends Controller
             ->map(fn (HotelMenuItem $item) => $item->toTemplateArray());
 
         // can_manage is always false: it drives the staff menu-editing tools, and there is
-        // no one to grant it to here.
-        return response()->json(['items' => $items, 'can_manage' => false]);
+        // no one to grant it to here. The courses are the team's own, so a visitor sees
+        // the menu under the headings the team wrote rather than the five it started with.
+        return response()->json([
+            'items' => $items,
+            'can_manage' => false,
+            'categories' => \App\Support\HotelMenuDefaults::categoriesForTeam($groupName, $facultyId),
+        ]);
     }
 
     public function amenities(string $slug)

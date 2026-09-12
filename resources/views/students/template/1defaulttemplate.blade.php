@@ -5288,19 +5288,25 @@ function MenuTextModal({ open, title, label, hint, placeholder, initial, submitL
 
 /* A dish, in one form. This was four prompts in a row — name, then words, then
    price, then course — where answering the third wrong meant starting again. */
-function MenuItemModal({ open, item, categories, saving, error, onSubmit, onCancel }) {
+function MenuItemModal({ open, item, categories, defaultCategory, saving, error, onSubmit, onCancel }) {
   const [name, setName] = React.useState('');
   const [sub, setSub] = React.useState('');
   const [price, setPrice] = React.useState('250');
   const [category, setCategory] = React.useState('');
+  const [image, setImage] = React.useState('');
+
+  // No item is a new dish rather than one being changed, so the form opens empty
+  // on the course the student is looking at.
+  const isNew = !item;
 
   React.useEffect(() => {
     if (!open) return;
     setName(item && item.name ? String(item.name) : '');
     setSub(item && item.sub ? String(item.sub) : '');
     setPrice(String((item && item.price) || 250));
-    setCategory((item && item.category) || (categories && categories[0]) || '');
-  }, [open, item, categories]);
+    setCategory((item && item.category) || defaultCategory || (categories && categories[0]) || '');
+    setImage(item && item.img ? String(item.img) : '');
+  }, [open, item, categories, defaultCategory]);
 
   if (!open) return null;
 
@@ -5308,7 +5314,11 @@ function MenuItemModal({ open, item, categories, saving, error, onSubmit, onCanc
   const canSave = !!name.trim() && priceValue > 0 && !saving;
   const submit = () => {
     if (!canSave) return;
-    onSubmit({ name: name.trim(), description: sub.trim(), price: priceValue, category });
+    const values = { name: name.trim(), description: sub.trim(), price: priceValue, category };
+    // Only sent when there is one: an empty string would wipe the picture off a
+    // dish that already has one.
+    if (image) values.image = image;
+    onSubmit(values);
   };
   const onKeyDown = (e) => {
     if (e.key === 'Enter') { e.preventDefault(); submit(); }
@@ -5320,7 +5330,7 @@ function MenuItemModal({ open, item, categories, saving, error, onSubmit, onCanc
     <div className="room-modal-overlay header-modal-overlay" data-hms-no-edit="1"
       role="dialog" aria-modal="true" aria-label="Edit menu item" onClick={onCancel}>
       <div className="room-modal" style={{ width: 'min(460px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
-        <h3 className="font-display" style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>Edit Menu Item</h3>
+        <h3 className="font-display" style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>{isNew ? 'Add Menu Item' : 'Edit Menu Item'}</h3>
 
         <label style={Object.assign({}, labelStyle, { marginTop: 0 })}>Name</label>
         <input className="header-modal-field" type="text" value={name} maxLength={120} autoFocus
@@ -5339,12 +5349,34 @@ function MenuItemModal({ open, item, categories, saving, error, onSubmit, onCanc
           {(categories || []).map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
 
+        <label style={labelStyle}>Picture</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{
+            width: 72, height: 56, borderRadius: 8, overflow: 'hidden', flex: '0 0 auto',
+            border: '1px solid var(--border, rgba(255,255,255,0.15))', background: 'rgba(127,127,127,0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {image
+              ? <img src={image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <i className="fa-solid fa-utensils" style={{ opacity: 0.5 }}></i>}
+          </div>
+          <button type="button" className="btn-outline" style={{ fontSize: '0.7rem' }}
+            onClick={() => pickImageFile((url) => { if (url) setImage(url); })}>
+            {image ? 'Change picture' : 'Choose picture'}
+          </button>
+          {image ? (
+            <button type="button" className="btn-outline" style={{ fontSize: '0.7rem' }} onClick={() => setImage('')}>
+              Clear
+            </button>
+          ) : null}
+        </div>
+
         {error ? <p className="header-modal-hint" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p> : null}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
           <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
           <button type="button" className="btn-primary" disabled={!canSave} onClick={submit}>
-            {saving ? 'Saving…' : 'Save Changes'}
+            {saving ? 'Saving…' : (isNew ? 'Add Item' : 'Save Changes')}
           </button>
         </div>
       </div>
@@ -5487,6 +5519,23 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
       .finally(() => setMenuSaving(false));
   };
 
+  /* Adding a dish from the page itself, the way Room Management adds a room card.
+     Design mode only - canManageMenus already carries that, so this button is not
+     on the published site or in Preview. */
+  const [adding, setAdding] = useState(false);
+
+  const submitAdd = (values) => {
+    if (!onAddMenu) return;
+    setMenuSaving(true);
+    /* A starting stock, because the route defaults it to 0 and a dish with none
+       reads as sold out the moment it appears - the kitchen counts it down from
+       here, and Manage Menu is where it is restocked. */
+    onAddMenu(Object.assign({ stock: 10 }, values))
+      .then(() => { setAdding(false); if (onToast) onToast('Menu item added'); })
+      .catch(() => setMenuError('Could not add that. Please try again.'))
+      .finally(() => setMenuSaving(false));
+  };
+
   /* Courses, the same pair Room Management has on the Rooms tab bar. Renaming one
      carries every dish in it, so the tab being looked at is switched to the new
      name rather than left pointing at a heading that no longer exists. */
@@ -5612,6 +5661,30 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
             </div>
           </>
         )}
+
+        {canManageMenus ? (
+          <button
+            type="button"
+            onClick={() => { setMenuError(''); setAdding(true); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Add menu item"
+            data-hms-no-edit="1"
+            data-hms-action="add-menu-item"
+            style={{
+              width: '100%', marginTop: '1.5rem', padding: '1.5rem', borderRadius: 14,
+              border: '2px dashed #f43f5e', background: 'rgba(244,63,94,0.06)', color: '#fb7185',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              fontFamily: 'Outfit, sans-serif', transition: 'transform .15s ease, background .15s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.06)'; e.currentTarget.style.transform = 'none'; }}
+          >
+            <span style={{ width: 34, height: 34, borderRadius: 10, border: '1.5px solid #f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>+</span>
+            <span style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 12 }}>
+              Add Menu Item to {menuTab}
+            </span>
+          </button>
+        ) : null}
       </section>
       {canOrderMenu && cartCount > 0 && (
         <div data-hms-no-edit="1" style={{
@@ -5656,6 +5729,16 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
         error={menuError}
         onSubmit={submitRename}
         onCancel={() => { setRenamingFrom(null); setMenuError(''); }}
+      />
+      <MenuItemModal
+        open={adding}
+        item={null}
+        categories={menuTabs}
+        defaultCategory={menuTab}
+        saving={menuSaving}
+        error={menuError}
+        onSubmit={submitAdd}
+        onCancel={() => { setAdding(false); setMenuError(''); }}
       />
       <MenuItemModal
         open={!!editing}
