@@ -294,6 +294,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $allTasks = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->where('status', 'active')
+                // Simulation tasks predate the Task-panel/Simulation split and
+                // now live only in the Simulation area — hidden here rather
+                // than deleted, since the row is the historical record.
+                ->withoutSimulation()
                 // The hotel concept is Task 1 and gates everything else, so it heads
                 // the list regardless of the due date it does not have.
                 ->conceptFirst()
@@ -309,11 +313,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $completedTasksCount = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->where('status', 'archived')
+                ->withoutSimulation()
                 ->count();
 
             $pendingTasksCount = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->where('status', 'active')
+                ->withoutSimulation()
                 ->count();
 
             $totalAllTasks = $completedTasksCount + $pendingTasksCount;
@@ -322,6 +328,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $recentTasks = Task::with(['student.user', 'assignedTo'])
                 ->where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
+                ->withoutSimulation()
                 ->latest('updated_at')
                 ->take(12)
                 ->get();
@@ -331,6 +338,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $teamTasks = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->whereIn('status', ['active', 'archived'])
+                ->withoutSimulation()
                 ->get(['task_id', 'title', 'role', 'status', 'due_date', 'assigned_to', 'student_id']);
 
             $teamRoleProgress = $teamTasks

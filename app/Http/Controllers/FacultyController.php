@@ -1102,7 +1102,7 @@ class FacultyController extends Controller
                 'conceptsByGroup' => collect(),
                 'teamPendingReviewByGroup' => [],
                 'teamConceptPendingByGroup' => [],
-                'teamHeldSteps' => collect(),
+                'teamHeldTitles' => collect(),
             ]);
         }
 
@@ -1238,9 +1238,8 @@ class FacultyController extends Controller
         // one for the checklist and lose the real rows for the rest of the page.
         $taskChecklist = \App\Support\TaskChecklist::all();
 
-        // The same checklist pivoted into numbered steps. Position N is the same
-        // stage of the simulation for every role, so the wizard hands out "Task 1"
-        // to the whole team in one tick instead of once per department.
+        // The same checklist as numbered tasks, one per department: TASK 01 is
+        // Front Desk's customization, TASK 02 Room Management's, and so on.
         $taskSteps = \App\Support\TaskChecklist::allByStep();
 
         // How many of each team's members hold each role, so the Create Task wizard
@@ -1344,18 +1343,19 @@ class FacultyController extends Controller
         // and neither has a verdict yet.
         $teamConceptPendingByGroup = $this->conceptPendingReviewByGroup($facultyId);
 
-        /* Which numbered steps each team already holds, so Set Task can grey out
-           work they have been given instead of letting it be sent a second time.
-           storeTask refuses a duplicate either way; this is so the faculty sees
-           it before filling the form in. Two columns, one query. */
-        $teamHeldSteps = Task::where('faculty_id', $facultyId)
+        /* Which activities each team already holds, by lowercased title, so Set
+           Task can grey out work they have been given instead of letting it be
+           sent a second time. Per activity rather than per numbered task: one
+           task holds a whole department's activities, and holding one of them
+           must not lock the rest. storeTask refuses a duplicate either way; this
+           is so the faculty sees it before filling the form in. */
+        $teamHeldTitles = Task::where('faculty_id', $facultyId)
             ->whereNotNull('group_name')
             ->get(['group_name', 'title'])
             ->groupBy('group_name')
             ->map(fn ($rows) => $rows->pluck('title')
-                ->map(fn ($title) => TaskChecklist::stepForTitle((string) $title))
-                // Not ->filter(): step 0 is Task 01 and would be dropped as falsy.
-                ->reject(fn ($step) => $step === null)
+                ->filter()
+                ->map(fn ($title) => mb_strtolower((string) $title))
                 ->unique()
                 ->values()
                 ->all());
@@ -1392,7 +1392,7 @@ class FacultyController extends Controller
             'conceptsByGroup',
             'teamPendingReviewByGroup',
             'teamConceptPendingByGroup',
-            'teamHeldSteps'
+            'teamHeldTitles'
         ));
     }
 
@@ -1708,28 +1708,37 @@ class FacultyController extends Controller
             ])->withInput();
         }
 
-        /* Task 01 is the hotel concept, alone, and it gates everything after it:
-           a team cannot so much as pick a Default Template until faculty approves
-           one of its two proposals (HotelConceptDesk::hasApprovedConcept), so
-           handing out Task 02 or later first hands out work that cannot be
-           started. Refused for the whole post rather than quietly dropped per
+        /* The hotel concept gates every other activity: a team cannot so much as
+           pick a Default Template until faculty approves one of its two proposals
+           (HotelConceptDesk::hasApprovedConcept), and the approved concept is the
+           brief every customization follows. So anything other than the concept
+           itself — including the rest of TASK 01 — hands out work that cannot be
+           started yet. Refused for the whole post rather than quietly dropped per
            team — a Set Task that reports success and creates nothing is exactly
            the failure this screen has already been fixed for once. */
-        $setsLaterSteps = collect($validated['tasks'] ?? [])
+        $setsCustomization = collect($validated['tasks'] ?? [])
             ->filter(fn ($indices) => is_array($indices))
-            ->flatten()
-            ->contains(fn ($index) => (int) $index >= TaskChecklist::CONCEPT_STEPS);
+            ->contains(function ($indices, $role) use ($validated) {
+                foreach ($indices as $index) {
+                    $title = (string) ($validated['task_titles'][$role][$index] ?? '');
+                    if ($title !== '' && !TaskChecklist::isConceptTitle($title)) {
+                        return true;
+                    }
+                }
 
-        if ($setsLaterSteps) {
+                return false;
+            });
+
+        if ($setsCustomization) {
             $lockedTeams = $membersByTeam->keys()->reject(
                 fn ($groupName) => HotelConceptDesk::hasApprovedConcept((string) $groupName, (int) $facultyId)
             );
 
             if ($lockedTeams->isNotEmpty()) {
                 return back()->withErrors([
-                    'group_name' => 'Task 02 and later stay locked until a hotel concept is approved for '
+                    'group_name' => 'Customization tasks stay locked until a hotel concept is approved for '
                         . $lockedTeams->implode(', ')
-                        . '. Set Task 01 first, then approve one of that team\'s two proposals.',
+                        . '. Assign ' . HotelConceptDesk::TASK_TITLE . ' first, then approve one of that team\'s two proposals.',
                 ])->withInput();
             }
         }

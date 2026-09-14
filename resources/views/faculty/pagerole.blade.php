@@ -2183,7 +2183,7 @@
                                         @endif
                                         @if($hasStudents && !$teamConceptApproved)
                                             <span class="block text-[10px] mt-1 text-amber-600 font-semibold leading-snug">
-                                                Task 01 only &mdash; Task 02 and later unlock once you approve this team's hotel concept.
+                                                {{ \App\Support\HotelConceptDesk::TASK_TITLE }} only &mdash; the rest of the customization unlocks once you approve this team's hotel concept.
                                             </span>
                                         @endif
                                     </span>
@@ -2194,21 +2194,20 @@
                 </div>
 
                 {{-- ═══════ TASKS ═══════
-                     One block per numbered step of the simulation. $taskSteps is the
-                     checklist pivoted on position, so "Task 1" holds the first task of
-                     every department at once and ticking its header hands that whole
-                     stage to the team in one submit.
+                     One card per numbered task, and one task per department: TASK 01
+                     is Front Desk's website customization, TASK 02 Room Management's,
+                     and so on. Ticking a card's header hands every activity in it to
+                     the team in one submit. Simulation work is not assigned here.
 
-                     The field names are unchanged - tasks[role][] carrying the position
-                     as its value - because storeTask() already loops every role in one
-                     post. --}}
+                     tasks[role][] carries each activity's position in that role's
+                     list, and storeTask() reads the title back by the same key. --}}
                 <div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
                             <span class="w-6 h-6 rounded-lg bg-brand text-white text-[11px] font-bold flex items-center justify-center shrink-0">2</span>
                             <div>
                                 <h4 class="text-sm font-bold text-slate-700">Which tasks are you setting?</h4>
-                                <p class="text-xs text-slate-400">Tick a task to give that step to every department that has work in it</p>
+                                <p class="text-xs text-slate-400">Tick a task to give that department all of its website customization</p>
                             </div>
                         </div>
                         <button type="button" id="selectAllTasksBtn" onclick="selectAllVisibleTasks()" class="text-xs font-semibold text-brand hover:underline">
@@ -2232,28 +2231,25 @@
                         <div class="flex items-center gap-1.5 flex-wrap" id="taskCategoryTabs">
                             <button type="button" data-filter="all" onclick="filterTaskCards('all')"
                                 class="task-filter-tab px-2.5 py-1 rounded-lg text-xs font-bold transition border border-slate-200 hover:border-brand/40">All</button>
-                            <button type="button" data-filter="site" onclick="filterTaskCards('site')"
-                                class="task-filter-tab px-2.5 py-1 rounded-lg text-xs font-bold transition border border-slate-200 hover:border-brand/40">Website</button>
-                            @foreach($rolesMeta ?? [] as $rKey => $rMeta)
+                            @foreach(collect($rolesMeta ?? [])->only(\App\Support\TaskChecklist::STEP_ROLES) as $rKey => $rMeta)
                                 <button type="button" data-filter="{{ $rKey }}" onclick="filterTaskCards('{{ $rKey }}')"
                                     class="task-filter-tab px-2.5 py-1 rounded-lg text-xs font-bold transition border border-slate-200 hover:border-brand/40">{{ $rMeta['label'] }}</button>
                             @endforeach
                         </div>
                     </div>
 
-                    {{-- One card per numbered step of the simulation. Ticking a card's own
-                         box hands every department's task at that step to the team; View
-                         Details opens the modal below to tick or read them one at a time. --}}
+                    {{-- One card per numbered task, one department each. Ticking a card's
+                         own box hands every activity in it to the team; View Details opens
+                         the modal below to tick or read them one at a time. --}}
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-1" id="taskCardGrid">
-                        @foreach($taskSteps ?? [] as $step => $stepTasks)
+                        @foreach($taskSteps ?? [] as $step => $stepData)
                             @php
-                                $stepRoles = array_keys($stepTasks);
-                                $hasSite = collect($stepTasks)->contains(fn ($t) => ($t['scope'] ?? 'site') === \App\Support\TaskChecklist::SCOPE_SITE);
-                                $leadMeta = $rolesMeta[$stepRoles[0] ?? null] ?? null;
-                                $searchBlob = Str::lower('task ' . ($step + 1) . ' ' . collect($stepTasks)->pluck('title')->implode(' '));
-                                $categories = trim(($hasSite ? 'site ' : '') . implode(' ', $stepRoles));
+                                $stepRole = $stepData['role'];
+                                $stepTasks = $stepData['tasks'];
+                                $leadMeta = $rolesMeta[$stepRole] ?? null;
+                                $searchBlob = Str::lower('task ' . ($step + 1) . ' ' . $stepData['label'] . ' ' . collect($stepTasks)->pluck('title')->implode(' '));
                             @endphp
-                            <div id="taskCard-{{ $step }}" data-categories="{{ $categories }}" data-search="{{ $searchBlob }}"
+                            <div id="taskCard-{{ $step }}" data-categories="{{ $stepRole }}" data-search="{{ $searchBlob }}"
                                 class="task-card rounded-xl border-2 border-slate-200 bg-white p-3.5 hover:border-brand/40 hover:shadow-md transition-all flex flex-col gap-2">
                                 <div class="flex items-start justify-between">
                                     <input type="checkbox" id="taskGroupCheck-{{ $step }}"
@@ -2267,6 +2263,7 @@
                                 </div>
                                 <div>
                                     <p class="text-sm font-bold text-slate-800">TASK {{ str_pad($step + 1, 2, '0', STR_PAD_LEFT) }}</p>
+                                    <p class="text-[11px] font-semibold text-slate-600 leading-snug">{{ $stepData['label'] }}</p>
                                     <p class="text-[11px] text-slate-400 mt-0.5">{{ count($stepTasks) }} {{ Str::plural('Activity', count($stepTasks)) }}</p>
                                 </div>
                                 <button type="button" onclick="openTaskDetailsModal({{ $step }})"
@@ -2278,16 +2275,21 @@
                     </div>
                 </div>
 
-                {{-- One modal per step: the activities toggleTaskGroup used to reveal
-                     inline now live here, opened from a card's View Details button. --}}
-                @foreach($taskSteps ?? [] as $step => $stepTasks)
+                {{-- One modal per task: its activities, opened from a card's View
+                     Details button. --}}
+                @foreach($taskSteps ?? [] as $step => $stepData)
+                    @php
+                        $rKey = $stepData['role'];
+                        $rMeta = $rolesMeta[$rKey] ?? ['label' => $stepData['label'], 'icon' => 'mdi:clipboard-text-outline', 'color' => 'text-slate-500'];
+                        $stepTasks = $stepData['tasks'];
+                    @endphp
                     <div id="taskDetailsModal-{{ $step }}" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
                         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTaskDetailsModal({{ $step }})"></div>
                         <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 32rem;">
                             <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center rounded-t-2xl flex-shrink-0">
                                 <div class="min-w-0">
-                                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">TASK {{ str_pad($step + 1, 2, '0', STR_PAD_LEFT) }}</p>
-                                    <h4 class="font-bold text-brand text-base truncate">{{ count($stepTasks) }} {{ Str::plural('Activity', count($stepTasks)) }} in this step</h4>
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">TASK {{ str_pad($step + 1, 2, '0', STR_PAD_LEFT) }} &middot; {{ count($stepTasks) }} {{ Str::plural('Activity', count($stepTasks)) }}</p>
+                                    <h4 class="font-bold text-brand text-base truncate">{{ $stepData['label'] }}</h4>
                                 </div>
                                 <button type="button" onclick="closeTaskDetailsModal({{ $step }})"
                                     class="text-slate-400 hover:text-brand hover:bg-slate-50 w-7 h-7 rounded-full transition flex items-center justify-center shrink-0">
@@ -2296,25 +2298,26 @@
                             </div>
 
                             <div class="overflow-y-auto flex-1 divide-y divide-slate-100">
-                                @foreach($rolesMeta ?? [] as $rKey => $rMeta)
-                                    @continue(!isset($stepTasks[$rKey]))
-                                    @php $task = $stepTasks[$rKey]; @endphp
+                                @foreach($stepTasks as $taskIndex => $task)
+                                    @php $isConceptTask = \App\Support\TaskChecklist::isConceptTitle($task['title']); @endphp
                                     <label class="task-checkbox-card flex items-start gap-3 p-3.5 hover:bg-slate-50 transition cursor-pointer">
-                                        <input type="checkbox" name="tasks[{{ $rKey }}][]" value="{{ $step }}"
+                                        <input type="checkbox" name="tasks[{{ $rKey }}][]" value="{{ $taskIndex }}"
                                             data-group="{{ $step }}" data-role="{{ $rKey }}"
+                                            data-title="{{ Str::lower($task['title']) }}"
+                                            data-concept="{{ $isConceptTask ? '1' : '0' }}"
                                             class="task-check task-step-check mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30">
                                         <span class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                                            <span class="iconify {{ $rMeta['color'] }}" data-icon="{{ $rMeta['icon'] }}"></span>
+                                            <span class="iconify {{ $rMeta['color'] }}" data-icon="{{ $isConceptTask ? 'mdi:lightbulb-outline' : $rMeta['icon'] }}"></span>
                                         </span>
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center gap-2 flex-wrap">
                                                 <span class="text-sm font-bold text-slate-800">{{ $task['title'] }}</span>
-                                                {{-- Website work shows a Before/After in the review; staff-tool work
-                                                     changes no page, so it is judged by opening the department. --}}
-                                                @php $isOps = ($task['scope'] ?? 'site') === \App\Support\TaskChecklist::SCOPE_OPS; @endphp
-                                                <span class="shrink-0 px-1.5 py-0.5 rounded-full border border-slate-200 text-[9px] font-bold uppercase tracking-wide {{ $isOps ? 'bg-slate-100 text-slate-500' : 'bg-brand-soft text-brand' }}">
-                                                    {{ $isOps ? $rMeta['label'] : 'Website' }}
-                                                </span>
+                                                @if($isConceptTask)
+                                                    {{-- The brief the rest of the customization follows. --}}
+                                                    <span class="shrink-0 px-1.5 py-0.5 rounded-full border border-slate-200 text-[9px] font-bold uppercase tracking-wide bg-amber-50 text-amber-700">
+                                                        Hotel Concept
+                                                    </span>
+                                                @endif
                                             </div>
                                             <p class="text-xs text-slate-500 mt-0.5">{{ $task['summary'] ?? $task['description'] }}</p>
                                             @if(!empty($task['activities']))
@@ -2341,8 +2344,8 @@
                                                 {{ $rMeta['label'] }}<span data-role-count="{{ $rKey }}"></span>
                                             </p>
                                         </div>
-                                        <input type="hidden" name="task_titles[{{ $rKey }}][{{ $step }}]" value="{{ $task['title'] }}">
-                                        <input type="hidden" name="task_descriptions[{{ $rKey }}][{{ $step }}]" value="{{ $task['description'] }}">
+                                        <input type="hidden" name="task_titles[{{ $rKey }}][{{ $taskIndex }}]" value="{{ $task['title'] }}">
+                                        <input type="hidden" name="task_descriptions[{{ $rKey }}][{{ $taskIndex }}]" value="{{ $task['description'] }}">
                                     </label>
                                 @endforeach
                             </div>
@@ -4309,18 +4312,22 @@ function toggleTaskGroupAll(step) {
     if (!master) return;
 
     master.indeterminate = false;
-    taskGroupBoxes(step).forEach(cb => cb.checked = master.checked);
+    // Skip a box the concept lock has disabled — checking the header must not
+    // silently tick work the form is about to have refused.
+    taskGroupBoxes(step).forEach(cb => { if (!cb.disabled) cb.checked = master.checked; });
     refreshTaskCardState(step);
     updateSubmitState();
 }
 
-// The header box reflects its rows: all, none, or the browser's own partial mark
-// when a department has been unticked out of the step.
+// The header box reflects its enabled rows: all, none, or the browser's own
+// partial mark when one has been unticked out of the task. A box the concept
+// lock disabled counts toward neither — it is not part of what "all" means
+// while it is locked.
 function syncTaskGroup(step) {
     const master = document.getElementById('taskGroupCheck-' + step);
     if (!master) return;
 
-    const boxes = taskGroupBoxes(step);
+    const boxes = taskGroupBoxes(step).filter(cb => !cb.disabled);
     const checked = boxes.filter(cb => cb.checked).length;
 
     master.checked = checked > 0 && checked === boxes.length;
@@ -4329,11 +4336,11 @@ function syncTaskGroup(step) {
 }
 
 function selectAllVisibleTasks() {
-    const boxes = Array.from(document.querySelectorAll('.task-check'));
+    const boxes = Array.from(document.querySelectorAll('.task-check:not(:disabled)'));
     const allChecked = boxes.length > 0 && boxes.every(cb => cb.checked);
 
     boxes.forEach(cb => cb.checked = !allChecked);
-    document.querySelectorAll('.task-group-check').forEach(master => {
+    document.querySelectorAll('.task-group-check:not(:disabled)').forEach(master => {
         master.checked = !allChecked;
         master.indeterminate = false;
         const step = master.id.replace('taskGroupCheck-', '');
@@ -4346,15 +4353,13 @@ function selectAllVisibleTasks() {
 // ── Summary + submit ───────────────────────────
 // Assigning needs a team and at least one task; the server checks the team too,
 // but there is no reason to let the button be pressed without one.
-/* Task 01 is the hotel concept and it gates the rest, so a team with no
-   approved concept can only be given Task 01. Applied as the teams are ticked
-   rather than only on submit: storeTask() refuses the post either way, but
-   being refused after filling the form in is a worse way to find out.
-
-   The number is CONCEPT_STEPS, read from the checklist rather than written as 1
-   here, so reserving a second introductory step later moves both at once. */
-const CONCEPT_STEPS = @json(\App\Support\TaskChecklist::CONCEPT_STEPS);
-
+/* The hotel concept gates every other activity, so a team with no approved
+   concept can only be given that one. Applied per checkbox rather than per
+   task card: TASK 01 holds the concept alongside Front Desk's other website
+   work, so locking the whole card would also lock the one activity that is
+   never locked. Applied as the teams are ticked rather than only on submit:
+   storeTask() refuses the post either way, but being refused after filling
+   the form in is a worse way to find out. */
 function lockedTeamNames() {
     return Array.from(document.querySelectorAll('#taskTeamSelector input[name="group_names[]"]:checked'))
         .map((box) => box.closest('[data-team]'))
@@ -4362,17 +4367,18 @@ function lockedTeamNames() {
         .map((label) => label.dataset.team);
 }
 
-/* The numbered steps each team already holds. A team keeps a task once it has
-   been given it, so anything in here would be a duplicate — storeTask refuses
-   it, and this is what stops it being ticked in the first place. */
-const TEAM_HELD_STEPS = @json($teamHeldSteps ?? []);
+/* The activities each team already holds, by lowercased title. A team keeps a
+   task once it has been given it, so anything in here would be a duplicate —
+   storeTask refuses it, and this is what stops it being ticked in the first
+   place. */
+const TEAM_HELD_TITLES = @json($teamHeldTitles ?? []);
 
-/* A step every selected team already holds. Not "any team": ticking Task 03 for
-   one team that has it and one that does not is still a real assignment for the
-   second, and the server hands it to that one alone. */
-function heldByEverySelectedTeam(step) {
+/* A title every selected team already holds. Not "any team": ticking an
+   activity for one team that has it and one that does not is still a real
+   assignment for the second, and the server hands it to that one alone. */
+function heldByEverySelectedTeam(title) {
     return selectedTeams.length > 0 && selectedTeams.every(
-        (team) => (TEAM_HELD_STEPS[team] || []).includes(step)
+        (team) => (TEAM_HELD_TITLES[team] || []).includes(title)
     );
 }
 
@@ -4382,37 +4388,37 @@ function applyStepLocks() {
     const reasons = [];
 
     if (locked.length) {
-        reasons.push('Task 02 and later are locked: ' + locked.join(', ')
+        reasons.push('Customization is locked: ' + locked.join(', ')
             + (locked.length === 1 ? ' has' : ' have') + ' no approved hotel concept yet.');
     }
 
-    const lockStep = (step) => (locked.length > 0 && step >= CONCEPT_STEPS) || heldByEverySelectedTeam(step);
+    const isLocked = (box) => (locked.length > 0 && box.dataset.concept !== '1') || heldByEverySelectedTeam(box.dataset.title);
 
-    const held = [];
-    document.querySelectorAll('.task-card').forEach((card) => {
-        const step = Number(String(card.id).replace('taskCard-', ''));
-        const lockedStep = lockStep(step);
-
-        if (lockedStep && heldByEverySelectedTeam(step)) {
-            held.push('Task ' + String(step + 1).padStart(2, '0'));
-        }
-
-        // opacity-60, not 50: the frozen public/css/app.css build has no
-        // opacity-50 rule in it at all, so the card would not dim.
-        card.classList.toggle('opacity-60', lockedStep);
-        card.querySelectorAll('input[type="checkbox"]').forEach((box) => {
-            box.disabled = lockedStep;
-            // A step that just locked must not stay ticked, or the form would
-            // post what the server is about to refuse.
-            if (lockedStep && box.checked) {
-                box.checked = false;
-                box.indeterminate = false;
-            }
-        });
+    const held = new Set();
+    document.querySelectorAll('.task-step-check').forEach((box) => {
+        const lockedBox = isLocked(box);
+        box.disabled = lockedBox;
+        // A box that just locked must not stay ticked, or the form would post
+        // what the server is about to refuse.
+        if (lockedBox && box.checked) box.checked = false;
+        if (lockedBox && heldByEverySelectedTeam(box.dataset.title)) held.add(box.dataset.title);
     });
 
-    if (held.length) {
-        reasons.push(held.join(', ') + (held.length === 1 ? ' is' : ' are')
+    // A card dims only once every activity in it is locked — TASK 01 keeps its
+    // normal look while the concept box in it is still open.
+    document.querySelectorAll('.task-card').forEach((card) => {
+        const step = String(card.id).replace('taskCard-', '');
+        const boxes = taskGroupBoxes(step);
+        const allLocked = boxes.length > 0 && boxes.every((box) => box.disabled);
+        // opacity-60, not 50: the frozen public/css/app.css build has no
+        // opacity-50 rule in it at all, so the card would not dim.
+        card.classList.toggle('opacity-60', allLocked);
+        const master = document.getElementById('taskGroupCheck-' + step);
+        if (master) master.disabled = allLocked;
+    });
+
+    if (held.size) {
+        reasons.push(Array.from(held).join(', ') + (held.size === 1 ? ' is' : ' are')
             + ' already assigned' + (selectedTeams.length === 1 ? ' to ' + selectedTeams[0] : ' to every team picked')
             + ' and cannot be sent again.');
     }
@@ -4421,13 +4427,6 @@ function applyStepLocks() {
         note.textContent = reasons.join(' ');
         note.classList.toggle('hidden', reasons.length === 0);
     }
-
-    // The details modal holds the same boxes for each role in that step.
-    document.querySelectorAll('.task-step-check').forEach((box) => {
-        const lockedStep = lockStep(Number(box.value));
-        box.disabled = lockedStep;
-        if (lockedStep && box.checked) box.checked = false;
-    });
 }
 
 function updateSubmitState() {

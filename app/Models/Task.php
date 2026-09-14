@@ -194,6 +194,29 @@ class Task extends Model
     }
 
     /**
+     * Rows saved under a title TaskChecklist no longer hands out — the
+     * simulation tasks that moved to the Simulation area. Old rows keep only a
+     * copy of the title they were assigned under, so this is a title check
+     * rather than a column: nothing marks a row this way at write time. Applied
+     * on read so a student's Task panel does not resurrect work that predates
+     * the split, without touching or deleting the rows themselves.
+     */
+    public function scopeWithoutSimulation($query)
+    {
+        $titles = \App\Support\TaskChecklist::LEGACY_OPS_TITLES;
+        if ($titles === []) {
+            return $query;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($titles), '?'));
+
+        return $query->where(function ($q) use ($titles, $placeholders) {
+            $q->whereNull('title')
+                ->orWhereRaw("LOWER(title) NOT IN ({$placeholders})", $titles);
+        });
+    }
+
+    /**
      * The hotel concept heads every list — it is the team's first task.
      *
      * Priority alone would not do it: the orderings this is chained ahead of sort
