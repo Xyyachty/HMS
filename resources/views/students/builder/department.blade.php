@@ -668,6 +668,9 @@
         html[data-ops-theme="2"] #leftSidebar .assigned-task-revision { color: #b45309; background: rgba(180, 83, 9, 0.08); border-color: rgba(180, 83, 9, 0.3); }
         #leftSidebar .assigned-task-card.is-active { box-shadow: inset 3px 0 0 #34d399; }
         html[data-ops-theme="2"] #leftSidebar .assigned-task-card.is-active { box-shadow: inset 3px 0 0 #2d6a4f; }
+        html[data-ops-theme="2"] #assignedTaskPager { background: #efe9e0; border-color: #e2ddd5; }
+        html[data-ops-theme="2"] #assignedTaskPager button { background: #ffffff; border-color: #e2ddd5; color: #1a1a1a; }
+        html[data-ops-theme="2"] #assignedTaskPager button:hover:not(:disabled) { border-color: #2d6a4f; color: #1b4332; }
     </style>
 @if($opsSitePalette)
     @include('students.builder.site-theme', ['p' => $opsSitePalette])
@@ -784,7 +787,7 @@
 
     <!-- ═══════ MAIN 3-COLUMN LAYOUT ═══════ -->
     <div id="mainLayout" class="flex flex-1 overflow-hidden">
-        <div id="leftSidebar" class="w-72 shrink-0 sidebar-base border-r overflow-y-auto">
+        <div id="leftSidebar" class="w-72 shrink-0 sidebar-base border-r overflow-hidden">
             @include('students.frontdesk.left-sidebar.index', ['showStaffTools' => false, 'showAssignedTasks' => true])
         </div>
 
@@ -1568,22 +1571,31 @@
             pager.classList.toggle('hidden', totalPages <= 1);
             if (totalPages <= 1) return;
 
+            // A bordered toolbar of its own, not two quiet icons — the point is
+            // that more tasks exist, and that has to read at a glance.
+            pager.className = 'flex items-center justify-between gap-2 mt-2.5 px-2 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700';
             pager.replaceChildren();
+
+            const btnBase = 'w-7 h-7 rounded-md bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center transition '
+                + 'hover:border-emerald-500/70 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-white disabled:hover:border-zinc-700';
+
             const prev = document.createElement('button');
             prev.type = 'button';
-            prev.className = 'w-7 h-7 rounded-md border border-zinc-700 text-zinc-400 hover:text-white hover:border-emerald-500/50 disabled:opacity-30 disabled:hover:text-zinc-400 disabled:hover:border-zinc-700 flex items-center justify-center';
-            prev.innerHTML = '<i class="fas fa-chevron-left text-[10px]"></i>';
+            prev.title = 'Previous tasks';
+            prev.className = btnBase;
+            prev.innerHTML = '<i class="fas fa-chevron-left text-[11px]"></i>';
             prev.disabled = assignedTaskPage === 0;
             prev.addEventListener('click', function () { goToAssignedTaskPage(assignedTaskPage - 1); });
 
             const label = document.createElement('span');
-            label.className = 'text-[10px] font-semibold text-zinc-500';
-            label.textContent = (assignedTaskPage + 1) + ' of ' + totalPages;
+            label.className = 'text-[11px] font-bold text-white tracking-wide';
+            label.textContent = 'Page ' + (assignedTaskPage + 1) + ' of ' + totalPages;
 
             const next = document.createElement('button');
             next.type = 'button';
-            next.className = prev.className;
-            next.innerHTML = '<i class="fas fa-chevron-right text-[10px]"></i>';
+            next.title = 'Next tasks';
+            next.className = btnBase;
+            next.innerHTML = '<i class="fas fa-chevron-right text-[11px]"></i>';
             next.disabled = assignedTaskPage >= totalPages - 1;
             next.addEventListener('click', function () { goToAssignedTaskPage(assignedTaskPage + 1); });
 

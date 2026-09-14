@@ -1,5 +1,7 @@
 <aside class="h-full flex flex-col text-zinc-200">
-    <div class="px-5 py-5 flex-1 overflow-y-auto">
+    {{-- No scrollbar of its own: Assigned Tasks pages at 4 cards precisely so
+         this panel never has to grow past the sidebar's own height. --}}
+    <div class="px-5 py-5 flex-1 overflow-hidden">
         {{-- The template number used to be a badge in the top header
              (FRONT DESK / Template 1); it lives here now, above the team it
              belongs to, since every member below already carries their own
