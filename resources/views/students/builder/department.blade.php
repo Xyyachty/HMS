@@ -762,14 +762,6 @@
         </div>
 
         <div class="topbar-actions">
-            {{-- The other door: Customize is the website editor, this hands the
-                 same role over to its hotel operations. --}}
-            @php $simulationUrl = \App\Support\HotelTemplateBuilder::simulationUrlForRole($builderRole); @endphp
-            @if($simulationUrl)
-                <a href="{{ $simulationUrl }}" onclick="return confirmLeaveBuilder(event)" class="hdr-btn btn-secondary" title="Open Simulation">
-                    <i class="fas fa-bell-concierge"></i> Simulation
-                </a>
-            @endif
             <button id="fsToggleBtn" class="hdr-btn btn-secondary" onclick="toggleFullscreenRedesign()" title="Fullscreen">
                 <i class="fas fa-expand" id="fsToggleIcon"></i>
                 <span id="fsToggleLabel">Fullscreen</span>
