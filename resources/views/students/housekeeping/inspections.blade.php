@@ -1,9 +1,5 @@
 @extends('students.builder.ops-shell')
 
-@php
-    $backRoute = 'students.housekeeping';
-@endphp
-
 @section('page-title', 'Room Inspections')
 
 @section('head-extra')
@@ -109,7 +105,7 @@
 @section('scripts')
 <script>
   window.HMS_INSPECTIONS = {
-    backUrl: @json(route($backRoute)),
+    backUrl: @json(route('students.dashboard', ['section' => 'tasks'])),
     indexUrl: @json(route('students.hotel.inspections.index')),
     roomsUrl: @json(route('students.hotel.rooms.index')),
     findings: @json(\App\Models\HotelRoomInspection::FINDINGS),

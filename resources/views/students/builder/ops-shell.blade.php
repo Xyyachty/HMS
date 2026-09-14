@@ -306,6 +306,8 @@
             <span class="hms-logo-text text-sm truncate">Hotel Management System</span>
             <div class="w-px h-5 bg-zinc-800 shrink-0"></div>
             @php
+                // Simulation's own switcher: stays inside Simulation when a
+                // multi-role member moves between their operations modules.
                 $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
             @endphp
             @if(count($myModules) > 1)
@@ -317,13 +319,11 @@
                     <div class="module-menu" id="moduleMenu">
                         <p class="module-menu-label">My Modules</p>
                         @foreach($myModules as $module)
-                            <a href="{{ route($module['route']) }}"
+                            @continue(empty($module['simulation_url']))
+                            <a href="{{ $module['simulation_url'] }}"
                                class="{{ $module['role'] === $builderRole ? 'is-active' : '' }}">
                                 <i class="fas {{ $roleThemes[$module['role']]['icon'] ?? 'fa-layer-group' }}"></i>
                                 {{ $module['label'] }}
-                                @if(!$module['editable'])
-                                    <span class="view-only-chip">View only</span>
-                                @endif
                             </a>
                         @endforeach
                     </div>
@@ -337,9 +337,17 @@
         <div class="topbar-mid"></div>
 
         <div class="topbar-actions">
-            <a href="{{ route($backRoute ?? 'students.dashboard') }}" class="hdr-btn btn-secondary" title="Back to builder">
-                <i class="fas fa-arrow-left"></i> Back
+            {{-- Simulation's own Back: this shell is operations, not the editor,
+                 so it goes to Tasks rather than looping back into Customize. --}}
+            <a href="{{ route('students.dashboard', ['section' => 'tasks']) }}" class="hdr-btn btn-secondary" title="Back to Tasks">
+                <i class="fas fa-arrow-left"></i> Back to Tasks
             </a>
+            @php $customizeRoute = \App\Support\HotelTemplateBuilder::routeNameForRole($builderRole); @endphp
+            @if($customizeRoute && \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole) !== [])
+                <a href="{{ route($customizeRoute) }}" class="hdr-btn btn-secondary" title="Open Customize">
+                    <i class="fas fa-palette"></i> Customize
+                </a>
+            @endif
             <div class="relative" id="profileWrapper">
                 <?php
                     $authUser = auth()->user();

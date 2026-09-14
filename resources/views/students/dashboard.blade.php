@@ -1032,13 +1032,61 @@
                         <p class="text-sm text-slate-500 mt-1">View and manage all tasks assigned to you.</p>
                     </div>
                     @if(!empty($studentRoles))
+                        {{-- Two doors, two kinds of work. Customize is the website editor, so
+                             it only lists roles that own a page to design; Simulation is the
+                             hotel's day-to-day operations, which every role has. A member
+                             holding one role goes straight in; several roles get a menu. --}}
+                        @php
+                            $taskAreas = [
+                                [
+                                    'id' => 'customizeAreaMenu',
+                                    'label' => 'Customize',
+                                    'icon' => 'mdi:palette-outline',
+                                    'urlKey' => 'customize_url',
+                                    'modules' => array_values(array_filter($myModules, fn ($m) => $m['editable'])),
+                                    'class' => 'brand-gradient text-white border-transparent shadow-lg shadow-brand/20 hover:opacity-90',
+                                ],
+                                [
+                                    'id' => 'simulationAreaMenu',
+                                    'label' => 'Simulation',
+                                    'icon' => 'mdi:bell-ring-outline',
+                                    'urlKey' => 'simulation_url',
+                                    'modules' => array_values(array_filter($myModules, fn ($m) => !empty($m['simulation_url']))),
+                                    'class' => 'bg-white text-slate-700 border-slate-200 shadow-sm hover:border-brand/40 hover:text-brand',
+                                ],
+                            ];
+                        @endphp
                         <div class="flex flex-wrap items-center gap-3">
-                            @foreach($myModules as $module)
-                                <a href="{{ route($module['route']) }}"
-                                   class="inline-flex items-center gap-2 px-4 py-2 brand-gradient text-white text-xs font-bold rounded-xl shadow-lg shadow-brand/20 hover:opacity-90 transition-opacity">
-                                    <span class="iconify text-base" data-icon="mdi:palette-outline"></span>
-                                    {{ count($myModules) > 1 ? 'Customize ' . $module['label'] : 'Customize' }}
-                                </a>
+                            @foreach($taskAreas as $area)
+                                @continue(empty($area['modules']))
+                                @if(count($area['modules']) === 1)
+                                    <a href="{{ $area['modules'][0][$area['urlKey']] }}"
+                                       class="inline-flex items-center gap-2 px-4 py-2 border text-xs font-bold rounded-xl transition {{ $area['class'] }}">
+                                        <span class="iconify text-base" data-icon="{{ $area['icon'] }}"></span>
+                                        {{ $area['label'] }}
+                                    </a>
+                                @else
+                                    <div class="relative" data-task-area-menu>
+                                        <button type="button" onclick="toggleTaskAreaMenu('{{ $area['id'] }}')"
+                                                aria-haspopup="true" aria-controls="{{ $area['id'] }}"
+                                                class="inline-flex items-center gap-2 px-4 py-2 border text-xs font-bold rounded-xl transition {{ $area['class'] }}">
+                                            <span class="iconify text-base" data-icon="{{ $area['icon'] }}"></span>
+                                            {{ $area['label'] }}
+                                            <span class="iconify text-sm" data-icon="mdi:chevron-down"></span>
+                                        </button>
+                                        <div id="{{ $area['id'] }}" hidden
+                                             class="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-slate-100 shadow-xl py-1.5 z-30">
+                                            <p class="px-3 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Choose a role</p>
+                                            @foreach($area['modules'] as $module)
+                                                <a href="{{ $module[$area['urlKey']] }}"
+                                                   class="flex items-center gap-2 px-3 py-2 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-brand">
+                                                    <span class="iconify text-base" data-icon="{{ $roleIcons[$module['role']] ?? 'mdi:clipboard-text-outline' }}"></span>
+                                                    {{ $module['label'] }}
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
                     @endif
@@ -1198,7 +1246,10 @@
                                                               title="Assigned to {{ $task->assignedTo?->name ?? 'a teammate' }}">{{ $task->assignedTo?->first_name ?? "Teammate's" }}</span>
                                                     @endif
                                                     @if($rowModule)
-                                                        <a href="{{ route($rowModule['route']) }}" title="Open {{ $rowModule['label'] }}"
+                                                        {{-- A website task opens the editor; an operations task opens
+                                                             Simulation — same split as the two buttons above. --}}
+                                                        <a href="{{ $rowModule['editable'] ? $rowModule['customize_url'] : $rowModule['simulation_url'] }}"
+                                                           title="Open {{ $rowModule['label'] }}"
                                                            class="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand hover:border-brand/40 transition-colors">
                                                             <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
                                                         </a>
@@ -2732,6 +2783,21 @@
             btn?.classList.toggle('text-brand', open);
             btn?.classList.toggle('text-slate-400', !open);
         }
+
+        // ── Customize / Simulation role menus ──
+        // A member with several roles needs a menu on each button; closing one
+        // when the other opens (or on an outside click) keeps at most one open.
+        function toggleTaskAreaMenu(id) {
+            const menu = document.getElementById(id);
+            if (!menu) return;
+            const willOpen = menu.hidden;
+            document.querySelectorAll('[data-task-area-menu] > div[id]').forEach(m => { m.hidden = true; });
+            menu.hidden = !willOpen;
+        }
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-task-area-menu]')) return;
+            document.querySelectorAll('[data-task-area-menu] > div[id]').forEach(m => { m.hidden = true; });
+        });
 
         // ── Live group presence sync ──
         function hmsCsrfToken() {

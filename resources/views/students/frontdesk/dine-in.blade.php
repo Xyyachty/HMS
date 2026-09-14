@@ -1,7 +1,5 @@
 @extends('students.builder.ops-shell')
 
-@php $backRoute = 'students.frontdesk'; @endphp
-
 @section('page-title', 'Dine-in Tables')
 
 @section('head-extra')
@@ -200,7 +198,7 @@
 @section('scripts')
 <script>
   window.HMS_DINE_IN = {
-    backUrl: @json(route('students.frontdesk')),
+    backUrl: @json(route('students.dashboard', ['section' => 'tasks'])),
     tablesUrl: @json(route('students.hotel.tables.index')),
   };
 </script>

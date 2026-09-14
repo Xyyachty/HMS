@@ -51,6 +51,19 @@ class HotelTemplateBuilder
         'maintenance' => 'students.maintenance',
     ];
 
+    /**
+     * Where each role's Simulation opens: the first of its Staff Tools, so the
+     * operations work is reached without passing through the website editor.
+     * [route name, query parameters].
+     */
+    public const ROLE_SIMULATION_ROUTES = [
+        'front_desk' => ['students.frontdesk.verify-guest', []],
+        'room_management' => ['students.roommanagement.manage', ['nav' => 'manage-room']],
+        'restaurant_management' => ['students.restaurant.manage', ['nav' => 'manage-menu']],
+        'housekeeping' => ['students.housekeeping.inspections', []],
+        'maintenance' => ['students.maintenance.complaints', []],
+    ];
+
     public const USER_ELEMENTS_KEY = '__userElements';
     public const DELETED_KEY = '__deleted';
     public const NAV_LINKS_KEY = '__navLinks';
@@ -291,13 +304,26 @@ class HotelTemplateBuilder
         return self::ROLE_ROUTES[$role] ?? null;
     }
 
+    public static function simulationUrlForRole(string $role): ?string
+    {
+        if (!isset(self::ROLE_SIMULATION_ROUTES[$role])) {
+            return null;
+        }
+        [$name, $params] = self::ROLE_SIMULATION_ROUTES[$role];
+
+        return route($name, $params);
+    }
+
     /**
      * Builder modules a student can open, one per role they hold.
      * Ordered by ROLES so the list stays stable instead of following the
      * order faculty happened to tick the role checkboxes.
      *
      * @param  string[]  $roles
-     * @return array<int, array{role: string, label: string, route: string, editable: bool}>
+     * Each carries both doors: customize_url opens the website editor,
+     * simulation_url opens the role's hotel operations.
+     *
+     * @return array<int, array{role: string, label: string, route: string, editable: bool, customize_url: string, simulation_url: ?string}>
      */
     public static function modulesForRoles(array $roles): array
     {
@@ -317,6 +343,8 @@ class HotelTemplateBuilder
                 'label' => $label,
                 'route' => $route,
                 'editable' => self::editablePagesForRole($role) !== [],
+                'customize_url' => route($route),
+                'simulation_url' => self::simulationUrlForRole($role),
             ];
         }
 

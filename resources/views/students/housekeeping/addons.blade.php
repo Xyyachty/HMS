@@ -1,7 +1,5 @@
 @extends('students.builder.ops-shell')
 
-@php $backRoute = 'students.housekeeping'; @endphp
-
 @section('page-title', 'Add-ons')
 
 @section('head-extra')
@@ -100,7 +98,7 @@
 @section('scripts')
 <script>
   window.HMS_ADDONS = {
-    backUrl: @json(route($backRoute)),
+    backUrl: @json(route('students.dashboard', ['section' => 'tasks'])),
     indexUrl: @json(route('students.hotel.addons.index')),
     storeUrl: @json(route('students.hotel.addons.store')),
   };

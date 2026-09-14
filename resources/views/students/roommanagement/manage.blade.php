@@ -1,7 +1,5 @@
 @extends('students.builder.ops-shell')
 
-@php $backRoute = 'students.roommanagement'; @endphp
-
 @section('page-title', 'Room Management')
 
 @section('head-extra')
@@ -182,7 +180,7 @@
 
 @section('scripts')
 <script>
-  window.HMS_ROOMMANAGEMENT_URL = @json(route('students.roommanagement'));
+  window.HMS_ROOMMANAGEMENT_URL = @json(route('students.dashboard', ['section' => 'tasks']));
   window.HMS_ROOM_MGMT_INITIAL_NAV = @json(request()->query('nav', 'manage-room'));
 </script>
 @verbatim

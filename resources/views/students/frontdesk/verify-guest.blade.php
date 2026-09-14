@@ -1,7 +1,5 @@
 @extends('students.builder.ops-shell')
 
-@php $backRoute = 'students.frontdesk'; @endphp
-
 @section('page-title', 'Guest Information')
 
 @section('head-extra')
@@ -127,7 +125,7 @@
 
 @section('scripts')
 <script>
-  window.HMS_FRONTDESK_URL = @json(route('students.frontdesk'));
+  window.HMS_FRONTDESK_URL = @json(route('students.dashboard', ['section' => 'tasks']));
 </script>
 @verbatim
 <script type="text/babel">

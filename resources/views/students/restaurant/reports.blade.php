@@ -1,7 +1,5 @@
 @extends('students.builder.ops-shell')
 
-@php $backRoute = 'students.restaurant'; @endphp
-
 @section('page-title', 'Reports')
 
 @section('head-extra')
@@ -15,7 +13,7 @@
 @section('scripts')
 <script>
   window.HMS_REPORTS = {
-    backUrl: @json(route($backRoute)),
+    backUrl: @json(route('students.dashboard', ['section' => 'tasks'])),
     ordersUrl: @json(route('students.hotel.orders.index')),
     tablesUrl: @json(route('students.hotel.tables.index')),
     // Only to tell a stay that was cancelled from one that is still running:

@@ -1,7 +1,5 @@
 @extends('students.builder.ops-shell')
 
-@php $backRoute = 'students.restaurant'; @endphp
-
 @section('page-title', 'Restaurant Management')
 
 @section('head-extra')
@@ -162,7 +160,7 @@
 
 @section('scripts')
 <script>
-  window.HMS_RESTAURANT_URL = @json(route('students.restaurant'));
+  window.HMS_RESTAURANT_URL = @json(route('students.dashboard', ['section' => 'tasks']));
   window.HMS_RESTAURANT_INITIAL_NAV = @json(request()->query('nav', 'manage-menu'));
 </script>
 @verbatim

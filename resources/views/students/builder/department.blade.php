@@ -714,10 +714,13 @@
             <span class="hms-logo-text text-sm truncate">Hotel Management System</span>
             <div class="w-px h-5 bg-zinc-800 shrink-0"></div>
             @php
-                // A member may hold several roles; give them a way to move between modules.
+                // A member may hold several roles; give them a way to move between
+                // modules. Filtered to editable ones — this switcher lives inside
+                // Customize, so a role with nothing to design has no reason here.
                 $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
+                $editorModules = array_values(array_filter($myModules, fn ($m) => $m['editable']));
             @endphp
-            @if(count($myModules) > 1)
+            @if(count($editorModules) > 1)
                 <div class="module-switcher" id="moduleSwitcher">
                     <span class="module-badge" onclick="toggleModuleMenu()" title="Switch module">
                         {{ $moduleLabel }}
@@ -725,15 +728,12 @@
                     </span>
                     <div class="module-menu" id="moduleMenu">
                         <p class="module-menu-label">My Modules</p>
-                        @foreach($myModules as $module)
-                            <a href="{{ route($module['route']) }}"
+                        @foreach($editorModules as $module)
+                            <a href="{{ $module['customize_url'] }}"
                                class="{{ $module['role'] === $builderRole ? 'is-active' : '' }}"
                                @if($module['role'] !== $builderRole) onclick="return confirmLeaveBuilder(event)" @endif>
                                 <i class="fas {{ $roleThemes[$module['role']]['icon'] ?? 'fa-layer-group' }}"></i>
                                 {{ $module['label'] }}
-                                @if(!$module['editable'])
-                                    <span class="view-only-chip">View only</span>
-                                @endif
                             </a>
                         @endforeach
                     </div>
@@ -762,6 +762,14 @@
         </div>
 
         <div class="topbar-actions">
+            {{-- The other door: Customize is the website editor, this hands the
+                 same role over to its hotel operations. --}}
+            @php $simulationUrl = \App\Support\HotelTemplateBuilder::simulationUrlForRole($builderRole); @endphp
+            @if($simulationUrl)
+                <a href="{{ $simulationUrl }}" onclick="return confirmLeaveBuilder(event)" class="hdr-btn btn-secondary" title="Open Simulation">
+                    <i class="fas fa-bell-concierge"></i> Simulation
+                </a>
+            @endif
             <button id="fsToggleBtn" class="hdr-btn btn-secondary" onclick="toggleFullscreenRedesign()" title="Fullscreen">
                 <i class="fas fa-expand" id="fsToggleIcon"></i>
                 <span id="fsToggleLabel">Fullscreen</span>
@@ -843,7 +851,7 @@
     <!-- ═══════ MAIN 3-COLUMN LAYOUT ═══════ -->
     <div id="mainLayout" class="flex flex-1 overflow-hidden">
         <div id="leftSidebar" class="w-72 shrink-0 sidebar-base border-r overflow-y-auto">
-            @include('students.frontdesk.left-sidebar.index')
+            @include('students.frontdesk.left-sidebar.index', ['showStaffTools' => false])
         </div>
 
         <div id="centerCanvasWrap" class="flex-1 flex flex-col min-w-0 canvas-bg">

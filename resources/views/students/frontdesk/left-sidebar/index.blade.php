@@ -25,7 +25,11 @@
             @endforeach
         </div>
 
-        @if(in_array($builderRole ?? null, ['front_desk', 'room_management', 'restaurant_management', 'maintenance', 'housekeeping'], true))
+        {{-- Staff Tools belongs to Simulation, not the website editor. The editor
+             (department.blade.php) passes showStaffTools=false so the two areas
+             stop overlapping; ops-shell, which is Simulation itself, keeps the
+             default and still shows the nav. --}}
+        @if(($showStaffTools ?? true) && in_array($builderRole ?? null, ['front_desk', 'room_management', 'restaurant_management', 'maintenance', 'housekeeping'], true))
         <div class="mt-5 pt-4 border-t border-zinc-800">
             <p class="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2.5">Staff Tools</p>
             <div class="space-y-1.5">

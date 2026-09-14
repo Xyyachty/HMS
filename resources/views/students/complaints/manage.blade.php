@@ -2,7 +2,6 @@
 
 @php
     $complaintRole = $builderRole ?? 'front_desk';
-    $backRoute = \App\Support\HotelTemplateBuilder::ROLE_ROUTES[$complaintRole] ?? 'students.dashboard';
     $pageTitle = $complaintRole === 'front_desk' ? 'Complaints' : 'Complaints / Concerns';
 @endphp
 
@@ -102,7 +101,7 @@
 <script>
   window.HMS_COMPLAINTS = {
     role: @json($complaintRole),
-    backUrl: @json(route($backRoute)),
+    backUrl: @json(route('students.dashboard', ['section' => 'tasks'])),
     indexUrl: @json(route('students.hotel.complaints.index')),
     storeUrl: @json(route('students.hotel.complaints.store')),
     roomsUrl: @json(route('students.hotel.rooms.index')),
