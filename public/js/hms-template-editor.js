@@ -2699,11 +2699,101 @@
     }, 100);
   }
 
+  /**
+   * An assigned task, opened from the editor sidebar: go to the page it is done
+   * on and bring the part of it that needs customizing into view.
+   *
+   * Held as pending across a page change, because hms-page-change scrolls to the
+   * top and resets section focus ~80ms after landing — focusing any earlier is
+   * undone. The highlight is an overlay box rather than a class on the section:
+   * React re-renders the template freely and would drop a class it did not set.
+   */
+  let pendingTaskFocus = null;
+  let taskFocusOverlay = null;
+  let taskFocusTimer = null;
+
+  function resolveTaskFocusTarget(page, section) {
+    if (section === 'header') return document.querySelector('.nav-bar');
+    if (section) {
+      const found = document.querySelector('[data-hms-section="' + section + '"]');
+      if (found) return found;
+    }
+    // No section named, or this template has none by that name (Template 2 has
+    // no promos strip): the page itself is the area.
+    return document.querySelector('main[data-hms-page="' + page + '"]');
+  }
+
+  function flashTaskFocus(target) {
+    if (taskFocusOverlay) taskFocusOverlay.remove();
+    clearTimeout(taskFocusTimer);
+    if (!target) return;
+
+    const fixed = window.getComputedStyle(target).position === 'fixed';
+    const rect = target.getBoundingClientRect();
+    const box = document.createElement('div');
+    box.setAttribute('data-hms-no-edit', '1');
+    box.setAttribute('aria-hidden', 'true');
+    Object.assign(box.style, {
+      position: fixed ? 'fixed' : 'absolute',
+      left: rect.left + (fixed ? 0 : window.scrollX) + 'px',
+      top: rect.top + (fixed ? 0 : window.scrollY) + 'px',
+      width: rect.width + 'px',
+      height: rect.height + 'px',
+      pointerEvents: 'none',
+      zIndex: '2147483000',
+      borderRadius: '10px',
+      boxShadow: '0 0 0 3px rgba(34, 211, 238, 0.95), 0 0 28px 6px rgba(34, 211, 238, 0.45)',
+      transition: 'opacity 0.6s ease',
+      opacity: '1',
+    });
+    document.body.appendChild(box);
+    taskFocusOverlay = box;
+    taskFocusTimer = setTimeout(function () {
+      box.style.opacity = '0';
+      setTimeout(function () { box.remove(); if (taskFocusOverlay === box) taskFocusOverlay = null; }, 650);
+    }, 2400);
+  }
+
+  function applyTaskFocus(focus) {
+    const target = resolveTaskFocusTarget(focus.page, focus.section);
+
+    if (focus.section && focus.section !== 'header' && target && target.hasAttribute('data-hms-section')) {
+      // Also select it as the active section, so Design mode's section chrome
+      // lands on the part the task is about.
+      if (designMode) focusSection(focus.section, { scroll: false });
+    }
+
+    if (target && focus.section && focus.section !== 'header') {
+      const y = target.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      // Measure after the smooth scroll has moved things.
+      setTimeout(function () { flashTaskFocus(target); }, 450);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(function () { flashTaskFocus(target); }, 350);
+    }
+  }
+
+  function focusTaskArea(page, section) {
+    if (!page) return;
+    const focus = { page: page, section: section || null };
+    if (getCurrentPage() === page && typeof window.__HMS_NAVIGATE__ === 'function') {
+      pendingTaskFocus = null;
+      applyTaskFocus(focus);
+      return;
+    }
+    pendingTaskFocus = focus;
+    navigateTemplateTo(page);
+  }
+
   window.addEventListener('message', function (event) {
     const data = event.data || {};
     if (!data || data.source !== 'hms-parent') return;
 
     switch (data.type) {
+      case 'focus-task-area':
+        focusTaskArea(data.page, data.section);
+        break;
       case 'set-mode':
         setDesignMode(data.mode === 'design' || data.mode === 'build');
         break;
@@ -2881,6 +2971,14 @@
     setTimeout(syncSectionMode, 80);
     updateEditHint();
     postToParent({ type: 'page-changed', page: currentPage, canEditPage: canEditCurrentPage() });
+
+    // An assigned task was waiting on this page: focus it once React has mounted
+    // the page and the section reset above has run.
+    if (pendingTaskFocus && pendingTaskFocus.page === currentPage) {
+      const focus = pendingTaskFocus;
+      pendingTaskFocus = null;
+      setTimeout(function () { applyTaskFocus(focus); }, 250);
+    }
   });
 
   const root = document.getElementById('root') || document.body;

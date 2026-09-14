@@ -38,6 +38,19 @@
             @endforeach
         </div>
 
+        {{-- The tasks faculty assigned this team, read off the same Task rows Set
+             Task writes. Only the Template Editor shows it (department.blade.php
+             passes showAssignedTasks); the list is drawn and kept current by
+             renderAssignedTasks() / syncAssignedTasks() there, seeded from
+             $assignedTasks so it is right on first paint. --}}
+        @if($showAssignedTasks ?? false)
+        <div class="mt-5 pt-4 border-t border-zinc-800">
+            <p class="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2.5">Assigned Tasks</p>
+            <div id="assignedTaskList" class="space-y-1.5"></div>
+            <script type="application/json" id="assignedTaskSeed">@json($assignedTasks ?? [])</script>
+        </div>
+        @endif
+
         {{-- Staff Tools belongs to Simulation, not the website editor. The editor
              (department.blade.php) passes showStaffTools=false so the two areas
              stop overlapping; ops-shell, which is Simulation itself, keeps the

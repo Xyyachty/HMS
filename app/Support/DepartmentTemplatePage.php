@@ -115,7 +115,12 @@ class DepartmentTemplatePage
             }
         }
 
+        // The team's assigned tasks for the editor sidebar, first paint. The page
+        // polls students.tasks.assigned for the same list afterwards.
+        $assignedTasks = AssignedTaskList::forMember($groupMembership);
+
         return compact(
+            'assignedTasks',
             'tasks',
             'groupMembers',
             'group',

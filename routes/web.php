@@ -700,6 +700,21 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'complete' => $done === count($list),
         ]);
     })->name('tasks.activities.toggle');
+
+    /* The team's assigned tasks, as the Template Editor sidebar lists them. Polled
+       by the editor so a task faculty sets appears without a reload; read-only,
+       and scoped to the caller's own team through their membership. */
+    Route::get('/tasks/assigned', function () {
+        $student = auth()->user()?->student;
+        $membership = $student
+            ? \App\Models\StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first()
+            : null;
+
+        return response()->json([
+            'tasks' => \App\Support\AssignedTaskList::forMember($membership),
+        ]);
+    })->name('tasks.assigned');
+
     Route::get('/roommanagement', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'room_management');
         return view('students.roommanagement', $data);

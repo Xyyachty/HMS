@@ -661,6 +661,13 @@
         html[data-ops-theme="2"] #leftSidebar .bg-zinc-950\/80 { background: #efe9e0; }
         html[data-ops-theme="2"] #leftSidebar #backToTasksBtn { background: #ffffff; color: #1a1a1a; border-color: #e2ddd5; }
         html[data-ops-theme="2"] #leftSidebar #backToTasksBtn:hover { background: #efe9e0; border-color: #2d6a4f; color: #1b4332; }
+
+        /* Assigned Tasks: the revision pill has no zinc/cyan/emerald class to ride
+           the theme overrides above, so it carries its own for both shells. */
+        #leftSidebar .assigned-task-revision { color: #fbbf24; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35); }
+        html[data-ops-theme="2"] #leftSidebar .assigned-task-revision { color: #b45309; background: rgba(180, 83, 9, 0.08); border-color: rgba(180, 83, 9, 0.3); }
+        #leftSidebar .assigned-task-card.is-active { box-shadow: inset 3px 0 0 #34d399; }
+        html[data-ops-theme="2"] #leftSidebar .assigned-task-card.is-active { box-shadow: inset 3px 0 0 #2d6a4f; }
     </style>
 @if($opsSitePalette)
     @include('students.builder.site-theme', ['p' => $opsSitePalette])
@@ -778,7 +785,7 @@
     <!-- ═══════ MAIN 3-COLUMN LAYOUT ═══════ -->
     <div id="mainLayout" class="flex flex-1 overflow-hidden">
         <div id="leftSidebar" class="w-72 shrink-0 sidebar-base border-r overflow-y-auto">
-            @include('students.frontdesk.left-sidebar.index', ['showStaffTools' => false])
+            @include('students.frontdesk.left-sidebar.index', ['showStaffTools' => false, 'showAssignedTasks' => true])
         </div>
 
         <div id="centerCanvasWrap" class="flex-1 flex flex-col min-w-0 canvas-bg">
@@ -1459,16 +1466,177 @@
             } catch (e) { /* ignore */ }
         }
 
-        /* Both of these cost a database connection each time, and Supabase's pooler
-           has a fixed number to hand out across everyone on the site — see
-           render.yaml. A backgrounded tab polls nothing; returning to it syncs at
-           once, so the numbers are still right the moment anybody looks. */
+        // ── Assigned Tasks (left sidebar) ──
+        // The team's tasks from faculty's Set Task, drawn from the seed the server
+        // rendered and refreshed by syncAssignedTasks(). Clicking one opens the
+        // page of the Default Template it is done on and brings its section into
+        // view; a task in another module this student holds jumps to that editor,
+        // where it can actually be edited.
+        const ASSIGNED_TASKS_URL = @json(route('students.tasks.assigned'));
+        const EDITOR_EDITABLE_PAGES = @json(array_values($editablePages ?? []));
+        const TASK_PAGE_LABELS = { home: 'Home', rooms: 'Rooms', restaurant: 'Restaurant', amenities: 'Amenities', experience: 'Experience' };
+        let assignedTasks = [];
+        let activeAssignedTaskId = null;
+        let assignedTasksSignature = '';
+
+        function readAssignedTaskSeed() {
+            try {
+                return JSON.parse(document.getElementById('assignedTaskSeed')?.textContent || '[]') || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function assignedTaskStatusClasses(status) {
+            if (status === 'completed') return 'text-emerald-400 bg-zinc-800 border-emerald-500/50';
+            if (status === 'needs_revision') return 'assigned-task-revision';
+            return 'text-cyan-400 bg-zinc-800 border-zinc-700';
+        }
+
+        function renderAssignedTasks(tasks) {
+            const list = document.getElementById('assignedTaskList');
+            if (!list) return;
+
+            assignedTasks = Array.isArray(tasks) ? tasks : [];
+            list.replaceChildren();
+
+            if (assignedTasks.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'text-[11px] text-zinc-500';
+                empty.textContent = 'No assigned tasks yet.';
+                list.appendChild(empty);
+                return;
+            }
+
+            assignedTasks.forEach(function (task) {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.dataset.taskId = task.id;
+                card.className = 'assigned-task-card w-full text-left px-3 py-2.5 rounded-lg bg-zinc-800 border transition hover:border-emerald-500/50 '
+                    + (task.id === activeAssignedTaskId ? 'border-emerald-500/50 is-active' : 'border-zinc-700');
+                card.addEventListener('click', function (event) { openAssignedTask(task, event); });
+
+                const top = document.createElement('div');
+                top.className = 'flex items-center justify-between gap-2';
+                const step = document.createElement('span');
+                step.className = 'text-[10px] font-bold tracking-wider text-cyan-400';
+                step.textContent = task.step_label || 'TASK';
+                const pill = document.createElement('span');
+                pill.className = 'shrink-0 px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wide ' + assignedTaskStatusClasses(task.status);
+                pill.textContent = task.status_label;
+                top.append(step, pill);
+
+                const title = document.createElement('p');
+                title.className = 'text-[12px] font-bold text-white leading-snug mt-1';
+                title.textContent = task.title;
+
+                const meta = document.createElement('p');
+                meta.className = 'text-[10px] text-zinc-500 mt-0.5';
+                meta.textContent = task.role_label + (task.due ? ' · Due: ' + task.due : '');
+
+                card.append(top, title, meta);
+                list.appendChild(card);
+            });
+        }
+
+        function markActiveAssignedTask(id) {
+            activeAssignedTaskId = id;
+            document.querySelectorAll('.assigned-task-card').forEach(function (card) {
+                const active = Number(card.dataset.taskId) === id;
+                card.classList.toggle('border-emerald-500/50', active);
+                card.classList.toggle('border-zinc-700', !active);
+                card.classList.toggle('is-active', active);
+            });
+        }
+
+        function focusTaskArea(task) {
+            if (!task || !task.page || typeof postToTemplate !== 'function') return;
+            markActiveAssignedTask(task.id);
+            postToTemplate({ type: 'focus-task-area', page: task.page, section: task.section || null });
+            const pageLabel = TASK_PAGE_LABELS[task.page] || task.page;
+            const viewOnly = !EDITOR_EDITABLE_PAGES.includes(task.page);
+            toast('Opened ' + pageLabel + ' — ' + task.title + (viewOnly ? ' (view only here)' : ''));
+        }
+
+        function openAssignedTask(task, event) {
+            // The concept is written on the dashboard, not in the template.
+            if (task.is_concept) {
+                if (task.url) window.location.href = task.url;
+                return;
+            }
+            // Another module this student holds: open it there so it is editable.
+            if (task.role !== @json($builderRole) && task.url) {
+                const link = document.createElement('a');
+                link.setAttribute('href', task.url);
+                const fakeEvent = { currentTarget: link, preventDefault: function () {} };
+                if (confirmLeaveBuilder(fakeEvent)) window.location.href = task.url;
+                return;
+            }
+            focusTaskArea(task);
+        }
+
+        async function syncAssignedTasks() {
+            if (!document.getElementById('assignedTaskList')) return;
+            try {
+                const res = await fetch(ASSIGNED_TASKS_URL, {
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+                // Redraw only when something changed, so a hover or the active
+                // mark is not reset every poll for nothing.
+                const signature = JSON.stringify(tasks);
+                if (signature === assignedTasksSignature) return;
+                assignedTasksSignature = signature;
+                renderAssignedTasks(tasks);
+            } catch (e) { /* a missed poll is retried on the next one */ }
+        }
+
+        // First paint from the server's seed. Drawn now rather than on
+        // DOMContentLoaded: the sidebar is already above this script, and the
+        // ?focus handler below needs the list before the template reports ready.
+        (function () {
+            const seed = readAssignedTaskSeed();
+            assignedTasksSignature = JSON.stringify(seed);
+            renderAssignedTasks(seed);
+        })();
+
+        // ?focus=<task id> — arrived from another editor's sidebar. Focus once the
+        // template reports it is ready, since navigation before then is dropped;
+        // a timer covers a ready message that landed before this listener did.
+        (function () {
+            const focusId = Number(new URLSearchParams(window.location.search).get('focus'));
+            if (!focusId) return;
+            let done = false;
+            const run = function (delay) {
+                if (done) return;
+                const task = assignedTasks.find(function (t) { return t.id === focusId; });
+                if (!task) return;
+                done = true;
+                setTimeout(function () { focusTaskArea(task); }, delay);
+            };
+            window.addEventListener('message', function (event) {
+                const data = event.data || {};
+                if (data.source === 'hms-template' && data.type === 'editor-ready') run(300);
+            });
+            setTimeout(function () { run(0); }, 4000);
+        })();
+
+        /* These cost a database connection each time, and Supabase's pooler has a
+           fixed number to hand out across everyone on the site — see render.yaml.
+           A backgrounded tab polls nothing; returning to it syncs at once, so the
+           numbers are still right the moment anybody looks. The task list changes
+           only when faculty set work, so it polls the least often. */
         setInterval(function () { if (!document.hidden) syncGroupPresence(); }, 20000);
         setInterval(function () { if (!document.hidden) syncTemplateFromServer(); }, 15000);
+        setInterval(function () { if (!document.hidden) syncAssignedTasks(); }, 30000);
         document.addEventListener('visibilitychange', function () {
             if (document.hidden) return;
             syncGroupPresence();
             syncTemplateFromServer();
+            syncAssignedTasks();
         });
         document.addEventListener('DOMContentLoaded', function () {
             syncGroupPresence();

@@ -680,6 +680,55 @@ class TaskChecklist
         return $byStep;
     }
 
+    /**
+     * Where in the Default Template each activity is done: the page to open and
+     * the section on it to bring into view, keyed by lowercased title.
+     *
+     * Section names are the template's own data-hms-section values, plus
+     * 'header' for the nav bar, which carries none. A null section opens the
+     * page at the top — the whole page is the work. A section a template does
+     * not have (Template 2 has no promos strip) falls back to the page top in
+     * the editor rather than failing.
+     *
+     * @var array<string, array{page: string, section: ?string}>
+     */
+    private const AREAS = [
+        'brand your hotel' => ['page' => 'home', 'section' => 'header'],
+        'design the home page' => ['page' => 'home', 'section' => 'hero'],
+        "write your hotel's story" => ['page' => 'home', 'section' => 'hero'],
+        "choose the site's colours" => ['page' => 'home', 'section' => null],
+        "set the site's typography" => ['page' => 'home', 'section' => null],
+        'add your social profiles' => ['page' => 'home', 'section' => 'footer'],
+        'fill in the promos section' => ['page' => 'home', 'section' => 'promos'],
+        'build the partner brands strip' => ['page' => 'home', 'section' => 'partners'],
+        'introduce your team' => ['page' => 'home', 'section' => 'team'],
+        'colour the amenities and experience pages' => ['page' => 'amenities', 'section' => null],
+        'write the experience page' => ['page' => 'experience', 'section' => null],
+        'illustrate the experience page' => ['page' => 'experience', 'section' => null],
+    ];
+
+    /**
+     * The template page and section an activity is worked on, or null for the
+     * hotel concept — that is written on the dashboard, not in the template.
+     *
+     * Anything not listed in AREAS opens the page its role owns, which is right
+     * for every Rooms, Restaurant and Amenities activity: each of those is the
+     * whole page.
+     *
+     * @return array{page: string, section: ?string}|null
+     */
+    public static function areaFor(string $title, string $role): ?array
+    {
+        if (self::isConceptTitle($title)) {
+            return null;
+        }
+
+        return self::AREAS[mb_strtolower(trim($title))] ?? [
+            'page' => HotelTemplateBuilder::preferredPageForRole($role),
+            'section' => null,
+        ];
+    }
+
     /** The name a numbered task is shown under, or null past the last one. */
     public static function stepLabel(int $step): ?string
     {
