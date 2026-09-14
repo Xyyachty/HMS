@@ -439,13 +439,10 @@
             opacity: 0; z-index: 9999;
         }
         #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        .status-bar { background: #09090b; border-top: 1px solid #18181b; }
-
         /* ── Fullscreen Redesign Mode ── */
         body.fs-redesign .topbar { height: 52px; }
         body.fs-redesign .topbar-row { height: 52px; }
-        body.fs-redesign #leftSidebar,
-        body.fs-redesign .status-bar { display: none !important; }
+        body.fs-redesign #leftSidebar { display: none !important; }
         body.fs-redesign #mainLayout { position: relative; }
         body.fs-redesign #centerCanvasWrap {
             flex: 1 1 100%;
@@ -614,7 +611,6 @@
         html[data-ops-theme="2"] .dd-divider { background: #e2ddd5; }
         html[data-ops-theme="2"] .module-menu-label { color: #9a958e; }
         html[data-ops-theme="2"] #toast { background: #1a1a1a; border: 1px solid #2d2d2d; color: #f7f4ef; }
-        html[data-ops-theme="2"] .status-bar { background: #efe9e0; border-top: 1px solid #e2ddd5; color: #7a7570; }
         html[data-ops-theme="2"] #editorModeTabs { background: rgba(27,67,50,0.05) !important; border-color: #e2ddd5 !important; }
         html[data-ops-theme="2"] .mode-tab { color: #7a7570 !important; }
         html[data-ops-theme="2"] .mode-tab.active-tab {
@@ -820,13 +816,6 @@
             @include('students.frontdesk.right-sidebar.index')
         </div>
 
-    </div>
-
-    <!-- ═══════ STATUS BAR ═══════ -->
-    <div class="status-bar h-8 flex items-center px-6 gap-4 shrink-0 text-[10px] text-zinc-600">
-        <div class="flex items-center gap-2 text-green-500"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> <span>Editor online</span></div>
-        <span class="text-zinc-800">|</span>
-        <span id="blockCount">0 blocks on canvas</span>
     </div>
 
     <button type="button" id="fsPanelToggle" class="fs-float-btn {{ ($canEditTemplate ?? false) ? '' : 'hidden' }}" onclick="toggleDesignPanel()" title="Toggle design panel">
@@ -1125,7 +1114,7 @@
         function removeBlock(id) { document.getElementById(id)?.remove(); updateCount(); if(dropzone.querySelectorAll('.dropped-block').length === 0) emptyState.style.display = 'flex'; toast('Block removed'); }
         function moveUp(id) { const el = document.getElementById(id); const prev = el?.previousElementSibling; if(prev && prev !== emptyState) { el.parentNode.insertBefore(el, prev); toast('Moved up'); } }
         function moveDown(id) { const el = document.getElementById(id); const next = el?.nextElementSibling; if(next) { el.parentNode.insertBefore(next, el); toast('Moved down'); } }
-        function updateCount() { const n = dropzone.querySelectorAll('.dropped-block').length; document.getElementById('blockCount').textContent = n + ' block' + (n===1?'':'s') + ' on canvas'; }
+        function updateCount() { const n = dropzone.querySelectorAll('.dropped-block').length; const el = document.getElementById('blockCount'); if (el) el.textContent = n + ' block' + (n===1?'':'s') + ' on canvas'; }
 
         function toggleDropdown() { const dd = document.getElementById('profileDropdown'); const ch = document.getElementById('chevron'); if (!dd) return; dd.classList.toggle('show'); if (ch) ch.style.transform = dd.classList.contains('show') ? 'rotate(180deg)' : ''; }
         document.addEventListener('click', function(e) { const w = document.getElementById('profileWrapper'); if (w && !w.contains(e.target)) { document.getElementById('profileDropdown')?.classList.remove('show'); const ch = document.getElementById('chevron'); if (ch) ch.style.transform = ''; } });
