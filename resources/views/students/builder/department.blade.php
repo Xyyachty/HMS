@@ -430,25 +430,6 @@
         .save-hint.is-submitted { color: #34d399; font-weight: 700; }
         .save-hint.is-dirty { color: #fca5a5; }
 
-        /* Save Draft — unsaved changes highlight */
-        #saveDraftBtn.has-unsaved {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f1aeb5;
-            box-shadow: 0 0 0 1px rgba(114, 28, 36, 0.08);
-            animation: saveDraftPulse 1.6s ease-in-out infinite;
-        }
-        #saveDraftBtn.has-unsaved:hover {
-            background: #f1aeb5;
-            color: #58151c;
-            border-color: #ea868f;
-        }
-        #saveDraftBtn.has-unsaved i { color: #721c24; }
-        @keyframes saveDraftPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.18); }
-            50% { box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.12); }
-        }
-
         /* Toast */
         #toast {
             position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
@@ -590,17 +571,6 @@
             height: 26px;
             font-size: 10px;
         }
-        .template-chip {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            color: #fbbf24;
-            background: rgba(251, 191, 36, 0.1);
-            border: 1px solid rgba(251, 191, 36, 0.25);
-            border-radius: 6px;
-            padding: 3px 8px;
-            white-space: nowrap;
-        }
         @media (max-width: 1100px) {
             .topbar-mid .save-hint { display: none; }
             .hms-logo-text { max-width: 140px; }
@@ -624,9 +594,6 @@
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
         html[data-ops-theme="2"] .w-px.h-5.bg-zinc-800 { background: #e2ddd5; }
-        html[data-ops-theme="2"] .template-chip {
-            color: #b45309; background: rgba(180,83,9,0.1); border-color: rgba(180,83,9,0.25);
-        }
         html[data-ops-theme="2"] .sidebar-base { background: #ffffff; border-color: #e2ddd5; }
         html[data-ops-theme="2"] .canvas-bg {
             background: #f7f4ef;
@@ -738,12 +705,13 @@
                         @endforeach
                     </div>
                 </div>
-            @else
-                <span class="module-badge shrink-0">{{ $moduleLabel }}</span>
             @endif
-            @if(!empty($selectedTemplate))
-                <span class="template-chip shrink-0">Template {{ $selectedTemplate }}</span>
-            @endif
+            {{-- The role name and template number used to sit here as static
+                 badges (FRONT DESK / Template 1). Both are redundant with the
+                 sidebar now — every member's role is labelled there, and the
+                 template number lives above the member list — so the header
+                 stays just the brand and, for a multi-role member, the module
+                 switcher above. --}}
         </div>
 
         <div class="topbar-modes">
@@ -776,12 +744,10 @@
                         <i class="fas fa-up-right-from-square"></i> View Live
                     </button>
                 @endif
-                {{-- Three separate acts, three separate buttons: keep a draft,
-                     show it to the team, hand it to faculty. --}}
-                <button class="hdr-btn btn-secondary" onclick="saveTemplateDraft(false)" id="saveDraftBtn" title="Save draft">
-                    <i class="fas fa-floppy-disk"></i> Save Draft
-                </button>
-                <button class="hdr-btn btn-primary" onclick="saveTemplateDraft(true)"><i class="fas fa-paper-plane"></i> Publish</button>
+                {{-- Save Draft and Publish used to live here as explicit buttons.
+                     The work still saves the same way — autosave persists every
+                     change, and Ctrl+S (saveTemplateDraft(false)) still forces
+                     one — just without a button taking up toolbar space. --}}
                 {{-- Saving and submitting are different acts, so they are different
                      buttons. Everything else here keeps a draft; this one hands the
                      work to faculty and closes the role's open tasks against a
@@ -805,7 +771,7 @@
                 @if($portfolioSlug)
                     <div class="flex items-center gap-1.5 ml-1 pl-2 border-l border-zinc-800">
                         <span class="text-[10px] uppercase tracking-wider {{ $portfolioLive ? 'text-emerald-400' : 'text-zinc-500' }}"
-                              title="{{ $portfolioLive ? 'Anyone with the link can see your hotel' : 'Press Publish to open your site to visitors' }}">
+                              title="{{ $portfolioLive ? 'Anyone with the link can see your hotel' : 'Not published yet' }}">
                             <i class="fas fa-globe text-[10px]"></i> {{ $portfolioLive ? 'Live' : 'Not live' }}
                         </span>
                         <input id="portfolioUrl" readonly value="{{ url('/hotel/' . $portfolioSlug) }}"
@@ -1436,10 +1402,14 @@
         }
 
         function setSaveDraftUnsaved(dirty) {
+            // The Save Draft button that used to live in the toolbar is gone,
+            // but the status text it drove is still the only "unsaved" signal
+            // on the page, so it keeps working independent of the button.
             const btn = document.getElementById('saveDraftBtn');
-            if (!btn) return;
-            btn.classList.toggle('has-unsaved', !!dirty);
-            btn.title = dirty ? 'Unsaved changes — click to save draft' : 'Save draft';
+            if (btn) {
+                btn.classList.toggle('has-unsaved', !!dirty);
+                btn.title = dirty ? 'Unsaved changes — click to save draft' : 'Save draft';
+            }
             if (dirty) setSaveState('dirty');
         }
 

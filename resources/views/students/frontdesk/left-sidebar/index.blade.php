@@ -1,5 +1,18 @@
 <aside class="h-full flex flex-col text-zinc-200">
     <div class="px-5 py-5 flex-1 overflow-y-auto">
+        {{-- The template number used to be a badge in the top header
+             (FRONT DESK / Template 1); it lives here now, above the team it
+             belongs to, since every member below already carries their own
+             role label. Reuses utility classes the theme overrides already
+             recolor for Template 2, so no extra CSS is needed per shell. --}}
+        @if(!empty($selectedTemplate))
+        <div class="mb-4 flex items-center gap-2">
+            <span class="w-7 h-7 shrink-0 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[11px] font-extrabold text-cyan-400">
+                T{{ $selectedTemplate }}
+            </span>
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Template {{ $selectedTemplate }}</span>
+        </div>
+        @endif
         <div class="space-y-4">
             @foreach($groupMembers as $member)
                 @php
