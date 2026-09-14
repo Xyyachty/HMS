@@ -1573,7 +1573,7 @@
 
             // A bordered toolbar of its own, not two quiet icons — the point is
             // that more tasks exist, and that has to read at a glance.
-            pager.className = 'flex items-center justify-between gap-2 mt-2.5 px-2 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700';
+            pager.className = 'flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700';
             pager.replaceChildren();
 
             const btnBase = 'w-7 h-7 rounded-md bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center transition '

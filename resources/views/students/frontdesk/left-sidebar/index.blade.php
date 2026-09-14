@@ -1,7 +1,16 @@
 <aside class="h-full flex flex-col text-zinc-200">
     {{-- No scrollbar of its own: Assigned Tasks pages at 4 cards precisely so
-         this panel never has to grow past the sidebar's own height. --}}
-    <div class="px-5 py-5 flex-1 overflow-hidden">
+         this panel never has to grow past the sidebar's own height. min-h-0 is
+         load-bearing here — without it a flex item will not shrink below its
+         content's natural height, so overflow-hidden clips nothing and the
+         excess spills out and gets cut off by #leftSidebar's own boundary
+         instead, at whatever happened to be last in the DOM. That is what made
+         the pager below vanish on some pages and not others: its visibility
+         rode on how tall that page's cards happened to be, not on which page
+         it was. The pager itself is a shrink-0 sibling of this div for the
+         same reason Back to Tasks is: to make sure it always renders in full
+         no matter what got clipped above it. --}}
+    <div class="px-5 pt-5 flex-1 overflow-hidden min-h-0">
         {{-- The template number used to be a badge in the top header
              (FRONT DESK / Template 1); it lives here now, above the team it
              belongs to, since every member below already carries their own
@@ -50,7 +59,6 @@
         <div class="mt-5 pt-4 border-t border-zinc-800">
             <p class="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2.5">Assigned Tasks</p>
             <div id="assignedTaskList" class="space-y-1.5"></div>
-            <div id="assignedTaskPager" class="hidden items-center justify-between mt-2.5"></div>
             <script type="application/json" id="assignedTaskSeed">@json($assignedTasks ?? [])</script>
         </div>
         @endif
@@ -185,6 +193,15 @@
         </div>
         @endif
     </div>
+
+    {{-- Outside the clipped region above on purpose: whatever got cut off up
+         there, the pager itself always renders in full, same as Back to Tasks
+         below it. --}}
+    @if($showAssignedTasks ?? false)
+    <div class="px-5 pb-1 shrink-0">
+        <div id="assignedTaskPager" class="hidden items-center justify-between"></div>
+    </div>
+    @endif
 
     <div class="px-5 py-4 border-t border-zinc-800 shrink-0 bg-zinc-950/80">
         <a id="backToTasksBtn" href="{{ route('students.dashboard', ['section' => 'tasks']) }}"
