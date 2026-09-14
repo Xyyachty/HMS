@@ -32,9 +32,12 @@ class AssignedTaskList
             return [];
         }
 
+        // Completed (archived) work drops off the sidebar — it is done, so it is
+        // no longer something to jump to and customize. The dashboard's Task
+        // panel is where finished work still shows.
         $rows = Task::where('faculty_id', $membership->faculty_id)
             ->forTeam($membership->group_name)
-            ->whereIn('status', ['active', 'archived'])
+            ->where('status', 'active')
             ->withoutSimulation()
             ->orderBy('task_id')
             ->get();
