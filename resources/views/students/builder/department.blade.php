@@ -1475,7 +1475,11 @@
         const ASSIGNED_TASKS_URL = @json(route('students.tasks.assigned'));
         const EDITOR_EDITABLE_PAGES = @json(array_values($editablePages ?? []));
         const TASK_PAGE_LABELS = { home: 'Home', rooms: 'Rooms', restaurant: 'Restaurant', amenities: 'Amenities', experience: 'Experience' };
+        // Four cards a screen, the rest behind Prev/Next — the sidebar itself must
+        // not grow its own scrollbar under a long list.
+        const ASSIGNED_TASKS_PAGE_SIZE = 4;
         let assignedTasks = [];
+        let assignedTaskPage = 0;
         let activeAssignedTaskId = null;
         let assignedTasksSignature = '';
 
@@ -1493,11 +1497,28 @@
             return 'text-cyan-400 bg-zinc-800 border-zinc-700';
         }
 
+        function assignedTaskPageCount() {
+            return Math.max(1, Math.ceil(assignedTasks.length / ASSIGNED_TASKS_PAGE_SIZE));
+        }
+
         function renderAssignedTasks(tasks) {
+            assignedTasks = Array.isArray(tasks) ? tasks : [];
+            // A poll that shrinks the list (a task completed elsewhere) must not
+            // leave the page pointed past the end.
+            assignedTaskPage = Math.min(assignedTaskPage, assignedTaskPageCount() - 1);
+            renderAssignedTaskPage();
+        }
+
+        function goToAssignedTaskPage(page) {
+            assignedTaskPage = Math.max(0, Math.min(page, assignedTaskPageCount() - 1));
+            renderAssignedTaskPage();
+        }
+
+        function renderAssignedTaskPage() {
             const list = document.getElementById('assignedTaskList');
+            const pager = document.getElementById('assignedTaskPager');
             if (!list) return;
 
-            assignedTasks = Array.isArray(tasks) ? tasks : [];
             list.replaceChildren();
 
             if (assignedTasks.length === 0) {
@@ -1505,10 +1526,15 @@
                 empty.className = 'text-[11px] text-zinc-500';
                 empty.textContent = 'No assigned tasks yet.';
                 list.appendChild(empty);
+                if (pager) pager.classList.add('hidden');
                 return;
             }
 
-            assignedTasks.forEach(function (task) {
+            const totalPages = assignedTaskPageCount();
+            const start = assignedTaskPage * ASSIGNED_TASKS_PAGE_SIZE;
+            const pageTasks = assignedTasks.slice(start, start + ASSIGNED_TASKS_PAGE_SIZE);
+
+            pageTasks.forEach(function (task) {
                 const card = document.createElement('button');
                 card.type = 'button';
                 card.dataset.taskId = task.id;
@@ -1537,10 +1563,45 @@
                 card.append(top, title, meta);
                 list.appendChild(card);
             });
+
+            if (!pager) return;
+            pager.classList.toggle('hidden', totalPages <= 1);
+            if (totalPages <= 1) return;
+
+            pager.replaceChildren();
+            const prev = document.createElement('button');
+            prev.type = 'button';
+            prev.className = 'w-7 h-7 rounded-md border border-zinc-700 text-zinc-400 hover:text-white hover:border-emerald-500/50 disabled:opacity-30 disabled:hover:text-zinc-400 disabled:hover:border-zinc-700 flex items-center justify-center';
+            prev.innerHTML = '<i class="fas fa-chevron-left text-[10px]"></i>';
+            prev.disabled = assignedTaskPage === 0;
+            prev.addEventListener('click', function () { goToAssignedTaskPage(assignedTaskPage - 1); });
+
+            const label = document.createElement('span');
+            label.className = 'text-[10px] font-semibold text-zinc-500';
+            label.textContent = (assignedTaskPage + 1) + ' of ' + totalPages;
+
+            const next = document.createElement('button');
+            next.type = 'button';
+            next.className = prev.className;
+            next.innerHTML = '<i class="fas fa-chevron-right text-[10px]"></i>';
+            next.disabled = assignedTaskPage >= totalPages - 1;
+            next.addEventListener('click', function () { goToAssignedTaskPage(assignedTaskPage + 1); });
+
+            pager.append(prev, label, next);
         }
 
         function markActiveAssignedTask(id) {
             activeAssignedTaskId = id;
+            // The task being focused may sit on a different page of the list —
+            // jump there so the highlighted card is the one actually visible.
+            const index = assignedTasks.findIndex(function (t) { return t.id === id; });
+            if (index !== -1) {
+                const targetPage = Math.floor(index / ASSIGNED_TASKS_PAGE_SIZE);
+                if (targetPage !== assignedTaskPage) {
+                    assignedTaskPage = targetPage;
+                    renderAssignedTaskPage();
+                }
+            }
             document.querySelectorAll('.assigned-task-card').forEach(function (card) {
                 const active = Number(card.dataset.taskId) === id;
                 card.classList.toggle('border-emerald-500/50', active);

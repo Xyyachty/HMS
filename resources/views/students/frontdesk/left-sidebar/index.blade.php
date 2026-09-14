@@ -42,11 +42,13 @@
              Task writes. Only the Template Editor shows it (department.blade.php
              passes showAssignedTasks); the list is drawn and kept current by
              renderAssignedTasks() / syncAssignedTasks() there, seeded from
-             $assignedTasks so it is right on first paint. --}}
+             $assignedTasks so it is right on first paint. Paged at 4 a screen so
+             a long list pages instead of growing the sidebar's own scrollbar. --}}
         @if($showAssignedTasks ?? false)
         <div class="mt-5 pt-4 border-t border-zinc-800">
             <p class="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2.5">Assigned Tasks</p>
             <div id="assignedTaskList" class="space-y-1.5"></div>
+            <div id="assignedTaskPager" class="hidden items-center justify-between mt-2.5"></div>
             <script type="application/json" id="assignedTaskSeed">@json($assignedTasks ?? [])</script>
         </div>
         @endif
