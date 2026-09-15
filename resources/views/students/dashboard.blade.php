@@ -153,7 +153,19 @@
             <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System" class="h-10 w-auto object-contain">
             <div>
                 <h1 class="text-sm font-bold text-white tracking-tight leading-tight">Hotel Management System</h1>
-                <p class="text-[10px] text-white font-medium uppercase tracking-widest">Student Portal</p>
+                @php
+                    $sidebarRoleLabels = [
+                        'front_desk'            => 'Front Desk',
+                        'restaurant_management' => 'Restaurant Management',
+                        'room_management'       => 'Room Management',
+                        'maintenance'           => 'Maintenance',
+                        'housekeeping'          => 'Housekeeping Services',
+                    ];
+                    $sidebarRoleLabel = !empty($studentRoles)
+                        ? implode(' & ', array_map(fn($r) => $sidebarRoleLabels[$r] ?? ucfirst(str_replace('_', ' ', $r)), $studentRoles))
+                        : 'Student';
+                @endphp
+                <p class="text-[10px] text-white font-medium uppercase tracking-widest">{{ $sidebarRoleLabel }}</p>
             </div>
         </div>
 
