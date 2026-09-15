@@ -1031,11 +1031,11 @@
         </div>
 
         @php
-            {{-- The four seats every team is built from. Each member holds exactly
-                 one; Housekeeping and Maintenance are one seat here because the
-                 same student does both during website Customization — Simulation
-                 splits them back out (Room Management picks up Housekeeping,
-                 Maintenance runs on its own). See HotelTemplateBuilder::SEATS. --}}
+            // The four seats every team is built from. Each member holds exactly
+            // one; Housekeeping and Maintenance are one seat here because the
+            // same student does both during website Customization — Simulation
+            // splits them back out (Room Management picks up Housekeeping,
+            // Maintenance runs on its own). See HotelTemplateBuilder::SEATS.
             $teamRoleOptions = collect(\App\Support\HotelTemplateBuilder::SEATS)
                 ->mapWithKeys(fn ($r) => [$r => \App\Support\HotelTemplateBuilder::SEAT_LABELS[$r]])
                 ->all();
