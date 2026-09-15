@@ -72,6 +72,16 @@ class HotelAmenityAccess
     }
 
     /**
+     * A member may turn a hall or facility around between bookings when they cover
+     * Housekeeping *in Simulation* — the Room Management seat, not the Housekeeping
+     * seat, which runs Maintenance once the team leaves Customization.
+     */
+    public static function canPrepare(StudentGroup $membership): bool
+    {
+        return count(array_intersect(self::simulationRoles($membership), self::MANAGE_ROLES)) > 0;
+    }
+
+    /**
      * The member's own team roles, plus whatever they are signed into the hotel site as.
      * Extracted so canManage and canRegister cannot drift apart.
      */
@@ -82,6 +92,21 @@ class HotelAmenityAccess
         $sim = HotelSimulationAuth::current();
         if (is_array($sim) && ($sim['type'] ?? null) === 'staff' && is_array($sim['roles'] ?? null)) {
             $roles = array_merge($roles, $sim['roles']);
+        }
+
+        return $roles;
+    }
+
+    /** Same as roles(), but the team role is expanded for Simulation instead of Customization. */
+    public static function simulationRoles(StudentGroup $membership): array
+    {
+        $roles = StudentGroupSync::simulationRoleKeys($membership);
+
+        $sim = HotelSimulationAuth::current();
+        if (is_array($sim) && ($sim['type'] ?? null) === 'staff' && is_array($sim['roles'] ?? null)) {
+            // $sim['roles'] is the logged-in-as teammate's stored seat, not yet
+            // expanded for this phase.
+            $roles = array_merge($roles, HotelTemplateBuilder::rolesForPhase($sim['roles'], HotelTemplateBuilder::PHASE_SIMULATION));
         }
 
         return $roles;

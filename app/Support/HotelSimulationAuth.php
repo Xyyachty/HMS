@@ -157,6 +157,10 @@ class HotelSimulationAuth
             return ['ok' => false, 'error' => 'That staff account is not on your hotel team.', 'status' => 403];
         }
 
+        // This is the seat they were assigned, not phase-expanded — editablePages
+        // reads it as Customization, and every Simulation access check expands it
+        // itself (HotelHousekeepingAccess, HotelComplaintAccess, etc.) so the one
+        // stored key drives both without this payload favouring either.
         $roleKeys = $membership->roles->pluck('role')->filter()->values()->all();
         $editablePages = [];
         foreach ($roleKeys as $role) {

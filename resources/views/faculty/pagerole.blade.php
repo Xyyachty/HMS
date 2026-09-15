@@ -393,32 +393,32 @@
         ])
 
         @php
+            // The four seats every team is built from (HotelTemplateBuilder::SEATS) —
+            // a team with one of each is complete, full stop. A team built before the
+            // seat model can still carry a literal "maintenance" row; it simply reads
+            // as an extra role nobody's Role Assignment card asks about any more.
             $roleLabels = [
                 'front_desk'            => 'Front Desk',
                 'restaurant_management' => 'Restaurant',
                 'room_management'       => 'Rooms',
-                'maintenance'           => 'Maintenance',
-                'housekeeping'          => 'Housekeeping',
+                'housekeeping'          => 'Housekeeping/Maint.',
             ];
             $roleShort = [
                 'front_desk'            => 'FD',
                 'restaurant_management' => 'RST',
                 'room_management'       => 'RM',
-                'maintenance'           => 'MNT',
                 'housekeeping'          => 'HK',
             ];
             $roleCardTints = [
                 'front_desk'            => 'bg-rose-50 text-rose-500',
                 'restaurant_management' => 'bg-amber-50 text-amber-500',
                 'room_management'       => 'bg-brand-soft text-brand',
-                'maintenance'           => 'bg-violet-50 text-violet-500',
                 'housekeeping'          => 'bg-teal-50 text-teal-500',
             ];
             $roleCardIcons = [
                 'front_desk'            => 'mdi:desk',
                 'restaurant_management' => 'mdi:silverware-fork-knife',
                 'room_management'       => 'mdi:bed-outline',
-                'maintenance'           => 'mdi:wrench-outline',
                 'housekeeping'          => 'mdi:spray-bottle',
             ];
 
@@ -523,8 +523,8 @@
                             ->values();
                         $cardLeadRole = $cardRoles->first();
 
-                        /* Role Assignment Indicator: four members, five required roles, so
-                           one member always ends up holding two - counted off the same
+                        /* Role Assignment Indicator: four members, four seats — complete
+                           once each of the four is held by somebody, counted off the same
                            $cardRoles the chips above already read, not a second query. */
                         $cardRoleTotal   = count($roleLabels);
                         $cardRoleCount   = $cardRoles->count();
@@ -1031,19 +1031,19 @@
         </div>
 
         @php
-            $teamRoleOptions = [
-                'front_desk' => 'Front Desk',
-                'restaurant_management' => 'Restaurant',
-                'room_management' => 'Room Mgmt',
-                'maintenance' => 'Maintenance',
-                'housekeeping' => 'Housekeeping',
-            ];
+            {{-- The four seats every team is built from. Each member holds exactly
+                 one; Housekeeping and Maintenance are one seat here because the
+                 same student does both during website Customization — Simulation
+                 splits them back out (Room Management picks up Housekeeping,
+                 Maintenance runs on its own). See HotelTemplateBuilder::SEATS. --}}
+            $teamRoleOptions = collect(\App\Support\HotelTemplateBuilder::SEATS)
+                ->mapWithKeys(fn ($r) => [$r => \App\Support\HotelTemplateBuilder::SEAT_LABELS[$r]])
+                ->all();
             $roleBlurbs = [
                 'front_desk'            => 'Guest services and check-in operations',
                 'restaurant_management' => 'Food and beverage services',
                 'room_management'       => 'Room assignment and guest room operations',
-                'maintenance'           => 'Hotel facility maintenance services',
-                'housekeeping'          => 'Room cleaning and housekeeping services',
+                'housekeeping'          => 'Room cleaning, facility upkeep and repairs',
             ];
             // Roles each existing team already has assigned, used by the Insert tab so a
             // role already taken on the target team is disabled before the faculty even
@@ -1211,13 +1211,13 @@
                                                 </p>
                                             </div>
                                         </label>
-                                        <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                                        <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                                             @foreach($teamRoleOptions as $rk => $rl)
                                                 <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="create-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
                                                         {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}
-                                                        onchange="refreshRoleAvailability('create')">
+                                                        onchange="enforceSingleRoleCheckbox(this); refreshRoleAvailability('create')">
                                                     <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
                                                     <span class="truncate">{{ $rl }}</span>
                                                 </label>
@@ -1398,12 +1398,12 @@
                                                     <option value="">Unassigned</option>
                                                 </select>
                                             </div>
-                                            <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-5 gap-1.5 bulk-role-grid">
+                                            <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-1.5 bulk-role-grid">
                                                 @foreach($teamRoleOptions as $rk => $rl)
                                                     <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                         <input type="checkbox" value="{{ $rk }}"
                                                             class="bulk-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
-                                                            onchange="refreshBulkTeamPreviews()">
+                                                            onchange="enforceSingleRoleCheckbox(this); refreshBulkTeamPreviews()">
                                                         <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
                                                         <span class="truncate">{{ $rl }}</span>
                                                     </label>
@@ -1872,7 +1872,7 @@
                                             <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                 class="insert-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 mt-0.5 shrink-0"
                                                 {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}
-                                                onchange="refreshRoleAvailability('insert')">
+                                                onchange="enforceSingleRoleCheckbox(this); refreshRoleAvailability('insert')">
                                             <span class="min-w-0">
                                                 <span class="flex items-center gap-1.5 text-[13px] font-bold text-slate-700">
                                                     <span class="w-2 h-2 rounded-full role-dot-{{ $rk }}"></span>{{ $rl }}
@@ -1952,7 +1952,7 @@
                         <div class="flex items-center gap-4">
                             <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Legend:</p>
                             <div class="flex flex-wrap gap-3">
-                                @foreach(['front_desk' => 'Front Desk', 'restaurant_management' => 'Restaurant Mgmt', 'room_management' => 'Room Mgmt', 'maintenance' => 'Maintenance', 'housekeeping' => 'Housekeeping'] as $rk => $rl)
+                                @foreach($teamRoleOptions as $rk => $rl)
                                     <div class="flex items-center gap-1.5 text-[11px] text-slate-600">
                                         <span class="w-2 h-2 rounded-full role-dot-{{ $rk }} flex-shrink-0"></span>{{ $rl }}
                                     </div>
@@ -2009,12 +2009,12 @@
                                         </div>
                                         {{-- Role checkboxes row --}}
                                         <div class="flex flex-wrap gap-1.5 mt-2 ml-8">
-                                            @foreach(['front_desk' => 'Front Desk', 'restaurant_management' => 'Rest. Mgmt', 'room_management' => 'Room Mgmt', 'maintenance' => 'Maintenance', 'housekeeping' => 'Housekeeping'] as $rk => $rl)
+                                            @foreach(['front_desk' => 'Front Desk', 'restaurant_management' => 'Rest. Mgmt', 'room_management' => 'Room Mgmt', 'housekeeping' => 'Housekeeping/Maint.'] as $rk => $rl)
                                                 <label class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="update-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
                                                         data-student-id="{{ $sk }}"
-                                                        onchange="refreshRoleAvailability('update')">
+                                                        onchange="enforceSingleRoleCheckbox(this); refreshRoleAvailability('update')">
                                                     {{ $rl }}
                                                 </label>
                                             @endforeach
@@ -3468,14 +3468,27 @@ function submitActiveModalTab() {
     }
 }
 
-// ── Default hotel roles (rotate when assigning) ──
+// ── The four seats every team is built from (rotate when auto-assigning) ──
 const TEAM_DEFAULT_ROLES = [
     'front_desk',
-    'restaurant_management',
     'room_management',
-    'maintenance',
+    'restaurant_management',
     'housekeeping',
 ];
+
+// A role checkbox is one seat, not a multi-select: ticking one clears any other
+// checked box for the same member. Bulk's checkboxes carry no name (they are read
+// straight off the DOM at submit time), so they are scoped by their shared
+// .bulk-role-grid container instead; create/insert/update all name theirs
+// member_roles[{id}][], identically for every seat option of that one member.
+function enforceSingleRoleCheckbox(checkbox) {
+    if (!checkbox.checked) return;
+    const grid = checkbox.closest('.bulk-role-grid');
+    const siblings = grid
+        ? grid.querySelectorAll('input[type="checkbox"]')
+        : (checkbox.name ? document.querySelectorAll('input[type="checkbox"][name="' + CSS.escape(checkbox.name) + '"]') : []);
+    siblings.forEach((cb) => { if (cb !== checkbox) cb.checked = false; });
+}
 
 // ── Bulk multi-team creation (exactly 4 members per team) ──
 const BULK_TEAM_SIZE = 4;
@@ -4133,6 +4146,15 @@ function openUpdateModal(groupName, memberData) {
 
     // Members at the top of the list
     rows.filter(r => r.dataset.isTeamMember === '1').forEach(row => list.appendChild(row));
+
+    // A team built before the one-seat rule can have a member holding several
+    // roles; only the first still-valid one survives a save now, so only the
+    // first is left checked here — showing two ticks that collapse to one on
+    // submit would be confusing.
+    rows.filter(r => r.dataset.isTeamMember === '1').forEach(row => {
+        const checked = Array.from(row.querySelectorAll('.update-role-checkbox:checked'));
+        checked.slice(1).forEach(cb => { cb.checked = false; });
+    });
 
     const emptyNote = document.getElementById('updateNoMembersNote');
     if (emptyNote) emptyNote.classList.toggle('hidden', memberCount > 0);

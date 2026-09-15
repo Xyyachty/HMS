@@ -21,6 +21,46 @@ class HotelTemplateBuilder
         'maintenance' => 'Maintenance',
     ];
 
+    /**
+     * The four seats of a team, in the order members are auto-assigned. A member
+     * holds exactly one; it is the key stored in student_group_roles and the role
+     * TASK 01–04 are issued against. What the seat covers depends on the phase.
+     */
+    public const SEATS = ['front_desk', 'room_management', 'restaurant_management', 'housekeeping'];
+
+    public const SEAT_LABELS = [
+        'front_desk' => 'Front Desk',
+        'room_management' => 'Room Management',
+        'restaurant_management' => 'Restaurant Management',
+        'housekeeping' => 'Housekeeping / Maintenance',
+    ];
+
+    public const PHASE_CUSTOMIZATION = 'customization';
+    public const PHASE_SIMULATION = 'simulation';
+
+    /** Website customization: Housekeeping and Maintenance are one student's job. */
+    public const CUSTOMIZATION_ROLES = [
+        'front_desk' => ['front_desk'],
+        'room_management' => ['room_management'],
+        'restaurant_management' => ['restaurant_management'],
+        'housekeeping' => ['housekeeping', 'maintenance'],
+    ];
+
+    /** Simulation: Room Management runs Housekeeping, Maintenance stands alone. */
+    public const SIMULATION_ROLES = [
+        'front_desk' => ['front_desk'],
+        'room_management' => ['room_management', 'housekeeping'],
+        'restaurant_management' => ['restaurant_management'],
+        'housekeeping' => ['maintenance'],
+    ];
+
+    public const SIMULATION_SEAT_LABELS = [
+        'front_desk' => 'Front Desk',
+        'room_management' => 'Room Management / Housekeeping',
+        'restaurant_management' => 'Restaurant Management',
+        'housekeeping' => 'Maintenance',
+    ];
+
     /** How many version snapshots to keep per role template (reduces DB redundancy). */
     public const MAX_VERSION_SNAPSHOTS = 5;
 
@@ -327,10 +367,14 @@ class HotelTemplateBuilder
      */
     public static function modulesForRoles(array $roles): array
     {
+        $customize = self::rolesForPhase($roles, self::PHASE_CUSTOMIZATION);
+        $simulate = self::rolesForPhase($roles, self::PHASE_SIMULATION);
         $modules = [];
 
         foreach (self::ROLES as $role => $label) {
-            if (!in_array($role, $roles, true)) {
+            $inCustomize = in_array($role, $customize, true);
+            $inSimulate = in_array($role, $simulate, true);
+            if (!$inCustomize && !$inSimulate) {
                 continue;
             }
             $route = self::routeNameForRole($role);
@@ -342,13 +386,49 @@ class HotelTemplateBuilder
                 'role' => $role,
                 'label' => $label,
                 'route' => $route,
-                'editable' => self::editablePagesForRole($role) !== [],
+                'editable' => $inCustomize && self::editablePagesForRole($role) !== [],
                 'customize_url' => route($route),
-                'simulation_url' => self::simulationUrlForRole($role),
+                'simulation_url' => $inSimulate ? self::simulationUrlForRole($role) : null,
             ];
         }
 
         return $modules;
+    }
+
+    /**
+     * Expand stored seat keys into the roles they cover in a phase. Keys outside
+     * the seat map (teams built before seats, e.g. a stored "maintenance") pass
+     * through unchanged so those teams keep working as they did.
+     *
+     * @param  string[]  $storedRoles
+     * @return list<string>
+     */
+    public static function rolesForPhase(array $storedRoles, string $phase): array
+    {
+        $map = $phase === self::PHASE_SIMULATION ? self::SIMULATION_ROLES : self::CUSTOMIZATION_ROLES;
+        $expanded = [];
+
+        foreach ($storedRoles as $role) {
+            foreach ($map[$role] ?? [$role] as $covered) {
+                $expanded[$covered] = true;
+            }
+        }
+
+        return array_keys($expanded);
+    }
+
+    /** @return list<string> */
+    public static function simulationRoleKeys(StudentGroup $membership): array
+    {
+        return self::rolesForPhase(self::studentRoleKeys($membership), self::PHASE_SIMULATION);
+    }
+
+    /** Label for a stored seat in a phase, falling back to the plain role name. */
+    public static function seatLabel(string $role, string $phase = self::PHASE_CUSTOMIZATION): string
+    {
+        $labels = $phase === self::PHASE_SIMULATION ? self::SIMULATION_SEAT_LABELS : self::SEAT_LABELS;
+
+        return $labels[$role] ?? self::ROLES[$role] ?? ucfirst(str_replace('_', ' ', $role));
     }
 
     public static function membershipFor(User $user): ?StudentGroup

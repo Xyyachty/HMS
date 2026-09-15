@@ -309,8 +309,9 @@
                 // Simulation's own switcher: stays inside Simulation when a
                 // multi-role member moves between their operations modules.
                 $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
+                $simModules = array_values(array_filter($myModules, fn ($m) => !empty($m['simulation_url'])));
             @endphp
-            @if(count($myModules) > 1)
+            @if(count($simModules) > 1)
                 <div class="module-switcher" id="moduleSwitcher">
                     <span class="module-badge" onclick="toggleModuleMenu()" title="Switch module">
                         {{ $moduleLabel }}
@@ -318,8 +319,7 @@
                     </span>
                     <div class="module-menu" id="moduleMenu">
                         <p class="module-menu-label">My Modules</p>
-                        @foreach($myModules as $module)
-                            @continue(empty($module['simulation_url']))
+                        @foreach($simModules as $module)
                             <a href="{{ $module['simulation_url'] }}"
                                class="{{ $module['role'] === $builderRole ? 'is-active' : '' }}">
                                 <i class="fas {{ $roleThemes[$module['role']]['icon'] ?? 'fa-layer-group' }}"></i>

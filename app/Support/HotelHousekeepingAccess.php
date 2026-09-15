@@ -24,16 +24,19 @@ class HotelHousekeepingAccess
     }
 
     /**
-     * A member's own team role, plus whatever role they are signed into the hotel
-     * site as — the same rule the complaints and orders queues use.
+     * The Simulation-phase roles this member covers — a Room Management seat also
+     * runs Housekeeping here — plus whatever role they are signed into the hotel
+     * site as. Same rule the complaints and orders queues use.
      */
     public static function roles(StudentGroup $membership): array
     {
-        $roles = StudentGroupSync::roleKeys($membership);
+        $roles = StudentGroupSync::simulationRoleKeys($membership);
 
         $sim = HotelSimulationAuth::current();
         if (is_array($sim) && ($sim['type'] ?? null) === 'staff' && is_array($sim['roles'] ?? null)) {
-            $roles = array_merge($roles, $sim['roles']);
+            // $sim['roles'] is the logged-in-as teammate's stored seat, not yet
+            // expanded for this phase.
+            $roles = array_merge($roles, HotelTemplateBuilder::rolesForPhase($sim['roles'], HotelTemplateBuilder::PHASE_SIMULATION));
         }
 
         return $roles;

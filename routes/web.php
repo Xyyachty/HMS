@@ -2563,7 +2563,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->map(fn (\App\Models\HotelAmenityReservation $r) => $r->toTemplateArray()),
             // Front Desk sells the slot; Housekeeping runs the hall around it.
             'can_book'     => \App\Support\HotelAmenityAccess::canRegister($membership),
-            'can_prepare'  => \App\Support\HotelAmenityAccess::canManage($membership),
+            'can_prepare'  => \App\Support\HotelAmenityAccess::canPrepare($membership),
         ]);
     })->name('hotel.amenity-reservations.index');
 
@@ -2672,7 +2672,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
 
             if (array_key_exists('housekeeping_status', $data)) {
-                if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+                if (!\App\Support\HotelAmenityAccess::canPrepare($membership)) {
                     return response()->json(['message' => 'Only Housekeeping staff can update the room preparation.'], 403);
                 }
                 \App\Support\HotelAmenityReservationDesk::advanceHousekeeping($reservation, $data['housekeeping_status'], auth()->user());
