@@ -1163,11 +1163,11 @@
                 </div>
 
                 @if(!empty($studentRoles))
-                    @foreach($taskGroups as $group)
+                    @foreach($taskGroups as $taskGroup)
                         @php
                             // Active work first (the concept task sorts first among those
                             // via conceptFirst()), completed work after.
-                            $groupRows = $group->rows->sortBy(fn ($r) => $r->status === 'completed' ? 1 : 0)->values();
+                            $groupRows = $taskGroup->rows->sortBy(fn ($r) => $r->status === 'completed' ? 1 : 0)->values();
 
                             $groupTotal       = $groupRows->count();
                             $groupDone        = $groupRows->where('status', 'completed')->count();
@@ -1186,8 +1186,8 @@
 
                             $groupDue = $groupRows->pluck('task.due_date')->filter()->max();
 
-                            $groupLabel     = $group->step === 'other' ? 'OTHER TASKS' : ('TASK ' . str_pad($group->step + 1, 2, '0', STR_PAD_LEFT));
-                            $groupRole      = is_int($group->step) ? (\App\Support\TaskChecklist::STEP_ROLES[$group->step] ?? $group->role) : $group->role;
+                            $groupLabel     = $taskGroup->step === 'other' ? 'OTHER TASKS' : ('TASK ' . str_pad($taskGroup->step + 1, 2, '0', STR_PAD_LEFT));
+                            $groupRole      = is_int($taskGroup->step) ? (\App\Support\TaskChecklist::STEP_ROLES[$taskGroup->step] ?? $taskGroup->role) : $taskGroup->role;
                             $groupRoleLabel = $homeRoleLabels[$groupRole] ?? ucfirst(str_replace('_', ' ', $groupRole));
                             $groupMeta      = $groupStatusMeta[$groupStatus];
 
