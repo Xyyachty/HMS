@@ -3876,7 +3876,9 @@ function clearStudentRoles(memberCheckbox) {
     if (!card) return;
     card.querySelectorAll('input[type="checkbox"][name^="member_roles"]').forEach(cb => {
         cb.checked = false;
+        cb.disabled = false;
     });
+    delete card.dataset.randomized;
 }
 
 function assignDefaultRoleToCard(card, roleKey) {
@@ -3935,6 +3937,7 @@ function refreshRoleAvailability(mode) {
     });
 
     document.querySelectorAll(config.card).forEach(card => {
+        if (card.dataset.randomized === 'true') return; // roles locked by Randomize, leave them disabled
         card.querySelectorAll('input[type="checkbox"][name^="member_roles"]').forEach(roleCb => {
             roleCb.disabled = !roleCb.checked && used.has(roleCb.value);
         });
@@ -4051,6 +4054,11 @@ function randomizeSingleTeamMembers() {
         cb.checked = true;
         const card = cb.closest('.team-student-card');
         assignDefaultRoleToCard(card, TEAM_DEFAULT_ROLES[index % TEAM_DEFAULT_ROLES.length]);
+        // Lock roles Randomize assigned — faculty reroll instead of hand-editing them.
+        if (card) {
+            card.dataset.randomized = 'true';
+            card.querySelectorAll('input[type="checkbox"][name^="member_roles"]').forEach(r => { r.disabled = true; });
+        }
     });
 
     updateTeamSelectedCount('create');
