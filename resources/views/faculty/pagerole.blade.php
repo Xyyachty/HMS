@@ -3859,11 +3859,16 @@ function buildBulkTeamsHiddenInputs() {
 }
 
 /* Manage Members ticks the student on the left and their role(s) on the right,
-   so a member checkbox's roles are no longer inside its own card. */
+   so an insert checkbox's roles are not inside its own card. Create Team lists
+   the same students, so the lookup is scoped to the insert form — a page-wide
+   match handed Create Team's checkboxes the hidden insert block, and Randomize
+   stacked a new role on top of the old ones every click. */
 function studentRoleContainer(memberCheckbox) {
     if (!memberCheckbox) return null;
-    return document.querySelector('[data-role-block="' + memberCheckbox.value + '"]')
-        || memberCheckbox.closest('.team-student-card');
+    if (memberCheckbox.classList.contains('insert-student-checkbox')) {
+        return document.querySelector('#insertStudentForm [data-role-block="' + memberCheckbox.value + '"]');
+    }
+    return memberCheckbox.closest('.team-student-card');
 }
 
 function clearStudentRoles(memberCheckbox) {
@@ -4049,7 +4054,7 @@ function randomizeSingleTeamMembers() {
     });
 
     updateTeamSelectedCount('create');
-    renderCreateTeamSummary();
+    refreshRoleAvailability('create');
     if (note) {
         note.textContent = pick.length < TEAM_MEMBER_MAX
             ? `Selected ${pick.length} available student${pick.length === 1 ? '' : 's'} (need ${TEAM_MEMBER_MAX} for a full team).`
