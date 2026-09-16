@@ -46,7 +46,10 @@
       --r-pill: 999px;
 
       --ease: cubic-bezier(.16, 1, .3, 1);
-      --shell: 1240px;
+      /* Full-bleed layout: no max-width. The only thing holding content off the
+         viewport edge is this gutter, which grows with the screen instead of
+         leaving a fixed band of dead background on each side. */
+      --gutter: clamp(18px, 3.2vw, 64px);
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -78,9 +81,8 @@
 
     .shell {
       width: 100%;
-      max-width: var(--shell);
       margin: 0 auto;
-      padding: 0 24px;
+      padding: 0 var(--gutter);
     }
 
     /* ---------- Motion ---------------------------------------------------- */
@@ -112,6 +114,8 @@
       inset: 0 0 auto 0;
       z-index: 50;
       height: 72px;
+      /* Clips the gold sweep below, which is offset past the right edge. */
+      overflow: hidden;
       background: linear-gradient(94deg, var(--wine-900) 0%, var(--wine-800) 46%, var(--wine-700) 100%);
       border-bottom: 1px solid rgba(201, 164, 92, .38);
       box-shadow: 0 10px 34px rgba(74, 13, 28, .22);
@@ -297,6 +301,9 @@
       background: var(--cream);
       overflow: hidden;
     }
+    /* The hero drops the gutter so the photograph runs to the right edge of the
+       viewport. The copy column carries the gutter itself instead. */
+    .hero > .shell { padding: 0; }
     .hero__grid {
       display: grid;
       grid-template-columns: 1.02fr .98fr;
@@ -306,7 +313,7 @@
     .hero__copy {
       position: relative;
       z-index: 2;
-      padding: 76px 56px 132px 0;
+      padding: 76px 56px 132px var(--gutter);
       animation: riseIn .8s var(--ease) both;
       align-self: center;
     }
@@ -383,7 +390,9 @@
     .hero__motto {
       position: absolute;
       right: 0;
-      bottom: 0;
+      /* Clears the value cards, which ride up over the hero's lower edge.
+         Sitting at 0 left the last line of the motto behind them. */
+      bottom: 88px;
       z-index: 2;
       max-width: 300px;
       padding: 30px 36px 38px;
@@ -790,18 +799,21 @@
       .hero__grid { grid-template-columns: 1fr; min-height: 0; }
       .hero__copy {
         order: 2;
-        padding: 40px 0 108px;
+        padding: 40px var(--gutter) 108px;
         text-align: left;
       }
+      /* Already edge to edge on one column, so no negative margin to undo a
+         gutter with: the hero's shell has none. */
       .hero__figure {
         order: 1;
         min-height: 340px;
-        margin: 0 -24px;
         border-radius: 0;
       }
       /* The sweep is a desktop device; on one column it would cut the photo. */
       .hero__figure::before { display: none; }
       .hero__motto {
+        /* Stacked, the cards no longer overlap the photo. */
+        bottom: 0;
         max-width: 240px;
         padding: 20px 24px 24px;
         border-top-left-radius: 90px 54px;
@@ -817,12 +829,11 @@
     }
 
     @media (max-width: 620px) {
-      .shell { padding: 0 16px; }
       .brand__sub { display: none; }
       .values { margin-top: -60px; }
       .values__grid { grid-template-columns: 1fr; }
       .modules__grid { grid-template-columns: 1fr; }
-      .hero__figure { margin: 0 -16px; min-height: 280px; }
+      .hero__figure { min-height: 280px; }
       .hero__motto { max-width: 208px; padding: 16px 18px 20px; }
       .hero__motto p { font-size: .95rem; }
       .btn--primary { width: 100%; }
