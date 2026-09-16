@@ -1289,7 +1289,6 @@
                                             $rowModule     = \App\Support\HotelTemplateBuilder::modulesForRoles([$task->role])[0] ?? null;
                                             $rowDetailId   = 'taskDetail' . $task->task_id;
                                             $rowBar        = $isCompleted ? 'bg-emerald-500' : ($needsRevision ? 'bg-amber-500' : $homeTint($task->role, 'bar'));
-                                            $rowIconBg     = $isCompleted ? 'bg-emerald-50 text-emerald-500' : ($homeTint($task->role, 'bg') . ' ' . $homeTint($task->role, 'text'));
                                             // 'FD TASK 1' — the role's initials plus the task's place in
                                             // this group, which is what the card is known by.
                                             $rowCode       = ($roleTaskCodes[$task->role] ?? strtoupper(substr($task->role, 0, 2)))
@@ -1305,9 +1304,6 @@
                                              data-task-role="{{ $task->role }}"
                                              class="task-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                                             <div class="flex flex-wrap items-start gap-3 px-4 sm:px-5 pt-4 pb-3">
-                                                <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 {{ $rowIconBg }}">
-                                                    <span class="iconify text-xl" data-icon="{{ $task->is_hotel_concept ? 'mdi:lightbulb-outline' : ($roleIcons[$task->role] ?? 'mdi:clipboard-text-outline') }}"></span>
-                                                </div>
                                                 <div class="min-w-0 flex-1 basis-[140px]">
                                                     <p class="text-[14px] font-bold leading-snug {{ $isCompleted ? 'text-slate-400' : 'text-slate-800' }}">{{ $task->title }}</p>
                                                     <p data-task-code class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">{{ $rowCode }}</p>
@@ -2271,9 +2267,6 @@
                 done.dataset.taskStatus = 'completed';
                 done.innerHTML =
                     '<div class="flex flex-wrap items-start gap-3 px-4 sm:px-5 pt-4 pb-3">'
-                        + '<div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">'
-                            + '<span class="iconify text-xl" data-icon="mdi:check-decagram-outline"></span>'
-                        + '</div>'
                         + '<div class="min-w-0 flex-1 basis-[140px]">'
                             + '<p class="text-[14px] font-bold leading-snug text-slate-400">' + conceptEscape(title) + '</p>'
                             + '<p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">' + conceptEscape(code) + '</p>'
