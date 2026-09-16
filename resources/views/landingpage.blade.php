@@ -387,6 +387,18 @@
       border-radius: 0 100% 100% 0 / 0 50% 50% 0;
       background: var(--cream);
     }
+    /* On wide screens, let the image layer extend behind the copy panel so the
+       cream sweep can sit beside "System" while retaining a clean text gap. */
+    @media (min-width: 1201px) {
+      .hero__figure {
+        margin-left: -36%;
+        width: 136%;
+      }
+      .hero__figure::before {
+        left: -15%;
+        width: 25%;
+      }
+    }
     .hero__motto {
       position: absolute;
       right: 0;
