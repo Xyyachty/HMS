@@ -423,9 +423,10 @@
     .values {
       position: relative;
       z-index: 3;
-      margin-top: -72px;
+      margin-top: 0;
+      padding-top: clamp(36px, 4vw, 64px);
       padding-bottom: 72px;
-      background: linear-gradient(180deg, transparent 72px, var(--surface) 72px);
+      background: var(--surface);
     }
     .values__grid {
       display: grid;
@@ -830,7 +831,7 @@
 
     @media (max-width: 620px) {
       .brand__sub { display: none; }
-      .values { margin-top: -60px; }
+      .values { padding-top: 32px; }
       .values__grid { grid-template-columns: 1fr; }
       .modules__grid { grid-template-columns: 1fr; }
       .hero__figure { min-height: 280px; }
