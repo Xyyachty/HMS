@@ -153,14 +153,12 @@
       font-weight: 700;
       line-height: 1;
       color: #fff;
-      letter-spacing: .01em;
     }
     .brand__sub {
       display: block;
       margin-top: 4px;
       font-size: .58rem;
       font-weight: 700;
-      letter-spacing: .17em;
       text-transform: uppercase;
       color: var(--gold-300);
       white-space: nowrap;
@@ -223,7 +221,6 @@
     .btn--primary {
       padding: 17px 34px;
       font-size: .95rem;
-      letter-spacing: .01em;
       color: #fff;
       background: linear-gradient(120deg, var(--wine-800), var(--wine-600));
       box-shadow: 0 14px 34px rgba(94, 16, 36, .30);
@@ -320,7 +317,6 @@
       margin-bottom: 22px;
       font-size: .66rem;
       font-weight: 800;
-      letter-spacing: .19em;
       text-transform: uppercase;
       color: var(--wine-600);
     }
@@ -566,7 +562,6 @@
       margin: 0 0 6px;
       font-size: .8rem;
       font-weight: 800;
-      letter-spacing: .07em;
       text-transform: uppercase;
       color: #fff;
     }
@@ -662,7 +657,6 @@
       margin-bottom: 6px;
       font-size: .68rem;
       font-weight: 800;
-      letter-spacing: .1em;
       text-transform: uppercase;
       color: var(--ink-soft);
     }
@@ -739,7 +733,6 @@
       width: 100%;
       height: 50px;
       font-size: .82rem;
-      letter-spacing: .1em;
       text-transform: uppercase;
       color: #fff;
       background: linear-gradient(120deg, var(--wine-800), var(--wine-600));
