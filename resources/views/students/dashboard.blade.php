@@ -2065,6 +2065,7 @@
                     title: 'Log out?',
                     text: 'You will need to sign in again to access your dashboard.',
                     icon: 'warning',
+                    iconColor: '#DC2626',
                     showCancelButton: true,
                     confirmButtonText: 'Logout',
                     cancelButtonText: 'Cancel',
