@@ -1294,7 +1294,6 @@
                                             // this group, which is what the card is known by.
                                             $rowCode       = ($roleTaskCodes[$task->role] ?? strtoupper(substr($task->role, 0, 2)))
                                                              . ' TASK ' . $taskRowIndex;
-                                            $rowRoleLabel  = $homeRoleLabels[$task->role] ?? ucfirst(str_replace('_', ' ', $task->role));
                                         @endphp
                                         {{-- The concept task is not a one-line tick: the whole proposal is
                                              written on it, so its card keeps #conceptPanelCard —
@@ -1312,7 +1311,6 @@
                                                 <div class="min-w-0 flex-1 basis-[140px]">
                                                     <p class="text-[14px] font-bold leading-snug {{ $isCompleted ? 'text-slate-400' : 'text-slate-800' }}">{{ $task->title }}</p>
                                                     <p data-task-code class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">{{ $rowCode }}</p>
-                                                    <p data-task-role-label class="text-[12px] font-semibold text-slate-500 mt-0.5">{{ $rowRoleLabel }}</p>
                                                 </div>
                                                 <div class="flex items-center gap-2 shrink-0 ml-auto">
                                                     <span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap {{ $rowMeta['badge'] }}">
@@ -2258,9 +2256,8 @@
 
             const title = row.dataset.taskTitle || 'Propose Two Hotel Concepts';
             // Read off the card being replaced, so the settled card keeps the same
-            // code and role rather than assuming where the concept task sits.
+            // code rather than assuming where the concept task sits.
             const code = row.querySelector('[data-task-code]')?.textContent.trim() || 'FD TASK 1';
-            const roleLabel = row.querySelector('[data-task-role-label]')?.textContent.trim() || 'Front Desk';
             const group = row.closest('[data-task-group]');
             row.remove();
 
@@ -2280,7 +2277,6 @@
                         + '<div class="min-w-0 flex-1 basis-[140px]">'
                             + '<p class="text-[14px] font-bold leading-snug text-slate-400">' + conceptEscape(title) + '</p>'
                             + '<p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">' + conceptEscape(code) + '</p>'
-                            + '<p class="text-[12px] font-semibold text-slate-500 mt-0.5">' + conceptEscape(roleLabel) + '</p>'
                         + '</div>'
                         + '<div class="flex items-center gap-2 shrink-0 ml-auto">'
                             + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap bg-emerald-50 text-emerald-600">Completed</span>'
