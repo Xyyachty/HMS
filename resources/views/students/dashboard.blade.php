@@ -237,7 +237,7 @@
                         My Profile
                     </a>
                     <div class="h-px bg-white/[0.06] my-1"></div>
-                    <form method="POST" action="{{ route('logout') }}">
+                    <form method="POST" action="{{ route('logout') }}" id="logoutForm">
                         @csrf
                         <button type="submit" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-colors" role="menuitem">
                             <span class="iconify text-base" data-icon="mdi:logout-variant"></span>
@@ -2054,6 +2054,29 @@
         document.addEventListener('DOMContentLoaded', () => {
             refreshHomeGreeting();
             setInterval(refreshHomeGreeting, 60000);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const logoutForm = document.getElementById('logoutForm');
+            if (!logoutForm) return;
+            logoutForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Log out?',
+                    text: 'You will need to sign in again to access your dashboard.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Logout',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#DC2626',
+                    cancelButtonColor: '#6B7280',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        logoutForm.submit();
+                    }
+                });
+            });
         });
 
         (function restoreSection() {

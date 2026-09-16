@@ -139,7 +139,7 @@
                             <p class="text-[10px] text-white">Dean Admin</p>
                         </div>
                     </div>
-                    <form method="POST" action="{{ route('logout') }}">
+                    <form method="POST" action="{{ route('logout') }}" id="logoutForm">
                         @csrf
                         <button type="submit" class="flex items-center gap-2 text-xs font-semibold text-white hover:text-white/80 transition-colors">
                             <span class="iconify" data-icon="mdi:logout"></span>
@@ -229,6 +229,28 @@
             const sidebar = document.getElementById('sidebarMobile');
             overlay.classList.toggle('hidden');
             sidebar.classList.toggle('open');
+        }
+
+        const logoutForm = document.getElementById('logoutForm');
+        if (logoutForm) {
+            logoutForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Log out?',
+                    text: 'You will need to sign in again to access the dashboard.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Logout',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#DC2626',
+                    cancelButtonColor: '#6B7280',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        logoutForm.submit();
+                    }
+                });
+            });
         }
     </script>
     @stack('scripts')
