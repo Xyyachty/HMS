@@ -1215,10 +1215,7 @@
                             {{-- Overall summary: one rounded card per TASK group, above its own cards. --}}
                             <div class="rounded-3xl border border-pink-100 bg-gradient-to-r from-brand-soft to-white px-5 sm:px-7 py-6">
                                 <div class="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr_1fr_1fr] gap-6 lg:gap-0">
-                                    <div class="flex items-center gap-4 lg:pr-6">
-                                        <div class="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 {{ $homeTint($groupRole, 'bg') }} {{ $homeTint($groupRole, 'text') }}">
-                                            <span class="iconify text-2xl" data-icon="{{ $roleIcons[$groupRole] ?? 'mdi:clipboard-text-outline' }}"></span>
-                                        </div>
+                                    <div class="flex items-center lg:pr-6">
                                         <div class="min-w-0">
                                             <p class="text-lg font-extrabold text-slate-900 tracking-wide">{{ $groupLabel }}</p>
                                             <span class="inline-flex items-center px-2.5 py-1 mt-1 rounded-lg text-[11px] font-bold {{ $homeTint($groupRole, 'bg') }} {{ $homeTint($groupRole, 'text') }}">
