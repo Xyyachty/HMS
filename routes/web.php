@@ -165,6 +165,14 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     // updates itself — new submission, or a reviewed one dropping off — without
     // the page reloading.
     Route::get('/role/pending-review', [FacultyController::class, 'pendingReview'])->name('role.pending-review');
+    // The fast tick that makes a submission show up in seconds. Deliberately
+    // separate from pending-review above: this one answers only "has anything
+    // changed", so it can be polled often, and the page pulls the payload above
+    // just when the answer is yes. Throttled because it is the only endpoint
+    // here hit several times a minute per open tab.
+    Route::get('/role/pulse', [FacultyController::class, 'reviewPulse'])
+        ->middleware('throttle:120,1')
+        ->name('role.pulse');
     Route::post('/role/groups', [FacultyController::class, 'storeGroup'])->name('role.groups.store');
     Route::put('/role/groups/{groupName}', [FacultyController::class, 'updateGroup'])->name('role.groups.update');
     Route::get('/tasks', [FacultyController::class, 'tasks'])->name('tasks');

@@ -306,7 +306,7 @@
     .hero > .shell { padding: 0; }
     .hero__grid {
       display: grid;
-      grid-template-columns: 1.02fr .98fr;
+      grid-template-columns: 1fr 1fr;
       align-items: stretch;
       min-height: 560px;
     }
@@ -373,18 +373,18 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      object-position: center;
+      object-position: 50% center;
     }
     /* Cream sweep that carries the copy panel over the photograph. */
     .hero__figure::before {
       content: '';
       position: absolute;
-      top: -12%;
-      left: -38%;
-      width: 78%;
-      height: 124%;
+      top: -10%;
+      left: -24%;
+      width: 36%;
+      height: 120%;
       z-index: 1;
-      border-radius: 0 64% 58% 0 / 0 50% 50% 0;
+      border-radius: 0 100% 100% 0 / 0 50% 50% 0;
       background: var(--cream);
     }
     .hero__motto {
@@ -905,8 +905,8 @@
         </div>
 
         <div class="hero__figure">
-          <img src="{{ asset('images/hotel/try.jpg') }}"
-               alt="Hotel entrance and driveway lit at dusk" fetchpriority="high" />
+          <img src="{{ asset('chtm-building.png') }}"
+               alt="SPC Hotel building illuminated at dusk" fetchpriority="high" />
           <div class="hero__motto">
             <p>People.<br />Places.<br />Better Futures.</p>
           </div>

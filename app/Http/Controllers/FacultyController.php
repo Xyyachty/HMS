@@ -18,6 +18,7 @@ use App\Models\Task;
 use App\Models\TeamRoleTemplateVersion;
 use App\Models\User;
 use App\Models\UserInformation;
+use App\Models\UserNotification;
 use App\Support\HotelConceptDesk;
 use App\Support\Notifier;
 use App\Support\TaskChecklist;
@@ -1409,14 +1410,36 @@ class FacultyController extends Controller
      * The hotel concept is excluded: it carries its own submitted/needs_revision
      * states on HotelConcept and its own review flow, not this table.
      */
-    private function pendingReviewByGroup(int $facultyId): array
+    /**
+     * The one definition of "a task sitting submitted, no verdict yet".
+     *
+     * Both pendingReviewByGroup() and reviewPulse() build off this. They have
+     * to: the pulse decides whether the payload is worth refetching, so if the
+     * two ever disagreed on a predicate, a row the payload cannot see would
+     * still move the signature and the page would refetch forever. Null
+     * group_name matters most here — those rows exist on purpose (a student who
+     * has left every team) and this surface deliberately does not list them.
+     */
+    private function pendingReviewTaskQuery(int $facultyId)
     {
-        $tasks = Task::with('assignedTo')
-            ->where('faculty_id', $facultyId)
+        return Task::where('faculty_id', $facultyId)
             ->where('status', 'archived')
             ->whereNull('feedback_at')
             ->whereNull('kind')
-            ->whereNotNull('group_name')
+            ->whereNotNull('group_name');
+    }
+
+    /** The hotel-concept half of the same question. See pendingReviewTaskQuery(). */
+    private function pendingReviewConceptQuery(int $facultyId)
+    {
+        return HotelConcept::where('faculty_id', $facultyId)
+            ->where('status', HotelConceptDesk::STATUS_SUBMITTED);
+    }
+
+    private function pendingReviewByGroup(int $facultyId): array
+    {
+        $tasks = $this->pendingReviewTaskQuery($facultyId)
+            ->with('assignedTo')
             ->orderByDesc('updated_at')
             ->get();
 
@@ -1424,6 +1447,12 @@ class FacultyController extends Controller
         foreach ($tasks as $task) {
             $groupName = (string) $task->group_name;
             $byGroup[$groupName]['count'] = ($byGroup[$groupName]['count'] ?? 0) + 1;
+
+            /* Every pending id, not just the latest. The poller diffs these to
+               decide what is genuinely new, and it has to be the whole set:
+               a task sent back and resubmitted keeps its id, so "did this id
+               leave and come back" is the only reliable test. */
+            $byGroup[$groupName]['task_ids'][] = (int) $task->task_id;
 
             // Rows arrived newest first, so a group's first row is its latest.
             if (isset($byGroup[$groupName]['latest'])) {
@@ -1443,6 +1472,11 @@ class FacultyController extends Controller
                 'title' => $task->title,
                 'submitted_at' => optional($task->updated_at)->format('M d, Y g:i A'),
                 'submitted_human' => optional($task->updated_at)->diffForHumans(),
+                /* Epoch so the badge can age itself between payload fetches.
+                   submitted_human is computed here and would otherwise still
+                   read "2 minutes ago" an hour later, because the payload is
+                   now refetched only when the signature moves. */
+                'submitted_ts' => optional($task->updated_at)->getTimestamp(),
             ];
         }
 
@@ -1458,9 +1492,8 @@ class FacultyController extends Controller
      */
     private function conceptPendingReviewByGroup(int $facultyId): array
     {
-        $concepts = HotelConcept::with('submitter')
-            ->where('faculty_id', $facultyId)
-            ->where('status', HotelConceptDesk::STATUS_SUBMITTED)
+        $concepts = $this->pendingReviewConceptQuery($facultyId)
+            ->with('submitter')
             ->orderByDesc('submitted_at')
             ->get();
 
@@ -1468,6 +1501,7 @@ class FacultyController extends Controller
         foreach ($concepts as $concept) {
             $groupName = (string) $concept->group_name;
             $byGroup[$groupName]['count'] = ($byGroup[$groupName]['count'] ?? 0) + 1;
+            $byGroup[$groupName]['hotel_concept_ids'][] = (int) $concept->hotel_concept_id;
 
             // Rows arrived newest first, so a group's first row is its latest.
             if (isset($byGroup[$groupName]['latest'])) {
@@ -1484,6 +1518,7 @@ class FacultyController extends Controller
                     : 'A team member',
                 'submitted_at' => optional($concept->submitted_at)->format('M d, Y g:i A'),
                 'submitted_human' => optional($concept->submitted_at)->diffForHumans(),
+                'submitted_ts' => optional($concept->submitted_at)->getTimestamp(),
             ];
         }
 
@@ -1506,6 +1541,55 @@ class FacultyController extends Controller
             'tasks' => $this->pendingReviewByGroup((int) $facultyId),
             'concepts' => $this->conceptPendingReviewByGroup((int) $facultyId),
         ]);
+    }
+
+    /**
+     * The cheap tick behind near-real-time review.
+     *
+     * A student submitting is the thing faculty should hear about within
+     * seconds, which means polling often. Polling pendingReview() often is not
+     * affordable: it hydrates models, eager-loads two relations and formats
+     * dates, and production runs one free instance against Supabase's
+     * transaction pooler. So this returns only what is needed to answer "has
+     * anything changed", and the page refetches the real payload just when the
+     * answer is yes.
+     *
+     * Two aggregates, no hydration. The count catches a row arriving or being
+     * reviewed; max(updated_at) catches a resubmission that leaves the count
+     * unchanged. Both are needed. It also carries the bell's unread count so
+     * the page can drive the bell from this one request instead of a second.
+     *
+     * Known and accepted: a review and a submission landing in the same clock
+     * second, with identical max timestamps, leave the signature still. The next
+     * real change corrects it. Do not "fix" this by hashing the id set here,
+     * which would cost the full query this endpoint exists to avoid.
+     */
+    public function reviewPulse(Request $request)
+    {
+        $quiet = response()->json(['sig' => '', 'unread' => 0])
+            ->header('Cache-Control', 'no-store');
+
+        $facultyId = auth()->user()?->faculty?->user_information_id;
+        if (!$facultyId) {
+            // A student on a stale faculty URL must get a cheap answer, not a
+            // 500 retried every few seconds.
+            return $quiet;
+        }
+
+        $tasks = $this->pendingReviewTaskQuery((int) $facultyId);
+        $concepts = $this->pendingReviewConceptQuery((int) $facultyId);
+
+        $signature = implode('|', [
+            (int) $tasks->count(),
+            (string) $tasks->max('updated_at'),
+            (int) $concepts->count(),
+            (string) $concepts->max('submitted_at'),
+        ]);
+
+        return response()->json([
+            'sig' => $signature,
+            'unread' => UserNotification::forUser(auth()->id())->unread()->count(),
+        ])->header('Cache-Control', 'no-store');
     }
 
     public function updateGroup(Request $request, $groupName)

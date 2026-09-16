@@ -321,6 +321,15 @@
 
         setInterval(() => {
             if (!panel.classList.contains('hidden')) return; // open panel refreshes itself
+            // A parked background tab does not need a current badge, and this
+            // partial is on every authenticated page in the app — students
+            // included — so the tabs nobody is looking at were the bulk of this
+            // endpoint's traffic.
+            if (document.hidden) return;
+            // Some pages already poll something of their own on a faster tick
+            // and hand the count over (see faculty Manage Teams). Two writers
+            // would make the badge flip between a fresh number and a stale one.
+            if (window.HMS_BELL_EXTERNAL_POLL) return;
             fetch(@json(route('notifications.unread-count')), {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 credentials: 'same-origin',
@@ -329,6 +338,15 @@
                 .then(d => setUnread(d.unread_count))
                 .catch(() => {});
         }, 60000);
+
+        /* Lets a page paint the badge from its own poll instead of adding a
+           request. isOpen() matters: while the panel is open it owns the count,
+           because open() has just marked everything read. */
+        window.HMS_BELL = {
+            setUnread: setUnread,
+            isOpen: () => !panel.classList.contains('hidden'),
+            refresh: load,
+        };
     }
 
     function initAll() {

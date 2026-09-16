@@ -4775,14 +4775,57 @@ function openTeamModalConceptReview(groupName, members, createdAt, activityLogs)
 }
 
 /* ── Submission indicators: kept live ──────────────────────────────────────
-   Polled the same way the notification bell polls its unread count — every
-   submission (task or concept) fires its own faculty notification already
-   (Notifier::taskSubmitted, Notifier::conceptsSubmitted), this just keeps the
-   card badges honest without a reload: a new submission shows up, and one the
-   faculty just reviewed drops off on the next tick. One request repaints
-   both badges, since a card's tasks and its concept share nothing but the
-   card they are drawn on. */
+   A student submitting is the one thing on this page worth hearing about
+   within seconds, so the tick is 5s rather than a minute. Two requests would
+   not fit that budget, so the loop is split:
+
+     pulse   (cheap, every tick)  "has anything changed, and what is the bell on"
+     payload (real, on change)    the full per-group shape the badges paint from
+
+   The pulse also carries the bell's unread count, so the bell stops polling
+   separately on this page (window.HMS_BELL_EXTERNAL_POLL below) and the whole
+   page costs one request per tick instead of two.
+
+   Every submission already fires its own faculty notification
+   (Notifier::taskSubmitted, Notifier::conceptsSubmitted). The badges and the
+   toast are built from the tasks table instead, never from those rows: opening
+   the bell marks everything read, and Notifier swallows its own insert
+   failures, so notification state cannot be trusted to mean "awaiting review".
+
+   Three guards keep 5s affordable on one free instance against Supabase's
+   transaction pooler. A hidden tab does not poll at all. An untouched visible
+   tab walks 5s -> 15s -> 30s. A failed request drops straight to the slowest
+   rung. Net effect versus the old flat 60s interval: a background tab costs
+   nothing where it used to cost two requests a minute forever, and the fast
+   rate applies only while somebody is actually working on the page. */
 const TEAM_PENDING_REVIEW_URL = @json(route('faculty.role.pending-review'));
+const TEAM_REVIEW_PULSE_URL   = @json(route('faculty.role.pulse'));
+const TEAM_REVIEW_DEEPLINK_URL = @json(route('faculty.role', ['tab' => 'teams', 'team' => '__TEAM__']));
+
+// The backoff ladder, in ms, and how many unchanged ticks it takes to step down.
+const PULSE_RUNGS = [5000, 15000, 30000];
+const PULSE_TICKS_PER_RUNG = 24;
+
+let pulseRung = 0;
+let pulseQuietTicks = 0;
+let pulseLastSig = null;
+let pulseInFlight = false;
+let pulseTimer = null;
+
+/* Seeded from the first paint, not left empty and not skipped for one tick.
+   Empty would toast every already-pending submission the moment the page
+   loads; skipping the first tick would instead swallow one that genuinely
+   arrived in the seconds between render and first poll. */
+let pendingReviewSeen  = seedSeenIds(@json($teamPendingReviewByGroup ?? []), 'task_ids');
+let conceptPendingSeen = seedSeenIds(@json($teamConceptPendingByGroup ?? []), 'hotel_concept_ids');
+
+function seedSeenIds(byGroup, key) {
+    const seen = new Set();
+    Object.keys(byGroup || {}).forEach((group) => {
+        ((byGroup[group] || {})[key] || []).forEach((id) => seen.add(group + ':' + id));
+    });
+    return seen;
+}
 
 function updateSubmissionBadge(card, selectorPrefix, entry, headlineText, detailText) {
     const badge = card.querySelector('[data-' + selectorPrefix + '-badge]');
@@ -4808,31 +4851,250 @@ function updatePendingReviewBadges(data) {
         updateSubmissionBadge(card, 'pending-review', tasks[team],
             (entry) => 'New Submission — ' + entry.count + ' Awaiting Review',
             (latest) => latest.student_name + ' · ' + latest.role_label
-                + ' · "' + latest.title + '" · ' + latest.submitted_human);
+                + ' · "' + latest.title + '" · ' + pendingAgo(latest));
 
         updateSubmissionBadge(card, 'concept-pending', concepts[team],
             (entry) => 'Hotel Concept Submitted' + (entry.count > 1 ? ' — Both Proposals' : ''),
             (latest) => latest.submitted_by + ' · ' + latest.slot_label
-                + ' · "' + latest.title + '" · ' + latest.submitted_human);
+                + ' · "' + latest.title + '" · ' + pendingAgo(latest));
     });
 }
 
-function pollPendingReview() {
-    fetch(TEAM_PENDING_REVIEW_URL, {
+/* Ages the badge without a request. submitted_human is stamped server-side and
+   the payload is now refetched only when the signature moves, so relying on it
+   alone would leave a badge reading "2 minutes ago" an hour later. Falls back
+   to the server's wording for a payload that predates submitted_ts. */
+function pendingAgo(latest) {
+    const ts = Number(latest && latest.submitted_ts);
+    if (!ts) return (latest && latest.submitted_human) || '';
+
+    const secs = Math.max(0, Math.floor(Date.now() / 1000) - ts);
+    if (secs < 45) return 'just now';
+    if (secs < 5400) {
+        const mins = Math.round(secs / 60);
+        return mins + (mins === 1 ? ' minute ago' : ' minutes ago');
+    }
+    if (secs < 79200) {
+        const hrs = Math.round(secs / 3600);
+        return hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+    }
+    const days = Math.round(secs / 86400);
+    return days + (days === 1 ? ' day ago' : ' days ago');
+}
+
+/* What is genuinely new since the last look, keyed on the whole pending id set
+   rather than on the latest row. A task sent back and resubmitted keeps its
+   task_id, so the only reliable question is whether an id left the set and came
+   back — which "latest changed" cannot answer, and which a count comparison
+   misses outright when a review and an arrival land in the same tick. */
+function collectNewSubmissions(byGroup, key, seen, describe) {
+    const lines = [];
+    const fresh = new Set();
+    let firstGroup = null;
+
+    Object.keys(byGroup || {}).forEach((group) => {
+        const entry = byGroup[group] || {};
+        (entry.task_ids || entry.hotel_concept_ids || []).forEach((id) => {
+            const stamp = group + ':' + id;
+            fresh.add(stamp);
+            if (seen.has(stamp)) return;
+            if (firstGroup === null) firstGroup = group;
+            lines.push(describe(group, entry));
+        });
+    });
+
+    return { lines, fresh, firstGroup };
+}
+
+function announceNewSubmissions(data) {
+    const taskNew = collectNewSubmissions(
+        (data && data.tasks) || {}, 'task_ids', pendingReviewSeen,
+        (group, entry) => 'Team ' + escHtml(group) + ' — '
+            + escHtml((entry.latest && entry.latest.student_name) || 'A student')
+            + ' · ' + escHtml((entry.latest && entry.latest.role_label) || '')
+            + ' · "' + escHtml((entry.latest && entry.latest.title) || '') + '"'
+    );
+    const conceptNew = collectNewSubmissions(
+        (data && data.concepts) || {}, 'hotel_concept_ids', conceptPendingSeen,
+        (group, entry) => 'Team ' + escHtml(group) + ' — Hotel Concept · '
+            + escHtml((entry.latest && entry.latest.submitted_by) || 'A team member')
+    );
+
+    const lines = taskNew.lines.concat(conceptNew.lines);
+
+    /* Mid-review, the confirm dialog owns the single SweetAlert slot. Returning
+       without absorbing the new ids means the toast fires on the next tick
+       instead of being wiped by the dialog. Badges still repaint either way. */
+    if (lines.length && window.Swal && Swal.isVisible()) return;
+
+    pendingReviewSeen = taskNew.fresh;
+    conceptPendingSeen = conceptNew.fresh;
+
+    if (!lines.length || !window.Swal) return;
+
+    // One toast, never a loop: SweetAlert2 has a single active instance, so
+    // consecutive fires would replace each other and only the last would show.
+    const shown = lines.slice(0, 4);
+    if (lines.length > shown.length) {
+        shown.push('and ' + (lines.length - shown.length) + ' more');
+    }
+    const target = taskNew.firstGroup || conceptNew.firstGroup;
+
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'info',
+        iconColor: '#2563EB',
+        title: lines.length === 1 ? 'New submission' : lines.length + ' new submissions',
+        html: shown.join('<br>'),
+        showConfirmButton: false,
+        timer: 8000,
+        timerProgressBar: true,
+        width: '24rem',
+        didOpen: (el) => {
+            if (!target) return;
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', () => {
+                Swal.close();
+                focusTeamAwaitingReview(target);
+            });
+        },
+    });
+}
+
+/* One answer to "show me this team's submissions", shared by the toast click
+   and the ?team= deep link a notification lands on. Falls back to navigating,
+   because the payload spans every class block while the cards on screen belong
+   only to the active one. */
+function focusTeamAwaitingReview(groupName) {
+    const want = String(groupName || '').toLowerCase(); // group_name is citext
+    const card = Array.from(document.querySelectorAll('.team-card[data-team-name]'))
+        .find((c) => (c.dataset.teamName || '').toLowerCase() === want);
+    const badge = card && card.querySelector('[data-pending-review-badge]');
+    const btn = badge && badge.querySelector('[data-review-submission]');
+
+    // A hidden badge means it has already been reviewed; opening an empty
+    // modal off a stale bell item would be worse than doing nothing.
+    if (btn && !badge.classList.contains('hidden')) {
+        if (typeof switchTab === 'function') switchTab('teams');
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        btn.click();
+        return;
+    }
+    if (!card) {
+        window.location.href = TEAM_REVIEW_DEEPLINK_URL
+            .replace('__TEAM__', encodeURIComponent(groupName));
+    }
+}
+
+function fetchPendingReviewPayload() {
+    return fetch(TEAM_PENDING_REVIEW_URL, {
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
         credentials: 'same-origin',
+        cache: 'no-store',
     })
         .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-        .then(updatePendingReviewBadges)
-        .catch(() => {});
+        .then((data) => {
+            if (!data || typeof data !== 'object') return;
+            // Announce before painting: the diff has to run against what the
+            // human is still looking at, not against the repaint.
+            announceNewSubmissions(data);
+            updatePendingReviewBadges(data);
+        });
+}
+
+// Kept as the old name so anything else calling it still works.
+function pollPendingReview() {
+    return fetchPendingReviewPayload().catch(() => {});
+}
+
+function schedulePulse(delay) {
+    clearTimeout(pulseTimer);
+    pulseTimer = setTimeout(pollReviewPulse, delay);
+}
+
+function resetPulseRate() {
+    pulseQuietTicks = 0;
+    if (pulseRung !== 0) {
+        pulseRung = 0;
+        schedulePulse(PULSE_RUNGS[0]);
+    }
+}
+
+function pollReviewPulse() {
+    // A hidden tab is rescheduled, never fetched: visibilitychange below wakes
+    // it and drops it straight back to the fast rung.
+    if (document.hidden || pulseInFlight) {
+        schedulePulse(PULSE_RUNGS[pulseRung]);
+        return;
+    }
+
+    pulseInFlight = true;
+    fetch(TEAM_REVIEW_PULSE_URL, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+    })
+        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+        .then((data) => {
+            if (!data || typeof data.sig !== 'string') return;
+
+            // While the panel is open it owns the count: open() has just marked
+            // everything read, and overwriting that would resurrect the badge.
+            if (window.HMS_BELL && !window.HMS_BELL.isOpen()) {
+                window.HMS_BELL.setUnread(Number(data.unread) || 0);
+            }
+
+            if (data.sig === pulseLastSig) {
+                pulseQuietTicks++;
+                if (pulseQuietTicks >= PULSE_TICKS_PER_RUNG
+                    && pulseRung < PULSE_RUNGS.length - 1) {
+                    pulseRung++;
+                    pulseQuietTicks = 0;
+                }
+                return;
+            }
+
+            // First tick establishes the baseline; the seen-sets were already
+            // seeded from the first paint, so the payload fetch is still safe.
+            pulseLastSig = data.sig;
+            pulseQuietTicks = 0;
+            pulseRung = 0;
+            return fetchPendingReviewPayload();
+        })
+        .catch(() => {
+            // Includes a cold start on the free instance, where the first
+            // request can take most of a minute. Back all the way off.
+            pulseRung = PULSE_RUNGS.length - 1;
+            pulseQuietTicks = 0;
+        })
+        .finally(() => {
+            pulseInFlight = false;
+            schedulePulse(PULSE_RUNGS[pulseRung]);
+        });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     // The grid exists on every tab (only its own tab-panel is hidden), so one
-    // interval keeps every card's badge current whichever tab is on screen.
-    if (document.getElementById('teamCardsGrid')) {
-        setInterval(pollPendingReview, 60000);
-    }
+    // loop keeps every card's badge current whichever tab is on screen.
+    if (!document.getElementById('teamCardsGrid')) return;
+
+    // The bell stops polling for itself here; the pulse carries its count.
+    window.HMS_BELL_EXTERNAL_POLL = true;
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) resetPulseRate();
+    });
+    ['pointerdown', 'keydown', 'scroll'].forEach((evt) => {
+        document.addEventListener(evt, resetPulseRate, { passive: true });
+    });
+
+    // A notification deep link names the team it is about.
+    @if(filled(request('team')))
+        focusTeamAwaitingReview(@json(request('team')));
+    @endif
+
+    schedulePulse(PULSE_RUNGS[0]);
 });
 
 /* Centralized activity log — the server decides whether this faculty may read it. */
