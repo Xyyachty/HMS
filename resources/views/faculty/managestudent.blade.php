@@ -788,7 +788,7 @@
             timer: 2500,
             showConfirmButton: false,
             backdrop: 'rgba(15, 23, 42, 0.35)',
-            iconColor: '#DB2777',
+            iconColor: '#16A34A',
             customClass: {
                 popup: 'rounded-2xl p-6 bg-white shadow-2xl',
                 title: 'text-lg font-bold text-slate-800',
