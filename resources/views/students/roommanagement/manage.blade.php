@@ -474,8 +474,10 @@ function pickImageFile(onPicked) {
 }
 
 // No name: adding a room derives it from the category (see nextRoomNameFor).
-function createEmptyRoomForm() {
-  return { category: '', status: 'Available', price: '', desc: '', img: '' };
+// When opened from a category tab, carry that category into the form instead of
+// silently falling back to the first category in the inventory.
+function createEmptyRoomForm(category) {
+  return { category: String(category || '').trim(), status: 'Available', price: '', desc: '', img: '' };
 }
 
 /* Mirrors App\Support\HotelRoomDefaults: each category numbers from its own hundreds
@@ -668,8 +670,8 @@ function AddCategoryModal({ saving, error, onSubmit, onCancel }) {
 /* Adding a room is the rare move; looking one up is the common one — so the form
    lives in a modal and the page leads with the inventory table. Same POST, same
    validation the inline form used: only where it renders changed. */
-function AddRoomModal({ rooms, categories, onClose, onAdded }) {
-  const [form, setForm] = useState(createEmptyRoomForm);
+function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) {
+  const [form, setForm] = useState(() => createEmptyRoomForm(defaultCategory));
   const [errors, setErrors] = useState({});
   const [imgPreview, setImgPreview] = useState('');
   const [saving, setSaving] = useState(false);
@@ -694,7 +696,7 @@ function AddRoomModal({ rooms, categories, onClose, onAdded }) {
   };
 
   const resetForm = () => {
-    setForm(createEmptyRoomForm());
+    setForm(createEmptyRoomForm(defaultCategory));
     setErrors({});
     setImgPreview('');
   };
@@ -1095,6 +1097,7 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCate
         <AddRoomModal
           rooms={list}
           categories={categoryNames}
+          defaultCategory={tab === 'All' ? '' : tab}
           onClose={() => setAddOpen(false)}
           onAdded={onSubmit}
         />
