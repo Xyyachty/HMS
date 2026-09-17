@@ -1930,6 +1930,16 @@
       postToParent({ type: 'element-deselected' });
       return;
     }
+    // Clicking the selected element again is an explicit deselect. This hides
+    // the selection box and Move handle instead of immediately selecting the
+    // same element again. Alt+click remains reserved for selecting a parent.
+    const current = selectedEl ? (resolveEditableRoot(selectedEl) || selectedEl) : null;
+    const clicked = resolveEditableRoot(el) || el;
+    if (!e.altKey && current && clicked === current) {
+      clearSelection();
+      postToParent({ type: 'element-deselected' });
+      return;
+    }
     if (!canEditElement(el)) {
       clearSelection();
       blockEditToast();
