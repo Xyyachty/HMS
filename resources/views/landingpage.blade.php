@@ -313,7 +313,13 @@
     .hero__copy {
       position: relative;
       z-index: 2;
-      padding: 76px 56px 132px var(--gutter);
+      /* A grid item defaults to min-width:auto, so a long heading word could
+         widen this column past its 1fr share. Pinning it to 0 keeps the copy
+         inside the track no matter how the title wraps. */
+      min-width: 0;
+      /* The right pad is the clearance between the last glyph and the curved
+         divider, which now starts at the column boundary. */
+      padding: 76px clamp(44px, 4.5vw, 88px) 132px var(--gutter);
       animation: riseIn .8s var(--ease) both;
       align-self: center;
     }
@@ -335,8 +341,15 @@
     }
     .hero__title {
       margin: 0 0 22px;
-      font-size: clamp(2.9rem, 5.4vw, 4.5rem);
-      line-height: 1.04;
+      /* Was clamp(2.9rem, 5.4vw, 4.5rem). At 5.4vw the longest line grew with
+         the viewport while the column stayed at 1fr, so the heading outran the
+         copy panel. This scale keeps the longest line inside the track. */
+      font-size: clamp(2.2rem, 3.4vw, 3.6rem);
+      line-height: 1.06;
+      /* Caps the measure on ultra-wide screens so the line breaks stay where
+         the design puts them instead of running out into one long line. */
+      max-width: 22ch;
+      overflow-wrap: break-word;
       color: var(--wine-800);
     }
     .hero__title span {
@@ -375,7 +388,9 @@
       object-fit: cover;
       object-position: 50% center;
     }
-    /* Cream sweep that carries the copy panel over the photograph. */
+    /* The curved divider. Sits at the figure's left edge; the figure's
+       overflow:hidden clips the half that falls outside, so what renders is a
+       cream arc cutting into the photograph from the column boundary. */
     .hero__figure::before {
       content: '';
       position: absolute;
@@ -387,18 +402,12 @@
       border-radius: 0 100% 100% 0 / 0 50% 50% 0;
       background: var(--cream);
     }
-    /* On wide screens, let the image layer extend behind the copy panel so the
-       cream sweep can sit beside "System" while retaining a clean text gap. */
-    @media (min-width: 1201px) {
-      .hero__figure {
-        margin-left: -36%;
-        width: 136%;
-      }
-      .hero__figure::before {
-        left: -15%;
-        width: 25%;
-      }
-    }
+    /* The figure stays inside its own grid column. It used to be dragged left
+       (margin-left:-36%; width:136%) so the photo layer ran under the copy
+       panel, and .hero__copy's z-index:2 then painted the heading straight onto
+       the building. Text owns the left track, the photograph owns the right one.
+       The sweep above still reads as a curved divider: .hero__figure clips its
+       left half, leaving a cream arc that bulges into the photo only. */
     .hero__motto {
       position: absolute;
       right: 0;
@@ -800,6 +809,16 @@
     .footer__note { margin: 0; font-size: .66rem; font-weight: 700; color: var(--ink-soft); }
 
     /* ---------- Responsive ------------------------------------------------ */
+    /* 901-1200px had no hero rule: columns stayed 1fr 1fr while the title was
+       still sized off the viewport, so the heading outgrew the copy column just
+       as the layout got tightest. Give the copy the larger share here. */
+    @media (max-width: 1200px) {
+      .hero__grid { grid-template-columns: 1.08fr 1fr; min-height: 520px; }
+      .hero__copy { padding: 60px clamp(36px, 3.6vw, 52px) 116px var(--gutter); }
+      .hero__figure { min-height: 520px; }
+      .hero__lead { max-width: 30rem; }
+    }
+
     @media (max-width: 1080px) {
       .values__grid { grid-template-columns: repeat(2, 1fr); }
       .modules__grid { grid-template-columns: repeat(2, 1fr); gap: 4px 34px; }
