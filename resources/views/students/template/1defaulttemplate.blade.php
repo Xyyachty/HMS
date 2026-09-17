@@ -347,16 +347,21 @@
   .cat-swap {
     position: absolute; inset: 0; z-index: 1;
     border: 0; padding: 0; background: transparent; cursor: pointer;
-    display: flex; align-items: flex-start; justify-content: flex-end;
   }
-  .cat-swap-hint {
-    margin: 1.05rem 1.35rem; padding: 0.4rem 0.7rem; border-radius: 999px;
-    background: rgba(8,7,6,0.62); color: #f5f0e8; border: 1px solid rgba(245,240,232,0.28);
-    font-family: Outfit, sans-serif; font-size: 0.68rem; letter-spacing: 0.06em;
-    text-transform: uppercase; display: inline-flex; align-items: center; gap: 0.4rem;
-    opacity: 0.82; transition: opacity 0.2s;
+  /* The named control sits under the picture rather than over it, so it never
+     crowds the edit and add-room icons in the corner. */
+  .cat-photo-swap {
+    position: relative; z-index: 2;
+    margin: 0 1.35rem 1.35rem; padding: 0.6rem 0.9rem;
+    border-radius: 10px; cursor: pointer;
+    background: rgba(8,7,6,0.62); color: #f5f0e8;
+    border: 1px solid rgba(245,240,232,0.28);
+    font-family: Outfit, sans-serif; font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    transition: background 0.2s, border-color 0.2s;
   }
-  .cat-swap:hover .cat-swap-hint, .cat-swap:focus-visible .cat-swap-hint { opacity: 1; }
+  .cat-photo-swap:hover { background: rgba(8,7,6,0.82); border-color: var(--accent); }
   .cat-slide.is-empty { background-color: rgba(245,240,232,0.06); }
   .cat-dots { position: absolute; left: 1.35rem; top: 1.15rem; z-index: 2; display: flex; gap: 5px; }
   .cat-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(245,240,232,0.38); border: 0; padding: 0; cursor: pointer; transition: all 0.2s; }
@@ -4132,15 +4137,11 @@ function CategorySlides({ slides, index, onIndex, interval, canEdit, onReplace }
           type="button"
           className="cat-swap"
           data-hms-no-edit="1"
+          aria-label={(current.src ? 'Replace photo ' : 'Add photo ') + (index + 1) + ' of ' + count}
           title={(current.src ? 'Replace photo ' : 'Add photo ') + (index + 1) + ' of ' + count}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onReplace(current.slot); }}
-        >
-          <span className="cat-swap-hint">
-            <i className="fa-solid fa-camera" aria-hidden="true"></i>
-            {(current.src ? 'Replace' : 'Add') + ' photo ' + (index + 1) + ' of ' + count}
-          </span>
-        </button>
+        ></button>
       ) : null}
 
       {count > 1 ? (
@@ -4243,6 +4244,8 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
   const editSlides = useMemo(() => categoryPhotoSlots(detail), [detail]);
   const slides = canSwapPhotos ? editSlides : guestSlides;
   const [slide, setSlide] = useState(0);
+  // Which of the three the control below the picture is aimed at.
+  const current = slides[slide] || slides[0] || null;
   // What a stay actually starts at, which is the cheapest room in it rather than
   // the category's headline rate when the two have drifted apart.
   const prices = roomsIn.map((room) => Number(room.price) || 0).filter((n) => n > 0);
@@ -4296,6 +4299,19 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
             View More Details
           </button>
         </div>
+
+        {canSwapPhotos && current ? (
+          <button
+            type="button"
+            className="cat-photo-swap"
+            data-hms-no-edit="1"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onReplacePhoto(name, current.slot); }}
+          >
+            <i className="fa-solid fa-camera" aria-hidden="true"></i>
+            {(current.src ? 'Replace' : 'Add') + ' photo ' + (slide + 1) + ' of ' + slides.length}
+          </button>
+        ) : null}
       </div>
 
       <div className="cat-panel">
