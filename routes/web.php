@@ -1320,17 +1320,36 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'name'            => 'required|string|max:60',
             'rate'            => 'sometimes|nullable|integer|min:0',
             'description'     => 'sometimes|nullable|string|max:2000',
-            'image'           => 'sometimes|nullable|string|max:2048',
+            // Large enough for a photo posted as a base64 data-URL, the way the room
+            // endpoint takes one. It is decoded to a file below, so only a short path
+            // is ever stored.
+            'image'           => 'sometimes|nullable|string|max:900000',
             // Either the textarea's text or the list it stands for.
             'inclusions'      => 'sometimes|nullable',
             'rooms_available' => 'sometimes|nullable|integer|min:0|max:999',
             // What the category shows a guest deciding between two of them.
             'gallery'         => 'sometimes|nullable|array',
-            'gallery.*'       => 'nullable|string|max:2048',
+            'gallery.*'       => 'nullable|string|max:900000',
             'capacity'        => 'sometimes|nullable|integer|min:1|max:99',
             'bed_type'        => 'sometimes|nullable|string|max:80',
             'room_size'       => 'sometimes|nullable|string|max:40',
         ]);
+
+        // A photo picked in the builder arrives as a data-URL; it becomes a stored file
+        // here so the row keeps a path, exactly as a room's photo does. A plain URL
+        // passes through untouched.
+        $persistImage = fn ($value) => \App\Support\HotelImageStore::persist(
+            $value,
+            $membership->faculty_id,
+            $membership->group_name
+        ) ?? '';
+
+        if (array_key_exists('image', $data)) {
+            $data['image'] = $persistImage($data['image']);
+        }
+        if (array_key_exists('gallery', $data) && is_array($data['gallery'])) {
+            $data['gallery'] = array_map($persistImage, $data['gallery']);
+        }
 
         $category = \App\Support\HotelRoomDefaults::updateCategoryDetails(
             $membership,

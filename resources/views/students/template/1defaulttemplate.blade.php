@@ -342,6 +342,22 @@
     background: linear-gradient(to top, rgba(8,7,6,0.94) 0%, rgba(8,7,6,0.55) 45%, rgba(8,7,6,0.05) 100%);
   }
   .cat-media-body { position: relative; z-index: 2; padding: 1.25rem 1.35rem 1.35rem; }
+  /* Covers the photo but not the title block or the card's own tools, so clicking
+     the picture swaps it while everything written over it still works. */
+  .cat-swap {
+    position: absolute; inset: 0; z-index: 1;
+    border: 0; padding: 0; background: transparent; cursor: pointer;
+    display: flex; align-items: flex-start; justify-content: flex-end;
+  }
+  .cat-swap-hint {
+    margin: 1.05rem 1.35rem; padding: 0.4rem 0.7rem; border-radius: 999px;
+    background: rgba(8,7,6,0.62); color: #f5f0e8; border: 1px solid rgba(245,240,232,0.28);
+    font-family: Outfit, sans-serif; font-size: 0.68rem; letter-spacing: 0.06em;
+    text-transform: uppercase; display: inline-flex; align-items: center; gap: 0.4rem;
+    opacity: 0.82; transition: opacity 0.2s;
+  }
+  .cat-swap:hover .cat-swap-hint, .cat-swap:focus-visible .cat-swap-hint { opacity: 1; }
+  .cat-slide.is-empty { background-color: rgba(245,240,232,0.06); }
   .cat-dots { position: absolute; left: 1.35rem; top: 1.15rem; z-index: 2; display: flex; gap: 5px; }
   .cat-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(245,240,232,0.38); border: 0; padding: 0; cursor: pointer; transition: all 0.2s; }
   .cat-dot.is-active { background: var(--accent); width: 18px; border-radius: 3px; }
@@ -3958,6 +3974,16 @@ function categorySlides(detail, roomsIn) {
   return out;
 }
 
+/* The three photographs a category is made of, in the slots they are stored in:
+   the main angle is its image, the other two are its gallery. Empty slots are kept
+   rather than dropped, so Design mode can offer all three to fill. */
+function categoryPhotoSlots(detail) {
+  const gallery = (detail && Array.isArray(detail.gallery)) ? detail.gallery : [];
+  return [detail && detail.image, gallery[0], gallery[1]]
+    .slice(0, CATEGORY_ANGLES)
+    .map((src, i) => ({ key: 'slot-' + i, slot: i, src: String(src == null ? '' : src).trim() }));
+}
+
 /* Rooms are called "<Category> 101", so the number is what is worth showing in a
    grid this small. A room named by hand keeps whatever it was called. */
 function roomNumberLabel(room) {
@@ -4072,15 +4098,18 @@ function AvailabilityLegend() {
 /* The pictures, sliding on their own. Each card keeps its own place in the
    sequence so two cards side by side do not change together, which reads as a
    page-wide flicker rather than as one room after another. */
-function CategorySlides({ slides, index, onIndex, interval }) {
+function CategorySlides({ slides, index, onIndex, interval, canEdit, onReplace }) {
   const list = slides || [];
   const count = list.length;
+  const current = list[index] || null;
 
   useEffect(() => {
-    if (count < 2) return undefined;
+    // Editing one of three photos while they rotate under the cursor is unusable,
+    // so Design mode holds whichever slide the student is working on.
+    if (count < 2 || canEdit) return undefined;
     const id = setInterval(() => onIndex((index + 1) % count), interval || 4000);
     return () => clearInterval(id);
-  }, [count, index, onIndex, interval]);
+  }, [count, index, onIndex, interval, canEdit]);
 
   // A category that has lost a room has fewer slides than the one on screen.
   useEffect(() => {
@@ -4093,10 +4122,26 @@ function CategorySlides({ slides, index, onIndex, interval }) {
         <div
           key={slide.key + '-' + i}
           data-hms-bg-layer="1"
-          className={'cat-slide' + (i === index ? ' is-active' : '')}
-          style={{ backgroundImage: 'url(' + slide.src + ')' }}
+          className={'cat-slide' + (i === index ? ' is-active' : '') + (slide.src ? '' : ' is-empty')}
+          style={slide.src ? { backgroundImage: 'url(' + slide.src + ')' } : null}
         ></div>
       ))}
+
+      {canEdit && current ? (
+        <button
+          type="button"
+          className="cat-swap"
+          data-hms-no-edit="1"
+          title={(current.src ? 'Replace photo ' : 'Add photo ') + (index + 1) + ' of ' + count}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onReplace(current.slot); }}
+        >
+          <span className="cat-swap-hint">
+            <i className="fa-solid fa-camera" aria-hidden="true"></i>
+            {(current.src ? 'Replace' : 'Add') + ' photo ' + (index + 1) + ' of ' + count}
+          </span>
+        </button>
+      ) : null}
 
       {count > 1 ? (
         <div className="cat-dots" data-hms-no-edit="1">
@@ -4189,8 +4234,14 @@ function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPi
   );
 }
 
-function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPickRoom, staff, canEdit, onEditCategory, onAddRoom }) {
-  const slides = useMemo(() => categorySlides(detail, roomsIn), [detail, roomsIn]);
+function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPickRoom, staff, canEdit, onEditCategory, onAddRoom, onReplacePhoto }) {
+  /* Design mode works the three stored slots, so an empty one can still be filled;
+     a guest is shown the photographs that exist and nothing standing in for the
+     ones that do not. */
+  const canSwapPhotos = canEdit && typeof onReplacePhoto === 'function';
+  const guestSlides = useMemo(() => categorySlides(detail, roomsIn), [detail, roomsIn]);
+  const editSlides = useMemo(() => categoryPhotoSlots(detail), [detail]);
+  const slides = canSwapPhotos ? editSlides : guestSlides;
   const [slide, setSlide] = useState(0);
   // What a stay actually starts at, which is the cheapest room in it rather than
   // the category's headline rate when the two have drifted apart.
@@ -4201,7 +4252,14 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
   return (
     <article className="cat-card" data-hms-category={name}>
       <div className="cat-media">
-        <CategorySlides slides={slides} index={slide} onIndex={setSlide} interval={4200} />
+        <CategorySlides
+          slides={slides}
+          index={slide}
+          onIndex={setSlide}
+          interval={4200}
+          canEdit={canSwapPhotos}
+          onReplace={(slot) => onReplacePhoto(name, slot)}
+        />
 
         {canEdit ? (
           <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 3, display: 'flex', gap: 6 }}
@@ -4540,6 +4598,29 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
     });
   };
 
+  /* Swapping one of a category's three photographs from the card itself, so the
+     common change does not need the whole edit form. The slot says where the photo
+     belongs: the first is the category's main image, the other two its gallery.
+     pickImageFile compresses before this ever sees a url. */
+  const replaceCategoryPhoto = (categoryName, slot) => {
+    if (typeof onUpdateCategory !== 'function') return;
+    pickImageFile((url) => {
+      if (!url) return;
+      const detail = (categoryDetails || []).find((c) => c && c.name === categoryName) || null;
+      const photos = categoryPhotoSlots(detail).map((entry) => entry.src);
+      photos[slot] = url;
+      Promise.resolve(onUpdateCategory(categoryName, {
+        image: photos[0],
+        gallery: photos.slice(1),
+      })).then((saved) => {
+        if (!onToast) return;
+        onToast(saved
+          ? `Photo ${slot + 1} of ${CATEGORY_ANGLES} updated for ${categoryName}`
+          : 'That photo could not be saved. Please try again.');
+      });
+    });
+  };
+
   const handleEdit = (room) => {
     const name = hmsPrompt('Room name', room.name);
     if (name == null || !String(name).trim()) return;
@@ -4706,6 +4787,7 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
                 onPickRoom={(room) => setSelectedRoomId(room.id)}
                 onEditCategory={(name) => { setRenameError(''); setRenameFrom(name); }}
                 onAddRoom={(name) => handleAdd(null, name)}
+                onReplacePhoto={replaceCategoryPhoto}
               />
             ))}
           </div>
