@@ -1337,18 +1337,35 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         // A photo picked in the builder arrives as a data-URL; it becomes a stored file
         // here so the row keeps a path, exactly as a room's photo does. A plain URL
-        // passes through untouched.
-        $persistImage = fn ($value) => \App\Support\HotelImageStore::persist(
-            $value,
-            $membership->faculty_id,
-            $membership->group_name
-        ) ?? '';
+        // passes through untouched. A fresh photo that fails to store is dropped from
+        // this write rather than saved as '' - the slot keeps whatever it already had
+        // instead of going blank, and the failure is reported instead of applied.
+        $imageWarning = null;
+        $persistImage = function ($value) use ($membership, &$imageWarning) {
+            $newImage = str_starts_with(trim((string) $value), 'data:image');
+            $path = \App\Support\HotelImageStore::persist($value, $membership->faculty_id, $membership->group_name);
+            if ($newImage && $path === null) {
+                $imageWarning = 'That photo could not be saved. The category keeps its current pictures.';
+                return null;
+            }
+            return $path ?? '';
+        };
 
-        if (array_key_exists('image', $data)) {
-            $data['image'] = $persistImage($data['image']);
-        }
-        if (array_key_exists('gallery', $data) && is_array($data['gallery'])) {
-            $data['gallery'] = array_map($persistImage, $data['gallery']);
+        if (array_key_exists('image', $data) || array_key_exists('gallery', $data)) {
+            $currentName = \App\Support\HotelRoomDefaults::normalizeCategory($data['name'], $membership);
+            $current = collect(\App\Support\HotelRoomDefaults::categoriesFor($membership))->firstWhere('name', $currentName);
+            $existingGallery = is_array($current['gallery'] ?? null) ? $current['gallery'] : [];
+
+            if (array_key_exists('image', $data)) {
+                $newPath = $persistImage($data['image']);
+                $data['image'] = $newPath === null ? ($current['image'] ?? '') : $newPath;
+            }
+            if (array_key_exists('gallery', $data) && is_array($data['gallery'])) {
+                $data['gallery'] = collect($data['gallery'])->map(function ($value, $i) use ($persistImage, $existingGallery) {
+                    $newPath = $persistImage($value);
+                    return $newPath === null ? ($existingGallery[$i] ?? '') : $newPath;
+                })->all();
+            }
         }
 
         $category = \App\Support\HotelRoomDefaults::updateCategoryDetails(
@@ -1381,6 +1398,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 'room_size' => \App\Models\HotelRoomCategory::supportsShowcase() ? $category->room_size : null,
             ],
             'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+            'image_warning' => $imageWarning,
         ]);
     })->name('hotel.room-categories.details');
 
@@ -1457,12 +1475,22 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         // persist() passes an existing storage path straight back, so the edit form can
         // return the photo it was given without re-uploading it.
+        $imageWarning = null;
         if (array_key_exists('image', $data)) {
-            $room->image = \App\Support\HotelImageStore::persist(
+            $newImage = str_starts_with(trim((string) $data['image']), 'data:image');
+            $imagePath = \App\Support\HotelImageStore::persist(
                 $data['image'],
                 $membership->faculty_id,
                 $membership->group_name
             );
+
+            if ($newImage && $imagePath === null) {
+                // A fresh picture that could not be stored must not blank out the
+                // one already on the room - the failure is announced, not applied.
+                $imageWarning = 'That picture could not be saved. The room keeps its current photo.';
+            } else {
+                $room->image = $imagePath;
+            }
         }
 
         if ($room->isDirty()) {
@@ -1475,6 +1503,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json([
             'room' => $room->fresh()->toTemplateArray(),
+            'image_warning' => $imageWarning,
         ]);
     })->name('hotel.rooms.update');
 
@@ -1500,6 +1529,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // — that is what keeps Classic 111 following Classic 110 without anyone typing.
         $category = \App\Support\HotelRoomDefaults::normalizeCategory($data['category'], $membership);
 
+        $imagePath = \App\Support\HotelImageStore::persist(
+            $data['image'] ?? null,
+            $membership->faculty_id,
+            $membership->group_name
+        );
+
         $room = HotelRoom::create([
             'group_name'  => $membership->group_name,
             'faculty_id'  => $membership->faculty_id,
@@ -1509,14 +1544,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'status'      => 'Available',
             'price'       => (int) $data['price'],
             'description' => $data['description'] ?? null,
-            'image'       => \App\Support\HotelImageStore::persist(
-                $data['image'] ?? null,
-                $membership->faculty_id,
-                $membership->group_name
-            ),
+            'image'       => $imagePath,
         ]);
         return response()->json([
             'room' => $room->toTemplateArray(),
+            'image_warning' => (!empty($data['image']) && $imagePath === null)
+                ? 'The room was added, but its picture could not be saved. Try again from the room card.'
+                : null,
         ], 201);
     })->name('hotel.rooms.store');
 
@@ -1954,6 +1988,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'image.max' => 'That image is too large. Please choose a smaller one.',
         ]);
 
+        $imagePath = \App\Support\HotelImageStore::persist(
+            $data['image'] ?? null,
+            $membership->faculty_id,
+            $membership->group_name
+        );
+
         $item = HotelMenuItem::create([
             'group_name'  => $membership->group_name,
             'faculty_id'  => $membership->faculty_id,
@@ -1964,14 +2004,17 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'price'       => (int) $data['price'],
             'stock'       => (int) ($data['stock'] ?? 0),
             'description' => $data['description'] ?? null,
-            'image'       => \App\Support\HotelImageStore::persist(
-                $data['image'] ?? null,
-                $membership->faculty_id,
-                $membership->group_name
-            ),
+            'image'       => $imagePath,
         ]);
 
-        return response()->json(['item' => $item->toTemplateArray()], 201);
+        return response()->json([
+            'item' => $item->toTemplateArray(),
+            // A picture was sent but never made it to storage: the dish still
+            // saved, so this is a warning on the toast, not a failure of the save.
+            'image_warning' => (!empty($data['image']) && $imagePath === null)
+                ? 'The dish was added, but its picture could not be saved. Try again from Change Image.'
+                : null,
+        ], 201);
     })->name('hotel.menus.store');
 
     Route::patch('/hotel/menus/{id}', function (Request $request, $id) {
@@ -2013,14 +2056,28 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (array_key_exists('price', $data))       $item->price       = (int) $data['price'];
         if (array_key_exists('stock', $data))       $item->stock       = (int) $data['stock'];
         if (array_key_exists('description', $data)) $item->description = $data['description'];
-        if (array_key_exists('image', $data))       $item->image       = \App\Support\HotelImageStore::persist(
-            $data['image'],
-            $membership->faculty_id,
-            $membership->group_name
-        );
+
+        $imageWarning = null;
+        if (array_key_exists('image', $data)) {
+            $newImage = str_starts_with(trim((string) $data['image']), 'data:image');
+            $imagePath = \App\Support\HotelImageStore::persist(
+                $data['image'],
+                $membership->faculty_id,
+                $membership->group_name
+            );
+
+            if ($newImage && $imagePath === null) {
+                // A fresh picture that could not be stored must not blank out the
+                // one already on the dish - the failure is announced, not applied.
+                $imageWarning = 'That picture could not be saved. The dish keeps its current photo.';
+            } else {
+                $item->image = $imagePath;
+            }
+        }
+
         $item->save();
 
-        return response()->json(['item' => $item->toTemplateArray()]);
+        return response()->json(['item' => $item->toTemplateArray(), 'image_warning' => $imageWarning]);
     })->name('hotel.menus.update');
 
     Route::delete('/hotel/menus/{id}', function (Request $request, $id) {

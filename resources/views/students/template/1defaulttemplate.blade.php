@@ -4592,24 +4592,25 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
 
       if (typeof onUpdateCategory !== 'function') return renamed;
 
-      return Promise.resolve(onUpdateCategory(renamed, details)).then((saved) => {
-        if (!saved) {
+      return Promise.resolve(onUpdateCategory(renamed, details)).then((result) => {
+        if (!result || !result.ok) {
           setRenameSaving(false);
           setRenameError('Those details could not be saved. Try again.');
           return null;
         }
-        return renamed;
+        return { renamed, warning: result.warning };
       });
-    }).then((renamed) => {
-      if (!renamed) return;
+    }).then((outcome) => {
+      if (!outcome) return;
+      const { renamed, warning } = outcome;
       setRenameSaving(false);
       setRenameFrom(null);
       // Follow the rename: the tab the page was filtering on is gone by this name.
       setTab(prev => (prev === from ? renamed : prev));
       if (onToast) {
-        onToast(renamed === from
+        onToast(warning || (renamed === from
           ? `${renamed} updated — guests see it on the Rooms page`
-          : `${from} is now ${renamed} — Manage Room shows it too`);
+          : `${from} is now ${renamed} — Manage Room shows it too`));
       }
     });
   };
@@ -4628,11 +4629,13 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
       Promise.resolve(onUpdateCategory(categoryName, {
         image: photos[0],
         gallery: photos.slice(1),
-      })).then((saved) => {
+      })).then((result) => {
         if (!onToast) return;
-        onToast(saved
-          ? `Photo ${slot + 1} of ${CATEGORY_ANGLES} updated for ${categoryName}`
-          : 'That photo could not be saved. Please try again.');
+        if (!result || !result.ok) {
+          onToast('That photo could not be saved. Please try again.');
+          return;
+        }
+        onToast(result.warning || `Photo ${slot + 1} of ${CATEGORY_ANGLES} updated for ${categoryName}`);
       });
     });
   };
@@ -5602,7 +5605,10 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
     if (!onEditMenu || !editing) return;
     setMenuSaving(true);
     onEditMenu(editing.dbId, values)
-      .then(() => { setEditing(null); if (onToast) onToast('Menu item updated'); })
+      .then((item) => {
+        setEditing(null);
+        if (onToast) onToast((item && item._imageWarning) || 'Menu item updated');
+      })
       .catch(() => setMenuError('Could not save that. Please try again.'))
       .finally(() => setMenuSaving(false));
   };
@@ -5610,7 +5616,9 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
   const handleMenuImage = (item) => {
     pickImageFile((url) => {
       if (!url || !onEditMenu) return;
-      onEditMenu(item.dbId, { image: url }).then(() => onToast && onToast('Menu image updated'));
+      onEditMenu(item.dbId, { image: url }).then((saved) => {
+        if (onToast) onToast((saved && saved._imageWarning) || 'Menu image updated');
+      });
     });
   };
 
@@ -5636,7 +5644,10 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
        reads as sold out the moment it appears - the kitchen counts it down from
        here, and Manage Menu is where it is restocked. */
     onAddMenu(Object.assign({ stock: 10 }, values))
-      .then(() => { setAdding(false); if (onToast) onToast('Menu item added'); })
+      .then((item) => {
+        setAdding(false);
+        if (onToast) onToast((item && item._imageWarning) || 'Menu item added');
+      })
       .catch(() => setMenuError('Could not add that. Please try again.'))
       .finally(() => setMenuSaving(false));
   };
@@ -7166,8 +7177,12 @@ function App() {
     })
       .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
       .then(data => {
-        if (data && data.room) setRooms(prev => [...prev, data.room]);
-        return data && data.room;
+        const room = data && data.room;
+        if (room) {
+          setRooms(prev => [...prev, room]);
+          if (data.image_warning) room._imageWarning = data.image_warning;
+        }
+        return room;
       })
       .catch(() => null)
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
@@ -7217,9 +7232,11 @@ function App() {
           setRoomCategories(names);
           setCategoryDetails(data.categories);
         }
-        return true;
+        // A photo that failed to store still leaves the rest of the save intact,
+        // so callers get both: the save succeeded, and what to tell the student.
+        return { ok: true, warning: (data && data.image_warning) || null };
       })
-      .catch(() => false)
+      .catch(() => ({ ok: false, warning: null }))
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 
@@ -7346,7 +7363,15 @@ function App() {
   // is followed by a re-fetch so every open tab sees the same menu.
   const addMenu = useCallback((payload) => (
     menuRequest('/students/hotel/menus', 'POST', payload)
-      .then(data => { fetchMenus(); return data && data.item; })
+      .then(data => {
+        fetchMenus();
+        // The dish still saved even when its picture did not - the caller decides
+        // the one toast to show, so a generic "added" message never overwrites
+        // this the instant it appears.
+        const item = data && data.item;
+        if (item && data.image_warning) item._imageWarning = data.image_warning;
+        return item;
+      })
       .catch(err => {
         showToast((err && err.message) || 'Could not add that menu item.');
         return Promise.reject(err);
@@ -7355,7 +7380,12 @@ function App() {
 
   const editMenu = useCallback((id, payload) => (
     menuRequest('/students/hotel/menus/' + String(id).replace(/^db-/, ''), 'PATCH', payload)
-      .then(data => { fetchMenus(); return data && data.item; })
+      .then(data => {
+        fetchMenus();
+        const item = data && data.item;
+        if (item && data.image_warning) item._imageWarning = data.image_warning;
+        return item;
+      })
       .catch(err => {
         showToast((err && err.message) || 'Could not update that menu item.');
         return Promise.reject(err);
