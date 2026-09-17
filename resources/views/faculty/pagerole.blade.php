@@ -941,6 +941,17 @@
                 <div class="p-4 space-y-3">
                     <div id="reviewStatusRow" class="flex flex-wrap items-center gap-1.5"></div>
 
+                    {{-- The student's checklist so far — shown whether or not the task
+                         has been submitted. Read-only: faculty view progress here, they
+                         don't tick anything. --}}
+                    <div id="reviewProgressWrap" class="hidden rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Progress</p>
+                            <p id="reviewProgressCount" class="text-[10px] font-bold text-slate-400"></p>
+                        </div>
+                        <ul id="reviewProgressList" class="mt-2 space-y-1"></ul>
+                    </div>
+
                     <div id="reviewPrevFeedbackWrap" class="hidden rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">Previous feedback</p>
                         <p id="reviewPrevFeedback" class="text-xs text-amber-800 whitespace-pre-line"></p>
@@ -2731,6 +2742,8 @@ function openTaskReview(taskId) {
     document.getElementById('reviewFeedback').value = '';
     document.getElementById('reviewError').classList.add('hidden');
     document.getElementById('reviewPrevFeedbackWrap').classList.add('hidden');
+    document.getElementById('reviewProgressWrap').classList.add('hidden');
+    document.getElementById('reviewProgressList').innerHTML = '';
 
     const frame = document.getElementById('reviewPreviewFrame');
     const empty = document.getElementById('reviewPreviewEmpty');
@@ -2778,6 +2791,17 @@ function openTaskReview(taskId) {
                 badges.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold">Revision ' + d.revision_count + '</span>');
             }
             document.getElementById('reviewStatusRow').innerHTML = badges.join(' ');
+
+            if (Array.isArray(d.activities) && d.activities.length) {
+                document.getElementById('reviewProgressCount').textContent = d.activities_done + ' of ' + d.activities_total + ' done';
+                document.getElementById('reviewProgressList').innerHTML = d.activities.map(function (a, i) {
+                    return '<li class="flex items-start gap-1.5 text-[11px] ' + (a.done ? 'text-slate-400 line-through' : 'text-slate-600') + '">'
+                        + '<span class="iconify text-sm shrink-0 mt-0.5" data-icon="' + (a.done ? 'mdi:check-circle' : 'mdi:circle-outline') + '"></span>'
+                        + escHtml((i + 1) + '. ' + a.text)
+                      + '</li>';
+                }).join('');
+                document.getElementById('reviewProgressWrap').classList.remove('hidden');
+            }
 
             if (d.feedback) {
                 document.getElementById('reviewPrevFeedback').textContent = d.feedback;
@@ -2989,7 +3013,7 @@ function postTaskFeedback(body, decision, approvedTitle, onSuccess, taskId, onEr
                 html: `<p class="text-sm text-slate-500">${d.message || 'The student has been notified.'}</p>`,
                 timer: 2200,
                 showConfirmButton: false,
-                iconColor: decision === 'revise' ? '#D97706' : '#059669',
+                iconColor: '#059669',
                 customClass: { popup: 'rounded-2xl p-6 bg-white shadow-2xl', title: 'text-lg font-bold text-slate-800' },
                 buttonsStyling: false,
             }).then(() => {
@@ -4655,21 +4679,28 @@ function renderTeamModalActivityPage() {
               '</div>'
             : '<span class="text-[10px] text-slate-300">Unassigned</span>';
 
-        // Only submitted work can be reviewed; nothing to look at before that.
-        // The action lives in its own button rather than on the row or the date,
-        // so it is obvious what is clickable and what is just information.
-        const reviewable = isDone && log.id;
+        // A task can be opened and looked at any time — it's only feedback
+        // (inside the modal, gated by canAct there) that waits on a submission.
+        const reviewable = !!log.id;
         const reviewCell = reviewable
             ? '<button type="button" data-review-task="' + Number(log.id) + '"'
-                + ' title="Open this submission and leave feedback"'
+                + ' title="' + (isDone
+                    ? 'Open this submission and leave feedback'
+                    : 'View progress so far — feedback opens once it is submitted') + '"'
                 + ' class="w-full inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition '
-                + (log.has_feedback
-                    ? 'bg-white text-brand border border-brand/30 hover:bg-brand-soft'
-                    : 'bg-brand text-white hover:opacity-90 shadow-sm shadow-brand/20') + '">'
-                + '<span class="iconify text-xs shrink-0" data-icon="mdi:file-document-edit-outline"></span>'
-                + (log.has_feedback ? 'Reviewed' : 'Review')
+                + (isDone
+                    ? (log.has_feedback
+                        ? 'bg-white text-brand border border-brand/30 hover:bg-brand-soft'
+                        : 'bg-brand text-white hover:opacity-90 shadow-sm shadow-brand/20')
+                    : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50') + '">'
+                + '<span class="iconify text-xs shrink-0" data-icon="' + (isDone ? 'mdi:file-document-edit-outline' : 'mdi:eye-outline') + '"></span>'
+                + (isDone ? (log.has_feedback ? 'Reviewed' : 'Review') : 'View')
               + '</button>'
-            : '<span class="block text-center text-[10px] font-semibold text-slate-300">Not submitted</span>';
+            : '<span class="block text-center text-[10px] font-semibold text-slate-300">—</span>';
+
+        const progressNote = (!isDone && log.activities_total > 0)
+            ? '<p class="text-[9px] text-slate-400 mt-0.5">' + log.activities_done + '/' + log.activities_total + ' steps</p>'
+            : '';
 
         return '<tr class="hover:bg-slate-50 transition-colors">' +
             '<td class="px-3 py-2">' +
@@ -4680,7 +4711,7 @@ function renderTeamModalActivityPage() {
             '</td>' +
             '<td class="px-3 py-2">' + student + '</td>' +
             '<td class="px-3 py-2 text-[11px] font-semibold text-slate-600 whitespace-nowrap">' + escHtml(log.role_label || log.role || '—') + '</td>' +
-            '<td class="px-3 py-2">' + statusBadge + '</td>' +
+            '<td class="px-3 py-2">' + statusBadge + progressNote + '</td>' +
             '<td class="px-3 py-2 text-[11px] whitespace-nowrap ' + (isDone ? 'text-slate-500' : 'text-slate-300') + '">' +
                 escHtml(isDone ? (log.submitted_at || log.updated_at || '—') : 'Not yet') +
             '</td>' +
