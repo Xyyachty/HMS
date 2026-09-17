@@ -1297,7 +1297,7 @@
                             <div>
                                 {{-- Also the drop target settleConceptTaskRow() appends the
                                      settled concept card to, so it lands in the same grid. --}}
-                                <div data-completed-list class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                                <div data-completed-list class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
                                     @foreach($groupRows as $row)
                                         @php
                                             $task = $row->task;
