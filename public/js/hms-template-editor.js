@@ -133,6 +133,12 @@
     return (prefix || 'hms') + '-' + Math.random().toString(36).slice(2, 10);
   }
 
+  // For a value going inside a double-quoted attribute selector, where CSS.escape
+  // (an identifier escaper) would mangle ordinary spaces in a category name.
+  function cssAttrValue(value) {
+    return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  }
+
   function getSelector(el) {
     if (!el || el === document.documentElement) return 'html';
     if (el === document.body) return 'body';
@@ -164,6 +170,17 @@
         parts.unshift('#' + cssEscape(node.id));
         break;
       }
+      /* A card that names what it is anchors the key to that name, not to where it
+         sits. The Rooms page renders one card per category and only the selected
+         tab's card is in the DOM, so "article:nth-of-type(1)" means "whichever
+         category is on screen" — edits saved on Classic were reappearing on top of
+         Executive. */
+      const identity = node.getAttribute('data-hms-category');
+      if (identity) {
+        parts.unshift(node.tagName.toLowerCase() + '[data-hms-category="' + cssAttrValue(identity) + '"]');
+        break;
+      }
+
       let part = node.tagName.toLowerCase();
       const parent = node.parentElement;
       if (parent) {
@@ -1190,11 +1207,20 @@
     return null;
   }
 
+  /* A key saved before category cards were keyed by name addresses a position, so it
+     now matches whichever category happens to be on screen. Honouring it paints one
+     category's title and price over another's, so the card is left to render its own
+     content instead. Only keys that name no category are suspect. */
+  function isPositionalCategoryKey(id, el) {
+    return String(id).indexOf('data-hms-category') === -1
+      && !!(el && el.closest && el.closest('[data-hms-category]'));
+  }
+
   function findByKey(id) {
     if (!id || id === USER_KEY || id === DELETED_KEY) return null;
     try {
       let el = document.querySelector(id);
-      if (el) return el;
+      if (el) return isPositionalCategoryKey(id, el) ? null : el;
     } catch (e) { /* ignore */ }
     const entry = customizations[id];
     if (entry && entry.hmsId) {
