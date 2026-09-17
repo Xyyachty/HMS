@@ -1326,10 +1326,10 @@ const RESTAURANTS = [
 ];
 
 const EXPERIENCES = [
-  { icon: 'fa-spa', title: 'Spa & Wellness', desc: 'Full-service spa with thermal pools, Hammam, and bespoke treatment rituals.' },
-  { icon: 'fa-person-swimming', title: 'Infinity Pool', desc: 'Rooftop heated pool with skyline views, private cabanas, and poolside service.' },
-  { icon: 'fa-dumbbell', title: 'Fitness Center', desc: 'State-of-the-art equipment, personal trainers, and sunrise yoga sessions.' },
-  { icon: 'fa-car', title: 'Concierge & Transport', desc: 'Private chauffeur, airport transfers, and curated city experiences on demand.' },
+  { icon: 'fa-spa', title: 'Spa & Wellness', desc: 'Full-service spa with thermal pools, Hammam, and bespoke treatment rituals.', img: 'https://picsum.photos/seed/exp1/400/300.jpg' },
+  { icon: 'fa-person-swimming', title: 'Infinity Pool', desc: 'Rooftop heated pool with skyline views, private cabanas, and poolside service.', img: 'https://picsum.photos/seed/exp2/400/300.jpg' },
+  { icon: 'fa-dumbbell', title: 'Fitness Center', desc: 'State-of-the-art equipment, personal trainers, and sunrise yoga sessions.', img: 'https://picsum.photos/seed/exp3/400/300.jpg' },
+  { icon: 'fa-car', title: 'Concierge & Transport', desc: 'Private chauffeur, airport transfers, and curated city experiences on demand.', img: 'https://picsum.photos/seed/exp4/400/300.jpg' },
 ];
 
 /* Sample copy names the hotel, and a team that renames theirs must not be left
@@ -5791,11 +5791,12 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• EXPERIENCE PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function ExperiencePage({ onNavigate, brandName }) {
+function ExperiencePage({ onNavigate, canEdit, onToast, brandName }) {
   const [idx, setIdx] = useState(0);
   // The quote as the hotel's own guests would have written it.
   const t = TESTIMONIALS[idx];
   const quote = withHotelName(t.text, brandName);
+  const guestImg = resolveCardImg('testimonial', String(idx), t.img);
 
   return (
     <>
@@ -5807,7 +5808,16 @@ function ExperiencePage({ onNavigate, brandName }) {
       <section style={{ padding: '0 1.5rem 4rem', maxWidth: 1200, margin: '0 auto' }}>
         <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1.25rem', marginBottom: '5rem' }}>
           {EXPERIENCES.map(ex => (
-            <div key={ex.title} className="exp-item">
+            <div key={ex.title} className="exp-item" style={{ position: 'relative' }}>
+              {canEdit && (
+                <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
+                  data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
+                  <button type="button" title="Change image" onClick={() => changeCardImg('exp', ex.title, () => onToast && onToast('Experience image updated'))}
+                    style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
+                </div>
+              )}
+              <img src={resolveCardImg('exp', ex.title, ex.img)} alt={ex.title} loading="lazy"
+                style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 8, marginBottom: '0.85rem' }} />
               <i className={`fa-solid ${ex.icon}`} style={{ fontSize: '1.4rem', color: 'var(--accent)', marginBottom: '0.85rem', display: 'block' }}></i>
               <h4 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.35rem' }}>{ex.title}</h4>
               <p style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', fontWeight: 300, lineHeight: 1.55 }}>{ex.desc}</p>
@@ -5815,9 +5825,15 @@ function ExperiencePage({ onNavigate, brandName }) {
           ))}
         </div>
 
-        <div className="testimonial-box" style={{ maxWidth: 860, margin: '0 auto 4rem' }}>
+        <div className="testimonial-box" style={{ maxWidth: 860, margin: '0 auto 4rem', position: 'relative' }}>
+          {canEdit && (
+            <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 3 }} data-hms-no-edit="1">
+              <button type="button" title="Change image" onClick={() => changeCardImg('testimonial', String(idx), () => onToast && onToast('Guest photo updated'))}
+                style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
+            </div>
+          )}
           <div className="testimonial-flex" style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
-            <img src={t.img} alt="Guest" style={{ width: 72, height: 72, borderRadius: '50%', border: '2px solid var(--accent)', objectFit: 'cover', flexShrink: 0 }} />
+            <img src={guestImg} alt="Guest" style={{ width: 72, height: 72, borderRadius: '50%', border: '2px solid var(--accent)', objectFit: 'cover', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 220 }}>
               <i className="fa-solid fa-quote-left" style={{ color: 'var(--accent)', opacity: 0.35, fontSize: '1.3rem', marginBottom: '0.6rem', display: 'block' }}></i>
               <p className="font-display" style={{ fontSize: '1.05rem', fontStyle: 'italic', lineHeight: 1.6, marginBottom: '0.75rem' }}>{quote}</p>
@@ -6717,6 +6733,7 @@ function App() {
   const [canEditHeroSlides, setCanEditHeroSlides] = useState(false);
   const [partners, setPartnersState] = useState(DEFAULT_PARTNERS);
   const [canEditPartners, setCanEditPartners] = useState(false);
+  const [canEditExperiences, setCanEditExperiences] = useState(false);
 
 
   // In-flight room writes — a poll that lands mid-write would show stale data.
@@ -6894,6 +6911,11 @@ function App() {
     setCanEditPartners(
       typeof window.HMSSiteContent.canEditPartners === 'function'
         ? window.HMSSiteContent.canEditPartners()
+        : false
+    );
+    setCanEditExperiences(
+      typeof window.HMSSiteContent.canEditExperiences === 'function'
+        ? window.HMSSiteContent.canEditExperiences()
         : false
     );
     setCanEditNav(window.HMSSiteContent.canEditNav());
@@ -7426,7 +7448,7 @@ function App() {
         rooms={rooms}
       />
     ),
-    experience: <ExperiencePage onNavigate={navigateTo} brandName={brandName} />,
+    experience: <ExperiencePage onNavigate={navigateTo} canEdit={canEditExperiences} onToast={showToast} brandName={brandName} />,
     amenities: (
       <AmenitiesPage
         amenities={amenities}

@@ -21,10 +21,11 @@ namespace App\Support;
  *   TASK 01  Front Desk Customization        — the hotel concept, then the home
  *                                              page and the chrome every page
  *                                              inherits (logo, name, palette,
- *                                              type, footer)
+ *                                              type, footer), plus the Experience
+ *                                              page
  *   TASK 02  Room Management Customization   — the Rooms page
  *   TASK 03  Restaurant Management Customization — the Restaurant page
- *   TASK 04  Housekeeping Customization      — the Amenities and Experience pages
+ *   TASK 04  Housekeeping Customization      — the Amenities page
  *
  * Each entry under a task is one activity: its own row, submitted and reviewed on
  * its own. Maintenance owns no page of the site (HotelTemplateBuilder::
@@ -171,6 +172,18 @@ class TaskChecklist
                 'title' => 'Introduce Your Team',
                 'description' => "Put four real people in Our Team: a photograph of each, their full name, and the position they hold. This is the section a guest reads to see who runs the hotel, so use the roles your team actually assigned.",
             ],
+            [
+                'title' => 'Write the Experience Page',
+                'description' => 'Write the Experience page so it tells a guest what staying at your hotel is like, and lay it out so it matches the rest of the site.',
+            ],
+            [
+                'title' => 'Colour the Experience Page',
+                'description' => "Give the Experience page its own background from Background Colours. It's the page guests read after the rooms, so it should look like the same hotel - close enough to the site's palette to belong to it, different enough to be its own.",
+            ],
+            [
+                'title' => 'Illustrate the Experience Page',
+                'description' => "Photograph the Experience page: a picture for each thing you describe, so the page shows the stay rather than only claiming it. Replace every sample image; a page of stock photographs reads as a page nobody wrote.",
+            ],
         ],
 
         'room_management' => [
@@ -267,28 +280,20 @@ class TaskChecklist
                 'description' => 'Fill in the Amenities page with what your hotel actually offers, so it matches the add-ons you lend out.',
             ],
             [
-                'title' => 'Write the Experience Page',
-                'description' => 'Write the Experience page so it tells a guest what staying at your hotel is like, and lay it out so it matches the rest of the site.',
-            ],
-            [
-                'title' => 'Colour the Amenities and Experience Pages',
-                'description' => "Give your two pages their own backgrounds from Background Colours. They are the pages guests read after the rooms, so they should look like the same hotel - close enough to the site's palette to belong to it, different enough to be their own.",
-            ],
-            [
-                'title' => 'Illustrate the Experience Page',
-                'description' => "Photograph the Experience page: a picture for each thing you describe, so the page shows the stay rather than only claiming it. Replace every sample image; a page of stock photographs reads as a page nobody wrote.",
+                'title' => 'Colour the Amenities Page',
+                'description' => "Give the Amenities page its own background from Background Colours. It's the page guests read after the rooms, so it should look like the same hotel - close enough to the site's palette to belong to it, different enough to be its own.",
             ],
             [
                 'title' => 'Write the Amenities Page Introduction',
                 'description' => "Write the words above the facility cards: the small line over the heading, the heading, and the paragraph under it. Say what a guest can actually use and how they get at it, rather than repeating the word Amenities.",
             ],
             [
-                'title' => 'Check Your Pages on a Phone',
-                'description' => "Narrow the window until the cards stack and read both your pages as a guest with a phone would: headings that wrap badly, photographs cropped to nothing, a carousel that no longer fits.",
+                'title' => 'Check the Amenities Page on a Phone',
+                'description' => "Narrow the window until the cards stack and read the page as a guest with a phone would: headings that wrap badly, photographs cropped to nothing, a carousel that no longer fits.",
             ],
             [
-                'title' => 'Review Your Pages Against the Site',
-                'description' => "Open the Home page, then Amenities, then Experience. All three should look like the same hotel: the same typeface, the same kind of photograph, headings written in the same voice.",
+                'title' => 'Review the Amenities Page Against the Site',
+                'description' => "Open the Home page, then Amenities. They should look like the same hotel: the same typeface, the same kind of photograph, headings written in the same voice.",
             ],
         ],
     ];
@@ -312,6 +317,7 @@ class TaskChecklist
         'Fill In the Promos Section' => 'Three offers, each with its picture, its name, what it includes and its condition.',
         'Build the Partner Brands Strip' => 'Every card is a real partner, with a logo or its name, and no sample brands remain.',
         'Introduce Your Team' => 'Four people, each with a photograph, a full name and the position they hold.',
+        'Colour the Experience Page' => 'The page carries a background of its own that still belongs to the site.',
         'Create Your Room Categories' => 'The categories are the ones your hotel sells, each with an opening rate.',
         'Build Your Room Types' => 'Every room type the hotel has is on the page, under the right category.',
         'Photograph and Price Every Room' => 'Every room card carries its own photograph, its price and its own description.',
@@ -333,11 +339,11 @@ class TaskChecklist
         'Customize Hotel Amenities' => 'Every facility the hotel has is listed, described, and photographed more than once.',
         'Build the Amenities Page' => 'The page lists every facility a guest can use, in your own words.',
         'Write the Experience Page' => 'The page describes your hotel\'s stay, with no sample copy left on it.',
-        'Colour the Amenities and Experience Pages' => 'Both pages carry a background of their own that still belongs to the site.',
+        'Colour the Amenities Page' => 'The page carries a background of its own that still belongs to the site.',
         'Illustrate the Experience Page' => 'Every section of the page carries a picture, and none of them are the samples.',
         'Write the Amenities Page Introduction' => 'The heading and its introduction are your own words, with no sample copy left on the page.',
-        'Check Your Pages on a Phone' => 'Both pages read cleanly in one column with the carousel and every card intact.',
-        'Review Your Pages Against the Site' => 'Your two pages sit with the rest of the site rather than beside it.',
+        'Check the Amenities Page on a Phone' => 'The page reads cleanly in one column with the carousel and every card intact.',
+        'Review the Amenities Page Against the Site' => 'The page sits with the rest of the site rather than beside it.',
     ];
 
     /**
@@ -406,6 +412,12 @@ class TaskChecklist
             'Upload a photograph for each of them.',
             'Write each name in full.',
             'Give each the position they actually hold on your team.',
+        ],
+        'Colour the Experience Page' => [
+            'Open Background Colours in Design mode.',
+            'Set the background of the Experience page.',
+            'Pick a background your text still reads against.',
+            'Check it still looks like the same hotel as the Home page.',
         ],
         'Create Your Room Categories' => [
             'Decide the categories your hotel sells rooms in.',
@@ -533,11 +545,11 @@ class TaskChecklist
             'Cut the sample copy that does not describe your hotel.',
             'Lay the page out so it matches the rest of the site.',
         ],
-        'Colour the Amenities and Experience Pages' => [
+        'Colour the Amenities Page' => [
             'Open Background Colours in Design mode.',
             'Set the background of the Amenities page.',
-            'Set the background of the Experience page.',
-            'Check both still look like the same hotel as the Home page.',
+            'Pick a background your text still reads against.',
+            'Check it still looks like the same hotel as the Home page.',
         ],
         'Illustrate the Experience Page' => [
             'List the things the page describes.',
@@ -551,17 +563,17 @@ class TaskChecklist
             'Write the paragraph under it in two or three sentences.',
             'Read it against the Home page so the two sound like one hotel.',
         ],
-        'Check Your Pages on a Phone' => [
+        'Check the Amenities Page on a Phone' => [
             'Narrow the browser until the amenity cards stack in one column.',
             'Read every card for text that wraps or overflows.',
             'Open View Details at that width and check the carousel fits.',
-            'Do the same for the Experience page.',
+            'Fix what breaks and check again.',
         ],
-        'Review Your Pages Against the Site' => [
-            'Open the Home page and then each of your two pages in turn.',
+        'Review the Amenities Page Against the Site' => [
+            'Open the Home page, then the Amenities page, and compare them.',
             'Note every difference that is not deliberate.',
             'Fix the ones that make the pages look unrelated.',
-            'Read all three headings aloud and check they sound like one writer.',
+            'Read both headings aloud and check they sound like one writer.',
         ],
     ];
 
@@ -702,8 +714,8 @@ class TaskChecklist
         'fill in the promos section' => ['page' => 'home', 'section' => 'promos'],
         'build the partner brands strip' => ['page' => 'home', 'section' => 'partners'],
         'introduce your team' => ['page' => 'home', 'section' => 'team'],
-        'colour the amenities and experience pages' => ['page' => 'amenities', 'section' => null],
         'write the experience page' => ['page' => 'experience', 'section' => null],
+        'colour the experience page' => ['page' => 'experience', 'section' => null],
         'illustrate the experience page' => ['page' => 'experience', 'section' => null],
     ];
 

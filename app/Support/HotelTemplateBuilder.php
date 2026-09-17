@@ -69,16 +69,15 @@ class HotelTemplateBuilder
      * Teammates still see the full merged site; edit is page-scoped.
      */
     public const ROLE_EDITABLE_PAGES = [
-        'front_desk' => ['home'],
+        // Experience rides with Home rather than Amenities: it is guest-facing
+        // brand storytelling (what staying here is like), the same voice Front
+        // Desk already writes for the rest of the site's words and colours.
+        'front_desk' => ['home', 'experience'],
         'room_management' => ['rooms'],
         'restaurant_management' => ['restaurant'],
-        /* Housekeeping also owns the add-ons catalogue the Amenities page lists, so
-           it is the one that page's static copy belongs to as well. Amenities is
-           named first because the first page in this list is the one the builder
-           opens on (preferredPageForRole), and the facilities are the work: the
-           Experience page is written once, while the amenities are added,
-           photographed and reordered throughout. */
-        'housekeeping' => ['amenities', 'experience'],
+        // Housekeeping also owns the add-ons catalogue the Amenities page lists,
+        // so that page's static copy belongs to it too.
+        'housekeeping' => ['amenities'],
         'maintenance' => [],
     ];
 
