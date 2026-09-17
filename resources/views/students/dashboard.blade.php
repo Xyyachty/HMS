@@ -1631,6 +1631,51 @@
         </div>
     </div>
 
+    <!-- Task Instructions Modal -->
+    {{-- Top level like the dialogs above, and for the same reason: one nested in a
+         section is hidden along with it. This one has a second reason — inside
+         #tasksLiveContainer the tasks poller would throw it away. --}}
+    <div id="taskInstructionsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTaskInstructions()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 34rem;">
+            <div class="bg-brand-soft px-4 py-3 border-b border-brand/10 flex justify-between items-start gap-3 rounded-t-2xl flex-shrink-0">
+                <div class="min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-brand/60">Task Instructions</p>
+                    <h4 id="taskInstructionsName" class="font-bold text-brand text-sm truncate">Task</h4>
+                </div>
+                <button type="button" onclick="closeTaskInstructions()" class="text-slate-400 hover:text-brand hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0" aria-label="Close">
+                    <span class="iconify text-lg" data-icon="mdi:close"></span>
+                </button>
+            </div>
+            <div class="px-4 py-3 border-b border-slate-100 grid grid-cols-2 gap-x-4 gap-y-2.5 flex-shrink-0">
+                <div class="min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Task Code</p>
+                    <p id="taskInstructionsCode" class="text-[12px] font-bold text-slate-700 truncate"></p>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Role</p>
+                    <p id="taskInstructionsRole" class="text-[12px] font-bold text-slate-700 truncate"></p>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</p>
+                    <p id="taskInstructionsStatus" class="text-[12px] font-bold text-slate-700 truncate"></p>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Due Date</p>
+                    <p id="taskInstructionsDue" class="text-[12px] font-bold text-slate-700 truncate"></p>
+                </div>
+            </div>
+            {{-- The card's own .task-detail node is moved in here while the dialog is
+                 open, and moved back out when it closes. --}}
+            <div id="taskInstructionsBody" class="overflow-y-auto flex-1"></div>
+            <div class="px-4 py-2.5 border-t border-slate-100 flex justify-end rounded-b-2xl flex-shrink-0 bg-slate-50/50">
+                <button type="button" onclick="closeTaskInstructions()" class="px-3.5 py-1.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition font-semibold text-xs">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ── Section switching ──
         function showSection(section) {
@@ -1943,14 +1988,10 @@
                             + '<p class="text-[11px] font-semibold text-slate-300">No due date</p>'
                         + '</div>'
                         + '<div class="flex items-center gap-2 shrink-0">'
-                            + '<span class="text-[11px] font-extrabold text-slate-400 whitespace-nowrap" data-row-percent>100%</span>'
                             + '<span class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">'
                                 + '<span class="iconify text-base" data-icon="mdi:check"></span>'
                             + '</span>'
                         + '</div>'
-                    + '</div>'
-                    + '<div class="h-1 bg-slate-100">'
-                        + '<div class="h-full bg-emerald-500" data-row-bar style="width: 100%"></div>'
                     + '</div>';
                 list.appendChild(done);
                 if (window.Iconify && typeof window.Iconify.scan === 'function') {
@@ -2417,7 +2458,9 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeMemberActivityModal();
+            if (e.key !== 'Escape') return;
+            closeMemberActivityModal();
+            closeTaskInstructions();
         });
 
         function switchReportTab(tab) {
@@ -2562,20 +2605,82 @@
                 badge.textContent = meta.label;
             }
 
-            const percentEl = row.querySelector('[data-row-percent]');
-            if (percentEl) percentEl.textContent = percent + '%';
-
-            const bar = row.querySelector('[data-row-bar]');
-            if (bar) bar.style.width = percent + '%';
+            /* No per-task figure on the card any more, so `percent` only decides
+               the status passed in. The drawer carries the label the instructions
+               dialog shows, so it has to move with the badge. */
+            const detail = row.querySelector('.task-detail');
+            if (detail) detail.dataset.detailStatus = meta.label;
         }
 
-        // ── Task detail drawer ──
-        function toggleTaskDetail(id, btn) {
-            const row = document.getElementById(id);
-            if (!row) return;
-            const open = !row.classList.toggle('hidden');
-            btn?.classList.toggle('text-brand', open);
-            btn?.classList.toggle('text-slate-400', !open);
+        /* ── Task instructions dialog ──
+           The body is the .task-detail node that lives in the card, moved into the
+           dialog and moved back when it closes. Moved rather than copied so there is
+           only ever one of it: the Steps checkboxes stay wired (their change handler
+           is bound to the document, not to the node), and a tick made in the dialog
+           is already on the node the card gets back. Two copies would drift apart.
+
+           It cannot simply be positioned over the card instead — .task-card:hover
+           sets a transform, and a transformed ancestor makes position:fixed resolve
+           against the card rather than the viewport. */
+        let taskInstructionsIsOpen = false;
+        let taskDetailOriginId = null;
+
+        function openTaskInstructions(id) {
+            const detail = document.getElementById(id);
+            const modal  = document.getElementById('taskInstructionsModal');
+            const body   = document.getElementById('taskInstructionsBody');
+            if (!detail || !modal || !body) return;
+
+            if (taskInstructionsIsOpen) closeTaskInstructions();
+
+            taskDetailOriginId = detail.closest('[data-task-card]')?.dataset.taskId ?? null;
+
+            const set = (nodeId, value) => {
+                const el = document.getElementById(nodeId);
+                if (el) el.textContent = value || '—';
+            };
+            set('taskInstructionsName',   detail.dataset.detailName);
+            set('taskInstructionsCode',   detail.dataset.detailCode);
+            set('taskInstructionsRole',   detail.dataset.detailRole);
+            set('taskInstructionsStatus', detail.dataset.detailStatus);
+            set('taskInstructionsDue',    detail.dataset.detailDue);
+
+            body.appendChild(detail);
+            detail.classList.remove('hidden');
+
+            taskInstructionsIsOpen = true;
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            if (window.Iconify && typeof window.Iconify.scan === 'function') {
+                window.Iconify.scan(body);
+            }
+        }
+
+        function closeTaskInstructions() {
+            if (!taskInstructionsIsOpen) return;
+
+            const modal  = document.getElementById('taskInstructionsModal');
+            const body   = document.getElementById('taskInstructionsBody');
+            const detail = body?.firstElementChild;
+
+            if (detail) {
+                detail.classList.add('hidden');
+                /* Looked up fresh rather than remembered: the poller may have
+                   reprinted the card while this was open, and settleConceptTaskRow()
+                   removes the concept card outright. If the card it came from is
+                   gone the drawer goes with it — whatever replaced the card brought
+                   a drawer of its own. */
+                const card = taskDetailOriginId
+                    ? document.querySelector('[data-task-card][data-task-id="' + taskDetailOriginId + '"]')
+                    : null;
+                if (card) card.appendChild(detail);
+                else detail.remove();
+            }
+
+            taskInstructionsIsOpen = false;
+            taskDetailOriginId = null;
+            modal?.classList.add('hidden');
+            document.body.style.overflow = '';
         }
 
         // ── Customize / Simulation role menus ──
@@ -2668,6 +2773,10 @@
                     return; // first poll only sets the baseline
                 }
                 if (data.signature === tasksLiveSignature) return;
+                /* Signature deliberately left untouched: this swap would destroy the
+                   card the open dialog took its body from, so skip the tick and let
+                   the next one after the dialog closes do the work. */
+                if (taskInstructionsIsOpen) return;
                 tasksLiveSignature = data.signature;
 
                 const container = document.getElementById('tasksLiveContainer');
@@ -2772,7 +2881,10 @@ document.addEventListener('change', function (e) {
             // Steps ticked move the card itself between Not Started and In
             // Progress — unless faculty already sent it back or archived it,
             // which own their own status regardless of the checklist.
-            const row = panel.closest('[data-task-card]');
+            /* While the instructions dialog is open this panel sits in the dialog,
+               outside the grid, so walking up finds no card. Fall back to the id. */
+            const row = panel.closest('[data-task-card]')
+                || document.querySelector('[data-task-card][data-task-id="' + taskId + '"]');
             if (row && row.dataset.taskStatus !== 'revision' && row.dataset.taskStatus !== 'completed') {
                 const newStatus = data.done > 0 ? 'in_progress' : 'not_started';
                 const percent = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;

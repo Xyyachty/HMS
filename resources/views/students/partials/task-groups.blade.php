@@ -205,7 +205,14 @@
                             $rowMeta       = $groupStatusMeta[$row->status];
                             $rowModule     = \App\Support\HotelTemplateBuilder::modulesForRoles([$task->role])[0] ?? null;
                             $rowDetailId   = 'taskDetail' . $task->task_id;
-                            $rowBar        = $isCompleted ? 'bg-emerald-500' : ($needsRevision ? 'bg-amber-500' : $homeTint($task->role, 'bar'));
+                            // The instructions dialog reads its heading off the drawer it
+                            // shows, so the card carries its own copy: the live poller
+                            // reprints this markup wholesale, and anything JS held apart
+                            // from it would go stale against the reprint.
+                            $rowRoleLabel  = $homeRoleLabels[$task->role] ?? $task->role_label;
+                            $rowDueLabel   = $task->due_date
+                                                ? $task->due_date->format('M j, Y') . ' · ' . $task->due_date->format('g:i A')
+                                                : 'No due date';
                             // 'FD TASK 1' — the role's initials plus the task's place in
                             // this group, which is what the card is known by.
                             $rowCode       = ($roleTaskCodes[$task->role] ?? strtoupper(substr($task->role, 0, 2)))
@@ -217,6 +224,7 @@
                              has chosen, and settleConceptTaskRow() removes it outright. --}}
                         <div @if($task->is_hotel_concept) id="conceptPanelCard" data-task-title="{{ $task->title }}" @endif
                              data-task-card
+                             data-task-id="{{ $task->task_id }}"
                              data-task-status="{{ $row->status }}"
                              data-task-role="{{ $task->role }}"
                              class="task-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -249,9 +257,9 @@
                                             <span class="iconify text-sm" data-icon="mdi:arrow-right"></span>
                                         </a>
                                     @else
-                                        {{-- No `this`: the tint toggleTaskDetail() puts on the eye
-                                             button would fight this one's own white text. --}}
-                                        <button type="button" onclick="toggleTaskDetail('{{ $rowDetailId }}')"
+                                        {{-- Nowhere of its own to open, so it opens what it has:
+                                             the same instructions dialog as the eye. --}}
+                                        <button type="button" onclick="openTaskInstructions('{{ $rowDetailId }}')"
                                                 title="Open {{ $task->title }}"
                                                 class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl brand-gradient text-white text-[12px] font-bold shadow-md shadow-brand/20 hover:opacity-90 transition whitespace-nowrap">
                                             Proceed
@@ -262,7 +270,9 @@
                             </div>
 
                             {{-- The rest of what the table columns used to carry: due date,
-                                 percent, the details toggle and the submit button. --}}
+                                 the instructions button and the submit button. A per-task
+                                 percent used to sit here too; the group summary card above
+                                 is the only progress figure now. --}}
                             <div class="flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">
                                 <div class="flex items-center gap-1.5 min-w-0">
                                     <span class="iconify text-slate-300 text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>
@@ -275,9 +285,8 @@
                                     @endif
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0">
-                                    <span class="text-[11px] font-extrabold text-slate-400 whitespace-nowrap" data-row-percent>{{ $row->percent }}%</span>
-                                    <button type="button" onclick="toggleTaskDetail('{{ $rowDetailId }}', this)"
-                                            title="View details" aria-label="View details for {{ $task->title }}"
+                                    <button type="button" onclick="openTaskInstructions('{{ $rowDetailId }}')"
+                                            title="View instructions" aria-label="View instructions for {{ $task->title }}"
                                             class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand hover:border-brand/40 transition-colors">
                                         <span class="iconify text-base" data-icon="mdi:eye-outline"></span>
                                     </button>
@@ -310,13 +319,20 @@
                                 </div>
                             </div>
 
-                            <div class="h-1 bg-slate-100">
-                                <div class="h-full {{ $rowBar }}" data-row-bar style="width: {{ $row->percent }}%"></div>
-                            </div>
-
-                            {{-- Detail drawer: description, faculty feedback, and for the
-                                 concept task the two proposals themselves. --}}
-                            <div class="task-detail px-4 sm:px-5 py-4 bg-slate-50/60 border-t border-slate-100 {{ $task->is_hotel_concept ? '' : 'hidden' }}" id="{{ $rowDetailId }}">
+                            {{-- The body of the instructions dialog: description, the Steps
+                                 checklist and any faculty feedback. It is parked in the card
+                                 rather than in the dialog because the checklist's change
+                                 handler finds the card it belongs to by walking up from the
+                                 panel, and because the poller reprints it with fresh state.
+                                 openTaskInstructions() lifts this node into the dialog and
+                                 puts it back on close, so it stays hidden here either way. --}}
+                            <div class="task-detail hidden px-4 sm:px-5 py-4 bg-slate-50/60 border-t border-slate-100"
+                                 id="{{ $rowDetailId }}"
+                                 data-detail-name="{{ $task->title }}"
+                                 data-detail-code="{{ $rowCode }}"
+                                 data-detail-role="{{ $rowRoleLabel }}"
+                                 data-detail-status="{{ $rowMeta['label'] }}"
+                                 data-detail-due="{{ $rowDueLabel }}">
                                 <div class="space-y-3">
                                     @if($task->description)
                                         {{-- pre-line: the description carries the task's four activities as numbered
