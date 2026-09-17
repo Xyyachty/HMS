@@ -6,7 +6,7 @@ use App\Models\StudentGroup;
 use App\Models\Task;
 
 /**
- * The team's assigned tasks as the Template Editor sidebar lists them.
+ * This student's own assigned tasks, as the Template Editor sidebar lists them.
  *
  * Read straight off the Task rows faculty's Set Task writes — there is no task
  * store of the editor's own. Set Task fans one activity out into a row per
@@ -14,8 +14,9 @@ use App\Models\Task;
  * where this student holds one of those copies, theirs is the one shown, since
  * its status is the one they are answerable for.
  *
- * Retired simulation titles are left out (Task::withoutSimulation), the same as
- * the dashboard's Task panel.
+ * Scoped to the roles this student holds, the same rule the dashboard's Task
+ * panel applies. Retired simulation titles are left out
+ * (Task::withoutSimulation), also as on the dashboard.
  */
 class AssignedTaskList
 {
@@ -32,18 +33,35 @@ class AssignedTaskList
             return [];
         }
 
+        /* Only this student's own work. The sidebar listed the whole team's
+           tasks, so a Front Desk student was shown Housekeeping and Restaurant
+           rows that were never theirs — and could not act on them either, since
+           the card's url is null for a role they do not hold, leaving it inert
+           on click. The dashboard's Task panel has always filtered this way.
+
+           Expanded through rolesForPhase rather than matched against the stored
+           seat keys directly: in the customization phase the housekeeping seat
+           also covers maintenance, and those tasks really are this student's to
+           edit. It is the same set $editorUrls is built from below, so every
+           card that survives this filter has an editor to jump to. */
+        $myRoles = $membership->roles->pluck('role')->all();
+        $myCustomizationRoles = HotelTemplateBuilder::rolesForPhase(
+            $myRoles,
+            HotelTemplateBuilder::PHASE_CUSTOMIZATION
+        );
+
         // Completed (archived) work drops off the sidebar — it is done, so it is
         // no longer something to jump to and customize. The dashboard's Task
         // panel is where finished work still shows.
         $rows = Task::where('faculty_id', $membership->faculty_id)
             ->forTeam($membership->group_name)
+            ->whereIn('role', $myCustomizationRoles)
             ->where('status', 'active')
             ->withoutSimulation()
             ->orderBy('task_id')
             ->get();
 
         $studentId = (int) $membership->student_id;
-        $myRoles = $membership->roles->pluck('role')->all();
 
         // Editors this student can open, by role — a task in a module they hold
         // jumps there so it opens editable rather than read-only in this one.
