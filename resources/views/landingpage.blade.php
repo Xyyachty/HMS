@@ -903,8 +903,8 @@
         <div class="hero__copy">
           <p class="hero__eyebrow">College of Hospitality &amp; Tourism Management</p>
           <h1 class="hero__title display">
-            SPC HOTEL
-            <span>Simulation System</span>
+            Hotel Management System:
+            <span>A Web-Based Simulation Platform for Hospitality Students.</span>
           </h1>
           <p class="hero__lead">
             An interactive platform where students build hotel concepts, manage real operations,

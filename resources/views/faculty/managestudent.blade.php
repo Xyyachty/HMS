@@ -1204,6 +1204,21 @@
             bulkSetStep(3);
 
             if (data.created > 0) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Import Successful',
+                    html: `<p class="text-sm text-slate-500">${data.created} student${data.created === 1 ? '' : 's'} imported.</p>`,
+                    timer: 2000,
+                    showConfirmButton: false,
+                    backdrop: 'rgba(15, 23, 42, 0.35)',
+                    iconColor: '#16A34A',
+                    customClass: {
+                        popup: 'rounded-2xl p-6 bg-white shadow-2xl',
+                        title: 'text-lg font-bold text-slate-800',
+                        htmlContainer: 'mt-1',
+                    },
+                    buttonsStyling: false,
+                });
                 setTimeout(() => {
                     const letter = data.open_class || '';
                     window.location.href = letter

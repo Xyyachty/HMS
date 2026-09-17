@@ -2926,7 +2926,10 @@ function renderReviewConceptCard(entry) {
 /* The verdict on one concept. The other one is untouched, so the dialog is redrawn
    from the response instead of reloading the page. */
 function submitConceptFeedback(slot, decision) {
-    if (!reviewTaskId) return;
+    if (!reviewTaskId) {
+        showReviewError('This task could not be found — refresh and try again.');
+        return;
+    }
 
     const box = document.getElementById('reviewFeedback' + slot);
     const feedback = box ? box.value.trim() : '';
@@ -3213,7 +3216,10 @@ function hideTeamConceptRevisionForm(slot) {
    submitConceptFeedback below, but targets this team's task id and this tab's
    error box instead of the review dialog's globals. */
 function submitTeamConceptFeedback(slot, decision) {
-    if (!teamConceptTaskId) return;
+    if (!teamConceptTaskId) {
+        showTeamConceptError('This team has no hotel concept task to send back — refresh and try again.');
+        return;
+    }
 
     const box = document.getElementById('teamConceptFeedback' + slot);
     const feedback = box ? box.value.trim() : '';
