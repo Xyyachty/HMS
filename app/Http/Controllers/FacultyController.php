@@ -399,6 +399,12 @@ class FacultyController extends Controller
                         ]);
                     }
                 }
+
+                // Same as the single-team path: the concept task and the five stock
+                // facilities are assigned the moment the team exists, not left for a
+                // student or faculty action to trigger later.
+                HotelConceptDesk::ensureTasksForTeam($team['group_name'], $facultyId);
+                \App\Support\HotelAmenityAccess::seedDefaultsForTeam($team['group_name'], $facultyId);
             }
         });
 
