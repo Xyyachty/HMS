@@ -388,26 +388,51 @@
       object-fit: cover;
       object-position: 50% center;
     }
-    /* The curved divider. Sits at the figure's left edge; the figure's
-       overflow:hidden clips the half that falls outside, so what renders is a
-       cream arc cutting into the photograph from the column boundary. */
+    /* The curved divider: a cream ellipse whose right edge is the ")" and whose
+       other three edges sit flush against the copy panel's own cream, so only
+       the arc is ever visible.
+
+       left:0 is load-bearing. It used to be -24%, which put the ellipse's widest
+       point 115px into the photo but its boundary LEFT of the figure near the
+       figure's top and bottom edges. overflow:hidden erased the cream there, so
+       the arc died into a dead-straight vertical run along the column edge --
+       the "|)" look. Anchored at 0, the narrowest point of the arc is still
+       0.55 * width inside the figure, so the curve stays continuous top to
+       bottom and there is no flat edge left to see. */
     .hero__figure::before {
       content: '';
       position: absolute;
       top: -10%;
-      left: -24%;
-      width: 36%;
+      left: 0;
+      width: 20%;
       height: 120%;
       z-index: 1;
       border-radius: 0 100% 100% 0 / 0 50% 50% 0;
       background: var(--cream);
     }
-    /* The figure stays inside its own grid column. It used to be dragged left
-       (margin-left:-36%; width:136%) so the photo layer ran under the copy
-       panel, and .hero__copy's z-index:2 then painted the heading straight onto
-       the building. Text owns the left track, the photograph owns the right one.
-       The sweep above still reads as a curved divider: .hero__figure clips its
-       left half, leaving a cream arc that bulges into the photo only. */
+    /* Pulling the figure left is what carries the ")" in toward the colon: the
+       arc can only be drawn where the photo is, so the photo has to start left
+       of the column boundary for the curve to sit there. The cream above always
+       covers that overhang -- its narrowest reach is well right of the title,
+       which .hero__title's max-width:22ch holds back -- so the heading never
+       meets the photograph. Keep those two in step if either is retuned.
+
+       Two steps rather than one: at 901-1200px the columns are tighter, so a
+       smaller pull keeps the same clearance between text and curve. Below 901px
+       the hero is a single stacked column and the figure gets no pull at all. */
+    @media (min-width: 901px) {
+      .hero__figure { margin-left: -12%; width: 112%; }
+    }
+    @media (min-width: 1201px) {
+      .hero__figure { margin-left: -22%; width: 122%; }
+    }
+    /* The title's font stops growing at 3.6rem near 1700px while its column
+       keeps widening, so past that point the heading takes up a steadily
+       smaller share of the copy panel and the curve can move in further
+       without closing the gap on the text. */
+    @media (min-width: 1800px) {
+      .hero__figure { margin-left: -28%; width: 128%; }
+    }
     .hero__motto {
       position: absolute;
       right: 0;
