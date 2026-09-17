@@ -628,6 +628,19 @@ class TemplateCustomizationStore
 
         $byCollection = $items->groupBy('collection');
 
+        // Every content image for this template in one query, keyed by the same
+        // element_key the collection loop below looks up. That loop used to run a
+        // query per item per collection — 432 round trips on a four-role team,
+        // which is what made the editor take tens of seconds to open. Ordered
+        // descending so the lowest id wins the key, matching the first() this
+        // replaces, since element_key carries no unique constraint.
+        $contentImages = TemplateImage::query()
+            ->where('team_role_template_id', $templateId)
+            ->where('version_id', $versionId)
+            ->where('kind', 'content')
+            ->orderByDesc('template_image_id')
+            ->pluck('image_path', 'element_key');
+
         // deleted
         $out[HotelTemplateBuilder::DELETED_KEY] = [];
         foreach ($byCollection->get('deleted', collect()) as $item) {
@@ -679,14 +692,9 @@ class TemplateCustomizationStore
                     $row['amenities'] = $amenities;
                 }
                 // Prefer image_path from template_images if present
-                $imgRow = TemplateImage::query()
-                    ->where('team_role_template_id', $templateId)
-                    ->where('version_id', $versionId)
-                    ->where('kind', 'content')
-                    ->where('element_key', $collection . ':' . ($item->item_ref ?? $item->sort_order))
-                    ->first();
-                if ($imgRow) {
-                    $row['img'] = self::publicUrlIfNeeded($imgRow->image_path);
+                $imgPath = $contentImages->get($collection . ':' . ($item->item_ref ?? $item->sort_order));
+                if ($imgPath !== null) {
+                    $row['img'] = self::publicUrlIfNeeded($imgPath);
                 }
                 $list[] = $row;
             }
