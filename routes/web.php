@@ -511,6 +511,80 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ));
     })->name('dashboard');
 
+    /*
+     * Polled by the dashboard's Tasks section (syncTasks(), every few seconds) so a
+     * task faculty just assigned, or a verdict they just left, shows up without the
+     * student reloading. Recomputes the same $myRoleTasks / $myCompletedTasks the
+     * dashboard route builds and re-renders the same partial, so there is one place
+     * that knows how a task list turns into markup.
+     */
+    Route::get('/tasks/live', function () {
+        $authUser = auth()->user();
+        $student  = $authUser?->student;
+
+        $groupMembership = $student
+            ? StudentGroup::with('roles')
+                ->where('student_id', $student->user_information_id)
+                ->first()
+            : null;
+
+        $studentRoles = $groupMembership ? $groupMembership->roles->pluck('role')->toArray() : [];
+        $facultyId    = $groupMembership->faculty_id ?? null;
+
+        $scopeToTeam = function ($query) use ($groupMembership) {
+            $query->forTeam($groupMembership?->group_name);
+        };
+
+        $myRoleTasks = ($facultyId && !empty($studentRoles))
+            ? Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
+                ->where('status', 'active')
+                ->withoutSimulation()
+                ->whereIn('role', $studentRoles)
+                ->conceptFirst()
+                ->orderBy('due_date')
+                ->get()
+            : collect();
+
+        $myCompletedTasks = ($facultyId && $student)
+            ? Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
+                ->where('status', 'archived')
+                ->where(function ($q) use ($student, $authUser, $studentRoles) {
+                    $q->where('student_id', $student->user_information_id)
+                        ->orWhere('assigned_to', $authUser->user_id);
+                    if (!empty($studentRoles)) {
+                        $q->orWhereIn('role', $studentRoles);
+                    }
+                })
+                ->orderByDesc('updated_at')
+                ->get()
+                ->unique('task_id')
+                ->values()
+            : collect();
+
+        // Cheap change signal: id, status and revision state per task, so the
+        // poller can skip re-rendering (and collapsing any open detail drawer)
+        // when nothing has actually changed since the last check.
+        $signature = md5(
+            $myRoleTasks->concat($myCompletedTasks)
+                ->map(fn ($t) => $t->task_id . ':' . $t->status . ':' . (int) $t->needs_revision . ':' . optional($t->updated_at)->timestamp)
+                ->sort()
+                ->implode('|')
+        );
+
+        return response()->json([
+            'signature'    => $signature,
+            'active_count' => $myRoleTasks->count(),
+            'html'         => view('students.partials.task-groups', [
+                'studentRoles'     => $studentRoles,
+                'myRoleTasks'      => $myRoleTasks,
+                'myCompletedTasks' => $myCompletedTasks,
+                'groupMembership'  => $groupMembership,
+            ])->render(),
+        ]);
+    })->name('tasks.live');
+
     // The team's first task: the hotel concept. Every member reads it, and the
     // controller decides who may save or submit at any given moment.
     Route::post('/hotel-concept', [HotelConceptController::class, 'store'])->name('hotel-concept.store');
