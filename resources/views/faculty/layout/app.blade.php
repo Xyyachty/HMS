@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('page_title', 'Hotel Management System') | Faculty</title>
-    <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -98,7 +98,7 @@
             <!-- Logo -->
             <div class="h-20 flex items-center px-6 border-b border-white/10 shrink-0">
                 <a href="#" class="flex items-center gap-3 group">
-                    <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System logo" class="h-16 w-auto object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300" />
+                    <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300" />
                     <div>
                         <span class="text-sm font-bold tracking-tight text-white block leading-tight">Hotel Management System</span>
                         <span class="text-[10px] text-white uppercase tracking-widest">Faculty Portal</span>
@@ -208,7 +208,7 @@
         <!-- Same sidebar content -->
         <div class="h-20 flex items-center px-6 border-b border-white/10 shrink-0">
             <a href="#" class="flex items-center gap-3">
-                <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System logo" class="h-16 w-auto object-contain drop-shadow-sm" />
+                <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm" />
                 <div>
                     <span class="text-sm font-bold tracking-tight text-white block leading-tight">Hotel Management System</span>
                     <span class="text-[10px] text-white uppercase tracking-widest">Faculty Portal</span>
@@ -287,4 +287,4 @@
     </script>
     @stack('scripts')
 </body>
-</html> 
+</html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SPC Hotel | Interactive Hospitality Simulation System</title>
-  <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}" />
+  <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}" />
   <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -860,7 +860,7 @@
   <nav class="nav">
     <div class="shell nav__inner">
       <a href="#home" class="brand">
-        <img src="{{ asset('chtm-logoo.png') }}" alt="SPC Hotel logo" />
+        <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" />
         <span>
           <span class="brand__name">SPC HOTEL</span>
           <span class="brand__sub">College of Hospitality &amp; Tourism Management</span>
@@ -1042,7 +1042,7 @@
   <aside id="loginDrawer" class="login-drawer" role="dialog" aria-modal="true" aria-labelledby="loginDrawerTitle">
     <div class="login-drawer__head">
       <div style="display:flex;align-items:center;gap:12px;min-width:0">
-        <img src="{{ asset('chtm-logoo.png') }}" alt="SPC Hotel logo" />
+        <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" />
         <div style="min-width:0">
           <h2 id="loginDrawerTitle">Welcome back</h2>
           <p>Log in to your SPC Hotel account</p>
@@ -1111,7 +1111,7 @@
   <footer class="footer">
     <div class="shell footer__inner">
       <div class="footer__brand">
-        <img src="{{ asset('chtm-logoo.png') }}" alt="CHTM logo" />
+        <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" />
         <div>
           <p>College of Hospitality &amp; Tourism Management</p>
           <span>SPC Hotel Simulation System</span>

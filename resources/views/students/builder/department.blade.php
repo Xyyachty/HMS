@@ -120,10 +120,8 @@
         
         .logo-icon {
             width: 32px; height: 32px;
-            background: {{ $theme['logo_gradient'] }};
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: {{ $theme['logo_shadow'] }};
+            border-radius: 50%;
+            object-fit: contain;
         }
         
         .module-badge {
@@ -681,9 +679,7 @@
     <!-- ═══════ TOP NAVIGATION BAR ═══════ -->
     <header class="topbar topbar-row shrink-0 z-50">
         <div class="topbar-brand">
-            <div class="logo-icon shrink-0">
-                <i class="fas {{ $theme['icon'] }} text-white text-sm"></i>
-            </div>
+            <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="logo-icon shrink-0">
             <span class="hms-logo-text text-sm truncate">Hotel Management System</span>
             <div class="w-px h-5 bg-zinc-800 shrink-0"></div>
             @php

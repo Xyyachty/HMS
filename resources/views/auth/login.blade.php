@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hotel Management System — Log In</title>
-  <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}" />
+  <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}" />
   <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -203,7 +203,7 @@
 
     <div class="relative z-10 max-w-md text-center">
       <!-- Logo -->
-      <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System logo" class="h-16 w-auto object-contain drop-shadow-sm mx-auto mb-8" />
+      <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm mx-auto mb-8" />
 
       <h1 class="text-3xl font-extrabold text-white tracking-tight mb-4">Hotel Management System</h1>
       <p class="text-lg text-white/70 font-light leading-relaxed mb-10">Interactive Hospitality Task Management — drag, drop, and manage hotel tasks across departments.</p>
@@ -225,7 +225,7 @@
     <div class="form-stack w-full max-w-md relative z-10">
       <!-- Mobile logo -->
       <div class="flex items-center gap-2.5 mb-5 lg:hidden">
-        <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System logo" class="h-9 w-auto object-contain drop-shadow-sm" />
+        <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-9 w-auto object-contain drop-shadow-sm" />
         <span class="text-lg font-bold tracking-tight">Hotel Management System</span>
       </div>
 

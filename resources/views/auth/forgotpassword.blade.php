@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hotel Management System — Forgot Password</title>
-  <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}" />
+  <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -166,7 +166,7 @@
     <div class="absolute inset-0 opacity-[0.03]" style="background-image: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');"></div>
 
     <div class="relative z-10 max-w-sm text-center">
-      <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System logo" class="h-16 w-auto object-contain drop-shadow-sm mx-auto mb-8" />
+      <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm mx-auto mb-8" />
 
       <h1 class="text-4xl font-extrabold text-white tracking-tight mb-3">Reset Your<br/>Password</h1>
       <p class="text-base text-white/60 font-light leading-relaxed mb-10">No worries — it happens to the best of us. We'll get you back into your account in no time.</p>
@@ -194,7 +194,7 @@
     <!-- Top bar -->
     <div class="flex items-center justify-between px-6 md:px-12 py-5 border-b border-slate-100">
       <div class="flex items-center gap-2.5 lg:hidden">
-        <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System logo" class="h-10 w-auto object-contain drop-shadow-sm" />
+        <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-10 w-auto object-contain drop-shadow-sm" />
         <span class="text-sm font-bold tracking-tight">Hotel Management System</span>
       </div>
       <div class="hidden lg:block"></div>

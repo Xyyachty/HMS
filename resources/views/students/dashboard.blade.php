@@ -5,47 +5,76 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Hotel Management System | Student Dashboard</title>
-    <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
+        // Palette locked to the landing page's four colors: wine, gold, cream, ink.
+        // Every Tailwind stock family below is remapped to a tint/shade of one of
+        // those four rather than left at its default hue, so utility classes used
+        // all over this file (including ones built at runtime in <script> below)
+        // resolve to the same four-color system without editing every call site.
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: { sans: ['Manrope', 'sans-serif'] },
                     colors: {
-                        brand: '#DB2777',
-                        'brand-light': '#F472B6',
-                        'brand-dark': '#9D174D',
-                        'brand-soft': '#FDF2F8',
-                        'rose-accent': '#FB7185',
-                        'plum-accent': '#A855F7',
-                        surface: '#F8FAFC',
+                        brand: '#7B1730',
+                        'brand-light': '#C9A45C',
+                        'brand-dark': '#4A0D1C',
+                        'brand-soft': '#FBEEE9',
+                        'rose-accent': '#C4425E',
+                        'plum-accent': '#C9A45C',
+                        surface: '#FDF6F3',
                         'surface-raised': '#FFFFFF',
-                        'sidebar': '#9D174D',
-                        'sidebar-hover': '#831843',
-                        'sidebar-active': '#DB2777',
+                        'sidebar': '#4A0D1C',
+                        'sidebar-hover': '#5E1024',
+                        'sidebar-active': '#7B1730',
+
+                        // Neutral text/border scale, warmed toward ink instead of
+                        // Tailwind's default cool blue-gray.
+                        slate: {
+                            50: '#FAF6F5', 100: '#F2E9E7', 200: '#E4D3CF', 300: '#C9AFAA',
+                            400: '#7A6068', 500: '#6B4A54', 600: '#5A3941', 700: '#47262D',
+                            800: '#341620', 900: '#2A1118',
+                        },
+
+                        // Danger / overdue / "cool" or per-department accents all fold
+                        // into the wine family.
+                        red:    { 50: '#FBEAEE', 100: '#F6D5DC', 200: '#ECAFBE', 400: '#C4425E', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        rose:   { 50: '#FBEAEE', 100: '#F6D5DC', 200: '#ECAFBE', 400: '#C4425E', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        pink:   { 50: '#FBEAEE', 100: '#F6D5DC', 200: '#ECAFBE', 400: '#C4425E', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        violet: { 50: '#FBEAEE', 100: '#F6D5DC', 500: '#9E1B3C' },
+                        blue:   { 50: '#FBEAEE', 500: '#9E1B3C', 600: '#7B1730' },
+                        teal:   { 50: '#FBEAEE', 500: '#9E1B3C' },
+
+                        // Success / pending / warning / secondary-department accents
+                        // fold into the gold family.
+                        emerald: { 50: '#FBF3E0', 100: '#F2E3BE', 200: '#E9D3A0', 400: '#D9B86A', 500: '#C9A45C', 600: '#B8873C', 700: '#96692C', 800: '#7A5322' },
+                        amber:   { 50: '#FBF3E0', 100: '#F2E3BE', 200: '#E9D3A0', 500: '#C9A45C', 600: '#B8873C', 700: '#96692C', 800: '#7A5322' },
+                        green:   { 400: '#D9B86A' },
+                        orange:  { 50: '#FBF3E0', 500: '#C9A45C' },
                     },
                 }
             }
         }
     </script>
     <style>
-        ::selection { background: #DB2777; color: #fff; }
+        ::selection { background: #7B1730; color: #fff; }
         body { font-family: 'Manrope', sans-serif; }
 
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
-        ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+        ::-webkit-scrollbar-thumb { background: #E4D3CF; border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: #C9AFAA; }
 
-        .brand-gradient { background: linear-gradient(135deg, #F472B6 0%, #DB2777 50%, #9D174D 100%); }
-        .brand-gradient-subtle { background: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 50%, #FBCFE8 100%); }
+        .brand-gradient { background: linear-gradient(135deg, #C9A45C 0%, #7B1730 50%, #4A0D1C 100%); }
+        .brand-gradient-subtle { background: linear-gradient(135deg, #FBEEE9 0%, #F6D5DC 50%, #ECAFBE 100%); }
 
         .app-sidebar {
-            background: linear-gradient(180deg, #DB2777 0%, #BE185D 38%, #9D174D 72%, #500724 100%);
+            background: linear-gradient(180deg, #7B1730 0%, #5E1024 38%, #4A0D1C 72%, #2A1118 100%);
         }
         .sidebar-link {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -71,11 +100,11 @@
             transform: translateY(0);
         }
 
-        .role-badge-room { background: #FDF2F8; color: #DB2777; border: 1px solid #FBCFE8; }
-        .role-badge-frontdesk { background: #FFF7ED; color: #EA580C; border: 1px solid #FED7AA; }
-        .role-badge-restaurant { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
-        .role-badge-maintenance { background: #F5F3FF; color: #7C3AED; border: 1px solid #DDD6FE; }
-        .role-badge-housekeeping { background: #F0FDFA; color: #0D9488; border: 1px solid #99F6E4; }
+        .role-badge-room { background: #FBEEE9; color: #7B1730; border: 1px solid #E4C97E; }
+        .role-badge-frontdesk { background: #FBF3E0; color: #96692C; border: 1px solid #E9D3A0; }
+        .role-badge-restaurant { background: #FBF3E0; color: #96692C; border: 1px solid #E9D3A0; }
+        .role-badge-maintenance { background: #FBEEE9; color: #7B1730; border: 1px solid #E4C97E; }
+        .role-badge-housekeeping { background: #FBEEE9; color: #7B1730; border: 1px solid #E4C97E; }
 
         .member-card {
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -90,8 +119,8 @@
         }
         .task-card:hover {
             transform: translateY(-1px);
-            border-color: #FBCFE8;
-            box-shadow: 0 10px 30px -12px rgba(219, 39, 119, 0.18);
+            border-color: #E4C97E;
+            box-shadow: 0 10px 30px -12px rgba(94, 16, 36, 0.18);
         }
 
         .tab-btn {
@@ -152,7 +181,7 @@
     <aside id="sidebarPanel" class="sidebar-panel app-sidebar fixed lg:sticky top-0 left-0 z-50 w-64 h-screen flex flex-col overflow-hidden">
         <!-- Logo -->
         <div class="px-6 py-4 flex items-center gap-3 border-b border-white/[0.06]">
-            <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System" class="h-10 w-auto object-contain">
+            <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-10 w-auto object-contain">
             <div>
                 <h1 class="text-sm font-bold text-white tracking-tight leading-tight">Hotel Management System</h1>
                 @php
@@ -277,7 +306,7 @@
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#F5F5F5">
+        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#FDF6F3">
             @php
                 $getMemberValue = function ($member, $field, $fallback = '') {
                     if (is_array($member)) return $member[$field] ?? $fallback;
@@ -447,8 +476,8 @@
                         <div class="flex items-start gap-4">
                             <div class="relative w-[86px] h-[86px] shrink-0">
                                 <svg class="w-[86px] h-[86px] -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
-                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#F1F5F9" stroke-width="7"></circle>
-                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#DB2777" stroke-width="7" stroke-linecap="round"
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#F2E9E7" stroke-width="7"></circle>
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#7B1730" stroke-width="7" stroke-linecap="round"
                                             stroke-dasharray="{{ $homeRingLength }}" stroke-dashoffset="{{ $homeRingOffset }}"></circle>
                                 </svg>
                                 <span class="absolute inset-0 flex items-center justify-center text-[20px] font-extrabold text-slate-900">{{ $homeRate }}%</span>
@@ -635,7 +664,7 @@
                 {{-- Closing banner: the same photo the landing page uses, behind a light
                      wash so the headline stays readable. --}}
                 <div class="relative rounded-2xl overflow-hidden border border-slate-100 min-h-[185px] flex items-center"
-                     style="background-image: linear-gradient(90deg, rgba(255,255,255,.97) 0%, rgba(255,255,255,.90) 38%, rgba(253,242,248,.55) 68%, rgba(157,23,77,.18) 100%), url('{{ asset('images/hotel/try.jpg') }}'); background-size: cover; background-position: center;">
+                     style="background-image: linear-gradient(90deg, rgba(255,255,255,.97) 0%, rgba(255,255,255,.90) 38%, rgba(251,238,233,.55) 68%, rgba(74,13,28,.18) 100%), url('{{ asset('images/hotel/try.jpg') }}'); background-size: cover; background-position: center;">
                     <div class="px-6 sm:px-10 py-7 w-full flex flex-wrap items-end justify-between gap-4">
                         <div class="min-w-0 max-w-xl">
                             <h3 class="text-2xl sm:text-[38px] font-extrabold tracking-tight text-slate-900 leading-[1.1]">
@@ -663,7 +692,7 @@
                 $ringFilled = $ringLength * min(max($teamPercent, 0), 100) / 100;
 
                 $groupRoleTints = [
-                    'front_desk'            => ['bg' => 'bg-blue-50',   'text' => 'text-blue-500',   'bar' => 'bg-blue-500'],
+                    'front_desk'            => ['bg' => 'bg-orange-50',  'text' => 'text-orange-500',  'bar' => 'bg-orange-500'],
                     'restaurant_management' => ['bg' => 'bg-amber-50',  'text' => 'text-amber-500',  'bar' => 'bg-amber-500'],
                     'room_management'       => ['bg' => 'bg-pink-50',   'text' => 'text-brand',      'bar' => 'bg-brand'],
                     'maintenance'           => ['bg' => 'bg-violet-50', 'text' => 'text-violet-500', 'bar' => 'bg-violet-500'],
@@ -730,8 +759,8 @@
                             <div class="w-px h-11 bg-slate-100 shrink-0"></div>
                             <div class="flex items-center gap-3 shrink-0">
                                 <svg class="w-[60px] h-[60px] -rotate-90 shrink-0" viewBox="0 0 60 60" aria-hidden="true">
-                                    <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#F1F5F9" stroke-width="7"></circle>
-                                    <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#DB2777" stroke-width="7" stroke-linecap="round"
+                                    <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#F2E9E7" stroke-width="7"></circle>
+                                    <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#7B1730" stroke-width="7" stroke-linecap="round"
                                             stroke-dasharray="{{ round($ringFilled, 2) }} {{ round($ringLength, 2) }}"></circle>
                                 </svg>
                                 <div>
@@ -1228,8 +1257,8 @@
                                         <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Progress %</p>
                                         <div class="flex items-center gap-3 mt-1.5">
                                             <svg width="56" height="56" viewBox="0 0 60 60" class="shrink-0 -rotate-90">
-                                                <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#F1F5F9" stroke-width="6"></circle>
-                                                <circle data-summary-ring cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#EC4899" stroke-width="6"
+                                                <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#F2E9E7" stroke-width="6"></circle>
+                                                <circle data-summary-ring cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#7B1730" stroke-width="6"
                                                         stroke-linecap="round" stroke-dasharray="{{ $ringCircumference }}" stroke-dashoffset="{{ $ringOffset }}"></circle>
                                             </svg>
                                             <div>
@@ -2065,12 +2094,12 @@
                     title: 'Log out?',
                     text: 'You will need to sign in again to access your dashboard.',
                     icon: 'warning',
-                    iconColor: '#DC2626',
+                    iconColor: '#7B1730',
                     showCancelButton: true,
                     confirmButtonText: 'Logout',
                     cancelButtonText: 'Cancel',
-                    confirmButtonColor: '#DC2626',
-                    cancelButtonColor: '#6B7280',
+                    confirmButtonColor: '#7B1730',
+                    cancelButtonColor: '#6B4A54',
                     reverseButtons: true
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -2602,7 +2631,7 @@
                 text: 'This locks both concepts for your whole team until your faculty reviews them.',
                 showCancelButton: true,
                 confirmButtonText: isResubmit ? 'Resubmit' : 'Submit',
-                confirmButtonColor: '#DB2777',
+                confirmButtonColor: '#7B1730',
                 cancelButtonText: 'Cancel',
             }).then(result => result.isConfirmed);
 
@@ -2630,9 +2659,9 @@
                 }
 
                 paintHotelConcepts(data);
-                Swal.fire({ icon: 'success', title: 'Submitted', text: 'Your hotel concepts were sent to your faculty.', confirmButtonColor: '#DB2777' });
+                Swal.fire({ icon: 'success', title: 'Submitted', text: 'Your hotel concepts were sent to your faculty.', confirmButtonColor: '#7B1730' });
             } catch (error) {
-                Swal.fire({ icon: 'error', title: 'Could not submit', text: error.message || 'Could not submit the hotel concepts.', confirmButtonColor: '#DB2777' });
+                Swal.fire({ icon: 'error', title: 'Could not submit', text: error.message || 'Could not submit the hotel concepts.', confirmButtonColor: '#7B1730' });
                 if (button) button.disabled = false;
             }
         }
@@ -3038,7 +3067,7 @@
                     timer: 2500,
                     timerProgressBar: true,
                     showConfirmButton: false,
-                    iconColor: '#DB2777',
+                    iconColor: '#7B1730',
                     width: '22rem'
                 });
             });

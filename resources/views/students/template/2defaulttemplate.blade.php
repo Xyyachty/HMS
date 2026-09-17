@@ -758,7 +758,7 @@
   window.HMS_ROOM_MANAGEMENT_URL = @json(route('students.roommanagement.manage'));
   window.HMS_VERIFY_GUEST_URL = @json(route('students.frontdesk.verify-guest'));
   // Resolved out here: the raw block below is not compiled, so Blade never runs inside it.
-  window.HMS_DEFAULT_LOGO = @json(asset('images/hotel-logo-default.svg'));
+  window.HMS_DEFAULT_LOGO = @json(asset('new_logo_in_chtm....png'));
   // The team's approved hotel concept. Every identity field the team has not
   // written falls back to this, so the site reads as that concept from the
   // first load instead of as the stock demo hotel.
@@ -1122,7 +1122,7 @@ function toolBtnStyle(kind) {
 /* One logo for the whole site. It lives under a single card-image key, so the
    header, the footer, the mobile menu and every page all read the same value —
    changing it anywhere changes it everywhere. */
-const DEFAULT_LOGO = window.HMS_DEFAULT_LOGO || '/images/hotel-logo-default.svg';
+const DEFAULT_LOGO = window.HMS_DEFAULT_LOGO || '/new_logo_in_chtm....png';
 
 /* Which icon stands for each network the team can link. The store holds the URL
    and the network key; the page decides what that looks like. */
