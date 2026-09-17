@@ -217,7 +217,7 @@
                     timer: 2500,
                     timerProgressBar: true,
                     showConfirmButton: false,
-                    iconColor: '#DB2777',
+                    iconColor: '#16A34A',
                     width: '22rem'
                 });
             });
