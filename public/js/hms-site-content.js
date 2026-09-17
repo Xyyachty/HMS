@@ -68,6 +68,7 @@
   const SOCIAL_LINKS_MAX = 8;
 
   const TYPOGRAPHY_FIELDS = ['family', 'size', 'color', 'headingColor'];
+  const HERO_SLIDE_COUNT = 5;
 
   /** Offered in the builder; any CSS stack still works if one is typed in. */
   const FONT_FAMILIES = [
@@ -634,20 +635,48 @@
     return true;
   }
 
+  /**
+   * Hero images are five named slots, not an appendable collection. Older
+   * drafts can contain duplicate records after repeated editor renders, so
+   * rebuild the list from the five template defaults and copy only the saved
+   * value for each matching slot. The positional fallback preserves drafts
+   * created before the canonical hero-slide-* ids were introduced.
+   */
+  function normalizeHeroSlides(items, fallback) {
+    const source = Array.isArray(items) ? items.filter((item) => item && typeof item === 'object') : [];
+    const defaults = Array.isArray(fallback) ? fallback.slice(0, HERO_SLIDE_COUNT) : [];
+
+    if (!defaults.length) {
+      const seen = Object.create(null);
+      return source.filter((item) => {
+        const id = String(item.id || '');
+        if (!id || seen[id]) return false;
+        seen[id] = true;
+        return true;
+      }).slice(0, HERO_SLIDE_COUNT).map((item) => Object.assign({}, item));
+    }
+
+    return defaults.map((defaultItem, index) => {
+      const canonicalId = defaultItem.id || ('hero-slide-' + (index + 1));
+      const saved = source.find((item) => item.id === canonicalId) || source[index] || {};
+      return Object.assign({}, defaultItem, saved, { id: canonicalId });
+    });
+  }
+
   function getHeroSlides(fallback) {
     const c = getCustomizations();
     const entry = c[HERO_SLIDES_KEY];
     if (entry && Array.isArray(entry.items) && entry.items.length) {
-      return entry.items.map((item) => Object.assign({}, item));
+      return normalizeHeroSlides(entry.items, fallback);
     }
-    return (fallback || []).map((item) => Object.assign({}, item));
+    return normalizeHeroSlides(fallback, fallback);
   }
 
   function setHeroSlides(items) {
     if (!canEditHeroSlides()) return false;
     patch(HERO_SLIDES_KEY, {
       page: 'home',
-      items: (items || []).map((item) => Object.assign({}, item, {
+      items: normalizeHeroSlides(items).map((item) => Object.assign({}, item, {
         id: item.id || uid('slide'),
       })),
     });
@@ -1343,6 +1372,7 @@
     updateRoom,
     removeRoom,
     getHeroSlides,
+    normalizeHeroSlides,
     setHeroSlides,
     updateHeroSlide,
     canEditHeroSlides,

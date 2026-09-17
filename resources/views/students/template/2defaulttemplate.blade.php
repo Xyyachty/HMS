@@ -3236,7 +3236,14 @@ function HeroSlidesModal({ open, slides, activeIndex, onReplace, onClose }) {
 
 
 function HeroSlider({ slides, canEdit, brandName }) {
-  const list = slides && slides.length ? slides : DEFAULT_HERO_SLIDES;
+  // The hero is five fixed slots. Normalizing again at render time keeps old
+  // drafts with duplicated __heroSlides rows from producing extra DOM nodes.
+  const list = DEFAULT_HERO_SLIDES.map((defaultSlide, index) => {
+    const saved = Array.isArray(slides)
+      ? (slides.find((slide) => slide && slide.id === defaultSlide.id) || slides[index])
+      : null;
+    return Object.assign({}, defaultSlide, saved || {}, { id: defaultSlide.id });
+  });
   const [active, setActive] = useState(0);
   const [picking, setPicking] = useState(false);
 
