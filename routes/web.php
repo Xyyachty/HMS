@@ -2302,6 +2302,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'image.max' => 'That image is too large. Please choose a smaller one.',
         ]);
 
+        $imagePath = \App\Support\HotelImageStore::persist(
+            $data['image'] ?? null,
+            $membership->faculty_id,
+            $membership->group_name
+        );
+
         $attributes = [
             'group_name'  => $membership->group_name,
             'faculty_id'  => $membership->faculty_id,
@@ -2318,11 +2324,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'capacity'    => array_key_exists('capacity', $data) && $data['capacity'] !== null
                 ? (int) $data['capacity']
                 : null,
-            'image'       => \App\Support\HotelImageStore::persist(
-                $data['image'] ?? null,
-                $membership->faculty_id,
-                $membership->group_name
-            ),
+            'image'       => $imagePath,
         ];
 
         if (\App\Models\HotelAmenity::supportsGallery()) {
@@ -2335,7 +2337,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $amenity = \App\Models\HotelAmenity::create($attributes);
 
         // Nothing can be under repair yet, so the fresh row has no complaint behind it.
-        return response()->json(['item' => $amenity->toTemplateArray(null)], 201);
+        return response()->json([
+            'item' => $amenity->toTemplateArray(null),
+            // The facility still saved even when its photo did not.
+            'image_warning' => (!empty($data['image']) && $imagePath === null)
+                ? 'The amenity was added, but its photo could not be saved. Try again from Change Photo.'
+                : null,
+        ], 201);
     })->name('hotel.amenities.store');
 
     Route::patch('/hotel/amenities/{id}', function (Request $request, $id) {
@@ -2398,11 +2406,24 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (array_key_exists('rate', $data))        $amenity->rate        = (int) $data['rate'];
         if (array_key_exists('setup_fee', $data))   $amenity->setup_fee   = (int) $data['setup_fee'];
         if (array_key_exists('capacity', $data))    $amenity->capacity    = $data['capacity'] === null ? null : (int) $data['capacity'];
-        if (array_key_exists('image', $data))       $amenity->image       = \App\Support\HotelImageStore::persist(
-            $data['image'],
-            $membership->faculty_id,
-            $membership->group_name
-        );
+
+        $imageWarning = null;
+        if (array_key_exists('image', $data)) {
+            $newImage = str_starts_with(trim((string) $data['image']), 'data:image');
+            $imagePath = \App\Support\HotelImageStore::persist(
+                $data['image'],
+                $membership->faculty_id,
+                $membership->group_name
+            );
+
+            if ($newImage && $imagePath === null) {
+                // A fresh photo that could not be stored must not blank out the one
+                // already on the facility - the failure is announced, not applied.
+                $imageWarning = 'That photo could not be saved. The amenity keeps its current picture.';
+            } else {
+                $amenity->image = $imagePath;
+            }
+        }
         if (array_key_exists('gallery', $data) && \App\Models\HotelAmenity::supportsGallery()) {
             $amenity->gallery = \App\Support\HotelAmenityGallery::persist(
                 $data['gallery'],
@@ -2411,7 +2432,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
         $amenity->save();
 
-        return response()->json(['item' => $amenity->toTemplateArray($amenity->repairs()->first())]);
+        return response()->json([
+            'item' => $amenity->toTemplateArray($amenity->repairs()->first()),
+            'image_warning' => $imageWarning,
+        ]);
     })->name('hotel.amenities.update');
 
     /*

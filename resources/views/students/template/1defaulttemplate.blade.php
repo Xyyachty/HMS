@@ -6439,12 +6439,194 @@ function FacilityModal({ facility, onClose, slideSeconds, onToast }) {
    team sat on this default regardless. */
 const AMENITY_SLIDE_SECONDS = 4;
 
-function AmenitiesPage({ amenities, slideSeconds, onToast }) {
+/* What Housekeeping may say about a facility from the Amenities page itself.
+   Deliberately only what a guest reads on the card: the rate, the capacity, how
+   it is booked and the treatments it offers are running the facility rather than
+   describing it, and they stay on the Housekeeping screen that does that job. */
+const AMENITY_STATUSES = ['Available', 'Temporarily Closed', 'Under Maintenance'];
+
+function AmenityEditModal({ open, amenity, saving, error, onSubmit, onCancel }) {
+  const [name, setName] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [location, setLocation] = React.useState('');
+  const [opensAt, setOpensAt] = React.useState('');
+  const [closesAt, setClosesAt] = React.useState('');
+  const [status, setStatus] = React.useState(AMENITY_STATUSES[0]);
+  const [image, setImage] = React.useState('');
+
+  const isNew = !amenity;
+
+  React.useEffect(() => {
+    if (!open) return;
+    setName(amenity && amenity.name ? String(amenity.name) : '');
+    setDescription(amenity && amenity.description ? String(amenity.description) : '');
+    setLocation(amenity && amenity.location ? String(amenity.location) : '');
+    setOpensAt(amenity && amenity.opensAt ? String(amenity.opensAt) : '');
+    setClosesAt(amenity && amenity.closesAt ? String(amenity.closesAt) : '');
+    setStatus((amenity && amenity.status) || AMENITY_STATUSES[0]);
+    setImage(amenity && amenity.img ? String(amenity.img) : '');
+  }, [open, amenity]);
+
+  if (!open) return null;
+
+  const canSave = !!name.trim() && !saving;
+  const submit = () => {
+    if (!canSave) return;
+    const values = {
+      name: name.trim(),
+      description: description.trim(),
+      location: location.trim(),
+      // Blank means "not said", which the server stores as null rather than as
+      // a time of midnight. Both empty is the "Open 24 hours" the card prints.
+      opens_at: opensAt || null,
+      closes_at: closesAt || null,
+      status,
+    };
+    // Only sent when it changed, so an edit that leaves the photo alone does not
+    // re-upload the one already stored.
+    if (image !== (amenity && amenity.img ? String(amenity.img) : '')) values.image = image;
+    onSubmit(values);
+  };
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+  };
+  const labelStyle = { display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', margin: '1rem 0 0.4rem' };
+
+  return ReactDOM.createPortal(
+    <div className="room-modal-overlay header-modal-overlay" data-hms-no-edit="1"
+      role="dialog" aria-modal="true" aria-label={isNew ? 'Add amenity' : 'Edit amenity'} onClick={onCancel}>
+      <div className="room-modal" style={{ width: 'min(480px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display" style={{ fontSize: '1.35rem', marginBottom: '0.35rem' }}>
+          {isNew ? 'Add an Amenity' : 'Edit Amenity'}
+        </h3>
+        <p style={{ margin: '0 0 0.5rem', color: 'var(--fg-muted)', fontSize: '0.78rem', lineHeight: 1.5 }}>
+          This is what a guest reads on the Amenities page.
+        </p>
+
+        <label style={Object.assign({}, labelStyle, { marginTop: '0.75rem' })}>Photo</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{
+            width: 84, height: 60, borderRadius: 8, overflow: 'hidden', flex: '0 0 auto',
+            border: '1px solid var(--border)', background: 'rgba(127,127,127,0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {image
+              ? <img src={image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <i className="fa-solid fa-image" style={{ opacity: 0.5 }}></i>}
+          </div>
+          <button type="button" className="btn-outline" style={{ fontSize: '0.7rem' }}
+            onClick={() => pickImageFile((url) => { if (url) setImage(url); })}>
+            {image ? 'Change photo' : 'Choose photo'}
+          </button>
+          {image ? (
+            <button type="button" className="btn-outline" style={{ fontSize: '0.7rem' }} onClick={() => setImage('')}>
+              Clear
+            </button>
+          ) : null}
+        </div>
+
+        <label style={labelStyle}>Name</label>
+        <input className="header-modal-field" type="text" value={name} maxLength={120} autoFocus
+          placeholder="Swimming Pool" onChange={(e) => setName(e.target.value)} onKeyDown={onKeyDown} />
+
+        <label style={labelStyle}>Description</label>
+        <textarea className="header-modal-field" rows={3} value={description} maxLength={2000}
+          placeholder="What it is and what a guest can do there."
+          onChange={(e) => setDescription(e.target.value)} onKeyDown={onKeyDown}
+          style={{ resize: 'vertical', lineHeight: 1.5 }} />
+
+        <label style={labelStyle}>Where it is</label>
+        <input className="header-modal-field" type="text" value={location} maxLength={160}
+          placeholder="Ground floor, east wing"
+          onChange={(e) => setLocation(e.target.value)} onKeyDown={onKeyDown} />
+
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <label style={labelStyle}>Opens</label>
+            <input className="header-modal-field" type="time" value={opensAt}
+              onChange={(e) => setOpensAt(e.target.value)} onKeyDown={onKeyDown} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <label style={labelStyle}>Closes</label>
+            <input className="header-modal-field" type="time" value={closesAt}
+              onChange={(e) => setClosesAt(e.target.value)} onKeyDown={onKeyDown} />
+          </div>
+        </div>
+        <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem' }}>
+          Leave both blank for a facility that is open around the clock.
+        </p>
+
+        <label style={labelStyle}>Status</label>
+        <select className="header-modal-field" value={status} onChange={(e) => setStatus(e.target.value)}>
+          {AMENITY_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+
+        {error ? <p className="header-modal-hint" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p> : null}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-outline" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={!canSave} onClick={submit}>
+            {saving ? 'Saving…' : (isNew ? 'Add Amenity' : 'Save Changes')}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdit, onRemove }) {
   const list = Array.isArray(amenities) ? amenities : [];
   const [openId, setOpenId] = useState(null);
   // Read off the live list rather than held in state, so a poll that changes a
   // facility's status updates the open modal instead of showing a stale copy.
   const selected = list.find(item => item.id === openId) || null;
+
+  // Design-mode state. Only ever reached when canEdit, which already carries the
+  // role, the page and Design mode.
+  const [editing, setEditing] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const submitEdit = (values) => {
+    if (!onEdit || !editing) return;
+    setSaving(true);
+    Promise.resolve(onEdit(editing.dbId, values))
+      .then((saved) => {
+        if (!saved) { setError('That could not be saved. Please try again.'); return; }
+        setEditing(null);
+        if (onToast) onToast(saved._imageWarning || (values.name + ' updated'));
+      })
+      .catch(() => setError('That could not be saved. Please try again.'))
+      .finally(() => setSaving(false));
+  };
+
+  const submitAdd = (values) => {
+    if (!onAdd) return;
+    setSaving(true);
+    Promise.resolve(onAdd(values))
+      .then((saved) => {
+        if (!saved) { setError('That could not be added. Please try again.'); return; }
+        setAdding(false);
+        if (onToast) onToast(saved._imageWarning || (values.name + ' added to your Amenities page'));
+      })
+      .catch(() => setError('That could not be added. Please try again.'))
+      .finally(() => setSaving(false));
+  };
+
+  const confirmRemove = () => {
+    if (!onRemove || !removing) return;
+    setSaving(true);
+    Promise.resolve(onRemove(removing.dbId))
+      .then((ok) => {
+        setRemoving(null);
+        if (onToast) onToast(ok ? (removing.name + ' removed') : 'That one could not be removed.');
+      })
+      .finally(() => setSaving(false));
+  };
 
   return (
     <>
@@ -6453,6 +6635,24 @@ function AmenitiesPage({ amenities, slideSeconds, onToast }) {
         <h1 className="font-display">Hotel Amenities</h1>
         <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
       </div>
+
+      {/* Said once, at the top, rather than as a tooltip per icon: the student
+          arrives here from a task that tells them to build this page, and the
+          first thing they need is what on it is theirs to change. */}
+      {canEdit ? (
+        <div data-hms-no-edit="1" style={{
+          maxWidth: 1200, margin: '0 auto 1.25rem', padding: '0.85rem 1.1rem', borderRadius: 12,
+          border: '1px dashed var(--accent)', background: 'rgba(244,63,94,0.06)',
+          display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap',
+        }}>
+          <i className="fa-solid fa-wand-magic-sparkles" style={{ color: 'var(--accent)' }}></i>
+          <span style={{ fontSize: '0.8rem', lineHeight: 1.5 }}>
+            <strong>You are designing this page.</strong> Hover a card to change its photo,
+            edit its details or remove it, and use <em>Add an Amenity</em> at the bottom to
+            add one. The heading and the words above can be edited by clicking them.
+          </span>
+        </div>
+      ) : null}
       <section style={{ padding: '0 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
         {list.length === 0 ? (
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '4rem 1.5rem', textAlign: 'center', color: 'var(--fg-muted)' }}>
@@ -6484,6 +6684,36 @@ function AmenitiesPage({ amenities, slideSeconds, onToast }) {
                       {shots.length}
                     </span>
                   )}
+
+                  {/* The card itself opens the guest's View Details, so every tool
+                      here stops the click getting that far. */}
+                  {canEdit ? (
+                    <div data-hms-no-edit="1"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}>
+                      <button type="button" title={'Change the photo of ' + item.name}
+                        style={toolBtnStyle('image')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          pickImageFile((url) => {
+                            if (!url || !onEdit) return;
+                            Promise.resolve(onEdit(item.dbId, { image: url })).then((saved) => {
+                              if (onToast) onToast((saved && saved._imageWarning) || (item.name + ' photo updated'));
+                            });
+                          });
+                        }}>
+                        <i className="fa-solid fa-image" style={{ fontSize: 11 }}></i>
+                      </button>
+                      <button type="button" title={'Edit ' + item.name} style={toolBtnStyle('edit')}
+                        onClick={(e) => { e.stopPropagation(); setError(''); setEditing(item); }}>
+                        <i className="fa-solid fa-pen" style={{ fontSize: 10 }}></i>
+                      </button>
+                      <button type="button" title={'Remove ' + item.name} style={toolBtnStyle('danger')}
+                        onClick={(e) => { e.stopPropagation(); setRemoving(item); }}>
+                        <i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i>
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
                 <div className="facility-card-body">
                   <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{item.name}</h3>
@@ -6517,9 +6747,59 @@ function AmenitiesPage({ amenities, slideSeconds, onToast }) {
             })}
           </div>
         )}
+
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={() => { setError(''); setAdding(true); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Add an amenity"
+            data-hms-no-edit="1"
+            data-hms-action="add-amenity"
+            style={{
+              width: '100%', marginTop: '1.5rem', padding: '1.5rem', borderRadius: 14,
+              border: '2px dashed #f43f5e', background: 'rgba(244,63,94,0.06)', color: '#fb7185',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              fontFamily: 'Outfit, sans-serif', transition: 'transform .15s ease, background .15s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.06)'; e.currentTarget.style.transform = 'none'; }}
+          >
+            <span style={{ width: 34, height: 34, borderRadius: 10, border: '1.5px solid #f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>+</span>
+            <span style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 12 }}>
+              Add an Amenity
+            </span>
+          </button>
+        ) : null}
       </section>
 
       {selected && <FacilityModal facility={selected} onClose={() => setOpenId(null)} slideSeconds={slideSeconds} onToast={onToast} />}
+
+      <AmenityEditModal
+        open={adding}
+        amenity={null}
+        saving={saving}
+        error={error}
+        onSubmit={submitAdd}
+        onCancel={() => { setAdding(false); setError(''); }}
+      />
+      <AmenityEditModal
+        open={!!editing}
+        amenity={editing}
+        saving={saving}
+        error={error}
+        onSubmit={submitEdit}
+        onCancel={() => { setEditing(null); setError(''); }}
+      />
+      <MenuConfirmModal
+        open={!!removing}
+        title="Remove this amenity?"
+        message={removing ? ('"' + removing.name + '" comes off the Amenities page for the whole team.') : ''}
+        confirmLabel="Remove"
+        saving={saving}
+        onConfirm={confirmRemove}
+        onCancel={() => setRemoving(null)}
+      />
     </>
   );
 }
@@ -6840,6 +7120,12 @@ function App() {
   const [canOrderMenu, setCanOrderMenu] = useState(false);
   const [addons, setAddons] = useState([]);
   const [amenities, setAmenities] = useState([]);
+  /* Whether Housekeeping may design the Amenities page. Two answers, both
+     required: the server's, which owns who the facilities belong to, and the
+     builder's, which knows this student opened the page as Housekeeping rather
+     than wandering into it from another module. */
+  const [canCustomizeAmenities, setCanCustomizeAmenities] = useState(false);
+  const [inAmenitiesModule, setInAmenitiesModule] = useState(false);
   const [cardImages, setCardImages] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getCardImages ? window.HMSSiteContent.getCardImages() : {}
   ));
@@ -6897,6 +7183,8 @@ function App() {
       .then(data => {
         if (pendingWrites.current > 0) return;
         if (Array.isArray(data.items)) setAmenities(data.items);
+        // The server owns this answer; the page only repeats it.
+        setCanCustomizeAmenities(data.can_customize === true);
       })
       .catch(() => {});
   }, []);
@@ -7077,6 +7365,13 @@ function App() {
     setCanOrderMenu(
       typeof window.HMSSiteContent.canOrderMenu === 'function'
         ? window.HMSSiteContent.canOrderMenu()
+        : false
+    );
+    // Housekeeping designs the Amenities page, so its tools belong to whoever
+    // holds that page — the same test the rest of the editor uses.
+    setInAmenitiesModule(
+      typeof window.HMSSiteContent.canEditAmenities === 'function'
+        ? window.HMSSiteContent.canEditAmenities()
         : false
     );
   }, []);
@@ -7401,6 +7696,64 @@ function App() {
       })
   ), [menuRequest, fetchMenus, showToast]);
 
+  /* Designing the Amenities page. The same rows the Housekeeping screen manages -
+     one catalogue, written from either place - so a facility added here is one the
+     team can then run, and a closure made over there shows up here. Each write is
+     followed by a re-fetch, like the menu, so every open tab agrees.
+
+     Resolves to the saved row, or null when the write was refused, which is what
+     the page reads to decide between its toast and its error line. */
+  const amenityWrite = useCallback((path, method, body) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/amenities' + path, {
+      method,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
+  const addAmenity = useCallback((values) => (
+    amenityWrite('', 'POST', Object.assign({ status: 'Available' }, values))
+      .then(data => {
+        fetchAmenities();
+        const item = data && data.item;
+        if (item && data.image_warning) item._imageWarning = data.image_warning;
+        return item;
+      })
+      .catch(err => {
+        showToast((err && err.message) || 'Could not add that amenity.');
+        return null;
+      })
+  ), [amenityWrite, fetchAmenities, showToast]);
+
+  const updateAmenity = useCallback((id, values) => (
+    amenityWrite('/' + String(id).replace(/^db-/, ''), 'PATCH', values)
+      .then(data => {
+        fetchAmenities();
+        const item = data && data.item;
+        if (item && data.image_warning) item._imageWarning = data.image_warning;
+        return item;
+      })
+      .catch(err => {
+        showToast((err && err.message) || 'Could not save that amenity.');
+        return null;
+      })
+  ), [amenityWrite, fetchAmenities, showToast]);
+
+  const removeAmenity = useCallback((id) => (
+    amenityWrite('/' + String(id).replace(/^db-/, ''), 'DELETE')
+      .then(() => { fetchAmenities(); return true; })
+      .catch(err => {
+        // The server refuses to delete a facility guests have already used, and
+        // says so in a sentence worth showing rather than replacing.
+        showToast((err && err.message) || 'Could not remove that amenity.');
+        return false;
+      })
+  ), [amenityWrite, fetchAmenities, showToast]);
+
   /* A course of the team's own, and renaming one of the five it started with. The
      same pair Room Management has on the Rooms tab bar; the rename carries every
      dish filed under the old name, which the server does in one transaction. */
@@ -7589,6 +7942,10 @@ function App() {
         amenities={amenities}
         slideSeconds={AMENITY_SLIDE_SECONDS}
         onToast={showToast}
+        canEdit={canCustomizeAmenities && inAmenitiesModule && isDesignMode}
+        onAdd={addAmenity}
+        onEdit={updateAmenity}
+        onRemove={removeAmenity}
       />
     ),
     booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} />,
