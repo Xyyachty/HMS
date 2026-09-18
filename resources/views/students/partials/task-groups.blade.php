@@ -131,9 +131,12 @@
 
             $taskRowIndex = 0;
         @endphp
-        <section data-task-group data-group-status="{{ $groupStatus }}" class="space-y-4">
-            {{-- Overall summary: one rounded card per TASK group, above its own cards. --}}
-            <div class="rounded-3xl border border-pink-100 bg-gradient-to-r from-brand-soft to-white px-5 sm:px-7 py-6">
+        <section data-task-group data-group-status="{{ $groupStatus }}" class="rounded-3xl border border-pink-100 bg-white overflow-hidden mb-6">
+            {{-- One rounded card per TASK group, with the summary band and the cards
+                 it counts inside the same border. Held apart they read as two
+                 unrelated blocks, and with several groups on the page it is not
+                 obvious which cards a summary is summarising. --}}
+            <div class="bg-gradient-to-r from-brand-soft to-white border-b border-pink-100 px-5 sm:px-7 py-6">
                 <div class="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr_1fr_1fr] gap-6 lg:gap-0">
                     <div class="flex items-center lg:pr-6">
                         <div class="min-w-0">
@@ -185,7 +188,10 @@
                  rendered, and one of them is hidden — faculty can close the
                  concept task while this page is open, and the poller has to be
                  able to swap them without a reload. --}}
-            <div>
+            {{-- The page's own background, kept behind the cards now that they sit
+                 inside the group rather than on the page, so white cards still read
+                 as cards instead of dissolving into a white panel. --}}
+            <div class="bg-surface px-5 sm:px-7 py-5">
                 {{-- Also the drop target settleConceptTaskRow() appends the
                      settled concept card to, so it lands in the same grid. --}}
                 <div data-completed-list class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
