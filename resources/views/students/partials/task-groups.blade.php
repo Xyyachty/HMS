@@ -5,18 +5,22 @@
 @php
     /*
      * Group every task (active + completed) under its numbered TASK.
-     * TaskChecklist::STEP_ROLES says which role owns which step, so a task's
-     * title (or failing that, its role) decides which group it falls in. A
-     * row that matches neither — hand-written, or a role with no numbered
-     * step, e.g. maintenance — falls into an 'other' bucket shown last.
+     *
+     * The task's own role decides the group, not its title. A title only says
+     * which checklist the wording came from, and a deliverable can be moved
+     * between departments — the Experience page went from Housekeeping to Front
+     * Desk — which left rows still assigned to, and still being worked by, a
+     * Housekeeping student sitting under a group badged Front Desk. The role is
+     * who is actually doing the work, which is what this page is a list of.
+     *
+     * A role with no numbered step (maintenance owns no page of the site) falls
+     * back to the title, and anything matching neither goes to an 'other' bucket
+     * shown last.
      */
     $taskGroups = collect();
     $addToGroup = function ($task, string $rowStatus, int $rowPercent) use (&$taskGroups) {
-        $step = \App\Support\TaskChecklist::stepForTitle($task->title);
-        if ($step === null) {
-            $found = array_search($task->role, \App\Support\TaskChecklist::STEP_ROLES, true);
-            $step = $found === false ? null : $found;
-        }
+        $found = array_search($task->role, \App\Support\TaskChecklist::STEP_ROLES, true);
+        $step = $found === false ? \App\Support\TaskChecklist::stepForTitle($task->title) : $found;
         $key = $step ?? 'other';
 
         if (!$taskGroups->has($key)) {
