@@ -1,9 +1,30 @@
-<aside class="h-full flex flex-col text-zinc-200 overflow-hidden bg-zinc-900">
-    <!-- Panel Header -->
+{{-- ══════════════════════════════════════════════════════════════
+     DESIGN PANEL
+
+     Written for students who have never used a design tool, so the panel
+     is organised the way the work actually happens rather than the way CSS
+     is grouped:
+
+       1. Hotel details   - the facts of the hotel, the same on every page.
+       2. What's selected - one card, pinned to the top while you scroll, so
+                            it is always clear what the controls below act on.
+       3. Style it        - the controls themselves, common ones open, the
+                            occasional ones folded away until asked for.
+
+     Two colours carry that split (amber = the whole hotel, cyan = the one
+     thing you clicked) instead of a different colour per section, which read
+     as decoration rather than meaning.
+
+     Every control still calls exactly the same function it always did; the
+     element ids the template bridge and the builder shell look up are
+     unchanged. --}}
+<aside id="hmsDesignPanel" class="no-selection h-full flex flex-col text-zinc-200 overflow-hidden bg-zinc-900">
+
+    <!-- ══════ Panel Header ══════ -->
     <div class="px-5 py-4 border-b border-zinc-800 shrink-0 bg-zinc-900">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0">
                     <i class="fas fa-palette text-white text-xs"></i>
                 </div>
                 @php
@@ -21,34 +42,51 @@
                         $panelPages
                     ));
                 @endphp
-                <div>
+                <div class="min-w-0">
                     <h2 class="text-sm font-bold text-white tracking-wide">Design Panel</h2>
-                    <p class="text-[10px] text-zinc-500 mt-0.5">
+                    <p class="text-[11px] text-zinc-500 mt-0.5 truncate">
                         {{ $panelScope !== '' ? 'Editing ' . $panelScope : 'Style & customize elements' }}
                     </p>
                 </div>
             </div>
-            <div class="flex items-center gap-1">
-                <button id="undoEditorBtn" class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Undo (Ctrl+Z)" onclick="undoEditorChange()" disabled>
-                    <i class="fas fa-rotate-left text-[10px]"></i>
+        </div>
+
+        {{-- The four things you reach for when something goes wrong, kept
+             together and labelled, rather than four unlabelled icons. --}}
+        <div class="flex items-center gap-1.5 mt-3">
+            <div class="flex items-center gap-1 p-1 rounded-xl bg-zinc-800/70 border border-zinc-700/60">
+                <button id="undoEditorBtn" class="panel-tool-btn" title="Undo (Ctrl+Z)" onclick="undoEditorChange()" disabled>
+                    <i class="fas fa-rotate-left"></i>
                 </button>
-                <button id="redoEditorBtn" class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed" title="Redo (Ctrl+Y)" onclick="redoEditorChange()" disabled>
-                    <i class="fas fa-rotate-right text-[10px]"></i>
-                </button>
-                <button class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-all" title="Reset selected element styles" onclick="resetSelectedStyles()">
-                    <i class="fas fa-eraser text-[10px]"></i>
-                </button>
-                <button class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-rose-900/60 border border-zinc-700 hover:border-rose-500/50 flex items-center justify-center text-zinc-400 hover:text-rose-300 transition-all" title="Reset all design customizations to default" onclick="resetAllDesign()">
-                    <i class="fas fa-rotate-right text-[10px]"></i>
+                <button id="redoEditorBtn" class="panel-tool-btn" title="Redo (Ctrl+Y)" onclick="redoEditorChange()" disabled>
+                    <i class="fas fa-rotate-right"></i>
                 </button>
             </div>
+            <button class="panel-undo-label" title="Undo the last change you made" onclick="undoEditorChange()">Undo</button>
+            <div class="flex-1"></div>
+            <button class="panel-tool-btn panel-tool-btn--bare" title="Clear the styling on the selected element only" onclick="resetSelectedStyles()">
+                <i class="fas fa-eraser"></i>
+            </button>
+            <button class="panel-tool-btn panel-tool-btn--danger" title="Reset the whole page back to the original design" onclick="resetAllDesign()">
+                <i class="fas fa-rotate-right"></i>
+            </button>
         </div>
     </div>
 
-    <!-- Scrollable Content -->
+    <!-- ══════ Scrollable Content ══════ -->
     <div class="flex-1 overflow-y-auto custom-scrollbar">
 
         @if($panelScope !== '')
+        {{-- ════════ ZONE 1 · HOTEL DETAILS ════════
+             Everything here is true of the hotel itself, so it shows on every
+             page at once. Amber marks that: change one of these and you have
+             changed the whole site, not the thing you clicked. --}}
+        <div class="zone-head zone-head--hotel">
+            <span class="zone-dot"></span>
+            <span class="zone-title">Your hotel</span>
+            <span class="zone-note">Shows on every page</span>
+        </div>
+
         {{-- ── Hotel Information ─────────────────────────────────
              One form for what the hotel is, rather than a click-and-type edit on
              each page: the name, its words, its contact details and its social
@@ -58,56 +96,54 @@
              Everything here saves as a draft the moment it is typed - the
              builder's own autosave carries it - and none of it submits anything.
              That is what Submit Changes in the toolbar is for. --}}
-        <div class="design-section border-b border-zinc-800/60">
-            <button onclick="toggleSection('identity')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center">
-                        <i class="fas fa-hotel text-[9px] text-amber-400"></i>
-                    </div>
-                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Hotel Information</span>
-                </div>
-                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-identity"></i>
+        <div class="design-section">
+            <button onclick="toggleSection('identity')" class="section-toggle">
+                <span class="section-icon section-icon--hotel"><i class="fas fa-hotel"></i></span>
+                <span class="section-label">
+                    Hotel information
+                    <span class="section-sub">Name, story, contact details</span>
+                </span>
+                <i class="fas fa-chevron-down section-chevron" id="chevron-identity" style="transform: rotate(-90deg)"></i>
             </button>
-            <div class="section-body px-5 pb-4" id="section-identity">
-                <p class="text-[10px] text-zinc-500 mb-3 leading-relaxed">
+            <div class="section-body hidden" id="section-identity">
+                <p class="section-hint">
                     Shown on every page. Leave a field empty to keep your approved hotel concept's own wording.
                 </p>
 
-                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Hotel name</label>
+                <label class="field-label settings-label">Hotel name</label>
                 <input type="text" id="identityName" maxlength="60" placeholder="Your hotel's name"
                        oninput="queueIdentityPush()"
-                       class="w-full mb-3 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+                       class="style-input style-input--hotel mb-3">
 
-                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Tagline</label>
+                <label class="field-label settings-label">Tagline</label>
                 <input type="text" id="identityTagline" maxlength="140" placeholder="A short line under the name"
                        oninput="queueIdentityPush()"
-                       class="w-full mb-3 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+                       class="style-input style-input--hotel mb-3">
 
-                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Description</label>
+                <label class="field-label settings-label">Description</label>
                 <textarea id="identityDescription" rows="4" maxlength="1200" placeholder="What the hotel is, who it serves, what makes it different."
                           oninput="queueIdentityPush()"
-                          class="w-full mb-3 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 leading-relaxed focus:outline-none focus:border-amber-500/50"></textarea>
+                          class="style-input style-input--hotel leading-relaxed mb-4"></textarea>
 
-                <p class="text-[10px] font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">Contact</p>
+                <p class="field-group-label">Contact</p>
                 <input type="text" id="identityPhone" maxlength="40" placeholder="Phone"
                        oninput="queueIdentityPush()"
-                       class="w-full mb-2 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+                       class="style-input style-input--hotel mb-2">
                 <input type="text" id="identityEmail" maxlength="120" placeholder="Email"
                        oninput="queueIdentityPush()"
-                       class="w-full mb-2 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+                       class="style-input style-input--hotel mb-2">
                 <input type="text" id="identityAddress" maxlength="200" placeholder="Address"
                        oninput="queueIdentityPush()"
-                       class="w-full mb-2 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+                       class="style-input style-input--hotel mb-2">
                 <input type="text" id="identityHours" maxlength="120" placeholder="Front desk hours"
                        oninput="queueIdentityPush()"
-                       class="w-full mb-3 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-amber-500/50">
+                       class="style-input style-input--hotel mb-4">
 
-                <p class="text-[10px] font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">Social links</p>
-                <p class="text-[10px] text-zinc-500 mb-2">Each one shows in the footer as its own icon. Blank rows are ignored.</p>
+                <p class="field-group-label">Social links</p>
+                <p class="section-hint">Each one shows in the footer as its own icon. Blank rows are ignored.</p>
                 <div id="identitySocialRows" class="space-y-2 mb-2"></div>
-                <button type="button" onclick="addIdentitySocialRow()"
-                        class="w-full py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-300 hover:border-amber-500/40 hover:text-white transition">
-                    <i class="fas fa-plus mr-1"></i>Add social link
+                <button type="button" onclick="addIdentitySocialRow()" class="ghost-btn ghost-btn--hotel">
+                    <i class="fas fa-plus"></i>Add social link
                 </button>
             </div>
         </div>
@@ -118,59 +154,54 @@
              background palette already have their own tools on the canvas, so
              this section points at those rather than owning a second copy that
              could disagree with them. --}}
-        <div class="design-section border-b border-zinc-800/60">
-            <button onclick="toggleSection('branding')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-md bg-fuchsia-500/15 flex items-center justify-center">
-                        <i class="fas fa-swatchbook text-[9px] text-fuchsia-400"></i>
-                    </div>
-                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Hotel Branding</span>
-                </div>
-                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-branding"></i>
+        <div class="design-section">
+            <button onclick="toggleSection('branding')" class="section-toggle">
+                <span class="section-icon section-icon--hotel"><i class="fas fa-swatchbook"></i></span>
+                <span class="section-label">
+                    Fonts &amp; colours
+                    <span class="section-sub">The look of the whole site</span>
+                </span>
+                <i class="fas fa-chevron-down section-chevron" id="chevron-branding" style="transform: rotate(-90deg)"></i>
             </button>
-            <div class="section-body px-5 pb-4" id="section-branding">
-                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Font family</label>
+            <div class="section-body hidden" id="section-branding">
+                <label class="field-label settings-label">Font family</label>
                 <select id="brandFontFamily" onchange="queueIdentityPush(true)"
-                        class="w-full mb-3 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 focus:outline-none focus:border-fuchsia-500/50"></select>
+                        class="style-input style-input--hotel mb-4"></select>
 
-                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Base font size</label>
-                <div class="flex items-center gap-2 mb-3">
+                <label class="field-label settings-label">Base text size</label>
+                <div class="flex items-center gap-2.5 mb-2">
                     <input type="range" id="brandFontSizeRange" min="12" max="22" step="1" value="16"
-                           oninput="onBrandFontSizeSlide(this.value)" class="flex-1 accent-fuchsia-500">
-                    <span id="brandFontSizeLabel" class="text-[10px] text-zinc-400 w-14 text-right">Default</span>
+                           oninput="onBrandFontSizeSlide(this.value)" class="flex-1 accent-amber-400">
+                    <span id="brandFontSizeLabel" class="value-pill">Default</span>
                 </div>
-                <button type="button" onclick="clearBrandFontSize()"
-                        class="w-full mb-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-400 hover:text-white transition">Use template size</button>
+                <button type="button" onclick="clearBrandFontSize()" class="ghost-btn mb-4">Use template size</button>
 
-                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Body text colour</label>
-                <div class="flex items-center gap-2 mb-3">
+                <label class="field-label settings-label">Body text colour</label>
+                <div class="flex items-center gap-2 mb-4">
                     <input type="color" id="brandFontColor" value="#f5f0e8" onchange="queueIdentityPush(true)"
-                           class="w-9 h-8 rounded-lg bg-zinc-800 border border-zinc-700 cursor-pointer">
-                    <button type="button" onclick="clearBrandColor('color')"
-                            class="flex-1 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-400 hover:text-white transition">Use template colour</button>
+                           class="color-swatch">
+                    <button type="button" onclick="clearBrandColor('color')" class="ghost-btn flex-1">Use template colour</button>
                 </div>
 
-                <label class="block text-[10px] font-semibold text-zinc-400 mb-1">Heading colour</label>
-                <div class="flex items-center gap-2 mb-3">
+                <label class="field-label settings-label">Heading colour</label>
+                <div class="flex items-center gap-2 mb-4">
                     <input type="color" id="brandHeadingColor" value="#f5f0e8" onchange="queueIdentityPush(true)"
-                           class="w-9 h-8 rounded-lg bg-zinc-800 border border-zinc-700 cursor-pointer">
-                    <button type="button" onclick="clearBrandColor('headingColor')"
-                            class="flex-1 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-400 hover:text-white transition">Use template colour</button>
+                           class="color-swatch">
+                    <button type="button" onclick="clearBrandColor('headingColor')" class="ghost-btn flex-1">Use template colour</button>
                 </div>
 
                 {{-- The palette used to be reachable only through a pill floating over
                      the canvas, which meant scrolling to find it before any colour
                      could be picked. Same dialog, one click, from where the rest of
                      the site-wide design already lives. --}}
-                <button type="button" onclick="openSiteColours()"
-                        class="w-full mb-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-[11px] font-semibold text-zinc-200 hover:border-fuchsia-500/50 hover:text-white transition flex items-center justify-center gap-2">
-                    <i class="fas fa-palette text-[10px] text-fuchsia-400"></i>
+                <button type="button" onclick="openSiteColours()" class="feature-btn feature-btn--hotel mb-3">
+                    <i class="fas fa-palette"></i>
                     Background colours
                 </button>
 
-                <div class="rounded-lg border border-zinc-700/70 bg-zinc-800/50 p-2.5">
-                    <p class="text-[10px] text-zinc-400 leading-relaxed">
-                        <i class="fas fa-circle-info text-[9px] text-fuchsia-400 mr-1"></i>
+                <div class="note-box">
+                    <i class="fas fa-circle-info note-box-icon"></i>
+                    <p>
                         The logo and the slider highlights are edited on the page itself: click the
                         logo in the header to replace it, and use the pencil on the hero slider for
                         its images. Both apply to every page, as the colours above do.
@@ -178,63 +209,78 @@
                 </div>
             </div>
         </div>
-
         @endif
 
-        <!-- ── Element Target ── -->
-        <div class="px-5 py-3 border-b border-zinc-800/60 bg-zinc-900/50">
-            <div class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-zinc-800/80 border border-zinc-700/50">
-                <div class="w-6 h-6 rounded-md bg-cyan-500/20 flex items-center justify-center">
-                    <i class="fas fa-mouse-pointer text-[9px] text-cyan-400"></i>
-                </div>
-                <span class="text-xs text-zinc-400" id="selectedElement">Select an element to style</span>
-            </div>
-            <p id="selectionHint" class="text-[9px] text-zinc-600 mt-2 leading-relaxed">
-                Click text, a button, image, or icon. Alt+click selects its layout container.
-            </p>
-            <button id="selectParentBtn" type="button" onclick="selectParentElement()" class="hidden w-full mt-2 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-semibold text-cyan-300 hover:bg-cyan-500/15 transition">
-                <i class="fas fa-arrow-up mr-1"></i><span id="selectParentLabel">Select parent container</span>
-            </button>
-            <div id="movementControls" class="hidden mt-2 rounded-lg border border-zinc-700/70 bg-zinc-800/50 p-2.5">
-                <div class="flex items-start gap-2">
-                    <i class="fas fa-up-down-left-right text-[9px] text-cyan-400 mt-0.5" id="movementIcon"></i>
+        {{-- ════════ ZONE 2 · THE THING YOU CLICKED ════════ --}}
+        <div class="zone-head zone-head--element">
+            <span class="zone-dot"></span>
+            <span class="zone-title">This page</span>
+            <span class="zone-note">Click something first</span>
+        </div>
+
+        {{-- ── What's selected ──
+             Pinned while the rest of the panel scrolls: every control below only
+             acts on whatever this card names, and a student who has scrolled past
+             it otherwise has no way to remember what that is. --}}
+        <div class="target-card-wrap">
+            <div class="target-card">
+                <div class="target-row">
+                    <div class="target-icon"><i class="fas fa-mouse-pointer"></i></div>
                     <div class="min-w-0 flex-1">
-                        <p id="movementStatus" class="text-[10px] font-semibold text-zinc-300">Position &amp; align</p>
-                        <p id="movementHelp" class="text-[9px] leading-relaxed text-zinc-500 mt-0.5">Drag the cyan Move handle to reposition. Pink guides snap it into alignment. Arrow keys nudge (Shift = 10px).</p>
+                        <p class="target-eyebrow">Now editing</p>
+                        <span class="target-name" id="selectedElement">Select an element to style</span>
                     </div>
                 </div>
-                <div id="movementAlignButtons" class="grid grid-cols-3 gap-1 mt-2">
-                    <button type="button" onclick="alignSelectedElement('left')" class="add-el-btn" title="Align left"><i class="fas fa-align-left"></i>Left</button>
-                    <button type="button" onclick="alignSelectedElement('center')" class="add-el-btn" title="Center horizontally"><i class="fas fa-align-center"></i>Center</button>
-                    <button type="button" onclick="alignSelectedElement('right')" class="add-el-btn" title="Align right"><i class="fas fa-align-right"></i>Right</button>
-                    <button type="button" onclick="alignSelectedElement('top')" class="add-el-btn" title="Align top"><i class="fas fa-arrow-up"></i>Top</button>
-                    <button type="button" onclick="alignSelectedElement('middle')" class="add-el-btn" title="Center vertically"><i class="fas fa-arrows-up-down"></i>Middle</button>
-                    <button type="button" onclick="alignSelectedElement('bottom')" class="add-el-btn" title="Align bottom"><i class="fas fa-arrow-down"></i>Bottom</button>
+
+                <p id="selectionHint" class="target-hint">
+                    Click text, a button, image, or icon. Alt+click selects its layout container.
+                </p>
+
+                <button id="selectParentBtn" type="button" onclick="selectParentElement()" class="hidden parent-btn">
+                    <i class="fas fa-arrow-up"></i><span id="selectParentLabel">Select parent container</span>
+                </button>
+
+                <div id="movementControls" class="hidden move-box">
+                    <div class="flex items-start gap-2">
+                        <i class="fas fa-up-down-left-right move-icon" id="movementIcon"></i>
+                        <div class="min-w-0 flex-1">
+                            <p id="movementStatus" class="move-title">Position &amp; align</p>
+                            <p id="movementHelp" class="move-help">Drag the cyan Move handle to reposition. Pink guides snap it into alignment. Arrow keys nudge (Shift = 10px).</p>
+                        </div>
+                    </div>
+                    <div id="movementAlignButtons" class="grid grid-cols-3 gap-1 mt-2.5">
+                        <button type="button" onclick="alignSelectedElement('left')" class="add-el-btn" title="Align left"><i class="fas fa-align-left"></i>Left</button>
+                        <button type="button" onclick="alignSelectedElement('center')" class="add-el-btn" title="Center horizontally"><i class="fas fa-align-center"></i>Center</button>
+                        <button type="button" onclick="alignSelectedElement('right')" class="add-el-btn" title="Align right"><i class="fas fa-align-right"></i>Right</button>
+                        <button type="button" onclick="alignSelectedElement('top')" class="add-el-btn" title="Align top"><i class="fas fa-arrow-up"></i>Top</button>
+                        <button type="button" onclick="alignSelectedElement('middle')" class="add-el-btn" title="Center vertically"><i class="fas fa-arrows-up-down"></i>Middle</button>
+                        <button type="button" onclick="alignSelectedElement('bottom')" class="add-el-btn" title="Align bottom"><i class="fas fa-arrow-down"></i>Bottom</button>
+                    </div>
                 </div>
-            </div>
-            <div class="grid grid-cols-2 gap-1.5 mt-2.5">
-                <button type="button" onclick="duplicateSelectedElement()" class="py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-300 hover:border-cyan-500/40 hover:text-white transition">
-                    <i class="fas fa-copy mr-1"></i>Duplicate
-                </button>
-                <button type="button" onclick="deleteSelectedElement()" class="py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-rose-300 hover:border-rose-500/40 hover:text-rose-200 transition">
-                    <i class="fas fa-trash mr-1"></i>Delete
-                </button>
+
+                <div class="grid grid-cols-2 gap-1.5 mt-2.5">
+                    <button type="button" onclick="duplicateSelectedElement()" class="ghost-btn">
+                        <i class="fas fa-copy"></i>Duplicate
+                    </button>
+                    <button type="button" onclick="deleteSelectedElement()" class="ghost-btn ghost-btn--danger">
+                        <i class="fas fa-trash"></i>Delete
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- ── Add Elements ── -->
-        <div class="design-section border-b border-zinc-800/60">
-            <button onclick="toggleSection('add')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-md bg-cyan-500/15 flex items-center justify-center">
-                        <i class="fas fa-plus text-[9px] text-cyan-400"></i>
-                    </div>
-                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Add to page</span>
-                </div>
-                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-add"></i>
+        <!-- ── Add to page ── -->
+        <div class="design-section">
+            <button onclick="toggleSection('add')" class="section-toggle">
+                <span class="section-icon"><i class="fas fa-plus"></i></span>
+                <span class="section-label">
+                    Add something new
+                    <span class="section-sub">Text, buttons, images, cards</span>
+                </span>
+                <i class="fas fa-chevron-down section-chevron" id="chevron-add" style="transform: rotate(-90deg)"></i>
             </button>
-            <div class="section-body px-5 pb-4" id="section-add">
-                <p class="text-[10px] text-zinc-500 mb-2">Adds objects onto the live template. Select one, then use its cyan Move handle and resize points.</p>
+            <div class="section-body hidden" id="section-add">
+                <p class="section-hint">Drops the new object onto the page. Select it, then drag its cyan Move handle or pull the corner points to resize.</p>
                 <div class="grid grid-cols-2 gap-1.5">
                     <button type="button" onclick="addCanvasElement('text')" class="add-el-btn"><i class="fas fa-font"></i>Text</button>
                     <button type="button" onclick="addCanvasElement('button')" class="add-el-btn"><i class="fas fa-square"></i>Button</button>
@@ -247,66 +293,87 @@
             </div>
         </div>
 
-        <!-- ── Heading Level ── -->
-        <div class="design-section">
-            <button onclick="toggleSection('heading')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-md bg-indigo-500/15 flex items-center justify-center">
-                        <i class="fas fa-heading text-[9px] text-indigo-400"></i>
-                    </div>
-                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Heading Level</span>
-                </div>
-                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-heading"></i>
+        <!-- ── Text & icon ── -->
+        <div class="design-section needs-selection">
+            <button onclick="toggleSection('content')" class="section-toggle">
+                <span class="section-icon"><i class="fas fa-align-left"></i></span>
+                <span class="section-label">
+                    Words &amp; icon
+                    <span class="section-sub">Change what it says</span>
+                </span>
+                <i class="fas fa-chevron-down section-chevron" id="chevron-content"></i>
             </button>
-            <div class="section-body px-5 pb-4" id="section-heading">
+            <div class="section-body" id="section-content">
+                <label class="field-label settings-label">Text</label>
+                <textarea id="elementText" rows="3" class="style-input resize-y min-h-[72px]" placeholder="Select text in the template, then edit here"
+                    oninput="applyTextContent(this.value)"></textarea>
+                <p class="section-hint mt-1.5 mb-4">Tip: you can also double-click the text on the page and type straight into it.</p>
+
+                <label class="field-label settings-label">Icon name (Font Awesome)</label>
+                <input id="iconClass" type="text" class="style-input font-mono" placeholder="e.g. fas fa-hotel"
+                    onchange="applyIconClass(this.value)">
+            </div>
+        </div>
+
+        <!-- ── Heading level ── -->
+        <div class="design-section needs-selection">
+            <button onclick="toggleSection('heading')" class="section-toggle">
+                <span class="section-icon"><i class="fas fa-heading"></i></span>
+                <span class="section-label">
+                    Heading size
+                    <span class="section-sub">Title, section, or plain text</span>
+                </span>
+                <i class="fas fa-chevron-down section-chevron" id="chevron-heading"></i>
+            </button>
+            <div class="section-body" id="section-heading">
+                <p class="section-hint">Biggest at H1, smallest at H6 - the same idea as heading styles in Word.</p>
                 <div class="grid grid-cols-3 gap-1.5">
                     <button onclick="applyHeading('h1')" class="heading-btn group" data-group="heading" title="Heading 1">
                         <span class="text-base font-extrabold text-white leading-none">H1</span>
-                        <span class="text-[8px] text-zinc-600 group-hover:text-zinc-400 transition-colors mt-0.5 block">Display</span>
+                        <span class="heading-btn-sub">Display</span>
                     </button>
                     <button onclick="applyHeading('h2')" class="heading-btn group" data-group="heading" title="Heading 2">
                         <span class="text-sm font-bold text-white leading-none">H2</span>
-                        <span class="text-[8px] text-zinc-600 group-hover:text-zinc-400 transition-colors mt-0.5 block">Title</span>
+                        <span class="heading-btn-sub">Title</span>
                     </button>
                     <button onclick="applyHeading('h3')" class="heading-btn group" data-group="heading" title="Heading 3">
                         <span class="text-[13px] font-bold text-white leading-none">H3</span>
-                        <span class="text-[8px] text-zinc-600 group-hover:text-zinc-400 transition-colors mt-0.5 block">Section</span>
+                        <span class="heading-btn-sub">Section</span>
                     </button>
                     <button onclick="applyHeading('h4')" class="heading-btn group" data-group="heading" title="Heading 4">
                         <span class="text-xs font-semibold text-white leading-none">H4</span>
-                        <span class="text-[8px] text-zinc-600 group-hover:text-zinc-400 transition-colors mt-0.5 block">Sub</span>
+                        <span class="heading-btn-sub">Sub</span>
                     </button>
                     <button onclick="applyHeading('h5')" class="heading-btn group" data-group="heading" title="Heading 5">
                         <span class="text-[11px] font-semibold text-zinc-300 leading-none">H5</span>
-                        <span class="text-[8px] text-zinc-600 group-hover:text-zinc-400 transition-colors mt-0.5 block">Label</span>
+                        <span class="heading-btn-sub">Label</span>
                     </button>
                     <button onclick="applyHeading('h6')" class="heading-btn group" data-group="heading" title="Heading 6">
                         <span class="text-[10px] font-medium text-zinc-400 leading-none">H6</span>
-                        <span class="text-[8px] text-zinc-600 group-hover:text-zinc-400 transition-colors mt-0.5 block">Caption</span>
+                        <span class="heading-btn-sub">Caption</span>
                     </button>
                 </div>
                 <!-- Remove heading -->
-                <button onclick="applyHeading('p')" class="mt-2 w-full py-1.5 rounded-lg bg-zinc-800/60 border border-zinc-700/40 text-[10px] text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600 transition-all">
-                    <i class="fas fa-paragraph text-[9px] mr-1.5"></i>Reset to Paragraph
+                <button onclick="applyHeading('p')" class="ghost-btn mt-2">
+                    <i class="fas fa-paragraph"></i>Back to normal text
                 </button>
             </div>
         </div>
 
-        <!-- ── Font Style ── -->
-        <div class="design-section border-t border-zinc-800/60">
-            <button onclick="toggleSection('typography')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-md bg-violet-500/15 flex items-center justify-center">
-                        <i class="fas fa-font text-[9px] text-violet-400"></i>
-                    </div>
-                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Font Style</span>
-                </div>
-                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-typography"></i>
+        <!-- ── Font style ── -->
+        <div class="design-section needs-selection">
+            <button onclick="toggleSection('typography')" class="section-toggle">
+                <span class="section-icon"><i class="fas fa-font"></i></span>
+                <span class="section-label">
+                    Text style
+                    <span class="section-sub">Font, size, bold, alignment</span>
+                </span>
+                <i class="fas fa-chevron-down section-chevron" id="chevron-typography"></i>
             </button>
-            <div class="section-body px-5 pb-4 space-y-3" id="section-typography">
+            <div class="section-body" id="section-typography">
                 <!-- Font Family -->
-                <div>
-                    <label class="settings-label">Font Family</label>
+                <div class="mb-4">
+                    <label class="field-label settings-label">Font</label>
                     <div class="relative">
                         <select id="fontFamily" class="style-input appearance-none pr-8 cursor-pointer" onchange="applyStyle('font-family', this.value)">
                             <option value="inherit">Inherit</option>
@@ -318,15 +385,15 @@
                             <option value="'SF Pro Display', sans-serif">SF Pro Display</option>
                             <option value="'Helvetica Neue', sans-serif">Helvetica Neue</option>
                         </select>
-                        <i class="fas fa-chevron-down text-[8px] text-zinc-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                        <i class="fas fa-chevron-down select-caret"></i>
                     </div>
                 </div>
 
                 <!-- Font Weight -->
-                <div>
-                    <label class="settings-label">Weight</label>
+                <div class="mb-4">
+                    <label class="field-label settings-label">Thickness</label>
                     <div class="relative">
-                        <select id="fontWeight" class="style-input appearance-none pr-7 cursor-pointer" onchange="applyStyle('font-weight', this.value)">
+                        <select id="fontWeight" class="style-input appearance-none pr-8 cursor-pointer" onchange="applyStyle('font-weight', this.value)">
                             <option value="300">Light</option>
                             <option value="400">Regular</option>
                             <option value="500">Medium</option>
@@ -334,13 +401,13 @@
                             <option value="700" selected>Bold</option>
                             <option value="800">Extra Bold</option>
                         </select>
-                        <i class="fas fa-chevron-down text-[8px] text-zinc-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                        <i class="fas fa-chevron-down select-caret"></i>
                     </div>
                 </div>
 
                 <!-- Font Size -->
-                <div>
-                    <label class="settings-label">Font Size</label>
+                <div class="mb-4">
+                    <label class="field-label settings-label">Size</label>
                     <div class="flex items-center gap-2">
                         <input id="fontSizeRange" type="range" min="10" max="96" value="16" class="flex-1 accent-cyan-500"
                             oninput="document.getElementById('fontSizeVal').value = this.value; applyStyle('font-size', this.value + 'px')">
@@ -350,120 +417,57 @@
                 </div>
 
                 <!-- Alignment -->
-                <div>
-                    <label class="settings-label">Align</label>
-                    <div class="flex gap-1">
-                        <button type="button" onclick="applyStyle('text-align','left')" class="style-toggle-btn" title="Left"><i class="fas fa-align-left text-[10px]"></i></button>
-                        <button type="button" onclick="applyStyle('text-align','center')" class="style-toggle-btn" title="Center"><i class="fas fa-align-center text-[10px]"></i></button>
-                        <button type="button" onclick="applyStyle('text-align','right')" class="style-toggle-btn" title="Right"><i class="fas fa-align-right text-[10px]"></i></button>
-                        <button type="button" onclick="applyStyle('text-align','justify')" class="style-toggle-btn" title="Justify"><i class="fas fa-align-justify text-[10px]"></i></button>
+                <div class="mb-4">
+                    <label class="field-label settings-label">Alignment</label>
+                    <div class="flex gap-1.5">
+                        <button type="button" onclick="applyStyle('text-align','left')" class="style-toggle-btn" title="Left"><i class="fas fa-align-left"></i></button>
+                        <button type="button" onclick="applyStyle('text-align','center')" class="style-toggle-btn" title="Center"><i class="fas fa-align-center"></i></button>
+                        <button type="button" onclick="applyStyle('text-align','right')" class="style-toggle-btn" title="Right"><i class="fas fa-align-right"></i></button>
+                        <button type="button" onclick="applyStyle('text-align','justify')" class="style-toggle-btn" title="Justify"><i class="fas fa-align-justify"></i></button>
                     </div>
                 </div>
 
                 <!-- Style Toggles -->
                 <div>
-                    <label class="settings-label">Style</label>
-                    <div class="flex gap-1">
+                    <label class="field-label settings-label">Emphasis</label>
+                    <div class="flex gap-1.5">
                         <button onclick="toggleInlineStyle('font-style', 'italic')" class="style-toggle-btn" title="Italic">
-                            <i class="fas fa-italic text-[10px]"></i>
+                            <i class="fas fa-italic"></i>
                         </button>
                         <button onclick="toggleInlineStyle('text-decoration', 'underline')" class="style-toggle-btn" title="Underline">
-                            <i class="fas fa-underline text-[10px]"></i>
+                            <i class="fas fa-underline"></i>
                         </button>
                         <button onclick="toggleInlineStyle('text-decoration', 'line-through')" class="style-toggle-btn" title="Strikethrough">
-                            <i class="fas fa-strikethrough text-[10px]"></i>
+                            <i class="fas fa-strikethrough"></i>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ── Spacing ── -->
-        <div class="design-section border-t border-zinc-800/60">
-            <button onclick="toggleSection('spacing')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-md bg-sky-500/15 flex items-center justify-center">
-                        <i class="fas fa-expand text-[9px] text-sky-400"></i>
-                    </div>
-                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Spacing</span>
-                </div>
-                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-spacing"></i>
+        <!-- ── Colours ── -->
+        <div class="design-section needs-selection">
+            <button onclick="toggleSection('colors')" class="section-toggle">
+                <span class="section-icon"><i class="fas fa-droplet"></i></span>
+                <span class="section-label">
+                    Colours
+                    <span class="section-sub">Text and background</span>
+                </span>
+                <i class="fas fa-chevron-down section-chevron" id="chevron-colors"></i>
             </button>
-            <div class="section-body px-5 pb-4 space-y-3" id="section-spacing">
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="settings-label">Padding</label>
-                        <input id="padInput" type="text" class="style-input" placeholder="e.g. 12px" onchange="applyStyle('padding', this.value)">
-                    </div>
-                    <div>
-                        <label class="settings-label">Margin</label>
-                        <input id="marginInput" type="text" class="style-input" placeholder="e.g. 8px" onchange="applyStyle('margin', this.value)">
-                    </div>
-                    <div>
-                        <label class="settings-label">Width</label>
-                        <input id="widthInput" type="text" class="style-input" placeholder="e.g. 240px" onchange="applyStyle('width', this.value)">
-                    </div>
-                    <div>
-                        <label class="settings-label">Height</label>
-                        <input id="heightInput" type="text" class="style-input" placeholder="e.g. 80px" onchange="applyStyle('height', this.value)">
-                    </div>
-                    <div>
-                        <label class="settings-label">Radius</label>
-                        <input id="radiusInput" type="text" class="style-input" placeholder="e.g. 12px" onchange="applyStyle('border-radius', this.value)">
-                    </div>
-                    <div>
-                        <label class="settings-label">Opacity</label>
-                        <input id="opacityInput" type="number" min="0" max="1" step="0.05" value="1" class="style-input" onchange="applyStyle('opacity', this.value)">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Layers ── -->
-        <div class="design-section border-t border-zinc-800/60">
-            <button onclick="toggleSection('layers')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-md bg-orange-500/15 flex items-center justify-center">
-                        <i class="fas fa-layer-group text-[9px] text-orange-400"></i>
-                    </div>
-                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Layers</span>
-                </div>
-                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-layers"></i>
-            </button>
-            <div class="section-body px-5 pb-4" id="section-layers">
-                <div class="grid grid-cols-2 gap-1.5">
-                    <button type="button" onclick="layerSelected('front')" class="add-el-btn"><i class="fas fa-arrow-up"></i>To front</button>
-                    <button type="button" onclick="layerSelected('back')" class="add-el-btn"><i class="fas fa-arrow-down"></i>To back</button>
-                    <button type="button" onclick="layerSelected('forward')" class="add-el-btn"><i class="fas fa-caret-up"></i>Forward</button>
-                    <button type="button" onclick="layerSelected('backward')" class="add-el-btn"><i class="fas fa-caret-down"></i>Backward</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Colors ── -->
-        <div class="design-section border-t border-zinc-800/60">
-            <button onclick="toggleSection('colors')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-md bg-pink-500/15 flex items-center justify-center">
-                        <i class="fas fa-droplet text-[9px] text-pink-400"></i>
-                    </div>
-                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Colors</span>
-                </div>
-                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-colors"></i>
-            </button>
-            <div class="section-body px-5 pb-4 space-y-3" id="section-colors">
+            <div class="section-body" id="section-colors">
                 <!-- Text Color -->
-                <div>
-                    <label class="settings-label">Text Color</label>
+                <div class="mb-4">
+                    <label class="field-label settings-label">Text colour</label>
                     <div class="flex items-center gap-2">
                         <div class="relative">
                             <input type="color" id="textColor" value="#e4e4e7" class="color-swatch" onchange="applyStyle('color', this.value); updateColorHex('textColorHex', this.value)">
-                            <i class="fas fa-eye-dropper text-[8px] text-zinc-400 absolute inset-0 m-auto pointer-events-none"></i>
+                            <i class="fas fa-eye-dropper swatch-glyph"></i>
                         </div>
-                        <input type="text" id="textColorHex" value="#e4e4e7" class="style-input flex-1 font-mono text-[11px]" oninput="syncColorPicker('textColor', this.value)" maxlength="7">
+                        <input type="text" id="textColorHex" value="#e4e4e7" class="style-input flex-1 font-mono" oninput="syncColorPicker('textColor', this.value)" maxlength="7">
                     </div>
                     <!-- Text Color Swatches -->
-                    <div class="flex gap-1.5 mt-2">
+                    <div class="swatch-row">
                         <button onclick="setColor('text','#ffffff')" class="color-preset-swatch" style="background:#ffffff" title="#ffffff"></button>
                         <button onclick="setColor('text','#e4e4e7')" class="color-preset-swatch ring-1 ring-cyan-400/50" style="background:#e4e4e7" title="#e4e4e7"></button>
                         <button onclick="setColor('text','#a1a1aa')" class="color-preset-swatch" style="background:#a1a1aa" title="#a1a1aa"></button>
@@ -478,19 +482,19 @@
 
                 <!-- Background Color -->
                 <div>
-                    <label class="settings-label">Background</label>
+                    <label class="field-label settings-label">Background</label>
                     <div class="flex items-center gap-2">
                         <div class="relative">
                             <input type="color" id="bgColor" value="#18181b" class="color-swatch" onchange="applyStyle('background-color', this.value); updateColorHex('bgColorHex', this.value)">
-                            <i class="fas fa-fill-drip text-[8px] text-zinc-400 absolute inset-0 m-auto pointer-events-none"></i>
+                            <i class="fas fa-fill-drip swatch-glyph"></i>
                         </div>
-                        <input type="text" id="bgColorHex" value="#18181b" class="style-input flex-1 font-mono text-[11px]" oninput="syncColorPicker('bgColor', this.value)" maxlength="7">
-                        <button onclick="applyStyle('background-color', 'transparent')" class="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700/50 flex items-center justify-center hover:bg-zinc-700 transition-colors shrink-0" title="Transparent">
-                            <i class="fas fa-ban text-[9px] text-zinc-500"></i>
+                        <input type="text" id="bgColorHex" value="#18181b" class="style-input flex-1 font-mono" oninput="syncColorPicker('bgColor', this.value)" maxlength="7">
+                        <button onclick="applyStyle('background-color', 'transparent')" class="style-toggle-btn shrink-0" title="No background (see-through)">
+                            <i class="fas fa-ban"></i>
                         </button>
                     </div>
-                    <div class="flex gap-1.5 mt-2">
-                        <button onclick="setColor('bg','transparent')" class="color-preset-swatch !bg-[repeating-conic-gradient(#333_0%_25%,#222_0%_50%)]_bg-[length:8px_8px]" title="Transparent"></button>
+                    <div class="swatch-row">
+                        <button onclick="setColor('bg','transparent')" class="color-preset-swatch swatch-transparent" title="Transparent"></button>
                         <button onclick="setColor('bg','#000000')" class="color-preset-swatch" style="background:#000000" title="#000000"></button>
                         <button onclick="setColor('bg','#18181b')" class="color-preset-swatch ring-1 ring-cyan-400/50" style="background:#18181b" title="#18181b"></button>
                         <button onclick="setColor('bg','#27272a')" class="color-preset-swatch" style="background:#27272a" title="#27272a"></button>
@@ -504,214 +508,404 @@
             </div>
         </div>
 
-        <!-- ── Content ── -->
-        <div class="design-section border-t border-zinc-800/60">
-            <button onclick="toggleSection('content')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-md bg-emerald-500/15 flex items-center justify-center">
-                        <i class="fas fa-align-left text-[9px] text-emerald-400"></i>
-                    </div>
-                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Content</span>
-                </div>
-                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-content"></i>
+        <!-- ── Logo & images ── -->
+        <div class="design-section needs-selection">
+            <button onclick="toggleSection('media')" class="section-toggle">
+                <span class="section-icon"><i class="fas fa-image"></i></span>
+                <span class="section-label">
+                    Pictures
+                    <span class="section-sub">Swap a photo or the logo</span>
+                </span>
+                <i class="fas fa-chevron-down section-chevron" id="chevron-media" style="transform: rotate(-90deg)"></i>
             </button>
-            <div class="section-body px-5 pb-4 space-y-3" id="section-content">
-                <div>
-                    <label class="settings-label">Text / Label</label>
-                    <textarea id="elementText" rows="3" class="style-input resize-y min-h-[72px]" placeholder="Select text in the template, then edit here"
-                        oninput="applyTextContent(this.value)"></textarea>
-                    <p class="text-[10px] text-zinc-600 mt-1.5">Tip: double-click text in the template to type directly.</p>
-                </div>
-                <div>
-                    <label class="settings-label">Icon class (Font Awesome)</label>
-                    <input id="iconClass" type="text" class="style-input font-mono" placeholder="e.g. fas fa-hotel"
-                        onchange="applyIconClass(this.value)">
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Media ── -->
-        <div class="design-section border-t border-zinc-800/60">
-            <button onclick="toggleSection('media')" class="section-toggle w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-800/50 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center">
-                        <i class="fas fa-image text-[9px] text-amber-400"></i>
-                    </div>
-                    <span class="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Logo &amp; Images</span>
-                </div>
-                <i class="fas fa-chevron-down text-[8px] text-zinc-600 section-chevron transition-transform" id="chevron-media"></i>
-            </button>
-            <div class="section-body px-5 pb-4 space-y-3" id="section-media">
-                <p class="text-[10px] text-zinc-500">Select an image, logo area, or hero background in the template, then upload a new picture.</p>
+            <div class="section-body hidden" id="section-media">
+                <p class="section-hint">Click the picture, logo, or hero background on the page first, then upload the one you want in its place.</p>
                 <input type="file" id="designImageInput" accept="image/*" class="hidden" onchange="uploadSelectedImage(this)">
-                <button type="button" onclick="document.getElementById('designImageInput').click()"
-                    class="w-full h-10 rounded-xl bg-zinc-800 border border-zinc-700 text-xs font-semibold text-zinc-200 hover:border-cyan-500/50 hover:text-white transition flex items-center justify-center gap-2">
-                    <i class="fas fa-cloud-upload-alt text-cyan-400"></i>
-                    Upload / Replace Image
+                <button type="button" onclick="document.getElementById('designImageInput').click()" class="feature-btn mb-3">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    Upload a picture
                 </button>
-                <input id="imageUrlInput" type="url" class="style-input" placeholder="Or paste image URL"
+                <input id="imageUrlInput" type="url" class="style-input" placeholder="Or paste a picture link (https://...)"
                     onchange="applyImageUrl(this.value)">
             </div>
         </div>
 
+        <!-- ── Size & spacing ── -->
+        <div class="design-section needs-selection">
+            <button onclick="toggleSection('spacing')" class="section-toggle">
+                <span class="section-icon"><i class="fas fa-expand"></i></span>
+                <span class="section-label">
+                    Size &amp; spacing
+                    <span class="section-sub">Room around it, corners, width</span>
+                </span>
+                <i class="fas fa-chevron-down section-chevron" id="chevron-spacing" style="transform: rotate(-90deg)"></i>
+            </button>
+            <div class="section-body hidden" id="section-spacing">
+                <p class="section-hint">Type a number with <span class="hint-code">px</span> after it, like <span class="hint-code">12px</span>.</p>
+                <div class="grid grid-cols-2 gap-x-2 gap-y-3">
+                    <div>
+                        <label class="field-label settings-label" title="Space inside the element, between its edge and its content">Inside space</label>
+                        <input id="padInput" type="text" class="style-input" placeholder="e.g. 12px" onchange="applyStyle('padding', this.value)">
+                    </div>
+                    <div>
+                        <label class="field-label settings-label" title="Space outside the element, pushing its neighbours away">Outside space</label>
+                        <input id="marginInput" type="text" class="style-input" placeholder="e.g. 8px" onchange="applyStyle('margin', this.value)">
+                    </div>
+                    <div>
+                        <label class="field-label settings-label">Width</label>
+                        <input id="widthInput" type="text" class="style-input" placeholder="e.g. 240px" onchange="applyStyle('width', this.value)">
+                    </div>
+                    <div>
+                        <label class="field-label settings-label">Height</label>
+                        <input id="heightInput" type="text" class="style-input" placeholder="e.g. 80px" onchange="applyStyle('height', this.value)">
+                    </div>
+                    <div>
+                        <label class="field-label settings-label" title="How round the corners are">Rounded corners</label>
+                        <input id="radiusInput" type="text" class="style-input" placeholder="e.g. 12px" onchange="applyStyle('border-radius', this.value)">
+                    </div>
+                    <div>
+                        <label class="field-label settings-label" title="1 is solid, 0 is invisible">See-through</label>
+                        <input id="opacityInput" type="number" min="0" max="1" step="0.05" value="1" class="style-input" onchange="applyStyle('opacity', this.value)">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Layers ── -->
+        <div class="design-section needs-selection">
+            <button onclick="toggleSection('layers')" class="section-toggle">
+                <span class="section-icon"><i class="fas fa-layer-group"></i></span>
+                <span class="section-label">
+                    Front or back
+                    <span class="section-sub">When things overlap</span>
+                </span>
+                <i class="fas fa-chevron-down section-chevron" id="chevron-layers" style="transform: rotate(-90deg)"></i>
+            </button>
+            <div class="section-body hidden" id="section-layers">
+                <p class="section-hint">Like a stack of paper: bring a piece to the top, or push it underneath.</p>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" onclick="layerSelected('front')" class="add-el-btn"><i class="fas fa-arrow-up"></i>To front</button>
+                    <button type="button" onclick="layerSelected('back')" class="add-el-btn"><i class="fas fa-arrow-down"></i>To back</button>
+                    <button type="button" onclick="layerSelected('forward')" class="add-el-btn"><i class="fas fa-caret-up"></i>Forward</button>
+                    <button type="button" onclick="layerSelected('backward')" class="add-el-btn"><i class="fas fa-caret-down"></i>Backward</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Bottom spacer -->
-        <div class="h-4"></div>
+        <div class="h-6"></div>
     </div>
 
 </aside>
 
 <style>
+    /* ══════════════════════════════════════════════════════════
+       DESIGN PANEL
+
+       Two accents carry the whole panel: amber for what belongs to the
+       hotel (every page at once) and cyan for what belongs to the one
+       element the student clicked. Everything else is neutral, which is
+       what lets those two mean something.
+
+       .style-input, .settings-label and .color-swatch keep their names on
+       purpose: the builder shell restyles them for the second site theme
+       by those exact selectors, so renaming them here would quietly drop
+       the panel out of that theme.
+       ══════════════════════════════════════════════════════════ */
+
     /* ── Scrollbar ── */
-    .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #52525b; }
 
-    /* ── Section Toggles ── */
-    .section-toggle { user-select: none; }
-    .section-toggle:active { background: rgba(39, 39, 42, 0.6) !important; }
-
-    /* ── Heading Buttons ── */
-    .heading-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 0.5rem 0.25rem;
-        border-radius: 0.5rem;
-        background: rgba(39, 39, 42, 0.6);
-        border: 1px solid rgba(63, 63, 70, 0.4);
-        transition: all 0.15s ease;
-        cursor: pointer;
-        min-height: 44px;
-    }
-    .heading-btn:hover {
-        background: rgba(63, 63, 70, 0.8);
-        border-color: rgba(99, 102, 241, 0.4);
-    }
-    .heading-btn.active {
-        background: rgba(99, 102, 241, 0.15);
-        border-color: rgba(99, 102, 241, 0.5);
-        box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
-    }
-
-    /* ── Style Inputs (selects + text fields) ── */
-    .style-input {
-        width: 100%;
-        padding: 7px 10px;
-        border-radius: 8px;
-        background: #18181b;
-        border: 1px solid #27272a;
-        color: #d4d4d8;
-        font-size: 11px;
-        font-family: 'Inter', sans-serif;
-        transition: all 0.15s ease;
-        outline: none;
-    }
-    .style-input:hover {
-        border-color: #3f3f46;
-        background: #1c1c1f;
-    }
-    .style-input:focus {
-        border-color: #06b6d4;
-        box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.12);
-    }
-    .style-input option {
-        background: #18181b;
-        color: #d4d4d8;
-        padding: 6px;
-    }
-
-    /* ── Style Toggle Buttons (italic/underline/strikethrough) ── */
-    .style-toggle-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        background: #18181b;
-        border: 1px solid #27272a;
-        color: #71717a;
-        cursor: pointer;
+    /* ── Header tools ── */
+    .panel-tool-btn {
+        width: 28px; height: 28px; border-radius: 8px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: transparent; border: 1px solid transparent;
+        color: #a1a1aa; font-size: 11px; cursor: pointer;
         transition: all 0.15s ease;
     }
-    .style-toggle-btn:hover {
-        background: #27272a;
-        color: #d4d4d8;
-        border-color: #3f3f46;
+    .panel-tool-btn:hover:not(:disabled) { background: #3f3f46; color: #fff; }
+    .panel-tool-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .panel-tool-btn--bare { border-color: #3f3f46; background: #27272a; }
+    .panel-tool-btn--danger { border-color: #3f3f46; background: #27272a; }
+    .panel-tool-btn--danger:hover { background: rgba(136, 19, 55, 0.6); border-color: rgba(244, 63, 94, 0.5); color: #fda4af; }
+    .panel-undo-label {
+        font-size: 11px; font-weight: 600; color: #71717a;
+        background: none; border: none; cursor: pointer; padding: 0 2px;
+        transition: color 0.15s ease;
     }
-    .style-toggle-btn.active {
-        background: rgba(99, 102, 241, 0.12);
-        border-color: rgba(99, 102, 241, 0.45);
-        color: #a78bfa;
-        box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.15);
+    .panel-undo-label:hover { color: #d4d4d8; }
+
+    /* ── Zone headings ──
+       Not buttons and not sections: a label that says which of the two
+       things below it act on, so the sections underneath do not have to
+       repeat it one by one. */
+    .zone-head {
+        display: flex; align-items: center; gap: 8px;
+        padding: 14px 20px 8px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .zone-dot { width: 6px; height: 6px; border-radius: 9999px; flex-shrink: 0; }
+    .zone-head--hotel .zone-dot { background: #f59e0b; }
+    .zone-head--hotel .zone-title { color: #fbbf24; }
+    .zone-head--element .zone-dot { background: #22d3ee; }
+    .zone-head--element .zone-title { color: #67e8f9; }
+    .zone-note {
+        margin-left: auto; font-size: 10px; font-weight: 500;
+        letter-spacing: 0.02em; text-transform: none; color: #52525b;
     }
 
-    /* ── Color Preset Swatches ── */
-    .color-preset-swatch {
-        width: 22px;
-        height: 22px;
-        border-radius: 6px;
-        cursor: pointer;
-        border: 2px solid transparent;
-        transition: all 0.15s ease;
-        flex-shrink: 0;
+    /* ── Sections ── */
+    .design-section { border-bottom: 1px solid rgba(39, 39, 42, 0.8); }
+    .section-toggle {
+        width: 100%; display: flex; align-items: center; gap: 10px;
+        padding: 12px 20px; background: none; border: none;
+        text-align: left; cursor: pointer; user-select: none;
+        transition: background 0.15s ease;
     }
-    .color-preset-swatch:hover {
-        transform: scale(1.2);
-        border-color: rgba(255, 255, 255, 0.25);
+    .section-toggle:hover { background: rgba(39, 39, 42, 0.5); }
+    .section-toggle:active { background: rgba(39, 39, 42, 0.8); }
+    .section-icon {
+        width: 28px; height: 28px; border-radius: 9px; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: rgba(6, 182, 212, 0.12); color: #22d3ee; font-size: 11px;
+    }
+    .section-icon--hotel { background: rgba(245, 158, 11, 0.12); color: #fbbf24; }
+    .section-label {
+        flex: 1; min-width: 0; display: block;
+        font-size: 12.5px; font-weight: 600; color: #e4e4e7; line-height: 1.3;
+    }
+    .section-sub {
+        display: block; font-size: 10.5px; font-weight: 400;
+        color: #71717a; margin-top: 2px; line-height: 1.3;
+    }
+    .section-chevron {
+        font-size: 9px; color: #52525b; flex-shrink: 0;
+        transition: transform 0.2s ease;
+    }
+    .section-body { padding: 0 20px 16px; }
+    .section-hint {
+        font-size: 11px; line-height: 1.55; color: #71717a; margin-bottom: 10px;
+    }
+    .hint-code {
+        font-family: ui-monospace, 'SFMono-Regular', monospace;
+        background: #27272a; color: #a1a1aa;
+        padding: 1px 5px; border-radius: 4px; font-size: 10.5px;
     }
 
-    /* ── Color Swatch (native picker) ── */
-    .color-swatch {
-        width: 28px;
-        height: 28px;
-        border-radius: 8px;
-        cursor: pointer;
-        border: 2px solid #27272a;
-        transition: all 0.15s ease;
-        padding: 0;
-    }
-    .color-swatch:hover {
-        transform: scale(1.12);
-        border-color: #3f3f46;
-    }
-    .color-swatch::-webkit-color-swatch-wrapper { padding: 2px; }
-    .color-swatch::-webkit-color-swatch { border-radius: 4px; border: none; }
+    /* Nothing is selected, so the controls that need one are muted. They
+       still answer a click - the toast that says "click an element first"
+       is better teaching than a dead control. */
+    #hmsDesignPanel.no-selection .needs-selection .section-body { opacity: 0.45; }
+    .needs-selection .section-body { transition: opacity 0.2s ease; }
 
-    /* ── Settings Label ── */
+    /* ── What's selected ──
+       Sticky, because every control below it acts on whatever it names. */
+    .target-card-wrap {
+        position: sticky; top: 0; z-index: 20;
+        padding: 4px 16px 12px; background: #18181b;
+        border-bottom: 1px solid rgba(39, 39, 42, 0.8);
+    }
+    .target-card {
+        border-radius: 14px; padding: 12px;
+        background: linear-gradient(180deg, rgba(8, 145, 178, 0.10), rgba(24, 24, 27, 0.4));
+        border: 1px solid rgba(34, 211, 238, 0.22);
+    }
+    .target-row { display: flex; align-items: center; gap: 10px; }
+    .target-icon {
+        width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: rgba(6, 182, 212, 0.18); color: #22d3ee; font-size: 11px;
+    }
+    .target-eyebrow {
+        font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em;
+        text-transform: uppercase; color: #52525b;
+    }
+    .target-name {
+        display: block; font-size: 12.5px; font-weight: 600; color: #e4e4e7;
+        line-height: 1.35; margin-top: 1px;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #hmsDesignPanel.no-selection .target-name { color: #a1a1aa; font-weight: 500; }
+    .target-hint { font-size: 10.5px; line-height: 1.5; color: #71717a; margin-top: 8px; }
+    #hmsDesignPanel:not(.no-selection) .target-hint { display: none; }
+
+    .parent-btn {
+        width: 100%; margin-top: 8px; padding: 6px 8px; border-radius: 9px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.25);
+        color: #67e8f9; font-size: 11px; font-weight: 600; cursor: pointer;
+        transition: background 0.15s ease;
+    }
+    .parent-btn:hover { background: rgba(6, 182, 212, 0.18); }
+    /* This panel's own display rules sit later in the document than Tailwind's
+       .hidden, so anything the script hides has to say so at a specificity the
+       layout rule cannot outrank. */
+    .parent-btn.hidden, .move-box.hidden, .section-body.hidden { display: none; }
+
+    .move-box {
+        margin-top: 8px; padding: 10px; border-radius: 10px;
+        background: rgba(24, 24, 27, 0.6); border: 1px solid rgba(63, 63, 70, 0.7);
+    }
+    .move-icon { font-size: 10px; color: #22d3ee; margin-top: 2px; }
+    .move-title { font-size: 11px; font-weight: 600; color: #d4d4d8; }
+    .move-help { font-size: 10.5px; line-height: 1.5; color: #71717a; margin-top: 2px; }
+
+    /* ── Labels ── */
+    .field-label {
+        display: block; font-size: 10.5px; font-weight: 600; color: #a1a1aa;
+        letter-spacing: 0.03em; margin-bottom: 5px;
+    }
+    .field-group-label {
+        font-size: 10px; font-weight: 700; color: #71717a;
+        letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px;
+    }
+    /* Kept for the builder shell's own theme rules, which target it by name. */
     .settings-label {
-        font-size: 10px;
-        font-weight: 600;
-        color: #52525b;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        margin-bottom: 6px;
-        display: block;
+        display: block; font-size: 10.5px; font-weight: 600; color: #a1a1aa;
+        letter-spacing: 0.03em; margin-bottom: 5px; text-transform: none;
     }
+    .value-pill {
+        min-width: 52px; text-align: center; padding: 3px 8px; border-radius: 7px;
+        background: #27272a; border: 1px solid #3f3f46;
+        font-size: 10.5px; font-weight: 600; color: #d4d4d8;
+    }
+
+    /* ── Inputs ── */
+    .style-input {
+        width: 100%; padding: 8px 10px; border-radius: 9px;
+        background: #18181b; border: 1px solid #3f3f46;
+        color: #e4e4e7; font-size: 11.5px; font-family: 'Inter', sans-serif;
+        transition: all 0.15s ease; outline: none;
+    }
+    .style-input::placeholder { color: #52525b; }
+    .style-input:hover { border-color: #52525b; }
+    .style-input:focus {
+        border-color: #06b6d4; background: #1c1c1f;
+        box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
+    }
+    .style-input option { background: #18181b; color: #d4d4d8; padding: 6px; }
+    .style-input--hotel:focus {
+        border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+    }
+    .select-caret {
+        position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
+        font-size: 9px; color: #71717a; pointer-events: none;
+    }
+
+    /* ── Buttons ── */
+    .ghost-btn {
+        width: 100%; padding: 7px 8px; border-radius: 9px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        background: #27272a; border: 1px solid #3f3f46;
+        color: #d4d4d8; font-size: 11px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s ease;
+    }
+    .ghost-btn:hover { background: #3f3f46; color: #fff; border-color: #52525b; }
+    .ghost-btn i { font-size: 10px; }
+    .ghost-btn--hotel:hover { border-color: rgba(245, 158, 11, 0.5); }
+    .ghost-btn--danger { color: #fda4af; }
+    .ghost-btn--danger:hover {
+        background: rgba(136, 19, 55, 0.45); border-color: rgba(244, 63, 94, 0.5); color: #fecdd3;
+    }
+
+    .feature-btn {
+        width: 100%; height: 38px; border-radius: 11px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3);
+        color: #a5f3fc; font-size: 12px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s ease;
+    }
+    .feature-btn:hover { background: rgba(6, 182, 212, 0.18); color: #fff; }
+    .feature-btn i { font-size: 11px; }
+    .feature-btn--hotel {
+        background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: #fcd34d;
+    }
+    .feature-btn--hotel:hover { background: rgba(245, 158, 11, 0.18); color: #fff; }
 
     .add-el-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 8px 6px;
-        border-radius: 8px;
-        background: #18181b;
-        border: 1px solid #27272a;
-        color: #d4d4d8;
-        font-size: 10px;
-        font-weight: 600;
-        cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        padding: 9px 6px; border-radius: 9px;
+        background: #18181b; border: 1px solid #3f3f46;
+        color: #d4d4d8; font-size: 11px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s ease;
+    }
+    .add-el-btn:hover { border-color: rgba(6, 182, 212, 0.5); color: #fff; background: #27272a; }
+    .add-el-btn i { font-size: 10px; color: #22d3ee; }
+
+    /* ── Heading buttons ── */
+    .heading-btn {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 8px 4px; border-radius: 9px; min-height: 46px;
+        background: #18181b; border: 1px solid #3f3f46;
+        cursor: pointer; transition: all 0.15s ease;
+    }
+    .heading-btn:hover { background: #27272a; border-color: rgba(6, 182, 212, 0.45); }
+    .heading-btn.active {
+        background: rgba(6, 182, 212, 0.14);
+        border-color: rgba(6, 182, 212, 0.55);
+        box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.2);
+    }
+    .heading-btn-sub {
+        display: block; margin-top: 3px; font-size: 9.5px; color: #71717a;
+        transition: color 0.15s ease;
+    }
+    .heading-btn:hover .heading-btn-sub { color: #a1a1aa; }
+
+    /* ── Toggle buttons (align, italic, underline, strikethrough) ── */
+    .style-toggle-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 34px; height: 34px; border-radius: 9px;
+        background: #18181b; border: 1px solid #3f3f46;
+        color: #a1a1aa; font-size: 11px;
+        cursor: pointer; transition: all 0.15s ease;
+    }
+    .style-toggle-btn:hover { background: #27272a; color: #fff; border-color: #52525b; }
+    .style-toggle-btn.active {
+        background: rgba(6, 182, 212, 0.14);
+        border-color: rgba(6, 182, 212, 0.5);
+        color: #67e8f9;
+    }
+
+    /* ── Colour swatches ── */
+    .swatch-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+    .color-preset-swatch {
+        width: 24px; height: 24px; border-radius: 7px; cursor: pointer;
+        border: 2px solid transparent; flex-shrink: 0;
         transition: all 0.15s ease;
     }
-    .add-el-btn:hover {
-        border-color: rgba(6, 182, 212, 0.45);
-        color: #fff;
-        background: #1c1c1f;
+    .color-preset-swatch:hover { transform: scale(1.15); border-color: rgba(255, 255, 255, 0.3); }
+    .swatch-transparent {
+        background-image: repeating-conic-gradient(#3f3f46 0% 25%, #27272a 0% 50%);
+        background-size: 8px 8px;
     }
-    .add-el-btn i { font-size: 10px; color: #22d3ee; }
+
+    /* Kept for the builder shell's own theme rules, which target it by name. */
+    .color-swatch {
+        width: 34px; height: 34px; border-radius: 9px; cursor: pointer;
+        border: 1px solid #3f3f46; background: #18181b;
+        padding: 0; flex-shrink: 0; transition: all 0.15s ease;
+    }
+    .color-swatch:hover { border-color: #52525b; transform: scale(1.06); }
+    .color-swatch::-webkit-color-swatch-wrapper { padding: 3px; }
+    .color-swatch::-webkit-color-swatch { border-radius: 6px; border: none; }
+    .swatch-glyph {
+        position: absolute; inset: 0; margin: auto;
+        width: 10px; height: 10px;
+        font-size: 8px; color: rgba(255, 255, 255, 0.75);
+        pointer-events: none; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    /* ── Note box ── */
+    .note-box {
+        display: flex; gap: 8px; padding: 10px; border-radius: 10px;
+        background: rgba(24, 24, 27, 0.6); border: 1px solid rgba(63, 63, 70, 0.7);
+    }
+    .note-box p { font-size: 10.5px; line-height: 1.6; color: #a1a1aa; }
+    .note-box-icon { font-size: 10px; color: #fbbf24; margin-top: 2px; flex-shrink: 0; }
 </style>
 
 <script>
@@ -741,6 +935,14 @@
         if (!body) return;
         const hidden = body.classList.toggle('hidden');
         if (chevron) chevron.style.transform = hidden ? 'rotate(-90deg)' : '';
+    }
+
+    /* Mutes the sections that only do something once an element is picked.
+       Nothing is disabled - a click still raises the toast that explains what
+       to do, which teaches better than a control that ignores you. */
+    function setPanelSelectionState(hasSelection) {
+        const panel = document.getElementById('hmsDesignPanel');
+        if (panel) panel.classList.toggle('no-selection', !hasSelection);
     }
 
     function requireSelection() {
@@ -877,6 +1079,7 @@
         if (parentBtn) parentBtn.classList.add('hidden');
         const movement = document.getElementById('movementControls');
         if (movement) movement.classList.add('hidden');
+        setPanelSelectionState(false);
         if (typeof toast === 'function') toast('Design reset to defaults');
     }
 
@@ -910,6 +1113,7 @@
         window.selectedElementId = null;
         const label = document.getElementById('selectedElement');
         if (label) label.textContent = 'Select an element to style';
+        setPanelSelectionState(false);
     }
 
     function duplicateSelectedElement() {
@@ -969,6 +1173,7 @@
             if (parentLabel) parentLabel.textContent = data.parentLabel
                 ? 'Select parent: ' + data.parentLabel
                 : 'Select parent container';
+            setPanelSelectionState(true);
             updateMovementControls();
             const textArea = document.getElementById('elementText');
             if (textArea) textArea.value = data.text || '';
@@ -1022,6 +1227,7 @@
             if (parentBtn) parentBtn.classList.add('hidden');
             const movement = document.getElementById('movementControls');
             if (movement) movement.classList.add('hidden');
+            setPanelSelectionState(false);
         }
 
         if (data.type === 'customizations-changed') {
@@ -1194,7 +1400,7 @@
         row.className = 'flex items-center gap-1.5 identity-social-row';
 
         const select = document.createElement('select');
-        select.className = 'w-24 shrink-0 bg-zinc-800 border border-zinc-700 rounded-lg px-1.5 py-1.5 text-[10px] text-zinc-200 focus:outline-none focus:border-amber-500/50';
+        select.className = 'style-input style-input--hotel w-24 shrink-0';
         SOCIAL_NETWORK_OPTIONS.forEach(([value, label]) => {
             const option = document.createElement('option');
             option.value = value;
@@ -1209,12 +1415,12 @@
         input.placeholder = 'https://...';
         input.maxLength = 300;
         input.value = url || '';
-        input.className = 'flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-[10px] text-zinc-200 focus:outline-none focus:border-amber-500/50';
+        input.className = 'style-input style-input--hotel flex-1 min-w-0';
         input.addEventListener('input', () => queueIdentityPush());
 
         const remove = document.createElement('button');
         remove.type = 'button';
-        remove.className = 'w-7 h-7 shrink-0 rounded-lg bg-zinc-800 border border-zinc-700 text-[10px] text-zinc-500 hover:text-rose-300 hover:border-rose-500/40 transition';
+        remove.className = 'style-toggle-btn shrink-0';
         remove.innerHTML = '<i class="fas fa-xmark"></i>';
         remove.title = 'Remove this link';
         remove.addEventListener('click', () => {
