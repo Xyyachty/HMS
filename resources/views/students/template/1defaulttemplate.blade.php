@@ -1089,20 +1089,26 @@
     display: flex; align-items: center; justify-content: center; font-size: 20px; line-height: 1;
   }
 
-  .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.25rem; }
+  /* Four cards, one row, every card the same size: the grid gives each column an
+     equal share and stretches every card to the tallest, and the photo is a fixed
+     4:5 rectangle of that column rather than a circle, so the four photos line up
+     whatever shape the uploaded image is. */
+  .team-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; align-items: stretch; }
   .team-card {
-    text-align: center; padding: 1.9rem 1.15rem 1.6rem;
-    border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+    display: flex; flex-direction: column; height: 100%; overflow: hidden;
+    text-align: center;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card);
     transition: border-color 0.2s, transform 0.2s;
   }
   .team-card:hover { border-color: var(--accent); transform: translateY(-4px); }
   .team-photo {
-    position: relative; width: 118px; height: 118px; margin: 0 auto 1.1rem;
-    border-radius: 50%; overflow: hidden; border: 1px solid var(--border);
+    position: relative; width: 100%; aspect-ratio: 4 / 5; overflow: hidden;
+    border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.25);
   }
   .team-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .team-card:hover .team-photo { border-color: var(--accent); }
-  .team-name { font-size: 1.05rem; margin: 0 0 0.35rem; }
+  .team-info { flex: 1; padding: 1.15rem 1rem 1.35rem; }
+  .team-name { font-size: 1.05rem; margin: 0 0 0.4rem; }
   .team-role { margin: 0; color: var(--accent); font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; }
 
   @media (max-width: 768px) {
@@ -3175,8 +3181,10 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
                   </div>
                 )}
               </div>
-              <h3 className="font-display team-name">{member.name}</h3>
-              <p className="team-role">{member.role}</p>
+              <div className="team-info">
+                <h3 className="font-display team-name">{member.name}</h3>
+                <p className="team-role">{member.role}</p>
+              </div>
             </article>
           ))}
         </div>
