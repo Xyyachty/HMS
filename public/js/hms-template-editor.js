@@ -1666,6 +1666,16 @@
     const r = getVisualRect(el);
     const cs = window.getComputedStyle(el);
     const isText = isBlockTextTag(el.tagName) || isInlineTextTag(el.tagName) || el.getAttribute('data-hms-text') === '1';
+    // The hotel logo is drawn with object-fit: contain, so its own pixels never
+    // stretch - but the box the student drags could still end up a different
+    // shape than the picture inside it, which reads as a squished logo even
+    // though the raster itself is untouched. Locking this box to the logo's own
+    // width/height ratio keeps the box (and so the visible logo) proportioned to
+    // whatever image the student uploaded, at any size they resize it to.
+    const isLogo = el.tagName === 'IMG' && el.getAttribute('data-hms-content-kind') === 'brand';
+    const logoRatio = isLogo
+      ? ((el.naturalWidth && el.naturalHeight) ? (el.naturalWidth / el.naturalHeight) : (r.width / Math.max(1, r.height)))
+      : 0;
     resizeState = {
       el: el,
       dir: e.currentTarget.getAttribute('data-dir'),
@@ -1678,6 +1688,8 @@
       startFontSize: parseFloat(cs.fontSize) || 16,
       isText: isText,
       isCorner: false,
+      isLogo: isLogo,
+      aspectRatio: logoRatio,
       historyStarted: false,
     };
     resizeState.isCorner = ['nw', 'ne', 'sw', 'se'].indexOf(resizeState.dir) !== -1;
@@ -1817,6 +1829,19 @@
       if (dir.includes('s')) height = Math.max(16, resizeState.height + dy);
       if (dir.includes('w')) width = Math.max(16, resizeState.width - dx);
       if (dir.includes('n')) height = Math.max(16, resizeState.height - dy);
+
+      if (resizeState.isLogo && resizeState.aspectRatio) {
+        // A vertical-only handle drives height; every other handle (including
+        // the horizontal-only ones) drives width - either way the other side
+        // is derived from the ratio instead of the raw drag, so the box can
+        // never end up a shape the uploaded logo doesn't have.
+        if (dir === 'n' || dir === 's') {
+          width = Math.max(16, height * resizeState.aspectRatio);
+        } else {
+          height = Math.max(16, width / resizeState.aspectRatio);
+        }
+      }
+
       width = Math.round(width / snap) * snap;
       height = Math.round(height / snap) * snap;
 
