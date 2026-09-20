@@ -75,21 +75,20 @@
     }
     .tm-card-empty { grid-column: 1 / -1; }
 
-    /* ── Team card: fixed-height content bands ──
-       Every card renders the same rows regardless of how much a team has
-       filled in, so the bands below reserve the same space whether the
-       content is real or a placeholder - that is what keeps View Team /
-       Update anchored to the same row on every card. */
+    /* ── Team card: equal height, consistent bands ──
+       The card grid stretches every card to the tallest one in its row
+       (.tm-card-grid below). Inside the card, the concept text and role
+       badges reserve fixed space so those bands line up across cards, and
+       View Team / Update sit on mt-auto so they still pin to the bottom
+       of a stretched card even though the Roles Assigned box above them
+       is only as tall as its own content (no missing roles = no wasted
+       space in that box). */
     .team-card { height: 100%; }
     .tm-card-concept {
         display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
         overflow: hidden; min-height: 2.75em;
     }
     .tm-card-roles { min-height: 3.25rem; }
-    .tm-card-role-box .tm-card-role-missing,
-    .tm-card-role-box .tm-card-role-btn { visibility: hidden; }
-    .tm-card-role-box.has-missing .tm-card-role-missing,
-    .tm-card-role-box.has-missing .tm-card-role-btn { visibility: visible; }
 
     /* Team Setup modal */
     .setup-modal { max-width: 72rem; max-height: 92vh; }
@@ -147,6 +146,7 @@
     .mt-0\.5 { margin-top: .125rem; }
     .mt-1\.5 { margin-top: .375rem; }
     .mt-2\.5 { margin-top: .625rem; }
+    .mt-auto { margin-top: auto; }
     .mb-1\.5 { margin-bottom: .375rem; }
     .py-0\.5 { padding-top: .125rem; padding-bottom: .125rem; }
     .py-1\.5 { padding-top: .375rem; padding-bottom: .375rem; }
@@ -680,19 +680,20 @@
                             {{-- Role Assignment Indicator: five required roles on a four-person
                                  team always leaves one role riding along on a second member -
                                  this says how far that redistribution has gotten. --}}
-                            <div class="tm-card-role-box mt-3 rounded-xl border {{ implode(' ', $cardRoleToneClasses) }} px-3 py-2 {{ $cardMissingCount > 0 ? 'has-missing' : '' }}">
+                            <div class="mt-3 rounded-xl border {{ implode(' ', $cardRoleToneClasses) }} px-3 py-2">
                                 <div class="flex items-center justify-between gap-2">
                                     <p class="text-[12px] font-extrabold">Roles Assigned: {{ $cardRoleCount }}/{{ $cardRoleTotal }}</p>
                                     <span class="text-[10px] font-bold uppercase tracking-wide">{{ $cardRoleIndicator['text'] }}</span>
                                 </div>
-                                <p class="tm-card-role-missing text-[11px] mt-0.5 opacity-90">Missing: {{ $cardMissingCount > 0 ? implode(', ', $cardMissingNames) : '' }}</p>
-                                <button type="button"
-                                        onclick='openRoleAssignment({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($cardMissingCount > 0 ? array_values($cardMissingKeys)[0] : null) }})'
-                                        class="tm-card-role-btn mt-1.5 w-full h-7 rounded-lg bg-white border {{ $cardRoleToneClasses[0] }} text-[11px] font-bold inline-flex items-center justify-center gap-1.5 hover:opacity-80 transition"
-                                        {{ $cardMissingCount > 0 ? '' : 'tabindex=-1 aria-hidden=true' }}>
-                                    <span class="iconify text-sm" data-icon="mdi:account-key-outline"></span>
-                                    Assign Remaining Role
-                                </button>
+                                @if($cardMissingCount > 0)
+                                    <p class="text-[11px] mt-0.5 opacity-90">Missing: {{ implode(', ', $cardMissingNames) }}</p>
+                                    <button type="button"
+                                            onclick='openRoleAssignment({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode(array_values($cardMissingKeys)[0]) }})'
+                                            class="mt-1.5 w-full h-7 rounded-lg bg-white border {{ $cardRoleToneClasses[0] }} text-[11px] font-bold inline-flex items-center justify-center gap-1.5 hover:opacity-80 transition">
+                                        <span class="iconify text-sm" data-icon="mdi:account-key-outline"></span>
+                                        Assign Remaining Role
+                                    </button>
+                                @endif
                             </div>
 
                             <div class="mt-5">
@@ -717,7 +718,7 @@
                                 @endif
                             </div>
 
-                            <div class="mt-5 flex items-center gap-2.5">
+                            <div class="mt-auto pt-5 flex items-center gap-2.5">
                                 <button type="button"
                                         onclick='openTeamModal({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
                                         class="flex-1 h-11 rounded-xl brand-gradient text-white text-[13px] font-bold inline-flex items-center justify-center gap-2 shadow-md shadow-brand/20 hover:opacity-95 transition">
