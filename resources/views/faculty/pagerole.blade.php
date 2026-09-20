@@ -553,8 +553,11 @@
 
                         $teamConcepts   = ($conceptsByGroup ?? collect())->get($groupName, collect());
                         $cardConcept    = $teamConcepts->first();
+                        // Str::limit cuts at a raw character count, so it can slice a word
+                        // in half (e.g. "...for f..."). Str::words stops on a word boundary
+                        // instead - the line-clamp CSS on the card still caps it visually.
                         $cardConceptText = $cardConcept
-                            ? \Illuminate\Support\Str::limit($cardConcept->description ?: $cardConcept->hotel_type_label, 92)
+                            ? \Illuminate\Support\Str::words($cardConcept->description ?: $cardConcept->hotel_type_label, 20, '…')
                             : 'No hotel concept proposed yet.';
 
                         // Progress across the task rows this team owns.
