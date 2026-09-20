@@ -633,6 +633,19 @@ class HotelTemplateBuilder
                     $merged[$key] = ['map' => array_merge($existingMap, $incomingMap)];
                     continue;
                 }
+                /* A shared key lives in exactly one row (claimSharedContentKeys), so a
+                   second row carrying an empty copy of it is a leftover from before that
+                   row gave the key up. Letting it through overwrites the row that does
+                   hold the team's value — the section background colours reverting to the
+                   template default is what that looked like. An empty value still wins
+                   when no row has a real one, so clearing a shared key still clears it. */
+                if (in_array($key, self::SHARED_CONTENT_KEYS, true)
+                    && array_key_exists($key, $merged)
+                    && self::isEmptySharedValue($value)
+                    && !self::isEmptySharedValue($merged[$key])
+                ) {
+                    continue;
+                }
                 $merged[$key] = $value;
             }
         }
@@ -1065,7 +1078,10 @@ class HotelTemplateBuilder
         // re-read the whole tree from the database — the saved-hook clears the pending
         // value first, so it cannot be served from memory — costing ~6 extra queries.
         $mine = $customizations ?? (is_array($template->customizations) ? $template->customizations : []);
-        $claimed = array_values(array_intersect(self::SHARED_CONTENT_KEYS, array_keys($mine)));
+        $claimed = array_values(array_filter(
+            array_intersect(self::SHARED_CONTENT_KEYS, array_keys($mine)),
+            fn (string $key) => !self::isEmptySharedValue($mine[$key])
+        ));
 
         if ($claimed === []) {
             return;
@@ -1094,11 +1110,51 @@ class HotelTemplateBuilder
             return;
         }
 
+        /* A collection is stored as more than its item rows: writeCollection() also
+           writes a "<collection>_meta" row for the entry's own fields, plus _map and
+           _amenity rows for the shapes that use them. Deleting only the item rows left
+           a sibling holding a meta row with no items behind it, which reads back as
+           "__siteColors => ['page' => 'home', 'items' => []]" — an entry that says the
+           team has no section colours. The merge takes the last role in ROLES order,
+           so that empty entry overwrote the colours Front Desk had just saved and the
+           site fell back to the template default. Claim the whole collection. */
+        $collections = array_merge(
+            $collections,
+            array_map(fn (string $c) => $c . '_meta', $collections),
+            array_map(fn (string $c) => $c . '_map', $collections),
+            array_map(fn (string $c) => $c . '_amenity', $collections),
+        );
+
         TemplateContentItem::query()
             ->whereIn('team_role_template_id', $siblingIds)
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
             ->whereIn('collection', $collections)
             ->delete();
+    }
+
+    /**
+     * Whether a shared content entry carries nothing — no items, no map, and no
+     * fields of its own beyond the page it is filed under.
+     *
+     * Such an entry is a leftover rather than a decision: it is what a half-deleted
+     * collection reads back as. It must not claim the key away from the row that
+     * actually holds the team's value, or the value is lost for everybody.
+     */
+    private static function isEmptySharedValue(mixed $value): bool
+    {
+        if (!is_array($value)) {
+            return $value === null || $value === '';
+        }
+
+        if (array_is_list($value)) {
+            return $value === [];
+        }
+
+        if (!empty($value['items']) || !empty($value['map'])) {
+            return false;
+        }
+
+        return array_diff_key($value, array_flip(['page', 'items', 'map'])) === [];
     }
 
     /**
