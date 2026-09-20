@@ -71,16 +71,25 @@
     .tm-card-grid {
         display: grid; gap: 1rem;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        align-items: start;
+        align-items: stretch;
     }
     .tm-card-empty { grid-column: 1 / -1; }
-    .tm-card-cover { height: 6rem; position: relative; }
-    .tm-card-avatar {
-        position: absolute; left: 1.25rem; bottom: -1.75rem;
-        width: 3.5rem; height: 3.5rem; border-radius: 9999px;
-        border: 4px solid #fff; display: flex; align-items: center; justify-content: center;
+
+    /* ── Team card: fixed-height content bands ──
+       Every card renders the same rows regardless of how much a team has
+       filled in, so the bands below reserve the same space whether the
+       content is real or a placeholder - that is what keeps View Team /
+       Update anchored to the same row on every card. */
+    .team-card { height: 100%; }
+    .tm-card-concept {
+        display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+        overflow: hidden; min-height: 2.75em;
     }
-    .brand-gradient-subtle { background: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 50%, #FBCFE8 100%); }
+    .tm-card-roles { min-height: 3.25rem; }
+    .tm-card-role-box .tm-card-role-missing,
+    .tm-card-role-box .tm-card-role-btn { visibility: hidden; }
+    .tm-card-role-box.has-missing .tm-card-role-missing,
+    .tm-card-role-box.has-missing .tm-card-role-btn { visibility: visible; }
 
     /* Team Setup modal */
     .setup-modal { max-width: 72rem; max-height: 92vh; }
@@ -567,19 +576,11 @@
                     @endphp
                     <div class="team-card rounded-2xl border border-slate-100 bg-white overflow-hidden flex flex-col"
                          data-team-name="{{ $groupName }}">
-                        {{-- Cover strip. Teams carry no photo of their own, so the strip is
-                             tinted by the first role on the roster. --}}
-                        <div class="tm-card-cover brand-gradient-subtle">
-                            <div class="tm-card-avatar {{ $roleCardTints[$cardLeadRole] ?? 'bg-slate-100 text-slate-400' }}">
-                                <span class="iconify text-2xl" data-icon="{{ $roleCardIcons[$cardLeadRole] ?? 'mdi:account-group-outline' }}"></span>
-                            </div>
-                        </div>
-
-                        <div class="px-5 pt-10 pb-5 flex-1 flex flex-col">
+                        <div class="px-5 pt-5 pb-5 flex-1 flex flex-col">
                             <h3 class="text-lg font-extrabold text-slate-900 leading-tight truncate" title="{{ $groupName }}">
                                 Team {{ str_pad($cardIndex, 2, '0', STR_PAD_LEFT) }} &ndash; {{ $groupName }}
                             </h3>
-                            <p class="text-[13px] text-slate-500 mt-1 leading-snug line-clamp-2">{{ $cardConceptText }}</p>
+                            <p class="tm-card-concept text-[13px] text-slate-500 mt-1 leading-snug">{{ $cardConceptText }}</p>
 
                             {{-- Task Submission Indicator. Hidden outright rather than shown
                                  empty when nothing is waiting — updatePendingReviewBadge() below
@@ -660,7 +661,7 @@
                                     <span class="iconify text-slate-300 text-lg shrink-0 mt-0.5" data-icon="mdi:clipboard-text-outline"></span>
                                     <div class="min-w-0">
                                         <p class="text-[13px] font-semibold text-slate-700">{{ $cardRoles->count() }} Role{{ $cardRoles->count() === 1 ? '' : 's' }} Assigned</p>
-                                        <div class="flex flex-wrap gap-1.5 mt-1.5">
+                                        <div class="tm-card-roles flex flex-wrap gap-1.5 mt-1.5">
                                             @forelse($cardRoles as $cardRole)
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold {{ $roleCardTints[$cardRole] ?? 'bg-slate-100 text-slate-500' }}">
                                                     {{ $roleLabels[$cardRole] ?? $cardRole }}
@@ -676,20 +677,19 @@
                             {{-- Role Assignment Indicator: five required roles on a four-person
                                  team always leaves one role riding along on a second member -
                                  this says how far that redistribution has gotten. --}}
-                            <div class="mt-4 rounded-xl border {{ implode(' ', $cardRoleToneClasses) }} px-3 py-2.5">
+                            <div class="tm-card-role-box mt-4 rounded-xl border {{ implode(' ', $cardRoleToneClasses) }} px-3 py-2.5 {{ $cardMissingCount > 0 ? 'has-missing' : '' }}">
                                 <div class="flex items-center justify-between gap-2">
                                     <p class="text-[12px] font-extrabold">Roles Assigned: {{ $cardRoleCount }}/{{ $cardRoleTotal }}</p>
                                     <span class="text-[10px] font-bold uppercase tracking-wide">{{ $cardRoleIndicator['text'] }}</span>
                                 </div>
-                                @if($cardMissingCount > 0)
-                                    <p class="text-[11px] mt-1 opacity-90">Missing: {{ implode(', ', $cardMissingNames) }}</p>
-                                    <button type="button"
-                                            onclick='openRoleAssignment({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode(array_values($cardMissingKeys)[0]) }})'
-                                            class="mt-2 w-full h-8 rounded-lg bg-white border {{ $cardRoleToneClasses[0] }} text-[11px] font-bold inline-flex items-center justify-center gap-1.5 hover:opacity-80 transition">
-                                        <span class="iconify text-sm" data-icon="mdi:account-key-outline"></span>
-                                        Assign Remaining Role
-                                    </button>
-                                @endif
+                                <p class="tm-card-role-missing text-[11px] mt-1 opacity-90">Missing: {{ $cardMissingCount > 0 ? implode(', ', $cardMissingNames) : '' }}</p>
+                                <button type="button"
+                                        onclick='openRoleAssignment({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($cardMissingCount > 0 ? array_values($cardMissingKeys)[0] : null) }})'
+                                        class="tm-card-role-btn mt-2 w-full h-8 rounded-lg bg-white border {{ $cardRoleToneClasses[0] }} text-[11px] font-bold inline-flex items-center justify-center gap-1.5 hover:opacity-80 transition"
+                                        {{ $cardMissingCount > 0 ? '' : 'tabindex=-1 aria-hidden=true' }}>
+                                    <span class="iconify text-sm" data-icon="mdi:account-key-outline"></span>
+                                    Assign Remaining Role
+                                </button>
                             </div>
 
                             <div class="mt-5">
@@ -703,9 +703,14 @@
                                 <p class="text-[11px] text-slate-400 mt-1.5">{{ $cardTaskDone }} of {{ $cardTaskTotal }} activit{{ $cardTaskTotal === 1 ? 'y' : 'ies' }} handed in</p>
                                 {{-- And the same rows read by task: a task is finished only
                                      when every role given an activity in it has handed theirs
-                                     in, which is not the same as most activities being done. --}}
+                                     in, which is not the same as most activities being done.
+                                     A placeholder stands in when the team has no tasks yet, so
+                                     this row still reserves its line and every card's buttons
+                                     stay on the same row. --}}
                                 @if($cardSteps['total'] > 0)
                                     <p class="text-[11px] text-slate-400">{{ $cardSteps['finished'] }} of {{ $cardSteps['total'] }} task{{ $cardSteps['total'] === 1 ? '' : 's' }} complete</p>
+                                @else
+                                    <p class="text-[11px] text-slate-400">No tasks assigned yet.</p>
                                 @endif
                             </div>
 
