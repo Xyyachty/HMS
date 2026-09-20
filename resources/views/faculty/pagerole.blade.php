@@ -680,15 +680,15 @@
                             {{-- Role Assignment Indicator: five required roles on a four-person
                                  team always leaves one role riding along on a second member -
                                  this says how far that redistribution has gotten. --}}
-                            <div class="tm-card-role-box mt-4 rounded-xl border {{ implode(' ', $cardRoleToneClasses) }} px-3 py-2.5 {{ $cardMissingCount > 0 ? 'has-missing' : '' }}">
+                            <div class="tm-card-role-box mt-3 rounded-xl border {{ implode(' ', $cardRoleToneClasses) }} px-3 py-2 {{ $cardMissingCount > 0 ? 'has-missing' : '' }}">
                                 <div class="flex items-center justify-between gap-2">
                                     <p class="text-[12px] font-extrabold">Roles Assigned: {{ $cardRoleCount }}/{{ $cardRoleTotal }}</p>
                                     <span class="text-[10px] font-bold uppercase tracking-wide">{{ $cardRoleIndicator['text'] }}</span>
                                 </div>
-                                <p class="tm-card-role-missing text-[11px] mt-1 opacity-90">Missing: {{ $cardMissingCount > 0 ? implode(', ', $cardMissingNames) : '' }}</p>
+                                <p class="tm-card-role-missing text-[11px] mt-0.5 opacity-90">Missing: {{ $cardMissingCount > 0 ? implode(', ', $cardMissingNames) : '' }}</p>
                                 <button type="button"
                                         onclick='openRoleAssignment({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($cardMissingCount > 0 ? array_values($cardMissingKeys)[0] : null) }})'
-                                        class="tm-card-role-btn mt-2 w-full h-8 rounded-lg bg-white border {{ $cardRoleToneClasses[0] }} text-[11px] font-bold inline-flex items-center justify-center gap-1.5 hover:opacity-80 transition"
+                                        class="tm-card-role-btn mt-1.5 w-full h-7 rounded-lg bg-white border {{ $cardRoleToneClasses[0] }} text-[11px] font-bold inline-flex items-center justify-center gap-1.5 hover:opacity-80 transition"
                                         {{ $cardMissingCount > 0 ? '' : 'tabindex=-1 aria-hidden=true' }}>
                                     <span class="iconify text-sm" data-icon="mdi:account-key-outline"></span>
                                     Assign Remaining Role
