@@ -445,17 +445,17 @@
         width: 100%;
     }
     #teamsTable thead tr {
-        background: #F8FAFC;
+        background: #FAF6F5;
     }
     #teamsTable tbody tr {
-        border-bottom: 1px solid #F1F5F9;
+        border-bottom: 1px solid #F2E9E7;
         transition: background 0.15s;
     }
     #teamsTable tbody tr:last-child {
         border-bottom: none;
     }
     #teamsTable tbody tr:hover {
-        background: #F8FAFC;
+        background: #FAF6F5;
     }
 </style>
 @endpush

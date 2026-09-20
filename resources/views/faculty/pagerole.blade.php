@@ -93,7 +93,7 @@
     /* Team Setup modal */
     .setup-modal { max-width: 72rem; max-height: 92vh; }
     .setup-steps { display: flex; align-items: center; gap: 1rem; flex-wrap: nowrap; }
-    .setup-step-line { flex: 1 1 auto; min-width: 1.5rem; height: 1px; background: #e2e8f0; }
+    .setup-step-line { flex: 1 1 auto; min-width: 1.5rem; height: 1px; background: #E4D3CF; }
     .setup-grid {
         display: grid; gap: .75rem;
         grid-template-columns: minmax(0, 1fr) 300px;
@@ -181,41 +181,41 @@
     .-translate-y-1\/2 { transform: translateY(-50%); }
     .tracking-\[0\.15em\] { letter-spacing: .15em; }
 
-    .bg-brand-soft\/40 { background-color: rgba(253, 242, 248, .6); }
-    .bg-slate-50\/50 { background-color: rgba(248, 250, 252, .5); }
-    .bg-slate-50\/60 { background-color: rgba(248, 250, 252, .6); }
-    .border-brand\/10 { border-color: rgba(219, 39, 119, .1); }
-    .border-brand\/15 { border-color: rgba(219, 39, 119, .15); }
-    .shadow-brand\/20 { --tw-shadow-color: rgba(219, 39, 119, .2); }
-    .placeholder\:text-slate-400::placeholder { color: #94a3b8; }
+    .bg-brand-soft\/40 { background-color: rgba(251,238,233, .6); }
+    .bg-slate-50\/50 { background-color: rgba(250,246,245, .5); }
+    .bg-slate-50\/60 { background-color: rgba(250,246,245, .6); }
+    .border-brand\/10 { border-color: rgba(123,23,48, .1); }
+    .border-brand\/15 { border-color: rgba(123,23,48, .15); }
+    .shadow-brand\/20 { --tw-shadow-color: rgba(123,23,48, .2); }
+    .placeholder\:text-slate-400::placeholder { color: #7A6068; }
 
-    .hover\:text-brand:hover { color: #DB2777; }
-    .hover\:border-brand\/40:hover { border-color: rgba(219, 39, 119, .4); }
-    .hover\:bg-slate-50:hover { background-color: #f8fafc; }
-    .hover\:bg-slate-100:hover { background-color: #f1f5f9; }
+    .hover\:text-brand:hover { color: #7B1730; }
+    .hover\:border-brand\/40:hover { border-color: rgba(123,23,48, .4); }
+    .hover\:bg-slate-50:hover { background-color: #FAF6F5; }
+    .hover\:bg-slate-100:hover { background-color: #F2E9E7; }
     .hover\:opacity-95:hover { opacity: .95; }
     .hover\:opacity-90:hover { opacity: .9; }
     .focus\:outline-none:focus { outline: 2px solid transparent; outline-offset: 2px; }
-    .focus\:border-brand:focus { border-color: #DB2777; }
+    .focus\:border-brand:focus { border-color: #7B1730; }
 
     /* ── Main tab bar ── */
     .main-tab-btn {
         position:relative; display:inline-flex; align-items:center; gap:.5rem;
         padding:.65rem 1.25rem; border-radius:1rem; font-size:.8rem; font-weight:700;
-        color:#64748B; cursor:pointer; transition:all .25s ease; border:1.5px solid #e2e8f0;
+        color:#6B4A54; cursor:pointer; transition:all .25s ease; border:1.5px solid #E4D3CF;
         background:#fff; white-space:nowrap; user-select:none;
     }
-    .main-tab-btn:hover { border-color:#F9A8D4; color:#DB2777; background:#FDF2F8; }
+    .main-tab-btn:hover { border-color:#DE8299; color:#7B1730; background:#FBEEE9; }
     .main-tab-btn.active {
-        background:linear-gradient(135deg,#F472B6,#DB2777,#9D174D);
+        background:linear-gradient(135deg,#C9A45C, #7B1730, #4A0D1C);
         color:#fff; border-color:transparent;
-        box-shadow:0 8px 20px -4px rgba(219,39,119,.35);
+        box-shadow:0 8px 20px -4px rgba(123,23,48,.35);
     }
     .main-tab-btn .tab-badge {
         padding:.1rem .45rem; border-radius:9999px; font-size:.65rem; font-weight:800;
         background:rgba(255,255,255,.25); color:#fff;
     }
-    .main-tab-btn:not(.active) .tab-badge { background:#f1f5f9; color:#64748B; }
+    .main-tab-btn:not(.active) .tab-badge { background:#F2E9E7; color:#6B4A54; }
 
     /* ── Tab panel animation ── */
     .tab-panel { display:none; animation:fadeInUp .3s ease; }
@@ -232,33 +232,33 @@
        teal so it reads as the opposite of the emerald Approve beside it, and
        matches the rose "Needs revision" badge the team sees on their side. */
     .btn-sendback {
-        background:#E11D48; color:#fff; border:1px solid #BE123C;
-        box-shadow:0 4px 12px -2px rgba(225,29,72,.35);
+        background:#7B1730; color:#fff; border:1px solid #5E1024;
+        box-shadow:0 4px 12px -2px rgba(123,23,48,.35);
     }
-    .btn-sendback:hover { background:#BE123C; }
+    .btn-sendback:hover { background:#5E1024; }
 
     /* ── Student list in form ── */
     .student-row { transition:all .2s ease; }
-    .student-row:hover { background:#FDF2F8 !important; }
+    .student-row:hover { background:#FBEEE9 !important; }
 
     /* ── Role color dots ── */
-    .role-dot-front_desk            { background:#FB7185; }
-    .role-dot-restaurant_management { background:#FBBF24; }
-    .role-dot-room_management       { background:#DB2777; }
-    .role-dot-maintenance           { background:#A855F7; }
-    .role-dot-housekeeping          { background:#14B8A6; }
+    .role-dot-front_desk            { background:#C4425E; }
+    .role-dot-restaurant_management { background:#D9B86A; }
+    .role-dot-room_management       { background:#7B1730; }
+    .role-dot-maintenance           { background:#C9A45C; }
+    .role-dot-housekeeping          { background:#9E1B3C; }
 
     /* Assign Remaining Role points at this checkbox's label rather than making
        the faculty re-read every role on every member to find the open one. */
     .role-highlight {
-        border-color: #F59E0B !important;
-        background: #FFFBEB !important;
-        box-shadow: 0 0 0 2px #FDE68A;
+        border-color: #C9A45C !important;
+        background: #FBF3E0 !important;
+        box-shadow: 0 0 0 2px #E9D3A0;
         animation: role-highlight-pulse 1.4s ease-in-out 2;
     }
     @keyframes role-highlight-pulse {
-        0%, 100% { box-shadow: 0 0 0 2px #FDE68A; }
-        50% { box-shadow: 0 0 0 4px #FCD34D; }
+        0%, 100% { box-shadow: 0 0 0 2px #E9D3A0; }
+        50% { box-shadow: 0 0 0 4px #E0C283; }
     }
 
     /* ── Teams table layout ── */
@@ -290,10 +290,10 @@
         max-width: 100%;
         padding: 2px 8px;
         border-radius: 9999px;
-        background: #f1f5f9;
+        background: #F2E9E7;
         font-size: 11px;
         font-weight: 600;
-        color: #475569;
+        color: #5A3941;
         line-height: 1.35;
     }
     #teamsTable .member-chip .chip-name {
@@ -306,7 +306,7 @@
         display: inline-flex;
         align-items: center;
         gap: 3px;
-        color: #94a3b8;
+        color: #7A6068;
         font-weight: 500;
         white-space: nowrap;
     }
@@ -3022,7 +3022,7 @@ function postTaskFeedback(body, decision, approvedTitle, onSuccess, taskId, onEr
                 html: `<p class="text-sm text-slate-500">${d.message || 'The student has been notified.'}</p>`,
                 timer: 2200,
                 showConfirmButton: false,
-                iconColor: '#059669',
+                iconColor: '#B8873C',
                 customClass: { popup: 'rounded-2xl p-6 bg-white shadow-2xl', title: 'text-lg font-bold text-slate-800' },
                 buttonsStyling: false,
             }).then(() => {
@@ -4608,7 +4608,7 @@ window.addEventListener('load', function () {
         icon: 'error',
         title: 'Could not save team',
         text: @json($errors->first()),
-        confirmButtonColor: '#DB2777',
+        confirmButtonColor: '#7B1730',
     });
 });
 @endif
@@ -4625,7 +4625,7 @@ window.addEventListener('load', function () {
         timer: 2500,
         timerProgressBar: true,
         showConfirmButton: false,
-        iconColor: '#16A34A',
+        iconColor: '#C9A45C',
         width: '22rem',
     });
 });
@@ -4990,7 +4990,7 @@ function announceNewSubmissions(data) {
         toast: true,
         position: 'top-end',
         icon: 'info',
-        iconColor: '#2563EB',
+        iconColor: '#7B1730',
         title: lines.length === 1 ? 'New submission' : lines.length + ' new submissions',
         html: shown.join('<br>'),
         showConfirmButton: false,

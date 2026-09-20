@@ -7,20 +7,24 @@
     <title>@yield('page_title', 'Hotel Management System') | Faculty</title>
     <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
+    {{-- app.css is a frozen Tailwind build still carrying Tailwind's stock hues.
+         This re-points its colour utilities at the Student portal's four colours
+         (wine, gold, cream, ink) without touching any class name or layout. --}}
+    <link rel="stylesheet" href="{{ asset('css/faculty-palette.css') }}" />
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        ::selection { background: #DB2777; color: #fff; }
+        ::selection { background: #7B1730; color: #fff; }
         body { font-family: 'Manrope', sans-serif; }
 
-        .brand-gradient { background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D); }
-        .brand-gradient-alt { background: linear-gradient(135deg, #FB7185, #DB2777, #A855F7); }
+        .brand-gradient { background: linear-gradient(135deg, #C9A45C, #7B1730, #4A0D1C); }
+        .brand-gradient-alt { background: linear-gradient(135deg, #C4425E, #7B1730, #C9A45C); }
         .gradient-text {
-            background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D);
+            background: linear-gradient(135deg, #C9A45C, #7B1730, #4A0D1C);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
         .app-sidebar {
-            background: linear-gradient(180deg, #DB2777 0%, #BE185D 38%, #9D174D 72%, #500724 100%);
+            background: linear-gradient(180deg, #7B1730 0%, #5E1024 38%, #4A0D1C 72%, #2A1118 100%);
         }
 
         ::-webkit-scrollbar { width: 5px; }
@@ -60,7 +64,7 @@
             100% { background-position: 200% 0; }
         }
         .shimmer-bar {
-            background: linear-gradient(90deg, #F472B6, #DB2777, #FB7185, #DB2777);
+            background: linear-gradient(90deg, #C4425E, #7B1730, #C4425E, #7B1730);
             background-size: 200% 100%;
             animation: shimmer 2s linear infinite;
         }
@@ -143,7 +147,7 @@
                     $authUser->last_name ?? null,
                 ]))) ?: ($authUser->name ?? 'Faculty');
                 $avatarUrl = $authUser?->avatar_url
-                    ?? ('https://ui-avatars.com/api/?name=' . urlencode($displayName) . '&background=DB2777&color=fff&size=40&font-size=0.4');
+                    ?? ('https://ui-avatars.com/api/?name=' . urlencode($displayName) . '&background=7B1730&color=fff&size=40&font-size=0.4');
             @endphp
             <div class="p-4 border-t border-white/10 shrink-0">
                 <div class="bg-white/5 rounded-2xl p-4">
@@ -194,7 +198,7 @@
 
 
             <!-- ==================== PAGE CONTENT ==================== -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#F5F5F5">
+            <main class="flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#FDF6F3">
                 @yield('content')
             </main>
         </div>
@@ -238,7 +242,7 @@
                     timer: 2500,
                     timerProgressBar: true,
                     showConfirmButton: false,
-                    iconColor: '#16A34A',
+                    iconColor: '#C9A45C',
                     width: '22rem'
                 });
             });
@@ -270,12 +274,12 @@
                     title: 'Log out?',
                     text: 'You will need to sign in again to access the dashboard.',
                     icon: 'warning',
-                    iconColor: '#DC2626',
+                    iconColor: '#7B1730',
                     showCancelButton: true,
                     confirmButtonText: 'Logout',
                     cancelButtonText: 'Cancel',
-                    confirmButtonColor: '#DC2626',
-                    cancelButtonColor: '#6B7280',
+                    confirmButtonColor: '#7B1730',
+                    cancelButtonColor: '#6B4A54',
                     reverseButtons: true
                 }).then((result) => {
                     if (result.isConfirmed) {

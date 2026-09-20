@@ -8,27 +8,27 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <style>
     .dataTables_wrapper .dataTables_filter input {
-        background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 0.75rem;
+        background: #FAF6F5; border: 1px solid #E4D3CF; border-radius: 0.75rem;
         padding: 0.5rem 1rem; margin-left: 0.5rem; outline: none; font-family: 'Manrope', sans-serif;
     }
-    .dataTables_wrapper .dataTables_filter input:focus { border-color: #DB2777; box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.12); }
+    .dataTables_wrapper .dataTables_filter input:focus { border-color: #7B1730; box-shadow: 0 0 0 3px rgba(123,23,48, 0.12); }
     .dataTables_wrapper .dataTables_length select {
-        background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 0.5rem;
+        background: #FAF6F5; border: 1px solid #E4D3CF; border-radius: 0.5rem;
         padding: 0.25rem 0.5rem; outline: none; font-family: 'Manrope', sans-serif;
     }
     table.dataTable thead th {
-        background: #FDF2F8; color: #64748B; font-weight: 800; text-transform: uppercase;
-        font-size: 0.65rem; letter-spacing: 0.1em; padding: 1rem; border-bottom: 2px solid #FBCFE8;
+        background: #FBEEE9; color: #6B4A54; font-weight: 800; text-transform: uppercase;
+        font-size: 0.65rem; letter-spacing: 0.1em; padding: 1rem; border-bottom: 2px solid #ECAFBE;
     }
     table.dataTable tbody tr { transition: background 0.2s; }
-    table.dataTable tbody tr:hover { background: #FDF2F8 !important; }
+    table.dataTable tbody tr:hover { background: #FBEEE9 !important; }
     table.dataTable tbody td { padding: 1rem; vertical-align: middle; font-size: 0.875rem; }
     .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: #DB2777 !important; color: white !important; border-radius: 9999px !important;
-        border: none !important; padding: 0.25rem 0.75rem; box-shadow: 0 4px 6px -1px rgba(219,39,119,0.2);
+        background: #7B1730 !important; color: white !important; border-radius: 9999px !important;
+        border: none !important; padding: 0.25rem 0.75rem; box-shadow: 0 4px 6px -1px rgba(123,23,48,0.2);
     }
     .dataTables_wrapper .dataTables_paginate .paginate_button {
-        border-radius: 9999px !important; background: transparent; border: 1px solid #E2E8F0; margin: 0 2px;
+        border-radius: 9999px !important; background: transparent; border: 1px solid #E4D3CF; margin: 0 2px;
     }
 </style>
 @endpush

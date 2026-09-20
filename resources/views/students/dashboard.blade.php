@@ -134,7 +134,7 @@
             left: 0;
             right: 0;
             height: 2px;
-            background: linear-gradient(90deg, #F472B6, #DB2777);
+            background: linear-gradient(90deg, #C9A45C, #7B1730);
             border-radius: 2px 2px 0 0;
         }
 
@@ -2828,7 +2828,7 @@
                     timer: 2500,
                     timerProgressBar: true,
                     showConfirmButton: false,
-                    iconColor: '#16A34A',
+                    iconColor: '#C9A45C',
                     width: '22rem'
                 });
             });

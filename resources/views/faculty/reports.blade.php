@@ -13,15 +13,15 @@
     .rp-tab {
         display: inline-flex; align-items: center; gap: .5rem;
         padding: .7rem 1.25rem; border-radius: .875rem;
-        font-size: .8125rem; font-weight: 700; color: #64748b;
-        background: #fff; border: 1px solid #e2e8f0; cursor: pointer;
+        font-size: .8125rem; font-weight: 700; color: #6B4A54;
+        background: #fff; border: 1px solid #E4D3CF; cursor: pointer;
         white-space: nowrap; transition: all .2s ease;
     }
-    .rp-tab:hover { border-color: rgba(219,39,119,.4); color: #DB2777; }
+    .rp-tab:hover { border-color: rgba(123,23,48,.4); color: #7B1730; }
     .rp-tab.active {
-        background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D);
+        background: linear-gradient(135deg, #C9A45C, #7B1730, #4A0D1C);
         color: #fff; border-color: transparent;
-        box-shadow: 0 8px 20px -6px rgba(219,39,119,.4);
+        box-shadow: 0 8px 20px -6px rgba(123,23,48,.4);
     }
     .rp-panel { display: none; }
     .rp-panel.active { display: block; }
@@ -32,7 +32,7 @@
     /* Still used by the Role column on Activity Reports. */
     .rp-legend-dot { width: .625rem; height: .625rem; border-radius: 9999px; flex: 0 0 auto; }
 
-    .rp-track { height: .5rem; border-radius: 9999px; background: #f1f5f9; overflow: hidden; }
+    .rp-track { height: .5rem; border-radius: 9999px; background: #F2E9E7; overflow: hidden; }
     .rp-track > span { display: block; height: 100%; border-radius: 9999px; }
 
     @media (max-width: 1279px) {
@@ -69,24 +69,24 @@
     .pb-5 { padding-bottom: 1.25rem; }
     .pb-3 { padding-bottom: .75rem; }
     .leading-snug { line-height: 1.375; }
-    .hover\:text-brand:hover { color: #DB2777; }
-    .hover\:bg-slate-50:hover { background-color: #f8fafc; }
-    .hover\:border-brand\/40:hover { border-color: rgba(219,39,119,.4); }
-    .bg-slate-50\/60 { background-color: rgba(248,250,252,.6); }
-    .bg-slate-50\/80 { background-color: rgba(248,250,252,.8); }
-    .border-brand\/10 { border-color: rgba(219,39,119,.1); }
-    .shadow-brand\/20 { --tw-shadow-color: rgba(219,39,119,.2); }
+    .hover\:text-brand:hover { color: #7B1730; }
+    .hover\:bg-slate-50:hover { background-color: #FAF6F5; }
+    .hover\:border-brand\/40:hover { border-color: rgba(123,23,48,.4); }
+    .bg-slate-50\/60 { background-color: rgba(250,246,245,.6); }
+    .bg-slate-50\/80 { background-color: rgba(250,246,245,.8); }
+    .border-brand\/10 { border-color: rgba(123,23,48,.1); }
+    .shadow-brand\/20 { --tw-shadow-color: rgba(123,23,48,.2); }
 </style>
 
 @php
     // Chart colours, kept to the palette already used across the portal. Still
     // read by the Role column further down on Activity Reports.
     $rpRoleColors = [
-        'front_desk'            => '#FB7185',
-        'restaurant_management' => '#FBBF24',
-        'room_management'       => '#DB2777',
-        'maintenance'           => '#A855F7',
-        'housekeeping'          => '#14B8A6',
+        'front_desk'            => '#C4425E',
+        'restaurant_management' => '#D9B86A',
+        'room_management'       => '#7B1730',
+        'maintenance'           => '#C9A45C',
+        'housekeeping'          => '#9E1B3C',
     ];
 
     $rpRoleTotal = collect($roleParticipation)->sum('count');
@@ -211,7 +211,7 @@
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2.5">
                                         <span class="rp-track" style="flex: 1 1 auto">
-                                            <span style="width: {{ $row['percent'] }}%; background: #DB2777"></span>
+                                            <span style="width: {{ $row['percent'] }}%; background: #7B1730"></span>
                                         </span>
                                         <span class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $row['percent'] }}%</span>
                                     </div>
@@ -329,7 +329,7 @@
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5">
                                     <span class="rp-track" style="flex: 1 1 auto; max-width: 12rem">
-                                        <span style="width: {{ $row['percent'] }}%; background: #DB2777"></span>
+                                        <span style="width: {{ $row['percent'] }}%; background: #7B1730"></span>
                                     </span>
                                     <span class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $row['percent'] }}%</span>
                                 </div>
@@ -422,7 +422,7 @@
                         <tr class="border-b border-slate-100">
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center gap-2 text-[13px] font-bold text-slate-700">
-                                    <span class="rp-legend-dot" style="background: {{ $rpRoleColors[$slice['role']] ?? '#cbd5e1' }}"></span>
+                                    <span class="rp-legend-dot" style="background: {{ $rpRoleColors[$slice['role']] ?? '#C9AFAA' }}"></span>
                                     {{ $slice['label'] }}
                                 </span>
                             </td>
@@ -430,7 +430,7 @@
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5">
                                     <span class="rp-track" style="flex: 1 1 auto; max-width: 16rem">
-                                        <span style="width: {{ $share }}%; background: {{ $rpRoleColors[$slice['role']] ?? '#cbd5e1' }}"></span>
+                                        <span style="width: {{ $share }}%; background: {{ $rpRoleColors[$slice['role']] ?? '#C9AFAA' }}"></span>
                                     </span>
                                     <span class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $share }}%</span>
                                 </div>

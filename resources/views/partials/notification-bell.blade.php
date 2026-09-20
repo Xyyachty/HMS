@@ -68,14 +68,14 @@
         border-radius: 0.75rem; background: transparent; border: 0;
         cursor: pointer; transition: background-color .15s ease;
     }
-    .hms-notify [data-notify-toggle]:hover { background: #f1f5f9; }
-    .hms-notify [data-notify-toggle] > .iconify { font-size: 1.25rem; color: #64748b; }
+    .hms-notify [data-notify-toggle]:hover { background: #F2E9E7; }
+    .hms-notify [data-notify-toggle] > .iconify { font-size: 1.25rem; color: #6B4A54; }
 
     .hms-notify [data-notify-badge] {
         position: absolute; top: -0.125rem; right: -0.125rem;
         min-width: 18px; height: 18px; padding: 0 0.25rem;
         display: flex; align-items: center; justify-content: center;
-        border-radius: 9999px; background: #f43f5e; color: #fff;
+        border-radius: 9999px; background: #9E1B3C; color: #fff;
         font-size: 10px; font-weight: 700; line-height: 1;
         box-shadow: 0 1px 2px 0 rgb(0 0 0 / .05);
     }
@@ -95,33 +95,33 @@
 
     .hms-notify [data-notify-panel] > div:first-child {
         display: flex; align-items: center; justify-content: space-between;
-        gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9;
+        gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid #F2E9E7;
     }
     .hms-notify [data-notify-panel] h3 {
-        font-size: 0.875rem; font-weight: 700; color: #0f172a; margin: 0;
+        font-size: 0.875rem; font-weight: 700; color: #2A1118; margin: 0;
     }
     .hms-notify [data-notify-unread-pill] {
         padding: 0.125rem 0.375rem; border-radius: 9999px;
-        background: #fff1f2; color: #e11d48; font-size: 10px; font-weight: 700;
+        background: #FBEAEE; color: #7B1730; font-size: 10px; font-weight: 700;
     }
     .hms-notify [data-notify-mark-all] {
         background: none; border: 0; cursor: pointer;
-        font-size: 0.75rem; font-weight: 600; color: #64748b;
+        font-size: 0.75rem; font-weight: 600; color: #6B4A54;
         transition: color .15s ease;
     }
-    .hms-notify [data-notify-mark-all]:hover { color: #0f172a; }
+    .hms-notify [data-notify-mark-all]:hover { color: #2A1118; }
     .hms-notify [data-notify-mark-all]:disabled { opacity: .4; cursor: not-allowed; }
 
     .hms-notify [data-notify-list] { max-height: 24rem; overflow-y: auto; }
     .hms-notify [data-notify-item] {
         width: 100%; text-align: left; display: flex; gap: 0.75rem;
         padding: 0.75rem 1rem; background: #fff; border: 0;
-        border-top: 1px solid #f1f5f9; cursor: pointer;
+        border-top: 1px solid #F2E9E7; cursor: pointer;
         transition: background-color .15s ease;
     }
     .hms-notify [data-notify-list] > [data-notify-item]:first-child { border-top: 0; }
     .hms-notify [data-notify-item][data-read="0"] { background: rgb(240 249 255 / .6); }
-    .hms-notify [data-notify-item]:hover { background: #f8fafc; }
+    .hms-notify [data-notify-item]:hover { background: #FAF6F5; }
     .hms-notify [data-notify-item] > span:first-child {
         flex-shrink: 0; width: 2.25rem; height: 2.25rem; border-radius: 0.75rem;
         display: flex; align-items: center; justify-content: center;
@@ -132,7 +132,7 @@
     /* The unread dot: last child, and only ever rendered on an unread row. */
     .hms-notify [data-notify-item][data-read="0"] > span:last-child {
         flex-shrink: 0; margin-top: 0.375rem; width: 0.5rem; height: 0.5rem;
-        border-radius: 9999px; background: #0ea5e9;
+        border-radius: 9999px; background: #9E1B3C;
     }
 </style>
 <script>
@@ -145,13 +145,13 @@
     };
 
     const ACCENTS = {
-        sky:     { bg: '#e0f2fe', fg: '#0284c7' },
-        violet:  { bg: '#ede9fe', fg: '#7c3aed' },
-        indigo:  { bg: '#e0e7ff', fg: '#4f46e5' },
-        amber:   { bg: '#fef3c7', fg: '#d97706' },
-        emerald: { bg: '#d1fae5', fg: '#059669' },
-        rose:    { bg: '#ffe4e6', fg: '#e11d48' },
-        slate:   { bg: '#f1f5f9', fg: '#475569' },
+        sky:     { bg: '#FBEAEE', fg: '#7B1730' },
+        violet:  { bg: '#F6D5DC', fg: '#7B1730' },
+        indigo:  { bg: '#F6D5DC', fg: '#7B1730' },
+        amber:   { bg: '#F2E3BE', fg: '#B8873C' },
+        emerald: { bg: '#F2E3BE', fg: '#B8873C' },
+        rose:    { bg: '#F6D5DC', fg: '#7B1730' },
+        slate:   { bg: '#F2E9E7', fg: '#5A3941' },
     };
 
     const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';

@@ -10,21 +10,51 @@
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
+        // Same four colours as the Student portal: wine, gold, cream, ink.
+        // Every Tailwind stock family below is remapped to a tint/shade of one of
+        // those four rather than left at its default hue, so utility classes used
+        // all over the Dean pages resolve to the same four-colour system without
+        // editing every call site.
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: { sans: ['Manrope', 'sans-serif'] },
                     colors: {
-                        brand: '#DB2777',
-                        'brand-light': '#F472B6',
-                        'brand-dark': '#9D174D',
-                        'brand-soft': '#FDF2F8',
-                        'rose-accent': '#FB7185',
-                        'plum-accent': '#A855F7',
-                        'plum-soft': '#FAF5FF',
-                        'amber-soft': '#FFFBEB',
-                        'sidebar': '#DB2777',
-                        'sidebar-light': '#500724',
+                        brand: '#7B1730',
+                        'brand-light': '#C9A45C',
+                        'brand-dark': '#4A0D1C',
+                        'brand-soft': '#FBEEE9',
+                        'rose-accent': '#C4425E',
+                        'plum-accent': '#C9A45C',
+                        'plum-soft': '#FBEEE9',
+                        'amber-soft': '#FBF3E0',
+                        surface: '#FDF6F3',
+                        'sidebar': '#4A0D1C',
+                        'sidebar-light': '#2A1118',
+
+                        // Neutral text/border scale, warmed toward ink instead of
+                        // Tailwind's default cool blue-gray.
+                        slate: {
+                            50: '#FAF6F5', 100: '#F2E9E7', 200: '#E4D3CF', 300: '#C9AFAA',
+                            400: '#7A6068', 500: '#6B4A54', 600: '#5A3941', 700: '#47262D',
+                            800: '#341620', 900: '#2A1118',
+                        },
+
+                        // Danger / overdue / "cool" accents all fold into the wine family.
+                        red:    { 50: '#FBEAEE', 100: '#F6D5DC', 200: '#ECAFBE', 400: '#C4425E', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        rose:   { 50: '#FBEAEE', 100: '#F6D5DC', 200: '#ECAFBE', 300: '#DE8299', 400: '#C4425E', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        pink:   { 50: '#FBEAEE', 100: '#F6D5DC', 200: '#ECAFBE', 300: '#DE8299', 400: '#C4425E', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        violet: { 50: '#FBEAEE', 100: '#F6D5DC', 500: '#9E1B3C', 700: '#5E1024' },
+                        indigo: { 50: '#FBEAEE', 100: '#F6D5DC', 500: '#9E1B3C', 700: '#5E1024' },
+                        blue:   { 50: '#FBEAEE', 100: '#F6D5DC', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        sky:    { 50: '#FBEAEE', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        teal:   { 50: '#FBEAEE', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+
+                        // Success / pending / warning accents fold into the gold family.
+                        emerald: { 50: '#FBF3E0', 100: '#F2E3BE', 200: '#E9D3A0', 400: '#D9B86A', 500: '#C9A45C', 600: '#B8873C', 700: '#96692C', 800: '#7A5322' },
+                        amber:   { 50: '#FBF3E0', 100: '#F2E3BE', 200: '#E9D3A0', 400: '#D9B86A', 500: '#C9A45C', 600: '#B8873C', 700: '#96692C', 800: '#7A5322' },
+                        green:   { 50: '#FBF3E0', 100: '#F2E3BE', 200: '#E9D3A0', 400: '#D9B86A', 500: '#C9A45C', 600: '#B8873C', 700: '#96692C' },
+                        orange:  { 50: '#FBF3E0', 500: '#C9A45C', 600: '#B8873C', 700: '#96692C' },
                     }
                 }
             }
@@ -32,12 +62,12 @@
     </script>
     <style>
 
-        ::selection { background: #DB2777; color: #fff; }
+        ::selection { background: #7B1730; color: #fff; }
         body { font-family: 'Manrope', sans-serif; }
-        .brand-gradient { background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D); }
+        .brand-gradient { background: linear-gradient(135deg, #C9A45C, #7B1730, #4A0D1C); }
         .app-sidebar {
-            background: linear-gradient(180deg, #DB2777 0%, #BE185D 38%
-        , #9D174D 72%, #500724 100%);
+            background: linear-gradient(180deg, #7B1730 0%, #5E1024 38%
+        , #4A0D1C 72%, #2A1118 100%);
         }
 
         ::-webkit-scrollbar { width: 5px; }
@@ -133,7 +163,7 @@
                 @endphp
                 <div class="bg-white/5 rounded-2xl p-4">
                     <div class="flex items-center gap-3 mb-3">
-                        <img src="https://ui-avatars.com/api/?name={{ $deanAvatarName }}&background=DB2777&color=fff&size=40&font-size=0.4" class="w-10 h-10 rounded-xl border-2 border-white/20" alt="{{ $deanDisplayName }}">
+                        <img src="https://ui-avatars.com/api/?name={{ $deanAvatarName }}&background=7B1730&color=fff&size=40&font-size=0.4" class="w-10 h-10 rounded-xl border-2 border-white/20" alt="{{ $deanDisplayName }}">
                         <div class="min-w-0">
                             <p class="text-sm font-bold text-white truncate">{{ $deanDisplayName }}</p>
                             <p class="text-[10px] text-white">Dean Admin</p>
@@ -176,7 +206,7 @@
             </header>
 
             <!-- Page Content Area -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#F5F5F5">
+            <main class="flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#FDF6F3">
                 @yield('content')
             </main>
 
@@ -217,7 +247,7 @@
                     timer: 2500,
                     timerProgressBar: true,
                     showConfirmButton: false,
-                    iconColor: '#16A34A',
+                    iconColor: '#C9A45C',
                     width: '22rem'
                 });
             });
@@ -239,12 +269,12 @@
                     title: 'Log out?',
                     text: 'You will need to sign in again to access the dashboard.',
                     icon: 'warning',
-                    iconColor: '#DC2626',
+                    iconColor: '#7B1730',
                     showCancelButton: true,
                     confirmButtonText: 'Logout',
                     cancelButtonText: 'Cancel',
-                    confirmButtonColor: '#DC2626',
-                    cancelButtonColor: '#6B7280',
+                    confirmButtonColor: '#7B1730',
+                    cancelButtonColor: '#6B4A54',
                     reverseButtons: true
                 }).then((result) => {
                     if (result.isConfirmed) {

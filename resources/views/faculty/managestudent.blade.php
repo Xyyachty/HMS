@@ -7,8 +7,8 @@
 <style>
     /* Bulk upload drop zone */
     #bulkDropZone.drag-over {
-        border-color: #059669;
-        background-color: rgba(5,150,105,.07);
+        border-color: #B8873C;
+        background-color: rgba(184,135,60,.07);
     }
     #bulkImportBtn:disabled {
         opacity:.6;
@@ -47,7 +47,7 @@
         height: 2.5rem;
         width: 2.5rem;
         border-radius: 0.75rem;
-        background: #f1f5f9;
+        background: #F2E9E7;
         border: 1px solid transparent;
         overflow: hidden;
         transition: width 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -55,8 +55,8 @@
     #studentSearchWrap.is-open {
         width: 12.5rem;
         background: #fff;
-        border-color: #f9a8d4;
-        box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.12);
+        border-color: #DE8299;
+        box-shadow: 0 0 0 3px rgba(123,23,48, 0.12);
     }
     #studentSearchWrap .search-toggle {
         width: 2.5rem;
@@ -65,7 +65,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: #64748b;
+        color: #6B4A54;
         border: 0;
         background: transparent;
         cursor: pointer;
@@ -73,7 +73,7 @@
     }
     #studentSearchWrap.is-open .search-toggle,
     #studentSearchWrap .search-toggle:hover {
-        color: #db2777;
+        color: #7B1730;
     }
     #studentSearchInput {
         width: 0;
@@ -83,7 +83,7 @@
         outline: none;
         background: transparent;
         font-size: 0.875rem;
-        color: #334155;
+        color: #47262D;
         padding: 0;
         transition: width 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
     }
@@ -93,7 +93,7 @@
         padding-right: 0.75rem;
     }
     #studentSearchWrap.is-open #studentSearchInput::placeholder {
-        color: #94a3b8;
+        color: #7A6068;
     }
 
     /* Bulk upload preview. Written out rather than composed from utilities because
@@ -103,10 +103,10 @@
     .bulk-pager-btn {
         display: inline-flex; align-items: center; justify-content: center;
         padding: 0.25rem 0.5rem; border-radius: 0.5rem;
-        border: 1px solid #E2E8F0; background: #fff; color: #64748B;
+        border: 1px solid #E4D3CF; background: #fff; color: #6B4A54;
         transition: color 0.2s, border-color 0.2s, opacity 0.2s;
     }
-    .bulk-pager-btn:hover:not(:disabled) { color: #DB2777; border-color: #DB2777; }
+    .bulk-pager-btn:hover:not(:disabled) { color: #7B1730; border-color: #7B1730; }
     .bulk-pager-btn:disabled { opacity: 0.4; cursor: default; }
 
     /* Add Student / Bulk Upload with no block assigned. Same reason as above: the
@@ -787,8 +787,8 @@
             html: `<p class="text-sm text-slate-500">${successMessage}</p>`,
             timer: 2500,
             showConfirmButton: false,
-            backdrop: 'rgba(15, 23, 42, 0.35)',
-            iconColor: '#16A34A',
+            backdrop: 'rgba(42,17,24, 0.35)',
+            iconColor: '#C9A45C',
             customClass: {
                 popup: 'rounded-2xl p-6 bg-white shadow-2xl',
                 title: 'text-lg font-bold text-slate-800',
@@ -805,8 +805,8 @@
             title: 'Action Failed',
             html: `<p class="text-sm text-slate-500">${errorMessage}</p>`,
             confirmButtonText: 'Okay',
-            backdrop: 'rgba(15, 23, 42, 0.35)',
-            iconColor: '#EF4444',
+            backdrop: 'rgba(42,17,24, 0.35)',
+            iconColor: '#9E1B3C',
             customClass: {
                 popup: 'rounded-2xl p-6 bg-white shadow-2xl',
                 title: 'text-lg font-bold text-slate-800',
@@ -885,7 +885,7 @@
         const nameLower = file.name.toLowerCase();
         if (!nameLower.endsWith('.xlsx') && !nameLower.endsWith('.xls') && !nameLower.endsWith('.ods') && !nameLower.endsWith('.csv')) {
             Swal.fire({ icon:'error', title:'Invalid file', text:'Please upload an Excel or CSV file.', timer:2500, showConfirmButton:false,
-                iconColor:'#EF4444', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
+                iconColor:'#9E1B3C', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
             return;
         }
         bulkSelectedFile = file;
@@ -1101,7 +1101,7 @@
                 const allRows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: "", range: 0});
                 if (!allRows.length) {
                     Swal.fire({icon:'warning', title:'Empty File', text:'The file has no data rows.', timer:2500, showConfirmButton:false,
-                        iconColor:'#F59E0B', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
+                        iconColor:'#C9A45C', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
                     return;
                 }
 
@@ -1113,7 +1113,7 @@
                 if (parsed.headerRow === null) {
                     Swal.fire({icon:'error', title:'Columns Not Found',
                         html:`<p class="text-sm text-slate-500">This sheet needs a student number column, and either a <b>Name</b> column or separate first and last name columns.</p>`,
-                        confirmButtonText:'Okay', iconColor:'#EF4444',
+                        confirmButtonText:'Okay', iconColor:'#9E1B3C',
                         customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800',
                             confirmButton:'mt-4 bg-brand text-white px-4 py-2 rounded-lg font-semibold'}, buttonsStyling:false });
                     return;
@@ -1121,7 +1121,7 @@
 
                 if (parsed.students.length === 0) {
                     Swal.fire({icon:'warning', title:'Empty File', text:'The file has no data rows.', timer:2500, showConfirmButton:false,
-                        iconColor:'#F59E0B', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
+                        iconColor:'#C9A45C', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
                     return;
                 }
 
@@ -1134,7 +1134,7 @@
             } catch (err) {
                 console.error(err);
                 Swal.fire({icon:'error', title:'Parse Error', text:'Could not read file as Excel.', timer:2500, showConfirmButton:false,
-                    iconColor:'#EF4444', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
+                    iconColor:'#9E1B3C', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
             }
         };
         reader.readAsArrayBuffer(file);
@@ -1210,8 +1210,8 @@
                     html: `<p class="text-sm text-slate-500">${data.created} student${data.created === 1 ? '' : 's'} imported.</p>`,
                     timer: 2000,
                     showConfirmButton: false,
-                    backdrop: 'rgba(15, 23, 42, 0.35)',
-                    iconColor: '#16A34A',
+                    backdrop: 'rgba(42,17,24, 0.35)',
+                    iconColor: '#C9A45C',
                     customClass: {
                         popup: 'rounded-2xl p-6 bg-white shadow-2xl',
                         title: 'text-lg font-bold text-slate-800',
@@ -1232,7 +1232,7 @@
             label.textContent = 'Import Now';
             Swal.fire({icon:'error', title:'Import Failed',
                 html:`<p class="text-sm text-slate-500">${err.message}</p>`,
-                confirmButtonText:'Okay', iconColor:'#EF4444',
+                confirmButtonText:'Okay', iconColor:'#9E1B3C',
                 customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800',
                     confirmButton:'mt-4 bg-brand text-white px-4 py-2 rounded-lg font-semibold hover:bg-brand-dark'},
                 buttonsStyling:false});

@@ -20,21 +20,21 @@
     .rp-tab {
         display: inline-flex; align-items: center; gap: .5rem;
         padding: .7rem 1.1rem; border-radius: .85rem;
-        font-size: .82rem; font-weight: 700; color: #64748b;
-        background: #fff; border: 1px solid #e2e8f0; transition: all .18s ease;
+        font-size: .82rem; font-weight: 700; color: #6B4A54;
+        background: #fff; border: 1px solid #E4D3CF; transition: all .18s ease;
     }
-    .rp-tab:hover { color: #DB2777; border-color: rgba(219,39,119,.35); }
-    .rp-tab.is-active { background: linear-gradient(135deg,#F472B6,#DB2777,#9D174D); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -6px rgba(219,39,119,.5); }
+    .rp-tab:hover { color: #7B1730; border-color: rgba(123,23,48,.35); }
+    .rp-tab.is-active { background: linear-gradient(135deg,#C9A45C, #7B1730, #4A0D1C); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -6px rgba(123,23,48,.5); }
     .rp-field {
-        height: 2.6rem; border-radius: .85rem; border: 1px solid #e2e8f0; background: #fff;
-        font-size: .8rem; font-weight: 600; color: #475569; padding: 0 .85rem;
+        height: 2.6rem; border-radius: .85rem; border: 1px solid #E4D3CF; background: #fff;
+        font-size: .8rem; font-weight: 600; color: #5A3941; padding: 0 .85rem;
     }
-    .rp-field:focus { outline: none; border-color: #DB2777; box-shadow: 0 0 0 3px rgba(219,39,119,.12); }
+    .rp-field:focus { outline: none; border-color: #7B1730; box-shadow: 0 0 0 3px rgba(123,23,48,.12); }
     .rp-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .55rem; border-radius: 999px; font-size: .68rem; font-weight: 700; white-space: nowrap; }
-    .rp-row:hover { background: #fdf2f8; }
+    .rp-row:hover { background: #FBEEE9; }
     .rp-empty { display: none; }
-    .rp-th { text-align: left; padding: .75rem 1rem; font-size: .66rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #64748b; white-space: nowrap; }
-    .rp-td { padding: .85rem 1rem; font-size: .78rem; color: #475569; vertical-align: top; }
+    .rp-th { text-align: left; padding: .75rem 1rem; font-size: .66rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #6B4A54; white-space: nowrap; }
+    .rp-td { padding: .85rem 1rem; font-size: .78rem; color: #5A3941; vertical-align: top; }
 </style>
 
 {{-- The page's name and what it is for are the header bar's job (page_title and

@@ -8,9 +8,9 @@
     /* ── Role tab colours ── */
     .tab-btn { transition: all .25s ease; }
     .tab-btn.active-tab {
-        background: linear-gradient(135deg,#F472B6,#DB2777,#9D174D);
+        background: linear-gradient(135deg,#C9A45C, #7B1730, #4A0D1C);
         color:#fff; border-color:transparent;
-        box-shadow: 0 8px 20px -4px rgba(219,39,119,.35);
+        box-shadow: 0 8px 20px -4px rgba(123,23,48,.35);
     }
 
     /* ── Task card hover ── */
@@ -27,7 +27,7 @@
 
     /* ── Empty state ring ── */
     @keyframes pulse-ring {
-        0%,100%{ border-color:#e2e8f0; } 50%{ border-color:#F472B6; }
+        0%,100%{ border-color:#E4D3CF; } 50%{ border-color:#C4425E; }
     }
     .empty-ring { animation: pulse-ring 3s ease-in-out infinite; }
 </style>
