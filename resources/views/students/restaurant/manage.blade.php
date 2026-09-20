@@ -187,10 +187,21 @@ function formatPeso(amount) {
   if (!Number.isFinite(n)) return '₱0';
   return '₱' + n.toLocaleString();
 }
+/* A dish with no photo must look like it has none. This used to hand back a random
+   picsum photo, so clearing a dish's picture swapped one food photo for another and
+   the clear read as if it had never saved. Grey on a mostly transparent tile, so the
+   card's own background shows through and it suits either template palette. */
+const MENU_NO_PHOTO = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">'
+  + '<rect width="400" height="300" fill="#8a8a8a" fill-opacity="0.1"/>'
+  + '<circle cx="200" cy="132" r="46" fill="none" stroke="#8a8a8a" stroke-opacity="0.5" stroke-width="6"/>'
+  + '<circle cx="200" cy="132" r="26" fill="none" stroke="#8a8a8a" stroke-opacity="0.35" stroke-width="4"/>'
+  + '<text x="200" y="224" fill="#8a8a8a" fill-opacity="0.75" font-family="sans-serif" font-size="26" text-anchor="middle">No photo</text>'
+  + '</svg>'
+);
+
 function menuFoodImg(item) {
-  if (item && item.img) return item.img;
-  const seed = encodeURIComponent((item && (item.id || item.name)) || 'menu');
-  return 'https://picsum.photos/seed/' + seed + '/800/600.jpg';
+  return (item && item.img) ? item.img : MENU_NO_PHOTO;
 }
 function toolBtnStyle(kind) {
   const base = { width: 28, height: 28, borderRadius: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)' };
