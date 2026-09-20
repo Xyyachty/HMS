@@ -19,7 +19,7 @@
     }
     .rp-tab:hover { border-color: rgba(123,23,48,.4); color: #7B1730; }
     .rp-tab.active {
-        background: linear-gradient(135deg, #C9A45C, #7B1730, #4A0D1C);
+        background: #7B1730;
         color: #fff; border-color: transparent;
         box-shadow: 0 8px 20px -6px rgba(123,23,48,.4);
     }

@@ -8,7 +8,7 @@
     /* ── Role tab colours ── */
     .tab-btn { transition: all .25s ease; }
     .tab-btn.active-tab {
-        background: linear-gradient(135deg,#C9A45C, #7B1730, #4A0D1C);
+        background: #7B1730;
         color:#fff; border-color:transparent;
         box-shadow: 0 8px 20px -4px rgba(123,23,48,.35);
     }

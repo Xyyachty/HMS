@@ -24,7 +24,7 @@
         background: #fff; border: 1px solid #E4D3CF; transition: all .18s ease;
     }
     .rp-tab:hover { color: #7B1730; border-color: rgba(123,23,48,.35); }
-    .rp-tab.is-active { background: linear-gradient(135deg,#C9A45C, #7B1730, #4A0D1C); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -6px rgba(123,23,48,.5); }
+    .rp-tab.is-active { background: #7B1730; color: #fff; border-color: transparent; box-shadow: 0 8px 18px -6px rgba(123,23,48,.5); }
     .rp-field {
         height: 2.6rem; border-radius: .85rem; border: 1px solid #E4D3CF; background: #fff;
         font-size: .8rem; font-weight: 600; color: #5A3941; padding: 0 .85rem;

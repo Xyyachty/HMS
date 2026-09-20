@@ -70,7 +70,9 @@
         ::-webkit-scrollbar-thumb { background: #E4D3CF; border-radius: 99px; }
         ::-webkit-scrollbar-thumb:hover { background: #C9AFAA; }
 
-        .brand-gradient { background: linear-gradient(135deg, #C9A45C 0%, #7B1730 50%, #4A0D1C 100%); }
+        /* Flat wine, not a gradient: buttons wear this class, and a button reads
+           as one solid colour. The name stays so every call site keeps working. */
+        .brand-gradient { background: #7B1730; }
         .brand-gradient-subtle { background: linear-gradient(135deg, #FBEEE9 0%, #F6D5DC 50%, #ECAFBE 100%); }
 
         .app-sidebar {
@@ -134,7 +136,7 @@
             left: 0;
             right: 0;
             height: 2px;
-            background: linear-gradient(90deg, #C9A45C, #7B1730);
+            background: #7B1730;
             border-radius: 2px 2px 0 0;
         }
 

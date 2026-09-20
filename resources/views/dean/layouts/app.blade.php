@@ -64,7 +64,9 @@
 
         ::selection { background: #7B1730; color: #fff; }
         body { font-family: 'Manrope', sans-serif; }
-        .brand-gradient { background: linear-gradient(135deg, #C9A45C, #7B1730, #4A0D1C); }
+        /* Flat wine, not a gradient: buttons wear this class, and a button reads
+           as one solid colour. The name stays so every call site keeps working. */
+        .brand-gradient { background: #7B1730; }
         .app-sidebar {
             background: linear-gradient(180deg, #7B1730 0%, #5E1024 38%
         , #4A0D1C 72%, #2A1118 100%);
