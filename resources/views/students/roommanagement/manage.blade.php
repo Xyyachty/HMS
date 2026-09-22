@@ -108,6 +108,38 @@
     cursor: pointer; display: flex; align-items: center; justify-content: center;
   }
 
+  /* Photo chooser. It opens on top of the Add/Edit Room dialog, so it needs to
+     stack above the overlay that owns it. */
+  .room-image-overlay { z-index: 260; }
+  .room-image-modal { max-width: 560px; padding: 1.5rem; }
+  .room-image-title {
+    font-family: var(--font-display, 'Playfair Display', serif);
+    font-size: 1.35rem; color: var(--fg); margin: 0 0 0.3rem;
+  }
+  .room-image-hint {
+    color: var(--fg-muted); font-size: 0.76rem; line-height: 1.5; margin: 0 0 1.1rem;
+  }
+  .room-image-stage {
+    position: relative; border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; background: rgba(255,255,255,0.02);
+  }
+  .room-image-stage img {
+    width: 100%; height: 260px; object-fit: cover; display: block;
+  }
+  .room-image-badge {
+    position: absolute; top: 10px; left: 10px; padding: 0.25rem 0.6rem;
+    border-radius: 999px; background: rgba(0,0,0,0.6); color: #fff;
+    font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .room-image-empty {
+    height: 260px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 10px; color: var(--fg-muted); font-size: 0.78rem;
+  }
+  .room-image-actions {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 1.2rem;
+  }
+  .room-image-actions .room-image-done { margin-left: auto; }
+
   .room-cal {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
     border-radius: 12px; padding: 0.9rem 1rem 1rem;
@@ -517,6 +549,63 @@ function roomCardImg(room) {
   return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
 }
 
+/* The room photo is chosen in its own dialog rather than straight from the file
+   picker, so the picture can be looked at before it is kept — the same way the
+   home page's slider images are replaced. It opens on top of the Add or Edit
+   dialog, which is why it portals to the body instead of nesting. */
+function RoomImageModal({ open, value, onPick, onClear, onClose }) {
+  if (!open) return null;
+
+  return ReactDOM.createPortal(
+    <div
+      className="room-modal-overlay room-image-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Room photo"
+      onClick={e => { e.stopPropagation(); onClose(); }}
+    >
+      <div className="room-modal room-image-modal" onClick={e => e.stopPropagation()}>
+        <h3 className="room-image-title">Room Photo</h3>
+        <p className="room-image-hint">
+          This is the picture guests see on the room card. A room left without one is
+          shown with a stand-in photo instead.
+        </p>
+
+        <div className="room-image-stage">
+          {value ? (
+            <>
+              <img src={value} alt="Room photo" />
+              <span className="room-image-badge">Selected</span>
+            </>
+          ) : (
+            <div className="room-image-empty">
+              <i className="fa-solid fa-image" style={{ fontSize: '1.6rem', color: 'var(--accent)', opacity: 0.7 }}></i>
+              <span>No photo chosen yet</span>
+            </div>
+          )}
+        </div>
+
+        <div className="room-image-actions">
+          <button type="button" className="btn-primary" onClick={() => pickImageFile(url => { if (url) onPick(url); })}>
+            <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '0.7rem' }}></i> {value ? 'Replace photo' : 'Choose photo'}
+          </button>
+          {value && (
+            <button
+              type="button"
+              onClick={onClear}
+              style={{ background: 'none', border: 'none', color: 'var(--danger, #fb7185)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body, Outfit, sans-serif)' }}
+            >
+              <i className="fa-solid fa-xmark" style={{ marginRight: 4 }}></i>Remove photo
+            </button>
+          )}
+          <button type="button" className="btn-outline room-image-done" onClick={onClose} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>Done</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function validateRoomForm(form, requireName = true) {
   const errors = {};
   if (requireName && !String(form.name || '').trim()) errors.name = 'Room name is required.';
@@ -674,6 +763,7 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
   const [form, setForm] = useState(() => createEmptyRoomForm(defaultCategory));
   const [errors, setErrors] = useState({});
   const [imgPreview, setImgPreview] = useState('');
+  const [imgModal, setImgModal] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Preview only — HotelRoomDefaults::nextNameFor() decides the real one on save.
@@ -699,6 +789,7 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
     setForm(createEmptyRoomForm(defaultCategory));
     setErrors({});
     setImgPreview('');
+    setImgModal(false);
   };
 
   const handleSubmit = (e) => {
@@ -725,17 +816,19 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
         resetForm();
         onClose();
         if (window.Swal) {
+          const warned = !!data.image_warning;
           window.Swal.fire({
-            icon: 'success',
-            title: 'Room Added!',
-            text: data.room.name + ' has been added to the inventory.',
+            icon: warned ? 'warning' : 'success',
+            title: warned ? 'Room Added Without Its Photo' : 'Room Added!',
+            text: warned ? data.image_warning : data.room.name + ' has been added to the inventory.',
             background: 'var(--card, #181714)',
             color: 'var(--fg, #f5f0e8)',
-            iconColor: 'var(--success, #4ade80)',
+            iconColor: warned ? 'var(--warning, #fbbf24)' : 'var(--success, #4ade80)',
             confirmButtonColor: 'var(--accent, #c9a84c)',
-            confirmButtonText: 'Great!',
-            timer: 3000,
-            timerProgressBar: true,
+            confirmButtonText: warned ? 'OK' : 'Great!',
+            // A warning waits to be read; a plain success does not.
+            timer: warned ? undefined : 3000,
+            timerProgressBar: !warned,
           });
         }
       })
@@ -757,12 +850,13 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
   // Reset before closing so reopening never shows a stale draft.
   const handleCancel = () => { resetForm(); onClose(); };
 
-  const handleImagePick = () => {
-    pickImageFile((url) => {
-      if (!url) return;
-      update('img', url);
-      setImgPreview(url);
-    });
+  // Opens the photo dialog. The file picker is reached from inside it, so the
+  // picture can be looked at before the room is saved with it.
+  const handleImagePick = () => setImgModal(true);
+
+  const applyImage = (url) => {
+    update('img', url);
+    setImgPreview(url);
   };
 
   const errorText = (key) => (
@@ -850,7 +944,7 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
                 ) : (
                   <div style={{ height: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--fg-muted)' }}>
                     <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '1.4rem', color: 'var(--accent)', opacity: 0.7 }}></i>
-                    <span style={{ fontSize: '0.75rem' }}>Click to upload image</span>
+                    <span style={{ fontSize: '0.75rem' }}>Click to choose a photo</span>
                   </div>
                 )}
               </div>
@@ -871,6 +965,14 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
           </form>
         </div>
       </div>
+
+      <RoomImageModal
+        open={imgModal}
+        value={imgPreview}
+        onPick={applyImage}
+        onClear={() => applyImage('')}
+        onClose={() => setImgModal(false)}
+      />
     </div>
   );
 }
@@ -1146,6 +1248,7 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
     img: room.img || '',
   }));
   const [errors, setErrors] = useState({});
+  const [imgModal, setImgModal] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const fieldLabel = {
@@ -1191,13 +1294,15 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
         if (data.room && typeof onSaved === 'function') onSaved(data.room);
         onClose();
         if (window.Swal) {
+          const warned = !!data.image_warning;
           window.Swal.fire({
-            icon: 'success',
-            title: 'Room Updated!',
-            text: data.room.name + ' has been saved.',
-            background: 'var(--card, #181714)', color: 'var(--fg, #f5f0e8)', iconColor: 'var(--success, #4ade80)',
-            confirmButtonColor: 'var(--accent, #c9a84c)', confirmButtonText: 'Great!',
-            timer: 3000, timerProgressBar: true,
+            icon: warned ? 'warning' : 'success',
+            title: warned ? 'Saved Without The New Photo' : 'Room Updated!',
+            text: warned ? data.image_warning : data.room.name + ' has been saved.',
+            background: 'var(--card, #181714)', color: 'var(--fg, #f5f0e8)',
+            iconColor: warned ? 'var(--warning, #fbbf24)' : 'var(--success, #4ade80)',
+            confirmButtonColor: 'var(--accent, #c9a84c)', confirmButtonText: warned ? 'OK' : 'Great!',
+            timer: warned ? undefined : 3000, timerProgressBar: !warned,
           });
         }
       })
@@ -1283,11 +1388,11 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
               <label style={fieldLabel}>Room Image</label>
               <button
                 type="button"
-                onClick={() => pickImageFile(url => { if (url) update('img', url); })}
+                onClick={() => setImgModal(true)}
                 className="btn-outline"
                 style={{ fontSize: '0.7rem', padding: '0.5rem 0.9rem' }}
               >
-                <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '0.7rem' }}></i> Replace image
+                <i className="fa-solid fa-image" style={{ fontSize: '0.7rem' }}></i> Change photo
               </button>
             </div>
 
@@ -1303,6 +1408,14 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
           <RoomAvailabilityCalendar ranges={room.bookedRanges} />
         </div>
       </div>
+
+      <RoomImageModal
+        open={imgModal}
+        value={form.img}
+        onPick={url => update('img', url)}
+        onClear={() => update('img', '')}
+        onClose={() => setImgModal(false)}
+      />
     </div>
   );
 }
