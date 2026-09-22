@@ -248,12 +248,6 @@
         <span class="text-lg font-bold tracking-tight">Hotel Management System</span>
       </div>
 
-      <!-- Back to home -->
-      <a href="{{ url('/') }}" class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-brand transition-colors mb-5">
-        <span class="iconify" data-icon="mdi:arrow-left"></span>
-        Back
-      </a>
-
       <!-- ============ LOGIN FORM ============ -->
       <div id="loginPanel" class="form-panel active">
         <div class="mb-6">
