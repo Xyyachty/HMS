@@ -934,12 +934,79 @@
   }
   .menu-food-body { padding: 1.1rem 1.15rem 1.25rem; flex: 1; }
 
-  .exp-item {
-    padding: 1.75rem; border-radius: 10px;
-    background: var(--card); border: 1px solid var(--border);
-    transition: border-color 0.2s;
+  /* The Experience gallery. Every tile is the same width, the same height and
+     the same 4:3 crop, whether the preview panel is open or not — the grid
+     narrows, the tiles do not change shape. */
+  .exp-gallery { display: grid; grid-template-columns: 1fr; gap: 1.25rem; align-items: start; }
+  .exp-gallery.has-preview { grid-template-columns: minmax(0, 1.8fr) minmax(300px, 0.95fr); }
+  .exp-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
+  .exp-tile {
+    position: relative; aspect-ratio: 4 / 3;
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border); background: var(--card);
+    cursor: pointer; padding: 0;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   }
-  .exp-item:hover { border-color: rgba(201,168,76,0.3); }
+  .exp-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.45s ease; }
+  .exp-tile:hover { transform: translateY(-2px); }
+  .exp-tile:hover img { transform: scale(1.06); }
+  .exp-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .exp-tile.is-active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201,168,76,0.45); }
+  .exp-tile-veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(12,11,9,0) 40%, rgba(12,11,9,0.88) 100%); }
+  .exp-tile-label {
+    position: absolute; left: 0.6rem; right: 0.6rem; bottom: 0.5rem;
+    display: flex; align-items: center; gap: 0.4rem;
+    color: #f5f0e8; font-size: 0.72rem; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.65);
+  }
+  .exp-tile-label i { flex: none; color: var(--accent-light); font-size: 0.8rem; }
+  .exp-tile-tools { position: absolute; top: 0.45rem; right: 0.45rem; z-index: 3; }
+  .exp-tile-add {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.45rem;
+    border: 2px dashed var(--border); background: rgba(201,168,76,0.05);
+    color: var(--fg-muted); font-family: 'Outfit', sans-serif;
+    font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .exp-tile-add:hover { border-color: var(--accent); color: var(--accent); }
+  .exp-tile-add i { font-size: 1.1rem; }
+
+  .exp-preview {
+    position: sticky; top: 6rem;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1rem;
+    animation: expPreviewIn 0.25s ease;
+  }
+  @keyframes expPreviewIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .exp-preview-close {
+    position: absolute; top: 1.6rem; right: 1.6rem; z-index: 3;
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(12,11,9,0.8); color: var(--fg);
+    border: 1px solid var(--border); cursor: pointer; font-size: 0.8rem;
+  }
+  .exp-preview-close:hover { border-color: var(--accent); color: var(--accent); }
+  .exp-preview-img { position: relative; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; }
+  .exp-preview-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .exp-preview-title { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+  .exp-preview-desc { margin: 0; color: var(--fg-muted); font-size: 0.85rem; font-weight: 300; line-height: 1.7; }
+  .exp-preview-tools {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--border);
+  }
+  .exp-preview-tools .btn-outline { font-size: 0.66rem; padding: 0.45rem 0.8rem; }
+  .exp-preview-remove { border-color: #7f1d1d; color: #fca5a5; }
+  .exp-preview-remove:hover { background: #7f1d1d; color: #fecaca; }
+
+  /* The panel drops under the grid before the grid has to give up a column. */
+  @media (max-width: 1100px) {
+    .exp-gallery.has-preview { grid-template-columns: 1fr; }
+    .exp-preview { position: static; }
+  }
+  @media (max-width: 900px) {
+    .exp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
 
   .testimonial-box {
     background: var(--card); border: 1px solid var(--border);
@@ -1299,6 +1366,7 @@
     .testimonial-nav { justify-content: center; }
     .page-header { padding: 7rem 1.5rem 2rem; }
     .page-header h1 { font-size: 2rem; }
+    .exp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
     .promo-showcase { grid-template-columns: 1fr !important; }
     .promo-feature, .promo-feature-body { min-height: 300px; }
     .promo-feature-body { padding: 1.5rem; }
@@ -1630,12 +1698,34 @@ const RESTAURANTS = [
   }
 ];
 
-const EXPERIENCES = [
-  { icon: 'fa-spa', title: 'Spa & Wellness', desc: 'Full-service spa with thermal pools, Hammam, and bespoke treatment rituals.', img: 'https://picsum.photos/seed/exp1/400/300.jpg' },
-  { icon: 'fa-person-swimming', title: 'Infinity Pool', desc: 'Rooftop heated pool with skyline views, private cabanas, and poolside service.', img: 'https://picsum.photos/seed/exp2/400/300.jpg' },
-  { icon: 'fa-dumbbell', title: 'Fitness Center', desc: 'State-of-the-art equipment, personal trainers, and sunrise yoga sessions.', img: 'https://picsum.photos/seed/exp3/400/300.jpg' },
-  { icon: 'fa-car', title: 'Concierge & Transport', desc: 'Private chauffeur, airport transfers, and curated city experiences on demand.', img: 'https://picsum.photos/seed/exp4/400/300.jpg' },
+/* The Experience gallery's own twelve, shown until a team edits the gallery and
+   the whole list is written. Each carries an id, because the photograph uploaded
+   for a tile is keyed by that id: renaming a tile keeps its picture. */
+const DEFAULT_EXPERIENCES = [
+  { id: 'exp-pool', icon: 'fa-person-swimming', title: 'Infinity Pool', desc: 'Take a refreshing dip in our infinity pool with a view over the water. A quiet spot to swim, unwind and watch the sun go down.', img: 'https://picsum.photos/seed/exp-pool/800/600.jpg' },
+  { id: 'exp-spa', icon: 'fa-spa', title: 'Spa & Wellness', desc: 'Full-service spa with thermal pools, a Hammam and treatment rituals booked around your stay.', img: 'https://picsum.photos/seed/exp-spa/800/600.jpg' },
+  { id: 'exp-gym', icon: 'fa-dumbbell', title: 'Fitness Center', desc: 'Machines, free weights and a trainer on call, open from before breakfast until late.', img: 'https://picsum.photos/seed/exp-gym/800/600.jpg' },
+  { id: 'exp-dining', icon: 'fa-utensils', title: 'Fine Dining', desc: 'A tasting menu plated to order, and a table held for you at the hour you choose.', img: 'https://picsum.photos/seed/exp-dining/800/600.jpg' },
+  { id: 'exp-beach', icon: 'fa-umbrella-beach', title: 'Private Beach', desc: 'Loungers, shade and a stretch of sand kept for guests, with drinks brought down to you.', img: 'https://picsum.photos/seed/exp-beach/800/600.jpg' },
+  { id: 'exp-transport', icon: 'fa-car', title: 'Concierge & Transport', desc: 'Airport transfers, a car with a driver, and a concierge who knows the city.', img: 'https://picsum.photos/seed/exp-transport/800/600.jpg' },
+  { id: 'exp-lounge', icon: 'fa-champagne-glasses', title: 'Rooftop Lounge', desc: 'Cocktails above the skyline, live sets on weekends and the best seat for the sunset.', img: 'https://picsum.photos/seed/exp-lounge/800/600.jpg' },
+  { id: 'exp-events', icon: 'fa-users', title: 'Events & Meetings', desc: 'Rooms that seat ten or a hundred, with catering and the equipment already in place.', img: 'https://picsum.photos/seed/exp-events/800/600.jpg' },
+  { id: 'exp-tours', icon: 'fa-compass', title: 'Island Tours', desc: 'Day trips to the islands and coves nearby, booked at the desk the evening before.', img: 'https://picsum.photos/seed/exp-tours/800/600.jpg' },
+  { id: 'exp-yoga', icon: 'fa-person-praying', title: 'Yoga Sessions', desc: 'Sunrise and sunset classes on the deck, for every level, mats provided.', img: 'https://picsum.photos/seed/exp-yoga/800/600.jpg' },
+  { id: 'exp-kids', icon: 'fa-child-reaching', title: 'Kids Zone', desc: 'A supervised playroom and pool hours set aside for families travelling with children.', img: 'https://picsum.photos/seed/exp-kids/800/600.jpg' },
+  { id: 'exp-garden', icon: 'fa-leaf', title: 'Garden Walk', desc: 'Lit paths through the grounds, planted with what grows on this coast.', img: 'https://picsum.photos/seed/exp-garden/800/600.jpg' },
 ];
+
+/* A tile whose photograph was uploaded before the gallery was keyed by id still
+   has it stored under the title it had then. Read the id first, fall back to the
+   title, and only then to the tile's own default. */
+function expCardImg(item) {
+  if (!item) return '';
+  const byId = resolveCardImg('exp', item.id, '');
+  if (byId) return byId;
+  const byTitle = item.title ? resolveCardImg('exp', item.title, '') : '';
+  return byTitle || item.img || '';
+}
 
 /* Sample copy names the hotel, and a team that renames theirs must not be left
    reading about SPC Hotel in its own testimonials. The placeholder is written as
@@ -6560,7 +6650,167 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• EXPERIENCE PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function ExperiencePage({ onNavigate, canEdit, onToast, brandName }) {
+/* The title and description of one tile, asked for in the site's own dialog
+   rather than a browser prompt — the same call every other edit on this template
+   makes. */
+function ExperienceEditModal({ item, onSave, onClose }) {
+  const [title, setTitle] = useState((item && item.title) || '');
+  const [desc, setDesc] = useState((item && item.desc) || '');
+  const clean = title.trim();
+
+  return (
+    <div className="room-modal-overlay header-modal-overlay" data-hms-no-edit="1"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="room-modal" style={{ width: 'min(460px, 100%)', padding: '1.5rem' }}>
+        <h3 className="font-display" style={{ fontSize: '1.3rem', margin: '0 0 1rem' }}>
+          {item && item.isNew ? 'Add experience' : 'Edit experience'}
+        </h3>
+        <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Title</label>
+        <input className="header-modal-field" value={title} maxLength={60} autoFocus
+          onChange={(e) => setTitle(e.target.value)} placeholder="Infinity Pool" />
+        <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', margin: '1rem 0 0.4rem' }}>Description</label>
+        <textarea className="header-modal-field" value={desc} maxLength={240} rows={4}
+          style={{ resize: 'vertical', fontFamily: 'inherit' }}
+          onChange={(e) => setDesc(e.target.value)} placeholder="What a guest can expect." />
+        <p className="header-modal-hint">Shown in the panel beside the gallery. {240 - desc.length} characters left.</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.25rem' }}>
+          <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={!clean}
+            style={clean ? null : { opacity: 0.5, cursor: 'not-allowed' }}
+            onClick={() => { if (clean) onSave({ title: clean, desc: desc.trim() }); }}>
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* The Experience gallery: every tile the same size, and a panel beside them that
+   opens on the one clicked. The grid stays where it is while the panel is open,
+   so the eye keeps its place; clicking another tile only changes the panel. */
+function ExperienceGallery({ items, canEdit, onToast, onAdd, onUpdate, onRemove }) {
+  const list = items || [];
+  const [selectedId, setSelectedId] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [confirmingId, setConfirmingId] = useState(null);
+  // Bumped whenever a photograph is replaced, so the tile and the panel re-read
+  // the store instead of showing the picture that was there before.
+  const [imgTick, setImgTick] = useState(0);
+
+  const selected = list.find(x => x.id === selectedId) || null;
+
+  // A tile removed while its panel was open must not leave the panel showing it.
+  useEffect(() => {
+    if (selectedId && !list.some(x => x.id === selectedId)) setSelectedId(null);
+  }, [items, selectedId]);
+
+  const replacePhoto = (item) => changeCardImg('exp', item.id, () => {
+    setImgTick(t => t + 1);
+    if (onToast) onToast(item.title + ' photo updated');
+  });
+
+  const saveEdit = (values) => {
+    const target = editing;
+    setEditing(null);
+    if (!target) return;
+    if (target.isNew) {
+      const added = onAdd && onAdd(values);
+      if (added && added.id) setSelectedId(added.id);
+      return;
+    }
+    if (onUpdate) onUpdate(target.id, values);
+  };
+
+  const remove = (item) => {
+    if (confirmingId !== item.id) { setConfirmingId(item.id); return; }
+    setConfirmingId(null);
+    if (onRemove) onRemove(item);
+  };
+
+  return (
+    <>
+      <div className={'exp-gallery' + (selected ? ' has-preview' : '')}>
+        <div className="exp-grid">
+          {list.map(item => (
+            <article
+              key={item.id}
+              className={'exp-tile' + (selected && selected.id === item.id ? ' is-active' : '')}
+              role="button"
+              tabIndex={0}
+              aria-label={'Preview ' + item.title}
+              onClick={() => setSelectedId(item.id)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                setSelectedId(item.id);
+              }}
+            >
+              <img src={expCardImg(item)} alt={item.title} loading="lazy" draggable={false} key={'img-' + imgTick} />
+              <span className="exp-tile-veil" data-hms-no-edit="1"></span>
+              <span className="exp-tile-label" data-hms-no-edit="1">
+                <i className={'fa-solid ' + (item.icon || 'fa-star')}></i>
+                {item.title}
+              </span>
+              {canEdit && (
+                <span className="exp-tile-tools" data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
+                  <button type="button" title="Upload a photo for this tile"
+                    onClick={() => replacePhoto(item)}
+                    style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                </span>
+              )}
+            </article>
+          ))}
+
+          {canEdit && (
+            <button type="button" className="exp-tile exp-tile-add" data-hms-no-edit="1"
+              title="Add an experience"
+              onClick={() => setEditing({ isNew: true, title: '', desc: '' })}>
+              <i className="fa-solid fa-plus"></i>
+              <span>Add experience</span>
+            </button>
+          )}
+        </div>
+
+        {selected && (
+          <aside className="exp-preview" data-hms-no-edit="1">
+            <button type="button" className="exp-preview-close" title="Close preview"
+              onClick={() => setSelectedId(null)} aria-label="Close preview">
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+            <div className="exp-preview-img">
+              <img src={expCardImg(selected)} alt={selected.title} key={selected.id + '-' + imgTick} draggable={false} />
+            </div>
+            <h3 className="exp-preview-title font-display">{selected.title}</h3>
+            <p className="exp-preview-desc">{selected.desc}</p>
+            {canEdit && (
+              <div className="exp-preview-tools">
+                <button type="button" className="btn-outline" onClick={() => replacePhoto(selected)}>
+                  <i className="fa-solid fa-image" style={{ fontSize: '0.7rem' }}></i> Replace photo
+                </button>
+                <button type="button" className="btn-outline" onClick={() => setEditing(selected)}>
+                  <i className="fa-solid fa-pen" style={{ fontSize: '0.7rem' }}></i> Edit text
+                </button>
+                <button type="button" className="btn-outline exp-preview-remove"
+                  onBlur={() => setConfirmingId(null)}
+                  onClick={() => remove(selected)}>
+                  <i className="fa-solid fa-xmark" style={{ fontSize: '0.7rem' }}></i>
+                  {confirmingId === selected.id ? 'Press again to remove' : 'Remove'}
+                </button>
+              </div>
+            )}
+          </aside>
+        )}
+      </div>
+
+      {editing && (
+        <ExperienceEditModal item={editing} onSave={saveEdit} onClose={() => setEditing(null)} />
+      )}
+    </>
+  );
+}
+
+function ExperiencePage({ onNavigate, canEdit, onToast, brandName, experiences, onAddExperience, onUpdateExperience, onRemoveExperience }) {
   const [idx, setIdx] = useState(0);
   // The quote as the hotel's own guests would have written it.
   const t = TESTIMONIALS[idx];
@@ -6575,23 +6825,15 @@ function ExperiencePage({ onNavigate, canEdit, onToast, brandName }) {
         <p>Every detail is designed to elevate your stay from memorable to extraordinary.</p>
       </div>
       <section style={{ padding: '0 1.5rem 4rem', maxWidth: 1200, margin: '0 auto' }}>
-        <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1.25rem', marginBottom: '5rem' }}>
-          {EXPERIENCES.map(ex => (
-            <div key={ex.title} className="exp-item" style={{ position: 'relative' }}>
-              {canEdit && (
-                <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
-                  data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
-                  <button type="button" title="Change image" onClick={() => changeCardImg('exp', ex.title, () => onToast && onToast('Experience image updated'))}
-                    style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
-                </div>
-              )}
-              <img src={resolveCardImg('exp', ex.title, ex.img)} alt={ex.title} loading="lazy"
-                style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 8, marginBottom: '0.85rem' }} />
-              <i className={`fa-solid ${ex.icon}`} style={{ fontSize: '1.4rem', color: 'var(--accent)', marginBottom: '0.85rem', display: 'block' }}></i>
-              <h4 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.35rem' }}>{ex.title}</h4>
-              <p style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', fontWeight: 300, lineHeight: 1.55 }}>{ex.desc}</p>
-            </div>
-          ))}
+        <div style={{ marginBottom: '5rem' }}>
+          <ExperienceGallery
+            items={experiences}
+            canEdit={canEdit}
+            onToast={onToast}
+            onAdd={onAddExperience}
+            onUpdate={onUpdateExperience}
+            onRemove={onRemoveExperience}
+          />
         </div>
 
         <div className="testimonial-box" style={{ maxWidth: 860, margin: '0 auto 4rem', position: 'relative' }}>
@@ -7969,6 +8211,11 @@ function App() {
   const [partners, setPartnersState] = useState(DEFAULT_PARTNERS);
   const [canEditPartners, setCanEditPartners] = useState(false);
   const [canEditExperiences, setCanEditExperiences] = useState(false);
+  const [experiences, setExperiencesState] = useState(() => (
+    window.HMSSiteContent && window.HMSSiteContent.getExperiences
+      ? window.HMSSiteContent.getExperiences(DEFAULT_EXPERIENCES)
+      : DEFAULT_EXPERIENCES
+  ));
 
 
   // In-flight room writes — a poll that lands mid-write would show stale data.
@@ -8145,6 +8392,7 @@ function App() {
         : false
     );
     if (window.HMSSiteContent.getPartners) setPartnersState(window.HMSSiteContent.getPartners(DEFAULT_PARTNERS));
+    if (window.HMSSiteContent.getExperiences) setExperiencesState(window.HMSSiteContent.getExperiences(DEFAULT_EXPERIENCES));
     setCanEditPartners(
       typeof window.HMSSiteContent.canEditPartners === 'function'
         ? window.HMSSiteContent.canEditPartners()
@@ -8716,6 +8964,43 @@ function App() {
     showToast(clean + ' added to Partner Brands');
   };
 
+  /* The Experience gallery's tiles. The store holds the whole list from the
+     first edit, so adding one writes the template's own twelve alongside it. */
+  const addExperience = (values) => {
+    const content = window.HMSSiteContent;
+    if (!content || !content.addExperience) return null;
+    const added = content.addExperience(values, DEFAULT_EXPERIENCES);
+    if (!added) {
+      showToast('Only the role that owns the Experience page can add one.');
+      return null;
+    }
+    setExperiencesState(content.getExperiences(DEFAULT_EXPERIENCES));
+    showToast(added.title + ' added. Upload a photo for it next.');
+    return added;
+  };
+
+  const updateExperience = (id, values) => {
+    const content = window.HMSSiteContent;
+    if (!content || !content.updateExperience) return;
+    if (!content.updateExperience(id, values, DEFAULT_EXPERIENCES)) {
+      showToast('Only the role that owns the Experience page can edit one.');
+      return;
+    }
+    setExperiencesState(content.getExperiences(DEFAULT_EXPERIENCES));
+    showToast('Experience updated');
+  };
+
+  const removeExperience = (item) => {
+    const content = window.HMSSiteContent;
+    if (!content || !content.removeExperience) return;
+    if (!content.removeExperience(item.id, DEFAULT_EXPERIENCES)) {
+      showToast('The gallery needs at least one experience, and only the role that owns the page can remove one.');
+      return;
+    }
+    setExperiencesState(content.getExperiences(DEFAULT_EXPERIENCES));
+    showToast((item.title || 'That experience') + ' removed');
+  };
+
   /* Two clicks rather than a browser confirm: the × asks in place and removes on
      the second press, which keeps the question inside the page being designed. */
   const removePartner = (partner) => {
@@ -8812,7 +9097,18 @@ function App() {
         rooms={rooms}
       />
     ),
-    experience: <ExperiencePage onNavigate={navigateTo} canEdit={canEditExperiences} onToast={showToast} brandName={brandName} />,
+    experience: (
+      <ExperiencePage
+        onNavigate={navigateTo}
+        canEdit={canEditExperiences && isDesignMode}
+        onToast={showToast}
+        brandName={brandName}
+        experiences={experiences}
+        onAddExperience={addExperience}
+        onUpdateExperience={updateExperience}
+        onRemoveExperience={removeExperience}
+      />
+    ),
     amenities: (
       <AmenitiesPage
         amenities={amenities}

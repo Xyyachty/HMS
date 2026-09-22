@@ -20,8 +20,9 @@
   const SOCIAL_LINKS_KEY = '__socialLinks';
   const TYPOGRAPHY_KEY = '__typography';
   const PARTNERS_KEY = '__partners';
+  const EXPERIENCES_KEY = '__experiences';
   const AMENITY_SLIDER_KEY = '__amenitySlider';
-  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, PARTNERS_KEY, AMENITY_SLIDER_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, PARTNERS_KEY, EXPERIENCES_KEY, AMENITY_SLIDER_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   /**
    * The hotel name shown in the header and the footer.
@@ -747,6 +748,69 @@
     return setPartners(list);
   }
 
+  /* ── Experience gallery ───────────────────────────────────────────────────
+     The tiles on the Experience page. One entry per tile: the icon drawn over
+     it, its title and the description the preview panel shows beside it. The
+     photograph is an ordinary card image keyed by the tile's id, not by its
+     title, so renaming a tile keeps the picture that was uploaded for it.
+
+     The template's own twelve are passed in as the fallback rather than written
+     at load, the same way the partner strip works: a team that has never touched
+     the gallery stores nothing and still sees a finished page. */
+  const EXPERIENCE_TITLE_MAX = 60;
+  const EXPERIENCE_DESC_MAX = 240;
+  const EXPERIENCE_ICON_MAX = 40;
+
+  function getExperiences(fallback) {
+    const c = getCustomizations();
+    const entry = c[EXPERIENCES_KEY];
+    if (entry && Array.isArray(entry.items) && entry.items.length) {
+      return entry.items.map((item) => Object.assign({}, item));
+    }
+    return (fallback || []).map((item) => Object.assign({}, item));
+  }
+
+  function setExperiences(items) {
+    if (!canEditExperiences()) return false;
+    patch(EXPERIENCES_KEY, {
+      page: 'experience',
+      items: (items || []).map((item) => ({
+        id: item.id || uid('exp'),
+        icon: String(item.icon || 'fa-star').trim().slice(0, EXPERIENCE_ICON_MAX),
+        // "title", which TemplateDiff::itemTitle() prints in the faculty review.
+        title: String(item.title || '').trim().slice(0, EXPERIENCE_TITLE_MAX),
+        desc: String(item.desc || '').trim().slice(0, EXPERIENCE_DESC_MAX),
+      })),
+    });
+    return true;
+  }
+
+  function addExperience(data, fallbackDefaults) {
+    if (!canEditExperiences()) return null;
+    const entry = {
+      id: uid('exp'),
+      icon: String((data && data.icon) || 'fa-star'),
+      title: String((data && data.title) || 'New Experience').trim().slice(0, EXPERIENCE_TITLE_MAX),
+      desc: String((data && data.desc) || '').trim().slice(0, EXPERIENCE_DESC_MAX),
+    };
+    const list = getExperiences(fallbackDefaults).concat([entry]);
+    return setExperiences(list) ? entry : null;
+  }
+
+  function updateExperience(id, patchData, fallbackDefaults) {
+    const list = getExperiences(fallbackDefaults).map((item) => (
+      item.id === id ? Object.assign({}, item, patchData) : item
+    ));
+    return setExperiences(list);
+  }
+
+  function removeExperience(id, fallbackDefaults) {
+    const list = getExperiences(fallbackDefaults).filter((item) => item.id !== id);
+    // A gallery with nothing in it reads as a broken page, not as a choice.
+    if (!list.length) return false;
+    return setExperiences(list);
+  }
+
   /* ── Amenity slider speed ─────────────────────────────────────────────────
      How long an amenity card holds each photograph before it fades to the next.
      Housekeeping's, like the facilities themselves, and bounded to the three to
@@ -1408,6 +1472,12 @@
     getAmenitySlideSeconds,
     setAmenitySlideSeconds,
     getPartners,
+    EXPERIENCES_KEY,
+    getExperiences,
+    setExperiences,
+    addExperience,
+    updateExperience,
+    removeExperience,
     setPartners,
     addPartner,
     updatePartner,

@@ -148,6 +148,16 @@ class HotelTemplateBuilder
     public const PARTNERS_KEY = '__partners';
 
     /**
+     * The tiles in the Experience gallery, one entry per tile: an id, the icon
+     * drawn over it, its title and its description. The photograph itself is an
+     * ordinary card image keyed by the same id, so a tile renamed keeps it.
+     *
+     * Whoever owns the Experience page owns these, the same way Front Desk owns
+     * the partner strip on Home.
+     */
+    public const EXPERIENCES_KEY = '__experiences';
+
+    /**
      * How long an amenity card holds each of its photographs, in seconds.
      * Housekeeping's, page-scoped to 'amenities' like the rest of that page.
      */
