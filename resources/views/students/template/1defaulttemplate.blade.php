@@ -1008,11 +1008,6 @@
   }
 
 
-  .testimonial-box {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 12px; padding: 2.5rem;
-  }
-
   .booking-bar {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 12px; padding: 2.25rem; position: relative;
@@ -1362,8 +1357,6 @@
     .footer-grid { grid-template-columns: 1fr 1fr !important; }
     .team-grid { grid-template-columns: 1fr 1fr !important; }
     .partner-grid { grid-template-columns: 1fr 1fr !important; }
-    .testimonial-flex { flex-direction: column !important; text-align: center; }
-    .testimonial-nav { justify-content: center; }
     .page-header { padding: 7rem 1.5rem 2rem; }
     .page-header h1 { font-size: 2rem; }
     .exp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
@@ -1726,23 +1719,6 @@ function expCardImg(item) {
   const byTitle = item.title ? resolveCardImg('exp', item.title, '') : '';
   return byTitle || item.img || '';
 }
-
-/* Sample copy names the hotel, and a team that renames theirs must not be left
-   reading about SPC Hotel in its own testimonials. The placeholder is written as
-   a token and filled in at render from the one stored name, so there is nothing
-   to keep in step by hand. */
-const HOTEL_TOKEN = /\{hotel\}/g;
-
-function withHotelName(text, brandName) {
-  return String(text == null ? '' : text).replace(HOTEL_TOKEN, brandName || 'SPC HOTEL');
-}
-
-const TESTIMONIALS = [
-  { text: '"{hotel} redefines what luxury hospitality means. From the moment we arrived, every interaction felt personal and every detail was impeccable."', name: 'Catherine Morel', role: 'Travel Editor, Conde Nast', img: 'https://picsum.photos/seed/guest1/100/100.jpg' },
-  { text: '"I have stayed at hundreds of hotels worldwide, and {hotel} stands apart. The Presidential Suite is a masterpiece of design."', name: 'Alexander Reinhardt', role: 'CEO, Meridian Group', img: 'https://picsum.photos/seed/guest2/100/100.jpg' },
-  { text: '"Dinner at Lumiere was one of the most extraordinary culinary experiences of my life. The tasting menu was poetry on a plate."', name: 'Isabelle Fontaine', role: 'Michelin Guide Inspector', img: 'https://picsum.photos/seed/guest3/100/100.jpg' },
-  { text: '"We chose {hotel} for our anniversary and it exceeded every expectation. The spa, the rooftop pool, the Gilded Bar \u2014 pure magic."', name: 'David & Sarah Chen', role: 'Returning Guests', img: 'https://picsum.photos/seed/guest4/100/100.jpg' }
-];
 
 const LUMIERE_MENU = [
   { name: 'Hokkaido Scallop Tartare', sub: 'yuzu, sea urchin, micro herbs', price: '\u2014' },
@@ -6810,13 +6786,7 @@ function ExperienceGallery({ items, canEdit, onToast, onAdd, onUpdate, onRemove 
   );
 }
 
-function ExperiencePage({ onNavigate, canEdit, onToast, brandName, experiences, onAddExperience, onUpdateExperience, onRemoveExperience }) {
-  const [idx, setIdx] = useState(0);
-  // The quote as the hotel's own guests would have written it.
-  const t = TESTIMONIALS[idx];
-  const quote = withHotelName(t.text, brandName);
-  const guestImg = resolveCardImg('testimonial', String(idx), t.img);
-
+function ExperiencePage({ onNavigate, canEdit, onToast, experiences, onAddExperience, onUpdateExperience, onRemoveExperience }) {
   return (
     <>
       <div className="page-header">
@@ -6825,50 +6795,14 @@ function ExperiencePage({ onNavigate, canEdit, onToast, brandName, experiences, 
         <p>Every detail is designed to elevate your stay from memorable to extraordinary.</p>
       </div>
       <section style={{ padding: '0 1.5rem 4rem', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ marginBottom: '5rem' }}>
-          <ExperienceGallery
-            items={experiences}
-            canEdit={canEdit}
-            onToast={onToast}
-            onAdd={onAddExperience}
-            onUpdate={onUpdateExperience}
-            onRemove={onRemoveExperience}
-          />
-        </div>
-
-        <div className="testimonial-box" style={{ maxWidth: 860, margin: '0 auto 4rem', position: 'relative' }}>
-          {canEdit && (
-            <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 3 }} data-hms-no-edit="1">
-              <button type="button" title="Change image" onClick={() => changeCardImg('testimonial', String(idx), () => onToast && onToast('Guest photo updated'))}
-                style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
-            </div>
-          )}
-          <div className="testimonial-flex" style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
-            <img src={guestImg} alt="Guest" style={{ width: 72, height: 72, borderRadius: '50%', border: '2px solid var(--accent)', objectFit: 'cover', flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <i className="fa-solid fa-quote-left" style={{ color: 'var(--accent)', opacity: 0.35, fontSize: '1.3rem', marginBottom: '0.6rem', display: 'block' }}></i>
-              <p className="font-display" style={{ fontSize: '1.05rem', fontStyle: 'italic', lineHeight: 1.6, marginBottom: '0.75rem' }}>{quote}</p>
-              <div>
-                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{t.name}</span>
-                <span style={{ color: 'var(--fg-muted)', fontSize: '0.75rem', marginLeft: '0.4rem' }}>{t.role}</span>
-              </div>
-            </div>
-            <div className="testimonial-nav" style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
-              <button className="btn-outline" style={{ padding: '0.4rem', width: 36, height: 36, justifyContent: 'center' }} onClick={() => setIdx((idx - 1 + TESTIMONIALS.length) % TESTIMONIALS.length)} aria-label="Previous">
-                <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
-              </button>
-              <button className="btn-outline" style={{ padding: '0.4rem', width: 36, height: 36, justifyContent: 'center' }} onClick={() => setIdx((idx + 1) % TESTIMONIALS.length)} aria-label="Next">
-                <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ textAlign: 'center' }}>
-          <button className="btn-primary" onClick={() => onNavigate('rooms')}>
-            Book Now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
-          </button>
-        </div>
+        <ExperienceGallery
+          items={experiences}
+          canEdit={canEdit}
+          onToast={onToast}
+          onAdd={onAddExperience}
+          onUpdate={onUpdateExperience}
+          onRemove={onRemoveExperience}
+        />
       </section>
     </>
   );
@@ -9102,7 +9036,6 @@ function App() {
         onNavigate={navigateTo}
         canEdit={canEditExperiences && isDesignMode}
         onToast={showToast}
-        brandName={brandName}
         experiences={experiences}
         onAddExperience={addExperience}
         onUpdateExperience={updateExperience}
