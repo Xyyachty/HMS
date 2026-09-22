@@ -1038,31 +1038,88 @@
      menu preview and the footer. They borrow the room card's shape (flex column,
      fixed media band, body takes the rest) so a row of them keeps one height no
      matter how long a promo title or a member's role runs. */
-  .promo-card {
-    display: flex; flex-direction: column; height: 100%;
-    border-radius: 10px; overflow: hidden;
-    background: var(--card); border: 1px solid var(--border);
-    transition: border-color 0.2s, transform 0.2s;
+  /* Promos and Packages: one offer held open on the left, the rest listed on the
+     right. Clicking one on the right trades places with the one on the left. */
+  .promo-showcase { display: grid; grid-template-columns: 1.45fr 1fr; gap: 1.25rem; align-items: stretch; }
+  .promo-feature {
+    position: relative; overflow: hidden;
+    min-height: 360px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--card);
   }
-  .promo-card:hover { border-color: var(--accent); transform: translateY(-4px); }
-  .promo-card-media { position: relative; height: 170px; flex: 0 0 170px; overflow: hidden; }
-  .promo-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s; }
-  .promo-card:hover .promo-card-media img { transform: scale(1.05); }
-  .promo-card-body { flex: 1 1 auto; display: flex; flex-direction: column; padding: 1.1rem 1.15rem 1.25rem; }
+  .promo-feature img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform 0.6s ease;
+  }
+  .promo-feature:hover img { transform: scale(1.04); }
+  /* Dark at the foot, clear at the head: the wording stays readable over any
+     photograph a team uploads. */
+  .promo-feature-veil {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(12,11,9,0.15) 0%, rgba(12,11,9,0.55) 45%, rgba(12,11,9,0.92) 100%);
+  }
+  .promo-feature-body {
+    position: relative; z-index: 2;
+    min-height: 360px; padding: 2rem;
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .promo-feature-eyebrow {
+    color: var(--accent-light); font-size: 0.66rem;
+    letter-spacing: 0.25em; text-transform: uppercase; margin: 0 0 0.6rem;
+  }
+  .promo-feature-title { font-size: 2rem; font-weight: 700; line-height: 1.15; margin: 0; color: #f5f0e8; }
+  .promo-feature-desc {
+    margin: 0.75rem 0 0; max-width: 34rem;
+    color: rgba(245,240,232,0.78); font-size: 0.88rem; font-weight: 300; line-height: 1.65;
+  }
+  .promo-feature-terms {
+    margin: 0.9rem 0 0; color: var(--accent);
+    font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .promo-feature-actions { margin-top: 1.5rem; }
+  /* The card that just took the left-hand slot fades in, so the trade reads as a
+     change rather than as a photograph blinking. */
+  @keyframes promo-feature-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .promo-feature { animation: promo-feature-in 0.35s ease; }
+
   .promo-badge {
-    position: absolute; top: 0.85rem; left: 0.85rem;
+    position: absolute; top: 1rem; left: 1rem; z-index: 2;
     background: var(--accent); color: var(--bg);
-    padding: 0.2rem 0.65rem; border-radius: 4px; font-weight: 700;
+    padding: 0.25rem 0.7rem; border-radius: 4px; font-weight: 700;
     font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
   }
-  /* Three lines' worth of space whether the text fills them or not. */
-  .promo-card-desc {
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-    overflow: hidden; height: 3.72rem;
+
+  .promo-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .promo-mini {
+    display: grid; grid-template-columns: 1fr 104px; gap: 0.9rem; align-items: center;
+    padding: 0.75rem; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    cursor: pointer; text-align: left;
+    transition: border-color 0.2s, transform 0.2s;
   }
-  /* Pushed to the foot of the card so the offer line sits on one baseline
-     across the row. */
-  .promo-card-terms { margin: auto 0 0; padding-top: 0.9rem; }
+  .promo-mini:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .promo-mini:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .promo-mini-copy { min-width: 0; padding-left: 0.35rem; }
+  .promo-mini-offer {
+    display: block; color: var(--accent);
+    font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 0.3rem;
+  }
+  .promo-mini-title {
+    font-size: 1rem; font-weight: 700; margin: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .promo-mini-cta {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    margin-top: 0.5rem; color: var(--fg-muted);
+    font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .promo-mini:hover .promo-mini-cta { color: var(--accent-light); }
+  .promo-mini-thumb {
+    position: relative; width: 104px; height: 78px;
+    border-radius: 8px; overflow: hidden; border: 1px solid var(--border);
+  }
+  .promo-mini-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
 
   /* auto-fit rather than auto-fill: empty tracks collapse, so however many
      brands or members a team ends up with, the row they make is full width. */
@@ -1242,6 +1299,10 @@
     .testimonial-nav { justify-content: center; }
     .page-header { padding: 7rem 1.5rem 2rem; }
     .page-header h1 { font-size: 2rem; }
+    .promo-showcase { grid-template-columns: 1fr !important; }
+    .promo-feature, .promo-feature-body { min-height: 300px; }
+    .promo-feature-body { padding: 1.5rem; }
+    .promo-feature-title { font-size: 1.6rem; }
     .dine-hero { padding: 7rem 1.25rem 2.5rem; }
     .dine-hero-inner { grid-template-columns: 1fr !important; gap: 2.25rem; }
     .dine-hero-art { order: -1; }
@@ -2643,6 +2704,14 @@ const DEFAULT_PROMOS = [
     terms: 'Booked 30 days ahead',
     img: 'https://picsum.photos/seed/hotelearlybird/800/600.jpg',
   },
+  {
+    id: 'promo-4',
+    title: 'Luxury Package',
+    desc: 'A suite, a spa afternoon for two and dinner at the restaurant, booked as one stay.',
+    offer: 'Food + Spa + Stay',
+    terms: 'Two nights or longer',
+    img: 'https://picsum.photos/seed/hotelluxurypackage/800/600.jpg',
+  },
 ];
 
 /* A brand shows its wordmark until someone uploads a logo for it, which reads as
@@ -3235,6 +3304,109 @@ function HeroSlider({ slides, canEdit }) {
 }
 
 
+/* Promos and Packages. One offer is held open on the left and the others are
+   listed beside it; clicking one on the right trades places with the one on the
+   left, so the list never changes length and nothing below it moves. */
+function PromoShowcase({ promos, canEdit, onToast, onBook }) {
+  const list = promos || [];
+  const [order, setOrder] = useState(() => list.map(p => p.id));
+
+  // A promo added or removed under us must not leave the order holding an id
+  // that is gone, or missing one that is new.
+  useEffect(() => {
+    setOrder(prev => {
+      const ids = list.map(p => p.id);
+      const kept = prev.filter(id => ids.indexOf(id) !== -1);
+      const next = kept.concat(ids.filter(id => kept.indexOf(id) === -1));
+      const same = next.length === prev.length && next.every((id, i) => id === prev[i]);
+      return same ? prev : next;
+    });
+  }, [promos]);
+
+  const byId = (id) => list.find(p => p.id === id) || null;
+  const featured = byId(order[0]) || list[0] || null;
+  const rest = order.slice(1).map(byId).filter(Boolean);
+
+  /* The clicked promo takes the left-hand slot and the one that was there takes
+     the slot the clicked one came from. A straight swap, not a reorder: every
+     other row stays where the eye last saw it. */
+  const promote = (id) => setOrder(prev => {
+    const i = prev.indexOf(id);
+    if (i <= 0) return prev;
+    const next = prev.slice();
+    next[0] = prev[i];
+    next[i] = prev[0];
+    return next;
+  });
+
+  if (!featured) return null;
+
+  return (
+    <div className="promo-showcase">
+      <article className="promo-feature" key={featured.id}>
+        <img src={resolveCardImg('promo', featured.id, featured.img)} alt={featured.title} loading="lazy" draggable={false} />
+        <div className="promo-feature-veil" data-hms-no-edit="1"></div>
+        <span className="promo-badge">{featured.offer}</span>
+        {canEdit && (
+          <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 3 }} data-hms-no-edit="1">
+            <button type="button" title="Change promo image"
+              onClick={() => changeCardImg('promo', featured.id, () => onToast && onToast('Promo image updated'))}
+              style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+          </div>
+        )}
+        <div className="promo-feature-body">
+          <p className="promo-feature-eyebrow">Special Offers</p>
+          <h3 className="promo-feature-title font-display">{featured.title}</h3>
+          <p className="promo-feature-desc">{featured.desc}</p>
+          <p className="promo-feature-terms">{featured.terms}</p>
+          <div className="promo-feature-actions" data-hms-no-edit="1">
+            <button type="button" className="btn-primary" onClick={() => onBook && onBook()}>
+              Book This Offer <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <div className="promo-list">
+        {rest.map(promo => (
+          <article
+            key={promo.id}
+            className="promo-mini"
+            role="button"
+            tabIndex={0}
+            aria-label={'Feature ' + promo.title}
+            onClick={() => promote(promo.id)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return;
+              e.preventDefault();
+              promote(promo.id);
+            }}
+          >
+            <div className="promo-mini-copy">
+              <span className="promo-mini-offer">{promo.offer}</span>
+              <h4 className="promo-mini-title font-display">{promo.title}</h4>
+              <span className="promo-mini-cta" data-hms-no-edit="1">
+                Book now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.6rem' }}></i>
+              </span>
+            </div>
+            <div className="promo-mini-thumb">
+              <img src={resolveCardImg('promo', promo.id, promo.img)} alt={promo.title} loading="lazy" draggable={false} />
+              {canEdit && (
+                <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 3 }}
+                  data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
+                  <button type="button" title="Change promo image"
+                    onClick={() => changeCardImg('promo', promo.id, () => onToast && onToast('Promo image updated'))}
+                    style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                </div>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRemovePartner, onBookNow, brandName }) {
   // Passed only so the promo, partner and team pictures re-render once one is replaced.
   void cardImages;
@@ -3402,28 +3574,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
           <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Offers</p>
           <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Promos and Packages</h2>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', alignItems: 'stretch' }}>
-          {DEFAULT_PROMOS.map(promo => (
-            <article key={promo.id} className="promo-card">
-              <div className="promo-card-media">
-                <img src={resolveCardImg('promo', promo.id, promo.img)} alt={promo.title} loading="lazy" />
-                <span className="promo-badge">{promo.offer}</span>
-                {canEditHome && (
-                  <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3 }} data-hms-no-edit="1">
-                    <button type="button" title="Change promo image"
-                      onClick={() => changeCardImg('promo', promo.id, () => onToast && onToast('Promo image updated'))}
-                      style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
-                  </div>
-                )}
-              </div>
-              <div className="promo-card-body">
-                <h3 className="font-display" style={{ fontSize: '1.15rem', margin: 0 }}>{promo.title}</h3>
-                <p className="promo-card-desc" style={{ color: 'var(--fg-muted)', fontSize: '0.8rem', margin: '0.55rem 0 0', lineHeight: 1.55 }}>{promo.desc}</p>
-                <p className="promo-card-terms" style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{promo.terms}</p>
-              </div>
-            </article>
-          ))}
-        </div>
+        <PromoShowcase promos={DEFAULT_PROMOS} canEdit={canEditHome} onToast={onToast} onBook={onBookNow} />
       </section>
 
       <section data-hms-section="partners" data-hms-bg-target="1" style={{ padding: '2rem 1.5rem 3rem', maxWidth: 1200, margin: '0 auto' }}>
