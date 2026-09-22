@@ -725,6 +725,116 @@
     padding: 3rem 2.5rem !important;
   }
 
+  /* The Restaurant page opens on this: a plated photograph, what the kitchen is
+     in two lines, and the way in. Cream, forest green and terracotta, the same
+     three this template is built from. */
+  .dine-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 7.5rem 1.5rem 3rem;
+    background: linear-gradient(180deg, var(--bg-alt) 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  /* A warm wash behind the plate, so the right half sits in the page rather than
+     on top of a flat cream rectangle. */
+  .dine-hero::before {
+    content: '';
+    position: absolute;
+    top: 8%; right: -10%;
+    width: 620px; height: 620px;
+    background: radial-gradient(circle, rgba(193,120,73,0.18) 0%, rgba(193,120,73,0.06) 45%, transparent 70%);
+    pointer-events: none;
+  }
+  .dine-hero-inner {
+    position: relative;
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 3rem;
+    align-items: center;
+  }
+  .dine-hero-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.4rem; }
+  .dine-hero-chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.35rem 0.85rem; border-radius: 100px;
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--warm); font-family: 'DM Sans', sans-serif;
+    font-size: 0.68rem; font-weight: 600;
+    letter-spacing: 0.15em; text-transform: uppercase;
+  }
+  .dine-hero-chip i { font-size: 0.5rem; }
+  .dine-hero-title { font-size: 3.4rem; font-weight: 600; line-height: 1.1; margin: 0; }
+  .dine-hero-title em {
+    display: block; font-style: italic; font-weight: 500;
+    color: var(--warm); margin-top: 0.1rem;
+  }
+  .dine-hero-text {
+    margin: 1.1rem 0 0;
+    max-width: 30rem;
+    color: var(--fg-muted); font-size: 0.95rem; line-height: 1.75;
+  }
+  .dine-hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
+  .dine-hero-facts {
+    display: flex; flex-wrap: wrap; gap: 1.75rem;
+    margin-top: 2.5rem; padding-top: 1.75rem;
+    border-top: 1px solid var(--border);
+  }
+  .dine-hero-fact { display: flex; align-items: center; gap: 0.7rem; }
+  .dine-hero-fact-icon {
+    width: 40px; height: 40px; flex: none; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(27,67,50,0.07); border: 1px solid rgba(27,67,50,0.16);
+    color: var(--accent); font-size: 0.9rem;
+  }
+  .dine-hero-fact-copy strong {
+    display: block; color: var(--fg);
+    font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 600;
+  }
+  .dine-hero-fact-copy span { display: block; color: var(--fg-muted); font-size: 0.72rem; }
+  .dine-hero-art { position: relative; display: flex; align-items: center; justify-content: center; }
+  .dine-hero-plate {
+    position: relative;
+    width: min(400px, 100%);
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 6px solid var(--card);
+    box-shadow: 0 30px 60px -30px rgba(26,26,26,0.35);
+  }
+  .dine-hero-plate img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* A second, wider ring outside the plate. It turns once a minute, which reads as
+     a serving dish being brought round rather than as an animation. */
+  .dine-hero-ring {
+    position: absolute;
+    inset: 0; margin: auto;
+    width: min(468px, calc(100% + 68px));
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    border: 1px dashed rgba(193,120,73,0.45);
+    animation: dine-ring-turn 60s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes dine-ring-turn { to { transform: rotate(360deg); } }
+  .dine-hero-tag {
+    position: absolute;
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.6rem 0.9rem; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    box-shadow: 0 16px 34px -20px rgba(26,26,26,0.4);
+    font-size: 0.72rem; white-space: nowrap;
+  }
+  .dine-hero-tag i { color: var(--warm); font-size: 0.8rem; }
+  .dine-hero-tag strong { display: block; color: var(--fg); font-family: 'DM Sans', sans-serif; font-weight: 600; }
+  .dine-hero-tag span { color: var(--fg-muted); }
+  .dine-hero-tag-hours { left: 0; bottom: 10%; }
+  .dine-hero-tag-count { right: 0; top: 8%; }
+
+  /* The page heading now sits under the hero, so it no longer carries the
+     clearance for the fixed navigation bar. */
+  .page-header.dine-menu-head { padding-top: 2.5rem; }
+  .dine-menu-anchor { scroll-margin-top: 5.5rem; }
+
   @media (max-width: 768px) {
     .hero-split { flex-direction: column; }
     .hero-img { flex: none; height: 45vh; min-height: 300px; }
@@ -744,6 +854,13 @@
     .testi-nav { justify-content: center !important; }
     .tab-bar { gap: 0.25rem; }
     .tab-btn { font-size: 0.72rem; padding: 0.45rem 0.9rem; }
+    .dine-hero { padding: 6.5rem 1.25rem 2.5rem; }
+    .dine-hero-inner { grid-template-columns: 1fr !important; gap: 2.25rem; }
+    .dine-hero-art { order: -1; }
+    .dine-hero-title { font-size: 2.3rem !important; }
+    .dine-hero-facts { gap: 1.1rem; }
+    .dine-hero-tag { font-size: 0.66rem; padding: 0.5rem 0.7rem; }
+    .page-header.dine-menu-head { padding-top: 2rem; }
   }
   /* Outside the builder, allow stacking a bit earlier on tablets. */
   @media (max-width: 900px) {
@@ -4275,7 +4392,97 @@ function MenuConfirmModal({ open, title, message, confirmLabel, saving, onConfir
   );
 }
 
+/* The plate on the Restaurant hero. A team that has photographed its own dishes
+   sees one of those; a team that has not sees a stock plate rather than an empty
+   circle. */
+const RESTAURANT_HERO_IMAGE = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80';
+
+/* The promotional band that opens the Restaurant page. It says what the kitchen
+   is before the page asks the guest to choose a venue or a course, and it carries
+   the two ways on: down to the menu, or straight to a table. */
+function RestaurantHero({ menus, onExplore, onNav }) {
+  const menuList = menus || [];
+  const dishCount = menuList.length;
+  // The team's own photograph wins over the stock plate.
+  const [heroSrc, setHeroSrc] = useState(RESTAURANT_HERO_IMAGE);
+  useEffect(() => {
+    const photographed = menuList.find(item => item && item.img);
+    setHeroSrc(photographed ? photographed.img : RESTAURANT_HERO_IMAGE);
+  }, [menus]);
+
+  return (
+    <header className="dine-hero">
+      <div className="dine-hero-inner">
+        <div>
+          <div className="dine-hero-chips" data-hms-no-edit="1">
+            <span className="dine-hero-chip"><i className="fa-solid fa-circle"></i>Farm Fresh</span>
+            <span className="dine-hero-chip"><i className="fa-solid fa-circle"></i>Chef Curated</span>
+          </div>
+          <h1 className="dine-hero-title font-display">
+            Delicious Food
+            <em>Served Your Way</em>
+          </h1>
+          <p className="dine-hero-text">
+            Fresh ingredients, honest flavours, and the dishes our kitchen is known for —
+            plated in the dining room or brought straight to your suite.
+          </p>
+          <div className="dine-hero-actions" data-hms-no-edit="1">
+            <button type="button" className="btn-primary" onClick={onExplore}>
+              View the Menu <i className="fa-solid fa-arrow-down" style={{ fontSize: '0.7rem' }}></i>
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => onNav && onNav('booking')}>
+              Reserve a Table
+            </button>
+          </div>
+          <div className="dine-hero-facts">
+            <div className="dine-hero-fact">
+              <span className="dine-hero-fact-icon" data-hms-no-edit="1"><i className="fa-solid fa-utensils"></i></span>
+              <div className="dine-hero-fact-copy"><strong>Chef-Curated</strong><span>Plated to order</span></div>
+            </div>
+            <div className="dine-hero-fact">
+              <span className="dine-hero-fact-icon" data-hms-no-edit="1"><i className="fa-solid fa-leaf"></i></span>
+              <div className="dine-hero-fact-copy"><strong>Fresh &amp; Local</strong><span>Market produce daily</span></div>
+            </div>
+            <div className="dine-hero-fact">
+              <span className="dine-hero-fact-icon" data-hms-no-edit="1"><i className="fa-solid fa-bell-concierge"></i></span>
+              <div className="dine-hero-fact-copy"><strong>In-Room Dining</strong><span>Served to your door</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="dine-hero-art" data-hms-no-edit="1">
+          <span className="dine-hero-ring"></span>
+          <div className="dine-hero-plate">
+            <img
+              src={heroSrc}
+              alt="Signature dish"
+              draggable={false}
+              onError={() => { if (heroSrc !== RESTAURANT_HERO_IMAGE) setHeroSrc(RESTAURANT_HERO_IMAGE); }}
+            />
+          </div>
+          <div className="dine-hero-tag dine-hero-tag-hours">
+            <i className="fa-solid fa-clock"></i>
+            <span><strong>6:00 AM – 11:00 PM</strong>Open every day</span>
+          </div>
+          {dishCount > 0 && (
+            <div className="dine-hero-tag dine-hero-tag-count">
+              <i className="fa-solid fa-bowl-food"></i>
+              <span><strong>{dishCount} dish{dishCount === 1 ? '' : 'es'}</strong>on the menu today</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
 function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, menuLockedReason, cardImages, rooms, guest }) {
+  /* The hero's own call to action lands on the menu further down the page,
+     rather than navigating away from it. */
+  const menuAnchorRef = useRef(null);
+  const scrollToMenu = () => {
+    if (menuAnchorRef.current) menuAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const [tab, setTab] = useState('All');
   void cardImages;
   const filtered = tab === 'All' ? RESTAURANTS : RESTAURANTS.filter(r => r.category === tab);
@@ -4412,7 +4619,8 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, o
 
   return (
     <>
-      <div className="page-header">
+      <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNav={onNav} />
+      <div className="page-header dine-menu-head">
         <span className="section-num">02 — Culinary Arts</span>
         <h1 className="font-display">Restaurant & Bar</h1>
         <p>Six distinct dining venues, each offering a unique journey through flavors crafted by award-winning chefs.</p>
@@ -4428,7 +4636,7 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, o
         )}
       </section>
       <Divider />
-      <section style={{ padding: '2.5rem 1.5rem 4rem', maxWidth: 1100, margin: '0 auto' }}>
+      <section ref={menuAnchorRef} className="dine-menu-anchor" style={{ padding: '2.5rem 1.5rem 4rem', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
           <div>
             <h3 className="font-display" style={{ fontSize: '1.4rem', fontWeight: 600, margin: 0 }}>Restaurant Menu</h3>
