@@ -140,6 +140,50 @@
   }
   .room-image-actions .room-image-done { margin-left: auto; }
 
+  .room-slot-grid {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;
+  }
+  @media (max-width: 560px) {
+    .room-slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .room-slot {
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    background: rgba(255,255,255,0.02);
+  }
+  .room-slot.is-primary { border-color: var(--accent); }
+  .room-slot-thumb {
+    position: relative; height: 96px; background-size: cover; background-position: center;
+    background-color: rgba(255,255,255,0.03); cursor: pointer;
+  }
+  .room-slot-thumb.is-empty {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--fg-muted); font-size: 1.3rem;
+  }
+  .room-slot-badge {
+    position: absolute; top: 6px; left: 6px; padding: 0.15rem 0.45rem; border-radius: 999px;
+    background: rgba(0,0,0,0.65); color: #fff; font-size: 0.56rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .room-slot-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;
+    padding: 0.45rem 0.55rem;
+  }
+  .room-slot-name {
+    color: var(--fg-muted); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .room-slot-btn {
+    border: 1px solid var(--border); background: transparent; color: var(--fg);
+    border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.58rem;
+    letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+    font-family: var(--font-body, 'Outfit', sans-serif); transition: all 0.15s;
+  }
+  .room-slot-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .room-slot-clear {
+    border: none; background: none; color: var(--danger, #fb7185);
+    font-size: 0.6rem; cursor: pointer; padding: 0;
+    font-family: var(--font-body, 'Outfit', sans-serif);
+  }
+
   .room-cal {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
     border-radius: 12px; padding: 0.9rem 1rem 1rem;
@@ -509,7 +553,7 @@ function pickImageFile(onPicked) {
 // When opened from a category tab, carry that category into the form instead of
 // silently falling back to the first category in the inventory.
 function createEmptyRoomForm(category) {
-  return { category: String(category || '').trim(), status: 'Available', price: '', desc: '', img: '' };
+  return { category: String(category || '').trim(), status: 'Available', price: '', desc: '', imgs: toRoomSlots(null) };
 }
 
 /* Mirrors App\Support\HotelRoomDefaults: each category numbers from its own hundreds
@@ -549,55 +593,98 @@ function roomCardImg(room) {
   return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
 }
 
-/* The room photo is chosen in its own dialog rather than straight from the file
-   picker, so the picture can be looked at before it is kept — the same way the
-   home page's slider images are replaced. It opens on top of the Add or Edit
-   dialog, which is why it portals to the body instead of nesting. */
-function RoomImageModal({ open, value, onPick, onClear, onClose }) {
+/* How many photographs one room keeps. Mirrors HotelRoom::GALLERY_MAX — the
+   server bounds the list too, so the two cannot disagree on disk. */
+const ROOM_GALLERY_MAX = 3;
+
+/* The three slots as the form holds them: a fixed-length list, so slot 2 stays
+   slot 2 when slot 1 is cleared and the server is handed the order on screen. */
+function toRoomSlots(room) {
+  const slots = new Array(ROOM_GALLERY_MAX).fill('');
+  const saved = (room && Array.isArray(room.imgs) && room.imgs.length)
+    ? room.imgs
+    : [(room && room.img) || ''];
+  saved.slice(0, ROOM_GALLERY_MAX).forEach((url, i) => { slots[i] = url || ''; });
+  return slots;
+}
+
+/* What goes on the wire: the first slot is the room's primary photograph, the
+   rest are its gallery. Blanks are dropped so a cleared middle slot does not
+   reach the server as an empty string. */
+function roomSlotsPayload(slots) {
+  const list = (slots || []).map(u => String(u || '').trim()).filter(Boolean);
+  return { image: list[0] || '', gallery: list.slice(1) };
+}
+
+/* Room photographs are chosen in their own dialog rather than straight from the
+   file picker, so each one can be looked at before it is kept — the same three-up
+   grid the home page's slider images are replaced through. It opens on top of the
+   Add or Edit dialog, which is why it portals to the body instead of nesting. */
+function RoomImageModal({ open, slots, onChange, onClose }) {
   if (!open) return null;
+
+  const list = toRoomSlots({ imgs: slots });
+
+  const replaceAt = (i) => pickImageFile((url) => {
+    if (!url) return;
+    const next = list.slice();
+    next[i] = url;
+    onChange(next);
+  });
+
+  const clearAt = (i) => {
+    const next = list.slice();
+    next[i] = '';
+    onChange(next);
+  };
 
   return ReactDOM.createPortal(
     <div
       className="room-modal-overlay room-image-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="Room photo"
+      aria-label="Room photos"
+      /* React portals still bubble through the React tree, so without this a
+         click in here would also reach the Add or Edit overlay behind it. */
       onClick={e => { e.stopPropagation(); onClose(); }}
     >
       <div className="room-modal room-image-modal" onClick={e => e.stopPropagation()}>
-        <h3 className="room-image-title">Room Photo</h3>
+        <h3 className="room-image-title">Room Photos</h3>
         <p className="room-image-hint">
-          This is the picture guests see on the room card. A room left without one is
-          shown with a stand-in photo instead.
+          These three photographs rotate on the room card. Replace any of them. The first
+          is the one shown wherever there is only room for one.
         </p>
 
-        <div className="room-image-stage">
-          {value ? (
-            <>
-              <img src={value} alt="Room photo" />
-              <span className="room-image-badge">Selected</span>
-            </>
-          ) : (
-            <div className="room-image-empty">
-              <i className="fa-solid fa-image" style={{ fontSize: '1.6rem', color: 'var(--accent)', opacity: 0.7 }}></i>
-              <span>No photo chosen yet</span>
+        <div className="room-slot-grid">
+          {list.map((url, i) => (
+            <div key={i} className={`room-slot${i === 0 ? ' is-primary' : ''}`}>
+              <div
+                className={`room-slot-thumb${url ? '' : ' is-empty'}`}
+                style={url ? { backgroundImage: 'url(' + url + ')' } : undefined}
+                onClick={() => replaceAt(i)}
+                role="button"
+                aria-label={(url ? 'Replace photo ' : 'Choose photo ') + (i + 1)}
+              >
+                {!url && <i className="fa-solid fa-plus"></i>}
+                {i === 0 && url && <span className="room-slot-badge">Primary</span>}
+              </div>
+              <div className="room-slot-row">
+                <span className="room-slot-name">Photo {i + 1}</span>
+                {url
+                  ? <button type="button" className="room-slot-clear" onClick={() => clearAt(i)}>Remove</button>
+                  : null}
+                <button type="button" className="room-slot-btn" onClick={() => replaceAt(i)}>
+                  {url ? 'Replace' : 'Add'}
+                </button>
+              </div>
             </div>
-          )}
+          ))}
         </div>
 
         <div className="room-image-actions">
-          <button type="button" className="btn-primary" onClick={() => pickImageFile(url => { if (url) onPick(url); })}>
-            <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '0.7rem' }}></i> {value ? 'Replace photo' : 'Choose photo'}
-          </button>
-          {value && (
-            <button
-              type="button"
-              onClick={onClear}
-              style={{ background: 'none', border: 'none', color: 'var(--danger, #fb7185)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body, Outfit, sans-serif)' }}
-            >
-              <i className="fa-solid fa-xmark" style={{ marginRight: 4 }}></i>Remove photo
-            </button>
-          )}
+          <span className="room-image-hint" style={{ margin: 0 }}>
+            A room left without any photo is shown with a stand-in.
+          </span>
           <button type="button" className="btn-outline room-image-done" onClick={onClose} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>Done</button>
         </div>
       </div>
@@ -762,7 +849,6 @@ function AddCategoryModal({ saving, error, onSubmit, onCancel }) {
 function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) {
   const [form, setForm] = useState(() => createEmptyRoomForm(defaultCategory));
   const [errors, setErrors] = useState({});
-  const [imgPreview, setImgPreview] = useState('');
   const [imgModal, setImgModal] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -788,7 +874,6 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
   const resetForm = () => {
     setForm(createEmptyRoomForm(defaultCategory));
     setErrors({});
-    setImgPreview('');
     setImgModal(false);
   };
 
@@ -803,12 +888,11 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
       // No name: the server numbers the room from its category (Classic 110 -> 111).
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         category: form.category,
         price: parseInt(String(form.price).replace(/,/g, ''), 10),
         description: String(form.desc || '').trim(),
-        image: form.img || '',
-      }),
+      }, roomSlotsPayload(form.imgs))),
     })
       .then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e)))
       .then(data => {
@@ -850,14 +934,12 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
   // Reset before closing so reopening never shows a stale draft.
   const handleCancel = () => { resetForm(); onClose(); };
 
-  // Opens the photo dialog. The file picker is reached from inside it, so the
+  // Opens the photo dialog. The file picker is reached from inside it, so each
   // picture can be looked at before the room is saved with it.
   const handleImagePick = () => setImgModal(true);
 
-  const applyImage = (url) => {
-    update('img', url);
-    setImgPreview(url);
-  };
+  const slots = toRoomSlots({ imgs: form.imgs });
+  const chosen = slots.filter(Boolean);
 
   const errorText = (key) => (
     errors[key]
@@ -932,28 +1014,27 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
             </div>
 
             <div>
-              <label style={fieldLabel}>Room Image</label>
+              <label style={fieldLabel}>Room Photos</label>
               <div
                 onClick={handleImagePick}
                 style={{ border: '1.5px dashed var(--border)', borderRadius: 8, cursor: 'pointer', overflow: 'hidden', background: 'rgba(255,255,255,0.02)', transition: 'border-color 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
               >
-                {imgPreview ? (
-                  <img src={imgPreview} alt="Room preview" style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
+                {chosen.length ? (
+                  <img src={chosen[0]} alt="Room preview" style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
                 ) : (
                   <div style={{ height: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--fg-muted)' }}>
                     <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '1.4rem', color: 'var(--accent)', opacity: 0.7 }}></i>
-                    <span style={{ fontSize: '0.75rem' }}>Click to choose a photo</span>
+                    <span style={{ fontSize: '0.75rem' }}>Click to choose photos</span>
                   </div>
                 )}
               </div>
-              {imgPreview && (
-                <button type="button" onClick={() => { update('img', ''); setImgPreview(''); }}
-                  style={{ marginTop: '0.4rem', background: 'none', border: 'none', color: 'var(--danger, #fb7185)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
-                  <i className="fa-solid fa-xmark" style={{ marginRight: 4 }}></i>Remove image
-                </button>
-              )}
+              <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.7rem' }}>
+                {chosen.length
+                  ? chosen.length + ' of ' + ROOM_GALLERY_MAX + ' chosen — click to change them'
+                  : 'Up to ' + ROOM_GALLERY_MAX + ', shown in turn on the room card'}
+              </p>
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
@@ -968,9 +1049,8 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
 
       <RoomImageModal
         open={imgModal}
-        value={imgPreview}
-        onPick={applyImage}
-        onClear={() => applyImage('')}
+        slots={form.imgs}
+        onChange={next => update('imgs', next)}
         onClose={() => setImgModal(false)}
       />
     </div>
@@ -1245,7 +1325,7 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
     category: normalizeRoomCategory(room.category || room.label),
     price: String(room.price || ''),
     desc: room.desc || '',
-    img: room.img || '',
+    imgs: toRoomSlots(room),
   }));
   const [errors, setErrors] = useState({});
   const [imgModal, setImgModal] = useState(false);
@@ -1279,15 +1359,15 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
-      body: JSON.stringify({
+      // The slots are handed back whole, the untouched ones as the /storage/...
+      // URLs they arrived as: the server collapses those to the paths it already
+      // holds rather than re-uploading them.
+      body: JSON.stringify(Object.assign({
         name: String(form.name).trim(),
         category: form.category,
         price: parseInt(String(form.price).replace(/,/g, ''), 10),
         description: String(form.desc || '').trim(),
-        // Handed back as-is when untouched: the server collapses an existing
-        // /storage/... URL to the path it already holds rather than re-uploading.
-        image: form.img || '',
-      }),
+      }, roomSlotsPayload(form.imgs))),
     })
       .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
       .then(data => {
@@ -1330,7 +1410,7 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
     <div className="room-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="room-modal" onClick={e => e.stopPropagation()}>
         <div className="room-modal-img">
-          <img src={form.img || roomCardImg(room)} alt={room.name} />
+          <img src={toRoomSlots({ imgs: form.imgs }).find(Boolean) || roomCardImg(room)} alt={room.name} />
           <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close">
             <i className="fa-solid fa-xmark"></i>
           </button>
@@ -1385,14 +1465,15 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
             </div>
 
             <div>
-              <label style={fieldLabel}>Room Image</label>
+              <label style={fieldLabel}>Room Photos</label>
               <button
                 type="button"
                 onClick={() => setImgModal(true)}
                 className="btn-outline"
                 style={{ fontSize: '0.7rem', padding: '0.5rem 0.9rem' }}
               >
-                <i className="fa-solid fa-image" style={{ fontSize: '0.7rem' }}></i> Change photo
+                <i className="fa-solid fa-images" style={{ fontSize: '0.7rem' }}></i>
+                {' '}Change photos ({toRoomSlots({ imgs: form.imgs }).filter(Boolean).length}/{ROOM_GALLERY_MAX})
               </button>
             </div>
 
@@ -1411,9 +1492,8 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
 
       <RoomImageModal
         open={imgModal}
-        value={form.img}
-        onPick={url => update('img', url)}
-        onClear={() => update('img', '')}
+        slots={form.imgs}
+        onChange={next => update('imgs', next)}
         onClose={() => setImgModal(false)}
       />
     </div>

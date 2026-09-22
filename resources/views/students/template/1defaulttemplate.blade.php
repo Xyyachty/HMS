@@ -476,6 +476,18 @@
   /* Shorter band for the home page's preview cards. */
   .room-card-media { position: relative; height: 180px; flex: 0 0 180px; overflow: hidden; }
   .room-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* The dots over a room's rotating photographs. Same shape as the hero's, at the
+     size a card can carry. */
+  .room-photo-dots {
+    position: absolute; left: 0; right: 0; bottom: 8px; z-index: 3;
+    display: flex; justify-content: center; gap: 5px;
+  }
+  .room-photo-dot {
+    width: 5px; height: 5px; padding: 0; border: none; border-radius: 50%;
+    background: rgba(255,255,255,0.45); cursor: pointer; transition: all 0.2s;
+  }
+  .room-photo-dot.is-active { background: #fff; width: 14px; border-radius: 999px; }
   .room-card-body { flex: 1 1 auto; display: flex; flex-direction: column; }
   /* Clamped rather than wrapped: a long name must not buy itself a second line and
      push its card taller than the one beside it. */
@@ -1271,6 +1283,67 @@ function roomCardImg(room) {
   if (room && room.img) return room.img;
   const seed = encodeURIComponent((room && (room.id || room.name)) || 'room');
   return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
+}
+
+/* Every photograph of a room, primary first. A room saved before galleries — or
+   one the team only gave a single picture — reads as a list of one, so callers
+   do not have to ask which kind of room they are drawing. */
+function roomCardImgs(room) {
+  const list = (room && Array.isArray(room.imgs) ? room.imgs : [])
+    .map((url) => String(url || '').trim())
+    .filter(Boolean);
+  return list.length ? list : [roomCardImg(room)];
+}
+
+/* The room's photographs, shown in turn. A room with one picture is a plain
+   <img>: no dots, no timer, nothing to pause — the rotation only exists once
+   there is something to rotate. */
+function RoomPhotos({ room, className, interval = 4500 }) {
+  const list = roomCardImgs(room);
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (list.length < 2) return undefined;
+    const id = setInterval(() => setActive((i) => (i + 1) % list.length), interval);
+    return () => clearInterval(id);
+  }, [list.length, interval]);
+
+  // The list can shrink under it when a photo is removed mid-rotation.
+  const index = Math.min(active, list.length - 1);
+
+  if (list.length < 2) {
+    return <img src={list[0]} alt={room && room.name} className={className} />;
+  }
+
+  return (
+    <>
+      {list.map((url, i) => (
+        <img
+          key={url + i}
+          src={url}
+          alt={room && room.name}
+          className={className}
+          style={{
+            position: i === 0 ? 'relative' : 'absolute',
+            inset: i === 0 ? undefined : 0,
+            opacity: i === index ? 1 : 0,
+            transition: 'opacity 0.6s ease',
+          }}
+        />
+      ))}
+      <div className="room-photo-dots" data-hms-no-edit="1">
+        {list.map((url, i) => (
+          <button
+            key={url + i}
+            type="button"
+            className={`room-photo-dot${i === index ? ' is-active' : ''}`}
+            aria-label={'Photo ' + (i + 1)}
+            onClick={(e) => { e.stopPropagation(); setActive(i); }}
+          ></button>
+        ))}
+      </div>
+    </>
+  );
 }
 
 /* Auto-named rooms are "<Category> <number>" (see HotelRoomDefaults::nextNameFor), so
@@ -3021,7 +3094,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
                 </div>
               )}
               <div className="room-card-media" style={{ borderRadius: '12px 12px 0 0' }}>
-                <img src={roomCardImg(room)} alt={room.name} />
+                <RoomPhotos room={room} />
               </div>
               <div className="room-card-body" style={{ padding: '1.1rem 1.15rem 1.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'start' }}>
@@ -3617,7 +3690,7 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
     <div className="room-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true">
       <div className="room-modal room-detail-modal" onClick={e => e.stopPropagation()}>
         <div className="room-modal-img">
-          <img src={roomCardImg(room)} alt={room.name} />
+          <RoomPhotos room={room} />
           <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close">
             <i className="fa-solid fa-xmark"></i>
           </button>

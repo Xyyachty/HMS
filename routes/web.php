@@ -1457,8 +1457,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'price'       => 'sometimes|required|integer|min:1',
             'description' => 'sometimes|nullable|string|max:5000',
             'image'       => 'sometimes|nullable|string|max:900000',
+            'gallery'     => 'sometimes|nullable|array|max:' . HotelRoom::GALLERY_MAX,
+            'gallery.*'   => 'nullable|string|max:900000',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
+            'gallery.max' => 'A room keeps at most ' . HotelRoom::GALLERY_MAX . ' photos.',
+            'gallery.*.max' => 'One of those images is too large. Please choose a smaller one.',
         ]);
 
         foreach (['name', 'category', 'price', 'description'] as $field) {
@@ -1493,6 +1497,22 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
         }
 
+        /* The other two photographs. Sent whole every time — the form hands back the
+         * storage paths of the ones it did not touch — so this is a replacement, not
+         * an append, and removing a photo is simply leaving it out. */
+        if (array_key_exists('gallery', $data) && HotelRoom::supportsGallery()) {
+            $sent = collect($data['gallery'] ?? [])->filter(fn ($v) => is_string($v) && trim($v) !== '')->count();
+            $room->gallery = \App\Support\HotelGallery::persist(
+                $data['gallery'] ?? [],
+                $membership,
+                HotelRoom::GALLERY_MAX
+            );
+
+            if ($imageWarning === null && count($room->gallery) < $sent) {
+                $imageWarning = 'One of those pictures could not be saved. The room keeps the ones that were.';
+            }
+        }
+
         if ($room->isDirty()) {
             $room->save();
         }
@@ -1521,8 +1541,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'price'       => 'required|integer|min:1',
             'description' => 'nullable|string|max:5000',
             'image'       => 'nullable|string|max:900000',
+            'gallery'     => 'nullable|array|max:' . HotelRoom::GALLERY_MAX,
+            'gallery.*'   => 'nullable|string|max:900000',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
+            'gallery.max' => 'A room keeps at most ' . HotelRoom::GALLERY_MAX . ' photos.',
+            'gallery.*.max' => 'One of those images is too large. Please choose a smaller one.',
         ]);
 
         // The name is the category's next free number, never whatever the browser sent
@@ -1535,6 +1559,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $membership->group_name
         );
 
+        $gallerySent = collect($data['gallery'] ?? [])->filter(fn ($v) => is_string($v) && trim($v) !== '')->count();
+        $gallery = HotelRoom::supportsGallery()
+            ? \App\Support\HotelGallery::persist($data['gallery'] ?? [], $membership, HotelRoom::GALLERY_MAX)
+            : null;
+
         $room = HotelRoom::create([
             'group_name'  => $membership->group_name,
             'faculty_id'  => $membership->faculty_id,
@@ -1545,12 +1574,16 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'price'       => (int) $data['price'],
             'description' => $data['description'] ?? null,
             'image'       => $imagePath,
-        ]);
+        ] + (HotelRoom::supportsGallery() ? ['gallery' => $gallery] : []));
         return response()->json([
             'room' => $room->toTemplateArray(),
-            'image_warning' => (!empty($data['image']) && $imagePath === null)
-                ? 'The room was added, but its picture could not be saved. Try again from the room card.'
-                : null,
+            'image_warning' => match (true) {
+                !empty($data['image']) && $imagePath === null
+                    => 'The room was added, but its picture could not be saved. Try again from the room card.',
+                count($gallery ?? []) < $gallerySent
+                    => 'The room was added, but one of its pictures could not be saved. Try again from the room card.',
+                default => null,
+            },
         ], 201);
     })->name('hotel.rooms.store');
 
@@ -2328,9 +2361,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ];
 
         if (\App\Models\HotelAmenity::supportsGallery()) {
-            $attributes['gallery'] = \App\Support\HotelAmenityGallery::persist(
+            $attributes['gallery'] = \App\Support\HotelGallery::persist(
                 $data['gallery'] ?? [],
-                $membership
+                $membership,
+                \App\Models\HotelAmenity::GALLERY_MAX
             );
         }
 
@@ -2425,9 +2459,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
         }
         if (array_key_exists('gallery', $data) && \App\Models\HotelAmenity::supportsGallery()) {
-            $amenity->gallery = \App\Support\HotelAmenityGallery::persist(
+            $amenity->gallery = \App\Support\HotelGallery::persist(
                 $data['gallery'],
-                $membership
+                $membership,
+                \App\Models\HotelAmenity::GALLERY_MAX
             );
         }
         $amenity->save();
