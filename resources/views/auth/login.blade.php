@@ -54,6 +54,20 @@
     .brand-gradient { background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D); }
     .brand-gradient-alt { background: linear-gradient(135deg, #FB7185, #DB2777, #A855F7); }
 
+    /* Campus photo behind the brand wash on the visual panel */
+    .hero-photo {
+      object-position: center 40%;
+      transform: scale(1.04);
+    }
+    .hero-wash {
+      background: linear-gradient(135deg, #FB7185, #DB2777, #A855F7);
+      opacity: 0.78;
+      mix-blend-mode: multiply;
+    }
+    .hero-shade {
+      background: linear-gradient(to top, rgba(76, 5, 39, 0.65), rgba(76, 5, 39, 0.1) 55%, rgba(76, 5, 39, 0.35));
+    }
+
     .gradient-text {
       background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D);
       -webkit-background-clip: text;
@@ -188,6 +202,11 @@
 
   <!-- ==================== LEFT PANEL — Visual ==================== -->
   <div class="auth-panel hidden lg:flex lg:w-1/2 h-full relative overflow-hidden brand-gradient-alt items-center justify-center p-10">
+    <!-- Campus photo + brand wash -->
+    <img src="{{ asset('chtm-building.png') }}" alt="" aria-hidden="true" class="hero-photo absolute inset-0 w-full h-full object-cover" />
+    <div class="hero-wash absolute inset-0"></div>
+    <div class="hero-shade absolute inset-0"></div>
+
     <!-- Decorative shapes -->
     <div class="absolute inset-0">
       <div class="float-a absolute top-16 left-16 w-20 h-20 border-2 border-white/10 rounded-3xl"></div>
@@ -205,8 +224,8 @@
       <!-- Logo -->
       <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm mx-auto mb-8" />
 
-      <h1 class="text-3xl font-extrabold text-white tracking-tight mb-4">Hotel Management System</h1>
-      <p class="text-lg text-white/70 font-light leading-relaxed mb-10">Interactive Hospitality Task Management — drag, drop, and manage hotel tasks across departments.</p>
+      <h1 class="text-3xl font-extrabold text-white tracking-tight mb-4" style="text-shadow: 0 2px 12px rgba(76, 5, 39, 0.45);">Hotel Management System</h1>
+      <p class="text-lg text-white/80 font-light leading-relaxed mb-10" style="text-shadow: 0 1px 8px rgba(76, 5, 39, 0.4);">Interactive Hospitality Task Management — drag, drop, and manage hotel tasks across departments.</p>
 
       <!-- Role chips -->
       
