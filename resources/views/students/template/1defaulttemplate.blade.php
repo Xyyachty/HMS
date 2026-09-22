@@ -6564,6 +6564,23 @@ function amenityShots(item) {
   return ['https://picsum.photos/seed/amenity-' + seed + '/900/600.jpg'];
 }
 
+/* The three slots as an editor works them: a fixed-length list, so slot 2 stays
+   slot 2 when slot 1 is cleared. The stand-in amenityShots() falls back to is
+   deliberately not read here — an empty slot has to read as empty.
+
+   Three is the whole slider: the primary photograph plus the two
+   HotelAmenity::GALLERY_MAX keeps. */
+const AMENITY_PHOTO_MAX = 3;
+
+function amenityPhotoSlots(item) {
+  const slots = new Array(AMENITY_PHOTO_MAX).fill('');
+  const saved = (item && Array.isArray(item.images) && item.images.length)
+    ? item.images
+    : [(item && item.img) || ''];
+  saved.slice(0, AMENITY_PHOTO_MAX).forEach((url, i) => { slots[i] = url || ''; });
+  return slots;
+}
+
 function facilityStatusClass(status) {
   if (status === 'Available') return 'is-available';
   if (status === 'Temporarily Closed') return 'is-closed';
@@ -7078,6 +7095,108 @@ function AmenityEditModal({ open, amenity, saving, error, onSubmit, onCancel }) 
   );
 }
 
+/* The amenity's three photographs, all in front of the person changing them —
+   the same dialog the home page's slides and a room's photos are replaced
+   through. The button on the card used to open a file picker straight away,
+   which could only ever reach the primary photograph. */
+function AmenityPhotosModal({ amenity, onSave, onClose }) {
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  if (!amenity) return null;
+
+  /* Read straight off the amenity rather than copied into the dialog: the save
+     refetches the catalogue, so the thumbnails follow it without a second copy
+     to keep in step — and a slot nobody touched is sent back as the stored
+     address it came as, not as the picture's bytes again. */
+  const slots = amenityPhotoSlots(amenity);
+
+  /* Written on each change rather than on Done: the page is rehydrated from
+     /students/hotel/amenities every poll, so a picture held only in this dialog
+     would be wiped by the next one. */
+  const commit = (next) => {
+    if (typeof onSave !== 'function') return;
+    setSaving(true);
+    Promise.resolve(onSave(next)).finally(() => setSaving(false));
+  };
+
+  const replaceAt = (i) => pickImageFile((url) => {
+    if (!url) return;
+    const next = slots.slice();
+    next[i] = url;
+    commit(next);
+  });
+
+  const clearAt = (i) => {
+    const next = slots.slice();
+    next[i] = '';
+    commit(next);
+  };
+
+  return ReactDOM.createPortal(
+    <div
+      className="room-modal-overlay hero-modal-overlay"
+      data-hms-no-edit="1"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Amenity photos"
+      onClick={onClose}
+    >
+      <div className="room-modal" style={{ width: 'min(620px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '0.35rem' }}>Amenity Photos</h3>
+        <p className="header-modal-hint" style={{ marginTop: 0 }}>
+          These three photographs rotate on {amenity.name}'s card. Replace any of them. The
+          first is the one shown wherever there is only room for one.
+        </p>
+
+        <div className="hero-slides-grid">
+          {slots.map((url, i) => (
+            <div key={i} className={`hero-slide-card${i === 0 ? ' is-active' : ''}`}>
+              <div
+                className="hero-slide-thumb"
+                style={url
+                  ? { backgroundImage: 'url(' + url + ')' }
+                  : { display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-muted)' }}
+                role="button"
+                aria-label={(url ? 'Replace photo ' : 'Choose photo ') + (i + 1)}
+                onClick={() => replaceAt(i)}
+              >
+                {i === 0 && url ? <span className="hero-slide-badge">Primary</span> : null}
+                {!url ? <i className="fa-solid fa-plus"></i> : null}
+              </div>
+              <div className="hero-slide-row">
+                <span className="hero-slide-name">Photo {i + 1}</span>
+                <span style={{ display: 'flex', gap: '0.35rem' }}>
+                  {url ? (
+                    <button type="button" className="hero-slide-replace" onClick={() => clearAt(i)}>Remove</button>
+                  ) : null}
+                  <button type="button" className="hero-slide-replace" onClick={() => replaceAt(i)}>
+                    {url ? 'Replace' : 'Add'}
+                  </button>
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginTop: '1.4rem' }}>
+          <span className="header-modal-hint" style={{ margin: 0 }}>
+            {saving ? 'Saving…' : 'An amenity left without any photo is shown with a stand-in.'}
+          </span>
+          <button type="button" className="btn-outline" onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+
 function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdit, onRemove }) {
   const list = Array.isArray(amenities) ? amenities : [];
   const [openId, setOpenId] = useState(null);
@@ -7092,6 +7211,23 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
   const [removing, setRemoving] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // The amenity whose photo dialog is open, by id, or null when it is closed.
+  const [photoId, setPhotoId] = useState(null);
+  const photoItem = list.find(item => item.id === photoId) || null;
+
+  /* The card's three photographs: the first is the amenity's own image, the
+     other two its gallery. Sent whole every time, so clearing a slot is simply
+     leaving it out. Only a warning is announced — the thumbnails redraw on
+     their own, and a toast per replaced picture reads as noise. */
+  const savePhotos = (item, slots) => {
+    if (!onEdit || !item) return Promise.resolve(null);
+    const kept = (slots || []).map(url => String(url || '').trim()).filter(Boolean);
+    return Promise.resolve(onEdit(item.dbId, { image: kept[0] || '', gallery: kept.slice(1) }))
+      .then((saved) => {
+        if (saved && saved._imageWarning && onToast) onToast(saved._imageWarning);
+        return saved;
+      });
+  };
 
   const submitEdit = (values) => {
     if (!onEdit || !editing) return;
@@ -7149,9 +7285,9 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
         }}>
           <i className="fa-solid fa-wand-magic-sparkles" style={{ color: 'var(--accent)' }}></i>
           <span style={{ fontSize: '0.8rem', lineHeight: 1.5 }}>
-            <strong>You are designing this page.</strong> Hover a card to change its photo,
-            edit its details or remove it, and use <em>Add an Amenity</em> at the bottom to
-            add one. The heading and the words above can be edited by clicking them.
+            <strong>You are designing this page.</strong> Hover a card to change its three
+            photographs, edit its details or remove it, and use <em>Add an Amenity</em> at
+            the bottom to add one. The heading and the words above can be edited by clicking them.
           </span>
         </div>
       ) : null}
@@ -7193,17 +7329,9 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
                     <div data-hms-no-edit="1"
                       onClick={(e) => e.stopPropagation()}
                       style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}>
-                      <button type="button" title={'Change the photo of ' + item.name}
+                      <button type="button" title={'Change the photos of ' + item.name}
                         style={toolBtnStyle('image')}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          pickImageFile((url) => {
-                            if (!url || !onEdit) return;
-                            Promise.resolve(onEdit(item.dbId, { image: url })).then((saved) => {
-                              if (onToast) onToast((saved && saved._imageWarning) || (item.name + ' photo updated'));
-                            });
-                          });
-                        }}>
+                        onClick={(e) => { e.stopPropagation(); setPhotoId(item.id); }}>
                         <i className="fa-solid fa-image" style={{ fontSize: 11 }}></i>
                       </button>
                       <button type="button" title={'Edit ' + item.name} style={toolBtnStyle('edit')}
@@ -7276,6 +7404,14 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
       </section>
 
       {selected && <FacilityModal facility={selected} onClose={() => setOpenId(null)} slideSeconds={slideSeconds} onToast={onToast} />}
+
+      {canEdit && photoItem ? (
+        <AmenityPhotosModal
+          amenity={photoItem}
+          onSave={(slots) => savePhotos(photoItem, slots)}
+          onClose={() => setPhotoId(null)}
+        />
+      ) : null}
 
       <AmenityEditModal
         open={adding}

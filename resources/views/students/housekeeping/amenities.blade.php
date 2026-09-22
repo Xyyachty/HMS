@@ -158,7 +158,9 @@ const PER_PAGE = 5;
 const IMAGE_MAX_DIMENSION = 1280;
 const IMAGE_MAX_BYTES = 600 * 1024;
 /* What the save route accepts: the primary photograph plus this many more. */
-const GALLERY_MAX = 8;
+/* The extras beside the main photo — three photographs in all, the same bound
+   HotelAmenity::GALLERY_MAX keeps. */
+const GALLERY_MAX = 2;
 
 const CONFIG = window.HMS_AMENITIES || {};
 const STATUSES = CONFIG.statuses || ['Available', 'Temporarily Closed', 'Under Maintenance'];
@@ -547,8 +549,9 @@ function AmenityModal({ amenity, onClose, onSaved }) {
             <div>
               <label style={fieldLabel}>More photos</label>
               <p style={{ margin: '0 0 0.6rem', color: 'var(--fg-muted)', fontSize: '0.7rem' }}>
-                Up to {GALLERY_MAX}. These are what View Details pages through on the hotel
-                site. Each one is resized and compressed here before it is sent.
+                Up to {GALLERY_MAX} more — three photographs in all. These are what the card
+                and View Details page through on the hotel site. Each one is resized and
+                compressed here before it is sent.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: '0.5rem' }}>
                 {form.gallery.map((shot, index) => (

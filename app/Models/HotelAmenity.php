@@ -75,8 +75,13 @@ class HotelAmenity extends Model
         'gallery'   => 'array',
     ];
 
-    /** At most this many extra photographs beside the primary one. */
-    public const GALLERY_MAX = 8;
+    /**
+     * At most this many extra photographs beside the primary one — three in all,
+     * which is what the card's slider pages through. The bound is the extras
+     * rather than the total because that is the shape `gallery` holds; the same
+     * split HotelRoom uses.
+     */
+    public const GALLERY_MAX = 2;
 
     /**
      * Every repair ever requested for this amenity, newest first, so first() is the one

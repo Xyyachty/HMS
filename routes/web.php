@@ -2413,6 +2413,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'gallery.*'   => 'nullable|string|max:900000',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
+            'gallery.max' => 'An amenity keeps at most ' . (\App\Models\HotelAmenity::GALLERY_MAX + 1) . ' photos.',
+            'gallery.*.max' => 'One of those images is too large. Please choose a smaller one.',
         ]);
 
         // Reopening a facility Maintenance is still fixing has to go through the verify
