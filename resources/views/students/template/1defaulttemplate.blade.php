@@ -1295,6 +1295,20 @@ function roomCardImgs(room) {
   return list.length ? list : [roomCardImg(room)];
 }
 
+/* The three slots as an editor works them: a fixed-length list, so slot 2 stays
+   slot 2 when slot 1 is cleared. Mirrors HotelRoom::GALLERY_MAX and the same
+   helper on the Manage Room screen. */
+const ROOM_GALLERY_MAX = 3;
+
+function roomPhotoSlots(room) {
+  const slots = new Array(ROOM_GALLERY_MAX).fill('');
+  const saved = (room && Array.isArray(room.imgs) && room.imgs.length)
+    ? room.imgs
+    : [(room && room.img) || ''];
+  saved.slice(0, ROOM_GALLERY_MAX).forEach((url, i) => { slots[i] = url || ''; });
+  return slots;
+}
+
 /* The room's photographs, shown in turn. A room with one picture is a plain
    <img>: no dots, no timer, nothing to pause — the rotation only exists once
    there is something to rotate. */
@@ -2887,6 +2901,108 @@ function CardColorModal({ open, title, hint, value, onPick, onClose }) {
 }
 
 
+/* The room's three photographs, all in front of the person changing them - the
+   same dialog the home page's five slides are replaced through. The button on the
+   card used to open a file picker straight away, which could only ever reach the
+   first picture. */
+function RoomPhotosModal({ room, onSave, onClose }) {
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  if (!room) return null;
+
+  /* Read straight off the room rather than copied into the dialog: the save
+     applies to the grid before the server answers, so the thumbnails follow it
+     without a second copy to keep in step - and a slot nobody touched is sent
+     back as the stored path it came as, not as the picture's bytes again. */
+  const slots = roomPhotoSlots(room);
+
+  /* Written on each change rather than on Done: the grid is rehydrated from the
+     server every few seconds, so a picture held only in this dialog would be
+     wiped by the next poll. */
+  const commit = (next) => {
+    if (typeof onSave !== 'function') return;
+    setSaving(true);
+    Promise.resolve(onSave(next)).finally(() => setSaving(false));
+  };
+
+  const replaceAt = (i) => pickImageFile((url) => {
+    if (!url) return;
+    const next = slots.slice();
+    next[i] = url;
+    commit(next);
+  });
+
+  const clearAt = (i) => {
+    const next = slots.slice();
+    next[i] = '';
+    commit(next);
+  };
+
+  return ReactDOM.createPortal(
+    <div
+      className="room-modal-overlay hero-modal-overlay"
+      data-hms-no-edit="1"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Room photos"
+      onClick={onClose}
+    >
+      <div className="room-modal" style={{ width: 'min(620px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '0.35rem' }}>Room Photos</h3>
+        <p className="header-modal-hint" style={{ marginTop: 0 }}>
+          These three photographs rotate on {room.name}'s card. Replace any of them. The
+          first is the one shown wherever there is only room for one.
+        </p>
+
+        <div className="hero-slides-grid">
+          {slots.map((url, i) => (
+            <div key={i} className={`hero-slide-card${i === 0 ? ' is-active' : ''}`}>
+              <div
+                className="hero-slide-thumb"
+                style={url
+                  ? { backgroundImage: 'url(' + url + ')' }
+                  : { display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-muted)' }}
+                role="button"
+                aria-label={(url ? 'Replace photo ' : 'Choose photo ') + (i + 1)}
+                onClick={() => replaceAt(i)}
+              >
+                {i === 0 && url ? <span className="hero-slide-badge">Primary</span> : null}
+                {!url ? <i className="fa-solid fa-plus"></i> : null}
+              </div>
+              <div className="hero-slide-row">
+                <span className="hero-slide-name">Photo {i + 1}</span>
+                <span style={{ display: 'flex', gap: '0.35rem' }}>
+                  {url ? (
+                    <button type="button" className="hero-slide-replace" onClick={() => clearAt(i)}>Remove</button>
+                  ) : null}
+                  <button type="button" className="hero-slide-replace" onClick={() => replaceAt(i)}>
+                    {url ? 'Replace' : 'Add'}
+                  </button>
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginTop: '1.4rem' }}>
+          <span className="header-modal-hint" style={{ margin: 0 }}>
+            {saving ? 'Saving…' : 'A room left without any photo is shown with a stand-in.'}
+          </span>
+          <button type="button" className="btn-outline" onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+
 function HeroSlidesModal({ open, slides, activeIndex, onReplace, onClose }) {
   if (!open) return null;
 
@@ -3001,7 +3117,7 @@ function HeroSlider({ slides, canEdit }) {
 }
 
 
-function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRemovePartner, onBookNow, brandName }) {
+function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRemovePartner, onBookNow, brandName }) {
   // Passed only so the promo, partner and team pictures re-render once one is replaced.
   void cardImages;
   /* The landing page says what the hotel is. Both lines come from the team's
@@ -3014,6 +3130,9 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
   const roomList = rooms && rooms.length ? rooms : [];
   const menuList = menus || [];
   const partnerList = partners && partners.length ? partners : DEFAULT_PARTNERS;
+  // The room whose photo dialog is open, by id, or null when it is closed.
+  const [photoRoomId, setPhotoRoomId] = useState(null);
+  const photoRoom = roomList.find(r => r.id === photoRoomId) || null;
   // Which brand's × has been pressed once. The second press is the confirmation.
   const [confirmingPartner, setConfirmingPartner] = useState(null);
 
@@ -3087,7 +3206,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
                 <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
                   data-hms-no-edit="1"
                   onClick={e => e.stopPropagation()}>
-                  <button type="button" title="Change image" onClick={() => pickImageFile((url) => { if (url && onEditRoom) onEditRoom(room.id, { img: url }); if (onToast) onToast('Room image updated'); })}
+                  <button type="button" title="Change photos" onClick={() => setPhotoRoomId(room.id)}
                     style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
                   <button type="button" title="Remove room" onClick={() => onRemoveRoom && onRemoveRoom(room.id)}
                     style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
@@ -3274,6 +3393,13 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
           ))}
         </div>
       </section>
+      {photoRoom ? (
+        <RoomPhotosModal
+          room={photoRoom}
+          onSave={(slots) => onEditRoomPhotos && onEditRoomPhotos(photoRoom.id, slots)}
+          onClose={() => setPhotoRoomId(null)}
+        />
+      ) : null}
     </>
   );
 }
@@ -4328,6 +4454,67 @@ function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPi
   );
 }
 
+/* The category's three photographs, all in front of the person changing them.
+   The camera button under the picture could only ever reach the slide showing at
+   that moment, so filling the other two meant waiting for them to come round.
+   Same dialog as the home page's Slider Images, three slots instead of five. */
+function CategoryPhotosModal({ name, slots, onReplace, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return ReactDOM.createPortal(
+    <div
+      className="room-modal-overlay hero-modal-overlay"
+      data-hms-no-edit="1"
+      role="dialog"
+      aria-modal="true"
+      aria-label={name + ' photos'}
+      onClick={onClose}
+    >
+      <div className="room-modal" style={{ width: 'min(620px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', marginBottom: '0.35rem' }}>{name} Photos</h3>
+        <p className="header-modal-hint" style={{ marginTop: 0 }}>
+          These three photographs rotate on the {name} card. Replace any of them. The
+          first is the one shown wherever there is only room for one.
+        </p>
+
+        <div className="hero-slides-grid">
+          {slots.map((slot, i) => (
+            <div key={slot.key} className={`hero-slide-card${i === 0 ? ' is-active' : ''}`}>
+              <div
+                className="hero-slide-thumb"
+                style={slot.src
+                  ? { backgroundImage: 'url(' + slot.src + ')' }
+                  : { display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-muted)' }}
+                role="button"
+                aria-label={(slot.src ? 'Replace photo ' : 'Choose photo ') + (i + 1)}
+                onClick={() => onReplace(slot.slot)}
+              >
+                {i === 0 && slot.src ? <span className="hero-slide-badge">Primary</span> : null}
+                {!slot.src ? <i className="fa-solid fa-plus"></i> : null}
+              </div>
+              <div className="hero-slide-row">
+                <span className="hero-slide-name">Photo {i + 1}</span>
+                <button type="button" className="hero-slide-replace" onClick={() => onReplace(slot.slot)}>
+                  {slot.src ? 'Replace' : 'Add'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.4rem' }}>
+          <button type="button" className="btn-outline" onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPickRoom, staff, canEdit, onEditCategory, onAddRoom, onReplacePhoto }) {
   /* Design mode works the three stored slots, so an empty one can still be filled;
      a guest is shown the photographs that exist and nothing standing in for the
@@ -4337,6 +4524,7 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
   const editSlides = useMemo(() => categoryPhotoSlots(detail), [detail]);
   const slides = canSwapPhotos ? editSlides : guestSlides;
   const [slide, setSlide] = useState(0);
+  const [photosOpen, setPhotosOpen] = useState(false);
   // Which of the three the control below the picture is aimed at.
   const current = slides[slide] || slides[0] || null;
   // What a stay actually starts at, which is the cheapest room in it rather than
@@ -4354,7 +4542,7 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
           onIndex={setSlide}
           interval={4200}
           canEdit={canSwapPhotos}
-          onReplace={(slot) => onReplacePhoto(name, slot)}
+          onReplace={() => setPhotosOpen(true)}
         />
 
         {canEdit ? (
@@ -4399,11 +4587,20 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
             className="cat-photo-swap"
             data-hms-no-edit="1"
             onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); onReplacePhoto(name, current.slot); }}
+            onClick={(e) => { e.stopPropagation(); setPhotosOpen(true); }}
           >
             <i className="fa-solid fa-camera" aria-hidden="true"></i>
-            {(current.src ? 'Replace' : 'Add') + ' photo ' + (slide + 1) + ' of ' + slides.length}
+            {'Change photos (' + editSlides.filter((entry) => entry.src).length + ' of ' + editSlides.length + ')'}
           </button>
+        ) : null}
+
+        {canSwapPhotos && photosOpen ? (
+          <CategoryPhotosModal
+            name={name}
+            slots={editSlides}
+            onReplace={(slot) => onReplacePhoto(name, slot)}
+            onClose={() => setPhotosOpen(false)}
+          />
         ) : null}
       </div>
 
@@ -7549,6 +7746,42 @@ function App() {
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 
+  /* The room's photographs, written to hotel_rooms rather than to the customisation
+     draft. editRoom() keeps design-time changes in the draft, which the rooms grid
+     never reads - it is rehydrated from /students/hotel/rooms every poll - so a
+     picture chosen here used to disappear a few seconds later. Same endpoint and
+     same payload as the Manage Room screen: first slot is the room's image, the
+     rest are its gallery. */
+  const editRoomPhotos = useCallback((id, slots) => {
+    const list = (slots || []).map(u => String(u || '').trim()).filter(Boolean);
+    const body = { image: list[0] || '', gallery: list.slice(1) };
+
+    setRooms(prev => prev.map(r => (
+      r.id === id ? Object.assign({}, r, { img: body.image, imgs: list }) : r
+    )));
+
+    pendingWrites.current += 1;
+    return fetch(hmsApi('roomUpdate', '/students/hotel/rooms') + '/' + String(id).replace(/^db-/, ''), {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(r => (r.ok ? r.json() : Promise.reject(r)))
+      .then(data => {
+        if (data && data.room) {
+          setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r)));
+        }
+        showToast((data && data.image_warning) || 'Room photos updated');
+        return data;
+      })
+      .catch(() => {
+        showToast('Those photos could not be saved. Please try again.');
+        return null;
+      })
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, [showToast]);
+
   /* The Add Room Card button in Design mode. It writes a hotel_rooms row like the
      Manage Room screen does — same endpoint, same numbering — so a card added while
      customising the site is a real room the team can then work with there. */
@@ -7980,6 +8213,7 @@ function App() {
         )}
         onAddRoom={addRoom}
         onEditRoom={editRoom}
+        onEditRoomPhotos={editRoomPhotos}
         onRemoveRoom={removeRoom}
         brandName={brandName}
         />

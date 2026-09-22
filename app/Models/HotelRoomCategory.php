@@ -94,6 +94,38 @@ class HotelRoomCategory extends Model
      */
     public const GALLERY_MAX = 2;
 
+    /**
+     * The category as every screen that draws one reads it.
+     *
+     * `image_path` and the gallery hold storage paths, not addresses: the browser
+     * was handed "hotel/3/Group A/….jpg" and asked to load it against the site
+     * root, so a photograph Room Management uploaded saved correctly and then
+     * showed as a broken picture. Rooms have always gone out through
+     * HotelImageStore::url(); categories now do too, in the one place both the
+     * catalogue and the save response are built from.
+     *
+     * @return array<string, mixed>
+     */
+    public function toTemplateArray(): array
+    {
+        return [
+            'name' => $this->name,
+            'floor' => (int) $this->floor_number,
+            'rate' => $this->rate,
+            'description' => $this->description,
+            'image' => \App\Support\HotelImageStore::url($this->image_path),
+            'gallery' => array_values(array_filter(array_map(
+                fn ($path) => \App\Support\HotelImageStore::url($path),
+                $this->galleryList()
+            ))),
+            'inclusions' => self::splitInclusions($this->inclusions),
+            'rooms_available' => $this->rooms_available,
+            'capacity' => self::supportsShowcase() ? $this->capacity : null,
+            'bed_type' => self::supportsShowcase() ? $this->bed_type : null,
+            'room_size' => self::supportsShowcase() ? $this->room_size : null,
+        ];
+    }
+
     /** The inclusions as the list the browser works with, not the stored text. */
     public function getInclusionListAttribute(): array
     {

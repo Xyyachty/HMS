@@ -276,19 +276,9 @@ class HotelRoomDefaults
         }
 
         foreach ($rows as $category) {
-            $categories[] = [
-                'name' => $category->name,
-                'floor' => (int) $category->floor_number,
-                'rate' => $category->rate,
-                'description' => $category->description,
-                'image' => $category->image_path,
-                'gallery' => $category->galleryList(),
-                'inclusions' => HotelRoomCategory::splitInclusions($category->inclusions),
-                'rooms_available' => $category->rooms_available,
-                'capacity' => HotelRoomCategory::supportsShowcase() ? $category->capacity : null,
-                'bed_type' => HotelRoomCategory::supportsShowcase() ? $category->bed_type : null,
-                'room_size' => HotelRoomCategory::supportsShowcase() ? $category->room_size : null,
-            ];
+            // Photographs go out as addresses, not storage paths - see
+            // HotelRoomCategory::toTemplateArray().
+            $categories[] = $category->toTemplateArray();
         }
 
         // Tab order is the hundreds block, so a renamed category keeps its place rather

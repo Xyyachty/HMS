@@ -1356,14 +1356,21 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $current = collect(\App\Support\HotelRoomDefaults::categoriesFor($membership))->firstWhere('name', $currentName);
             $existingGallery = is_array($current['gallery'] ?? null) ? $current['gallery'] : [];
 
+            // The catalogue hands these out as addresses; what is stored is the path
+            // behind one, so a slot kept because its replacement failed is put back
+            // the way it was written rather than as a full URL.
             if (array_key_exists('image', $data)) {
                 $newPath = $persistImage($data['image']);
-                $data['image'] = $newPath === null ? ($current['image'] ?? '') : $newPath;
+                $data['image'] = $newPath === null
+                    ? \App\Support\HotelImageStore::relativize((string) ($current['image'] ?? ''))
+                    : $newPath;
             }
             if (array_key_exists('gallery', $data) && is_array($data['gallery'])) {
                 $data['gallery'] = collect($data['gallery'])->map(function ($value, $i) use ($persistImage, $existingGallery) {
                     $newPath = $persistImage($value);
-                    return $newPath === null ? ($existingGallery[$i] ?? '') : $newPath;
+                    return $newPath === null
+                        ? \App\Support\HotelImageStore::relativize((string) ($existingGallery[$i] ?? ''))
+                        : $newPath;
                 })->all();
             }
         }
@@ -1384,19 +1391,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
 
         return response()->json([
-            'category' => [
-                'name' => $category->name,
-                'floor' => (int) $category->floor_number,
-                'rate' => $category->rate,
-                'description' => $category->description,
-                'image' => $category->image_path,
-                'gallery' => $category->galleryList(),
-                'inclusions' => $category->inclusion_list,
-                'rooms_available' => $category->rooms_available,
-                'capacity' => \App\Models\HotelRoomCategory::supportsShowcase() ? $category->capacity : null,
-                'bed_type' => \App\Models\HotelRoomCategory::supportsShowcase() ? $category->bed_type : null,
-                'room_size' => \App\Models\HotelRoomCategory::supportsShowcase() ? $category->room_size : null,
-            ],
+            'category' => $category->toTemplateArray(),
             'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
             'image_warning' => $imageWarning,
         ]);
