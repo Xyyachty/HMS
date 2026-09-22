@@ -2636,7 +2636,10 @@
     // Background colours belong to the whole site, not to whichever element is
     // selected, so the rail carries them rather than the Design Panel — the rail
     // is already the site-wide control strip and is only shown in design mode.
-    if (canEdit) {
+    // Front Desk alone may set them (see HMSSiteContent.canEditSiteColors), so
+    // every other role gets a rail without the button rather than a dialog that
+    // refuses every swatch.
+    if (canEdit && window.HMSSiteContent && window.HMSSiteContent.canEditSiteColors()) {
       const colors = document.createElement('button');
       colors.type = 'button';
       colors.className = 'hms-rail-colors';

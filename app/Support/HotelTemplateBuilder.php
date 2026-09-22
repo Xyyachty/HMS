@@ -230,8 +230,13 @@ class HotelTemplateBuilder
 
     /**
      * The site's single logo, stored as one card image rather than one per
-     * section. Any of these roles may change it and the change applies to the
-     * whole site — header, footer and every page read this one key.
+     * section. Front Desk alone may change it — see filterCustomizationsForRole()
+     * — and the change applies to the whole site: header, footer and every page
+     * read this one key.
+     *
+     * SITE_OWNING_ROLES still covers the site-wide *text* (the hotel's words, its
+     * social profiles, its type) and the per-card artwork each role owns. The
+     * logo and __siteColors are the exceptions and check front_desk directly.
      */
     public const LOGO_IMAGE_ID = 'logo';
     public const LOGO_IMAGE_MAP_KEY = 'brand:' . self::LOGO_IMAGE_ID;
@@ -800,7 +805,10 @@ class HotelTemplateBuilder
                 continue;
             }
 
-            if ($key === self::SITE_COLORS_KEY && in_array($role, self::SITE_OWNING_ROLES, true)) {
+            // The site's background colours are Front Desk's, like the hotel name
+            // and the navigation: they paint every page, not the one page a role
+            // edits, so no other role may write them.
+            if ($key === self::SITE_COLORS_KEY && $role === 'front_desk') {
                 if (is_array($value)) {
                     $value['page'] = $value['page'] ?? 'home';
                     $out[$key] = $value;
@@ -864,7 +872,8 @@ class HotelTemplateBuilder
                         continue;
                     }
                     if ($id === self::LOGO_IMAGE_ID) {
-                        if (in_array($role, self::SITE_OWNING_ROLES, true)) {
+                        // Front Desk's alone, for the same reason as the colours above.
+                        if ($role === 'front_desk') {
                             $ownMap[$mapKey] = $url;
                         }
                         continue;

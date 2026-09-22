@@ -2849,7 +2849,7 @@ function MobileMenu({ open, onClose, onNav, links, cardImages, brandName }) {
    run at all in Design mode. Because the editor no longer swallows the click,
    each handler has to check isSiteInteractive() itself and decide between
    navigating (Preview) and opening a dialog (Design). */
-function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, onHeaderEdit, cardImages, guest, onGuestSignIn, onGuestSignOut }) {
+function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, canEditSiteColors, onHeaderEdit, cardImages, guest, onGuestSignIn, onGuestSignOut }) {
   // Passed only so the navigation re-renders when the shared logo changes.
   void cardImages;
 
@@ -2891,7 +2891,7 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, ed
               onKeyDown={editing && canEditBrandName ? (e) => { if (e.key === 'Enter' || e.key === ' ') openEdit(e, { kind: 'brand' }); } : undefined}
             >{brandName}</span>
           </button>
-          {editing && (
+          {editing && canEditSiteColors && (
             <button
               type="button"
               className="hms-header-color"
@@ -5534,6 +5534,9 @@ function App() {
   // Read through state, not inline in NavBar: hotel auth resolves after the
   // first render, so an inline canEditLogo() read shows a stale answer.
   const [canEditLogo, setCanEditLogo] = useState(false);
+  // Same reason, and the same answer: both the logo and the background colours
+  // are Front Desk's alone.
+  const [canEditSiteColors, setCanEditSiteColors] = useState(false);
   const [roomCardBg, setRoomCardBgState] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getRoomCardBg ? window.HMSSiteContent.getRoomCardBg() : ''
   ));
@@ -5774,6 +5777,11 @@ function App() {
     setCanEditLogo(
       typeof window.HMSSiteContent.canEditLogo === 'function'
         ? window.HMSSiteContent.canEditLogo()
+        : false
+    );
+    setCanEditSiteColors(
+      typeof window.HMSSiteContent.canEditSiteColors === 'function'
+        ? window.HMSSiteContent.canEditSiteColors()
         : false
     );
     if (window.HMSSiteContent.getRoomCardBg) setRoomCardBgState(window.HMSSiteContent.getRoomCardBg());
@@ -6363,6 +6371,7 @@ function App() {
         canEditNav={canEditNav}
         canEditBrandName={canEditBrandName}
         canEditLogo={canEditLogo}
+        canEditSiteColors={canEditSiteColors}
         onHeaderEdit={setHeaderEdit}
         cardImages={cardImages}
         guest={guestAuth}

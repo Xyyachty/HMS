@@ -193,7 +193,13 @@
                 {{-- The palette used to be reachable only through a pill floating over
                      the canvas, which meant scrolling to find it before any colour
                      could be picked. Same dialog, one click, from where the rest of
-                     the site-wide design already lives. --}}
+                     the site-wide design already lives.
+
+                     Front Desk only: the background colours and the logo are the
+                     whole site's, not one page's, so the role that owns the site's
+                     name and navigation owns these too. Every other role still sees
+                     them applied — it just cannot change them from here. --}}
+                @if($panelRole === 'front_desk')
                 <button type="button" onclick="openSiteColours()" class="feature-btn feature-btn--hotel mb-3">
                     <i class="fas fa-palette"></i>
                     Background colours
@@ -207,6 +213,16 @@
                         its images. Both apply to every page, as the colours above do.
                     </p>
                 </div>
+                @else
+                <div class="note-box">
+                    <i class="fas fa-circle-info note-box-icon"></i>
+                    <p>
+                        The hotel logo and the site's background colours are set by Front Desk, for
+                        the whole site at once. Ask them for a change; the fonts and text colours
+                        above are still yours.
+                    </p>
+                </div>
+                @endif
             </div>
         </div>
         @endif

@@ -285,17 +285,21 @@
   }
 
   /**
-   * One logo for the whole site, under a single key — see cardImageKey('brand',
-   * 'logo'). It is deliberately not gated on a particular page: there is no page
-   * that owns it, and every role that can edit anything could already change the
-   * logo on its own section before this became shared, so gating it on Home
-   * would take that away rather than merely redirect it.
+   * The logo and the site's background colours are one site's worth each, shown
+   * on every page, so they belong to Front Desk alone — the role that already
+   * owns the site's name, its navigation and its words. Another role changing
+   * one of them would redesign pages it does not edit, and the most recent
+   * change would silently overwrite the team's.
    *
-   * A change therefore applies site-wide, and the most recent one wins — see
-   * HotelTemplateBuilder::claimSharedLogo().
+   * The server enforces the same rule: filterCustomizationsForRole() keeps
+   * brand:logo and __siteColors for front_desk only.
    */
+  function ownsSiteBranding() {
+    return currentRoles().indexOf('front_desk') !== -1;
+  }
+
   function canEditLogo() {
-    return canEdit();
+    return canEdit() && ownsSiteBranding();
   }
 
   /**
@@ -389,10 +393,9 @@
    * anyone's page: the site background itself, the header, the footer, and the
    * Rooms / Restaurant / Amenities / Experience areas.
    *
-   * Not gated on a page, for the same reason the logo is not (see canEditLogo):
-   * no single role owns the site's background, and every role that can edit
-   * anything could already recolour the section it works on. A change applies
-   * site-wide and the most recent one wins.
+   * Front Desk's, for the same reason the logo is (see canEditLogo): the site's
+   * background is the whole site's, not one page's, so the role that owns the
+   * site's identity sets it and a change applies everywhere at once.
    */
   const SITE_COLOR_AREAS = ['site', 'header', 'footer', 'rooms', 'roomModal', 'dining', 'amenities', 'experience'];
 
@@ -410,11 +413,9 @@
   }
 
   /**
-   * 'site' / 'header' / 'footer' / 'roomModal' / 'experience' stay shared chrome
-   * (see the comment above SITE_COLOR_AREAS) — any editor may recolour them.
-   * 'rooms', 'dining' and 'amenities' are a specific role's own page, so only
-   * that role's editor may recolour them; everyone else still sees the colour
-   * applied, they just can't change it from the Background Colours dialog.
+   * Every area here is Front Desk's, through canEditSiteColors(). The page map
+   * below stays so the rule survives if the colours are ever shared again:
+   * 'rooms', 'dining' and 'amenities' would then be their own role's alone.
    */
   const SITE_COLOR_AREA_PAGES = { dining: 'restaurant', amenities: 'amenities' };
 
@@ -441,7 +442,7 @@
   }
 
   function canEditSiteColors() {
-    return canEdit();
+    return canEdit() && ownsSiteBranding();
   }
 
   function canEditMenuCardStyle() {
@@ -1233,6 +1234,10 @@
 
   function setCardImage(kind, id, url) {
     if (!id || !url) return;
+    // The site logo is Front Desk's. It is reachable outside the header dialog
+    // too — the footer copy is a plain <img> the element editor can replace — so
+    // the rule is enforced here, where every write passes.
+    if (cardImageKey(kind, id) === cardImageKey('brand', 'logo') && !canEditLogo()) return;
     const map = getCardImages();
     map[cardImageKey(kind, id)] = String(url);
     patch(CARD_IMAGES_KEY, { map: map });
