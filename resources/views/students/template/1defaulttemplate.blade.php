@@ -6952,11 +6952,18 @@ function FacilityModal({ facility, onClose, slideSeconds, onToast }) {
   );
 }
 
-/* How long an amenity card holds each photograph. A fixed pace now: the
-   3s/4s/5s picker that used to set it called HMSSiteContent.setAmenitySlideSeconds,
-   which was never implemented, so every click returned at the guard and every
-   team sat on this default regardless. */
+/* How long an amenity card holds each photograph before it slides to the next.
+   The team's own choice, saved with the rest of the Amenities page and read back
+   here; HMSSiteContent clamps it to 3-5 seconds and answers this default until
+   one is picked. */
 const AMENITY_SLIDE_SECONDS = 4;
+const AMENITY_SLIDE_CHOICES = [3, 4, 5];
+
+function readAmenitySlideSeconds() {
+  return (window.HMSSiteContent && typeof window.HMSSiteContent.getAmenitySlideSeconds === 'function')
+    ? window.HMSSiteContent.getAmenitySlideSeconds()
+    : AMENITY_SLIDE_SECONDS;
+}
 
 /* What Housekeeping may say about a facility from the Amenities page itself.
    Deliberately only what a guest reads on the card: the rate, the capacity, how
@@ -7215,6 +7222,15 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
   const [photoId, setPhotoId] = useState(null);
   const photoItem = list.find(item => item.id === photoId) || null;
 
+  /* How fast the cards slide, saved for the team rather than held here: the pace
+     belongs to the page, so a guest sees the one Housekeeping picked. The store
+     clamps it, and the App re-reads it through its own subscription. */
+  const chooseSlideSeconds = (seconds) => {
+    if (window.HMSSiteContent && typeof window.HMSSiteContent.setAmenitySlideSeconds === 'function') {
+      window.HMSSiteContent.setAmenitySlideSeconds(seconds);
+    }
+  };
+
   /* The card's three photographs: the first is the amenity's own image, the
      other two its gallery. Sent whole every time, so clearing a slot is simply
      leaving it out. Only a warning is announced — the thumbnails redraw on
@@ -7288,6 +7304,28 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
             <strong>You are designing this page.</strong> Hover a card to change its three
             photographs, edit its details or remove it, and use <em>Add an Amenity</em> at
             the bottom to add one. The heading and the words above can be edited by clicking them.
+          </span>
+
+          {/* How long each photograph is held before the card slides to the next. */}
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)' }}>Slide every</span>
+            {AMENITY_SLIDE_CHOICES.map((seconds) => {
+              const on = Number(slideSeconds) === seconds;
+              return (
+                <button
+                  key={seconds}
+                  type="button"
+                  className="btn-outline"
+                  aria-pressed={on}
+                  onClick={() => chooseSlideSeconds(seconds)}
+                  style={{
+                    padding: '0.3rem 0.62rem', fontSize: '0.7rem',
+                    borderColor: on ? 'var(--accent)' : undefined,
+                    color: on ? 'var(--accent)' : undefined,
+                  }}
+                >{seconds}s</button>
+              );
+            })}
           </span>
         </div>
       ) : null}
@@ -7761,6 +7799,9 @@ function App() {
   const [canOrderMenu, setCanOrderMenu] = useState(false);
   const [addons, setAddons] = useState([]);
   const [amenities, setAmenities] = useState([]);
+  // How long each amenity photograph is held. Saved per team, so it is read
+  // from the customizations rather than fixed here.
+  const [amenitySlideSeconds, setAmenitySlideSecondsState] = useState(readAmenitySlideSeconds);
   /* Whether Housekeeping may design the Amenities page. Two answers, both
      required: the server's, which owns who the facilities belong to, and the
      builder's, which knows this student opened the page as Housekeeping rather
@@ -7991,6 +8032,7 @@ function App() {
         : false
     );
     if (window.HMSSiteContent.getSiteColors) setSiteColorsState(window.HMSSiteContent.getSiteColors());
+    setAmenitySlideSecondsState(readAmenitySlideSeconds());
     setCanEditRooms(window.HMSSiteContent.canEditRooms());
     setCanManageRooms(
       typeof window.HMSSiteContent.canUseRoomManagementUi === 'function'
@@ -8623,7 +8665,7 @@ function App() {
     amenities: (
       <AmenitiesPage
         amenities={amenities}
-        slideSeconds={AMENITY_SLIDE_SECONDS}
+        slideSeconds={amenitySlideSeconds}
         onToast={showToast}
         canEdit={canCustomizeAmenities && inAmenitiesModule && isDesignMode}
         onAdd={addAmenity}

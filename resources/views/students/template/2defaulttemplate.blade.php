@@ -5372,11 +5372,18 @@ function FacilityModal({ facility, onClose, slideSeconds, onToast }) {
   );
 }
 
-/* How long an amenity card holds each photograph. A fixed pace now: the
-   3s/4s/5s picker that used to set it called HMSSiteContent.setAmenitySlideSeconds,
-   which was never implemented, so every click returned at the guard and every
-   team sat on this default regardless. */
+/* How long an amenity card holds each photograph before it slides to the next.
+   The team's own choice, saved with the rest of the Amenities page and read back
+   here; HMSSiteContent clamps it to 3-5 seconds and answers this default until
+   one is picked. */
 const AMENITY_SLIDE_SECONDS = 4;
+const AMENITY_SLIDE_CHOICES = [3, 4, 5];
+
+function readAmenitySlideSeconds() {
+  return (window.HMSSiteContent && typeof window.HMSSiteContent.getAmenitySlideSeconds === 'function')
+    ? window.HMSSiteContent.getAmenitySlideSeconds()
+    : AMENITY_SLIDE_SECONDS;
+}
 
 function AmenitiesPage({ amenities, slideSeconds, onToast }) {
   const list = Array.isArray(amenities) ? amenities : [];
@@ -5784,6 +5791,9 @@ function App() {
   const [canEditExperiences, setCanEditExperiences] = useState(false);
   const [addons, setAddons] = useState([]);
   const [amenities, setAmenities] = useState([]);
+  // How long each amenity photograph is held. Saved per team, so it is read
+  // from the customizations rather than fixed here.
+  const [amenitySlideSeconds, setAmenitySlideSecondsState] = useState(readAmenitySlideSeconds);
   const [cardImages, setCardImages] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getCardImages ? window.HMSSiteContent.getCardImages() : {}
   ));
@@ -6000,6 +6010,7 @@ function App() {
         : false
     );
     if (window.HMSSiteContent.getSiteColors) setSiteColorsState(window.HMSSiteContent.getSiteColors());
+    setAmenitySlideSecondsState(readAmenitySlideSeconds());
     setCanEditRooms(window.HMSSiteContent.canEditRooms());
     setCanManageRooms(
       typeof window.HMSSiteContent.canUseRoomManagementUi === 'function'
@@ -6491,7 +6502,7 @@ function App() {
     amenities: (
       <AmenitiesPage
         amenities={amenities}
-        slideSeconds={AMENITY_SLIDE_SECONDS}
+        slideSeconds={amenitySlideSeconds}
         onToast={showToast}
       />
     ),
