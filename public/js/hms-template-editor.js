@@ -79,13 +79,22 @@
   }
 
   /**
+   * Which page's owner may redesign a tagged section, whichever page it renders on.
+   *
    * Rooms and the Restaurant menu each get a preview strip embedded on the Home
    * page (data-hms-section="rooms" / "dining"), so Front Desk owning the Home
    * page must not also unlock those other roles' sections just because they
-   * render there. Anything without one of these tags is chrome (hero, footer)
-   * or the page's own content, and stays governed by canEditCurrentPage() alone.
+   * render there.
+   *
+   * The footer is the opposite case: it is one block repeated under every page,
+   * carrying the hotel's name, its contact details and its social links, so a
+   * change to it is a change to the whole site. It belongs to Front Desk, the
+   * role that owns the site's identity, and 'home' is how that is said here.
+   *
+   * Anything without one of these tags is the page's own content and stays
+   * governed by canEditCurrentPage() alone.
    */
-  const SECTION_OWNER_PAGE = { rooms: 'rooms', dining: 'restaurant' };
+  const SECTION_OWNER_PAGE = { rooms: 'rooms', dining: 'restaurant', footer: 'home' };
 
   function sectionOwnerPage(el) {
     let node = el;
@@ -106,14 +115,26 @@
     return editablePages.indexOf(ownerPage) !== -1;
   }
 
-  function blockEditToast() {
+  /* Why an element is out of bounds, when the page alone does not explain it.
+     A section owned by another page is the confusing case: a student standing on
+     their own page would otherwise be told they may only redesign that page. */
+  function sectionBlockMessage(el) {
+    const ownerPage = sectionOwnerPage(el);
+    if (!ownerPage || !canEditCurrentPage()) return null;
+    if (!Array.isArray(editablePages) || editablePages.indexOf(ownerPage) !== -1) return null;
+    return ownerPage === 'home'
+      ? 'The footer shows under every page, so Front Desk edits it. Your own page is yours.'
+      : 'That section belongs to the ' + ownerPage + ' page, so the role that owns it edits it.';
+  }
+
+  function blockEditToast(message) {
     const pages = Array.isArray(editablePages) && editablePages.length
       ? editablePages.join(', ')
       : 'your assigned pages';
     postToParent({
       type: 'edit-blocked',
       page: getCurrentPage(),
-      message: 'You can only redesign: ' + pages + '. Teammates still see your synced work.',
+      message: message || ('You can only redesign: ' + pages + '. Teammates still see your synced work.'),
     });
   }
 
@@ -1993,7 +2014,7 @@
     }
     if (!canEditElement(el)) {
       clearSelection();
-      blockEditToast();
+      blockEditToast(sectionBlockMessage(el));
       return;
     }
     selectElement(el);
@@ -2013,7 +2034,7 @@
     if (!canEditElement(el)) {
       e.preventDefault();
       e.stopPropagation();
-      blockEditToast();
+      blockEditToast(sectionBlockMessage(el));
       return;
     }
     if (!el || ['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
