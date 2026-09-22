@@ -1126,6 +1126,14 @@ function hmsConfirm(message) {
   }
 }
 
+/* A stored photo's address carries the team's name, so it can hold a space, and an
+   unquoted url() ends at the first one: the whole declaration was dropped and the
+   thumbnail went black. Quoted, with the two characters that would end a quoted url
+   escaped. */
+function cssUrl(src) {
+  return 'url("' + String(src == null ? '' : src).replace(/["\\]/g, '\\$&') + '")';
+}
+
 /* Room/menu images are stored as base64 in the DB. A raw camera/screenshot upload blows
    past MySQL's max_allowed_packet and the insert dies with "MySQL server has gone away",
    so every picked image is downscaled and re-encoded before it leaves the browser. */
@@ -3317,7 +3325,7 @@ function HeroSlidesModal({ open, slides, activeIndex, onReplace, onClose }) {
         <div className="hero-slides-grid">
           {slides.map((slide, i) => (
             <div key={slide.id} className={`hero-slide-card${i === activeIndex ? ' is-active' : ''}`}>
-              <div className="hero-slide-thumb" style={{ backgroundImage: 'url(' + slide.img + ')' }}>
+              <div className="hero-slide-thumb" style={{ backgroundImage: cssUrl(slide.img) }}>
                 {i === activeIndex && <span className="hero-slide-badge">Showing</span>}
               </div>
               <div className="hero-slide-row">
@@ -3403,7 +3411,7 @@ function RoomPhotosModal({ room, onSave, onClose }) {
               <div
                 className="hero-slide-thumb"
                 style={url
-                  ? { backgroundImage: 'url(' + url + ')' }
+                  ? { backgroundImage: cssUrl(url) }
                   : { display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-muted)' }}
                 role="button"
                 aria-label={(url ? 'Replace photo ' : 'Choose photo ') + (i + 1)}

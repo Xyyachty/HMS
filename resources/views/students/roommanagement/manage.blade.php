@@ -270,6 +270,14 @@ const DEFAULT_ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Fa
 let ROOM_CATEGORIES = DEFAULT_ROOM_CATEGORIES.slice();
 /* Module-level rather than a prop: normalizeRoomCategory() is called from several
    render paths. The App holds the same list in state, so a change re-renders. */
+/* A stored photo's address carries the team's name, so it can hold a space, and an
+   unquoted url() ends at the first one: the whole declaration was dropped and the
+   slot went black. Quoted, with the two characters that would end a quoted url
+   escaped. */
+function cssUrl(src) {
+  return 'url("' + String(src == null ? '' : src).replace(/["\\]/g, '\\$&') + '")';
+}
+
 function setRoomCategoryNames(names) {
   if (Array.isArray(names) && names.length) ROOM_CATEGORIES = names.slice();
 }
@@ -660,7 +668,7 @@ function RoomImageModal({ open, slots, onChange, onClose }) {
             <div key={i} className={`room-slot${i === 0 ? ' is-primary' : ''}`}>
               <div
                 className={`room-slot-thumb${url ? '' : ' is-empty'}`}
-                style={url ? { backgroundImage: 'url(' + url + ')' } : undefined}
+                style={url ? { backgroundImage: cssUrl(url) } : undefined}
                 onClick={() => replaceAt(i)}
                 role="button"
                 aria-label={(url ? 'Replace photo ' : 'Choose photo ') + (i + 1)}

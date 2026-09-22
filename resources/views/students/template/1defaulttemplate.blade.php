@@ -1275,6 +1275,14 @@ function menuFoodImg(item) {
   return (item && item.img) ? item.img : MENU_NO_PHOTO;
 }
 
+/* A stored photo's address carries the team's name, so it can hold a space, and an
+   unquoted url() ends at the first one: the whole declaration was dropped and the
+   card went black. Quoted, with the two characters that would end a quoted url
+   escaped. */
+function cssUrl(src) {
+  return 'url("' + String(src == null ? '' : src).replace(/["\\]/g, '\\$&') + '")';
+}
+
 /* A room with no photo of its own — every seeded room starts that way — would render
    <img src=""> and leave a blank hole where its neighbours show a picture. Same
    stand-in the menu uses, seeded by the room so each one keeps the same photo
@@ -2966,7 +2974,7 @@ function RoomPhotosModal({ room, onSave, onClose }) {
               <div
                 className="hero-slide-thumb"
                 style={url
-                  ? { backgroundImage: 'url(' + url + ')' }
+                  ? { backgroundImage: cssUrl(url) }
                   : { display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-muted)' }}
                 role="button"
                 aria-label={(url ? 'Replace photo ' : 'Choose photo ') + (i + 1)}
@@ -3024,7 +3032,7 @@ function HeroSlidesModal({ open, slides, activeIndex, onReplace, onClose }) {
         <div className="hero-slides-grid">
           {slides.map((slide, i) => (
             <div key={slide.id} className={`hero-slide-card${i === activeIndex ? ' is-active' : ''}`}>
-              <div className="hero-slide-thumb" style={{ backgroundImage: 'url(' + slide.img + ')' }}>
+              <div className="hero-slide-thumb" style={{ backgroundImage: cssUrl(slide.img) }}>
                 {i === activeIndex && <span className="hero-slide-badge">Showing</span>}
               </div>
               <div className="hero-slide-row">
@@ -3086,7 +3094,7 @@ function HeroSlider({ slides, canEdit }) {
              behind it is what a click reaches. Change image replaces them. */
           data-hms-bg-layer="1"
           className={`hero-slide${i === active ? ' is-active' : ''}`}
-          style={{ backgroundImage: 'url(' + slide.img + ')' }}
+          style={{ backgroundImage: cssUrl(slide.img) }}
         ></div>
       ))}
       <div className="hero-dots" data-hms-no-edit="1">
@@ -4347,7 +4355,7 @@ function CategorySlides({ slides, index, onIndex, interval, canEdit, onReplace }
           key={slide.key + '-' + i}
           data-hms-bg-layer="1"
           className={'cat-slide' + (i === index ? ' is-active' : '') + (slide.src ? '' : ' is-empty')}
-          style={slide.src ? { backgroundImage: 'url(' + slide.src + ')' } : null}
+          style={slide.src ? { backgroundImage: cssUrl(slide.src) } : null}
         ></div>
       ))}
 
@@ -4487,7 +4495,7 @@ function CategoryPhotosModal({ name, slots, onReplace, onClose }) {
               <div
                 className="hero-slide-thumb"
                 style={slot.src
-                  ? { backgroundImage: 'url(' + slot.src + ')' }
+                  ? { backgroundImage: cssUrl(slot.src) }
                   : { display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-muted)' }}
                 role="button"
                 aria-label={(slot.src ? 'Replace photo ' : 'Choose photo ') + (i + 1)}
