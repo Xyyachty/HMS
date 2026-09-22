@@ -716,13 +716,6 @@
       text-transform: uppercase;
       color: var(--ink-soft);
     }
-    .field__row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 6px;
-    }
     .field__wrap { position: relative; }
     .field__wrap > .iconify {
       position: absolute;
@@ -773,6 +766,7 @@
       text-decoration: none;
     }
     .link-quiet:hover { color: var(--wine-800); text-decoration: underline; }
+    .link-quiet--under { display: block; margin-top: 8px; text-align: right; }
 
     .check {
       display: flex;
@@ -1088,7 +1082,7 @@
       <div style="display:flex;align-items:center;gap:12px;min-width:0">
         <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" />
         <div style="min-width:0">
-          <h2 id="loginDrawerTitle">Welcome back</h2>
+          <h2 id="loginDrawerTitle">Welcome</h2>
           <p>Log in to your SPC Hotel account</p>
         </div>
       </div>
@@ -1119,10 +1113,7 @@
         </div>
 
         <div class="field">
-          <div class="field__row">
-            <label for="landingLoginPassword" class="field__label" style="margin-bottom:0">Password</label>
-            <a href="{{ route('forgot-password') }}" class="link-quiet">Forgot password?</a>
-          </div>
+          <label for="landingLoginPassword" class="field__label">Password</label>
           <div class="field__wrap">
             <span class="iconify" data-icon="mdi:lock-outline"></span>
             <input id="landingLoginPassword" name="password" type="password" placeholder="Enter your password"
@@ -1132,6 +1123,10 @@
               <span id="landingPasswordToggleIcon" class="iconify" style="font-size:1.1rem" data-icon="mdi:eye-off-outline"></span>
             </button>
           </div>
+          {{-- Under the field it belongs to, not beside its label: someone who
+               cannot remember the password reaches for this after trying to type
+               one, so it is where their eye already is. --}}
+          <a href="{{ route('forgot-password') }}" class="link-quiet link-quiet--under">Forgot password?</a>
         </div>
 
         <label class="check">
