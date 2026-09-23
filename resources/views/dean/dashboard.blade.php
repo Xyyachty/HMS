@@ -5,7 +5,7 @@
 
 @section('content')
 @php
-    // Role tints shared by the activity and deadline rows.
+    // Role tints shared by the Task Overview and Recent rows.
     $roleTints = [
         'front_desk'            => ['bg' => 'bg-blue-50',   'text' => 'text-blue-500'],
         'restaurant_management' => ['bg' => 'bg-amber-50',  'text' => 'text-amber-500'],
@@ -21,9 +21,6 @@
         'housekeeping'          => 'mdi:sparkles',
     ];
     $tint = fn($role, $key) => $roleTints[$role][$key] ?? ($key === 'text' ? 'text-slate-400' : 'bg-slate-100');
-    // Cycled across team rows so neighbouring teams stay distinguishable.
-    $teamTints = ['bg-rose-50 text-rose-500', 'bg-amber-50 text-amber-500', 'bg-violet-50 text-violet-500', 'bg-teal-50 text-teal-500', 'bg-blue-50 text-blue-500'];
-    $teamBars  = ['bg-rose-500', 'bg-amber-500', 'bg-violet-500', 'bg-teal-500', 'bg-blue-500'];
 @endphp
 
 <!-- Stats Cards -->
@@ -101,17 +98,17 @@
     </a>
 </div>
 
-<!-- Activity / progress / deadlines -->
+<!-- Task Overview / Newly / Recent -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
 
-    <!-- Recent Activity -->
+    <!-- Task Overview: the tasks most recently assigned or completed -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-slate-800">Recent Activity</p>
+            <p class="text-sm font-bold text-slate-800">Task Overview</p>
             <a href="{{ route('dean.activity') }}" class="text-[11px] font-bold text-brand hover:underline">View All</a>
         </div>
         <div class="divide-y divide-slate-50">
-            @forelse(($recentActivity ?? collect())->take(5) as $task)
+            @forelse(($recentActivity ?? collect()) as $task)
                 @php
                     $facultyUser = $task->faculty?->user;
                     $facultyName = trim(implode(' ', array_filter([
@@ -150,49 +147,58 @@
         </div>
     </div>
 
-    {{-- Task Progress Overview — every team in the system, so a long roster
-         scrolls inside the panel rather than stretching the row of three. --}}
+    <!-- Newly: the student and faculty accounts added most recently -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-slate-800">Task Progress Overview</p>
-            <a href="{{ route('dean.reports') }}" class="text-[11px] font-bold text-brand hover:underline">View Report</a>
+            <p class="text-sm font-bold text-slate-800">Newly</p>
+            <a href="{{ route('dean.users') }}" class="text-[11px] font-bold text-brand hover:underline">View All</a>
         </div>
-        <div class="divide-y divide-slate-50 max-h-[340px] overflow-y-auto">
-            @forelse(($teamProgress ?? collect()) as $i => $team)
+        <div class="divide-y divide-slate-50">
+            @forelse(($newAccounts ?? collect()) as $account)
+                @php
+                    $name = trim(implode(' ', array_filter([
+                        $account->first_name,
+                        $account->last_name,
+                    ]))) ?: ($account->name ?? 'User');
+                    $isFaculty = $account->role === 'faculty';
+                @endphp
                 <div class="px-5 py-3 flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $teamTints[$i % count($teamTints)] }}">
-                        <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
-                    </div>
+                    @include('partials.user-avatar', [
+                        'user'         => $account,
+                        'name'         => $name,
+                        'size'         => 'w-9 h-9',
+                        'rounded'      => 'rounded-xl',
+                        'extraClasses' => 'bg-rose-50 text-rose-500 text-xs font-bold',
+                    ])
                     <div class="min-w-0 flex-1">
-                        <p class="text-[13px] font-bold text-slate-800 truncate">{{ $team['name'] }}</p>
-                        <p class="text-[10px] text-slate-400 font-medium mt-0.5 truncate">{{ $team['faculty'] }} · {{ $team['done'] }}/{{ $team['total'] }}</p>
+                        <p class="text-[13px] font-bold text-slate-800 truncate">{{ $name }}</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ $account->email ?? '—' }}</p>
                     </div>
-                    <div class="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
-                        <div class="h-full rounded-full {{ $teamBars[$i % count($teamBars)] }}" style="width: {{ $team['percent'] }}%"></div>
+                    <div class="text-right shrink-0">
+                        <p class="text-[10px] text-slate-400 font-medium whitespace-nowrap">{{ optional($account->created_at)->diffForHumans(null, true) }}</p>
+                        <p class="text-[10px] font-bold mt-1 {{ $isFaculty ? 'text-amber-600' : 'text-blue-500' }}">{{ $isFaculty ? 'Faculty' : 'Student' }}</p>
                     </div>
-                    <p class="text-[13px] font-extrabold text-slate-700 w-10 text-right shrink-0">{{ $team['percent'] }}%</p>
                 </div>
             @empty
                 <div class="px-5 py-12 text-center">
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:chart-timeline-variant"></span>
+                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:account-plus-outline"></span>
                     </div>
-                    <p class="text-sm font-semibold text-slate-400">No teams yet</p>
-                    <p class="text-xs text-slate-300 mt-1">Progress appears once faculty create teams.</p>
+                    <p class="text-sm font-semibold text-slate-400">No new accounts</p>
+                    <p class="text-xs text-slate-300 mt-1">Students and faculty you add will show up here.</p>
                 </div>
             @endforelse
         </div>
     </div>
 
-    <!-- Upcoming Deadlines -->
+    <!-- Recent: the open tasks handed out most recently -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-slate-800">Upcoming Deadlines</p>
+            <p class="text-sm font-bold text-slate-800">Recent</p>
             <a href="{{ route('dean.activity') }}" class="text-[11px] font-bold text-brand hover:underline">View All</a>
         </div>
         <div class="divide-y divide-slate-50">
-            @forelse(($upcomingDeadlines ?? collect()) as $task)
-                @php $isLate = $task->due_date && $task->due_date->isPast(); @endphp
+            @forelse(($recentTasks ?? collect()) as $task)
                 <div class="px-5 py-3 flex items-center gap-3">
                     <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $tint($task->role, 'bg') }} {{ $tint($task->role, 'text') }}">
                         <span class="iconify text-lg" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
@@ -206,18 +212,14 @@
                             @endif
                         </p>
                     </div>
-                    <div class="shrink-0 w-11 rounded-lg border py-1 text-center {{ $isLate ? 'border-red-100 bg-red-50' : 'border-pink-100 bg-brand-soft' }}">
-                        <p class="text-[9px] font-bold uppercase tracking-wide {{ $isLate ? 'text-red-400' : 'text-brand-light' }}">{{ $task->due_date->format('M') }}</p>
-                        <p class="text-[13px] font-extrabold leading-tight {{ $isLate ? 'text-red-500' : 'text-brand' }}">{{ $task->due_date->format('j') }}</p>
-                    </div>
                 </div>
             @empty
                 <div class="px-5 py-12 text-center">
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:calendar-blank-outline"></span>
+                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:clipboard-text-outline"></span>
                     </div>
-                    <p class="text-sm font-semibold text-slate-400">No upcoming deadlines</p>
-                    <p class="text-xs text-slate-300 mt-1">Tasks with a due date will show up here.</p>
+                    <p class="text-sm font-semibold text-slate-400">No active tasks</p>
+                    <p class="text-xs text-slate-300 mt-1">Tasks faculty assign will show up here.</p>
                 </div>
             @endforelse
         </div>

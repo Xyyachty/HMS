@@ -60,7 +60,13 @@ class DeanController extends Controller
 
         $recentActivity = Task::with(['faculty.user', 'student.user', 'assignedTo'])
             ->orderByDesc('updated_at')
-            ->take(8)
+            ->take(5)
+            ->get();
+
+        // Newly: the student and faculty accounts added most recently.
+        $newAccounts = User::whereIn('role', ['student', 'faculty'])
+            ->latest()
+            ->take(5)
             ->get();
 
         $roleLabels = [
@@ -71,18 +77,18 @@ class DeanController extends Controller
             'housekeeping' => 'Housekeeping',
         ];
 
-        // One pass over every task in the system feeds the progress bars, the
-        // deadline list and the completion figure on the Teams card.
+        // One pass over every task in the system feeds the Recent list and the
+        // completion figure on the Teams card.
         $allTasks = Task::whereIn('status', ['active', 'archived'])
-            ->get(['task_id', 'title', 'faculty_id', 'group_name', 'role', 'status', 'due_date']);
+            ->get(['task_id', 'title', 'faculty_id', 'group_name', 'role', 'status', 'created_at']);
 
         $completedTasks = $allTasks->where('status', 'archived')->count();
         $completionRate = $allTasks->count() > 0
             ? (int) round(($completedTasks / $allTasks->count()) * 100)
             : 0;
 
-        // Faculty display names, resolved once so the panels below can label a
-        // team with the instructor who owns it.
+        // Faculty display names, resolved once so the Recent list can label a
+        // task with the instructor who owns it.
         $facultyNames = Faculty::with('user')
             ->get()
             ->mapWithKeys(function ($faculty) {
@@ -95,36 +101,11 @@ class DeanController extends Controller
                 return [$faculty->user_information_id => $name];
             });
 
-        // Teams come from the roster rather than from the tasks, so a team with
-        // nothing assigned still shows up at 0%. Ordered by how far behind it is.
-        $teamProgress = StudentGroup::query()
-            ->select('faculty_id', 'group_name')
-            ->distinct()
-            ->orderBy('group_name')
-            ->get()
-            ->values()
-            ->map(function ($team, $index) use ($allTasks, $facultyNames) {
-                $tasks = $allTasks
-                    ->where('faculty_id', $team->faculty_id)
-                    ->where('group_name', $team->group_name);
-                $total = $tasks->count();
-                $done  = $tasks->where('status', 'archived')->count();
-
-                return [
-                    'name'    => $team->group_name,
-                    'faculty' => $facultyNames[$team->faculty_id] ?? 'Unassigned',
-                    'label'   => 'TEAM ' . str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT),
-                    'total'   => $total,
-                    'done'    => $done,
-                    'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
-                ];
-            });
-
-        $upcomingDeadlines = $allTasks
+        // Recent: the open tasks handed out most recently.
+        $recentTasks = $allTasks
             ->where('status', 'active')
-            ->filter(fn ($task) => $task->due_date !== null)
-            ->sortBy('due_date')
-            ->take(4)
+            ->sortByDesc('created_at')
+            ->take(5)
             ->values()
             ->map(function ($task) use ($facultyNames) {
                 $task->faculty_name = $facultyNames[$task->faculty_id] ?? null;
@@ -142,8 +123,8 @@ class DeanController extends Controller
             'recentStudents',
             'recentActivity',
             'roleLabels',
-            'teamProgress',
-            'upcomingDeadlines',
+            'newAccounts',
+            'recentTasks',
             'completedTasks',
             'completionRate'
         ));
