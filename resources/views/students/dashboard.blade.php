@@ -367,7 +367,7 @@
 
                 $homeRecentActivities = ($selfActivityLogs ?? collect())->take(5);
                 $homeTeamProgress     = ($teamRoleProgress ?? collect());
-                $homeDeadlines        = ($upcomingDeadlines ?? collect());
+                $homeInProgress       = ($tasksInProgress ?? collect());
 
                 $homeMemberCount   = ($groupMembers ?? collect())->count();
                 $homeActiveTasks   = $pendingTasksCount ?? 0;
@@ -386,10 +386,6 @@
                     ? 'Good morning'
                     : (($homeManilaHour >= 12 && $homeManilaHour < 18) ? 'Good afternoon' : 'Good evening');
                 $homeFirstName = trim(explode(' ', trim($studentDisplayName ?? (auth()->user()->name ?? 'Student')))[0]);
-
-                // The upcoming-task rows show how far the owning role has got, so the
-                // bar on each row is real team data rather than a per-task guess.
-                $homeProgressByRole = collect($homeTeamProgress)->keyBy('role');
 
                 $homeRate = (int) ($completionRate ?? 0);
                 $homeRingLength = 175.9; // 2 * pi * r, with r = 28
@@ -503,21 +499,26 @@
                 <!-- Three-panel row: upcoming tasks, team progress, activity -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
 
-                    <!-- My Upcoming Tasks -->
+                    {{-- Tasks in Progress — work the team has changed but not submitted yet:
+                         still active, with at least one activity ticked. The bar is the
+                         task's own activities, not the whole role. --}}
                     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                         <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
-                            <p class="text-lg font-bold text-slate-800">My Upcoming Tasks</p>
+                            <div class="min-w-0">
+                                <p class="text-lg font-bold text-slate-800">Tasks in Progress</p>
+                                <p class="text-[11px] text-slate-400 truncate">Started, not yet submitted</p>
+                            </div>
                             <button type="button" onclick="showSection('tasks')"
-                                    class="text-[12px] font-bold text-brand hover:text-brand-dark transition-colors">View All</button>
+                                    class="text-[12px] font-bold text-brand hover:text-brand-dark transition-colors shrink-0">View All</button>
                         </div>
                         <div class="divide-y divide-slate-100">
-                            @forelse($homeDeadlines as $index => $task)
+                            @forelse($homeInProgress as $task)
                                 @php
-                                    $isLate    = $task->due_date && $task->due_date->isPast();
-                                    $roleRow   = $homeProgressByRole[$task->role] ?? null;
-                                    $rolePct   = $roleRow['percent'] ?? 0;
-                                    $roleDone  = $roleRow['done'] ?? 0;
-                                    $roleTotal = $roleRow['total'] ?? 0;
+                                    $actTotal   = count($task->activityList());
+                                    $actDone    = $task->activitiesDoneCount();
+                                    $actPct     = $actTotal > 0 ? (int) round(($actDone / $actTotal) * 100) : 0;
+                                    $isRevision = $task->needs_revision;
+                                    $homeTaskStep = \App\Support\TaskChecklist::stepForTitle($task->title);
                                 @endphp
                                 <div class="px-5 py-4">
                                     <div class="flex items-start gap-3">
@@ -526,38 +527,42 @@
                                         </div>
                                         <div class="min-w-0 flex-1">
                                             {{-- The task's own number on the checklist, not its position in
-                                                 this list: counting rows made the same work read as a
-                                                 different task here than on the faculty's Set Task screen. --}}
-                                            @php $homeTaskStep = \App\Support\TaskChecklist::stepForTitle($task->title); @endphp
+                                                 this list, so it matches the faculty's Set Task screen. --}}
                                             @if($homeTaskStep !== null)
                                                 <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($homeTaskStep + 1, 2, '0', STR_PAD_LEFT) }}</p>
                                             @endif
                                             <p class="text-[13px] text-slate-500 leading-snug line-clamp-2">{{ $task->title }}</p>
-                                            <span class="inline-flex items-center mt-2 px-2 py-0.5 rounded-md text-[10px] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
-                                                {{ $homeRoleLabels[$task->role] ?? $task->role }}
-                                            </span>
+                                            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
+                                                    {{ $homeRoleLabels[$task->role] ?? $task->role }}
+                                                </span>
+                                                @if($isRevision)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-50 text-red-500">Revising</span>
+                                                @endif
+                                            </div>
                                         </div>
-                                        <div class="shrink-0 w-12 rounded-xl border py-1 text-center {{ $isLate ? 'border-red-100 bg-red-50' : 'border-pink-100 bg-brand-soft' }}">
-                                            <p class="text-[9px] font-semibold {{ $isLate ? 'text-red-400' : 'text-slate-400' }}">{{ $isLate ? 'Late' : 'Due' }}</p>
-                                            <p class="text-[9px] font-bold uppercase {{ $isLate ? 'text-red-400' : 'text-brand-light' }}">{{ $task->due_date->format('M') }}</p>
-                                            <p class="text-[15px] font-extrabold leading-tight {{ $isLate ? 'text-red-500' : 'text-slate-800' }}">{{ $task->due_date->format('j') }}</p>
+                                        <div class="shrink-0 rounded-xl border border-pink-100 bg-brand-soft px-2.5 py-1 text-center">
+                                            <p class="text-[9px] font-semibold text-slate-400">Done</p>
+                                            <p class="text-[15px] font-extrabold leading-tight text-slate-800">{{ $actDone }}<span class="text-[11px] text-slate-400">/{{ $actTotal }}</span></p>
                                         </div>
                                     </div>
                                     <div class="mt-3 flex items-center gap-3">
                                         <div class="h-1.5 w-24 rounded-full bg-slate-100 overflow-hidden shrink-0">
-                                            <div class="h-full rounded-full {{ $homeTint($task->role, 'bar') }}" style="width: {{ $rolePct }}%"></div>
+                                            <div class="h-full rounded-full bg-brand" style="width: {{ $actPct }}%"></div>
                                         </div>
-                                        <p class="text-[12px] font-extrabold text-slate-700 shrink-0">{{ $rolePct }}%</p>
-                                        <p class="text-[12px] text-slate-400 font-medium truncate">{{ $roleDone }} of {{ $roleTotal }} tasks done in this role</p>
+                                        <p class="text-[12px] font-extrabold text-slate-700 shrink-0">{{ $actPct }}%</p>
+                                        <p class="text-[12px] text-slate-400 font-medium truncate">
+                                            {{ $actDone }} of {{ $actTotal }} activit{{ $actTotal === 1 ? 'y' : 'ies' }} done · edited {{ optional($task->updated_at)->diffForHumans() }}
+                                        </p>
                                     </div>
                                 </div>
                             @empty
                                 <div class="px-5 py-12 text-center">
                                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:calendar-blank-outline"></span>
+                                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:progress-pencil"></span>
                                     </div>
-                                    <p class="text-sm font-semibold text-slate-400">No upcoming deadlines</p>
-                                    <p class="text-xs text-slate-300 mt-1">Tasks with a due date will show up here.</p>
+                                    <p class="text-sm font-semibold text-slate-400">No tasks in progress</p>
+                                    <p class="text-xs text-slate-300 mt-1">A task shows here once an activity is ticked, until it is submitted.</p>
                                 </div>
                             @endforelse
                         </div>

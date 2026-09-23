@@ -296,6 +296,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // Progress Overview. Keyed by role, each row carries done/total/percent.
         $teamRoleProgress = collect();
         $upcomingDeadlines = collect();
+        // Home's Tasks in Progress card: started (an activity ticked) but not handed in.
+        $tasksInProgress = collect();
         $teamTasks = collect();
 
         if ($facultyId) {
@@ -347,7 +349,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->where($scopeToTeam)
                 ->whereIn('status', ['active', 'archived'])
                 ->withoutSimulation()
-                ->get(['task_id', 'title', 'role', 'status', 'due_date', 'assigned_to', 'student_id']);
+                ->get(array_merge(
+                    ['task_id', 'title', 'role', 'status', 'due_date', 'assigned_to', 'student_id', 'feedback', 'updated_at'],
+                    Task::supportsActivities() ? ['activities'] : []
+                ));
 
             $teamRoleProgress = $teamTasks
                 ->groupBy('role')
@@ -375,6 +380,16 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->where('status', 'active')
                 ->filter(fn ($task) => $task->due_date !== null)
                 ->sortBy('due_date')
+                ->take(4)
+                ->values();
+
+            // Work that has been changed but not submitted yet: still active, with at
+            // least one activity ticked. The same line the dean's Team Details draws
+            // between In Progress and Not Started. Most recently touched first.
+            $tasksInProgress = $teamTasks
+                ->where('status', 'active')
+                ->filter(fn ($task) => $task->activitiesDoneCount() > 0)
+                ->sortByDesc('updated_at')
                 ->take(4)
                 ->values();
         }
@@ -502,7 +517,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'studentRoles', 'myRoleTasks', 'completedTasksCount',
             'pendingTasksCount', 'completionRate', 'recentTasks',
             'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
-            'myActivityLogs', 'conceptPayload', 'teamRoleProgress', 'upcomingDeadlines',
+            'myActivityLogs', 'conceptPayload', 'teamRoleProgress', 'upcomingDeadlines', 'tasksInProgress',
             'memberTaskStats',
             'studentDisplayName', 'studentClass', 'student',
             // The task rows ask it who may work a row whose named student has
