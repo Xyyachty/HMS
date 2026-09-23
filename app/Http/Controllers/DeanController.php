@@ -229,9 +229,12 @@ class DeanController extends Controller
             'housekeeping' => 'Housekeeping',
         ];
 
-        $allTasks = \App\Models\Task::query()
-            ->orderByDesc('updated_at')
-            ->limit(1000)
+        // Every task each team has been given, at any stage — the dean monitors
+        // work in progress, not only what has been handed in. Read-only: nothing
+        // on the Teams page writes to a task.
+        $allTasks = Task::with(['student.user', 'assignedTo'])
+            ->withoutSimulation()
+            ->orderBy('task_id')
             ->get()
             ->groupBy('faculty_id');
 
@@ -246,50 +249,44 @@ class DeanController extends Controller
             foreach ($groups as $groupName => $members) {
                 $memberStudentIds = $members->pluck('student_id')->filter()->map(fn ($id) => (int) $id)->unique()->all();
                 $memberRoles = $members
-                                    ->flatMap(function ($m) {
-                                                            $fromRelation = $m->roles->pluck('role');
-                                                                                    return $fromRelation->isNotEmpty()
-                                                                                                                ? $fromRelation
-                                                                                                                                            : collect([$m->role])->filter();
-                                                                                                                                                                })
-                                                                                                                                                                                    ->filter()
-                                                                                                                                                                                                        ->unique()
-                                                                                                                                                                                                                            ->values()
-                                                                                                                                                                                                                                                ->all();
-                                                                                                                                                                                                                                                
-                                                                                                                                                                                                                                                                $teamActivityByFacultyGroup[$facultyId][$groupName] = $facultyTasks
-                                                                                                                                                                                                                                                                                    ->filter(function ($task) use ($memberStudentIds, $memberRoles) {
-                                                                                                                                                                                                                                                                                                            if ($task->student_id && in_array((int) $task->student_id, $memberStudentIds, true)) {
-                                                                                                                                                                                                                                                                                                                                        return true;
-                                                                                                                                                                                                                                                                                                                                                                }
-                                                                                                                                                                                                                                                                                                                                                                
-                                                                                                                                                                                                                                                                                                                                                                                        return in_array($task->role, $memberRoles, true);
-                                                                                                                                                                                                                                                                                                                                                                                                            })
-                                                                                                                                                                                                                                                                                                                                                                                                                                ->take(100)
-                                                                                                                                                                                                                                                                                                                                                                                                                                                    ->values()
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ->map(function ($task) use ($roleLabels) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                return [
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            'title' => $task->title,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'description' => $task->description,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    'role' => $task->role,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'role_label' => $roleLabels[$task->role] ?? $task->role,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'status' => $task->status,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                'updated_at' => optional($task->updated_at)->format('M d, Y'),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            })
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ->all();
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            // The hotel concepts per team, so the list names what each one proposed. Keyed
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    // by faculty then group because group names repeat across faculty, and each
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            // entry is a list because a team proposes two — until one is decided, when
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    // it drops to the winner alone, same rule HotelConceptDesk::visibleConcepts()
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            // applies everywhere else.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    $conceptsByFacultyGroup = [];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            $rawConceptsByFacultyGroup = [];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    foreach (\App\Models\HotelConcept::orderBy('slot')->get() as $concept) {
+                    ->flatMap(function ($m) {
+                        $fromRelation = $m->roles->pluck('role');
+                        return $fromRelation->isNotEmpty() ? $fromRelation : collect([$m->role])->filter();
+                    })
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $teamActivityByFacultyGroup[$facultyId][$groupName] = $facultyTasks
+                    ->filter(function ($task) use ($groupName, $memberStudentIds, $memberRoles) {
+                        // A row that names its team belongs to that team only. Case-
+                        // insensitive because group_name is citext in the database.
+                        if (filled($task->group_name)) {
+                            return strcasecmp((string) $task->group_name, (string) $groupName) === 0;
+                        }
+                        // Rows from before tasks named a team: same fallback as Task::scopeForTeam().
+                        if ($task->student_id && in_array((int) $task->student_id, $memberStudentIds, true)) {
+                            return true;
+                        }
+
+                        return in_array($task->role, $memberRoles, true);
+                    })
+                    ->map(fn ($task) => self::teamTaskRow($task, $roleLabels))
+                    ->sortBy(fn ($row) => [$row['step'] ?? PHP_INT_MAX, $row['title'], $row['role']])
+                    ->values()
+                    ->all();
+            }
+        }
+
+        // The hotel concepts per team, so the list names what each one proposed. Keyed
+        // by faculty then group because group names repeat across faculty, and each
+        // entry is a list because a team proposes two — until one is decided, when
+        // it drops to the winner alone, same rule HotelConceptDesk::visibleConcepts()
+        // applies everywhere else.
+        $conceptsByFacultyGroup = [];
+        $rawConceptsByFacultyGroup = [];
+        foreach (\App\Models\HotelConcept::orderBy('slot')->get() as $concept) {
             $rawConceptsByFacultyGroup[(int) $concept->faculty_id][$concept->group_name][] = $concept;
         }
         foreach ($rawConceptsByFacultyGroup as $facultyId => $groups) {
@@ -307,6 +304,48 @@ class DeanController extends Controller
             'availableBlocks',
             'conceptsByFacultyGroup'
         ));
+    }
+
+    /**
+     * One task as the dean's Team Details modal lists it.
+     *
+     * Status follows the same signals the rest of the app reads: 'archived' is
+     * handed in, feedback_at on an archived row is faculty's approval, feedback
+     * on an active row is a send-back (Task::needs_revision), and a ticked
+     * activity is what separates In Progress from Not Started.
+     */
+    private static function teamTaskRow(Task $task, array $roleLabels): array
+    {
+        $step = \App\Support\TaskChecklist::stepForTitle((string) $task->title);
+        $activities = $task->activityList();
+        $done = $task->activitiesDoneCount();
+
+        [$status, $statusLabel] = match (true) {
+            $task->status === 'archived' && $task->feedback_at !== null => ['completed', 'Completed'],
+            $task->status === 'archived' => ['submitted', 'Submitted'],
+            $task->needs_revision => ['needs_revision', 'Needs Revision'],
+            $done > 0 => ['in_progress', 'In Progress'],
+            default => ['not_started', 'Not Started'],
+        };
+
+        $user = $task->student?->user ?? $task->assignedTo;
+        $studentName = $user
+            ? (trim(implode(' ', array_filter([$user->last_name, $user->first_name]))) ?: (string) $user->name)
+            : null;
+
+        return [
+            'step' => $step,
+            'code' => $step === null ? null : 'TASK ' . str_pad((string) ($step + 1), 2, '0', STR_PAD_LEFT),
+            'title' => (string) $task->title,
+            'role' => (string) $task->role,
+            'role_label' => $roleLabels[$task->role] ?? $task->role,
+            'student' => $studentName,
+            'due_date' => optional($task->due_date)->format('M d, Y'),
+            'status' => $status,
+            'status_label' => $statusLabel,
+            'progress_done' => $done,
+            'progress_total' => count($activities),
+        ];
     }
 
     public function storeFaculty(Request $request)

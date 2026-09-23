@@ -314,26 +314,30 @@
                 </div>
             </div>
 
-            <!-- Team task activity (assignment history) -->
+            <!-- Every task the team has been given, at any stage. View only. -->
             <div>
                 <div class="flex items-center justify-between gap-2 mb-1.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Team Task Activity</p>
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Student Tasks</p>
                     <span id="teamModalActivityMeta" class="text-[10px] font-semibold text-slate-400"></span>
                 </div>
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
                     <table class="w-full text-sm" style="table-layout: fixed;">
                         <colgroup>
                             <col>
-                            <col style="width: 7rem;">
                             <col style="width: 6.5rem;">
+                            <col style="width: 8rem;">
                             <col style="width: 6rem;">
+                            <col style="width: 7rem;">
+                            <col style="width: 5rem;">
                         </colgroup>
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Task</th>
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Student</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Due</th>
                                 <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Updated</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progress</th>
                             </tr>
                         </thead>
                         <tbody id="teamModalActivityBody" class="divide-y divide-slate-100">
@@ -465,6 +469,15 @@
     let teamModalActivityLogs = [];
     let teamModalActivityPage = 1;
     const TEAM_MODAL_ACTIVITY_PER_PAGE = 5;
+    // Badge colour per DeanController::teamTaskRow() status. Built into class names
+    // at runtime, which the Tailwind CDN picks up from the DOM.
+    const TASK_STATUS_COLORS = {
+        not_started: 'slate',
+        in_progress: 'blue',
+        needs_revision: 'amber',
+        submitted: 'violet',
+        completed: 'emerald',
+    };
 
     function escHtml(s) {
         return String(s == null ? '' : s)
@@ -489,7 +502,7 @@
         if (teamModalActivityPage < 1) teamModalActivityPage = 1;
 
         if (total === 0) {
-            activityBody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-slate-400">No activity logs for this team yet.</td></tr>';
+            activityBody.innerHTML = '<tr><td colspan="6" class="px-3 py-6 text-center text-xs text-slate-400">No tasks assigned to this team yet.</td></tr>';
             if (pager) pager.classList.add('hidden');
             if (meta) meta.textContent = '';
             return;
@@ -500,21 +513,25 @@
         const end = start + pageLogs.length;
 
         activityBody.innerHTML = pageLogs.map(function (log) {
-            const isDone = log.status === 'archived';
-            const statusBadge = isDone
-                ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Completed</span>'
-                : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Assigned</span>';
+            const color = TASK_STATUS_COLORS[log.status] || 'slate';
+            const statusBadge = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-' + color + '-50 text-' + color + '-700 border border-' + color + '-100 text-[10px] font-bold whitespace-nowrap">' +
+                '<span class="w-1.5 h-1.5 rounded-full bg-' + color + '-500"></span>' + escHtml(log.status_label) + '</span>';
+            const progress = log.progress_total > 0
+                ? '<div class="text-[10px] font-semibold text-slate-500">' + log.progress_done + '/' + log.progress_total + '</div>' +
+                  '<div class="h-1.5 mt-0.5 rounded-full bg-slate-200 overflow-hidden"><div class="h-full bg-' + color + '-500" style="width:' + Math.round(log.progress_done / log.progress_total * 100) + '%"></div></div>'
+                : '<span class="text-[10px] text-slate-300">—</span>';
 
             return '<tr class="hover:bg-slate-50 transition-colors">' +
                 '<td class="px-3 py-2">' +
+                    (log.code ? '<p class="text-[10px] font-bold text-rose-500">' + escHtml(log.code) + '</p>' : '') +
                     '<p class="text-xs font-semibold text-slate-800 truncate" title="' + escHtml(log.title) + '">' + escHtml(log.title) + '</p>' +
-                    (log.description
-                        ? '<p class="text-[10px] text-slate-400 truncate" title="' + escHtml(log.description) + '">' + escHtml(log.description) + '</p>'
-                        : '') +
                 '</td>' +
-                '<td class="px-3 py-2 text-[11px] font-semibold text-slate-600 whitespace-nowrap">' + escHtml(log.role_label || log.role || '—') + '</td>' +
+                '<td class="px-3 py-2 text-[11px] font-semibold text-slate-600 truncate">' + escHtml(log.role_label || log.role || '—') + '</td>' +
+                '<td class="px-3 py-2 text-[11px] text-slate-600 truncate" title="' + escHtml(log.student || 'Unclaimed') + '">' +
+                    (log.student ? escHtml(log.student) : '<span class="text-slate-400 italic">Unclaimed</span>') + '</td>' +
+                '<td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">' + escHtml(log.due_date || '—') + '</td>' +
                 '<td class="px-3 py-2">' + statusBadge + '</td>' +
-                '<td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">' + escHtml(log.updated_at || '—') + '</td>' +
+                '<td class="px-3 py-2">' + progress + '</td>' +
             '</tr>';
         }).join('');
 
