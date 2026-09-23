@@ -80,7 +80,7 @@ class TemplateDiff
         'siteColors' => 'Section background colour',
         'cardImages' => 'Card image',
         'heroSlides' => 'Hero slide',
-        'experiences' => 'Experience',
+        'experiences' => 'Highlight',
     ];
 
     /**

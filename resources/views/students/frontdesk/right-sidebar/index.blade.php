@@ -35,7 +35,7 @@
                     $panelPages = \App\Support\HotelTemplateBuilder::editablePagesForRole($panelRole);
                     $panelPageLabels = [
                         'home' => 'Home', 'rooms' => 'Rooms', 'restaurant' => 'Restaurant',
-                        'amenities' => 'Amenities', 'experience' => 'Experience',
+                        'amenities' => 'Amenities', 'experience' => 'Highlights',
                     ];
                     $panelScope = implode(' & ', array_map(
                         fn ($page) => $panelPageLabels[$page] ?? ucfirst($page),

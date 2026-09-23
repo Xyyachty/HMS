@@ -88,8 +88,14 @@
     { id: 'nav-rooms', key: 'rooms', label: 'Rooms' },
     { id: 'nav-restaurant', key: 'restaurant', label: 'Restaurant' },
     { id: 'nav-amenities', key: 'amenities', label: 'Amenities' },
-    { id: 'nav-experience', key: 'experience', label: 'Experience' },
+    { id: 'nav-experience', key: 'experience', label: 'Highlights' },
   ];
+
+  /* Default labels the nav used to ship with. A team that saved its nav while
+     one of these was the default stored it as its own label, so it is read
+     back as unset and picks up today's default. A label a team typed itself
+     is kept. */
+  const RETIRED_NAV_LABELS = { experience: ['Experience'] };
 
   const DEFAULT_MENUS = [
     { id: 'menu-1', name: 'Hokkaido Scallop Tartare', sub: 'yuzu, sea urchin, micro herbs', price: '\u20B11,800', category: 'Appetizers', img: 'https://picsum.photos/seed/scalloptartare/800/600.jpg' },
@@ -324,7 +330,8 @@
     });
     return DEFAULT_NAV.map((base) => {
       const match = byKey[base.key];
-      const label = match && typeof match.label === 'string' ? match.label.trim() : '';
+      let label = match && typeof match.label === 'string' ? match.label.trim() : '';
+      if ((RETIRED_NAV_LABELS[base.key] || []).includes(label)) label = '';
       return { id: base.id, key: base.key, label: label || base.label };
     });
   }

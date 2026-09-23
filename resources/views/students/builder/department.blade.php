@@ -1474,7 +1474,7 @@
         // where it can actually be edited.
         const ASSIGNED_TASKS_URL = @json(route('students.tasks.assigned'));
         const EDITOR_EDITABLE_PAGES = @json(array_values($editablePages ?? []));
-        const TASK_PAGE_LABELS = { home: 'Home', rooms: 'Rooms', restaurant: 'Restaurant', amenities: 'Amenities', experience: 'Experience' };
+        const TASK_PAGE_LABELS = { home: 'Home', rooms: 'Rooms', restaurant: 'Restaurant', amenities: 'Amenities', experience: 'Highlights' };
         // Four cards a screen, the rest behind Prev/Next — the sidebar itself must
         // not grow its own scrollbar under a long list.
         const ASSIGNED_TASKS_PAGE_SIZE = 4;

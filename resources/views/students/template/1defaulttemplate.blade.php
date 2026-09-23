@@ -2916,7 +2916,7 @@ const SITE_COLOR_AREAS = [
   { id: 'roomModal', label: 'Room details popup', selector: '.room-detail-modal' },
   { id: 'dining', label: 'Best Seller', selector: '[data-hms-section="dining"]' },
   { id: 'amenities', label: 'Amenities', selector: 'main[data-hms-page="amenities"]' },
-  { id: 'experience', label: 'Experience', selector: 'main[data-hms-page="experience"]' },
+  { id: 'experience', label: 'Highlights', selector: 'main[data-hms-page="experience"]' },
 ];
 
 function mixRgb(rgb, target, amount) {
@@ -8084,7 +8084,7 @@ function App() {
       { id: 'nav-rooms', key: 'rooms', label: 'Rooms' },
       { id: 'nav-restaurant', key: 'restaurant', label: 'Restaurant' },
       { id: 'nav-amenities', key: 'amenities', label: 'Amenities' },
-      { id: 'nav-experience', key: 'experience', label: 'Experience' },
+      { id: 'nav-experience', key: 'experience', label: 'Highlights' },
     ]
   ));
   const [rooms, setRooms] = useState([]);
