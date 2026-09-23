@@ -433,14 +433,14 @@
                         </div>
                     </div>
 
-                    <!-- Active tasks (team) -->
+                    <!-- Assigned tasks (team) -->
                     <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
                             <div class="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
                                 <span class="iconify text-amber-500 text-2xl" data-icon="mdi:clipboard-text-outline"></span>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="text-[15px] font-bold text-slate-800 leading-tight">Active Tasks</p>
+                                <p class="text-[15px] font-bold text-slate-800 leading-tight">Assigned Tasks</p>
                                 <p class="text-[34px] font-extrabold text-slate-900 leading-none mt-1">{{ $homeActiveTasks }}</p>
                                 <p class="text-[12px] text-slate-400 font-medium mt-1.5 truncate">{{ $homeMyPending }} assigned to your role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
                                 <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
@@ -463,7 +463,7 @@
                                 @if($homeOverdueCount > 0)
                                     <p class="text-[12px] font-semibold text-red-500 mt-1.5 truncate">{{ $homeOverdueCount }} past due date</p>
                                 @else
-                                    <p class="text-[12px] text-slate-400 font-medium mt-1.5 truncate">Awaiting submission</p>
+                                    <p class="text-[12px] text-slate-400 font-medium mt-1.5 truncate">Waiting for Approval</p>
                                 @endif
                                 <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
                                         class="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
