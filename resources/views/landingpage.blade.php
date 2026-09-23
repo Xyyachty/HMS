@@ -215,12 +215,12 @@
       margin-left: 10px;
       padding: 9px 20px 9px 16px;
       font-size: .8rem;
-      color: var(--wine-800);
-      background: #fff;
+      color: var(--wine-900);
+      background: linear-gradient(120deg, var(--gold-300), var(--gold-500));
       border: 1px solid var(--gold-300);
       box-shadow: 0 6px 18px rgba(74, 13, 28, .2);
     }
-    .btn--login:hover { background: var(--gold-100); }
+    .btn--login:hover { background: var(--gold-500); }
 
     .btn--primary {
       padding: 17px 34px;
