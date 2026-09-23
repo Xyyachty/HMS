@@ -171,7 +171,7 @@
                             @elseif ($status === 'pending')
                                 <span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Pending</span>
                             @else
-                                <span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Inactive</span>
+                                <span class="flex items-center gap-1.5 text-xs font-semibold text-red-600"><span class="w-2 h-2 bg-red-500 rounded-full"></span> Inactive</span>
                             @endif
                         </td>
                         <td class="text-slate-500 text-sm">{{ optional($user->created_at)->format('M d, Y') }}</td>
@@ -555,7 +555,7 @@
             ? '<span class="flex items-center gap-1.5 text-xs font-semibold text-green-600"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Active</span>'
             : user.status === 'pending'
                 ? '<span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Pending</span>'
-                : '<span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Inactive</span>';
+                : '<span class="flex items-center gap-1.5 text-xs font-semibold text-red-600"><span class="w-2 h-2 bg-red-500 rounded-full"></span> Inactive</span>';
         const actionCell = user.role === 'student' && user.status === 'pending'
             ? `
                 <div class="flex justify-center w-full">
