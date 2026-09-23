@@ -5,13 +5,15 @@
 
 @section('content')
 @php
-    // Role tints shared by the Task Overview and Recent rows.
+    // Role tints shared by the Task Overview and Recent rows: gold on cream for
+    // every role, the same as the faculty dashboard. The blue, violet and teal
+    // this used to read all resolve to one crimson that looks red.
     $roleTints = [
-        'front_desk'            => ['bg' => 'bg-blue-50',   'text' => 'text-blue-500'],
-        'restaurant_management' => ['bg' => 'bg-amber-50',  'text' => 'text-amber-500'],
-        'room_management'       => ['bg' => 'bg-pink-50',   'text' => 'text-brand'],
-        'maintenance'           => ['bg' => 'bg-violet-50', 'text' => 'text-violet-500'],
-        'housekeeping'          => ['bg' => 'bg-teal-50',   'text' => 'text-teal-500'],
+        'front_desk'            => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500'],
+        'restaurant_management' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500'],
+        'room_management'       => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500'],
+        'maintenance'           => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500'],
+        'housekeeping'          => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500'],
     ];
     $roleIcons = [
         'front_desk'            => 'mdi:desk',
@@ -29,7 +31,7 @@
     <!-- Total Students -->
     <a href="{{ route('dean.users') }}" class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 block">
         <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
+            <div class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
                 <span class="iconify text-white text-xl" data-icon="mdi:account-group-outline"></span>
             </div>
             <div class="min-w-0">
@@ -129,8 +131,8 @@
                     </div>
                     <div class="text-right shrink-0">
                         <p class="text-[10px] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
-                        <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isDone ? 'text-emerald-600' : 'text-blue-500' }}">
-                            <span class="w-1.5 h-1.5 rounded-full {{ $isDone ? 'bg-emerald-500' : 'bg-blue-500' }}"></span>
+                        <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isDone ? 'text-emerald-600' : 'text-slate-900' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ $isDone ? 'bg-emerald-500' : 'bg-slate-900' }}"></span>
                             {{ $isDone ? 'Completed' : 'Assigned' }}
                         </p>
                     </div>
@@ -168,7 +170,7 @@
                         'name'         => $name,
                         'size'         => 'w-9 h-9',
                         'rounded'      => 'rounded-xl',
-                        'extraClasses' => 'bg-rose-50 text-rose-500 text-xs font-bold',
+                        'extraClasses' => 'bg-amber-50 text-amber-600 text-xs font-bold',
                     ])
                     <div class="min-w-0 flex-1">
                         <p class="text-[13px] font-bold text-slate-800 truncate">{{ $name }}</p>
@@ -248,7 +250,7 @@
                     'name'         => $name,
                     'size'         => 'w-9 h-9',
                     'rounded'      => 'rounded-xl',
-                    'extraClasses' => 'bg-rose-50 text-rose-500 text-xs font-bold',
+                    'extraClasses' => 'bg-amber-50 text-amber-600 text-xs font-bold',
                 ])
                 <div class="min-w-0 flex-1">
                     <p class="text-sm font-bold text-slate-800 truncate">{{ $name }}</p>

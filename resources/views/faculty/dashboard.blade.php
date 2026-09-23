@@ -125,8 +125,8 @@
                         </div>
                         <div class="text-right shrink-0">
                             <p class="text-[10px] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
-                            <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isDone ? 'text-emerald-600' : 'text-blue-500' }}">
-                                <span class="w-1.5 h-1.5 rounded-full {{ $isDone ? 'bg-emerald-500' : 'bg-blue-500' }}"></span>
+                            <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isDone ? 'text-emerald-600' : 'text-slate-900' }}">
+                                <span class="w-1.5 h-1.5 rounded-full {{ $isDone ? 'bg-emerald-500' : 'bg-slate-900' }}"></span>
                                 {{ $isDone ? 'Completed' : 'Assigned' }}
                             </p>
                         </div>

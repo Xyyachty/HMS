@@ -357,11 +357,11 @@
                     'housekeeping'          => 'Housekeeping',
                 ];
                 $homeRoleTints = [
-                    'front_desk'            => ['bg' => 'bg-orange-50',  'text' => 'text-orange-500',  'bar' => 'bg-orange-500'],
-                    'restaurant_management' => ['bg' => 'bg-amber-50',   'text' => 'text-amber-500',   'bar' => 'bg-amber-500'],
-                    'room_management'       => ['bg' => 'bg-pink-50',    'text' => 'text-brand',       'bar' => 'bg-brand'],
-                    'maintenance'           => ['bg' => 'bg-violet-50',  'text' => 'text-violet-500',  'bar' => 'bg-violet-500'],
-                    'housekeeping'          => ['bg' => 'bg-teal-50',    'text' => 'text-teal-500',    'bar' => 'bg-teal-500'],
+                    'front_desk'            => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-orange-500'],
+                    'restaurant_management' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-amber-500'],
+                    'room_management'       => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-brand'],
+                    'maintenance'           => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-violet-500'],
+                    'housekeeping'          => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-teal-500'],
                 ];
                 $homeTint = fn($role, $key) => $homeRoleTints[$role][$key] ?? ($key === 'bar' ? 'bg-slate-400' : ($key === 'text' ? 'text-slate-400' : 'bg-slate-50'));
 
@@ -418,7 +418,7 @@
                     <!-- Team members -->
                     <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
-                            <div class="w-14 h-14 rounded-full bg-brand flex items-center justify-center shrink-0">
+                            <div class="w-14 h-14 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
                                 <span class="iconify text-white text-2xl" data-icon="mdi:account-group-outline"></span>
                             </div>
                             <div class="min-w-0 flex-1">
@@ -436,8 +436,8 @@
                     <!-- Active tasks (team) -->
                     <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
-                            <div class="w-14 h-14 rounded-full bg-violet-50 flex items-center justify-center shrink-0">
-                                <span class="iconify text-violet-500 text-2xl" data-icon="mdi:clipboard-text-outline"></span>
+                            <div class="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                                <span class="iconify text-amber-500 text-2xl" data-icon="mdi:clipboard-text-outline"></span>
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">Active Tasks</p>
@@ -630,7 +630,7 @@
                                     $needsRevision = !$isDone && filled($task->feedback ?? null);
                                     $actionLabel = $isDone ? 'You completed task' : ($needsRevision ? 'Faculty sent back task' : 'Task assigned to you');
                                     $actionIcon  = $isDone ? 'mdi:check-circle-outline' : ($needsRevision ? 'mdi:pencil-outline' : 'mdi:file-document-outline');
-                                    $actionTint  = $isDone ? 'bg-emerald-50 text-emerald-500' : ($needsRevision ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500');
+                                    $actionTint  = $isDone ? 'bg-emerald-50 text-emerald-500' : ($needsRevision ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-500');
                                     $stamp       = $task->updated_at;
                                     $stampDay    = $stamp
                                         ? ($stamp->isToday() ? 'Today' : ($stamp->isYesterday() ? 'Yesterday' : $stamp->format('M j, Y')))
@@ -695,11 +695,11 @@
                 $ringFilled = $ringLength * min(max($teamPercent, 0), 100) / 100;
 
                 $groupRoleTints = [
-                    'front_desk'            => ['bg' => 'bg-orange-50',  'text' => 'text-orange-500',  'bar' => 'bg-orange-500'],
-                    'restaurant_management' => ['bg' => 'bg-amber-50',  'text' => 'text-amber-500',  'bar' => 'bg-amber-500'],
-                    'room_management'       => ['bg' => 'bg-pink-50',   'text' => 'text-brand',      'bar' => 'bg-brand'],
-                    'maintenance'           => ['bg' => 'bg-violet-50', 'text' => 'text-violet-500', 'bar' => 'bg-violet-500'],
-                    'housekeeping'          => ['bg' => 'bg-teal-50',   'text' => 'text-teal-500',   'bar' => 'bg-teal-500'],
+                    'front_desk'            => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-orange-500'],
+                    'restaurant_management' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-amber-500'],
+                    'room_management'       => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-brand'],
+                    'maintenance'           => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-violet-500'],
+                    'housekeeping'          => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-teal-500'],
                 ];
                 $groupTint = fn($role, $key) => $groupRoleTints[$role][$key] ?? ($key === 'bar' ? 'bg-slate-400' : ($key === 'text' ? 'text-slate-400' : 'bg-slate-100'));
             @endphp
