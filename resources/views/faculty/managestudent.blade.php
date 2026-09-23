@@ -5,11 +5,58 @@
 
 @push('styles')
 <style>
-    /* Bulk upload drop zone */
-    #bulkDropZone.drag-over {
-        border-color: #B8873C;
-        background-color: rgba(184,135,60,.07);
+    /* ── Bulk upload, step 1 ──
+       Neutral cards on the maroon palette. Written out because the frozen build
+       has no grid breakpoints, and the palette file turns blue and amber into the
+       wine and gold that made this read as a warning. */
+    .bu-lead { font-size: 12.5px; color: #6B4A54; margin-bottom: .75rem; }
+    .bu-grid { display: grid; gap: .875rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (max-width: 700px) { .bu-grid { grid-template-columns: minmax(0, 1fr); } }
+    .bu-card { border: 1px solid #EADAD5; border-radius: 1rem; background: #fff; padding: 1rem; display: flex; flex-direction: column; }
+    .bu-card-head { display: flex; align-items: center; gap: .7rem; margin-bottom: .85rem; }
+    .bu-badge {
+        width: 2.25rem; height: 2.25rem; border-radius: .7rem; flex: 0 0 auto;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #FBEEE9; color: #7B1730; font-size: 1.15rem;
     }
+    .bu-card-title { font-size: 13.5px; font-weight: 800; color: #2A1118; line-height: 1.25; }
+    .bu-card-sub { font-size: 11.5px; color: #8A6F76; margin-top: .1rem; }
+    .bu-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #8A6F76; margin: .25rem 0 .35rem; }
+    .bu-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
+    .bu-chip {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; font-weight: 700;
+        color: #47262D; background: #F7EEEB; border: 1px solid #EADAD5; border-radius: .4rem; padding: .1rem .4rem;
+    }
+    .bu-chip.is-soft { color: #8A6F76; background: #fff; border-style: dashed; }
+    .bu-text { font-size: 11.5px; line-height: 1.55; color: #6B4A54; margin-top: .25rem; }
+    .bu-download {
+        margin-top: auto; align-self: flex-start;
+        display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .85rem; border-radius: .7rem;
+        font-size: 12px; font-weight: 800; color: #7B1730; background: #fff; border: 1px solid #DE8299;
+        transition: all .15s ease;
+    }
+    .bu-download:hover { background: #7B1730; border-color: #7B1730; color: #fff; }
+    .bu-notes { margin-top: .875rem; display: grid; gap: .45rem; }
+    .bu-notes li { display: flex; align-items: flex-start; gap: .5rem; font-size: 11.5px; line-height: 1.5; color: #6B4A54; }
+    .bu-notes li .iconify { flex: 0 0 auto; font-size: .95rem; color: #B8873C; margin-top: .1rem; }
+    .bu-drop {
+        margin-top: 1rem; border: 2px dashed #DEC6BF; border-radius: 1.1rem; background: #FDF8F6;
+        padding: 2rem 1.25rem; display: flex; flex-direction: column; align-items: center; gap: .4rem;
+        text-align: center; cursor: pointer; transition: border-color .2s ease, background-color .2s ease;
+    }
+    .bu-drop:hover { border-color: #7B1730; background: #FBEEE9; }
+    .bu-drop-icon {
+        width: 3.25rem; height: 3.25rem; border-radius: 9999px; margin-bottom: .25rem;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #fff; color: #7B1730; font-size: 1.6rem; box-shadow: 0 6px 16px -8px rgba(123,23,48,.45);
+    }
+    .bu-drop-title { font-size: 13.5px; font-weight: 800; color: #2A1118; }
+    .bu-drop-sub { font-size: 11.5px; color: #8A6F76; }
+    .bu-browse {
+        margin-top: .35rem; display: inline-flex; align-items: center; padding: .45rem .95rem; border-radius: .7rem;
+        font-size: 12px; font-weight: 800; color: #fff; background: #7B1730;
+    }
+    #bulkDropZone.drag-over { border-color: #7B1730; background-color: #FBEEE9; }
     #bulkImportBtn:disabled {
         opacity:.6;
         cursor:not-allowed;
@@ -462,59 +509,87 @@
                 </span>
             </div>
 
-            <!-- Step 1: Drop zone + template -->
+            <!-- Step 1: Drop zone + the two file formats it reads -->
             <div id="bulkStep1">
-                <!-- Excel Format Info -->
-                <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 items-start">
-                    <span class="iconify text-blue-500 text-xl mt-0.5 shrink-0" data-icon="mdi:microsoft-excel"></span>
-                    <div class="text-xs text-blue-700 leading-relaxed">
-                        <p class="font-bold mb-1">Upload the registrar's official block list as-is</p>
-                        <span>The letterhead, the <em>Female</em> / <em>Male</em> dividers and the trailing marker are skipped. Only four columns are read:</span>
-                        <code class="bg-blue-100 px-1 rounded">STUD NO.</code>
-                        <code class="bg-blue-100 px-1 rounded">NAME</code>
-                        <code class="bg-blue-100 px-1 rounded">EMAIL</code>
-                        <code class="bg-blue-100 px-1 rounded">CONTACT #</code>
-                        <span class="block mt-1">Course, year level, date enrolled and status are ignored. Names written <code class="bg-blue-100 px-1 rounded">LAST, FIRST M.</code> are split automatically.</span>
-                        <p class="font-bold mt-2 mb-1">Or use the template below:</p>
-                        <code class="bg-blue-100 px-1 rounded">student_id, first_name, last_name, email</code>
-                        <span class="mx-1 text-blue-400">+</span>
-                        optional: <code class="bg-blue-100 px-1 rounded">middle_name, phone_number</code>
-                        <br><span class="text-blue-500 mt-1 block">Each student gets their own generated password, emailed to them with their sign-in details.</span>
+                <p class="bu-lead">Choose either format — both import the same way.</p>
+
+                <div class="bu-grid">
+                    <!-- Registrar's list -->
+                    <div class="bu-card">
+                        <div class="bu-card-head">
+                            <span class="bu-badge"><span class="iconify" data-icon="mdi:file-document-outline"></span></span>
+                            <div class="min-w-0">
+                                <p class="bu-card-title">Registrar's block list</p>
+                                <p class="bu-card-sub">Upload it as-is, no editing needed</p>
+                            </div>
+                        </div>
+                        <p class="bu-label">Columns read</p>
+                        <div class="bu-chips">
+                            <code class="bu-chip">STUD NO.</code>
+                            <code class="bu-chip">NAME</code>
+                            <code class="bu-chip">EMAIL</code>
+                            <code class="bu-chip">CONTACT #</code>
+                        </div>
+                        <p class="bu-text">
+                            The letterhead, the <em>Female</em> / <em>Male</em> dividers and every other column are skipped.
+                            Names written <code class="bu-chip">LAST, FIRST M.</code> are split for you.
+                        </p>
+                    </div>
+
+                    <!-- HMS template -->
+                    <div class="bu-card">
+                        <div class="bu-card-head">
+                            <span class="bu-badge"><span class="iconify" data-icon="mdi:table-large"></span></span>
+                            <div class="min-w-0">
+                                <p class="bu-card-title">HMS template</p>
+                                <p class="bu-card-sub">A blank sheet with the right headers</p>
+                            </div>
+                        </div>
+                        <p class="bu-label">Required</p>
+                        <div class="bu-chips">
+                            <code class="bu-chip">student_id</code>
+                            <code class="bu-chip">first_name</code>
+                            <code class="bu-chip">last_name</code>
+                            <code class="bu-chip">email</code>
+                        </div>
+                        <p class="bu-label">Optional</p>
+                        <div class="bu-chips">
+                            <code class="bu-chip is-soft">middle_name</code>
+                            <code class="bu-chip is-soft">phone_number</code>
+                        </div>
+                        <button type="button" onclick="downloadExcelTemplate()" class="bu-download">
+                            <span class="iconify text-base" data-icon="mdi:tray-arrow-down"></span>
+                            Download template (.xlsx)
+                        </button>
                     </div>
                 </div>
 
                 {{-- The one thing about the registrar's list that costs a student their
-                     account. Said here, before the file is picked, because the fix is
-                     to the spreadsheet and doing it now is cheaper than doing it after
-                     half a block has been imported without addresses. --}}
-                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start mt-3">
-                    <span class="iconify text-amber-500 text-xl mt-0.5 shrink-0" data-icon="mdi:alert-circle-outline"></span>
-                    <div class="text-xs text-amber-800 leading-relaxed">
-                        <p class="font-bold">Students without an email address cannot be approved or have an account created.</p>
-                        <span class="block mt-1 text-amber-700">
-                            Those rows are skipped and listed on the results step; the rest of the
-                            file still imports. Add the address to the spreadsheet and upload again,
-                            or add that student with Add Student.
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Download template -->
-                <button onclick="downloadExcelTemplate()" class="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-4 py-2 rounded-xl transition mt-3">
-                    <span class="iconify text-base" data-icon="mdi:file-download-outline"></span>
-                    Download Excel Template (.xlsx)
-                </button>
+                     account, said before the file is picked because the fix is to the
+                     spreadsheet. A plain note rather than an alert: it is how the import
+                     works, not something that has gone wrong. --}}
+                <ul class="bu-notes">
+                    <li>
+                        <span class="iconify" data-icon="mdi:email-outline"></span>
+                        <span>Every student needs an email address. Rows without one are skipped and listed on the Results step; the rest of the file still imports.</span>
+                    </li>
+                    <li>
+                        <span class="iconify" data-icon="mdi:key-outline"></span>
+                        <span>Each student gets their own password, emailed to them with their sign-in details.</span>
+                    </li>
+                </ul>
 
                 <!-- Drop Zone -->
                 <div id="bulkDropZone"
-                    class="mt-4 border-2 border-dashed border-slate-300 rounded-2xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition hover:border-emerald-400 hover:bg-emerald-50/40"
+                    class="bu-drop"
                     onclick="document.getElementById('bulkExcelInput').click()"
                     ondragover="bulkDragOver(event)"
                     ondragleave="bulkDragLeave(event)"
                     ondrop="bulkDrop(event)">
-                    <span class="iconify text-5xl text-slate-300" data-icon="mdi:microsoft-excel"></span>
-                    <p class="text-sm font-semibold text-slate-600">Drag & drop your Excel file here</p>
-                    <p class="text-xs text-slate-400">or click to browse — max 5MB, .xlsx / .xls files</p>
+                    <span class="bu-drop-icon"><span class="iconify" data-icon="mdi:cloud-upload-outline"></span></span>
+                    <p class="bu-drop-title">Drag &amp; drop your Excel file here</p>
+                    <p class="bu-drop-sub">.xlsx or .xls, up to 5MB</p>
+                    <span class="bu-browse">Browse files</span>
                     <input id="bulkExcelInput" name="excel_file" type="file" accept=".xlsx,.xls,.ods" class="hidden" onchange="bulkFileSelected(this.files[0])">
                 </div>
                 <p id="bulkFileInfo" class="text-xs text-slate-500 mt-2 hidden"></p>
