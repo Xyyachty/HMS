@@ -1,7 +1,7 @@
 @extends('dean.layouts.app')
 
-@section('page_title', 'List of Teams Information')
-@section('page_subtitle', 'Faculty, their teams, and the hotel concept each team is building.')
+@section('page_title', 'Teams Overview')
+@section('page_subtitle', 'View only: every faculty's teams and the hotel concept each team is building.')
 @section('faculties_active', 'active')
 
 @section('content')
@@ -10,8 +10,8 @@
     <!-- Header -->
     <div class="p-6 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-rose-50/40">
         <div>
-            <h3 class="text-lg font-bold text-slate-800">Teams</h3>
-            <p class="text-sm text-slate-500 mt-1">All groups created by faculty members.</p>
+            <h3 class="text-lg font-bold text-slate-800">Teams by Faculty</h3>
+            <p class="text-sm text-slate-500 mt-1">Each faculty is listed once, with the teams they created beneath.</p>
         </div>
     </div>
 
@@ -45,7 +45,6 @@
             <table id="teamsTable" class="w-full text-sm text-slate-700">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200">
-                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Faculty</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Team Name</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Hotel Concept</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Members</th>
@@ -73,6 +72,25 @@
                                 ? $faculty->studentGroups->groupBy('group_name')
                                 : collect();
                         @endphp
+                        {{-- One header row per faculty, so the name is not repeated on
+                             every team row beneath it. A faculty with no teams is skipped. --}}
+                        @if ($facultyGroups->isNotEmpty())
+                            <tr class="faculty-group-row">
+                                <td colspan="5" class="px-5 py-2.5">
+                                    <div class="flex items-center gap-2.5">
+                                        @include('partials.user-avatar', [
+                                            'user'         => $faculty->user,
+                                            'name'         => $displayName,
+                                            'size'         => 'w-8 h-8',
+                                            'rounded'      => 'rounded-full',
+                                            'extraClasses' => 'bg-brand text-white text-xs font-bold',
+                                        ])
+                                        <span class="font-bold text-slate-800 text-sm">{{ $displayName }}</span>
+                                        <span class="text-[11px] font-semibold text-slate-400">&middot; {{ $facultyGroups->count() }} {{ Str::plural('team', $facultyGroups->count()) }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endif
                         @forelse ($facultyGroups as $groupName => $groupMembers)
                             @php
                                 $createdAt = optional($groupMembers->first()->created_at)->format('M d, Y');
@@ -94,19 +112,7 @@
                                 $activityLogs = $teamActivityByFacultyGroup[$faculty->user_information_id][$groupName] ?? [];
                             @endphp
                             <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="px-5 py-3.5">
-                                    <div class="flex items-center gap-2.5">
-                                        @include('partials.user-avatar', [
-                                            'user'         => $faculty->user,
-                                            'name'         => $displayName,
-                                            'size'         => 'w-8 h-8',
-                                            'rounded'      => 'rounded-full',
-                                            'extraClasses' => 'bg-rose-100 text-rose-600 text-xs font-bold',
-                                        ])
-                                        <span class="font-semibold text-slate-800 text-sm">{{ $displayName }}</span>
-                                    </div>
-                                </td>
-                                <td class="px-5 py-3.5">
+                                <td class="px-5 py-3.5 pl-10">
                                     <span class="font-semibold text-slate-700">{{ $groupName }}</span>
                                 </td>
                                 <td class="px-5 py-3.5">
@@ -460,6 +466,12 @@
     }
     #teamsTable tbody tr:hover {
         background: #FAF6F5;
+    }
+    /* The faculty header above each set of teams. */
+    #teamsTable tbody tr.faculty-group-row,
+    #teamsTable tbody tr.faculty-group-row:hover {
+        background: #FBEEE9;
+        border-top: 1px solid #E4D3CF;
     }
 </style>
 @endpush
