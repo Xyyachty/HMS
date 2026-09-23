@@ -101,7 +101,7 @@
 </div>
 
 <!-- Task Overview / Newly / Recent -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
     <!-- Task Overview: the tasks most recently assigned or completed -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -225,52 +225,6 @@
                 </div>
             @endforelse
         </div>
-    </div>
-</div>
-
-<!-- Recent Students -->
-<div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-    <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-        <p class="text-sm font-bold text-slate-800">Recent Students</p>
-        <a href="{{ route('dean.users') }}" class="text-[11px] font-bold text-brand hover:underline">View All</a>
-    </div>
-    <div class="divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
-        @forelse(($recentStudents ?? collect()) as $student)
-            @php
-                $user = $student->user;
-                $name = trim(implode(' ', array_filter([
-                    $user?->last_name,
-                    $user?->first_name,
-                    $user?->middle_name,
-                ]))) ?: ($user?->name ?? 'Student');
-            @endphp
-            <div class="px-5 py-3.5 flex items-center gap-3 hover:bg-slate-50/70 transition">
-                @include('partials.user-avatar', [
-                    'user'         => $user,
-                    'name'         => $name,
-                    'size'         => 'w-9 h-9',
-                    'rounded'      => 'rounded-xl',
-                    'extraClasses' => 'bg-amber-50 text-amber-600 text-xs font-bold',
-                ])
-                <div class="min-w-0 flex-1">
-                    <p class="text-sm font-bold text-slate-800 truncate">{{ $name }}</p>
-                    <p class="text-xs text-slate-400 truncate">
-                        {{ $user?->email ?? '—' }}
-                        · Joined {{ optional($student->created_at)->diffForHumans() }}
-                    </p>
-                </div>
-                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full {{ ($user?->status ?? 'active') === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }}">
-                    {{ $user?->status ?? 'active' }}
-                </span>
-            </div>
-        @empty
-            <div class="px-5 py-12 text-center">
-                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                    <span class="iconify text-2xl text-slate-300" data-icon="mdi:account-group-outline"></span>
-                </div>
-                <p class="text-sm font-semibold text-slate-400">No students yet</p>
-            </div>
-        @endforelse
     </div>
 </div>
 @endsection

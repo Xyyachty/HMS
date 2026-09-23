@@ -53,11 +53,6 @@ class DeanController extends Controller
             ->get()
             ->count();
 
-        $recentStudents = Student::with('user')
-            ->latest()
-            ->take(6)
-            ->get();
-
         $recentActivity = Task::with(['faculty.user', 'student.user', 'assignedTo'])
             ->orderByDesc('updated_at')
             ->take(5)
@@ -120,7 +115,6 @@ class DeanController extends Controller
             'totalTeams',
             'studentTrend',
             'teamsThisMonth',
-            'recentStudents',
             'recentActivity',
             'roleLabels',
             'newAccounts',
