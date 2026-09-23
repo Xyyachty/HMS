@@ -751,13 +751,13 @@
                 class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-rose-500 text-rose-600">
                 <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:account-group-outline"></span>Team Members &amp; Roles
             </button>
-            <button type="button" onclick="switchTeamModalTab('tasks')" id="team-tab-tasks"
-                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
-                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:clipboard-text-clock-outline"></span>Team Task Activity
-            </button>
             <button type="button" onclick="switchTeamModalTab('concept')" id="team-tab-concept"
                 class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
                 <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:lightbulb-outline"></span>Hotel Concept
+            </button>
+            <button type="button" onclick="switchTeamModalTab('tasks')" id="team-tab-tasks"
+                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
+                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:clipboard-text-clock-outline"></span>Team Task Activity
             </button>
         </div>
 
@@ -3004,7 +3004,7 @@ function postTaskFeedback(body, decision, approvedTitle, onSuccess, taskId, onEr
 
 /* Team Details modal: Members & Roles / Team Task Activity */
 function switchTeamModalTab(tabId) {
-    const tabs = ['members', 'tasks', 'concept'];
+    const tabs = ['members', 'concept', 'tasks'];
     const current = tabs.includes(tabId) ? tabId : 'members';
     const active = ['border-rose-500', 'text-rose-600'];
     const idle = ['border-transparent', 'text-slate-400'];
