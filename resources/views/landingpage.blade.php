@@ -784,11 +784,12 @@
       height: 50px;
       font-size: .82rem;
       text-transform: uppercase;
-      color: #fff;
-      background: linear-gradient(120deg, var(--wine-800), var(--wine-600));
+      color: var(--wine-900);
+      background: linear-gradient(120deg, var(--gold-300), var(--gold-500));
+      border: 1px solid var(--gold-300);
       box-shadow: 0 12px 28px rgba(94, 16, 36, .26);
     }
-    .btn--submit:hover { transform: translateY(-1px); }
+    .btn--submit:hover { transform: translateY(-1px); background: var(--gold-500); }
 
     .form-error {
       margin-bottom: 16px;
