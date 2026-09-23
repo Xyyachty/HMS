@@ -1086,16 +1086,6 @@
 
             {{-- ══════════════ ACTIVITY LOGS SECTION ══════════════ --}}
             <div id="activity-section" class="section-content hidden fade-in space-y-4">
-                @php
-                    $roleLabels = [
-                        'front_desk' => 'Front Desk',
-                        'restaurant_management' => 'Restaurant',
-                        'room_management' => 'Room Mgmt',
-                        'maintenance' => 'Maintenance',
-                        'housekeeping' => 'Housekeeping',
-                    ];
-                @endphp
-
                 <div>
                     <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Activity Logs</h2>
                     <p class="text-sm text-slate-400">Your own recorded activity only — teammates' logs are not shown here.</p>
@@ -1125,44 +1115,6 @@
                             <div class="px-5 py-12 text-center">
                                 <p class="text-sm font-semibold text-slate-400">No activity recorded yet</p>
                                 <p class="text-xs text-slate-300 mt-1">Logins, task submissions and saved work will appear here.</p>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
-                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">My Tasks</p>
-                        <span class="text-[11px] font-semibold text-slate-400">{{ ($selfActivityLogs ?? collect())->count() }} entries</span>
-                    </div>
-                    <div class="divide-y divide-slate-50 max-h-[560px] overflow-y-auto">
-                        @forelse(($selfActivityLogs ?? collect()) as $task)
-                            <div class="px-5 py-3.5 flex items-start gap-3 hover:bg-slate-50/70 transition">
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $task->status === 'archived' ? 'bg-emerald-50 text-emerald-500' : 'bg-blue-50 text-blue-500' }}">
-                                    <span class="iconify text-lg" data-icon="{{ $task->status === 'archived' ? 'mdi:check-circle-outline' : 'mdi:clipboard-plus-outline' }}"></span>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-bold text-slate-800 truncate">
-                                        {{ $task->status === 'archived' ? 'Completed' : 'Assigned' }}: {{ $task->title }}
-                                    </p>
-                                    <p class="text-xs text-slate-400 mt-0.5">
-                                        {{ $roleLabels[$task->role] ?? $task->role }}
-                                        · {{ optional($task->updated_at)->diffForHumans() }}
-                                    </p>
-                                </div>
-                                @if($task->status === 'active')
-                                    <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0">
-                                        @csrf
-                                        <button type="submit" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-brand-soft text-brand border border-brand/10 hover:bg-brand/10 transition">
-                                            Complete
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
-                        @empty
-                            <div class="px-5 py-12 text-center">
-                                <p class="text-sm font-semibold text-slate-400">No activity yet</p>
-                                <p class="text-xs text-slate-300 mt-1">Your assigned and completed tasks will appear here.</p>
                             </div>
                         @endforelse
                     </div>
