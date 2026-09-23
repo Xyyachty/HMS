@@ -2914,7 +2914,7 @@ const SITE_COLOR_AREAS = [
   // shell every editor dialog reuses — recolouring that would repaint the
   // colour picker itself.
   { id: 'roomModal', label: 'Room details popup', selector: '.room-detail-modal' },
-  { id: 'dining', label: 'Restaurant Menu', selector: '[data-hms-section="dining"]' },
+  { id: 'dining', label: 'Best Seller', selector: '[data-hms-section="dining"]' },
   { id: 'amenities', label: 'Amenities', selector: 'main[data-hms-page="amenities"]' },
   { id: 'experience', label: 'Experience', selector: 'main[data-hms-page="experience"]' },
 ];
