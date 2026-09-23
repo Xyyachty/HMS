@@ -1141,6 +1141,9 @@
                     $teamRate = $teamTotal > 0 ? round(($teamCompleted->count() / $teamTotal) * 100) : 0;
                     $selfByRole = $selfCompleted->groupBy('role')->map->count();
                     $teamByRole = $teamCompleted->groupBy('role')->map->count();
+                    // The team's logs arrive newest first, so the first row per role is
+                    // that role's most recent completion.
+                    $teamLastByRole = $teamCompleted->groupBy('role')->map->first();
                     $maxSelfRole = max(1, (int) ($selfByRole->max() ?: 1));
                     $maxTeamRole = max(1, (int) ($teamByRole->max() ?: 1));
                 @endphp
@@ -1248,9 +1251,16 @@
                     </div>
 
                     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                        <h3 class="text-sm font-bold text-slate-800 mb-4">Team Completed Task</h3>
-                        <div class="space-y-3">
+                        <h3 class="text-sm font-bold text-slate-800 mb-4">Completed Task</h3>
+                        <div class="space-y-4">
                             @forelse($teamByRole as $role => $count)
+                                @php
+                                    $lastTask = $teamLastByRole[$role] ?? null;
+                                    $lastUser = $lastTask?->student?->user ?? $lastTask?->assignedTo;
+                                    $lastBy = $lastUser
+                                        ? (trim(implode(' ', array_filter([$lastUser->first_name, $lastUser->last_name]))) ?: $lastUser->name)
+                                        : null;
+                                @endphp
                                 <div>
                                     <div class="flex items-center justify-between text-xs mb-1">
                                         <span class="font-semibold text-slate-600">{{ $roleLabels[$role] ?? $role }}</span>
@@ -1259,6 +1269,16 @@
                                     <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
                                         <div class="h-full rounded-full bg-plum-accent" style="width: {{ round(($count / $maxTeamRole) * 100) }}%"></div>
                                     </div>
+                                    @if($lastTask)
+                                        <p class="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1 min-w-0">
+                                            <span class="iconify text-amber-500 shrink-0" data-icon="mdi:history"></span>
+                                            <span class="truncate">
+                                                Last completed: <span class="font-semibold text-slate-600">{{ $lastTask->title }}</span>
+                                                @if($lastBy) · {{ $lastBy }} @endif
+                                                · {{ optional($lastTask->updated_at)->format('M d, Y') }}
+                                            </span>
+                                        </p>
+                                    @endif
                                 </div>
                             @empty
                                 <p class="text-sm text-slate-400">No team completions yet.</p>
