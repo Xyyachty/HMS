@@ -9,11 +9,11 @@
     // Role tints shared by every row icon below. Only classes present in the
     // compiled public/css/app.css build are used here.
     $roleTints = [
-        'front_desk'            => ['bg' => 'bg-blue-50',   'text' => 'text-blue-500',   'bar' => 'bg-blue-500'],
+        'front_desk'            => ['bg' => 'bg-brand-soft', 'text' => 'text-brand',     'bar' => 'bg-brand'],
         'restaurant_management' => ['bg' => 'bg-amber-50',  'text' => 'text-amber-500',  'bar' => 'bg-amber-500'],
-        'room_management'       => ['bg' => 'bg-pink-50',   'text' => 'text-rose-500',   'bar' => 'bg-rose-500'],
-        'maintenance'           => ['bg' => 'bg-violet-50', 'text' => 'text-violet-500', 'bar' => 'bg-brand'],
-        'housekeeping'          => ['bg' => 'bg-teal-50',   'text' => 'text-teal-500',   'bar' => 'bg-emerald-500'],
+        'room_management'       => ['bg' => 'bg-brand-soft', 'text' => 'text-brand',     'bar' => 'bg-brand'],
+        'maintenance'           => ['bg' => 'bg-brand-soft', 'text' => 'text-brand',     'bar' => 'bg-brand'],
+        'housekeeping'          => ['bg' => 'bg-brand-soft', 'text' => 'text-brand',     'bar' => 'bg-emerald-500'],
     ];
     $roleIcons = [
         'front_desk'            => 'mdi:desk',
@@ -24,7 +24,9 @@
     ];
     $tint = fn($role, $key) => $roleTints[$role][$key] ?? ($key === 'bar' ? 'bg-rose-500' : ($key === 'text' ? 'text-slate-400' : 'bg-slate-100'));
     // Cycled across the team rows so neighbouring teams stay distinguishable.
-    $teamTints = ['bg-rose-50 text-rose-500', 'bg-amber-50 text-amber-500', 'bg-violet-50 text-violet-500', 'bg-teal-50 text-teal-500', 'bg-blue-50 text-blue-500'];
+    // Maroon and gold only: faculty-palette.css turns rose, blue, violet and teal
+    // into one crimson that reads as red next to the maroon.
+    $teamTints = ['bg-brand-soft text-brand', 'bg-amber-50 text-amber-500'];
     $teamBars  = ['bg-rose-500', 'bg-amber-500', 'bg-brand', 'bg-emerald-500', 'bg-blue-500'];
 @endphp
 
@@ -33,7 +35,7 @@
 
     <a href="{{ route('faculty.students') }}" class="stat-card bg-white rounded-2xl p-5 border border-slate-100 shadow-sm block">
         <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
+            <div class="w-12 h-12 rounded-full bg-brand flex items-center justify-center shrink-0">
                 <span class="iconify text-white text-xl" data-icon="mdi:account-group-outline"></span>
             </div>
             <div class="min-w-0">
