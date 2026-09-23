@@ -146,6 +146,23 @@ class User extends Authenticatable
         return $initials !== '' ? $initials : '?';
     }
 
+    /**
+     * Phone number in the Philippine mobile format, "+63 912 345 6789". Stored
+     * numbers come as "9123456789" (the form shows +63 beside the box), "09123456789"
+     * (spreadsheets) or "+639123456789"; anything that is not a PH mobile is shown as typed.
+     */
+    public function getPhoneDisplayAttribute(): string
+    {
+        $raw = trim((string) $this->phone_number);
+        $digits = preg_replace('/\D/', '', $raw);
+
+        if (preg_match('/^(?:63|0)?(9\d{2})(\d{3})(\d{4})$/', $digits, $m)) {
+            return "+63 {$m[1]} {$m[2]} {$m[3]}";
+        }
+
+        return $raw;
+    }
+
     protected static function booted(): void
     {
         static::creating(function (User $user) {

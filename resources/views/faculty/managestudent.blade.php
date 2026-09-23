@@ -301,8 +301,8 @@
                         </td>
 
                         <td class="px-3 py-2.5">
-                            <span class="font-medium text-slate-700 text-xs cell-truncate" title="{{ $user->phone_number ?? '' }}">
-                                {{ $user->phone_number ?? '—' }}
+                            <span class="font-medium text-slate-700 text-xs cell-truncate" title="{{ $user?->phone_display }}">
+                                {{ $user?->phone_display ?: '—' }}
                             </span>
                         </td>
 
