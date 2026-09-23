@@ -57,15 +57,6 @@ class FacultyController extends Controller
             ? Task::with(['student.user', 'assignedTo'])
                 ->where('faculty_id', $facultyId)
                 ->orderByDesc('updated_at')
-                ->take(8)
-                ->get()
-            : collect();
-
-        // Task Overview's "Newly" tab: the tasks most recently handed out.
-        $newlyAssigned = $facultyId
-            ? Task::with(['student.user', 'assignedTo'])
-                ->where('faculty_id', $facultyId)
-                ->orderByDesc('created_at')
                 ->take(5)
                 ->get()
             : collect();
@@ -122,7 +113,6 @@ class FacultyController extends Controller
             'totalTeams',
             'assignedTasks',
             'recentActivity',
-            'newlyAssigned',
             'roleLabels',
             'teamProgress',
             'upcomingTasks',

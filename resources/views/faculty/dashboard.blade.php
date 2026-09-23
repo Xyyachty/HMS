@@ -93,22 +93,14 @@
 <!-- Activity / progress / deadlines -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
-    <!-- Task Overview: Newly (latest handed out) and Recent (latest changed) -->
+    <!-- Task Overview: the tasks most recently assigned or completed -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
             <p class="text-sm font-bold text-slate-800">Task Overview</p>
             <a href="{{ route('faculty.activity') }}" class="text-[11px] font-bold text-rose-600 hover:underline">View All</a>
         </div>
-        <div class="px-5 pt-3 flex items-center gap-2" id="taskOverviewTabs">
-            <button type="button" class="to-tab is-active" data-to-tab="newly" onclick="switchTaskOverview('newly')">Newly</button>
-            <button type="button" class="to-tab" data-to-tab="recent" onclick="switchTaskOverview('recent')">Recent</button>
-        </div>
-        @foreach([
-            'newly'  => ['tasks' => $newlyAssigned ?? collect(), 'time' => 'created_at', 'empty' => 'No tasks assigned yet'],
-            'recent' => ['tasks' => ($recentActivity ?? collect())->take(5), 'time' => 'updated_at', 'empty' => 'No recent activity'],
-        ] as $tabKey => $tab)
-            <div class="divide-y divide-slate-100 {{ $tabKey === 'newly' ? '' : 'hidden' }}" data-to-panel="{{ $tabKey }}">
-                @forelse($tab['tasks'] as $task)
+            <div class="divide-y divide-slate-100">
+                @forelse(($recentActivity ?? collect()) as $task)
                     @php
                         $actor = $task->assignedTo ?? $task->student?->user;
                         $actorName = $actor
@@ -132,7 +124,7 @@
                             </p>
                         </div>
                         <div class="text-right shrink-0">
-                            <p class="text-[10px] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->{$tab['time']})->diffForHumans(null, true) }}</p>
+                            <p class="text-[10px] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
                             <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isDone ? 'text-emerald-600' : 'text-blue-500' }}">
                                 <span class="w-1.5 h-1.5 rounded-full {{ $isDone ? 'bg-emerald-500' : 'bg-blue-500' }}"></span>
                                 {{ $isDone ? 'Completed' : 'Assigned' }}
@@ -144,12 +136,11 @@
                         <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                             <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
                         </div>
-                        <p class="text-sm font-semibold text-slate-400">{{ $tab['empty'] }}</p>
+                        <p class="text-sm font-semibold text-slate-400">No recent activity</p>
                         <p class="text-xs text-slate-300 mt-1">Assigned and completed tasks will appear here.</p>
                     </div>
                 @endforelse
             </div>
-        @endforeach
     </div>
 
     {{-- Task Progress Overview — one row per team, so a long roster scrolls inside
@@ -216,30 +207,5 @@
     </div>
 
 </div>
-
-<style>
-    .to-tab {
-        height: 1.75rem; padding: 0 .75rem; border-radius: 9999px;
-        font-size: 11px; font-weight: 700; color: #6B4A54;
-        background: #fff; border: 1px solid #E4D3CF; cursor: pointer; transition: all .15s ease;
-    }
-    .to-tab:hover { color: #7B1730; border-color: rgba(123,23,48,.4); }
-    .to-tab.is-active { background: #7B1730; color: #fff; border-color: transparent; }
-</style>
-
-@push('scripts')
-<script>
-    /* Task Overview tabs: both lists ship with the page, so a switch only
-       decides which one is on screen. */
-    function switchTaskOverview(name) {
-        document.querySelectorAll('[data-to-panel]').forEach((panel) => {
-            panel.classList.toggle('hidden', panel.dataset.toPanel !== name);
-        });
-        document.querySelectorAll('#taskOverviewTabs .to-tab').forEach((tab) => {
-            tab.classList.toggle('is-active', tab.dataset.toTab === name);
-        });
-    }
-</script>
-@endpush
 
 @endsection
