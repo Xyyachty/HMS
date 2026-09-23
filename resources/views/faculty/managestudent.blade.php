@@ -16,29 +16,70 @@
         transform:none;
     }
 
-    #studentsTable {
-        table-layout: fixed;
-        width: 100%;
-        border-collapse: collapse;
+    /* ── Student table ──
+       Written out rather than composed from utilities: public/css/app.css is a
+       frozen build, and faculty-palette.css turns green and red into gold and
+       wine, so the Active and Inactive chips carry their own hex values. */
+    .st-card { border: 1px solid #EADAD5; border-radius: 1rem; overflow: hidden; background: #fff; }
+    #studentsTable { table-layout: fixed; width: 100%; border-collapse: collapse; }
+    #studentsTable th, #studentsTable td { vertical-align: middle; }
+    #studentsTable thead th {
+        background: #7B1730; color: #FBEEE9;
+        font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+        padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
-    #studentsTable th,
-    #studentsTable td {
-        vertical-align: middle;
+    #studentsTable thead th.text-center { text-align: center; }
+    #studentsTable tbody tr { border-top: 1px solid #F2E9E7; transition: background-color .15s ease, box-shadow .15s ease; }
+    #studentsTable tbody tr:nth-child(even) { background: #FDF8F6; }
+    #studentsTable tbody tr[data-student-id]:hover { background: #FBEEE9; box-shadow: inset 3px 0 0 #7B1730; }
+    #studentsTable td { padding: .8rem .9rem; }
+    #studentsTable .col-student { width: 31%; }
+    #studentsTable .col-id { width: 13%; }
+    #studentsTable .col-phone { width: 15%; }
+    #studentsTable .col-status { width: 12%; }
+    #studentsTable .col-joined { width: 14%; }
+    #studentsTable .col-action { width: 15%; }
+    #studentsTable .cell-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: block; }
+
+    .st-id {
+        display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; font-weight: 700;
+        color: #7B1730; background: #F7EEEB; border: 1px solid #EADAD5; border-radius: .5rem; padding: .2rem .5rem;
     }
-    #studentsTable .col-id { width: 9%; }
-    #studentsTable .col-name { width: 22%; }
-    #studentsTable .col-email { width: 20%; }
-    #studentsTable .col-phone { width: 13%; }
-    #studentsTable .col-status { width: 11%; }
-    #studentsTable .col-joined { width: 11%; }
-    #studentsTable .col-action { width: 14%; }
-    #studentsTable .cell-truncate {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 100%;
-        display: block;
+    .st-name { font-size: 13.5px; font-weight: 800; color: #2A1118; }
+    .st-email { font-size: 11.5px; color: #8A6F76; margin-top: .1rem; }
+    .st-muted { font-size: 12px; color: #5A3941; font-weight: 600; }
+    .st-dim { color: #C9AFAA; }
+
+    .st-status {
+        display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
+        border-radius: 9999px; padding: .25rem .65rem; font-size: 11px; font-weight: 800; border: 1px solid;
     }
+    .st-status .dot { width: .45rem; height: .45rem; border-radius: 9999px; }
+    .st-status.is-active   { color: #15803D; background: #ECFDF3; border-color: #ABEFC6; }
+    .st-status.is-active .dot   { background: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
+    .st-status.is-inactive { color: #B42318; background: #FEF3F2; border-color: #FECDCA; }
+    .st-status.is-inactive .dot { background: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
+    .st-status.is-pending  { color: #96692C; background: #FBF3E0; border-color: #E9D3A0; }
+    .st-status.is-pending .dot  { background: #C9A45C; }
+
+    .st-update {
+        display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap;
+        border-radius: .6rem; padding: .4rem .8rem; font-size: 11.5px; font-weight: 800;
+        color: #7B1730; background: #fff; border: 1px solid #DE8299; transition: all .15s ease;
+    }
+    .st-update:hover { background: #7B1730; border-color: #7B1730; color: #fff; }
+
+    .st-pager { display: flex; align-items: center; gap: .375rem; flex-wrap: wrap; }
+    .st-page {
+        min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem; border-radius: .7rem;
+        display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
+        font-size: 13px; font-weight: 700; color: #5A3941; background: #fff; border: 1px solid #EADAD5;
+        transition: all .15s ease;
+    }
+    a.st-page:hover { color: #7B1730; border-color: #7B1730; background: #FBEEE9; }
+    .st-page.is-current { background: #7B1730; border-color: #7B1730; color: #fff; box-shadow: 0 6px 14px -6px rgba(123,23,48,.55); }
+    .st-page.is-disabled { color: #C9AFAA; background: #FAF6F5; cursor: not-allowed; }
 
     /* Expandable student search — icon-only until opened */
     #studentSearchWrap {
@@ -214,34 +255,19 @@
 
     <!-- DataTable -->
     <div class="p-4 md:p-6">
-        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <table id="studentsTable" class="w-full text-sm min-w-[720px]">
+        <div class="st-card overflow-x-auto">
+            <table id="studentsTable" style="min-width: 760px">
                 <thead>
-                    <tr class="bg-gradient-to-r from-pink-50 to-rose-50 border-b border-pink-100">
-                    <th class="col-id px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        ID Number
-                    </th>
-                    <th class="col-name px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Student Name
-                    </th>
-                    <th class="col-email px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Email
-                    </th>
-                    <th class="col-phone px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Phone
-                    </th>
-                    <th class="col-status px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Status
-                    </th>
-                    <th class="col-joined px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Joined
-                    </th>
-                    <th class="col-action px-3 py-3 text-center text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Action
-                    </th>
-                </tr>
+                    <tr>
+                        <th class="col-student">Student</th>
+                        <th class="col-id">ID Number</th>
+                        <th class="col-phone">Phone</th>
+                        <th class="col-status">Status</th>
+                        <th class="col-joined">Joined</th>
+                        <th class="col-action text-center">Action</th>
+                    </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody>
                 @forelse ($students ?? [] as $student)
                     @php
                         $user = $student->user;
@@ -264,76 +290,65 @@
                         $displayName = $displayName !== '' ? $displayName : ($user->name ?? 'Student');
 
                         $status = $user->status ?? 'active';
+                        $statusChip = match ($status) {
+                            'active'  => ['class' => 'is-active', 'label' => 'Active'],
+                            'pending' => ['class' => 'is-pending', 'label' => 'Pending'],
+                            default   => ['class' => 'is-inactive', 'label' => 'Inactive'],
+                        };
                     @endphp
 
                     <tr
                         data-student-id="{{ $student->student_number }}"
                         data-user-id="{{ $user->user_id ?? '' }}"
-                        class="hover:bg-pink-50/60 transition-all duration-200"
                     >
-                        <td class="px-3 py-2.5">
-                            <span class="font-mono text-xs text-slate-600 font-semibold cell-truncate" title="{{ $student->student_number }}">
-                                {{ $student->student_number }}
-                            </span>
-                        </td>
-
-                        <td class="px-3 py-2.5">
-                            <div class="flex items-center gap-2 min-w-0">
+                        <td>
+                            <div class="flex items-center gap-3 min-w-0">
                                 @include('partials.user-avatar', [
-                                    'user'        => $user,
-                                    'name'        => $displayName,
-                                    'size'        => 'w-8 h-8',
-                                    'rounded'     => 'rounded-lg',
-                                    'extraClasses' => 'shadow-sm border border-pink-100',
+                                    'user'         => $user,
+                                    'name'         => $displayName,
+                                    'size'         => 'w-9 h-9',
+                                    'rounded'      => 'rounded-full',
+                                    'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold border border-pink-100',
                                 ])
                                 <div class="min-w-0 flex-1">
-                                    <p class="font-bold text-slate-800 text-sm cell-truncate" title="{{ $displayName }}">
+                                    <p class="st-name cell-truncate" title="{{ $displayName }}">
                                         {{ $primaryName }}@if($secondaryName !== ''), {{ $secondaryName }}@endif
                                     </p>
+                                    <p class="st-email cell-truncate" title="{{ $user->email ?? '' }}">{{ $user->email ?? '—' }}</p>
                                 </div>
                             </div>
                         </td>
 
-                        <td class="px-3 py-2.5">
-                            <span class="text-slate-500 text-xs cell-truncate" title="{{ $user->email ?? '' }}">
-                                {{ $user->email ?? '—' }}
-                            </span>
+                        <td>
+                            <span class="st-id" title="{{ $student->student_number }}">{{ $student->student_number }}</span>
                         </td>
 
-                        <td class="px-3 py-2.5">
-                            <span class="font-medium text-slate-700 text-xs cell-truncate" title="{{ $user?->phone_display }}">
-                                {{ $user?->phone_display ?: '—' }}
-                            </span>
-                        </td>
-
-                        <td class="px-3 py-2.5">
-                            @if ($status === 'active')
-                                <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-2 py-0.5 text-[11px] font-bold text-green-700 whitespace-nowrap">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                    Active
-                                </span>
-
-                            @elseif ($status === 'pending')
-                                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-700 whitespace-nowrap">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                    Pending
-                                </span>
-
+                        <td>
+                            @if ($user?->phone_display)
+                                <span class="st-muted cell-truncate" title="{{ $user->phone_display }}">{{ $user->phone_display }}</span>
                             @else
-                                <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-bold text-red-700 whitespace-nowrap">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                                    Inactive
-                                </span>
+                                <span class="st-muted st-dim">—</span>
                             @endif
                         </td>
 
-                        <td class="px-3 py-2.5 text-slate-500 text-xs whitespace-nowrap">
-                            {{ optional($user->created_at)->format('M d, Y') }}
+                        <td>
+                            <span class="st-status {{ $statusChip['class'] }}">
+                                <span class="dot"></span>
+                                {{ $statusChip['label'] }}
+                            </span>
                         </td>
 
-                        <td class="px-3 py-2.5">
+                        <td>
+                            <span class="st-muted inline-flex items-center gap-1.5 whitespace-nowrap">
+                                <span class="iconify text-sm text-amber-500" data-icon="mdi:calendar-blank-outline"></span>
+                                {{ optional($user->created_at)->format('M d, Y') }}
+                            </span>
+                        </td>
+
+                        <td>
                             <div class="flex justify-center">
                                 <button
+                                    type="button"
                                     onclick="openUpdateModal(this)"
                                     data-user-id="{{ $user->user_id ?? '' }}"
                                     data-student-id="{{ $student->student_number }}"
@@ -343,8 +358,9 @@
                                     data-email="{{ $user->email ?? '' }}"
                                     data-phone-number="{{ $user->phone_number ?? '' }}"
                                     data-status="{{ $status }}"
-                                    class="inline-flex items-center rounded-lg bg-pink-50 px-3 py-1.5 text-[11px] font-bold text-pink-700 border border-pink-200 hover:bg-pink-100 transition-all duration-200 whitespace-nowrap"
+                                    class="st-update"
                                 >
+                                    <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span>
                                     Update
                                 </button>
                             </div>
@@ -352,67 +368,55 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="py-10 text-center">
+                        <td colspan="6" class="py-12 text-center">
                             <div class="flex flex-col items-center gap-2">
-                                <span class="iconify text-5xl text-slate-300" data-icon="mdi:account-group-outline"></span>
-
-                                <p class="font-semibold text-slate-500">
+                                <div class="w-14 h-14 rounded-2xl bg-brand-soft flex items-center justify-center">
+                                    <span class="iconify text-3xl text-brand" data-icon="mdi:account-group-outline"></span>
+                                </div>
+                                <p class="font-semibold text-slate-600">
                                     No students in {{ $activeClass->name ?? 'this block' }} yet
                                 </p>
-
                                 <p class="text-xs text-slate-400">
                                     Use Add Student or Bulk Upload — seats fill the open class (max {{ $classCapacity ?? 40 }}).
                                 </p>
                             </div>
                         </td>
                     </tr>
-
                 @endforelse
-            </tbody>
-        </table>
+                </tbody>
+            </table>
         </div>
 
-        <!-- Pagination Links -->
-        @if($students->hasPages())
-        <div class="mt-6 flex items-center justify-between">
-            <div class="text-sm text-slate-600">
-                Showing <span class="font-semibold">{{ $students->firstItem() }}</span> to <span class="font-semibold">{{ $students->lastItem() }}</span> of <span class="font-semibold">{{ $students->total() }}</span> students
-            </div>
-            <div class="flex gap-2">
+        <!-- Pagination -->
+        @if($students->total() > 0)
+        <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <p class="text-[13px] text-slate-500">
+                Showing <span class="font-bold text-slate-800">{{ $students->firstItem() }}</span>–<span class="font-bold text-slate-800">{{ $students->lastItem() }}</span>
+                of <span class="font-bold text-slate-800">{{ $students->total() }}</span> students
+            </p>
+            @if($students->hasPages())
+            <nav class="st-pager" aria-label="Student pages">
                 @if ($students->onFirstPage())
-                    <span class="px-4 py-2 rounded-xl bg-slate-100 text-slate-400 text-sm font-semibold cursor-not-allowed">
-                        Previous
-                    </span>
+                    <span class="st-page is-disabled"><span class="iconify" data-icon="mdi:chevron-left"></span> Previous</span>
                 @else
-                    <a href="{{ $students->previousPageUrl() }}" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
-                        Previous
-                    </a>
+                    <a href="{{ $students->previousPageUrl() }}" class="st-page"><span class="iconify" data-icon="mdi:chevron-left"></span> Previous</a>
                 @endif
 
-                <div class="flex gap-1">
-                    @foreach ($students->getUrlRange(1, $students->lastPage()) as $page => $url)
-                        @if ($page == $students->currentPage())
-                            <span class="w-10 h-10 flex items-center justify-center rounded-xl bg-brand text-white text-sm font-bold shadow-md shadow-brand/20">
-                                {{ $page }}
-                            </span>
-                        @else
-                            <a href="{{ $url }}" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
-                                {{ $page }}
-                            </a>
-                        @endif
-                    @endforeach
-                </div>
+                @foreach ($students->getUrlRange(1, $students->lastPage()) as $page => $url)
+                    @if ($page == $students->currentPage())
+                        <span class="st-page is-current" aria-current="page">{{ $page }}</span>
+                    @else
+                        <a href="{{ $url }}" class="st-page">{{ $page }}</a>
+                    @endif
+                @endforeach
 
                 @if ($students->hasMorePages())
-                    <a href="{{ $students->nextPageUrl() }}" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
-                        Next
-                    </a>
+                    <a href="{{ $students->nextPageUrl() }}" class="st-page">Next <span class="iconify" data-icon="mdi:chevron-right"></span></a>
                 @else
-                    <span class="px-4 py-2 rounded-xl bg-slate-100 text-slate-400 text-sm font-semibold cursor-not-allowed">
-                        Next
-                    </span>
+                    <span class="st-page is-disabled">Next <span class="iconify" data-icon="mdi:chevron-right"></span></span>
                 @endif
-            </div>
+            </nav>
+            @endif
         </div>
         @endif
     </div>
