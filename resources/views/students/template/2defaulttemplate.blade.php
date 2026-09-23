@@ -4056,7 +4056,7 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
       <section data-hms-section="dining" data-hms-bg-target="1" style={{ padding: '2.5rem 1.5rem 5rem', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
           <div>
-            <span className="section-num">Restaurant Menu</span>
+            <span className="section-num">Best Seller</span>
             <h2 className="font-display" style={{ fontSize: '2rem', margin: '0.35rem 0 0' }}>From Our Kitchen & Bar</h2>
           </div>
           <button className="btn-ghost" onClick={() => onNav('restaurant')} style={{ fontSize: '0.72rem' }}>View dining</button>
