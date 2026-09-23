@@ -61,6 +61,15 @@ class FacultyController extends Controller
                 ->get()
             : collect();
 
+        // Task Overview's "Newly" tab: the tasks most recently handed out.
+        $newlyAssigned = $facultyId
+            ? Task::with(['student.user', 'assignedTo'])
+                ->where('faculty_id', $facultyId)
+                ->orderByDesc('created_at')
+                ->take(5)
+                ->get()
+            : collect();
+
         // One pass over every task this faculty owns feeds the per-team progress
         // bars, the task list and the supporting figures on the stat cards.
         $allTasks = $facultyId
@@ -113,6 +122,7 @@ class FacultyController extends Controller
             'totalTeams',
             'assignedTasks',
             'recentActivity',
+            'newlyAssigned',
             'roleLabels',
             'teamProgress',
             'upcomingTasks',
