@@ -176,15 +176,14 @@
         </div>
     </div>
 
-    <!-- Upcoming Deadlines -->
+    <!-- Task -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-slate-800">Upcoming Deadlines</p>
+            <p class="text-sm font-bold text-slate-800">Task</p>
             <a href="{{ route('faculty.activity') }}" class="text-[11px] font-bold text-rose-600 hover:underline">View All</a>
         </div>
         <div class="divide-y divide-slate-100">
-            @forelse(($upcomingDeadlines ?? collect()) as $task)
-                @php $isLate = $task->due_date && $task->due_date->isPast(); @endphp
+            @forelse(($upcomingTasks ?? collect()) as $task)
                 <div class="px-5 py-3 flex items-center gap-3">
                     <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $tint($task->role, 'bg') }} {{ $tint($task->role, 'text') }}">
                         <span class="iconify text-lg" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
@@ -193,18 +192,14 @@
                         <p class="text-[13px] font-bold text-slate-800 truncate">{{ $task->title }}</p>
                         <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ $task->group_name ?: ($roleLabels[$task->role] ?? $task->role) }}</p>
                     </div>
-                    <div class="shrink-0 w-11 rounded-lg border py-1 text-center {{ $isLate ? 'border-red-100 bg-red-50' : 'border-pink-100 bg-pink-50' }}">
-                        <p class="text-[9px] font-bold uppercase tracking-wider {{ $isLate ? 'text-red-400' : 'text-rose-400' }}">{{ $task->due_date->format('M') }}</p>
-                        <p class="text-[13px] font-extrabold leading-tight {{ $isLate ? 'text-red-500' : 'text-rose-600' }}">{{ $task->due_date->format('j') }}</p>
-                    </div>
                 </div>
             @empty
                 <div class="px-5 py-12 text-center">
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:calendar-blank-outline"></span>
+                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:clipboard-text-outline"></span>
                     </div>
-                    <p class="text-sm font-semibold text-slate-400">No upcoming deadlines</p>
-                    <p class="text-xs text-slate-300 mt-1">Tasks with a due date will show up here.</p>
+                    <p class="text-sm font-semibold text-slate-400">No active tasks</p>
+                    <p class="text-xs text-slate-300 mt-1">Tasks you assign will show up here.</p>
                 </div>
             @endforelse
         </div>

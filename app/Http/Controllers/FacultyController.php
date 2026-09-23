@@ -62,7 +62,7 @@ class FacultyController extends Controller
             : collect();
 
         // One pass over every task this faculty owns feeds the per-team progress
-        // bars, the deadline list and the supporting figures on the stat cards.
+        // bars, the task list and the supporting figures on the stat cards.
         $allTasks = $facultyId
             ? Task::where('faculty_id', $facultyId)
                 ->whereIn('status', ['active', 'archived'])
@@ -101,10 +101,10 @@ class FacultyController extends Controller
                 })
             : collect();
 
-        $upcomingDeadlines = $allTasks
+        // Soonest due first; tasks with no due date still show, after the dated ones.
+        $upcomingTasks = $allTasks
             ->where('status', 'active')
-            ->filter(fn ($task) => $task->due_date !== null)
-            ->sortBy('due_date')
+            ->sortBy(fn ($task) => [$task->due_date === null, $task->due_date])
             ->take(4)
             ->values();
 
@@ -115,7 +115,7 @@ class FacultyController extends Controller
             'recentActivity',
             'roleLabels',
             'teamProgress',
-            'upcomingDeadlines',
+            'upcomingTasks',
             'completedTasks',
             'completionRate',
             'overdueTasks'
