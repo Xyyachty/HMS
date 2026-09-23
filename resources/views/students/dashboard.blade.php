@@ -1148,17 +1148,35 @@
                     $maxTeamRole = max(1, (int) ($teamByRole->max() ?: 1));
                 @endphp
 
-                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-                    <div>
-                        <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Reports</h2>
-                        <p class="text-sm text-slate-400">Completed task assignment reports for yourself and your team.</p>
-                    </div>
-                    <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1">
-                        <button type="button" id="report-tab-self" onclick="switchReportTab('self')"
-                            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-brand text-white">Individual</button>
-                        <button type="button" id="report-tab-team" onclick="switchReportTab('team')"
-                            class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-800">Team</button>
-                    </div>
+                {{-- Tabs styled like the faculty and dean Reports pages (.rp-tab there). --}}
+                <style>
+                    .srp-tabs { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+                    .srp-tab {
+                        display: inline-flex; align-items: center; gap: .5rem;
+                        padding: .7rem 1.25rem; border-radius: .875rem;
+                        font-size: .8125rem; font-weight: 700; color: #6B4A54;
+                        background: #fff; border: 1px solid #E4D3CF; cursor: pointer;
+                        white-space: nowrap; transition: all .2s ease;
+                    }
+                    .srp-tab:hover { border-color: rgba(123,23,48,.4); color: #7B1730; }
+                    .srp-tab.active {
+                        background: #7B1730; color: #fff; border-color: transparent;
+                        box-shadow: 0 8px 20px -6px rgba(123,23,48,.4);
+                    }
+                </style>
+
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Reports</h2>
+                    <p class="text-sm text-slate-400">Completed task assignment reports for yourself and your team.</p>
+                </div>
+
+                <div class="srp-tabs" id="studentReportTabs">
+                    <button type="button" id="report-tab-self" class="srp-tab active" onclick="switchReportTab('self')">
+                        <span class="iconify text-base" data-icon="mdi:account-outline"></span> Individual
+                    </button>
+                    <button type="button" id="report-tab-team" class="srp-tab" onclick="switchReportTab('team')">
+                        <span class="iconify text-base" data-icon="mdi:account-group-outline"></span> Team
+                    </button>
                 </div>
 
                 <div id="report-panel-self" class="space-y-4">
@@ -2389,8 +2407,8 @@
             if (!selfBtn || !teamBtn) return;
 
             const isSelf = tab === 'self';
-            selfBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold ' + (isSelf ? 'bg-brand text-white' : 'text-slate-500 hover:text-slate-800');
-            teamBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold ' + (!isSelf ? 'bg-brand text-white' : 'text-slate-500 hover:text-slate-800');
+            selfBtn.classList.toggle('active', isSelf);
+            teamBtn.classList.toggle('active', !isSelf);
             selfPanel.classList.toggle('hidden', !isSelf);
             teamPanel.classList.toggle('hidden', isSelf);
         }
