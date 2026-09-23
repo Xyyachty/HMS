@@ -546,6 +546,51 @@ class DeanController extends Controller
 
         $roleOptions = \App\Support\DeanReportDesk::ROLE_LABELS;
 
+        /* Overview: the same four figures and two short lists the faculty report
+           leads with, counted across every faculty's teams. Done means approved,
+           handed in and signed off, as everywhere else in the reports. */
+        $totalStudents = Student::count();
+        $totalTeams = StudentGroup::query()
+            ->select('faculty_id', 'group_name')
+            ->distinct()
+            ->get()
+            ->count();
+        $totalActivities = Task::count();
+        $doneActivities = Task::where('status', 'archived')->whereNotNull('feedback_at')->count();
+        $overallRate = $totalActivities > 0
+            ? (int) round(($doneActivities / $totalActivities) * 100)
+            : 0;
+
+        $topStudents = collect($studentRows)
+            ->sortByDesc(fn ($row) => [$row['percent'], $row['approved']])
+            ->take(5)
+            ->values();
+
+        $recentActivities = Task::with(['student.user', 'assignedTo'])
+            ->where('status', 'archived')
+            ->whereNotNull('feedback_at')
+            ->orderByDesc('updated_at')
+            ->take(6)
+            ->get()
+            ->map(function (Task $task) use ($roleOptions) {
+                $user = $task->student?->user ?? $task->assignedTo;
+                $name = trim(implode(' ', array_filter([
+                    $user?->last_name,
+                    $user?->first_name,
+                    $user?->middle_name,
+                ]))) ?: ($user?->name ?? 'Unclaimed');
+
+                return [
+                    'date'       => optional($task->updated_at)->format('M d, Y'),
+                    'time'       => optional($task->updated_at)->format('g:i A'),
+                    'student'    => $name,
+                    'user'       => $user,
+                    'team'       => $task->group_name ?: '—',
+                    'activity'   => $task->title,
+                    'role_label' => $roleOptions[$task->role] ?? $task->role,
+                ];
+            });
+
         return view('dean.reports', compact(
             'completedRows',
             'studentRows',
@@ -553,7 +598,13 @@ class DeanController extends Controller
             'teamOptions',
             'taskOptions',
             'statusOptions',
-            'roleOptions'
+            'roleOptions',
+            'totalStudents',
+            'totalTeams',
+            'totalActivities',
+            'overallRate',
+            'topStudents',
+            'recentActivities'
         ));
     }
 
