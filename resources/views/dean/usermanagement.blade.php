@@ -7,29 +7,80 @@
 @push('styles')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <style>
-    .dataTables_wrapper .dataTables_filter input {
-        background: #FAF6F5; border: 1px solid #E4D3CF; border-radius: 0.75rem;
-        padding: 0.5rem 1rem; margin-left: 0.5rem; outline: none; font-family: 'Manrope', sans-serif;
+    /* ── User table, styled like the faculty Manage Students list ──
+       DataTables still draws the rows and the pager, so its own stripes, borders
+       and buttons are overridden here. Status chips carry their own hex values
+       because the palette turns green and red into gold and wine. */
+    .st-card { border: 1px solid #EADAD5; border-radius: 1rem; overflow: hidden; background: #fff; }
+    table.dataTable#usersTable { border-collapse: collapse !important; width: 100% !important; margin: 0 !important; }
+    table.dataTable#usersTable thead th {
+        background: #7B1730; color: #FBEEE9; border-bottom: 0 !important;
+        font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+        padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
-    .dataTables_wrapper .dataTables_filter input:focus { border-color: #7B1730; box-shadow: 0 0 0 3px rgba(123,23,48, 0.12); }
-    .dataTables_wrapper .dataTables_length select {
-        background: #FAF6F5; border: 1px solid #E4D3CF; border-radius: 0.5rem;
-        padding: 0.25rem 0.5rem; outline: none; font-family: 'Manrope', sans-serif;
+    table.dataTable#usersTable tbody tr { background: #fff; transition: background-color .15s ease, box-shadow .15s ease; }
+    table.dataTable#usersTable tbody tr.even { background: #FDF8F6; }
+    table.dataTable#usersTable tbody tr:hover { background: #FBEEE9 !important; box-shadow: inset 3px 0 0 #7B1730; }
+    table.dataTable#usersTable tbody td {
+        padding: .8rem .9rem; vertical-align: middle; font-size: 13px;
+        border-top: 1px solid #F2E9E7 !important; box-shadow: none !important;
     }
-    table.dataTable thead th {
-        background: #FBEEE9; color: #6B4A54; font-weight: 800; text-transform: uppercase;
-        font-size: 0.65rem; letter-spacing: 0.1em; padding: 1rem; border-bottom: 2px solid #ECAFBE;
+    table.dataTable#usersTable.no-footer { border-bottom: 0 !important; }
+
+    .st-name { font-size: 13.5px; font-weight: 800; color: #2A1118; }
+    .st-email { font-size: 11.5px; color: #8A6F76; margin-top: .1rem; }
+    .st-muted { font-size: 12px; color: #5A3941; font-weight: 600; }
+    .st-dim { color: #C9AFAA; }
+    .st-block {
+        display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 800;
+        color: #7B1730; background: #F7EEEB; border: 1px solid #EADAD5; border-radius: .5rem; padding: .2rem .55rem;
     }
-    table.dataTable tbody tr { transition: background 0.2s; }
-    table.dataTable tbody tr:hover { background: #FBEEE9 !important; }
-    table.dataTable tbody td { padding: 1rem; vertical-align: middle; font-size: 0.875rem; }
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: #7B1730 !important; color: white !important; border-radius: 9999px !important;
-        border: none !important; padding: 0.25rem 0.75rem; box-shadow: 0 4px 6px -1px rgba(123,23,48,0.2);
+
+    .st-status {
+        display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
+        border-radius: 9999px; padding: .25rem .65rem; font-size: 11px; font-weight: 800; border: 1px solid;
     }
-    .dataTables_wrapper .dataTables_paginate .paginate_button {
-        border-radius: 9999px !important; background: transparent; border: 1px solid #E4D3CF; margin: 0 2px;
+    .st-status .dot { width: .45rem; height: .45rem; border-radius: 9999px; }
+    .st-status.is-active   { color: #15803D; background: #ECFDF3; border-color: #ABEFC6; }
+    .st-status.is-active .dot   { background: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
+    .st-status.is-inactive { color: #B42318; background: #FEF3F2; border-color: #FECDCA; }
+    .st-status.is-inactive .dot { background: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
+    .st-status.is-pending  { color: #96692C; background: #FBF3E0; border-color: #E9D3A0; }
+    .st-status.is-pending .dot  { background: #C9A45C; }
+
+    .st-update, .st-approve {
+        display: inline-flex; align-items: center; justify-content: center; gap: .35rem; white-space: nowrap;
+        min-width: 6rem; border-radius: .6rem; padding: .4rem .8rem; font-size: 11.5px; font-weight: 800;
+        border: 1px solid; transition: all .15s ease;
     }
+    .st-update { color: #7B1730; background: #fff; border-color: #DE8299; }
+    .st-update:hover { background: #7B1730; border-color: #7B1730; color: #fff; }
+    .st-approve { color: #fff; background: #7B1730; border-color: #7B1730; box-shadow: 0 6px 14px -8px rgba(123,23,48,.6); }
+    .st-approve:hover { background: #5E1024; border-color: #5E1024; }
+
+    /* Info line and pager under the table */
+    #usersTable_wrapper .dataTables_info { padding-top: 1.25rem; font-size: 13px; color: #6B4A54; }
+    #usersTable_wrapper .dataTables_info b { color: #2A1118; }
+    #usersTable_wrapper .dataTables_paginate { padding-top: 1rem; display: flex; gap: .375rem; flex-wrap: wrap; justify-content: flex-end; }
+    #usersTable_wrapper .dataTables_paginate .paginate_button {
+        min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem !important; margin: 0 !important; border-radius: .7rem !important;
+        display: inline-flex !important; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 700; color: #5A3941 !important; background: #fff !important;
+        border: 1px solid #EADAD5 !important; box-shadow: none !important; transition: all .15s ease;
+    }
+    #usersTable_wrapper .dataTables_paginate .paginate_button:hover {
+        color: #7B1730 !important; border-color: #7B1730 !important; background: #FBEEE9 !important;
+    }
+    #usersTable_wrapper .dataTables_paginate .paginate_button.current,
+    #usersTable_wrapper .dataTables_paginate .paginate_button.current:hover {
+        background: #7B1730 !important; border-color: #7B1730 !important; color: #fff !important;
+        box-shadow: 0 6px 14px -6px rgba(123,23,48,.55) !important;
+    }
+    #usersTable_wrapper .dataTables_paginate .paginate_button.disabled,
+    #usersTable_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+        color: #C9AFAA !important; background: #FAF6F5 !important; border-color: #EADAD5 !important; cursor: not-allowed;
+    }
+    #usersTable_wrapper .dataTables_paginate .ellipsis { padding: 0 .35rem; color: #8A6F76; }
 </style>
 @endpush
 
@@ -106,12 +157,11 @@
 
     <!-- DataTable -->
     <div class="p-4 md:p-6">
-        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table id="usersTable" class="display nowrap w-full text-sm text-slate-700">
+        <div class="st-card overflow-x-auto">
+        <table id="usersTable" class="display nowrap w-full">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Email</th>
+                    <th>User</th>
                     <th>Phone Number</th>
                     <th>Block</th>
                     <th>Status</th>
@@ -130,6 +180,11 @@
                         $displayName = $displayName !== '' ? $displayName : ($user->name ?? 'User');
                         $phone = $user->phone_number ?? ($user->faculty->phone_number ?? null);
                         $status = $user->status ?? ($user->faculty->status ?? 'active');
+                        $statusChip = match ($status) {
+                            'active'  => ['class' => 'is-active', 'label' => 'Active'],
+                            'pending' => ['class' => 'is-pending', 'label' => 'Pending'],
+                            default   => ['class' => 'is-inactive', 'label' => 'Inactive'],
+                        };
                         $username = $user->email ? explode('@', $user->email, 2)[0] : '';
                         $emailDomain = $user->email && str_contains($user->email, '@')
                             ? explode('@', $user->email, 2)[1]
@@ -145,48 +200,56 @@
                     @endphp
                     <tr data-user-id="{{ $user->user_id }}" data-role="{{ $user->role }}" data-block="{{ strtoupper((string) $block) }}">
                         <td>
-                            <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="flex items-center gap-3 min-w-0">
                                 @include('partials.user-avatar', [
                                     'user'         => $user,
                                     'name'         => $displayName,
-                                    'size'         => 'w-8 h-8',
-                                    'rounded'      => 'rounded-lg',
-                                    'extraClasses' => 'shadow-sm border border-slate-200',
+                                    'size'         => 'w-9 h-9',
+                                    'rounded'      => 'rounded-full',
+                                    'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold border border-pink-100',
                                 ])
-                                <span class="font-semibold text-slate-800 truncate">{{ $displayName }}</span>
+                                <div class="min-w-0">
+                                    <p class="st-name truncate">{{ $displayName }}</p>
+                                    <p class="st-email truncate">{{ $user->email }}</p>
+                                </div>
                             </div>
                         </td>
-                        <td class="text-slate-400">{{ $user->email }}</td>
-                        <td class="text-slate-600 font-medium">{{ $phone ?? '—' }}</td>
+                        <td>
+                            @if ($phone)
+                                <span class="st-muted">{{ $phone }}</span>
+                            @else
+                                <span class="st-muted st-dim">—</span>
+                            @endif
+                        </td>
                         <td>
                             @if ($block)
-                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">{{ $blockLabel }}</span>
+                                <span class="st-block">{{ $blockLabel }}</span>
                             @else
-                                <span class="text-slate-400 text-xs">—</span>
+                                <span class="st-muted st-dim">—</span>
                             @endif
                         </td>
                         <td>
-                            @if ($status === 'active')
-                                <span class="flex items-center gap-1.5 text-xs font-semibold text-green-600"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Active</span>
-                            @elseif ($status === 'pending')
-                                <span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Pending</span>
-                            @else
-                                <span class="flex items-center gap-1.5 text-xs font-semibold text-red-600"><span class="w-2 h-2 bg-red-500 rounded-full"></span> Inactive</span>
-                            @endif
+                            <span class="st-status {{ $statusChip['class'] }}"><span class="dot"></span> {{ $statusChip['label'] }}</span>
                         </td>
-                        <td class="text-slate-500 text-sm">{{ optional($user->created_at)->format('M d, Y') }}</td>
+                        <td>
+                            <span class="st-muted inline-flex items-center gap-1.5 whitespace-nowrap">
+                                <span class="iconify text-sm text-amber-500" data-icon="mdi:calendar-blank-outline"></span>
+                                {{ optional($user->created_at)->format('M d, Y') }}
+                            </span>
+                        </td>
                         <td class="text-center" style="text-align: center !important;">
                             <div class="flex justify-center w-full">
                                 @if ($user->role === 'student' && $status === 'pending')
                                     <form method="POST" action="{{ route('dean.users.approve', $user) }}">
                                         @csrf
-                                        <button type="submit" class="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center gap-2 w-24" aria-label="Approve student">
-                                            <span class="iconify text-base" data-icon="mdi:check-circle-outline"></span>
-                                            <span>Approve</span>
+                                        <button type="submit" class="st-approve" aria-label="Approve student">
+                                            <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span>
+                                            Approve
                                         </button>
                                     </form>
                                 @else
                                     <button
+                                        type="button"
                                         onclick="openUpdateModal(this)"
                                         data-user-id="{{ $user->user_id }}"
                                         data-first-name="{{ $user->first_name }}"
@@ -199,10 +262,11 @@
                                         data-status="{{ $status }}"
                                         data-role="{{ $user->role }}"
                                         data-block="{{ $block ?? '' }}"
-                                        class="text-brand bg-brand-soft hover:bg-brand/10 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center w-24"
+                                        class="st-update"
                                         aria-label="Update user"
                                     >
-                                        <span>Update</span>
+                                        <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span>
+                                        Update
                                     </button>
                                 @endif
                             </div>
@@ -210,7 +274,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center text-slate-500 py-6">No users found.</td>
+                        <td colspan="6" class="text-center text-slate-500 py-6">No users found.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -427,7 +491,7 @@
     const systemBlocks = @json($systemBlocks);
     let currentTab = 'faculty';
     let currentBlock = ''; // '' = all blocks, '__none__' = students with no block
-    const BLOCK_COLUMN_INDEX = 3;
+    const BLOCK_COLUMN_INDEX = 2;
 
     function syncSeenUserIds() {
         if (!usersTable) return;
@@ -543,27 +607,50 @@
     function blockBadge(block, blockLabel) {
         if (block) {
             const label = blockLabel || (`Block ${block}`);
-            return `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">${label}</span>`;
+            return `<span class="st-block">${escapeCell(label)}</span>`;
         }
-        return '<span class="text-slate-400 text-xs">—</span>';
+        return '<span class="st-muted st-dim">—</span>';
+    }
+
+    function escapeCell(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    function statusChip(status) {
+        const chip = status === 'active'
+            ? ['is-active', 'Active']
+            : status === 'pending' ? ['is-pending', 'Pending'] : ['is-inactive', 'Inactive'];
+        return `<span class="st-status ${chip[0]}"><span class="dot"></span> ${chip[1]}</span>`;
     }
 
     function buildUserRow(user) {
-        const nameCell = `<span class="font-semibold text-slate-800">${user.name}</span>`;
-        const blockCell = blockBadge(user.block, user.block_label);
-        const statusCell = user.status === 'active'
-            ? '<span class="flex items-center gap-1.5 text-xs font-semibold text-green-600"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Active</span>'
-            : user.status === 'pending'
-                ? '<span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Pending</span>'
-                : '<span class="flex items-center gap-1.5 text-xs font-semibold text-red-600"><span class="w-2 h-2 bg-red-500 rounded-full"></span> Inactive</span>';
+        const initials = String(user.name || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase();
+        const nameCell = `
+            <div class="flex items-center gap-3 min-w-0">
+                <span class="w-9 h-9 rounded-full bg-brand-soft text-brand text-[11px] font-bold border border-pink-100 inline-flex items-center justify-center shrink-0">${escapeCell(initials)}</span>
+                <div class="min-w-0">
+                    <p class="st-name truncate">${escapeCell(user.name)}</p>
+                    <p class="st-email truncate">${escapeCell(user.email ?? '')}</p>
+                </div>
+            </div>`;
+        const phoneCell = user.phone_number
+            ? `<span class="st-muted">${escapeCell(user.phone_number)}</span>`
+            : '<span class="st-muted st-dim">—</span>';
+        const joinedCell = `
+            <span class="st-muted inline-flex items-center gap-1.5 whitespace-nowrap">
+                <span class="iconify text-sm text-amber-500" data-icon="mdi:calendar-blank-outline"></span>
+                ${escapeCell(user.joined ?? '—')}
+            </span>`;
         const actionCell = user.role === 'student' && user.status === 'pending'
             ? `
                 <div class="flex justify-center w-full">
                     <form method="POST" action="${approveBaseUrl}/${user.id}/approve">
                         <input type="hidden" name="_token" value="${csrfToken}">
-                        <button type="submit" class="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center gap-2 w-24" aria-label="Approve student">
-                            <span class="iconify text-base" data-icon="mdi:check-circle-outline"></span>
-                            <span>Approve</span>
+                        <button type="submit" class="st-approve" aria-label="Approve student">
+                            <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span>
+                            Approve
                         </button>
                     </form>
                 </div>
@@ -571,33 +658,34 @@
             : `
                 <div class="flex justify-center w-full">
                     <button
+                        type="button"
                         onclick="openUpdateModal(this)"
                         data-user-id="${user.id}"
-                        data-first-name="${user.first_name ?? ''}"
-                        data-middle-name="${user.middle_name ?? ''}"
-                        data-last-name="${user.last_name ?? ''}"
-                        data-username="${user.username ?? ''}"
-                        data-email-domain="${user.email_domain ?? 'hms.edu'}"
-                        data-full-name="${user.name ?? ''}"
-                        data-phone-number="${user.phone_number ?? ''}"
-                        data-status="${user.status ?? 'active'}"
-                        data-role="${user.role ?? ''}"
-                        data-block="${user.block ?? ''}"
-                        class="text-brand bg-brand-soft hover:bg-brand/10 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center w-24"
+                        data-first-name="${escapeCell(user.first_name)}"
+                        data-middle-name="${escapeCell(user.middle_name)}"
+                        data-last-name="${escapeCell(user.last_name)}"
+                        data-username="${escapeCell(user.username)}"
+                        data-email-domain="${escapeCell(user.email_domain ?? 'hms.edu')}"
+                        data-full-name="${escapeCell(user.name)}"
+                        data-phone-number="${escapeCell(user.phone_number)}"
+                        data-status="${escapeCell(user.status ?? 'active')}"
+                        data-role="${escapeCell(user.role)}"
+                        data-block="${escapeCell(user.block)}"
+                        class="st-update"
                         aria-label="Update user"
                     >
-                        <span>Update</span>
+                        <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span>
+                        Update
                     </button>
                 </div>
             `;
 
         return [
             nameCell,
-            user.email ?? '—',
-            user.phone_number ?? '—',
-            blockCell,
-            statusCell,
-            user.joined ?? '—',
+            phoneCell,
+            blockBadge(user.block, user.block_label),
+            statusChip(user.status),
+            joinedCell,
             actionCell,
         ];
     }
