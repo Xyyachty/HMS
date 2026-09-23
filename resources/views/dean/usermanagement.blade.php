@@ -58,6 +58,31 @@
     .st-approve { color: #fff; background: #7B1730; border-color: #7B1730; box-shadow: 0 6px 14px -8px rgba(123,23,48,.6); }
     .st-approve:hover { background: #5E1024; border-color: #5E1024; }
 
+    /* Expandable user search, the same as the faculty student search */
+    #userSearchWrap {
+        display: inline-flex; align-items: center; height: 2.5rem; width: 2.5rem;
+        border-radius: 0.75rem; background: #F2E9E7; border: 1px solid transparent; overflow: hidden;
+        transition: width 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    #userSearchWrap.is-open {
+        width: 12.5rem; background: #fff; border-color: #DE8299;
+        box-shadow: 0 0 0 3px rgba(123,23,48, 0.12);
+    }
+    #userSearchWrap .search-toggle {
+        width: 2.5rem; height: 2.5rem; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: #6B4A54; border: 0; background: transparent; cursor: pointer; border-radius: 0.75rem;
+    }
+    #userSearchWrap.is-open .search-toggle,
+    #userSearchWrap .search-toggle:hover { color: #7B1730; }
+    #userSearchInput {
+        width: 0; min-width: 0; opacity: 0; border: 0; outline: none; background: transparent;
+        font-size: 0.875rem; color: #47262D; padding: 0;
+        transition: width 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
+    }
+    #userSearchWrap.is-open #userSearchInput { width: 100%; opacity: 1; padding-right: 0.75rem; }
+    #userSearchWrap.is-open #userSearchInput::placeholder { color: #7A6068; }
+
     /* Info line and pager under the table */
     #usersTable_wrapper .dataTables_info { padding-top: 1.25rem; font-size: 13px; color: #6B4A54; }
     #usersTable_wrapper .dataTables_info b { color: #2A1118; }
@@ -101,14 +126,24 @@
         </div>
 
         <div class="flex items-center gap-2 pb-3 shrink-0 ml-auto">
-            <div class="flex items-center bg-slate-100 rounded-xl px-3.5 h-10 gap-2 w-full sm:w-52">
-                <span class="iconify text-slate-400 shrink-0" data-icon="mdi:magnify"></span>
+            {{-- Same expanding search as the faculty Manage Students page: an icon
+                 until clicked, then a field that stays open while it holds a query. --}}
+            <div id="userSearchWrap" class="shrink-0">
+                <button
+                    type="button"
+                    class="search-toggle"
+                    title="Search users"
+                    aria-label="Search users"
+                    onclick="toggleUserSearch()"
+                >
+                    <span class="iconify text-lg" data-icon="mdi:magnify"></span>
+                </button>
                 <input
                     id="userSearchInput"
                     type="text"
                     placeholder="Search users..."
-                    class="bg-transparent text-sm outline-none w-full placeholder-slate-400"
                     oninput="filterUsersTable(this.value)"
+                    onkeydown="if (event.key === 'Escape') collapseUserSearch(true)"
                 >
             </div>
             <button type="button" id="addFacultyBtn" onclick="openModal('createUserModal')"
@@ -547,6 +582,51 @@
         if (!usersTable) return;
         usersTable.search(query || '').draw();
     }
+
+    function toggleUserSearch() {
+        const wrap = document.getElementById('userSearchWrap');
+        const input = document.getElementById('userSearchInput');
+        if (!wrap || !input) return;
+
+        if (wrap.classList.contains('is-open')) {
+            if (input.value.trim() === '') {
+                collapseUserSearch(false);
+            } else {
+                input.focus();
+            }
+            return;
+        }
+
+        wrap.classList.add('is-open');
+        setTimeout(() => input.focus(), 220);
+    }
+
+    function collapseUserSearch(clearIfEmpty) {
+        const wrap = document.getElementById('userSearchWrap');
+        const input = document.getElementById('userSearchInput');
+        if (!wrap || !input) return;
+
+        if (clearIfEmpty && input.value.trim() === '') {
+            input.value = '';
+            filterUsersTable('');
+        }
+
+        // Keep expanded while there is an active query
+        if (input.value.trim() !== '') {
+            input.blur();
+            return;
+        }
+
+        wrap.classList.remove('is-open');
+        input.blur();
+    }
+
+    document.addEventListener('click', function (e) {
+        const wrap = document.getElementById('userSearchWrap');
+        if (!wrap || !wrap.classList.contains('is-open')) return;
+        if (wrap.contains(e.target)) return;
+        collapseUserSearch(true);
+    });
 
     function switchTab(role) {
         currentTab = role;
