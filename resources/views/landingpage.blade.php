@@ -1093,7 +1093,7 @@
     </div>
 
     <div class="login-drawer__photo">
-      <img src="{{ asset('chtm-building.png') }}" alt="CHTM building at SPC" />
+      <img src="{{ asset('SPC_GATE.png') }}" alt="SPC Hotel entrance" />
     </div>
 
     <div class="login-drawer__body">
