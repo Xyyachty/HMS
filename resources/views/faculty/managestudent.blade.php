@@ -238,7 +238,7 @@
         </div>
 
         <div class="flex items-center gap-2 pb-1 sm:pb-3 shrink-0 ml-auto">
-            <div id="studentSearchWrap" class="shrink-0">
+            <div id="studentSearchWrap" class="shrink-0 {{ ($search ?? '') !== '' ? 'is-open' : '' }}">
                 <button
                     type="button"
                     class="search-toggle"
@@ -252,6 +252,7 @@
                     id="studentSearchInput"
                     type="text"
                     placeholder="Search students..."
+                    value="{{ $search ?? '' }}"
                     oninput="filterStudentsTable(this.value)"
                     onkeydown="if (event.key === 'Escape') collapseStudentSearch(true)"
                 >
@@ -420,12 +421,19 @@
                                 <div class="w-14 h-14 rounded-2xl bg-brand-soft flex items-center justify-center">
                                     <span class="iconify text-3xl text-brand" data-icon="mdi:account-group-outline"></span>
                                 </div>
-                                <p class="font-semibold text-slate-600">
-                                    No students in {{ $activeClass->name ?? 'this block' }} yet
-                                </p>
-                                <p class="text-xs text-slate-400">
-                                    Use Add Student or Bulk Upload — seats fill the open class (max {{ $classCapacity ?? 40 }}).
-                                </p>
+                                @if(($search ?? '') !== '')
+                                    <p class="font-semibold text-slate-600">
+                                        No students in {{ $activeClass->name ?? 'this block' }} match "{{ $search }}"
+                                    </p>
+                                    <p class="text-xs text-slate-400">Try a student number, name, email or phone number.</p>
+                                @else
+                                    <p class="font-semibold text-slate-600">
+                                        No students in {{ $activeClass->name ?? 'this block' }} yet
+                                    </p>
+                                    <p class="text-xs text-slate-400">
+                                        Use Add Student or Bulk Upload — seats fill the open class (max {{ $classCapacity ?? 40 }}).
+                                    </p>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -1390,6 +1398,9 @@
         openModal('createStudentModal');
     @endif
 
+    /* Rows on screen filter as you type; once typing pauses, the page reloads with
+       ?q= so the server searches every page of the class, not just this one. */
+    let studentSearchTimer = null;
     function filterStudentsTable(query) {
         const q = (query || '').trim().toLowerCase();
         const rows = document.querySelectorAll('#studentsTable tbody tr[data-student-id]');
@@ -1397,7 +1408,26 @@
             const text = row.textContent.toLowerCase();
             row.style.display = !q || text.includes(q) ? '' : 'none';
         });
+
+        clearTimeout(studentSearchTimer);
+        studentSearchTimer = setTimeout(() => {
+            const url = new URL(window.location.href);
+            if ((url.searchParams.get('q') || '').trim().toLowerCase() === q) return;
+            if (q) url.searchParams.set('q', (query || '').trim());
+            else url.searchParams.delete('q');
+            url.searchParams.delete('page');
+            window.location.assign(url.toString());
+        }, 500);
     }
+
+    // After a search reload, put the cursor back at the end of the query.
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('studentSearchInput');
+        if (input && input.value) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+    });
 
     function toggleStudentSearch() {
         const wrap = document.getElementById('studentSearchWrap');

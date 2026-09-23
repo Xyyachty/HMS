@@ -539,9 +539,30 @@ class FacultyController extends Controller
         $requestedLetter = strtoupper((string) request('class', $openClass?->letter ?? 'A'));
         $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $openClass;
 
+        // Search runs on the server so it finds students on every page, not only the
+        // five on screen. Each word must match the student number or a name, email
+        // or phone column, so "Cruz Juan" finds Juan Dela Cruz.
+        $search = trim((string) request('q', ''));
+        $words = $search === '' ? [] : preg_split('/\s+/', mb_strtolower($search));
+
         $students = Student::with('user')
             ->where('faculty_id', $facultyId)
             ->when($activeClass, fn ($q) => $q->where('faculty_class_id', $activeClass->faculty_class_id))
+            ->when($words, function ($q) use ($words) {
+                foreach ($words as $word) {
+                    $like = '%' . addcslashes($word, '\\%_') . '%';
+                    $q->where(function ($w) use ($like) {
+                        $w->whereRaw('LOWER(student_number) LIKE ?', [$like])
+                            ->orWhereHas('user', function ($u) use ($like) {
+                                $u->where(function ($f) use ($like) {
+                                    foreach (['first_name', 'last_name', 'middle_name', 'email', 'phone_number'] as $column) {
+                                        $f->orWhereRaw("LOWER({$column}) LIKE ?", [$like]);
+                                    }
+                                });
+                            });
+                    });
+                }
+            })
             ->latest()
             ->paginate(5)
             ->withQueryString();
@@ -554,7 +575,8 @@ class FacultyController extends Controller
             'activeClass',
             'openClass',
             'classCapacity',
-            'hasBlock'
+            'hasBlock',
+            'search'
         ));
     }
 
