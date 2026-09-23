@@ -1,7 +1,7 @@
 @extends('dean.layouts.app')
 
 @section('page_title', 'Teams Overview')
-@section('page_subtitle', 'View only: every faculty's teams and the hotel concept each team is building.')
+@section('page_subtitle', 'View only: the teams of every faculty and the hotel concept each team is building.')
 @section('faculties_active', 'active')
 
 @section('content')
