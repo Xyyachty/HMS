@@ -203,7 +203,7 @@
   <!-- ==================== LEFT PANEL — Visual ==================== -->
   <div class="auth-panel hidden lg:flex lg:w-1/2 h-full relative overflow-hidden brand-gradient-alt items-center justify-center p-10">
     <!-- Campus photo + brand wash -->
-    <img src="{{ asset('chtm-building.png') }}" alt="" aria-hidden="true" class="hero-photo absolute inset-0 w-full h-full object-cover" />
+    <img src="{{ asset('SPC_GATE.png') }}" alt="" aria-hidden="true" class="hero-photo absolute inset-0 w-full h-full object-cover" />
     <div class="hero-wash absolute inset-0"></div>
     <div class="hero-shade absolute inset-0"></div>
 
