@@ -1113,6 +1113,7 @@ class FacultyController extends Controller
                 'teamPendingReviewByGroup' => [],
                 'teamConceptPendingByGroup' => [],
                 'teamHeldTitles' => collect(),
+                'teamTemplateByGroup' => [],
             ]);
         }
 
@@ -1388,6 +1389,14 @@ class FacultyController extends Controller
             ->groupBy('group_name')
             ->map(fn ($concepts) => \App\Support\HotelConceptDesk::visibleConcepts($concepts));
 
+        // The site template each team chose. Front Desk makes the pick for the
+        // whole team, so its row is the one that counts.
+        $teamTemplateByGroup = \App\Models\TeamRoleTemplate::where('faculty_id', $facultyId)
+            ->where('role', 'front_desk')
+            ->whereNotNull('selected_template')
+            ->pluck('selected_template', 'group_name')
+            ->all();
+
         return view('faculty.pagerole', compact(
             'students',
             'allStudents',
@@ -1409,7 +1418,8 @@ class FacultyController extends Controller
             'conceptsByGroup',
             'teamPendingReviewByGroup',
             'teamConceptPendingByGroup',
-            'teamHeldTitles'
+            'teamHeldTitles',
+            'teamTemplateByGroup'
         ));
     }
 
