@@ -1173,13 +1173,17 @@
                             <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfTotal }}</p>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completion</p>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
                             <p class="text-2xl font-extrabold text-brand mt-1">{{ $selfRate }}%</p>
+                            <div class="h-2 mt-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar"
+                                 aria-valuenow="{{ $selfRate }}" aria-valuemin="0" aria-valuemax="100" aria-label="Completion rate">
+                                <div class="h-full rounded-full bg-brand" style="width: {{ min(100, max(0, $selfRate)) }}%"></div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                        <h3 class="text-sm font-bold text-slate-800 mb-4">My Completed by Role</h3>
+                        <h3 class="text-sm font-bold text-slate-800 mb-4">Completed Task</h3>
                         <div class="space-y-3">
                             @forelse($selfByRole as $role => $count)
                                 <div>
@@ -1234,13 +1238,17 @@
                             <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamTotal }}</p>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completion</p>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
                             <p class="text-2xl font-extrabold text-brand mt-1">{{ $teamRate }}%</p>
+                            <div class="h-2 mt-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar"
+                                 aria-valuenow="{{ $teamRate }}" aria-valuemin="0" aria-valuemax="100" aria-label="Completion rate">
+                                <div class="h-full rounded-full bg-brand" style="width: {{ min(100, max(0, $teamRate)) }}%"></div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                        <h3 class="text-sm font-bold text-slate-800 mb-4">Team Completed by Role</h3>
+                        <h3 class="text-sm font-bold text-slate-800 mb-4">Team Completed Task</h3>
                         <div class="space-y-3">
                             @forelse($teamByRole as $role => $count)
                                 <div>
