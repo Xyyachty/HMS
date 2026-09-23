@@ -4938,6 +4938,28 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, o
         )}
       </section>
       <Divider />
+      {/* The same six dishes the home page's Best Seller section shows. A card
+          opens the dish, where it can be ordered. */}
+      {menuList.length > 0 && (
+        <section style={{ padding: '2.5rem 1.5rem 0', maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ marginBottom: '1.75rem' }}>
+            <span className="section-num">Best Seller</span>
+            <h2 className="font-display" style={{ fontSize: '2rem', margin: '0.35rem 0 0' }}>From Our Kitchen & Bar</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
+            {menuList.slice(0, 6).map(item => (
+              <div key={item.id || item.name} className="menu-item" onClick={() => setSelectedMenuId(item.id)} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', cursor: 'pointer' }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', margin: '0.3rem 0 0' }}>{item.sub}</p>
+                  {item.category ? <p style={{ fontSize: '0.65rem', color: 'var(--warm)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0.4rem 0 0' }}>{normalizeMenuCategory(item.category)}</p> : null}
+                </div>
+                <span style={{ color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <section ref={menuAnchorRef} className="dine-menu-anchor" style={{ padding: '2.5rem 1.5rem 4rem', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
           <div>

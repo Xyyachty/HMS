@@ -6451,6 +6451,34 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
   return (
     <>
       <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNavigate={onNavigate} />
+      {/* The same six dishes the home page's Best Seller section shows. A card
+          opens the dish, where it can be ordered. */}
+      {menuList.length > 0 && (
+        <section style={{ padding: '3rem 1.5rem 0', maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ marginBottom: '2rem' }}>
+            <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Dining</p>
+            <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Best Seller</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
+            {menuList.slice(0, 6).map(item => (
+              <div key={item.id || item.name} className="menu-card" onClick={() => setSelectedMenuId(item.id)} style={{ position: 'relative', display: 'flex', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', alignItems: 'center', cursor: 'pointer' }}>
+                {canEditMenuColor && (
+                  <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
+                    <CardColorButton kind="menu" label="Card colour (all menu cards)" />
+                  </div>
+                )}
+                <img src={menuFoodImg(item)} alt={item.name} loading="lazy" style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem' }}>{item.name}</p>
+                  <p style={{ margin: '0.35rem 0 0', color: 'var(--fg-muted)', fontSize: '0.78rem', lineHeight: 1.45 }}>{item.sub}</p>
+                  {item.category ? <p style={{ margin: '0.45rem 0 0', color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{item.category}</p> : null}
+                </div>
+                <span style={{ fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' }}>{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <div className="page-header dine-menu-head" ref={menuAnchorRef}>
         <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Culinary Arts</p>
         <h1 className="font-display">Restaurant Menu</h1>
