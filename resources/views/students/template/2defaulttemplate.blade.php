@@ -3931,7 +3931,7 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
   );
 }
 
-function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, onBookNow, brandName }) {
+function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, onBookNow, brandName, experiences }) {
   const roomList = rooms && rooms.length ? rooms : [];
   /* Both lines come from the team's Hotel Information, which starts as the
      concept faculty approved and falls back to the template's own copy while
@@ -4081,6 +4081,17 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
           <h2 className="font-display" style={{ fontSize: '2rem', margin: '0.35rem 0 0' }}>Promos and Packages</h2>
         </div>
         <PromoShowcase promos={DEFAULT_PROMOS} canEdit={canEditHeroSlides} onToast={onToast} onBook={onBookNow} />
+      </section>
+
+      <section data-hms-section="highlights" data-hms-bg-target="1" style={{ padding: '0 1.5rem 5rem', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
+          <div>
+            <span className="section-num">Worth the stay</span>
+            <h2 className="font-display" style={{ fontSize: '2rem', margin: '0.35rem 0 0' }}>Selected Highlights</h2>
+          </div>
+          <button className="btn-ghost" onClick={() => onNav('experience')} style={{ fontSize: '0.72rem' }}>View all highlights</button>
+        </div>
+        <SelectedHighlights items={experiences} onOpen={() => onNav('experience')} />
       </section>
       {photoRoom ? (
         <RoomPhotosModal
@@ -5196,6 +5207,49 @@ function ExperienceEditModal({ item, onSave, onClose }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* Selected Highlights on the Home page: the first three tiles of the team's own
+   Highlights gallery, with their photographs, so the home page shows what the
+   Highlights page holds. Read-only here; the gallery is edited on its own page. */
+function SelectedHighlights({ items, onOpen }) {
+  const list = (items || []).slice(0, 3);
+  if (!list.length) return null;
+  return (
+    <div data-hms-no-edit="1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+      {list.map(item => (
+        <article
+          key={item.id}
+          role="button"
+          tabIndex={0}
+          aria-label={'Open ' + item.title + ' in Highlights'}
+          onClick={() => onOpen && onOpen(item)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            if (onOpen) onOpen(item);
+          }}
+          style={{ cursor: 'pointer', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', background: 'var(--card)', transition: 'transform .2s ease, box-shadow .2s ease' }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 14px 30px -18px rgba(0,0,0,0.45)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+        >
+          <div style={{ position: 'relative', aspectRatio: '16 / 10', overflow: 'hidden' }}>
+            <img src={expCardImg(item)} alt={item.title} loading="lazy" draggable={false}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            <span style={{ position: 'absolute', left: 12, top: 12, width: 34, height: 34, borderRadius: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.92)', color: 'var(--accent)' }}>
+              <i className={'fa-solid ' + (item.icon || 'fa-star')} style={{ fontSize: 14 }}></i>
+            </span>
+          </div>
+          <div style={{ padding: '0.95rem 1.05rem 1.1rem' }}>
+            <p className="font-display" style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{item.title}</p>
+            {item.desc ? (
+              <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.82rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.desc}</p>
+            ) : null}
+          </div>
+        </article>
+      ))}
     </div>
   );
 }
@@ -6922,6 +6976,7 @@ function App() {
           'Sign in to book a room. It takes a moment, and you will come straight back.'
         )}
         brandName={brandName}
+        experiences={experiences}
         />
     ),
     rooms: (
