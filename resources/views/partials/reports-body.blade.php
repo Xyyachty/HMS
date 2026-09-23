@@ -33,6 +33,22 @@
     /* Still used by the Role column on Activity Reports. */
     .rp-legend-dot { width: .625rem; height: .625rem; border-radius: 9999px; flex: 0 0 auto; }
 
+    /* Filter bar: Team, Task and Role. */
+    .rp-filters { display: flex; align-items: center; gap: .625rem; flex-wrap: wrap; }
+    .rp-filter {
+        height: 2.5rem; min-width: 11rem; max-width: 100%; padding: 0 .75rem;
+        border-radius: .75rem; border: 1px solid #E4D3CF; background: #fff;
+        font-size: 12px; font-weight: 600; color: #5A3941;
+    }
+    .rp-filter:focus { outline: none; border-color: #7B1730; box-shadow: 0 0 0 3px rgba(123,23,48,.12); }
+    .rp-filter.is-set { border-color: #7B1730; color: #7B1730; background: #FBEEE9; }
+    .rp-filter-clear {
+        display: inline-flex; align-items: center; gap: .375rem; height: 2.5rem; padding: 0 .875rem;
+        border-radius: .75rem; border: 1px solid #E4D3CF; background: #fff;
+        font-size: 12px; font-weight: 700; color: #6B4A54;
+    }
+    .rp-filter-clear:hover { color: #7B1730; border-color: rgba(123,23,48,.4); }
+
     .rp-track { height: .5rem; border-radius: 9999px; background: #F2E9E7; overflow: hidden; }
     .rp-track > span { display: block; height: 100%; border-radius: 9999px; }
 
@@ -111,8 +127,7 @@
     </div>
 
     <div class="flex items-center gap-3 rp-no-print">
-        {{-- The period this page actually covers. Nothing here filters, so it
-             states the window rather than offering a picker that would not. --}}
+        {{-- The period the rows on screen cover, after the filters below. --}}
         <span class="inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 bg-white text-[13px] font-semibold text-slate-600 whitespace-nowrap">
             <span class="iconify text-base text-slate-400" data-icon="mdi:calendar-range-outline"></span>
             {{ $reportFrom ? $reportFrom->format('M j, Y') : '—' }} – {{ $reportTo ? $reportTo->format('M j, Y') : '—' }}
@@ -124,6 +139,40 @@
         </button>
     </div>
 </div>
+
+{{-- ═══════════════ FILTERS ═══════════════
+     A plain GET form: every figure and table below is recounted on the server
+     for the chosen team, task and role, so the tabs never disagree. The open
+     tab rides along in "tab" and is reopened after the reload. --}}
+<form method="GET" action="{{ url()->current() }}" id="reportFilters" class="rp-filters rp-no-print mb-5">
+    <input type="hidden" name="tab" id="reportFilterTab" value="{{ request('tab', 'overview') }}">
+    <span class="inline-flex items-center gap-1.5 text-[12px] font-bold text-slate-500">
+        <span class="iconify text-base" data-icon="mdi:filter-variant"></span> Filter by
+    </span>
+    <select name="team" class="rp-filter {{ $filters['team'] ? 'is-set' : '' }}" onchange="this.form.submit()" aria-label="Filter by team">
+        <option value="">All Teams</option>
+        @foreach($teamOptions as $value => $label)
+            <option value="{{ $value }}" @selected($filters['team'] === (string) $value)>{{ $label }}</option>
+        @endforeach
+    </select>
+    <select name="task" class="rp-filter {{ $filters['task'] ? 'is-set' : '' }}" onchange="this.form.submit()" aria-label="Filter by task">
+        <option value="">All Tasks</option>
+        @foreach($taskOptions as $title)
+            <option value="{{ $title }}" @selected($filters['task'] === $title)>{{ $title }}</option>
+        @endforeach
+    </select>
+    <select name="role" class="rp-filter {{ $filters['role'] ? 'is-set' : '' }}" onchange="this.form.submit()" aria-label="Filter by role">
+        <option value="">All Roles</option>
+        @foreach($roleOptions as $value => $label)
+            <option value="{{ $value }}" @selected($filters['role'] === $value)>{{ $label }}</option>
+        @endforeach
+    </select>
+    @if($isFiltered)
+        <a href="{{ url()->current() }}?tab={{ urlencode(request('tab', 'overview')) }}" class="rp-filter-clear" id="reportFilterClear">
+            <span class="iconify text-base" data-icon="mdi:filter-remove-outline"></span> Clear filters
+        </a>
+    @endif
+</form>
 
 {{-- ═══════════════ OVERVIEW ═══════════════ --}}
 <div id="report-panel-overview" class="rp-panel active">
@@ -565,7 +614,18 @@
         document.querySelectorAll('#reportTabs .rp-tab').forEach((tab) => {
             tab.classList.toggle('active', tab.dataset.reportTab === name);
         });
+
+        // A filter change reloads the page; this is how it comes back to this tab.
+        const tabInput = document.getElementById('reportFilterTab');
+        if (tabInput) tabInput.value = name;
+        const clear = document.getElementById('reportFilterClear');
+        if (clear) clear.href = clear.href.replace(/([?&]tab=)[^&]*/, '$1' + encodeURIComponent(name));
     }
+
+    (function reopenReportTab() {
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        if (tab && document.getElementById('report-panel-' + tab)) switchReportTab(tab);
+    })();
 
     const teamReports = @json($teamReports);
 

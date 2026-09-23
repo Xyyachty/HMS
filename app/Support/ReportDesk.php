@@ -26,17 +26,19 @@ class ReportDesk
 
     /**
      * @param int|null $facultyId One faculty's teams, or null for every team.
+     * @param array{team?: ?string, task?: ?string, role?: ?string} $filters
+     *        team is a "facultyId|team name" key, task a task title, role a role key.
      * @return array<string, mixed> The variables the reports partial reads.
      */
-    public static function build(?int $facultyId): array
+    public static function build(?int $facultyId, array $filters = []): array
     {
         $roleLabels = self::ROLE_LABELS;
         $scope = fn ($query) => $facultyId ? $query->where('faculty_id', $facultyId) : $query;
         $teamKey = fn ($facultyIdOfRow, $name) => (int) $facultyIdOfRow . '|' . $name;
 
-        $rosterRows = $scope(StudentGroup::with(['roles', 'student.user', 'faculty.user']))->get();
+        $fullRoster = $scope(StudentGroup::with(['roles', 'student.user', 'faculty.user']))->get();
 
-        $allTasks = $scope(Task::with(['student.user', 'assignedTo']))
+        $fullTasks = $scope(Task::with(['student.user', 'assignedTo']))
             ->orderByDesc('updated_at')
             ->get();
 
@@ -44,11 +46,67 @@ class ReportDesk
         $isApproved = fn (Task $task) => $task->status === 'archived' && $task->feedback_at !== null;
 
         /*
-         * Team Reports: the approved tasks, grouped by the team of the student
-         * who did them.
+         * Filter choices, read off everything in scope so picking one filter
+         * never empties the lists of the others.
          */
-        $membershipByStudentId = $rosterRows->groupBy('student_id');
-        $teamMembersByKey = $rosterRows->groupBy(fn ($m) => $teamKey($m->faculty_id, $m->group_name ?? 'Unassigned'));
+        $multipleFaculties = $fullRoster->pluck('faculty_id')->unique()->count() > 1;
+        $teamOptions = $fullRoster->filter(fn ($m) => filled($m->group_name))
+            ->unique(fn ($m) => $teamKey($m->faculty_id, $m->group_name))
+            ->mapWithKeys(function ($m) use ($teamKey, $multipleFaculties) {
+                $facultyName = self::personName($m->faculty?->user);
+                $label = $multipleFaculties && $facultyName !== ''
+                    ? $m->group_name . ' — ' . $facultyName
+                    : $m->group_name;
+
+                return [$teamKey($m->faculty_id, $m->group_name) => $label];
+            })
+            ->sort()
+            ->all();
+        $taskOptions = $fullTasks->pluck('title')->filter()->unique()->sort()->values()->all();
+        $roleOptions = $roleLabels;
+
+        // Unknown values are dropped rather than trusted, so a stale link shows everything.
+        $filters = [
+            'team' => array_key_exists((string) ($filters['team'] ?? ''), $teamOptions) ? (string) $filters['team'] : null,
+            'task' => in_array((string) ($filters['task'] ?? ''), $taskOptions, true) ? (string) $filters['task'] : null,
+            'role' => array_key_exists((string) ($filters['role'] ?? ''), $roleOptions) ? (string) $filters['role'] : null,
+        ];
+        $isFiltered = array_filter($filters) !== [];
+
+        $rosterRows = $fullRoster;
+        $allTasks = $fullTasks;
+
+        if ($filters['team']) {
+            [$teamFacultyId, $teamName] = explode('|', $filters['team'], 2);
+            $inTeam = fn ($m) => (int) $m->faculty_id === (int) $teamFacultyId
+                && strcasecmp((string) $m->group_name, $teamName) === 0;
+            $rosterRows = $rosterRows->filter($inTeam);
+            $teamStudentIds = $rosterRows->pluck('student_id')->filter()->map(fn ($id) => (int) $id)->all();
+
+            // A task that names its team belongs to that team; older rows that name
+            // no team belong to it when one of its members did them.
+            $allTasks = $allTasks->filter(fn (Task $task) => (int) $task->faculty_id === (int) $teamFacultyId
+                && (filled($task->group_name)
+                    ? strcasecmp((string) $task->group_name, $teamName) === 0
+                    : in_array((int) $task->student_id, $teamStudentIds, true)));
+        }
+        if ($filters['role']) {
+            $rosterRows = $rosterRows->filter(fn ($m) => $m->roles->pluck('role')->contains($filters['role']));
+            $allTasks = $allTasks->filter(fn (Task $task) => $task->role === $filters['role']);
+        }
+        if ($filters['task']) {
+            $allTasks = $allTasks->filter(fn (Task $task) => $task->title === $filters['task']);
+        }
+        $rosterRows = $rosterRows->values();
+        $allTasks = $allTasks->values();
+
+        /*
+         * Team Reports: the approved tasks, grouped by the team of the student
+         * who did them. Team lookups read the full roster, so a filter never
+         * moves a task to another team or drops members from the team's modal.
+         */
+        $membershipByStudentId = $fullRoster->groupBy('student_id');
+        $teamMembersByKey = $fullRoster->groupBy(fn ($m) => $teamKey($m->faculty_id, $m->group_name ?? 'Unassigned'));
 
         $buckets = [];
 
@@ -139,7 +197,10 @@ class ReportDesk
          * Overview figures, counted off the rosters and the task rows already in
          * memory rather than re-queried per card.
          */
-        $totalStudents   = $scope(Student::query())->count();
+        // Filtered, the count is the students the filter leaves, not the whole class.
+        $totalStudents   = $isFiltered
+            ? $rosterRows->pluck('student_id')->filter()->unique()->count()
+            : $scope(Student::query())->count();
         $totalTeams      = $rosterRows->filter(fn ($m) => $m->group_name)
             ->map(fn ($m) => $teamKey($m->faculty_id, $m->group_name))
             ->unique()
@@ -199,13 +260,15 @@ class ReportDesk
                 'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
             ];
         })
+            // Filtered by task, a student with no row of that task has nothing to report.
+            ->filter(fn ($row) => !$filters['task'] || $row['total'] > 0)
             ->sortByDesc(fn ($row) => [$row['percent'], $row['done']])
             ->values();
 
         /* The latest completed work across every team: handed in and approved. A
            task still being worked on or waiting on review is not completed, and a
            report that lists it as such is a to-do list. */
-        $teamByStudentId = $rosterRows->keyBy('student_id');
+        $teamByStudentId = $fullRoster->keyBy('student_id');
         $recentActivities = $allTasks
             ->filter($isApproved)
             ->take(6)
@@ -236,7 +299,12 @@ class ReportDesk
             'reportTo',
             'roleParticipation',
             'studentPerformance',
-            'recentActivities'
+            'recentActivities',
+            'filters',
+            'isFiltered',
+            'teamOptions',
+            'taskOptions',
+            'roleOptions'
         );
     }
 

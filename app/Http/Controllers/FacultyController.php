@@ -2549,7 +2549,7 @@ class FacultyController extends Controller
         return view('faculty.results', compact('outputs', 'roleLabels', 'countsByRole'));
     }
 
-    public function reports()
+    public function reports(Request $request)
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
@@ -2558,7 +2558,7 @@ class FacultyController extends Controller
 
         ActivityLog::recordFor(ActivityLog::REPORT_GENERATED, 'Generated the faculty performance report.');
 
-        return view('faculty.reports', \App\Support\ReportDesk::build((int) $facultyId));
+        return view('faculty.reports', \App\Support\ReportDesk::build((int) $facultyId, $request->only(['team', 'task', 'role'])));
     }
 
     public function activityLogs(Request $request)

@@ -494,11 +494,11 @@ class DeanController extends Controller
      * The same Reports page faculty see, across every faculty's teams: the
      * Overview, Student Reports, Team Reports and Activity Reports.
      */
-    public function reports()
+    public function reports(Request $request)
     {
         ActivityLog::recordFor(ActivityLog::REPORT_GENERATED, 'Generated the dean performance report.');
 
-        return view('dean.reports', \App\Support\ReportDesk::build(null));
+        return view('dean.reports', \App\Support\ReportDesk::build(null, $request->only(['team', 'task', 'role'])));
     }
 
     public function bulkUpload(Request $request)
