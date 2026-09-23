@@ -33,11 +33,9 @@ class DeanReportDesk
     /**
      * Completed work, one row per team and task.
      *
-     * A row is listed once any of its activities has been handed in, because the
-     * tab is about work that has been done rather than work that exists. The badge
-     * then says how far it got: every activity approved reads Completed, all in
-     * and waiting reads Submitted, part-way reads In Progress, and anything still
-     * open past its due date reads Overdue.
+     * A row is listed once any of its activities has been approved by faculty,
+     * because the tab is about work that is finished rather than work that exists
+     * or is still waiting on a review. Only the approved activities are listed.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -92,7 +90,6 @@ class DeanReportDesk
                     'activities' => [],
                     'assigned_at' => null,
                     'completed_at' => null,
-                    'submitted_count' => 0,
                     'approved_count' => 0,
                 ];
             }
@@ -103,13 +100,13 @@ class DeanReportDesk
             $approved = $submitted && $task->feedback_at !== null;
 
             if ($roleKey !== '') {
-                $group['roles'][$roleKey] = ($group['roles'][$roleKey] ?? 0) + ($submitted ? 1 : 0);
+                $group['roles'][$roleKey] = ($group['roles'][$roleKey] ?? 0) + ($approved ? 1 : 0);
             }
 
-            /* A report is a record of work done. An activity still being worked on
-               is not part of one: it is not listed, not counted, and not exported,
-               and it turns up in the diary the team works from instead. */
-            if (!$submitted) {
+            /* A report is a record of completed work. An activity still being worked
+               on, or handed in and not yet approved, is not part of one: it is not
+               listed, not counted, and not exported. */
+            if (!$approved) {
                 if ($task->created_at && (!$group['assigned_at'] || $task->created_at->lt($group['assigned_at']))) {
                     $group['assigned_at'] = $task->created_at;
                 }
@@ -125,25 +122,21 @@ class DeanReportDesk
                 'title' => (string) $task->title,
                 'description' => self::firstParagraph((string) $task->description),
                 'student_name' => self::personName($task->student?->user ?? $task->assignedTo) ?: 'Unclaimed',
-                // Handed in either way; this says whether faculty has signed it off.
-                'status' => $approved ? 'Approved' : 'Awaiting approval',
+                'status' => 'Approved',
                 'assigned_date' => optional($task->created_at)->format('M d, Y'),
-                'submitted_date' => $submitted ? optional($task->updated_at)->format('M d, Y g:i A') : null,
+                'submitted_date' => optional($task->updated_at)->format('M d, Y g:i A'),
                 'reviewed_date' => optional($task->feedback_at)->format('M d, Y g:i A'),
                 'feedback' => $task->feedback,
                 'steps' => $task->activityList(),
                 'has_comparison' => (bool) $task->submitted_version_id,
             ];
 
-            $group['submitted_count']++;
-            if ($approved) {
-                $group['approved_count']++;
-            }
+            $group['approved_count']++;
 
             if ($task->created_at && (!$group['assigned_at'] || $task->created_at->lt($group['assigned_at']))) {
                 $group['assigned_at'] = $task->created_at;
             }
-            if ($submitted && $task->updated_at && (!$group['completed_at'] || $task->updated_at->gt($group['completed_at']))) {
+            if ($task->updated_at && (!$group['completed_at'] || $task->updated_at->gt($group['completed_at']))) {
                 $group['completed_at'] = $task->updated_at;
             }
 
@@ -153,8 +146,8 @@ class DeanReportDesk
         $rows = [];
 
         foreach ($groups as $group) {
-            if ($group['submitted_count'] === 0) {
-                // Nothing handed in: this is work in the diary, not a report.
+            if ($group['approved_count'] === 0) {
+                // Nothing approved yet: this is work in progress, not a report.
                 continue;
             }
 
@@ -169,7 +162,7 @@ class DeanReportDesk
 
             unset(
                 $group['assigned_at'], $group['completed_at'], $group['activity_titles'],
-                $group['submitted_count'], $group['approved_count']
+                $group['approved_count']
             );
 
             $rows[] = $group;

@@ -704,6 +704,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $task->update([
             'status' => 'archived',
+            // A resubmission after "revise" is a new submission awaiting review; the
+            // old review stamp would otherwise make it read as approved.
+            'feedback_at' => null,
             'student_id' => $student->user_information_id,
             'assigned_to' => $authUser->user_id,
             'previous_version_id' => $previousVersionId,

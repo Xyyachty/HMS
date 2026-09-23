@@ -213,7 +213,7 @@
 
 <p class="mt-4 rounded-2xl border border-brand/15 bg-brand-soft px-4 py-3 text-[12px] text-brand/90 flex flex-wrap items-center gap-2">
     <span class="iconify text-base" data-icon="mdi:information-outline"></span>
-    The activities counted in each role badge are the ones that role actually handed in. Roles still working on a task carry no badge until they submit.
+    The activities counted in each role badge are the ones faculty approved. Roles still working on a task, or waiting on review, carry no badge until approved.
     <span class="ml-auto text-slate-400 font-semibold">Generated on {{ now()->format('M d, Y \a\t g:i A') }}</span>
 </p>
 
@@ -586,7 +586,7 @@ function rpOpenModal(id) {
                 '<div class="flex flex-wrap gap-1.5 mt-3">' + (row.roles || []).map((r) =>
                     '<span class="rp-chip ' + (RP_ROLE_TINT[r.label] || 'bg-slate-100 text-slate-600') + '">' +
                     rpEsc(r.label) + ' (' + r.count + ')</span>').join('') + '</div>' +
-                '<p class="text-[11px] text-slate-400 mt-3">' + row.total_activities + ' activities handed in · ' + rpEsc(row.status) + '</p>' +
+                '<p class="text-[11px] text-slate-400 mt-3">' + row.total_activities + ' activities approved · ' + rpEsc(row.status) + '</p>' +
             '</div>' +
         '</div>' +
         '<div class="space-y-3">' +

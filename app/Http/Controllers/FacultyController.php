@@ -2566,10 +2566,11 @@ class FacultyController extends Controller
             'housekeeping' => 'Housekeeping',
         ];
 
-        // Finalized/completed tasks (archived) — reflected here as soon as status becomes archived
+        // Completed tasks: handed in (archived) and approved by faculty (feedback_at).
         $completedTasks = Task::with(['student.user', 'assignedTo'])
             ->where('faculty_id', $facultyId)
             ->where('status', 'archived')
+            ->whereNotNull('feedback_at')
             ->orderByDesc('updated_at')
             ->get();
 
@@ -2695,11 +2696,14 @@ class FacultyController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
+        // Done means approved: handed in and signed off, not just handed in.
+        $isApproved = fn (Task $task) => $task->status === 'archived' && $task->feedback_at !== null;
+
         $totalStudents   = Student::where('faculty_id', $facultyId)->count();
         $teamNames       = $rosterRows->pluck('group_name')->filter()->unique()->values();
         $totalTeams      = $teamNames->count();
         $totalActivities = $allTasks->count();
-        $doneActivities  = $allTasks->where('status', 'archived')->count();
+        $doneActivities  = $allTasks->filter($isApproved)->count();
         $overallRate     = $totalActivities > 0
             ? (int) round(($doneActivities / $totalActivities) * 100)
             : 0;
@@ -2712,10 +2716,10 @@ class FacultyController extends Controller
         // Per-team completion. Tasks carry the team they were addressed to, so a
         // team's bar is its own rows rather than a share of the cohort's.
         $tasksByTeam = $allTasks->groupBy('group_name');
-        $teamPerformance = $teamNames->map(function ($name) use ($tasksByTeam) {
+        $teamPerformance = $teamNames->map(function ($name) use ($tasksByTeam, $isApproved) {
             $rows  = $tasksByTeam->get($name, collect());
             $total = $rows->count();
-            $done  = $rows->where('status', 'archived')->count();
+            $done  = $rows->filter($isApproved)->count();
 
             return [
                 'team'    => $name,
@@ -2740,7 +2744,7 @@ class FacultyController extends Controller
          * them outright or belongs to a role they hold on their own team — the
          * same rule the student's own dashboard uses.
          */
-        $studentPerformance = $rosterRows->map(function ($membership) use ($allTasks) {
+        $studentPerformance = $rosterRows->map(function ($membership) use ($allTasks, $isApproved) {
             $user  = $membership->student?->user;
             $name  = trim(implode(' ', array_filter([
                 $user?->last_name,
@@ -2763,7 +2767,7 @@ class FacultyController extends Controller
             });
 
             $total = $mine->count();
-            $done  = $mine->where('status', 'archived')->count();
+            $done  = $mine->filter($isApproved)->count();
 
             return [
                 'name'    => $name,
@@ -2777,12 +2781,12 @@ class FacultyController extends Controller
             ->sortByDesc(fn ($row) => [$row['percent'], $row['done']])
             ->values();
 
-        /* The latest submissions across every team. Submissions, so work that has
-           actually been handed in: a task still being worked on is not a
-           submission, and a report that lists it as one is a to-do list. */
+        /* The latest completed work across every team: handed in and approved. A
+           task still being worked on or waiting on review is not completed, and a
+           report that lists it as such is a to-do list. */
         $teamByStudentId = $rosterRows->keyBy('student_id');
         $recentActivities = $allTasks
-            ->where('status', 'archived')
+            ->filter($isApproved)
             ->take(6)
             ->map(function (Task $task) use ($teamByStudentId, $roleLabels) {
                 $user = $task->student?->user ?? $task->assignedTo;

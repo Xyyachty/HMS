@@ -230,7 +230,7 @@
             <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <p class="text-[15px] font-bold text-slate-800">Recent Activities</p>
-                    <p class="text-[12px] text-slate-400">Latest activity submissions from all teams.</p>
+                    <p class="text-[12px] text-slate-400">Latest completed activities from all teams.</p>
                 </div>
                 <button type="button" onclick="switchReportTab('activity')"
                         class="h-9 px-3.5 rounded-xl border border-slate-200 text-[12px] font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition shrink-0 rp-no-print">View All</button>
@@ -442,7 +442,7 @@
         </div>
 
         <div class="px-5 pt-4 pb-3 border-t border-slate-100">
-            <p class="text-[15px] font-bold text-slate-800">Latest Submissions</p>
+            <p class="text-[15px] font-bold text-slate-800">Latest Completed</p>
             <p class="text-[12px] text-slate-400">The most recent rows across every team.</p>
         </div>
         <div class="overflow-x-auto">
