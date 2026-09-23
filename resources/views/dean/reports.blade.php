@@ -6,8 +6,9 @@
 
 @section('content')
 {{--
-    Three reports on one screen: completed work, how each student is doing, and
-    the log behind both. All three are rendered at once and switched in the
+    Four tabs, laid out like the faculty Reports page: an Overview, then Student
+    Reports, Team Reports (the completed work) and Activity Reports (the log
+    behind both). Everything is rendered at once and switched in the
     browser — they are the same few hundred rows, and a filter that has to wait
     on the server is a filter nobody uses. Export writes what is on screen after
     the filters, not the whole table.
@@ -49,16 +50,159 @@
 
 {{-- ═══════ Tabs ═══════ --}}
 <div class="flex flex-wrap items-center gap-2 mb-4">
-    <button type="button" class="rp-tab is-active" data-rp-tab="completed" onclick="rpSwitchTab('completed')">
-        <span class="iconify text-base" data-icon="mdi:clipboard-check-outline"></span> Completed Tasks
+    <button type="button" class="rp-tab is-active" data-rp-tab="overview" onclick="rpSwitchTab('overview')">
+        <span class="iconify text-base" data-icon="mdi:view-dashboard-outline"></span> Overview
     </button>
     <button type="button" class="rp-tab" data-rp-tab="students" onclick="rpSwitchTab('students')">
-        <span class="iconify text-base" data-icon="mdi:account-school-outline"></span> Student Performance
+        <span class="iconify text-base" data-icon="mdi:account-outline"></span> Student Reports
+    </button>
+    <button type="button" class="rp-tab" data-rp-tab="completed" onclick="rpSwitchTab('completed')">
+        <span class="iconify text-base" data-icon="mdi:account-group-outline"></span> Team Reports
     </button>
     <button type="button" class="rp-tab" data-rp-tab="activity" onclick="rpSwitchTab('activity')">
-        <span class="iconify text-base" data-icon="mdi:history"></span> Activity Logs
+        <span class="iconify text-base" data-icon="mdi:clipboard-text-clock-outline"></span> Activity Reports
     </button>
 </div>
+
+{{-- ═══════ Overview ═══════ --}}
+<div id="rpOverview">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+        @foreach([
+            ['label' => 'Total Students', 'value' => $totalStudents, 'icon' => 'mdi:account-multiple-outline', 'tint' => 'bg-brand-soft text-brand'],
+            ['label' => 'Total Teams', 'value' => $totalTeams, 'icon' => 'mdi:account-group-outline', 'tint' => 'bg-blue-50 text-blue-500'],
+            ['label' => 'Total Activities', 'value' => $totalActivities, 'icon' => 'mdi:clipboard-check-outline', 'tint' => 'bg-violet-50 text-violet-500'],
+            ['label' => 'Overall Completion Rate', 'value' => $overallRate . '%', 'icon' => 'mdi:star-outline', 'tint' => 'bg-amber-50 text-amber-500'],
+        ] as $stat)
+            <div class="rounded-2xl border border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl {{ $stat['tint'] }} flex items-center justify-center shrink-0">
+                    <span class="iconify text-2xl" data-icon="{{ $stat['icon'] }}"></span>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[13px] text-slate-500 font-semibold">{{ $stat['label'] }}</p>
+                    <p class="text-[28px] font-extrabold text-slate-900 leading-none mt-1">{{ $stat['value'] }}</p>
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    <div class="grid gap-4 xl:grid-cols-2 items-start">
+        {{-- Top Performing Students --}}
+        <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
+            <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-[15px] font-bold text-slate-800">Top Performing Students</p>
+                    <p class="text-[12px] text-slate-400">Students with the highest activity completion rate.</p>
+                </div>
+                <button type="button" onclick="rpSwitchTab('students')"
+                        class="h-9 px-3.5 rounded-xl border border-slate-200 text-[12px] font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition shrink-0">View All</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-slate-100 bg-slate-50/60">
+                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500 w-10">#</th>
+                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Student Name</th>
+                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Team</th>
+                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Completion Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($topStudents as $row)
+                            <tr class="border-b border-slate-100">
+                                <td class="px-4 py-3 text-[13px] font-semibold text-slate-400">{{ $loop->iteration }}</td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        @include('partials.user-avatar', [
+                                            'user'         => null,
+                                            'name'         => $row['student_name'],
+                                            'size'         => 'w-8 h-8',
+                                            'rounded'      => 'rounded-full',
+                                            'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold',
+                                        ])
+                                        <span class="text-[13px] font-semibold text-slate-700 truncate">{{ $row['student_name'] }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-[13px] text-slate-500 truncate">{{ $row['team_name'] }}</td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                                            <span class="block h-full rounded-full" style="width: {{ $row['percent'] }}%; background: #7B1730"></span>
+                                        </span>
+                                        <span class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $row['percent'] }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="px-4 py-10 text-center text-[13px] text-slate-400 font-semibold">No students on a team yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- Recent Activities --}}
+        <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
+            <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-[15px] font-bold text-slate-800">Recent Activities</p>
+                    <p class="text-[12px] text-slate-400">Latest approved activities from all teams.</p>
+                </div>
+                <button type="button" onclick="rpSwitchTab('activity')"
+                        class="h-9 px-3.5 rounded-xl border border-slate-200 text-[12px] font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition shrink-0">View All</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-slate-100 bg-slate-50/60">
+                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Date</th>
+                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Student</th>
+                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Team</th>
+                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Activity</th>
+                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($recentActivities as $row)
+                            <tr class="border-b border-slate-100">
+                                <td class="px-4 py-3">
+                                    <p class="text-[12px] font-semibold text-slate-600 whitespace-nowrap">{{ $row['date'] }}</p>
+                                    <p class="text-[11px] text-slate-400 whitespace-nowrap">{{ $row['time'] }}</p>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        @include('partials.user-avatar', [
+                                            'user'         => $row['user'],
+                                            'name'         => $row['student'],
+                                            'size'         => 'w-8 h-8',
+                                            'rounded'      => 'rounded-full',
+                                            'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold',
+                                        ])
+                                        <span class="text-[13px] font-semibold text-slate-700 truncate">{{ $row['student'] }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-[13px] text-slate-500 truncate">{{ $row['team'] }}</td>
+                                <td class="px-4 py-3">
+                                    <p class="text-[13px] font-semibold text-slate-700 leading-snug">{{ $row['activity'] }}</p>
+                                    <p class="text-[11px] text-slate-400">{{ $row['role_label'] }}</p>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {{-- Only approved work reaches this list, so the badge has one colour. --}}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap bg-emerald-50 text-emerald-600">Completed</span>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="px-4 py-10 text-center text-[13px] text-slate-400 font-semibold">No activity recorded yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- The three table reports share one filter bar, one table card and one note;
+     the Overview hides all three. --}}
+<div id="rpTablesView" class="hidden">
 
 {{-- ═══════ Filters ═══════ --}}
 <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 mb-4">
@@ -217,6 +361,8 @@
     <span class="ml-auto text-slate-400 font-semibold">Generated on {{ now()->format('M d, Y \a\t g:i A') }}</span>
 </p>
 
+</div>
+
 {{-- ═══════ Details modal ═══════ --}}
 <div id="rpModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="rpCloseModal()"></div>
@@ -255,12 +401,12 @@ const RP_PANELS = {
         noun: 'record',
     },
     students: {
-        title: 'Student Performance',
+        title: 'Student Reports',
         hint: 'Every student holding a role, and how much of their assigned work is in.',
         noun: 'student',
     },
     activity: {
-        title: 'Activity Logs',
+        title: 'Activity Reports',
         hint: 'What each person did, in the order it happened.',
         noun: 'entry',
     },
@@ -496,10 +642,16 @@ function rpActivityRow(row, index) {
 
 /* ── Tabs ───────────────────────────────────────────────────────────────── */
 function rpSwitchTab(tab) {
-    rpTab = tab;
     document.querySelectorAll('[data-rp-tab]').forEach((btn) => {
         btn.classList.toggle('is-active', btn.dataset.rpTab === tab);
     });
+    // The Overview is drawn by the server and has no filters or table of its own.
+    const overview = tab === 'overview';
+    rpEl('rpOverview').classList.toggle('hidden', !overview);
+    rpEl('rpTablesView').classList.toggle('hidden', overview);
+    if (overview) return;
+
+    rpTab = tab;
     // The task filter only means something on the completed report.
     document.querySelectorAll('[data-rp-only]').forEach((el) => {
         el.classList.toggle('hidden', el.dataset.rpOnly !== tab);
@@ -696,7 +848,7 @@ function rpExport() {
 
 /* ── Start ──────────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
-    rpSwitchTab('completed');
+    rpSwitchTab('overview');
 });
 </script>
 @endsection
