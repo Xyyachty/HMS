@@ -14,7 +14,7 @@
     .st-card { border: 1px solid #dadada; border-radius: 1rem; overflow: hidden; background: #fff; }
     table.dataTable#usersTable { border-collapse: collapse !important; width: 100% !important; margin: 0 !important; }
     table.dataTable#usersTable thead th {
-        background: #7B1730; color: #FBEEE9; border-bottom: 0 !important;
+        background: #EDEDED; color: #111; border-bottom: 1px solid #dadada !important;
         font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
         padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
@@ -27,12 +27,12 @@
     }
     table.dataTable#usersTable.no-footer { border-bottom: 0 !important; }
 
-    .st-name { font-size: 13.5px; font-weight: 800; color: #2A1118; }
-    .st-email { font-size: 11.5px; color: #8A6F76; margin-top: .1rem; }
-    .st-muted { font-size: 12px; color: #5A3941; font-weight: 600; }
-    .st-dim { color: #C9AFAA; }
+    .st-name { font-size: 13.5px; font-weight: 800; color: #111; }
+    .st-email { font-size: 11.5px; color: #111; margin-top: .1rem; }
+    .st-muted { font-size: 12px; color: #111; font-weight: 600; }
+    .st-dim { color: #111; }
     .st-block {
-        display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 800; color: #7B1730;
+        display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 800; color: #111;
     }
 
     .st-status {
@@ -42,9 +42,9 @@
     .st-status .dot { width: .45rem; height: .45rem; border-radius: 9999px; }
     .st-status.is-active   { color: #15803D; }
     .st-status.is-active .dot   { background: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
-    .st-status.is-inactive { color: #B42318; }
+    .st-status.is-inactive { color: #111; }
     .st-status.is-inactive .dot { background: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
-    .st-status.is-pending  { color: #96692C; }
+    .st-status.is-pending  { color: #111; }
     .st-status.is-pending .dot  { background: #C9A45C; }
 
     .st-update, .st-approve {
@@ -57,8 +57,8 @@
     table.dataTable#usersTable tbody tr:hover .st-update { background: #111; border-color: #111; color: #fff; }
     #addFacultyBtn { color: #111; background: #fff; border: 1px solid #111; }
     #addFacultyBtn:hover { color: #fff; background: #111; }
-    .st-approve { color: #fff; background: #7B1730; border-color: #7B1730; box-shadow: 0 6px 14px -8px rgba(123,23,48,.6); }
-    .st-approve:hover { background: #5E1024; border-color: #5E1024; }
+    .st-approve { color: #fff; background: #111; border-color: #111; }
+    .st-approve:hover { background: #333; border-color: #333; }
 
     /* Expandable user search, the same as the faculty student search */
     #userSearchWrap {
@@ -87,13 +87,13 @@
     #userSearchWrap.is-open #userSearchInput::placeholder { color: #8C8C8C; }
 
     /* Info line and pager under the table */
-    #usersTable_wrapper .dataTables_info { padding-top: 1.25rem; font-size: 13px; color: #6B4A54; }
-    #usersTable_wrapper .dataTables_info b { color: #2A1118; }
+    #usersTable_wrapper .dataTables_info { padding-top: 1.25rem; font-size: 13px; color: #111; }
+    #usersTable_wrapper .dataTables_info b { color: #111; }
     #usersTable_wrapper .dataTables_paginate { padding-top: 1rem; display: flex; gap: .375rem; flex-wrap: wrap; justify-content: flex-end; }
     #usersTable_wrapper .dataTables_paginate .paginate_button {
         min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem !important; margin: 0 !important; border-radius: .7rem !important;
         display: inline-flex !important; align-items: center; justify-content: center;
-        font-size: 13px; font-weight: 700; color: #5A3941 !important; background: #fff !important;
+        font-size: 13px; font-weight: 700; color: #111 !important; background: #fff !important;
         border: 1px solid #dadada !important; box-shadow: none !important; transition: all .15s ease;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button:hover {
@@ -101,8 +101,8 @@
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button.current,
     #usersTable_wrapper .dataTables_paginate .paginate_button.current:hover {
-        background: #7B1730 !important; border-color: #7B1730 !important; color: #fff !important;
-        box-shadow: 0 6px 14px -6px rgba(123,23,48,.55) !important;
+        background: #111 !important; border-color: #111 !important; color: #fff !important;
+        box-shadow: none !important;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button.disabled,
     #usersTable_wrapper .dataTables_paginate .paginate_button.disabled:hover {
@@ -117,12 +117,22 @@
     .um-page .focus\:border-brand:focus { border-color: #111; }
     .um-page .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(17,17,17,.10); }
 
-    #usersTable_wrapper .dataTables_paginate .ellipsis { padding: 0 .35rem; color: #8A6F76; }
+    /* Toolbar, filters and table text are black; only the Active status keeps its green.
+       Selected Block pill is a black fill so it still reads as selected. */
+    .um-main .text-brand,
+    .um-main .text-slate-500,
+    .um-main .text-amber-500,
+    .um-main .hover\:text-brand:hover,
+    .um-main .hover\:text-slate-700:hover { color: #111; }
+    .um-main .bg-brand-soft { background-color: #F2F2F2; }
+    .um-main .block-tab-btn.bg-brand { background-color: #111; border-color: #111; color: #fff; }
+
+    #usersTable_wrapper .dataTables_paginate .ellipsis { padding: 0 .35rem; color: #111; }
 </style>
 @endpush
 
 @section('content')
-<div class="um-page bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+<div class="um-page um-main bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
 
     <!-- Toolbar: Faculty / Students + Search + Add Faculty -->
     <div class="px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
