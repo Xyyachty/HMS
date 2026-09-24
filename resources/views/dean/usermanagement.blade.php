@@ -11,7 +11,7 @@
        DataTables still draws the rows and the pager, so its own stripes, borders
        and buttons are overridden here. Status chips carry their own hex values
        because the palette turns green and red into gold and wine. */
-    .st-card { border: 1px solid #EADAD5; border-radius: 1rem; overflow: hidden; background: #fff; }
+    .st-card { border: 1px solid #dadada; border-radius: 1rem; overflow: hidden; background: #fff; }
     table.dataTable#usersTable { border-collapse: collapse !important; width: 100% !important; margin: 0 !important; }
     table.dataTable#usersTable thead th {
         background: #7B1730; color: #FBEEE9; border-bottom: 0 !important;
@@ -23,7 +23,7 @@
     table.dataTable#usersTable tbody tr:hover { background: #dadada !important; }
     table.dataTable#usersTable tbody td {
         padding: .8rem .9rem; vertical-align: middle; font-size: 13px;
-        border-top: 1px solid #F2E9E7 !important; box-shadow: none !important;
+        border-top: 1px solid #ECECEC !important; box-shadow: none !important;
     }
     table.dataTable#usersTable.no-footer { border-bottom: 0 !important; }
 
@@ -63,20 +63,21 @@
     /* Expandable user search, the same as the faculty student search */
     #userSearchWrap {
         display: inline-flex; align-items: center; height: 2.5rem; width: 2.5rem;
-        border-radius: 0.75rem; background: #F2E9E7; border: 1px solid transparent; overflow: hidden;
+        border-radius: 0.75rem; background: #fff; border: 1px solid #dadada; overflow: hidden;
         transition: width 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
+    #userSearchWrap:hover { border-color: #2A1118; }
     #userSearchWrap.is-open {
-        width: 12.5rem; background: #fff; border-color: #DE8299;
-        box-shadow: 0 0 0 3px rgba(123,23,48, 0.12);
+        width: 12.5rem; background: #fff; border-color: #2A1118;
+        box-shadow: 0 0 0 3px rgba(42,17,24, 0.10);
     }
     #userSearchWrap .search-toggle {
         width: 2.5rem; height: 2.5rem; flex-shrink: 0;
         display: inline-flex; align-items: center; justify-content: center;
-        color: #6B4A54; border: 0; background: transparent; cursor: pointer; border-radius: 0.75rem;
+        color: #2A1118; border: 0; background: transparent; cursor: pointer; border-radius: 0.75rem;
     }
     #userSearchWrap.is-open .search-toggle,
-    #userSearchWrap .search-toggle:hover { color: #7B1730; }
+    #userSearchWrap .search-toggle:hover { color: #111; }
     #userSearchInput {
         width: 0; min-width: 0; opacity: 0; border: 0; outline: none; background: transparent;
         font-size: 0.875rem; color: #47262D; padding: 0;
@@ -93,10 +94,10 @@
         min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem !important; margin: 0 !important; border-radius: .7rem !important;
         display: inline-flex !important; align-items: center; justify-content: center;
         font-size: 13px; font-weight: 700; color: #5A3941 !important; background: #fff !important;
-        border: 1px solid #EADAD5 !important; box-shadow: none !important; transition: all .15s ease;
+        border: 1px solid #dadada !important; box-shadow: none !important; transition: all .15s ease;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button:hover {
-        color: #7B1730 !important; border-color: #7B1730 !important; background: #FBEEE9 !important;
+        color: #111 !important; border-color: #111 !important; background: #F5F5F5 !important;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button.current,
     #usersTable_wrapper .dataTables_paginate .paginate_button.current:hover {
@@ -105,14 +106,23 @@
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button.disabled,
     #usersTable_wrapper .dataTables_paginate .paginate_button.disabled:hover {
-        color: #C9AFAA !important; background: #FAF6F5 !important; border-color: #EADAD5 !important; cursor: not-allowed;
+        color: #BDBDBD !important; background: #FAFAFA !important; border-color: #ECECEC !important; cursor: not-allowed;
     }
+    /* The dean Tailwind palette tints slate and pink borders toward wine. On this
+       page (toolbar, table card, both modals) borders are neutral gray instead. */
+    .um-page .border-slate-100 { border-color: #ECECEC; }
+    .um-page .border-slate-200,
+    .um-page .border-pink-100,
+    .um-page .border-brand\/10 { border-color: #dadada; }
+    .um-page .focus\:border-brand:focus { border-color: #2A1118; }
+    .um-page .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(42,17,24,.12); }
+
     #usersTable_wrapper .dataTables_paginate .ellipsis { padding: 0 .35rem; color: #8A6F76; }
 </style>
 @endpush
 
 @section('content')
-<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+<div class="um-page bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
 
     <!-- Toolbar: Faculty / Students + Search + Add Faculty -->
     <div class="px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -321,7 +331,7 @@
 </div>
 
 <!-- Create User Modal -->
-<div id="createUserModal" class="fixed inset-0 hidden" style="z-index: 9999;">
+<div id="createUserModal" class="um-page fixed inset-0 hidden" style="z-index: 9999;">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('createUserModal')"></div>
     <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
         <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
@@ -412,7 +422,7 @@
 </div>
 
 <!-- Update User Modal -->
-<div id="updateUserModal" class="fixed inset-0 hidden" style="z-index: 9999;">
+<div id="updateUserModal" class="um-page fixed inset-0 hidden" style="z-index: 9999;">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('updateUserModal')"></div>
     <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
         <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
