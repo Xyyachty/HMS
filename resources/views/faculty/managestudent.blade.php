@@ -205,7 +205,7 @@
 @endpush
 
 @section('content')
-<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+<div class="rounded-2xl shadow-sm border border-slate-100 overflow-hidden" style="background: #dadada;">
 
     <!-- Block tabs + toolbar: [Search icon] [Bulk] [Add Student] -->
     <div class="px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
