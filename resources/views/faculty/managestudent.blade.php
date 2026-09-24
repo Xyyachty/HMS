@@ -207,6 +207,13 @@
     /* Block tab names stay maroon */
     .ms-wine { color: #7B1730; }
 
+    /* md:p-6 and md:px-6 are missing from the frozen build, so the dean page's
+       1.5rem desktop padding around the table and toolbar is written out here. */
+    @media (min-width: 768px) {
+        .ms-table-wrap { padding: 1.5rem; }
+        .ms-toolbar { padding-left: 1.5rem; padding-right: 1.5rem; }
+    }
+
     .intake-disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 </style>
 @endpush
@@ -215,7 +222,7 @@
 <div class="rounded-2xl shadow-sm border border-slate-100 overflow-hidden" style="background: #dadada;">
 
     <!-- Block tabs + toolbar: [Search icon] [Bulk] [Add Student] -->
-    <div class="px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="ms-toolbar px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2 min-w-0">
             @forelse(($classes ?? collect()) as $classTab)
                 @php
@@ -310,7 +317,7 @@
     @endif
 
     <!-- DataTable -->
-    <div class="p-4 md:p-6">
+    <div class="ms-table-wrap p-4 md:p-6">
         <div class="st-card overflow-x-auto">
             <table id="studentsTable" style="min-width: 760px">
                 <thead>
