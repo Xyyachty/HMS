@@ -20,7 +20,7 @@
     }
     table.dataTable#usersTable tbody tr { background: #fff; transition: background-color .15s ease, box-shadow .15s ease; }
     table.dataTable#usersTable tbody tr.even { background: #FDF8F6; }
-    table.dataTable#usersTable tbody tr:hover { background: #FBEEE9 !important; box-shadow: inset 3px 0 0 #7B1730; }
+    table.dataTable#usersTable tbody tr:hover { background: #dadada !important; }
     table.dataTable#usersTable tbody td {
         padding: .8rem .9rem; vertical-align: middle; font-size: 13px;
         border-top: 1px solid #F2E9E7 !important; box-shadow: none !important;
@@ -53,8 +53,9 @@
         min-width: 6rem; border-radius: .6rem; padding: .4rem .8rem; font-size: 11.5px; font-weight: 800;
         border: 1px solid; transition: all .15s ease;
     }
-    .st-update { color: #7B1730; background: #fff; border-color: #DE8299; }
-    .st-update:hover { background: #7B1730; border-color: #7B1730; color: #fff; }
+    .st-update { color: #111; background: #fff; border-color: #111; }
+    .st-update:hover,
+    table.dataTable#usersTable tbody tr:hover .st-update { background: #111; border-color: #111; color: #fff; }
     .st-approve { color: #fff; background: #7B1730; border-color: #7B1730; box-shadow: 0 6px 14px -8px rgba(123,23,48,.6); }
     .st-approve:hover { background: #5E1024; border-color: #5E1024; }
 
