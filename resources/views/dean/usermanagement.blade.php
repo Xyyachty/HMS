@@ -55,6 +55,8 @@
     .st-update { color: #111; background: #fff; border-color: #111; }
     .st-update:hover,
     table.dataTable#usersTable tbody tr:hover .st-update { background: #111; border-color: #111; color: #fff; }
+    #addFacultyBtn { color: #111; background: #fff; border: 1px solid #111; }
+    #addFacultyBtn:hover { color: #fff; background: #111; }
     .st-approve { color: #fff; background: #7B1730; border-color: #7B1730; box-shadow: 0 6px 14px -8px rgba(123,23,48,.6); }
     .st-approve:hover { background: #5E1024; border-color: #5E1024; }
 
@@ -147,7 +149,7 @@
                 >
             </div>
             <button type="button" id="addFacultyBtn" onclick="openModal('createUserModal')"
-                class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap">
+                class="h-10 px-4 rounded-xl text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap">
                 <span class="iconify text-base" data-icon="mdi:account-plus-outline"></span>
                 Add Faculty
             </button>
