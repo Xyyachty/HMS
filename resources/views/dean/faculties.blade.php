@@ -5,7 +5,7 @@
 @section('faculties_active', 'active')
 
 @section('content')
-<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+<div class="ink-all bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
 
     <!-- Header -->
     <div class="p-6 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-rose-50/40">
@@ -259,7 +259,7 @@
 </div>
 
 <!-- Team Info Modal -->
-<div id="teamInfoModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+<div id="teamInfoModal" class="ink-all fixed inset-0 z-50 hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTeamModal()"></div>
     <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 52rem;">
         <!-- Modal Header -->
@@ -374,7 +374,7 @@
 </div>
 
 <!-- Create Faculty Modal -->
-<div id="createFacultyModal" class="fixed inset-0 z-50 hidden">
+<div id="createFacultyModal" class="ink-all fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('createFacultyModal')"></div>
     <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
         <div class="bg-rose-50 px-6 py-4 border-b border-rose-100 flex justify-between items-center sticky top-0 z-10">
@@ -450,6 +450,12 @@
 
 @push('styles')
 <style>
+    /* Black text across Teams Overview and its popups. Beats every text-* colour
+       utility, hover ones included; white text on filled buttons and avatars and
+       icon colours are left alone. */
+    .ink-all [class*="text-"]:not(.text-white):not(.iconify),
+    .ink-all [class*="text-"]:not(.text-white):not(.iconify):hover { color: #111; }
+
     #teamsTable {
         border-collapse: collapse;
         width: 100%;
