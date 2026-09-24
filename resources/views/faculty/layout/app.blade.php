@@ -195,7 +195,7 @@
 
 
             <!-- ==================== PAGE CONTENT ==================== -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#FDF6F3">
+            <main class="flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#dadada">
                 @yield('content')
             </main>
         </div>

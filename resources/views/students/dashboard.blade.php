@@ -28,7 +28,7 @@
                         'brand-soft': '#FBEEE9',
                         'rose-accent': '#C4425E',
                         'plum-accent': '#C9A45C',
-                        surface: '#FDF6F3',
+                        surface: '#dadada',
                         'surface-raised': '#FFFFFF',
                         'sidebar': '#4A0D1C',
                         'sidebar-hover': '#5E1024',
@@ -306,7 +306,7 @@
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#FDF6F3">
+        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#dadada">
             @php
                 $getMemberValue = function ($member, $field, $fallback = '') {
                     if (is_array($member)) return $member[$field] ?? $fallback;
