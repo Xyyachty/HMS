@@ -114,8 +114,8 @@
     .um-page .border-slate-200,
     .um-page .border-pink-100,
     .um-page .border-brand\/10 { border-color: #dadada; }
-    .um-page .focus\:border-brand:focus { border-color: #C9A45C; }
-    .um-page .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(201,164,92,.25); }
+    .um-page .focus\:border-brand:focus { border-color: #111; }
+    .um-page .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(17,17,17,.10); }
 
     #usersTable_wrapper .dataTables_paginate .ellipsis { padding: 0 .35rem; color: #8A6F76; }
 </style>

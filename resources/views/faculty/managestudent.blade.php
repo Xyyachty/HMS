@@ -136,17 +136,19 @@
         height: 2.5rem;
         width: 2.5rem;
         border-radius: 0.75rem;
-        background: #F2E9E7;
-        border: 1px solid transparent;
+        background: #fff;
+        border: 1px solid #111;
         overflow: hidden;
         transition: width 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
     #studentSearchWrap.is-open {
         width: 12.5rem;
         background: #fff;
-        border-color: #D9B86A;
-        box-shadow: 0 0 0 3px rgba(123,23,48, 0.12);
+        border-color: #111;
+        box-shadow: 0 0 0 3px rgba(17,17,17, 0.10);
     }
+    #studentSearchWrap:not(.is-open):hover { background: #111; }
+    #studentSearchWrap:not(.is-open):hover .search-toggle { color: #fff; }
     #studentSearchWrap .search-toggle {
         width: 2.5rem;
         height: 2.5rem;
@@ -154,15 +156,14 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: #6B4A54;
+        color: #111;
         border: 0;
         background: transparent;
         cursor: pointer;
         border-radius: 0.75rem;
     }
-    #studentSearchWrap.is-open .search-toggle,
-    #studentSearchWrap .search-toggle:hover {
-        color: #7B1730;
+    #studentSearchWrap.is-open .search-toggle {
+        color: #111;
     }
     #studentSearchInput {
         width: 0;
@@ -172,7 +173,7 @@
         outline: none;
         background: transparent;
         font-size: 0.875rem;
-        color: #47262D;
+        color: #111;
         padding: 0;
         transition: width 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
     }
@@ -182,7 +183,7 @@
         padding-right: 0.75rem;
     }
     #studentSearchWrap.is-open #studentSearchInput::placeholder {
-        color: #7A6068;
+        color: #8C8C8C;
     }
 
     /* Bulk upload preview. Written out rather than composed from utilities because
