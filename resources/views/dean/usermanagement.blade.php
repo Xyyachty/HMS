@@ -32,20 +32,19 @@
     .st-muted { font-size: 12px; color: #5A3941; font-weight: 600; }
     .st-dim { color: #C9AFAA; }
     .st-block {
-        display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 800;
-        color: #7B1730; background: #F7EEEB; border: 1px solid #EADAD5; border-radius: .5rem; padding: .2rem .55rem;
+        display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 800; color: #7B1730;
     }
 
     .st-status {
         display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
-        border-radius: 9999px; padding: .25rem .65rem; font-size: 11px; font-weight: 800; border: 1px solid;
+        font-size: 11px; font-weight: 800;
     }
     .st-status .dot { width: .45rem; height: .45rem; border-radius: 9999px; }
-    .st-status.is-active   { color: #15803D; background: #ECFDF3; border-color: #ABEFC6; }
+    .st-status.is-active   { color: #15803D; }
     .st-status.is-active .dot   { background: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
-    .st-status.is-inactive { color: #B42318; background: #FEF3F2; border-color: #FECDCA; }
+    .st-status.is-inactive { color: #B42318; }
     .st-status.is-inactive .dot { background: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
-    .st-status.is-pending  { color: #96692C; background: #FBF3E0; border-color: #E9D3A0; }
+    .st-status.is-pending  { color: #96692C; }
     .st-status.is-pending .dot  { background: #C9A45C; }
 
     .st-update, .st-approve {
