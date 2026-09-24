@@ -28,7 +28,7 @@
                         'brand-soft': '#FBEEE9',
                         'rose-accent': '#C4425E',
                         'plum-accent': '#C9A45C',
-                        surface: '#dadada',
+                        surface: '#FDF6F3',
                         'surface-raised': '#FFFFFF',
                         'sidebar': '#4A0D1C',
                         'sidebar-hover': '#5E1024',
@@ -306,7 +306,7 @@
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#dadada">
+        <main id="studentMain" class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#dadada">
             @php
                 $getMemberValue = function ($member, $field, $fallback = '') {
                     if (is_array($member)) return $member[$field] ?? $fallback;
@@ -1635,6 +1635,9 @@
             // Update breadcrumb
             const labels = { home: 'Dashboard', group: 'Team Overview', tasks: 'Tasks', activity: 'Activity Logs', reports: 'Reports', profile: 'My Profile' };
             document.getElementById('breadcrumb-current').textContent = labels[section] || 'Dashboard';
+
+            // Grey behind the five main pages; My Profile keeps the cream.
+            document.getElementById('studentMain').style.backgroundColor = section === 'profile' ? '#FDF6F3' : '#dadada';
 
             try {
                 const url = new URL(window.location.href);
