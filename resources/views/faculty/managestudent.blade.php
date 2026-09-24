@@ -71,7 +71,7 @@
     #studentsTable { table-layout: fixed; width: 100%; border-collapse: collapse; }
     #studentsTable th, #studentsTable td { vertical-align: middle; }
     #studentsTable thead th {
-        background: #7B1730; color: #FBEEE9;
+        background: #EDEDED; color: #111;
         font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
         padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
@@ -91,12 +91,12 @@
     .st-id {
         display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; font-weight: 700;
-        color: #7B1730;
+        color: #111;
     }
-    .st-name { font-size: 13.5px; font-weight: 800; color: #2A1118; }
-    .st-email { font-size: 11.5px; color: #8A6F76; margin-top: .1rem; }
-    .st-muted { font-size: 12px; color: #5A3941; font-weight: 600; }
-    .st-dim { color: #C9AFAA; }
+    .st-name { font-size: 13.5px; font-weight: 800; color: #111; }
+    .st-email { font-size: 11.5px; color: #111; margin-top: .1rem; }
+    .st-muted { font-size: 12px; color: #111; font-weight: 600; }
+    .st-dim { color: #111; }
 
     .st-status {
         display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
@@ -105,9 +105,9 @@
     .st-status .dot { width: .45rem; height: .45rem; border-radius: 9999px; }
     .st-status.is-active   { color: #15803D; }
     .st-status.is-active .dot   { background: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
-    .st-status.is-inactive { color: #B42318; }
+    .st-status.is-inactive { color: #111; }
     .st-status.is-inactive .dot { background: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
-    .st-status.is-pending  { color: #96692C; }
+    .st-status.is-pending  { color: #111; }
     .st-status.is-pending .dot  { background: #C9A45C; }
 
     .st-update {
@@ -122,12 +122,12 @@
     .st-page {
         min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem; border-radius: .7rem;
         display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
-        font-size: 13px; font-weight: 700; color: #5A3941; background: #fff; border: 1px solid #EADAD5;
+        font-size: 13px; font-weight: 700; color: #111; background: #fff; border: 1px solid #EADAD5;
         transition: all .15s ease;
     }
-    a.st-page:hover { color: #7B1730; border-color: #C9A45C; background: #FBEEE9; }
-    .st-page.is-current { background: #7B1730; border-color: #C9A45C; color: #fff; box-shadow: 0 6px 14px -6px rgba(123,23,48,.55); }
-    .st-page.is-disabled { color: #C9AFAA; background: #FAF6F5; cursor: not-allowed; }
+    a.st-page:hover { color: #111; border-color: #C9A45C; background: #FBEEE9; }
+    .st-page.is-current { background: #111; border-color: #111; color: #fff; }
+    .st-page.is-disabled { color: #111; opacity: .4; background: #FAF6F5; cursor: not-allowed; }
 
     /* Expandable student search — icon-only until opened */
     #studentSearchWrap {
@@ -201,6 +201,10 @@
 
     /* Add Student / Bulk Upload with no block assigned. Same reason as above: the
        frozen build has no disabled: variants to compose this from. */
+    /* Black text across the section; only the Active status keeps its green.
+       :hover is listed so the tabs' hover:text-* utilities cannot win. */
+    .ms-ink, .ms-ink:hover { color: #111; }
+
     .intake-disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 </style>
 @endpush
@@ -221,19 +225,19 @@
                 <a href="{{ route('faculty.students', ['class' => $classTab->letter]) }}"
                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 transition
                    {{ $isActive
-                        ? 'bg-white text-brand border-slate-200 -mb-px relative z-10'
-                        : 'bg-slate-50 text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-100' }}">
+                        ? 'bg-white ms-ink border-slate-200 -mb-px relative z-10'
+                        : 'bg-slate-50 ms-ink border-transparent hover:bg-slate-100' }}">
                     <span>{{ $classTab->name }}</span>
                     <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full
-                        {{ $isClosed ? 'bg-slate-200 text-slate-600' : 'bg-brand-soft text-brand' }}">
+                        {{ $isClosed ? 'bg-slate-200' : 'bg-brand-soft' }} ms-ink">
                         {{ $taken }}/{{ $cap }}
                     </span>
                     @if(!$isClosed)
-                        <span class="text-[10px] uppercase tracking-wide text-emerald-600">Open</span>
+                        <span class="text-[10px] uppercase tracking-wide ms-ink">Open</span>
                     @endif
                 </a>
             @empty
-                <p class="text-sm text-slate-500 pb-1">
+                <p class="text-sm ms-ink pb-1">
                     Blocks hold up to {{ $classCapacity ?? 40 }} students.
                 </p>
             @endforelse
@@ -424,15 +428,15 @@
                                     <span class="iconify text-3xl text-brand" data-icon="mdi:account-group-outline"></span>
                                 </div>
                                 @if(($search ?? '') !== '')
-                                    <p class="font-semibold text-slate-600">
+                                    <p class="font-semibold ms-ink">
                                         No students in {{ $activeClass->name ?? 'this block' }} match "{{ $search }}"
                                     </p>
-                                    <p class="text-xs text-slate-400">Try a student number, name, email or phone number.</p>
+                                    <p class="text-xs ms-ink">Try a student number, name, email or phone number.</p>
                                 @else
-                                    <p class="font-semibold text-slate-600">
+                                    <p class="font-semibold ms-ink">
                                         No students in {{ $activeClass->name ?? 'this block' }} yet
                                     </p>
-                                    <p class="text-xs text-slate-400">
+                                    <p class="text-xs ms-ink">
                                         Use Add Student or Bulk Upload — seats fill the open class (max {{ $classCapacity ?? 40 }}).
                                     </p>
                                 @endif
@@ -447,9 +451,9 @@
         <!-- Pagination -->
         @if($students->total() > 0)
         <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <p class="text-[13px] text-slate-500">
-                Showing <span class="font-bold text-slate-800">{{ $students->firstItem() }}</span>–<span class="font-bold text-slate-800">{{ $students->lastItem() }}</span>
-                of <span class="font-bold text-slate-800">{{ $students->total() }}</span> students
+            <p class="text-[13px] ms-ink">
+                Showing <span class="font-bold">{{ $students->firstItem() }}</span>–<span class="font-bold">{{ $students->lastItem() }}</span>
+                of <span class="font-bold">{{ $students->total() }}</span> students
             </p>
             @if($students->hasPages())
             <nav class="st-pager" aria-label="Student pages">
