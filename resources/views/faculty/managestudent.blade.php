@@ -209,8 +209,6 @@
 
     /* md:p-6 and md:px-6 are missing from the frozen build, so the dean page's
        1.5rem desktop padding around the table and toolbar is written out here. */
-    /* Table area sits on white so it stands apart from the grey section around it. */
-    .ms-table-wrap { background: #fff; }
     @media (min-width: 768px) {
         .ms-table-wrap { padding: 1.5rem; }
         .ms-toolbar { padding-left: 1.5rem; padding-right: 1.5rem; }
@@ -221,7 +219,7 @@
 @endpush
 
 @section('content')
-<div class="rounded-2xl shadow-sm border border-slate-100 overflow-hidden" style="background: #dadada;">
+<div class="rounded-2xl shadow-sm border border-slate-100 overflow-hidden" style="background: #fff;">
 
     <!-- Block tabs + toolbar: [Search icon] [Bulk] [Add Student] -->
     <div class="ms-toolbar px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
