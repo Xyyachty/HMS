@@ -11,10 +11,10 @@
        DataTables still draws the rows and the pager, so its own stripes, borders
        and buttons are overridden here. Status chips carry their own hex values
        because the palette turns green and red into gold and wine. */
-    .st-card { border: 1px solid #dadada; border-radius: 1rem; overflow: hidden; background: #fff; }
+    .st-card { border: 1px solid #EADAD5; border-radius: 1rem; overflow: hidden; background: #fff; }
     table.dataTable#usersTable { border-collapse: collapse !important; width: 100% !important; margin: 0 !important; }
     table.dataTable#usersTable thead th {
-        background: #EDEDED; color: #111; border-bottom: 1px solid #dadada !important;
+        background: #7B1730; color: #fff; border-bottom: 0 !important;
         font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
         padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
@@ -23,7 +23,7 @@
     table.dataTable#usersTable tbody tr:hover { background: #dadada !important; }
     table.dataTable#usersTable tbody td {
         padding: .8rem .9rem; vertical-align: middle; font-size: 13px;
-        border-top: 1px solid #ECECEC !important; box-shadow: none !important;
+        border-top: 1px solid #F2E9E7 !important; box-shadow: none !important;
     }
     table.dataTable#usersTable.no-footer { border-bottom: 0 !important; }
 
@@ -94,10 +94,10 @@
         min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem !important; margin: 0 !important; border-radius: .7rem !important;
         display: inline-flex !important; align-items: center; justify-content: center;
         font-size: 13px; font-weight: 700; color: #111 !important; background: #fff !important;
-        border: 1px solid #dadada !important; box-shadow: none !important; transition: all .15s ease;
+        border: 1px solid #EADAD5 !important; box-shadow: none !important; transition: all .15s ease;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button:hover {
-        color: #111 !important; border-color: #111 !important; background: #F5F5F5 !important;
+        color: #111 !important; border-color: #C9A45C !important; background: #FBEEE9 !important;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button.current,
     #usersTable_wrapper .dataTables_paginate .paginate_button.current:hover {
@@ -106,25 +106,25 @@
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button.disabled,
     #usersTable_wrapper .dataTables_paginate .paginate_button.disabled:hover {
-        color: #BDBDBD !important; background: #FAFAFA !important; border-color: #ECECEC !important; cursor: not-allowed;
+        color: #111 !important; opacity: .4; background: #FAF6F5 !important; border-color: #EADAD5 !important; cursor: not-allowed;
     }
     /* The dean Tailwind palette tints slate and pink borders toward wine. On this
        page (toolbar, table card, both modals) borders are neutral gray instead. */
     .um-page .border-slate-100 { border-color: #ECECEC; }
     .um-page .border-slate-200,
-    .um-page .border-pink-100,
     .um-page .border-brand\/10 { border-color: #dadada; }
     .um-page .focus\:border-brand:focus { border-color: #111; }
     .um-page .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(17,17,17,.10); }
 
     /* Toolbar, filters and table text are black; only the Active status keeps its green.
        Selected Block pill is a black fill so it still reads as selected. */
-    .um-main .text-brand,
     .um-main .text-slate-500,
     .um-main .text-amber-500,
     .um-main .hover\:text-brand:hover,
     .um-main .hover\:text-slate-700:hover { color: #111; }
-    .um-main .bg-brand-soft { background-color: #F2F2F2; }
+    /* Faculty / Students tab labels stay maroon, like the faculty class tabs. */
+    .um-main .tab-btn,
+    .um-main .tab-btn:hover { color: #7B1730; }
     .um-main .block-tab-btn.bg-brand { background-color: #111; border-color: #111; color: #fff; }
 
     #usersTable_wrapper .dataTables_paginate .ellipsis { padding: 0 .35rem; color: #111; }
@@ -263,7 +263,7 @@
                                     'name'         => $displayName,
                                     'size'         => 'w-9 h-9',
                                     'rounded'      => 'rounded-full',
-                                    'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold border border-pink-100',
+                                    'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold border border-amber-200',
                                 ])
                                 <div class="min-w-0">
                                     <p class="st-name truncate">{{ $displayName }}</p>
@@ -731,7 +731,7 @@
         const initials = String(user.name || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase();
         const nameCell = `
             <div class="flex items-center gap-3 min-w-0">
-                <span class="w-9 h-9 rounded-full bg-brand-soft text-brand text-[11px] font-bold border border-pink-100 inline-flex items-center justify-center shrink-0">${escapeCell(initials)}</span>
+                <span class="w-9 h-9 rounded-full bg-brand-soft text-brand text-[11px] font-bold border border-amber-200 inline-flex items-center justify-center shrink-0">${escapeCell(initials)}</span>
                 <div class="min-w-0">
                     <p class="st-name truncate">${escapeCell(user.name)}</p>
                     <p class="st-email truncate">${escapeCell(user.email ?? '')}</p>
