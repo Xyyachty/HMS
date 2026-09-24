@@ -71,7 +71,7 @@
     #studentsTable { table-layout: fixed; width: 100%; border-collapse: collapse; }
     #studentsTable th, #studentsTable td { vertical-align: middle; }
     #studentsTable thead th {
-        background: #EDEDED; color: #111;
+        background: #7B1730; color: #fff;
         font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
         padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
@@ -204,6 +204,8 @@
     /* Black text across the section; only the Active status keeps its green.
        :hover is listed so the tabs' hover:text-* utilities cannot win. */
     .ms-ink, .ms-ink:hover { color: #111; }
+    /* Block tab names stay maroon */
+    .ms-wine { color: #7B1730; }
 
     .intake-disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 </style>
@@ -227,7 +229,7 @@
                    {{ $isActive
                         ? 'bg-white ms-ink border-slate-200 -mb-px relative z-10'
                         : 'bg-slate-50 ms-ink border-transparent hover:bg-slate-100' }}">
-                    <span>{{ $classTab->name }}</span>
+                    <span class="ms-wine">{{ $classTab->name }}</span>
                     <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full
                         {{ $isClosed ? 'bg-slate-200' : 'bg-brand-soft' }} ms-ink">
                         {{ $taken }}/{{ $cap }}
