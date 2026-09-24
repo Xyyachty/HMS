@@ -71,7 +71,7 @@
       overflow-x: hidden;
     }
 
-    ::selection { background: var(--wine-700); color: #fff; }
+    ::selection { background: var(--wine-700); color: #dadada }
 
     .display {
       font-family: 'Playfair Display', Georgia, serif;
