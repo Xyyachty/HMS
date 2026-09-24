@@ -63,21 +63,21 @@
     /* Expandable user search, the same as the faculty student search */
     #userSearchWrap {
         display: inline-flex; align-items: center; height: 2.5rem; width: 2.5rem;
-        border-radius: 0.75rem; background: #FBF3E0; border: 1px solid #E9D3A0; overflow: hidden;
+        border-radius: 0.75rem; background: #fff; border: 1px solid #111; overflow: hidden;
         transition: width 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
-    #userSearchWrap:hover { border-color: #C9A45C; }
+    #userSearchWrap:not(.is-open):hover { background: #111; }
+    #userSearchWrap:not(.is-open):hover .search-toggle { color: #fff; }
     #userSearchWrap.is-open {
-        width: 12.5rem; background: #fff; border-color: #C9A45C;
-        box-shadow: 0 0 0 3px rgba(201,164,92, 0.22);
+        width: 12.5rem; background: #fff; border-color: #111;
+        box-shadow: 0 0 0 3px rgba(17,17,17, 0.10);
     }
     #userSearchWrap .search-toggle {
         width: 2.5rem; height: 2.5rem; flex-shrink: 0;
         display: inline-flex; align-items: center; justify-content: center;
-        color: #96692C; border: 0; background: transparent; cursor: pointer; border-radius: 0.75rem;
+        color: #111; border: 0; background: transparent; cursor: pointer; border-radius: 0.75rem;
     }
-    #userSearchWrap.is-open .search-toggle,
-    #userSearchWrap .search-toggle:hover { color: #7A5322; }
+    #userSearchWrap.is-open .search-toggle { color: #111; }
     #userSearchInput {
         width: 0; min-width: 0; opacity: 0; border: 0; outline: none; background: transparent;
         font-size: 0.875rem; color: #111; padding: 0;
