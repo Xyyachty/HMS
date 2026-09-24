@@ -32,10 +32,10 @@
     .bu-download {
         margin-top: auto; align-self: flex-start;
         display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .85rem; border-radius: .7rem;
-        font-size: 12px; font-weight: 800; color: #7B1730; background: #fff; border: 1px solid #DE8299;
+        font-size: 12px; font-weight: 800; color: #7B1730; background: #fff; border: 1px solid #D9B86A;
         transition: all .15s ease;
     }
-    .bu-download:hover { background: #7B1730; border-color: #7B1730; color: #fff; }
+    .bu-download:hover { background: #7B1730; border-color: #C9A45C; color: #fff; }
     .bu-notes { margin-top: .875rem; display: grid; gap: .45rem; }
     .bu-notes li { display: flex; align-items: flex-start; gap: .5rem; font-size: 11.5px; line-height: 1.5; color: #6B4A54; }
     .bu-notes li .iconify { flex: 0 0 auto; font-size: .95rem; color: #B8873C; margin-top: .1rem; }
@@ -44,7 +44,7 @@
         padding: 2rem 1.25rem; display: flex; flex-direction: column; align-items: center; gap: .4rem;
         text-align: center; cursor: pointer; transition: border-color .2s ease, background-color .2s ease;
     }
-    .bu-drop:hover { border-color: #7B1730; background: #FBEEE9; }
+    .bu-drop:hover { border-color: #C9A45C; background: #FBEEE9; }
     .bu-drop-icon {
         width: 3.25rem; height: 3.25rem; border-radius: 9999px; margin-bottom: .25rem;
         display: inline-flex; align-items: center; justify-content: center;
@@ -56,7 +56,7 @@
         margin-top: .35rem; display: inline-flex; align-items: center; padding: .45rem .95rem; border-radius: .7rem;
         font-size: 12px; font-weight: 800; color: #fff; background: #7B1730;
     }
-    #bulkDropZone.drag-over { border-color: #7B1730; background-color: #FBEEE9; }
+    #bulkDropZone.drag-over { border-color: #C9A45C; background-color: #FBEEE9; }
     #bulkImportBtn:disabled {
         opacity:.6;
         cursor:not-allowed;
@@ -125,8 +125,8 @@
         font-size: 13px; font-weight: 700; color: #5A3941; background: #fff; border: 1px solid #EADAD5;
         transition: all .15s ease;
     }
-    a.st-page:hover { color: #7B1730; border-color: #7B1730; background: #FBEEE9; }
-    .st-page.is-current { background: #7B1730; border-color: #7B1730; color: #fff; box-shadow: 0 6px 14px -6px rgba(123,23,48,.55); }
+    a.st-page:hover { color: #7B1730; border-color: #C9A45C; background: #FBEEE9; }
+    .st-page.is-current { background: #7B1730; border-color: #C9A45C; color: #fff; box-shadow: 0 6px 14px -6px rgba(123,23,48,.55); }
     .st-page.is-disabled { color: #C9AFAA; background: #FAF6F5; cursor: not-allowed; }
 
     /* Expandable student search — icon-only until opened */
@@ -144,7 +144,7 @@
     #studentSearchWrap.is-open {
         width: 12.5rem;
         background: #fff;
-        border-color: #DE8299;
+        border-color: #D9B86A;
         box-shadow: 0 0 0 3px rgba(123,23,48, 0.12);
     }
     #studentSearchWrap .search-toggle {
@@ -195,7 +195,7 @@
         border: 1px solid #E4D3CF; background: #fff; color: #6B4A54;
         transition: color 0.2s, border-color 0.2s, opacity 0.2s;
     }
-    .bulk-pager-btn:hover:not(:disabled) { color: #7B1730; border-color: #7B1730; }
+    .bulk-pager-btn:hover:not(:disabled) { color: #7B1730; border-color: #C9A45C; }
     .bulk-pager-btn:disabled { opacity: 0.4; cursor: default; }
 
     /* Add Student / Bulk Upload with no block assigned. Same reason as above: the
@@ -357,7 +357,7 @@
                                     'name'         => $displayName,
                                     'size'         => 'w-9 h-9',
                                     'rounded'      => 'rounded-full',
-                                    'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold border border-pink-100',
+                                    'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold border border-amber-200',
                                 ])
                                 <div class="min-w-0 flex-1">
                                     <p class="st-name cell-truncate" title="{{ $displayName }}">
@@ -706,7 +706,7 @@
 <div id="createStudentModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('createStudentModal')"></div>
     <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
-        <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
+        <div class="bg-brand-soft px-6 py-4 border-b border-amber-100 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-brand text-lg">Add Student</h4>
             <button onclick="closeModal('createStudentModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
@@ -767,7 +767,7 @@
 <div id="updateStudentModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('updateStudentModal')"></div>
     <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
-        <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
+        <div class="bg-brand-soft px-6 py-4 border-b border-amber-100 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-brand text-lg">Update Student</h4>
             <button onclick="closeModal('updateStudentModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
