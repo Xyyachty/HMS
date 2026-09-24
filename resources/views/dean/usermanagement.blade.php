@@ -63,28 +63,28 @@
     /* Expandable user search, the same as the faculty student search */
     #userSearchWrap {
         display: inline-flex; align-items: center; height: 2.5rem; width: 2.5rem;
-        border-radius: 0.75rem; background: #fff; border: 1px solid #dadada; overflow: hidden;
+        border-radius: 0.75rem; background: #FBF3E0; border: 1px solid #E9D3A0; overflow: hidden;
         transition: width 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
-    #userSearchWrap:hover { border-color: #2A1118; }
+    #userSearchWrap:hover { border-color: #C9A45C; }
     #userSearchWrap.is-open {
-        width: 12.5rem; background: #fff; border-color: #2A1118;
-        box-shadow: 0 0 0 3px rgba(42,17,24, 0.10);
+        width: 12.5rem; background: #fff; border-color: #C9A45C;
+        box-shadow: 0 0 0 3px rgba(201,164,92, 0.22);
     }
     #userSearchWrap .search-toggle {
         width: 2.5rem; height: 2.5rem; flex-shrink: 0;
         display: inline-flex; align-items: center; justify-content: center;
-        color: #2A1118; border: 0; background: transparent; cursor: pointer; border-radius: 0.75rem;
+        color: #96692C; border: 0; background: transparent; cursor: pointer; border-radius: 0.75rem;
     }
     #userSearchWrap.is-open .search-toggle,
-    #userSearchWrap .search-toggle:hover { color: #111; }
+    #userSearchWrap .search-toggle:hover { color: #7A5322; }
     #userSearchInput {
         width: 0; min-width: 0; opacity: 0; border: 0; outline: none; background: transparent;
-        font-size: 0.875rem; color: #47262D; padding: 0;
+        font-size: 0.875rem; color: #111; padding: 0;
         transition: width 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
     }
     #userSearchWrap.is-open #userSearchInput { width: 100%; opacity: 1; padding-right: 0.75rem; }
-    #userSearchWrap.is-open #userSearchInput::placeholder { color: #7A6068; }
+    #userSearchWrap.is-open #userSearchInput::placeholder { color: #8C8C8C; }
 
     /* Info line and pager under the table */
     #usersTable_wrapper .dataTables_info { padding-top: 1.25rem; font-size: 13px; color: #6B4A54; }
@@ -114,8 +114,8 @@
     .um-page .border-slate-200,
     .um-page .border-pink-100,
     .um-page .border-brand\/10 { border-color: #dadada; }
-    .um-page .focus\:border-brand:focus { border-color: #2A1118; }
-    .um-page .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(42,17,24,.12); }
+    .um-page .focus\:border-brand:focus { border-color: #C9A45C; }
+    .um-page .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(201,164,92,.25); }
 
     #usersTable_wrapper .dataTables_paginate .ellipsis { padding: 0 .35rem; color: #8A6F76; }
 </style>
