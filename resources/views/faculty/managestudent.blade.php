@@ -78,7 +78,7 @@
     #studentsTable thead th.text-center { text-align: center; }
     #studentsTable tbody tr { border-top: 1px solid #F2E9E7; transition: background-color .15s ease, box-shadow .15s ease; }
     #studentsTable tbody tr:nth-child(even) { background: #FDF8F6; }
-    #studentsTable tbody tr[data-student-id]:hover { background: #FBEEE9; box-shadow: inset 3px 0 0 #7B1730; }
+    #studentsTable tbody tr[data-student-id]:hover { background: #dadada; }
     #studentsTable td { padding: .8rem .9rem; }
     #studentsTable .col-student { width: 31%; }
     #studentsTable .col-id { width: 13%; }
@@ -113,9 +113,10 @@
     .st-update {
         display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap;
         border-radius: .6rem; padding: .4rem .8rem; font-size: 11.5px; font-weight: 800;
-        color: #7B1730; background: #fff; border: 1px solid #DE8299; transition: all .15s ease;
+        color: #111; background: #fff; border: 1px solid #111; transition: all .15s ease;
     }
-    .st-update:hover { background: #7B1730; border-color: #7B1730; color: #fff; }
+    .st-update:hover,
+    #studentsTable tbody tr[data-student-id]:hover .st-update { background: #111; border-color: #111; color: #fff; }
 
     .st-pager { display: flex; align-items: center; gap: .375rem; flex-wrap: wrap; }
     .st-page {
