@@ -1661,7 +1661,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'addons'             => 'nullable|array',
             'addons.*.addon_id'  => 'required|integer',
             'addons.*.qty'       => 'required|integer|min:1|max:99',
+            // A walk-in: the guest is standing at the desk, so the booking is
+            // taken and marked Arrived in one go. Room Management still hands
+            // the room over (check_in), the same as for any other arrival.
+            'arrived'            => 'sometimes|boolean',
         ]);
+        $walkIn = $request->boolean('arrived');
 
         $room = HotelRoom::where('hotel_room_id', $data['room_id'])
             ->where('group_name', $membership->group_name)
@@ -1671,37 +1676,76 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'That room is not on your team\'s floor.'], 404);
         }
 
-        // A room may carry several open stays now — one in-house, the rest booked for
-        // later — so the guard is against overlapping dates, not against any open
-        // booking at all. Without this two people polling the same grid could both
-        // book the same week.
-        $overlaps = $room->openBookings()
-            ->where('check_in', '<', $data['check_out'])
-            ->where('check_out', '>', $data['check_in'])
-            ->exists();
-        if ($overlaps) {
-            return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
+        if ($walkIn && !\App\Support\HotelTableAccess::canAssign($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can book a walk-in guest.'], 403);
+        }
+        if ($walkIn) {
+            // The guest is here now, so the stay starts today and the room has to be
+            // one they can walk into. A room still being cleaned is fine to sell for
+            // next week, not to hand a key for this afternoon.
+            if (\Carbon\Carbon::parse($data['check_in'])->toDateString() !== now()->toDateString()) {
+                return response()->json(['message' => 'A walk-in guest checks in today. Set the check-in date to today.'], 422);
+            }
+            if ($room->status !== 'Available') {
+                return response()->json([
+                    'message' => $room->name . ' is not ready (' . $room->status . '). Pick a room Housekeeping has cleared.',
+                ], 422);
+            }
         }
 
         try {
-            $booking = \App\Support\HotelBookingDesk::reserve(
-                $membership,
-                $room,
-                $data['guest'],
-                [
-                    'check_in'      => $data['check_in'],
-                    'check_in_time' => $data['check_in_time'],
-                    'check_out'     => $data['check_out'],
-                    'booked_by'     => auth()->user()?->name,
-                    'notes'         => $data['notes'] ?? null,
-                ],
-                $data['payment'] ?? null,
-                $data['addons'] ?? []
-            );
+            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $room, $data, $walkIn) {
+                /* A room may carry several open stays now — one in-house, the rest booked
+                   for later — so the guard is against overlapping dates, not against any
+                   open booking at all. Checked with the room row locked: two desks booking
+                   the same room for the same dates at the same moment both passed the
+                   check before either had written, and both got the room. The second now
+                   waits for the first and then sees its booking. */
+                HotelRoom::whereKey($room->hotel_room_id)->lockForUpdate()->first();
+                $overlaps = $room->openBookings()
+                    ->where('check_in', '<', $data['check_out'])
+                    ->where('check_out', '>', $data['check_in'])
+                    ->exists();
+                if ($overlaps) {
+                    throw new \App\Exceptions\BookingOverlapException();
+                }
+
+                $booking = \App\Support\HotelBookingDesk::reserve(
+                    $membership,
+                    $room,
+                    $data['guest'],
+                    [
+                        'check_in'      => $data['check_in'],
+                        'check_in_time' => $data['check_in_time'],
+                        'check_out'     => $data['check_out'],
+                        'booked_by'     => auth()->user()?->name,
+                        'notes'         => $data['notes'] ?? null,
+                    ],
+                    $data['payment'] ?? null,
+                    $data['addons'] ?? []
+                );
+
+                if ($walkIn) {
+                    \App\Support\HotelBookingDesk::markArrived($booking);
+                }
+
+                return $booking;
+            });
+        } catch (\App\Exceptions\BookingOverlapException $e) {
+            return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
         } catch (\RuntimeException $e) {
             // An add-on ran out between the picker rendering and this request. The whole
             // reservation rolled back, so there is no half-booked stay to clean up.
             return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if ($walkIn) {
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::GUEST_BOOKED,
+                'Booked walk-in guest ' . ($data['guest']['full_name'] ?? 'a guest') . ' into ' . $room->name
+                    . ' (' . $data['check_in'] . ' to ' . $data['check_out'] . ').'
+            );
         }
 
         return response()->json([
@@ -3898,6 +3942,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'party_size'  => 'sometimes|integer|min:1|max:50',
             // When the customer is due. Sent as an ISO local datetime by the desk.
             'reserved_for' => 'sometimes|nullable|date',
+            // A walk-in: they are here now, so the table goes straight to Occupied
+            // instead of being held as Reserved until they "arrive".
+            'seat_now'    => 'sometimes|boolean',
         ]);
 
         $assignedNow = false;
@@ -3965,14 +4012,18 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
 
             // Reserved, not Occupied: the desk is holding the table, and nobody is
-            // sitting at it until they walk in — see the 'arrive' branch above.
-            $table->status = 'Reserved';
+            // sitting at it until they walk in — see the 'arrive' branch above. A
+            // walk-in is already standing there, so they are seated at once.
+            $seatNow = $request->boolean('seat_now');
+            $table->status = $seatNow ? 'Occupied' : 'Reserved';
             $table->guest_name = isset($data['guest_name']) ? trim($data['guest_name']) : null;
             $table->contact_no = isset($data['contact_no']) ? trim($data['contact_no']) : null;
             $table->party_size = $partySize;
             // assigned_at is when the desk wrote this down; reserved_for is when the
             // customer is due, which is the one the restaurant reads off the floor.
-            $table->reserved_for = !empty($data['reserved_for']) ? \Carbon\Carbon::parse($data['reserved_for']) : null;
+            $table->reserved_for = $seatNow
+                ? now()
+                : (!empty($data['reserved_for']) ? \Carbon\Carbon::parse($data['reserved_for']) : null);
             $table->assigned_by = auth()->user()?->name;
             $table->assigned_at = now();
             $assignedNow = true;
@@ -3991,7 +4042,22 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             }
         }
 
-        $table->save();
+        if ($assignedNow) {
+            /* Written only if the table is still Available. The check above read it
+               without a lock, so two desks taking the same table at once both passed
+               it and the second silently replaced the first desk's guest. */
+            $taken = HotelDineInTable::where('hotel_dine_in_table_id', $table->hotel_dine_in_table_id)
+                ->where('status', 'Available')
+                ->update($table->getDirty() + ['updated_at' => now()]);
+            if ($taken === 0) {
+                return response()->json([
+                    'message' => 'Someone just took ' . $table->name . ' at another desk. Pick another table.',
+                ], 409);
+            }
+            $table->syncOriginal();
+        } else {
+            $table->save();
+        }
 
         if ($assignedNow) {
             \App\Support\Notifier::tableAssigned(auth()->user(), $table);
@@ -3999,8 +4065,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ActivityLog::record(
                 auth()->user(),
                 ActivityLog::TABLE_ASSIGNED,
-                'Seated ' . ($table->guest_name ?: 'a guest') . ' (party of ' . $table->party_size
-                    . ') at ' . $table->name . '.'
+                ($table->status === 'Occupied' ? 'Seated walk-in ' : 'Reserved ' . $table->name . ' for ')
+                    . ($table->guest_name ?: 'a guest') . ' (party of ' . $table->party_size . ')'
+                    . ($table->status === 'Occupied' ? ' at ' . $table->name : '') . '.'
             );
         }
         if ($arrivedNow) {
@@ -4166,6 +4233,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
         return view('students.frontdesk.dine-in', $data);
     })->name('frontdesk.dine-in');
+
+    // A guest who walks in without a booking: a room for tonight, or a table now.
+    Route::get('/frontdesk/walk-in', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.frontdesk.walk-in', $data);
+    })->name('frontdesk.walk-in');
 
     Route::get('/frontdesk/room-service', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
