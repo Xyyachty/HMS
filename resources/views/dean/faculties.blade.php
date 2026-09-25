@@ -132,7 +132,7 @@
                                     @endforelse
                                 </td>
                                 <td class="px-5 py-3.5">
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-xs font-bold">
+                                    <span class="inline-flex items-center gap-1 text-xs font-bold">
                                         <span class="iconify" data-icon="mdi:account-multiple-outline"></span>
                                         {{ $memberCount }} {{ Str::plural('member', $memberCount) }}
                                     </span>
@@ -457,7 +457,9 @@
        utility, hover ones included; white text on filled buttons and avatars and
        icon colours are left alone. */
     .ink-all [class*="text-"]:not(.text-white):not(.iconify),
-    .ink-all [class*="text-"]:not(.text-white):not(.iconify):hover { color: #111; }
+    .ink-all [class*="text-"]:not(.text-white):not(.iconify):hover,
+    .glass-header h2,
+    .glass-header h2 + p { color: #111; }
 
     #teamsTable {
         border-collapse: collapse;
