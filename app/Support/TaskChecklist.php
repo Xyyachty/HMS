@@ -246,6 +246,14 @@ class TaskChecklist
                 'description' => "Set the colour of the dish cards and the background of the Restaurant section behind them. The card colour carries to the dining preview on the Home page, so check both before you call it done.",
             ],
             [
+                'title' => 'Design the Restaurant Hero',
+                'description' => "The hero is the first thing a guest sees on the Restaurant page: the big two-line heading, the paragraph under it and the three short facts below the buttons. Replace the sample words with your restaurant's own. The plate photograph beside them is your first photographed dish, so make sure that dish is one worth leading with.",
+            ],
+            [
+                'title' => 'Edit the Best Seller Section',
+                'description' => "Best Seller sits under the hero and shows the first six dishes on your menu - the same six the Home page previews. Rename the section in your restaurant's voice, and give every one of the six a photograph, a price and a line saying what it is.",
+            ],
+            [
                 'title' => 'Write the Restaurant Page Introduction',
                 'description' => "Write the words above the menu: the small line over the heading, the heading, and the paragraph under it. Say what kind of kitchen this is - the food, the room, the hours a guest can eat - rather than repeating the word Menu.",
             ],
@@ -331,6 +339,8 @@ class TaskChecklist
         'Photograph and Price the Menu' => 'Every dish carries its own photograph and its price.',
         'Organise the Menu into Categories' => 'Every dish sits in a named section, and the tabs read as your restaurant\'s.',
         'Style the Menu Cards' => 'The dish cards and the section behind them sit in your palette.',
+        'Design the Restaurant Hero' => 'The heading, the paragraph and the three facts are your own words, and the plate shows one of your dishes.',
+        'Edit the Best Seller Section' => 'The section is named in your own words and its six dishes each carry a photograph, a price and a description.',
         'Write the Restaurant Page Introduction' => 'The heading and its introduction are your own words, with no sample copy left on the page.',
         'Write Every Dish Description' => 'Every dish on the menu has its own description and none of the sample lines remain.',
         'Make the Dish Photographs Consistent' => 'The menu reads as one set of photographs rather than a collection.',
@@ -496,6 +506,18 @@ class TaskChecklist
             'Set the background of the Restaurant section behind them.',
             'Check the cards still read against their new background.',
             'Look at the dining preview on the Home page before you finish.',
+        ],
+        'Design the Restaurant Hero' => [
+            'Rewrite both lines of the hero heading so they name your restaurant\'s food.',
+            'Rewrite the paragraph under it in two or three sentences.',
+            'Rewrite the three facts under the buttons to say what your kitchen offers.',
+            'Check the plate photograph is a dish you want guests to see first.',
+        ],
+        'Edit the Best Seller Section' => [
+            'Rewrite the small line and the Best Seller heading in your own words.',
+            'Read the six dishes it shows as a guest would, looking for sample content.',
+            'Give each of the six a photograph, a price and a one-line description.',
+            'Open the Home page and confirm its Best Seller preview matches.',
         ],
         'Write the Restaurant Page Introduction' => [
             'Rewrite the eyebrow line over the heading.',
