@@ -4713,15 +4713,19 @@ const RESTAURANT_HERO_IMAGE = 'https://images.unsplash.com/photo-1504674900247-0
 /* The promotional band that opens the Restaurant page. It says what the kitchen
    is before the page asks the guest to choose a venue or a course, and it carries
    the two ways on: down to the menu, or straight to a table. */
-function RestaurantHero({ menus, onExplore, onNav }) {
+function RestaurantHero({ menus, onExplore, onNav, cardImages, canEditImage, onToast }) {
   const menuList = menus || [];
   const dishCount = menuList.length;
-  // The team's own photograph wins over the stock plate.
-  const [heroSrc, setHeroSrc] = useState(RESTAURANT_HERO_IMAGE);
+  /* A picture chosen with Change Image wins, then the team's first
+     photographed dish, then the stock plate. cardImages is read so a new
+     choice re-renders the plate straight away. */
+  const chosenSrc = resolveCardImg('restaurant', 'hero', '');
+  void cardImages;
+  const [heroSrc, setHeroSrc] = useState(chosenSrc || RESTAURANT_HERO_IMAGE);
   useEffect(() => {
     const photographed = menuList.find(item => item && item.img);
-    setHeroSrc(photographed ? photographed.img : RESTAURANT_HERO_IMAGE);
-  }, [menus]);
+    setHeroSrc(chosenSrc || (photographed ? photographed.img : RESTAURANT_HERO_IMAGE));
+  }, [menus, chosenSrc]);
 
   return (
     <header className="dine-hero">
@@ -4768,6 +4772,9 @@ function RestaurantHero({ menus, onExplore, onNav }) {
           <div className="dine-hero-plate">
             <img
               src={heroSrc}
+              data-hms-dynamic-src="1"
+              data-hms-content-kind="restaurant"
+              data-hms-content-id="hero"
               alt="Signature dish"
               draggable={false}
               onError={() => { if (heroSrc !== RESTAURANT_HERO_IMAGE) setHeroSrc(RESTAURANT_HERO_IMAGE); }}
@@ -4783,13 +4790,23 @@ function RestaurantHero({ menus, onExplore, onNav }) {
               <span><strong>{dishCount + (dishCount === 1 ? ' dish' : ' dishes')}</strong><span>on the menu today</span></span>
             </div>
           )}
+          {canEditImage && (
+            <button
+              type="button"
+              className="hero-edit-btn"
+              data-hms-no-edit="1"
+              onClick={() => changeCardImg('restaurant', 'hero', () => onToast && onToast('Restaurant photo updated'))}
+            >
+              <i className="fa-solid fa-image" style={{ fontSize: 10 }}></i> Change Image
+            </button>
+          )}
         </div>
       </div>
     </header>
   );
 }
 
-function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, menuLockedReason, cardImages, rooms, guest }) {
+function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, menuLockedReason, cardImages, rooms, guest }) {
   /* The hero's own call to action lands on the menu further down the page,
      rather than navigating away from it. */
   const menuAnchorRef = useRef(null);
@@ -4932,7 +4949,7 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canOrderMenu, o
 
   return (
     <>
-      <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNav={onNav} />
+      <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNav={onNav} cardImages={cardImages} canEditImage={canEditMenuColor} onToast={onToast} />
       <div className="page-header dine-menu-head">
         <span className="section-num">02 — Culinary Arts</span>
         <h1 className="font-display">Restaurant & Bar</h1>
@@ -7013,6 +7030,7 @@ function App() {
         menus={menus}
         canManageMenus={canManageMenus && inRestaurantModule && isDesignMode}
         menuLockedReason={menuLockedReason}
+        canEditMenuColor={canEditMenuColor && isDesignMode}
         canOrderMenu={canOrderMenu || isSignedInGuest}
         onOrderMenu={placeOrder}
         guest={guestAuth}

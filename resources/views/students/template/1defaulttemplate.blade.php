@@ -6170,15 +6170,19 @@ const RESTAURANT_HERO_IMAGE = 'https://images.unsplash.com/photo-1504674900247-0
 /* The promotional band above the menu. It says what the kitchen is before the
    page asks the guest to choose a course, and it carries the two ways on: down
    to the menu, or straight to a table. */
-function RestaurantHero({ menus, onExplore, onNavigate, brandName }) {
+function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, canEditImage, onToast }) {
   const menuList = menus || [];
   const dishCount = menuList.length;
-  // The team's own photograph wins over the stock plate.
-  const [heroSrc, setHeroSrc] = useState(RESTAURANT_HERO_IMAGE);
+  /* A picture chosen with Change Image wins, then the team's first
+     photographed dish, then the stock plate. cardImages is read so a new
+     choice re-renders the plate straight away. */
+  const chosenSrc = resolveCardImg('restaurant', 'hero', '');
+  void cardImages;
+  const [heroSrc, setHeroSrc] = useState(chosenSrc || RESTAURANT_HERO_IMAGE);
   useEffect(() => {
     const photographed = menuList.find(item => item && item.img);
-    setHeroSrc(photographed ? photographed.img : RESTAURANT_HERO_IMAGE);
-  }, [menus]);
+    setHeroSrc(chosenSrc || (photographed ? photographed.img : RESTAURANT_HERO_IMAGE));
+  }, [menus, chosenSrc]);
 
   return (
     <header className="dine-hero">
@@ -6225,6 +6229,9 @@ function RestaurantHero({ menus, onExplore, onNavigate, brandName }) {
           <div className="dine-hero-plate">
             <img
               src={heroSrc}
+              data-hms-dynamic-src="1"
+              data-hms-content-kind="restaurant"
+              data-hms-content-id="hero"
               alt={(brandName ? brandName + ' — ' : '') + 'signature dish'}
               draggable={false}
               onError={() => { if (heroSrc !== RESTAURANT_HERO_IMAGE) setHeroSrc(RESTAURANT_HERO_IMAGE); }}
@@ -6239,6 +6246,16 @@ function RestaurantHero({ menus, onExplore, onNavigate, brandName }) {
               <i className="fa-solid fa-bowl-food"></i>
               <span><strong>{dishCount + (dishCount === 1 ? ' dish' : ' dishes')}</strong><br /><span>on the menu today</span></span>
             </div>
+          )}
+          {canEditImage && (
+            <button
+              type="button"
+              className="hero-edit-btn"
+              data-hms-no-edit="1"
+              onClick={() => changeCardImg('restaurant', 'hero', () => onToast && onToast('Restaurant photo updated'))}
+            >
+              <i className="fa-solid fa-image" style={{ fontSize: 10 }}></i> Change Image
+            </button>
           )}
         </div>
       </div>
@@ -6461,7 +6478,7 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
 
   return (
     <>
-      <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNavigate={onNavigate} />
+      <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNavigate={onNavigate} cardImages={cardImages} canEditImage={canEditMenuColor} onToast={onToast} />
       {/* The same six dishes the home page's Best Seller section shows. A card
           opens the dish, where it can be ordered. */}
       {menuList.length > 0 && (
