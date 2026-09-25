@@ -12,6 +12,7 @@ use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\Task;
 use App\Models\User;
+use App\Rules\PhilippineMobile;
 use App\Support\Notifier;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -330,7 +331,7 @@ class DeanController extends Controller
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'phone_number' => ['nullable', 'string', 'max:30'],
+            'phone_number' => ['nullable', 'string', new PhilippineMobile()],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
@@ -364,7 +365,7 @@ class DeanController extends Controller
 
         Faculty::create([
             'user_id' => $user->user_id,
-            'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
+            'phone_number' => User::normalizePhone($validated['phone_number'] ?? null),
             'status' => $status,
             'block' => $block,
         ]);
@@ -387,7 +388,7 @@ class DeanController extends Controller
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'phone_number' => ['nullable', 'string', 'max:30'],
+            'phone_number' => ['nullable', 'string', new PhilippineMobile()],
             'role' => ['required', 'in:faculty,student'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
@@ -413,7 +414,7 @@ class DeanController extends Controller
         ];
 
         $userData['status'] = $status;
-        $userData['phone_number'] = User::cleanOptional($validated['phone_number'] ?? null);
+        $userData['phone_number'] = User::normalizePhone($validated['phone_number'] ?? null);
 
         $user = User::create($userData);
 
@@ -421,7 +422,7 @@ class DeanController extends Controller
             // Assigned, not asked for - see storeFaculty().
             Faculty::create([
                 'user_id' => $user->user_id,
-                'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
+                'phone_number' => User::normalizePhone($validated['phone_number'] ?? null),
                 'status' => $status,
                 'block' => Faculty::nextAvailableBlock(),
             ]);

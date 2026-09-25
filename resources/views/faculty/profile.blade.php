@@ -9,7 +9,7 @@
         $user->last_name ?? null,
     ]))) ?: ($user->name ?? 'Faculty');
     $avatarSrc = $user->avatar_url;
-    $phoneValue = old('phone_number', $user->phone_number ?? $faculty->phone_number);
+    $phoneValue = old('phone_number', \App\Models\User::normalizePhone($user->phone_number ?? $faculty->phone_number));
 @endphp
 
 <div class="max-w-4xl mx-auto space-y-6">
@@ -125,9 +125,13 @@
                                 Phone Number
                             </span>
                         </label>
-                        <input id="phone_number" name="phone_number" type="text" value="{{ $phoneValue }}"
-                            class="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 transition"
-                            placeholder="e.g. 09171234567">
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs font-medium">+63</span>
+                            <input id="phone_number" name="phone_number" type="text" value="{{ $phoneValue }}"
+                            inputmode="numeric" autocomplete="tel-national" pattern="9[0-9]{9}" title="10 digits after +63, starting with 9 (e.g. 9123456789)" data-ph-phone
+                            class="w-full h-11 pl-12 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 transition"
+                            placeholder="912 345 6789">
+                        </div>
                     </div>
                 </div>
             </div>

@@ -58,6 +58,26 @@ class User extends Authenticatable
         return $value;
     }
 
+    /**
+     * Phone number as stored: the 10 digits after +63 ("9123456789"), which is what
+     * the forms show beside their +63 label. Spaces, dashes and a leading +63 / 63 / 0
+     * are dropped; empty stays "" (see cleanOptional()).
+     */
+    public static function normalizePhone(?string $value): string
+    {
+        $digits = preg_replace('/\D/', '', static::cleanOptional($value));
+
+        if (strlen($digits) === 12 && str_starts_with($digits, '63')) {
+            return substr($digits, 2);
+        }
+
+        if (strlen($digits) === 11 && str_starts_with($digits, '0')) {
+            return substr($digits, 1);
+        }
+
+        return $digits;
+    }
+
     /** @deprecated Use cleanOptional() — kept so older calls still avoid NULL. */
     public static function blankToNull(?string $value): string
     {

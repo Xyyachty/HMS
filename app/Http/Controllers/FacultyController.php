@@ -19,6 +19,7 @@ use App\Models\TeamRoleTemplateVersion;
 use App\Models\User;
 use App\Models\UserInformation;
 use App\Models\UserNotification;
+use App\Rules\PhilippineMobile;
 use App\Support\HotelConceptDesk;
 use App\Support\Notifier;
 use App\Support\TaskChecklist;
@@ -643,7 +644,7 @@ class FacultyController extends Controller
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'max:255'],
-            'phone_number' => ['nullable', 'string', 'max:30'],
+            'phone_number' => ['nullable', 'string', new PhilippineMobile()],
         ]);
 
         // Generated rather than typed, same as the bulk upload. The only place it is
@@ -691,7 +692,7 @@ class FacultyController extends Controller
                 'password' => Hash::make($plainPassword),
                 'role' => 'student',
                 'status' => 'active',
-                'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
+                'phone_number' => User::normalizePhone($validated['phone_number'] ?? null),
                 'email_verified_at' => now(),
             ]);
 
@@ -797,7 +798,7 @@ class FacultyController extends Controller
                 'required', 'string', 'email', 'max:255',
                 Rule::unique('users', 'email')->ignore($user->user_id, 'user_id'),
             ],
-            'phone_number' => ['nullable', 'string', 'max:30'],
+            'phone_number' => ['nullable', 'string', new PhilippineMobile()],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'status' => ['required', 'in:active,inactive'],
         ]);
@@ -807,8 +808,8 @@ class FacultyController extends Controller
 
         $updateData = [
             'email' => $validated['email'],
-            'phone_number' => User::cleanOptional($validated['phone_number'] ?? null) !== ''
-                ? User::cleanOptional($validated['phone_number'] ?? null)
+            'phone_number' => User::normalizePhone($validated['phone_number'] ?? null) !== ''
+                ? User::normalizePhone($validated['phone_number'] ?? null)
                 : ($user->phone_number ?? ''),
             'status' => $validated['status'],
         ];
@@ -2639,7 +2640,7 @@ class FacultyController extends Controller
             // Fourth argument names the column to ignore by. Without it the rule looks
             // for a column called "id", which users no longer has.
             'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->user_id . ',user_id'],
-            'phone_number' => ['nullable', 'string', 'max:30'],
+            'phone_number' => ['nullable', 'string', new PhilippineMobile()],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
             'remove_avatar' => ['nullable', 'boolean'],
         ]);
@@ -2656,7 +2657,7 @@ class FacultyController extends Controller
             'middle_name' => $validated['middle_name'] ?? null,
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
-            'phone_number' => $validated['phone_number'] ?? null,
+            'phone_number' => User::normalizePhone($validated['phone_number'] ?? null),
         ];
 
         if ($request->boolean('remove_avatar') && $user->avatar) {
@@ -2687,7 +2688,7 @@ class FacultyController extends Controller
         $user->update($userData);
 
         $faculty->update([
-            'phone_number' => $validated['phone_number'] ?? null,
+            'phone_number' => $userData['phone_number'],
         ]);
 
         ActivityLog::recordFor(ActivityLog::ACCOUNT_UPDATED, 'Updated their own faculty profile.');

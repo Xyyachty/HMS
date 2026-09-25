@@ -287,6 +287,7 @@
             });
         }
     </script>
+    @include('partials.ph-phone-input')
     @stack('scripts')
 </body>
 </html>
