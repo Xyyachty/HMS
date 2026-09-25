@@ -4727,7 +4727,7 @@ function RestaurantHero({ menus, onExplore, onNav }) {
     <header className="dine-hero">
       <div className="dine-hero-inner">
         <div>
-          <div className="dine-hero-chips" data-hms-no-edit="1">
+          <div className="dine-hero-chips">
             <span className="dine-hero-chip"><i className="fa-solid fa-circle"></i>Farm Fresh</span>
             <span className="dine-hero-chip"><i className="fa-solid fa-circle"></i>Chef Curated</span>
           </div>
@@ -4739,7 +4739,7 @@ function RestaurantHero({ menus, onExplore, onNav }) {
             Fresh ingredients, honest flavours, and the dishes our kitchen is known for —
             plated in the dining room or brought straight to your suite.
           </p>
-          <div className="dine-hero-actions" data-hms-no-edit="1">
+          <div className="dine-hero-actions">
             <button type="button" className="btn-primary" onClick={onExplore}>
               View the Menu <i className="fa-solid fa-arrow-down" style={{ fontSize: '0.7rem' }}></i>
             </button>
@@ -4749,21 +4749,21 @@ function RestaurantHero({ menus, onExplore, onNav }) {
           </div>
           <div className="dine-hero-facts">
             <div className="dine-hero-fact">
-              <span className="dine-hero-fact-icon" data-hms-no-edit="1"><i className="fa-solid fa-utensils"></i></span>
+              <span className="dine-hero-fact-icon"><i className="fa-solid fa-utensils"></i></span>
               <div className="dine-hero-fact-copy"><strong>Chef-Curated</strong><span>Plated to order</span></div>
             </div>
             <div className="dine-hero-fact">
-              <span className="dine-hero-fact-icon" data-hms-no-edit="1"><i className="fa-solid fa-leaf"></i></span>
+              <span className="dine-hero-fact-icon"><i className="fa-solid fa-leaf"></i></span>
               <div className="dine-hero-fact-copy"><strong>Fresh &amp; Local</strong><span>Market produce daily</span></div>
             </div>
             <div className="dine-hero-fact">
-              <span className="dine-hero-fact-icon" data-hms-no-edit="1"><i className="fa-solid fa-bell-concierge"></i></span>
+              <span className="dine-hero-fact-icon"><i className="fa-solid fa-bell-concierge"></i></span>
               <div className="dine-hero-fact-copy"><strong>In-Room Dining</strong><span>Served to your door</span></div>
             </div>
           </div>
         </div>
 
-        <div className="dine-hero-art" data-hms-no-edit="1">
+        <div className="dine-hero-art">
           <span className="dine-hero-ring"></span>
           <div className="dine-hero-plate">
             <img
@@ -4775,12 +4775,12 @@ function RestaurantHero({ menus, onExplore, onNav }) {
           </div>
           <div className="dine-hero-tag dine-hero-tag-hours">
             <i className="fa-solid fa-clock"></i>
-            <span><strong>6:00 AM – 11:00 PM</strong>Open every day</span>
+            <span><strong>6:00 AM – 11:00 PM</strong><span>Open every day</span></span>
           </div>
           {dishCount > 0 && (
             <div className="dine-hero-tag dine-hero-tag-count">
               <i className="fa-solid fa-bowl-food"></i>
-              <span><strong>{dishCount} dish{dishCount === 1 ? '' : 'es'}</strong>on the menu today</span>
+              <span><strong>{dishCount + (dishCount === 1 ? ' dish' : ' dishes')}</strong><span>on the menu today</span></span>
             </div>
           )}
         </div>
