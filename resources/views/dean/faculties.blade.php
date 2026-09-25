@@ -273,19 +273,26 @@
             </button>
         </div>
 
+        <!-- Modal Tabs -->
+        <div class="flex border-b border-slate-200 bg-slate-50 flex-shrink-0">
+            <button type="button" onclick="switchTeamModalTab('members')" id="team-tab-members"
+                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-rose-500 text-rose-600">
+                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:account-group-outline"></span>Team Members &amp; Roles
+            </button>
+            <button type="button" onclick="switchTeamModalTab('concept')" id="team-tab-concept"
+                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
+                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:lightbulb-outline"></span>Hotel Concept
+            </button>
+            <button type="button" onclick="switchTeamModalTab('tasks')" id="team-tab-tasks"
+                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
+                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:clipboard-text-clock-outline"></span>Student Tasks
+            </button>
+        </div>
+
         <!-- Modal Body -->
         <div class="overflow-y-auto flex-1 p-4 space-y-4">
-            <!-- Front Desk's hotel concept + its edit history (loaded when the modal opens) -->
-            <div>
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Hotel Concept</p>
-                <div id="teamModalConceptBody" class="space-y-3">
-                    <div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>
-                </div>
-            </div>
-
             <!-- Members Table -->
-            <div>
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Team Members & Roles</p>
+            <div id="team-panel-members">
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
                     <table class="w-full text-sm" style="table-layout: fixed;">
                         <colgroup>
@@ -306,24 +313,31 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Selected member's centralized activity log (expandable section) -->
+                <div id="memberActivityPanel" class="hidden mt-4">
+                    <div class="flex items-center justify-between gap-2 mb-1.5">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-rose-600" id="memberActivityPanelTitle">Member Activity</p>
+                        <button type="button" onclick="closeMemberActivityPanel()"
+                            class="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition">Hide</button>
+                    </div>
+                    <div class="border border-rose-200 rounded-lg overflow-hidden">
+                        <div id="memberActivityPanelBody" class="max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white"></div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Selected member's centralized activity log (expandable section) -->
-            <div id="memberActivityPanel" class="hidden">
-                <div class="flex items-center justify-between gap-2 mb-1.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-rose-600" id="memberActivityPanelTitle">Member Activity</p>
-                    <button type="button" onclick="closeMemberActivityPanel()"
-                        class="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition">Hide</button>
-                </div>
-                <div class="border border-rose-200 rounded-lg overflow-hidden">
-                    <div id="memberActivityPanelBody" class="max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white"></div>
+            <!-- Front Desk's hotel concept + its edit history (loaded when the modal opens) -->
+            <div id="team-panel-concept" class="hidden">
+                <div id="teamModalConceptBody" class="space-y-3">
+                    <div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>
                 </div>
             </div>
 
             <!-- Every task the team has been given, at any stage. View only. -->
-            <div>
+            <div id="team-panel-tasks" class="hidden">
                 <div class="flex items-center justify-between gap-2 mb-1.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Student Tasks</p>
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Every task this team has been given</p>
                     <span id="teamModalActivityMeta" class="text-[10px] font-semibold text-slate-400"></span>
                 </div>
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
@@ -619,8 +633,27 @@
         teamModalActivityPage = 1;
         renderTeamModalActivityPage();
 
+        switchTeamModalTab('members');
         document.getElementById('teamInfoModal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+    }
+
+    /* Team Details modal tabs: Members & Roles / Hotel Concept / Student Tasks */
+    function switchTeamModalTab(tabId) {
+        const tabs = ['members', 'concept', 'tasks'];
+        const current = tabs.includes(tabId) ? tabId : 'members';
+
+        tabs.forEach(function (tab) {
+            document.getElementById('team-panel-' + tab)?.classList.toggle('hidden', tab !== current);
+
+            const btn = document.getElementById('team-tab-' + tab);
+            if (!btn) return;
+            const isOn = tab === current;
+            btn.classList.toggle('border-rose-500', isOn);
+            btn.classList.toggle('text-rose-600', isOn);
+            btn.classList.toggle('border-transparent', !isOn);
+            btn.classList.toggle('text-slate-400', !isOn);
+        });
     }
 
     /* Front Desk's hotel concept for the open team. Fetched rather than inlined:
