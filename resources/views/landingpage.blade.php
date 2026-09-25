@@ -741,8 +741,8 @@
     .input-field::placeholder { color: var(--ink-muted); }
     .input-field:focus {
       outline: none;
-      border-color: var(--wine-600);
-      box-shadow: 0 0 0 3px rgba(158, 27, 60, .16);
+      border-color: #111;
+      box-shadow: 0 0 0 3px rgba(17, 17, 17, .10);
     }
     .input-field--pw { padding-right: 46px; }
     .field__toggle {
