@@ -787,7 +787,7 @@
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <form method="POST" id="updateStudentForm" onsubmit="return validateUpdatePasswords()">
+        <form method="POST" id="updateStudentForm" onsubmit="return validateUpdatePasswords() && confirmStatusChange(this)">
             @csrf
             @method('PUT')
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1383,6 +1383,32 @@
         return !(tooShort || mismatch);
     }
 
+    // Flipping a student between Active and Inactive decides whether they can sign
+    // in, so the change asks first. Saving with the status untouched goes straight through.
+    function confirmStatusChange(form) {
+        const select = document.getElementById('updateStatus');
+        if (select.value === select.dataset.original) return true;
+
+        const activating = select.value === 'active';
+        const name = [document.getElementById('updateFirstName').value, document.getElementById('updateLastName').value]
+            .filter(Boolean).join(' ') || 'This student';
+
+        Swal.fire({
+            icon: activating ? 'question' : 'warning',
+            title: activating ? 'Activate this student?' : 'Deactivate this student?',
+            text: activating
+                ? `${name} will be able to sign in again.`
+                : `${name} will be signed out and will not be able to sign in until reactivated.`,
+            showCancelButton: true,
+            confirmButtonText: activating ? 'Yes, activate' : 'Yes, deactivate',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+        }).then((result) => {
+            if (result.isConfirmed) form.submit();
+        });
+        return false;
+    }
+
     function openUpdateModal(button) {
         const form = document.getElementById('updateStudentForm');
         const userId = button.getAttribute('data-user-id');
@@ -1402,6 +1428,7 @@
         document.getElementById('updateEmail').value = email;
         document.getElementById('updatePhoneNumber').value = phone.replace('+63', '');
         document.getElementById('updateStatus').value = status;
+        document.getElementById('updateStatus').dataset.original = status;
         document.getElementById('updatePassword').value = '';
         document.getElementById('updatePasswordConfirm').value = '';
         document.getElementById('updatePasswordHelp').classList.add('hidden');

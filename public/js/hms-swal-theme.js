@@ -18,6 +18,8 @@
  * A confirmation whose confirm button carries out a destructive action — delete,
  * remove, deactivate, reject — keeps the orange warning icon but turns that button
  * red, because the colour of the button is what the person is about to press.
+ * One whose button activates or reactivates an account turns its icon and button
+ * green, the colour of the Active status it is about to set.
  */
 (function (window) {
   'use strict';
@@ -39,15 +41,24 @@
      button's wording counts: a title says what is being asked about, which is why
      "Remove this room?" with a "Keep it" button must not turn that button red. */
   var DESTRUCTIVE_BUTTON = /(delete|remove|deactivate|deny|reject|discard|revoke|unpublish)/i;
+  // Checked only after DESTRUCTIVE_BUTTON, so "Deactivate" never lands here.
+  var CONSTRUCTIVE_BUTTON = /activate/i;
 
   function statusFor(options) {
     var icon = options && typeof options.icon === 'string' ? options.icon.toLowerCase() : '';
     return STATUS[icon] || STATUS.info;
   }
 
+  function buttonLabel(options) {
+    return options && typeof options.confirmButtonText === 'string' ? options.confirmButtonText : '';
+  }
+
   function isDestructive(options) {
-    var label = options && typeof options.confirmButtonText === 'string' ? options.confirmButtonText : '';
-    return DESTRUCTIVE_BUTTON.test(label);
+    return DESTRUCTIVE_BUTTON.test(buttonLabel(options));
+  }
+
+  function isConstructive(options) {
+    return !isDestructive(options) && CONSTRUCTIVE_BUTTON.test(buttonLabel(options));
   }
 
   function themed(options) {
@@ -58,6 +69,10 @@
 
     next.iconColor = status.icon;
     next.confirmButtonColor = isDestructive(options) ? DANGER_COLOR : status.confirm;
+    if (isConstructive(options)) {
+      next.iconColor = STATUS.success.icon;
+      next.confirmButtonColor = STATUS.success.confirm;
+    }
     if (next.showCancelButton || next.cancelButtonText) {
       next.cancelButtonColor = CANCEL_COLOR;
     }

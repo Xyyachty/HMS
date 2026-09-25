@@ -441,7 +441,7 @@
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <form id="updateUserForm" method="POST" action="">
+        <form id="updateUserForm" method="POST" action="" onsubmit="return confirmStatusChange(this)">
             @csrf
             @method('PUT')
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -922,6 +922,37 @@
         };
     }
 
+    // Flipping an account between Active and Inactive decides whether a student can
+    // sign in, so the change asks first. Saving with the status untouched goes straight through.
+    function confirmStatusChange(form) {
+        const select = document.getElementById('updateStatus');
+        if (select.value === select.dataset.original) return true;
+
+        const activating = select.value === 'active';
+        const role = document.getElementById('updateRole').textContent.trim().toLowerCase() || 'user';
+        const name = [document.getElementById('updateFirstName').value, document.getElementById('updateLastName').value]
+            .filter(Boolean).join(' ') || 'This account';
+        let text = `${name} will be marked ${activating ? 'Active' : 'Inactive'}.`;
+        if (role === 'student') {
+            text = activating
+                ? `${name} will be able to sign in again.`
+                : `${name} will be signed out and will not be able to sign in until reactivated.`;
+        }
+
+        Swal.fire({
+            icon: activating ? 'question' : 'warning',
+            title: `${activating ? 'Activate' : 'Deactivate'} this ${role}?`,
+            text: text,
+            showCancelButton: true,
+            confirmButtonText: activating ? 'Yes, activate' : 'Yes, deactivate',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+        }).then((result) => {
+            if (result.isConfirmed) form.submit();
+        });
+        return false;
+    }
+
     function openUpdateModal(button) {
         const form = document.getElementById('updateUserForm');
         const userId = button.getAttribute('data-user-id');
@@ -951,6 +982,7 @@
         document.getElementById('updateEmailDomain').textContent = `@${emailDomain}`;
         document.getElementById('updatePhone').value = phoneNumber;
         document.getElementById('updateStatus').value = status;
+        document.getElementById('updateStatus').dataset.original = status;
         document.getElementById('updateRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
 
         const blockSelect = document.getElementById('updateBlock');
