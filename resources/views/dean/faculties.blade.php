@@ -111,7 +111,7 @@
                                 })->values()->toJson();
                                 $activityLogs = $teamActivityByFacultyGroup[$faculty->user_information_id][$groupName] ?? [];
                             @endphp
-                            <tr class="team-row transition-colors">
+                            <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-3.5 pl-10">
                                     <span class="font-semibold text-slate-700">{{ $groupName }}</span>
                                 </td>
@@ -140,7 +140,7 @@
                                 <td class="px-5 py-3.5 text-slate-500 text-sm">{{ $createdAt }}</td>
                                 <td class="px-5 py-3.5">
                                     <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }}, {{ (int) $faculty->user_information_id }})'
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold hover:bg-rose-100 transition">
+                                        class="view-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold transition">
                                         <span class="iconify" data-icon="mdi:eye-outline"></span> View
                                     </button>
                                 </td>
@@ -478,12 +478,11 @@
     #teamsTable tbody tr:hover {
         background: #FAF6F5;
     }
-    /* A hovered team row turns black with white text. The id outranks the
-       black-text rule above; the View button keeps its own look. */
-    #teamsTable tbody tr.team-row:hover { background: #111; }
-    #teamsTable tbody tr.team-row:hover * { color: #fff; }
-    #teamsTable tbody tr.team-row:hover button,
-    #teamsTable tbody tr.team-row:hover button * { color: #111; }
+    /* A hovered View button turns black with white text. The id outranks the
+       black-text rule above. */
+    #teamsTable .view-btn:hover { background: #111; border-color: #111; }
+    #teamsTable .view-btn:hover,
+    #teamsTable .view-btn:hover * { color: #fff; }
     /* The faculty header above each set of teams. */
     #teamsTable tbody tr.faculty-group-row,
     #teamsTable tbody tr.faculty-group-row:hover {
