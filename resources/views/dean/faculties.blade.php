@@ -111,7 +111,7 @@
                                 })->values()->toJson();
                                 $activityLogs = $teamActivityByFacultyGroup[$faculty->user_information_id][$groupName] ?? [];
                             @endphp
-                            <tr class="hover:bg-slate-50 transition-colors">
+                            <tr class="team-row transition-colors">
                                 <td class="px-5 py-3.5 pl-10">
                                     <span class="font-semibold text-slate-700">{{ $groupName }}</span>
                                 </td>
@@ -478,6 +478,12 @@
     #teamsTable tbody tr:hover {
         background: #FAF6F5;
     }
+    /* A hovered team row turns black with white text. The id outranks the
+       black-text rule above; the View button keeps its own look. */
+    #teamsTable tbody tr.team-row:hover { background: #111; }
+    #teamsTable tbody tr.team-row:hover * { color: #fff; }
+    #teamsTable tbody tr.team-row:hover button,
+    #teamsTable tbody tr.team-row:hover button * { color: #111; }
     /* The faculty header above each set of teams. */
     #teamsTable tbody tr.faculty-group-row,
     #teamsTable tbody tr.faculty-group-row:hover {
