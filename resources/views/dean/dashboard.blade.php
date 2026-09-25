@@ -35,20 +35,20 @@
                 <span class="iconify text-white text-xl" data-icon="mdi:account-group-outline"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Total Students</p>
-                <p class="text-3xl font-extrabold text-slate-900 leading-tight">{{ number_format($totalStudents) }}</p>
-                <p class="text-[11px] text-slate-400 font-medium truncate">Enrolled learners</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-black">Total Students</p>
+                <p class="text-3xl font-extrabold text-black leading-tight">{{ number_format($totalStudents) }}</p>
+                <p class="text-[11px] text-black font-medium truncate">Enrolled learners</p>
             </div>
         </div>
         <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
             @if($studentTrend !== 0)
                 <span class="iconify text-sm {{ $studentTrend > 0 ? 'text-emerald-500' : 'text-rose-500' }}"
                       data-icon="{{ $studentTrend > 0 ? 'mdi:trending-up' : 'mdi:trending-down' }}"></span>
-                <span class="text-[11px] font-bold {{ $studentTrend > 0 ? 'text-emerald-600' : 'text-rose-600' }}">{{ $studentTrend > 0 ? '+' : '' }}{{ $studentTrend }}%</span>
-                <span class="text-[11px] text-slate-400 font-medium">vs last month</span>
+                <span class="text-[11px] font-bold text-black">{{ $studentTrend > 0 ? '+' : '' }}{{ $studentTrend }}%</span>
+                <span class="text-[11px] text-black font-medium">vs last month</span>
             @else
                 <span class="iconify text-slate-300 text-sm" data-icon="mdi:trending-neutral"></span>
-                <span class="text-[11px] font-semibold text-slate-500">No change vs last month</span>
+                <span class="text-[11px] font-semibold text-black">No change vs last month</span>
             @endif
         </div>
     </a>
@@ -60,18 +60,18 @@
                 <span class="iconify text-white text-xl" data-icon="mdi:school-outline"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Total Faculty</p>
-                <p class="text-3xl font-extrabold text-slate-900 leading-tight">{{ number_format($totalFaculty) }}</p>
-                <p class="text-[11px] text-slate-400 font-medium truncate">Registered instructors</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-black">Total Faculty</p>
+                <p class="text-3xl font-extrabold text-black leading-tight">{{ number_format($totalFaculty) }}</p>
+                <p class="text-[11px] text-black font-medium truncate">Registered instructors</p>
             </div>
         </div>
         <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
             @if($pendingFaculty > 0)
                 <span class="iconify text-amber-500 text-sm" data-icon="mdi:clock-alert-outline"></span>
-                <span class="text-[11px] font-bold text-amber-600">{{ $pendingFaculty }} awaiting approval</span>
+                <span class="text-[11px] font-bold text-black">{{ $pendingFaculty }} awaiting approval</span>
             @else
                 <span class="iconify text-emerald-500 text-sm" data-icon="mdi:check-circle-outline"></span>
-                <span class="text-[11px] font-semibold text-emerald-600">All accounts approved</span>
+                <span class="text-[11px] font-semibold text-black">All accounts approved</span>
             @endif
         </div>
     </a>
@@ -83,14 +83,14 @@
                 <span class="iconify text-white text-xl" data-icon="mdi:account-multiple-plus-outline"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Teams</p>
-                <p class="text-3xl font-extrabold text-slate-900 leading-tight">{{ number_format($totalTeams) }}</p>
-                <p class="text-[11px] text-slate-400 font-medium truncate">Active simulation teams</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-black">Teams</p>
+                <p class="text-3xl font-extrabold text-black leading-tight">{{ number_format($totalTeams) }}</p>
+                <p class="text-[11px] text-black font-medium truncate">Active simulation teams</p>
             </div>
         </div>
         <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
             <span class="iconify text-slate-300 text-sm" data-icon="mdi:chart-donut"></span>
-            <span class="text-[11px] font-semibold text-slate-500 truncate">
+            <span class="text-[11px] font-semibold text-black truncate">
                 {{ $completionRate }}% of tasks completed
                 @if($teamsThisMonth > 0)
                     · +{{ $teamsThisMonth }} new
@@ -106,8 +106,8 @@
     <!-- Task Overview: the tasks most recently assigned or completed -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-slate-800">Task Overview</p>
-            <a href="{{ route('dean.activity') }}" class="text-[11px] font-bold text-brand hover:underline">View All</a>
+            <p class="text-sm font-bold text-black">Task Overview</p>
+            <a href="{{ route('dean.activity') }}" class="text-[11px] font-bold text-black hover:underline">View All</a>
         </div>
         <div class="divide-y divide-slate-50">
             @forelse(($recentActivity ?? collect()) as $task)
@@ -124,14 +124,14 @@
                         <span class="iconify text-lg" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <p class="text-[13px] font-bold text-slate-800 leading-snug line-clamp-2">{{ $task->title }}</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5 truncate">
+                        <p class="text-[13px] font-bold text-black leading-snug line-clamp-2">{{ $task->title }}</p>
+                        <p class="text-[11px] text-black mt-0.5 truncate">
                             {{ $task->group_name ?: ($roleLabels[$task->role] ?? $task->role) }} · {{ $facultyName }}
                         </p>
                     </div>
                     <div class="text-right shrink-0">
-                        <p class="text-[10px] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
-                        <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isDone ? 'text-emerald-600' : 'text-slate-900' }}">
+                        <p class="text-[10px] text-black font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
+                        <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 text-black">
                             <span class="w-1.5 h-1.5 rounded-full {{ $isDone ? 'bg-emerald-500' : 'bg-slate-900' }}"></span>
                             {{ $isDone ? 'Completed' : 'Assigned' }}
                         </p>
@@ -142,8 +142,8 @@
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                         <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
                     </div>
-                    <p class="text-sm font-semibold text-slate-400">No recent activity</p>
-                    <p class="text-xs text-slate-300 mt-1">Task assignments and completions will appear here.</p>
+                    <p class="text-sm font-semibold text-black">No recent activity</p>
+                    <p class="text-xs text-black mt-1">Task assignments and completions will appear here.</p>
                 </div>
             @endforelse
         </div>
@@ -152,8 +152,8 @@
     <!-- Newly: the student and faculty accounts added most recently -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-slate-800">Newly</p>
-            <a href="{{ route('dean.users') }}" class="text-[11px] font-bold text-brand hover:underline">View All</a>
+            <p class="text-sm font-bold text-black">Newly</p>
+            <a href="{{ route('dean.users') }}" class="text-[11px] font-bold text-black hover:underline">View All</a>
         </div>
         <div class="divide-y divide-slate-50">
             @forelse(($newAccounts ?? collect()) as $account)
@@ -170,15 +170,15 @@
                         'name'         => $name,
                         'size'         => 'w-9 h-9',
                         'rounded'      => 'rounded-xl',
-                        'extraClasses' => 'bg-amber-50 text-amber-600 text-xs font-bold',
+                        'extraClasses' => 'bg-amber-50 text-black text-xs font-bold',
                     ])
                     <div class="min-w-0 flex-1">
-                        <p class="text-[13px] font-bold text-slate-800 truncate">{{ $name }}</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ $account->email ?? '—' }}</p>
+                        <p class="text-[13px] font-bold text-black truncate">{{ $name }}</p>
+                        <p class="text-[11px] text-black mt-0.5 truncate">{{ $account->email ?? '—' }}</p>
                     </div>
                     <div class="text-right shrink-0">
-                        <p class="text-[10px] text-slate-400 font-medium whitespace-nowrap">{{ optional($account->created_at)->diffForHumans(null, true) }}</p>
-                        <p class="text-[10px] font-bold mt-1 {{ $isFaculty ? 'text-amber-600' : 'text-blue-500' }}">{{ $isFaculty ? 'Faculty' : 'Student' }}</p>
+                        <p class="text-[10px] text-black font-medium whitespace-nowrap">{{ optional($account->created_at)->diffForHumans(null, true) }}</p>
+                        <p class="text-[10px] font-bold mt-1 text-black">{{ $isFaculty ? 'Faculty' : 'Student' }}</p>
                     </div>
                 </div>
             @empty
@@ -186,8 +186,8 @@
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                         <span class="iconify text-2xl text-slate-300" data-icon="mdi:account-plus-outline"></span>
                     </div>
-                    <p class="text-sm font-semibold text-slate-400">No new accounts</p>
-                    <p class="text-xs text-slate-300 mt-1">Students and faculty you add will show up here.</p>
+                    <p class="text-sm font-semibold text-black">No new accounts</p>
+                    <p class="text-xs text-black mt-1">Students and faculty you add will show up here.</p>
                 </div>
             @endforelse
         </div>
@@ -196,8 +196,8 @@
     <!-- Recent: the open tasks handed out most recently -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-slate-800">Recent</p>
-            <a href="{{ route('dean.activity') }}" class="text-[11px] font-bold text-brand hover:underline">View All</a>
+            <p class="text-sm font-bold text-black">Recent</p>
+            <a href="{{ route('dean.activity') }}" class="text-[11px] font-bold text-black hover:underline">View All</a>
         </div>
         <div class="divide-y divide-slate-50">
             @forelse(($recentTasks ?? collect()) as $task)
@@ -206,8 +206,8 @@
                         <span class="iconify text-lg" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <p class="text-[13px] font-bold text-slate-800 truncate">{{ $task->title }}</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5 truncate">
+                        <p class="text-[13px] font-bold text-black truncate">{{ $task->title }}</p>
+                        <p class="text-[11px] text-black mt-0.5 truncate">
                             {{ $task->group_name ?: ($roleLabels[$task->role] ?? $task->role) }}
                             @if($task->faculty_name)
                                 · {{ $task->faculty_name }}
@@ -220,8 +220,8 @@
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                         <span class="iconify text-2xl text-slate-300" data-icon="mdi:clipboard-text-outline"></span>
                     </div>
-                    <p class="text-sm font-semibold text-slate-400">No active tasks</p>
-                    <p class="text-xs text-slate-300 mt-1">Tasks faculty assign will show up here.</p>
+                    <p class="text-sm font-semibold text-black">No active tasks</p>
+                    <p class="text-xs text-black mt-1">Tasks faculty assign will show up here.</p>
                 </div>
             @endforelse
         </div>
