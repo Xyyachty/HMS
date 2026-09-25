@@ -1263,7 +1263,9 @@
             window._hmsSiteContentSaveTimer = setTimeout(async function () {
                 try {
                     if (!window.hmsBuilder || typeof window.hmsBuilder.autosave !== 'function') return;
-                    await window.hmsBuilder.autosave();
+                    // A failed save has already said why on the status line;
+                    // saying "Auto-saved" over it would be the silent failure.
+                    if (!(await window.hmsBuilder.autosave())) return;
                     window.templateSyncVersion = window.hmsBuilder.syncVersion || window.templateSyncVersion;
                     if (typeof setSaveDraftUnsaved === 'function') setSaveDraftUnsaved(false);
                     const st = document.getElementById('autoSaveStatus');

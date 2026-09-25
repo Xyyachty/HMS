@@ -428,6 +428,7 @@
         .save-hint.is-saved { color: #34d399; }
         .save-hint.is-submitted { color: #34d399; font-weight: 700; }
         .save-hint.is-dirty { color: #fca5a5; }
+        .save-hint.is-error { color: #f87171; font-weight: 600; }
 
         /* Toast */
         #toast {
@@ -831,7 +832,24 @@
                 restore: @json(route('students.templates.restore', ['role' => $builderRole, 'version' => '__VERSION__'])),
             },
             onToast: function (msg) { if (typeof toast === 'function') toast(msg); },
+            // A teammate changed the same thing: the student decides, nothing is
+            // overwritten quietly.
+            onConflict: function (summary) {
+                return askConfirm(
+                    'A teammate changed this too',
+                    'While you were editing, a teammate saved changes to ' + summary + '. '
+                    + 'Keep your version to replace theirs, or use theirs and drop your edits to it.',
+                    'Keep my version',
+                    'Use theirs'
+                );
+            },
             onChange: function (evt) {
+                if (evt.type === 'save-error') {
+                    // Said on screen every time, toasted once per new reason so a
+                    // retry every seven seconds does not bury the page in toasts.
+                    setSaveState('error', 'Not saved \u2014 ' + evt.message);
+                    if (!evt.repeated && typeof toast === 'function') toast(evt.message);
+                }
                 if (evt.type === 'dirty') {
                     setSaveDraftUnsaved(!!evt.dirty);
                 }
@@ -1268,11 +1286,12 @@
                 idle: 'Ready \u00b7 Ctrl+S to save',
             };
             status.textContent = text || wording[state] || wording.idle;
-            status.classList.remove('is-saving', 'is-saved', 'is-submitted', 'is-dirty');
+            status.classList.remove('is-saving', 'is-saved', 'is-submitted', 'is-dirty', 'is-error');
             if (state === 'saving' || state === 'submitting') status.classList.add('is-saving');
             else if (state === 'saved') status.classList.add('is-saved');
             else if (state === 'submitted') status.classList.add('is-submitted');
             else if (state === 'dirty') status.classList.add('is-dirty');
+            else if (state === 'error') status.classList.add('is-error');
         }
 
         /**
@@ -1285,7 +1304,7 @@
          * browser dialog only if the bundle failed to load: a question that never
          * appears is worse than an ugly one.
          */
-        async function askConfirm(title, text, confirmText) {
+        async function askConfirm(title, text, confirmText, cancelText) {
             if (!window.Swal) return window.confirm(title + '\n\n' + text);
 
             const result = await window.Swal.fire({
@@ -1297,7 +1316,7 @@
                 color: '#fafafa',
                 showCancelButton: true,
                 confirmButtonText: confirmText || 'Continue',
-                cancelButtonText: 'Cancel',
+                cancelButtonText: cancelText || 'Cancel',
                 confirmButtonColor: '#0891b2',
                 cancelButtonColor: '#3f3f46',
                 reverseButtons: true,
@@ -1334,28 +1353,26 @@
             setSaveState('submitting');
 
             try {
-                // Flush what is on screen first, so faculty sees what the student
-                // is looking at rather than the last autosave.
-                if (typeof postToTemplate === 'function') {
-                    postToTemplate({ type: 'request-customizations' });
-                    await new Promise((r) => setTimeout(r, 200));
-                }
+                // Save what is on screen first, so faculty sees what the student
+                // is looking at rather than the last autosave. It goes through
+                // the builder's own save, which checks for a teammate's newer
+                // work; posting the whole merged site here used to write a stale
+                // copy of teammates' shared content back over theirs.
+                if (window.hmsBuilder) await window.hmsBuilder.flush();
 
                 const res = await fetch(@json(route('students.templates.submit', ['role' => $builderRole])), {
                     method: 'POST',
                     credentials: 'same-origin',
-                    headers: {
+                    headers: window.hmsBuilder ? window.hmsBuilder._headers() : {
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
-                    body: JSON.stringify({
-                        customizations: window.templateCustomizations || {},
-                        layout: window.templateLayout || [],
-                    }),
+                    body: '{}',
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || data.message || 'Could not submit');
+                let data = {};
+                try { data = await res.json(); } catch (e) { /* not JSON: a proxy error page */ }
+                if (!res.ok) throw new Error(data.error || data.message || 'Could not submit \u2014 try again');
 
                 setSaveDraftUnsaved(false);
                 setSaveState('submitted');
@@ -1394,16 +1411,43 @@
             const href = link && link.getAttribute('href');
             if (event) event.preventDefault();
 
-            const flush = (window.hmsBuilder && typeof window.hmsBuilder.save === 'function')
-                ? window.hmsBuilder.save(false)
+            const flush = (window.hmsBuilder && typeof window.hmsBuilder.flush === 'function')
+                ? window.hmsBuilder.flush()
                 : Promise.resolve();
 
-            Promise.resolve(flush).catch(() => {}).finally(() => {
-                if (href) window.location.href = href;
+            Promise.resolve(flush).then(function () {
+                leaveBuilder(href);
+            }, async function (err) {
+                // Leaving now throws the unsaved edits away, so it is the
+                // student's call, made knowing why the save failed.
+                const leave = await askConfirm(
+                    'Your latest changes are not saved',
+                    (err && err.message ? err.message + ' ' : '') + 'If you leave now, those changes are lost.',
+                    'Leave anyway',
+                    'Stay here'
+                );
+                if (leave) leaveBuilder(href);
             });
 
             return false;
         }
+
+        let hmsLeavingOnPurpose = false;
+        function leaveBuilder(href) {
+            hmsLeavingOnPurpose = true;
+            if (href) window.location.href = href;
+        }
+
+        // Closing the tab or reloading with edits not yet on the server: the
+        // browser asks first. Autosave runs every seven seconds, so this only
+        // catches the last few seconds of work, or a save that is failing.
+        window.addEventListener('beforeunload', function (event) {
+            if (hmsLeavingOnPurpose || !window.hmsBuilder) return;
+            if (window.hmsBuilder.isDirty() || window.hmsBuilder.isSaving()) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        });
 
         async function syncGroupPresence() {
             try {
@@ -1435,7 +1479,17 @@
             } catch (e) { /* ignore */ }
         }
 
-        async function syncTemplateFromServer() {
+        async function syncTemplateFromServer(now) {
+            /* The builder polls the same route itself, and keeps its record of
+               what the server holds in step with what it shows. Replacing the
+               page's copy here behind its back left the two disagreeing about
+               which edits were the student's. So with a builder on the page this
+               only asks it to sync now (on returning to the tab), and the
+               interval is left to the builder. */
+            if (window.hmsBuilder) {
+                if (now === true) window.hmsBuilder.sync();
+                return;
+            }
             // Never replace a student's unsaved design buffer with a polling update.
             if (window.hmsBuilder && window.hmsBuilder._dirty && window.currentEditorMode === 'design') {
                 return;
@@ -1705,7 +1759,7 @@
         document.addEventListener('visibilitychange', function () {
             if (document.hidden) return;
             syncGroupPresence();
-            syncTemplateFromServer();
+            syncTemplateFromServer(true);
             syncAssignedTasks();
         });
         document.addEventListener('DOMContentLoaded', function () {

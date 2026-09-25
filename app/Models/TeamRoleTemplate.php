@@ -22,7 +22,22 @@ class TeamRoleTemplate extends Model
 
     protected $casts = [
         'is_published' => 'boolean',
+        'revision' => 'integer',
     ];
+
+    /**
+     * Whether the revision column exists yet.
+     *
+     * Deploys run migrations but carry on when they fail, so the code can be
+     * live on a database that has not been migrated. Without the column a save
+     * still works; it just cannot detect a conflict.
+     */
+    public static function hasRevisionColumn(): bool
+    {
+        static $has = null;
+
+        return $has ??= \Illuminate\Support\Facades\Schema::hasColumn('team_role_templates', 'revision');
+    }
 
     /** @var array|null In-memory customization payload before persist */
     protected ?array $pendingCustomizations = null;
@@ -102,6 +117,17 @@ class TeamRoleTemplate extends Model
 
     protected static function booted(): void
     {
+        // Every write of the content moves the revision on, whichever code path
+        // made it, so a browser holding the old number cannot write over it.
+        static::saving(function (TeamRoleTemplate $template) {
+            if ($template->pendingCustomizations === null && $template->pendingLayout === null) {
+                return;
+            }
+            if (self::hasRevisionColumn()) {
+                $template->revision = (int) $template->revision + 1;
+            }
+        });
+
         static::saved(function (TeamRoleTemplate $template) {
             if ($template->pendingCustomizations === null && $template->pendingLayout === null) {
                 return;

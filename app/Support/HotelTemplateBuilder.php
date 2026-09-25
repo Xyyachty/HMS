@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Exceptions\TemplateConflictException;
 use App\Models\GroupSettings;
 use App\Models\HotelConcept;
 use App\Models\StudentGroup;
@@ -9,6 +10,7 @@ use App\Models\TeamRoleTemplate;
 use App\Models\TeamRoleTemplateVersion;
 use App\Models\TemplateContentItem;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 class HotelTemplateBuilder
@@ -570,14 +572,28 @@ class HotelTemplateBuilder
         }
     }
 
-    /** Max updated_at across the team's role templates — drives live sync for everyone. */
+    /**
+     * A number that changes whenever any of the team's role templates is written
+     * — drives live sync for everyone. Browsers only compare it for equality.
+     *
+     * The newest updated_at alone missed a second save landing in the same second
+     * as the first, since the column is stored to the second, so a teammate who
+     * polled between them never saw the second one. The sum of the rows'
+     * revisions moves on every content write, so it is folded into the low digits.
+     */
     public static function teamSyncVersion(string $groupName, int $facultyId): int
     {
-        $ts = TeamRoleTemplate::where('group_name', $groupName)
-            ->where('faculty_id', $facultyId)
-            ->max('updated_at');
+        $rows = TeamRoleTemplate::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId);
 
-        return $ts ? strtotime((string) $ts) : 0;
+        $ts = (clone $rows)->max('updated_at');
+        $version = $ts ? strtotime((string) $ts) : 0;
+
+        if (TeamRoleTemplate::hasRevisionColumn()) {
+            $version = $version * 1000 + ((int) (clone $rows)->sum('revision')) % 1000;
+        }
+
+        return $version;
     }
 
     /**
@@ -942,6 +958,8 @@ class HotelTemplateBuilder
             'layout' => $template->layout ?? self::defaultLayout(),
             'is_published' => (bool) $template->is_published,
             'version' => (int) $template->version,
+            // What the builder sends back as base_revision; see persist().
+            'revision' => TeamRoleTemplate::hasRevisionColumn() ? (int) $template->revision : null,
             'updated_at' => optional($template->updated_at)->toIso8601String(),
             'sync_version' => self::teamSyncVersion($groupName, $facultyId),
             'can_edit' => $canEdit,
@@ -959,7 +977,71 @@ class HotelTemplateBuilder
         bool $snapshot = true,
         ?string $label = null
     ): TeamRoleTemplate {
-        return DB::transaction(function () use ($template, $data, $user, $publish, $snapshot, $label) {
+        return self::persist($template, $data, $user, $publish, $snapshot, $label, true);
+    }
+
+    /** Lightweight auto-save: updates content without bumping version number every few seconds. */
+    public static function autosave(TeamRoleTemplate $template, array $data, User $user): TeamRoleTemplate
+    {
+        return self::persist($template, $data, $user, false, false, null, false);
+    }
+
+    /**
+     * The one write path for a role's template, shared by save and autosave.
+     *
+     * The whole team's rows are locked first, in id order. A save rewrites this
+     * row's content (a delete then an insert of every item) and deletes rows
+     * out of its teammates' templates when it claims a shared key. Two saves on
+     * the same row interleaving their delete and insert left both sets of
+     * items behind, and two teammates claiming from each other at once could
+     * deadlock. Taking the team's locks in one fixed order makes a team's saves
+     * run one after the other. They take well under a second, so a queue of
+     * four is not felt.
+     *
+     * base_revision is the revision the browser last loaded. A different
+     * revision on the locked row means a teammate, or this student in another
+     * tab, saved in between. That save is refused with TemplateConflictException
+     * before anything is written. Callers that send no base_revision (restore,
+     * the legacy Front Desk route) write without the check, as before.
+     *
+     * Retried up to three times on a deadlock or serialization failure, which
+     * Postgres reports rather than resolves. A conflict is not retried.
+     */
+    private static function persist(
+        TeamRoleTemplate $template,
+        array $data,
+        User $user,
+        bool $publish,
+        bool $snapshot,
+        ?string $label,
+        bool $applyTemplateSwitch
+    ): TeamRoleTemplate {
+        $templateId = (int) $template->team_role_template_id;
+        $groupName = (string) $template->group_name;
+        $facultyId = (int) $template->faculty_id;
+        $baseRevision = isset($data['base_revision']) ? (int) $data['base_revision'] : null;
+
+        return DB::transaction(function () use ($templateId, $groupName, $facultyId, $data, $user, $publish, $snapshot, $label, $applyTemplateSwitch, $baseRevision) {
+            $team = TeamRoleTemplate::where('group_name', $groupName)
+                ->where('faculty_id', $facultyId)
+                ->orderBy('team_role_template_id')
+                ->lockForUpdate()
+                ->get();
+            // Work on the locked copy: the one the caller passed in was read
+            // before the lock and may already be out of date.
+            $template = $team->firstWhere('team_role_template_id', $templateId);
+            if (!$template) {
+                throw (new ModelNotFoundException())->setModel(TeamRoleTemplate::class, [$templateId]);
+            }
+            $siblings = $team->reject(fn (TeamRoleTemplate $row) => (int) $row->team_role_template_id === $templateId);
+
+            if ($baseRevision !== null
+                && TeamRoleTemplate::hasRevisionColumn()
+                && (int) $template->revision !== $baseRevision
+            ) {
+                throw new TemplateConflictException($template);
+            }
+
             if (array_key_exists('customizations', $data)) {
                 $ownCustomizations = self::filterCustomizationsForRole(
                     is_array($data['customizations']) ? $data['customizations'] : [],
@@ -968,34 +1050,39 @@ class HotelTemplateBuilder
                 $template->customizations = $ownCustomizations;
             }
             if (array_key_exists('layout', $data)) {
-                $template->layout = $data['layout'];
+                $template->layout = is_array($data['layout']) ? $data['layout'] : [];
             }
-            if (array_key_exists('selected_template', $data) && $data['selected_template'] !== null) {
+
+            /* The template choice is Front Desk's. Every role's builder posts the
+               choice it loaded with, so a teammate whose page was opened before
+               Front Desk switched carried the old one, and a save from them ran
+               the switch below backwards: the whole team flipped back to the old
+               template and lost every free-position edit. Other roles' rows take
+               the choice from Front Desk's save instead. */
+            if ($template->role === 'front_desk'
+                && array_key_exists('selected_template', $data)
+                && $data['selected_template'] !== null
+            ) {
                 $nextTemplate = (string) $data['selected_template'];
                 $prevTemplate = (string) ($template->selected_template ?? '');
                 $template->selected_template = $nextTemplate;
 
                 // Switching Template 1 <-> 2 (or first pick after dirty edits): drop free-pos / overlays.
-                if ($prevTemplate !== $nextTemplate) {
-                    $cleaned = self::stripCrossTemplateLayoutCustomizations(
+                if ($applyTemplateSwitch && $prevTemplate !== $nextTemplate) {
+                    $template->customizations = self::stripCrossTemplateLayoutCustomizations(
                         is_array($template->customizations) ? $template->customizations : []
                     );
-                    $template->customizations = $cleaned;
 
-                    TeamRoleTemplate::where('group_name', $template->group_name)
-                        ->where('faculty_id', $template->faculty_id)
-                        ->where('team_role_template_id', '!=', $template->team_role_template_id)
-                        ->get()
-                        ->each(function (TeamRoleTemplate $row) use ($nextTemplate) {
-                            $row->selected_template = $nextTemplate;
-                            $row->customizations = self::filterCustomizationsForRole(
-                                self::stripCrossTemplateLayoutCustomizations(
-                                    is_array($row->customizations) ? $row->customizations : []
-                                ),
-                                $row->role
-                            );
-                            $row->save();
-                        });
+                    $siblings->each(function (TeamRoleTemplate $row) use ($nextTemplate) {
+                        $row->selected_template = $nextTemplate;
+                        $row->customizations = self::filterCustomizationsForRole(
+                            self::stripCrossTemplateLayoutCustomizations(
+                                is_array($row->customizations) ? $row->customizations : []
+                            ),
+                            $row->role
+                        );
+                        $row->save();
+                    });
                 }
             }
             if ($publish) {
@@ -1022,7 +1109,7 @@ class HotelTemplateBuilder
             $template->touch();
 
             // Front Desk template choice applies to the whole team
-            if ($template->role === 'front_desk' && !empty($template->selected_template)) {
+            if ($applyTemplateSwitch && $template->role === 'front_desk' && !empty($template->selected_template)) {
                 TeamRoleTemplate::where('group_name', $template->group_name)
                     ->where('faculty_id', $template->faculty_id)
                     ->where('role', '!=', 'front_desk')
@@ -1053,36 +1140,24 @@ class HotelTemplateBuilder
             }
 
             return $template->fresh();
-        });
+        }, 3);
     }
 
-    /** Lightweight auto-save: updates content without bumping version number every few seconds. */
-    public static function autosave(TeamRoleTemplate $template, array $data, User $user): TeamRoleTemplate
+    /**
+     * Move a teammate's revision on after deleting rows out of their template.
+     *
+     * Their browser still holds those rows in its copy of the template and
+     * would post them straight back on its next save, taking the key back from
+     * the teammate who just claimed it. With the revision moved on, that save
+     * is refused as a conflict and the browser rebases on the current rows.
+     */
+    private static function bumpRevisions(array $templateIds): void
     {
-        return DB::transaction(function () use ($template, $data, $user) {
-            if (array_key_exists('customizations', $data)) {
-                $ownCustomizations = self::filterCustomizationsForRole(
-                    is_array($data['customizations']) ? $data['customizations'] : [],
-                    $template->role
-                );
-                $template->customizations = $ownCustomizations;
-            }
-            if (array_key_exists('layout', $data)) {
-                $template->layout = $data['layout'];
-            }
-            if (array_key_exists('selected_template', $data) && $data['selected_template'] !== null) {
-                $template->selected_template = (string) $data['selected_template'];
-            }
-            $template->updated_by = $user->user_id;
-            $template->save();
-            $template->touch();
+        if ($templateIds === [] || !TeamRoleTemplate::hasRevisionColumn()) {
+            return;
+        }
 
-            self::claimSharedContentKeys($template, $ownCustomizations ?? null);
-            self::claimSharedLogo($template, $ownCustomizations ?? null);
-            self::syncGroupSettings($template);
-
-            return $template->fresh();
-        });
+        TeamRoleTemplate::whereIn('team_role_template_id', $templateIds)->increment('revision');
     }
 
     /**
@@ -1144,11 +1219,17 @@ class HotelTemplateBuilder
             array_map(fn (string $c) => $c . '_amenity', $collections),
         );
 
-        TemplateContentItem::query()
+        $stale = TemplateContentItem::query()
             ->whereIn('team_role_template_id', $siblingIds)
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
-            ->whereIn('collection', $collections)
-            ->delete();
+            ->whereIn('collection', $collections);
+        $affected = (clone $stale)->distinct()->pluck('team_role_template_id')->map(fn ($id) => (int) $id)->all();
+        if ($affected === []) {
+            return;
+        }
+
+        $stale->delete();
+        self::bumpRevisions($affected);
     }
 
     /**
@@ -1210,12 +1291,18 @@ class HotelTemplateBuilder
         // Card images are written as one content item per map entry, keyed by
         // item_ref — see TemplateCustomizationStore::writeCollection()'s 'map'
         // branch. Deleting just this ref leaves every other card image intact.
-        TemplateContentItem::query()
+        $stale = TemplateContentItem::query()
             ->whereIn('team_role_template_id', $siblingIds)
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
             ->where('collection', TemplateCustomizationStore::SPECIAL_KEYS[self::CARD_IMAGES_KEY] . '_map')
-            ->where('item_ref', self::LOGO_IMAGE_MAP_KEY)
-            ->delete();
+            ->where('item_ref', self::LOGO_IMAGE_MAP_KEY);
+        $affected = (clone $stale)->distinct()->pluck('team_role_template_id')->map(fn ($id) => (int) $id)->all();
+        if ($affected === []) {
+            return;
+        }
+
+        $stale->delete();
+        self::bumpRevisions($affected);
     }
 
     /**
