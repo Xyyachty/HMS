@@ -66,7 +66,7 @@
                 <span class="text-[11px] font-semibold text-red-500 truncate">{{ number_format($overdueTasks) }} past due date</span>
             @else
                 <span class="iconify text-emerald-500 text-sm" data-icon="mdi:check-circle-outline"></span>
-                <span class="text-[11px] font-semibold text-emerald-600 truncate">Nothing overdue</span>
+                <span class="text-[11px] font-semibold text-emerald-600 truncate">All tasks on schedule</span>
             @endif
         </div>
     </a>
