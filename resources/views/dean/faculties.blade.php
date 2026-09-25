@@ -140,7 +140,7 @@
                                 <td class="px-5 py-3.5 text-slate-500 text-sm">{{ $createdAt }}</td>
                                 <td class="px-5 py-3.5">
                                     <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }}, {{ (int) $faculty->user_information_id }})'
-                                        class="view-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold transition">
+                                        class="view-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border rounded-lg text-xs font-bold transition" style="border-color: #111;">
                                         <span class="iconify" data-icon="mdi:eye-outline"></span> View
                                     </button>
                                 </td>
