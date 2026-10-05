@@ -137,8 +137,8 @@ class TaskChecklist
                 'description' => HotelConceptDesk::TASK_DESCRIPTION,
             ],
             [
-                'title' => 'Brand Your Hotel',
-                'description' => "Give the site your hotel's identity: replace the default logo with your own, and the placeholder name in the header with your team's hotel name. Both are single site-wide values — the header, the footer and every page read them.",
+                'title' => 'Customize Your Hotel Branding',
+                'description' => 'Make the website your own by changing the hotel logo, hotel name, and navigation names.',
             ],
             [
                 'title' => 'Design the Home Page',
@@ -316,7 +316,7 @@ class TaskChecklist
      */
     private const COMPLETION = [
         HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_COMPLETION,
-        'Brand Your Hotel' => 'Your own logo and hotel name appear in the header, the footer and the mobile menu on every page.',
+        'Customize Your Hotel Branding' => 'Your own logo, hotel name and navigation names appear correctly on View Live.',
         'Design the Home Page' => 'The photographs, the headline, the introduction and the menu links are all your own.',
         'Write Your Hotel\'s Story' => 'The tagline, the introduction and the whole contact block are filled in and correct.',
         'Choose the Site\'s Colours' => 'The site carries your palette and every page\'s text still reads against it.',
@@ -369,11 +369,11 @@ class TaskChecklist
      */
     private const ACTIVITIES = [
         HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_ACTIVITIES,
-        'Brand Your Hotel' => [
-            'Upload your own logo in place of the default mark in the header.',
-            'Rename the hotel: replace the placeholder name with your team\'s.',
-            'Check the footer and the mobile menu carry the same logo and name.',
-            'Open View Live and confirm the branding is right on every page.',
+        'Customize Your Hotel Branding' => [
+            'Change the Logo: upload your team\'s hotel logo.',
+            'Change the Hotel Name: replace the default hotel name with your team\'s hotel name.',
+            'Rename the Navigation: change the names of the main navigation items, such as Home, Rooms, Restaurant, Amenities, and Highlights.',
+            'Check Your Changes: click View Live and make sure your logo, hotel name, and navigation names appear correctly.',
         ],
         'Design the Home Page' => [
             'Replace the five photographs that rotate across the top of the page.',
@@ -727,6 +727,8 @@ class TaskChecklist
      * @var array<string, array{page: string, section: ?string}>
      */
     private const AREAS = [
+        'customize your hotel branding' => ['page' => 'home', 'section' => 'header'],
+        // Rows assigned before the rename still carry the old title.
         'brand your hotel' => ['page' => 'home', 'section' => 'header'],
         'design the home page' => ['page' => 'home', 'section' => 'hero'],
         "write your hotel's story" => ['page' => 'home', 'section' => 'hero'],

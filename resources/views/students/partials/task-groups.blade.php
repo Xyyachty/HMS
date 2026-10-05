@@ -384,7 +384,7 @@
                                                 <p class="text-[11px] text-slate-400 mt-2" data-activity-hint>
                                                     {{ $task->activitiesComplete()
                                                         ? 'All four done - you can submit this task.'
-                                                        : 'Tick each step as you finish it. All four are needed before you can submit.' }}
+                                                        : 'Tick each step as you finish it. Complete all four steps before submitting the task.' }}
                                                 </p>
                                             @endif
                                         </div>
