@@ -12,12 +12,28 @@
  * mutation would feed straight back into the observer below.
  */
 (function () {
-  const data = window.__HMS_REVIEW_HIGHLIGHT__;
-  if (!data) return;
+  /* The outlines come from one of two places. The server embeds them when the
+     After link names the task (window.__HMS_REVIEW_HIGHLIGHT__), and the review
+     panel posts the same Changes list in once the preview has loaded
+     (hms-review-highlight message). The panel's copy is the one faculty are
+     already looking at, so the outlines no longer depend on the preview
+     recomputing it — that second computation is where they went missing. */
+  let added = [];
+  let modified = [];
+  let booted = false;
 
-  const added = data.added || [];
-  const modified = data.modified || [];
-  if (!added.length && !modified.length) return;
+  function setData(data) {
+    added = (data && Array.isArray(data.added)) ? data.added : [];
+    modified = (data && Array.isArray(data.modified)) ? data.modified : [];
+    if (!added.length && !modified.length) return;
+    if (booted) {
+      scheduleRun();
+    } else if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', boot);
+    } else {
+      boot();
+    }
+  }
 
   const LAYER_ID = 'hms-review-highlight-layer';
   const LEGEND_ID = 'hms-review-highlight-legend';
@@ -196,9 +212,12 @@
     const swatch = '<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COLORS.added + '"></i> ';
     if (addedCount) parts.push('<span>' + swatch + addedCount + ' added</span>');
     if (modifiedCount) parts.push('<span>' + swatch + modifiedCount + ' changed</span>');
+    // Changes exist but none of them is on this page: say so, rather than
+    // leaving faculty to wonder whether the outlines failed.
+    if (!parts.length) parts.push('<span>No changes on this page</span>');
     const bar = ensureLegend();
     bar.innerHTML = parts.join('');
-    bar.style.display = parts.length ? 'flex' : 'none';
+    bar.style.display = 'flex';
   }
 
   let timer = null;
@@ -222,7 +241,9 @@
 
   window.addEventListener('message', function (e) {
     const msg = e.data;
-    if (msg && msg.type === 'hms-diff-focus') focusEntry(msg.key);
+    if (!msg || e.source !== window.parent) return;
+    if (msg.type === 'hms-diff-focus') focusEntry(msg.key);
+    if (msg.type === 'hms-review-highlight') setData(msg);
   });
 
   /** Our own boxes land in document.body too — reacting to them would spin forever. */
@@ -247,6 +268,8 @@
   }
 
   function boot() {
+    if (booted) return;
+    booted = true;
     run();
     // The templates paint through React after first paint, and images resize the
     // boxes as they load, so the overlay is redrawn on anything that moves.
@@ -258,9 +281,5 @@
     window.addEventListener('load', scheduleRun);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
+  setData(window.__HMS_REVIEW_HIGHLIGHT__);
 })();

@@ -2658,6 +2658,32 @@ function hideReviseStep() {
     document.getElementById('reviewError').classList.add('hidden');
 }
 
+/* Which side the iframe is showing, so the outlines go onto After only. */
+let reviewFrameSide = 'after';
+
+/* Hand the After preview the Changes list this panel is showing, so it can
+   outline each one. The preview used to work the list out again on its own and
+   came up with nothing for some submissions; this copy is the one faculty see. */
+function postReviewHighlight() {
+    if (reviewFrameSide !== 'after') return;
+    const frame = document.getElementById('reviewPreviewFrame');
+    if (!frame || !frame.contentWindow) return;
+    const payload = { type: 'hms-review-highlight', added: [], modified: [] };
+    reviewChanges.forEach(function (c) {
+        if (!c || !c.key || (c.type !== 'added' && c.type !== 'modified')) return;
+        payload[c.type].push({ key: String(c.key), hms_id: c.hms_id || null, page: c.page || 'home' });
+    });
+    try {
+        frame.contentWindow.postMessage(payload, window.location.origin);
+    } catch (err) { /* ignore */ }
+}
+
+(function bindReviewFrameLoad() {
+    const frame = document.getElementById('reviewPreviewFrame');
+    if (frame) frame.addEventListener('load', postReviewHighlight);
+    else document.addEventListener('DOMContentLoaded', bindReviewFrameLoad);
+})();
+
 /* Before/After share one iframe: a full hotel site needs the width. Changes
    swaps to the list pane instead — there is nothing to render for it. */
 function setReviewCompareSide(side) {
@@ -2683,6 +2709,7 @@ function setReviewCompareSide(side) {
     if (!url) return;
     changesPane.classList.add('hidden');
     frame.classList.remove('hidden');
+    reviewFrameSide = side;
     frame.src = url;
     document.getElementById('reviewOpenTab').href = url;
     document.getElementById('reviewWorkLabel').textContent = side === 'before'
@@ -2799,6 +2826,7 @@ function openTaskReview(taskId) {
             }
 
             if (d.preview_url) {
+                reviewFrameSide = 'after';
                 frame.src = d.preview_url;
                 frame.classList.remove('hidden');
                 empty.classList.add('hidden');

@@ -147,6 +147,7 @@
 <script src="{{ asset('js/hms-hotel-auth.js') }}"></script>
 <script src="{{ asset('js/hms-template-editor.js') }}?v={{ filemtime(public_path('js/hms-template-editor.js')) }}"></script>
 <script src="{{ asset('js/hms-site-content.js') }}?v={{ filemtime(public_path('js/hms-site-content.js')) }}"></script>
-@if ($hmsReviewHighlight)
+{{-- Every faculty preview: the review panel posts the Changes list in after load. --}}
+@if ($hmsReviewHighlight || $hmsPreviewGroup)
 <script src="{{ asset('js/hms-review-highlight.js') }}?v={{ filemtime(public_path('js/hms-review-highlight.js')) }}"></script>
 @endif
