@@ -20,7 +20,7 @@
      recomputing it — that second computation is where they went missing. */
   let added = [];
   let modified = [];
-  // 'branding' or 'home': the page check run for that task. See run().
+  // 'branding', 'home' or 'promos': the page check run for that task. See run().
   let stockReview = null;
   let booted = false;
 
@@ -250,11 +250,25 @@
         out.push({ el: el, count: 1 });
       }
     });
-    // Restyled or moved in Design mode - a button given a new colour keeps its
-    // label, so the text check above passes it. Any saved entry on a hero
-    // element carrying more than its text and bookkeeping is a change.
-    const saved = (window.HMSTemplateEditor && window.HMSTemplateEditor.getCustomizations
+    styledIn(hero).forEach(function (el) { out.push({ el: el, count: 1 }); });
+    return out;
+  }
+
+  // Entry fields that are not a visible change. Kept in step with
+  // TemplateDiff::IGNORED_PROPERTIES, plus the text the checks judge.
+  const NOT_STYLE = ['hmsId', 'page', 'freePosition', 'moveMode', 'keepFixed', 'position', 'text', 'value'];
+
+  function savedEntries() {
+    return (window.HMSTemplateEditor && window.HMSTemplateEditor.getCustomizations
       && window.HMSTemplateEditor.getCustomizations()) || window.__HMS_CUSTOMIZATIONS__ || {};
+  }
+
+  /* Restyled or moved in Design mode - a button given a new colour keeps its
+     label, so the text check passes it. Any saved entry on an element inside
+     the section carrying more than its text and bookkeeping is a change. */
+  function styledIn(scope) {
+    const saved = savedEntries();
+    const out = [];
     Object.keys(saved).forEach(function (key) {
       const entry = saved[key];
       if (key.indexOf('__') === 0 || !entry || typeof entry !== 'object') return;
@@ -264,21 +278,46 @@
       });
       if (!styled) return;
       resolveElements({ key: key }).forEach(function (el) {
-        if (el.closest(hero)) out.push({ el: el, count: 1 });
+        if (el.closest(scope)) out.push(el);
       });
     });
     return out;
   }
 
-  // Entry fields that are not a visible change. Kept in step with
-  // TemplateDiff::IGNORED_PROPERTIES, plus the text the check above judges.
-  const NOT_STYLE = ['hmsId', 'page', 'freePosition', 'moveMode', 'keepFixed', 'position', 'text', 'value'];
+  /* Customize Promos and Packages: every promo picture that is not its stock
+     photograph, every line whose text differs from the template's (each one
+     carries it in data-hms-stock), and anything restyled. A listed promo only
+     shows its offer and title, so an edited description or terms line of a
+     promo not featured is boxed on its row in the list instead. */
+  function promosChanges() {
+    const section = '[data-hms-section="promos"]';
+    const out = [];
+    queryAll(section + ' img[data-hms-img-changed]').forEach(function (el) {
+      out.push({ el: el, count: 1 });
+    });
+    queryAll(section + ' [data-hms-stock]').forEach(function (el) {
+      if (normalise(el.innerText || el.textContent) !== normalise(el.getAttribute('data-hms-stock'))) {
+        out.push({ el: el, count: 1 });
+      }
+    });
+    styledIn(section).forEach(function (el) { out.push({ el: el, count: 1 }); });
+    const saved = savedEntries();
+    Object.keys(saved).forEach(function (key) {
+      const m = /data-hms-category="(promo-[\w-]+?)-(?:offer|title|desc|terms)"/.exec(key);
+      if (!m || resolveElements({ key: key }).length) return;
+      queryAll(section + ' [data-hms-promo="' + cssEscapeSafe(m[1]) + '"]').forEach(function (el) {
+        out.push({ el: el, count: 1 });
+      });
+    });
+    return out;
+  }
 
   function stockChanges() {
     if (stockReview === 'branding') {
       return brandingChanges().map(function (el) { return { el: el, count: 1 }; });
     }
-    return stockReview === 'home' ? homeChanges() : [];
+    if (stockReview === 'home') return homeChanges();
+    return stockReview === 'promos' ? promosChanges() : [];
   }
 
   function run() {

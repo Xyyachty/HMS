@@ -3880,9 +3880,10 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
   return (
     <div className="promo-showcase">
       <article className="promo-feature" key={featured.id}>
-        <img src={resolveCardImg('promo', featured.id, featured.img)} alt={featured.title} loading="lazy" draggable={false} />
+        <img src={resolveCardImg('promo', featured.id, featured.img)} alt={featured.title} loading="lazy" draggable={false}
+          data-hms-img-changed={resolveCardImg('promo', featured.id, featured.img) !== featured.img ? '1' : undefined} />
         <div className="promo-feature-veil" data-hms-no-edit="1"></div>
-        <span className="promo-badge">{featured.offer}</span>
+        <span className="promo-badge" data-hms-category={featured.id + '-offer'} data-hms-stock={featured.offer}>{featured.offer}</span>
         {canEdit && (
           <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 3 }} data-hms-no-edit="1">
             <button type="button" title="Change promo image"
@@ -3891,12 +3892,12 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
           </div>
         )}
         <div className="promo-feature-body">
-          <p className="promo-feature-eyebrow">Special Offers</p>
-          <h3 className="promo-feature-title font-display">{featured.title}</h3>
-          <p className="promo-feature-desc">{featured.desc}</p>
-          <p className="promo-feature-terms">{featured.terms}</p>
+          <p className="promo-feature-eyebrow" data-hms-stock="Special Offers">Special Offers</p>
+          <h3 className="promo-feature-title font-display" data-hms-category={featured.id + '-title'} data-hms-stock={featured.title}>{featured.title}</h3>
+          <p className="promo-feature-desc" data-hms-category={featured.id + '-desc'} data-hms-stock={featured.desc}>{featured.desc}</p>
+          <p className="promo-feature-terms" data-hms-category={featured.id + '-terms'} data-hms-stock={featured.terms}>{featured.terms}</p>
           <div className="promo-feature-actions">
-            <button type="button" className="btn-warm" onClick={() => onBook && onBook()}>
+            <button type="button" className="btn-warm" data-hms-stock="Book This Offer" onClick={() => onBook && onBook()}>
               Book This Offer <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
             </button>
           </div>
@@ -3908,6 +3909,7 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
           <article
             key={promo.id}
             className="promo-mini"
+            data-hms-promo={promo.id}
             role="button"
             tabIndex={0}
             aria-label={'Feature ' + promo.title}
@@ -3919,14 +3921,15 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
             }}
           >
             <div className="promo-mini-copy">
-              <span className="promo-mini-offer">{promo.offer}</span>
-              <h4 className="promo-mini-title font-display">{promo.title}</h4>
-              <span className="promo-mini-cta">
+              <span className="promo-mini-offer" data-hms-category={promo.id + '-offer'} data-hms-stock={promo.offer}>{promo.offer}</span>
+              <h3 className="promo-mini-title font-display" data-hms-category={promo.id + '-title'} data-hms-stock={promo.title}>{promo.title}</h3>
+              <span className="promo-mini-cta" data-hms-stock="Book now">
                 Book now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.6rem' }}></i>
               </span>
             </div>
             <div className="promo-mini-thumb">
-              <img src={resolveCardImg('promo', promo.id, promo.img)} alt={promo.title} loading="lazy" draggable={false} />
+              <img src={resolveCardImg('promo', promo.id, promo.img)} alt={promo.title} loading="lazy" draggable={false}
+                data-hms-img-changed={resolveCardImg('promo', promo.id, promo.img) !== promo.img ? '1' : undefined} />
               {canEdit && (
                 <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 3 }}
                   data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
@@ -4093,8 +4096,8 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
 
       <section data-hms-section="promos" data-hms-bg-target="1" style={{ padding: '0 1.5rem 5rem', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ marginBottom: '1.75rem' }}>
-          <span className="section-num">Offers</span>
-          <h2 className="font-display" style={{ fontSize: '2rem', margin: '0.35rem 0 0' }}>Promos and Packages</h2>
+          <span className="section-num" data-hms-stock="Offers">Offers</span>
+          <h2 className="font-display" style={{ fontSize: '2rem', margin: '0.35rem 0 0' }} data-hms-stock="Promos and Packages">Promos and Packages</h2>
         </div>
         <PromoShowcase promos={DEFAULT_PROMOS} canEdit={canEditHeroSlides} onToast={onToast} onBook={onBookNow} />
       </section>
