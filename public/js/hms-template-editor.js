@@ -2794,39 +2794,39 @@
    * React re-renders the template freely and would drop a class it did not set.
    */
   let pendingTaskFocus = null;
+  let activeTaskFocus = null;
   let taskFocusOverlays = [];
   let taskFocusTimer = null;
+  let taskFocusTick = null;
 
   /* The header has no data-hms-section, and the branding task is three separate
-     pieces of it. Boxing the whole bar told a student where to look but not what
-     to change, so the header is boxed piece by piece instead: the logo, the hotel
-     name, and each of the links, the first of each carrying a name. */
+     pieces of it. Outlining the whole bar told a student where to look but not
+     what to change, so the header is outlined piece by piece instead: the logo,
+     the hotel name, and each of the links. */
   const HEADER_TASK_PARTS = [
-    { selector: '.nav-bar [data-hms-brand-logo]', label: 'Logo' },
-    { selector: '.nav-bar [data-hms-brand-name]', label: 'Hotel name' },
-    { selector: '.nav-bar [data-hms-nav-link]', label: 'Navigation' },
+    '.nav-bar [data-hms-brand-logo]',
+    '.nav-bar [data-hms-brand-name]',
+    '.nav-bar [data-hms-nav-link]',
   ];
 
-  /** The areas to box: [{ els, label }], one entry per named part. */
+  /** The elements to outline for a task area. */
   function resolveTaskFocusTargets(page, section) {
     if (section === 'header') {
-      const parts = HEADER_TASK_PARTS.map(function (part) {
-        return { els: Array.from(document.querySelectorAll(part.selector)), label: part.label };
-      }).filter(function (part) { return part.els.length > 0; });
+      const parts = Array.from(document.querySelectorAll(HEADER_TASK_PARTS.join(', ')));
       if (parts.length) return parts;
       const bar = document.querySelector('.nav-bar');
-      return bar ? [{ els: [bar], label: null }] : [];
+      return bar ? [bar] : [];
     }
     let target = null;
     if (section) target = document.querySelector('[data-hms-section="' + section + '"]');
     // No section named, or this template has none by that name (Template 2 has
     // no promos strip): the page itself is the area.
     if (!target) target = document.querySelector('main[data-hms-page="' + page + '"]');
-    return target ? [{ els: [target], label: null }] : [];
+    return target ? [target] : [];
   }
 
-  /* The header is position: fixed, and its pieces are not — the box has to be
-     fixed too, or it is left behind the moment the page scrolls. */
+  /* The header is position: fixed, and its pieces are not — the outline has to
+     be fixed too, or it is left behind the moment the page scrolls. */
   function inFixedLayer(el) {
     for (let node = el; node && node !== document.body; node = node.parentElement) {
       if (window.getComputedStyle(node).position === 'fixed') return true;
@@ -2834,13 +2834,21 @@
     return false;
   }
 
-  function clearTaskFocus() {
-    clearTimeout(taskFocusTimer);
+  function clearTaskFocusBoxes() {
     taskFocusOverlays.forEach(function (box) { box.remove(); });
     taskFocusOverlays = [];
   }
 
-  function taskFocusBox(el, label, pad) {
+  function stopTaskFocus() {
+    clearTimeout(taskFocusTimer);
+    clearInterval(taskFocusTick);
+    taskFocusTimer = null;
+    taskFocusTick = null;
+    activeTaskFocus = null;
+    clearTaskFocusBoxes();
+  }
+
+  function taskFocusBox(el, small) {
     const rect = el.getBoundingClientRect();
     // Hidden at this width — the desktop links collapse into the phone menu.
     if (rect.width === 0 || rect.height === 0) return null;
@@ -2850,70 +2858,60 @@
     box.setAttribute('aria-hidden', 'true');
     Object.assign(box.style, {
       position: fixed ? 'fixed' : 'absolute',
-      left: rect.left - pad + (fixed ? 0 : window.scrollX) + 'px',
-      top: rect.top - pad + (fixed ? 0 : window.scrollY) + 'px',
-      width: rect.width + pad * 2 + 'px',
-      height: rect.height + pad * 2 + 'px',
+      left: rect.left + (fixed ? 0 : window.scrollX) + 'px',
+      top: rect.top + (fixed ? 0 : window.scrollY) + 'px',
+      width: rect.width + 'px',
+      height: rect.height + 'px',
       pointerEvents: 'none',
       zIndex: '2147483000',
-      borderRadius: pad ? '8px' : '10px',
-      boxShadow: '0 0 0 3px rgba(34, 211, 238, 0.95), 0 0 28px 6px rgba(34, 211, 238, 0.45)',
+      borderRadius: '6px',
+      // Outside a small piece so it does not cover the words; inside a whole
+      // section so the edges are not cut off by the side of the window.
+      outline: '2px solid #22d3ee',
+      outlineOffset: small ? '4px' : '-3px',
       transition: 'opacity 0.6s ease',
       opacity: '1',
     });
-    if (label) {
-      // Same chip as the header's own Design-mode labels.
-      const chip = document.createElement('span');
-      chip.textContent = label;
-      Object.assign(chip.style, {
-        position: 'absolute',
-        top: 'calc(100% + 7px)',
-        left: '0',
-        padding: '3px 7px',
-        borderRadius: '999px',
-        background: '#0891b2',
-        color: '#fff',
-        fontFamily: "'Outfit', sans-serif",
-        fontSize: '0.6rem',
-        fontWeight: '600',
-        lineHeight: '1.4',
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-        whiteSpace: 'nowrap',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
-      });
-      box.appendChild(chip);
-    }
     document.body.appendChild(box);
     return box;
   }
 
-  function flashTaskFocus(parts, hold) {
-    clearTaskFocus();
-    const pad = parts.length > 1 ? 4 : 0;
-    parts.forEach(function (part) {
-      let labelled = false;
-      part.els.forEach(function (el) {
-        const box = taskFocusBox(el, labelled ? null : part.label, pad);
-        if (box) {
-          labelled = true;
-          taskFocusOverlays.push(box);
-        }
-      });
+  function drawTaskFocus() {
+    if (!activeTaskFocus) return;
+    clearTaskFocusBoxes();
+    const targets = resolveTaskFocusTargets(activeTaskFocus.page, activeTaskFocus.section);
+    const small = activeTaskFocus.section === 'header';
+    targets.forEach(function (el) {
+      const box = taskFocusBox(el, small);
+      if (box) taskFocusOverlays.push(box);
     });
+  }
+
+  /* The header's outlines stay on for as long as the task is the one open:
+     the student works through the logo, the name and the links one dialog at a
+     time and needs to see which pieces are left. They are redrawn on a short
+     tick because a rename resizes the link and React may swap the node. A
+     section's outline is a pointer to where the work is, so it fades. */
+  function showTaskFocus(focus) {
+    stopTaskFocus();
+    activeTaskFocus = focus;
+    drawTaskFocus();
+    if (focus.section === 'header') {
+      taskFocusTick = setInterval(drawTaskFocus, 500);
+      return;
+    }
     const shown = taskFocusOverlays.slice();
     taskFocusTimer = setTimeout(function () {
       shown.forEach(function (box) { box.style.opacity = '0'; });
       setTimeout(function () {
-        shown.forEach(function (box) { box.remove(); });
-        taskFocusOverlays = taskFocusOverlays.filter(function (box) { return shown.indexOf(box) === -1; });
+        if (activeTaskFocus === focus) stopTaskFocus();
       }, 650);
-    }, hold);
+    }, 2400);
   }
 
   function applyTaskFocus(focus) {
-    const parts = resolveTaskFocusTargets(focus.page, focus.section);
-    const target = parts.length ? parts[0].els[0] : null;
+    const targets = resolveTaskFocusTargets(focus.page, focus.section);
+    const target = targets.length ? targets[0] : null;
 
     if (focus.section && focus.section !== 'header' && target && target.hasAttribute('data-hms-section')) {
       // Also select it as the active section, so Design mode's section chrome
@@ -2925,12 +2923,10 @@
       const y = target.getBoundingClientRect().top + window.scrollY - 80;
       window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
       // Measure after the smooth scroll has moved things.
-      setTimeout(function () { flashTaskFocus(parts, 2400); }, 450);
+      setTimeout(function () { showTaskFocus(focus); }, 450);
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      // Several small pieces take longer to read than one big box, so the
-      // header's stay up long enough to find each one.
-      setTimeout(function () { flashTaskFocus(parts, focus.section === 'header' ? 6000 : 2400); }, 350);
+      setTimeout(function () { showTaskFocus(focus); }, 350);
     }
   }
 
@@ -3131,6 +3127,8 @@
     setTimeout(syncSectionMode, 80);
     updateEditHint();
     postToParent({ type: 'page-changed', page: currentPage, canEditPage: canEditCurrentPage() });
+    // A task's outlines belong to its page; leaving it puts them away.
+    if (activeTaskFocus && activeTaskFocus.page !== currentPage) stopTaskFocus();
 
     // An assigned task was waiting on this page: focus it once React has mounted
     // the page and the section reset above has run.
