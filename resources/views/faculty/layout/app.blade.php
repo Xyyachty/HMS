@@ -87,6 +87,7 @@
         }
         .sidebar-mobile.open { transform: translateX(0); }
     </style>
+    @include('partials.ink-all-styles')
     @stack('styles')
 </head>
 <body class="bg-slate-50 antialiased">
@@ -174,6 +175,9 @@
         <!-- ==================== MAIN CONTENT ==================== -->
         <div class="flex-1 flex flex-col min-w-0">
 
+            @php
+                $inkAll = request()->routeIs('faculty.dashboard', 'faculty.role', 'faculty.tasks', 'faculty.activity', 'faculty.reports');
+            @endphp
             <!-- Top Header -->
             <header class="glass-header h-20 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10 shrink-0">
                 <div class="flex items-center gap-4">
@@ -181,7 +185,7 @@
                     <button onclick="toggleSidebar()" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
                         <span class="iconify text-xl text-slate-600" data-icon="mdi:menu"></span>
                     </button>
-                    <div>
+                    <div class="{{ $inkAll ? 'ink-all' : '' }}">
                         <h2 class="text-xl font-bold text-slate-900 tracking-tight">@yield('page_title', 'Dashboard')</h2>
                         <p class="text-xs text-slate-400 font-light">Welcome back, {{ $displayName }}</p>
                     </div>
@@ -195,7 +199,7 @@
 
 
             <!-- ==================== PAGE CONTENT ==================== -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#dadada">
+            <main class="{{ $inkAll ? 'ink-all' : '' }} flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#dadada">
                 @yield('content')
             </main>
         </div>

@@ -15,7 +15,7 @@
     ];
 @endphp
 
-<div class="space-y-5">
+<div class="ink-all space-y-5">
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
             <p class="text-sm text-slate-500">Faculty completed tasks across the system.</p>
@@ -94,3 +94,11 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+@include('partials.ink-all-styles')
+<style>
+    .glass-header h2,
+    .glass-header h2 + p { color: #111; }
+</style>
+@endpush
