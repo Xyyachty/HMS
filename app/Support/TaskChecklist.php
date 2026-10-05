@@ -18,11 +18,11 @@ namespace App\Support;
  *
  * One numbered task per department, in STEP_ROLES order:
  *
- *   TASK 01  Front Desk Customization        — the hotel concept, then the home
- *                                              page and the chrome every page
- *                                              inherits (logo, name, palette,
- *                                              type, footer), plus the Experience
- *                                              page
+ *   TASK 01  Front Desk Customization        — the hotel concept, then FD TASK
+ *                                              1-8: branding, the hero, promos,
+ *                                              partner brands, hotel experiences,
+ *                                              our team, the footer and the
+ *                                              Highlights page
  *   TASK 02  Room Management Customization   — the Rooms page
  *   TASK 03  Restaurant Management Customization — the Restaurant page
  *   TASK 04  Housekeeping Customization      — the Amenities page
@@ -153,6 +153,10 @@ class TaskChecklist
                 'description' => 'Customize the Partner Brands section by adding your hotel’s partner brands and updating their names and images.',
             ],
             [
+                'title' => 'Customize Hotel Experiences',
+                'description' => 'Customize the Hotel Experiences section on the Home page so it introduces the best experiences your hotel offers.',
+            ],
+            [
                 'title' => 'Customize Our Team',
                 'description' => 'Customize the Our Team section by updating the photos, names, and positions of the hotel team members.',
             ],
@@ -163,34 +167,6 @@ class TaskChecklist
             [
                 'title' => 'Customize Hotel Highlights',
                 'description' => 'Customize the Hotel Highlights section to showcase the best features, attractions, and special things your hotel offers.',
-            ],
-            [
-                'title' => 'Write Your Hotel\'s Story',
-                'description' => "Replace the sample words with your own: the tagline over the headline, the paragraph introducing the hotel, and the contact block every footer prints - address, phone, email and the hours the desk keeps. These are one record for the whole site, so what you write here is what the Rooms page and the Restaurant page say too.",
-            ],
-            [
-                'title' => 'Choose the Site\'s Colours',
-                'description' => "Open Background Colours from the toolbar and give the site its own palette. Start with the main website colour - the text, cards and borders follow it automatically - then set the header and the footer if they should stand apart from it. Pick a background your text still reads against.",
-            ],
-            [
-                'title' => 'Set the Site\'s Typography',
-                'description' => "Choose the typeface the whole site is set in, the size body text is read at, and the colours for ordinary text and for headings. Type is site-wide: it reaches pages your role cannot otherwise edit, so choose something legible at a paragraph's length, not only in a heading.",
-            ],
-            [
-                'title' => 'Add Your Social Profiles',
-                'description' => "Put the hotel's social accounts in the footer. Add only the networks the hotel actually uses - each one shows as its own icon, and an account nobody keeps is worse than a missing one.",
-            ],
-            [
-                'title' => 'Write the Experience Page',
-                'description' => 'Write the Experience page so it tells a guest what staying at your hotel is like, and lay it out so it matches the rest of the site.',
-            ],
-            [
-                'title' => 'Colour the Experience Page',
-                'description' => "Give the Experience page its own background from Background Colours. It's the page guests read after the rooms, so it should look like the same hotel - close enough to the site's palette to belong to it, different enough to be its own.",
-            ],
-            [
-                'title' => 'Illustrate the Experience Page',
-                'description' => "Photograph the Experience page: a picture for each thing you describe, so the page shows the stay rather than only claiming it. Replace every sample image; a page of stock photographs reads as a page nobody wrote.",
             ],
         ],
 
@@ -326,16 +302,12 @@ class TaskChecklist
         HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_COMPLETION,
         'Customize Your Hotel Branding' => 'Your own logo, hotel name and navigation names appear correctly on View Live.',
         'Customize the Home Page' => 'The 5 slider images, the small heading, the main heading and the description are all your own.',
-        'Write Your Hotel\'s Story' => 'The tagline, the introduction and the whole contact block are filled in and correct.',
-        'Choose the Site\'s Colours' => 'The site carries your palette and every page\'s text still reads against it.',
-        'Set the Site\'s Typography' => 'One typeface, one body size and your own text and heading colours across the site.',
-        'Add Your Social Profiles' => 'Every icon in the footer belongs to an account the hotel actually keeps.',
         'Customize Promos and Packages' => 'Every promo carries your own image, title, offer label, description and details.',
+        'Customize Hotel Experiences' => 'The section\'s headings and button are your own words, and its three cards show your hotel\'s own experiences.',
         'Customize Partner Brands' => 'Every card is one of your hotel\'s real partners, with its own name and image, and no sample brands remain.',
         'Customize Our Team' => 'Every team member shows their own photo, their correct name and the position they hold.',
         'Customize the Footer' => 'The footer\'s description, links and contact details are all correct for your hotel.',
         'Customize Hotel Highlights' => 'Every highlight is one your hotel really offers, with its own photo and title, and no sample highlights remain.',
-        'Colour the Experience Page' => 'The page carries a background of its own that still belongs to the site.',
         'Create Your Room Categories' => 'The categories are the ones your hotel sells, each with an opening rate.',
         'Build Your Room Types' => 'Every room type the hotel has is on the page, under the right category.',
         'Photograph and Price Every Room' => 'Every room card carries its own photograph, its price and its own description.',
@@ -358,9 +330,7 @@ class TaskChecklist
         'Review the Restaurant Page Against the Site' => 'The two pages read as one hotel, with any remaining difference a deliberate one.',
         'Customize Hotel Amenities' => 'Every facility the hotel has is listed, described, and photographed more than once.',
         'Build the Amenities Page' => 'The page lists every facility a guest can use, in your own words.',
-        'Write the Experience Page' => 'The page describes your hotel\'s stay, with no sample copy left on it.',
         'Colour the Amenities Page' => 'The page carries a background of its own that still belongs to the site.',
-        'Illustrate the Experience Page' => 'Every section of the page carries a picture, and none of them are the samples.',
         'Write the Amenities Page Introduction' => 'The heading and its introduction are your own words, with no sample copy left on the page.',
         'Check the Amenities Page on a Phone' => 'The page reads cleanly in one column with the carousel and every card intact.',
         'Review the Amenities Page Against the Site' => 'The page sits with the rest of the site rather than beside it.',
@@ -391,30 +361,6 @@ class TaskChecklist
             'Edit the Main Heading: change the main Hero text, such as "Where Elegance Meets Comfort."',
             'Edit the Description: change the short description below the main heading to describe your hotel.',
         ],
-        'Write Your Hotel\'s Story' => [
-            'Write the tagline that sits above the headline on the landing page.',
-            'Write the paragraph introducing the hotel, in two or three sentences.',
-            'Fill in the contact block: address, phone number, email and hours.',
-            'Check the footer on another page shows the same details.',
-        ],
-        'Choose the Site\'s Colours' => [
-            'Open Background Colours from the toolbar in Design mode.',
-            'Set the main website colour and watch the cards and text follow it.',
-            'Set the header and the footer if they should stand apart from it.',
-            'Read a paragraph on each page to confirm the text still has contrast.',
-        ],
-        'Set the Site\'s Typography' => [
-            'Choose the typeface the whole site is set in.',
-            'Set the size body text is read at.',
-            'Set the colour of ordinary text and the colour of headings.',
-            'Check a long paragraph and a heading on two different pages.',
-        ],
-        'Add Your Social Profiles' => [
-            'List the networks the hotel actually keeps an account on.',
-            'Add each one with its address in the footer editor.',
-            'Leave out the networks you do not use rather than adding dead icons.',
-            'Open the footer and click each icon to confirm it goes where it should.',
-        ],
         'Customize Promos and Packages' => [
             'Change the images of the featured promo and the promo cards.',
             'Edit the promo titles and labels, such as the discount or offer name.',
@@ -426,6 +372,12 @@ class TaskChecklist
             'Edit the brand names to match your hotel’s actual partners.',
             'Add new partner brands using the Add Brand button.',
             'Remove unnecessary brands and review the section to make sure all partner information is correct.',
+        ],
+        'Customize Hotel Experiences' => [
+            'Edit the small heading above the section, such as "WORTH THE STAY."',
+            'Edit the section title, such as "Selected Highlights."',
+            'Edit the label of the "View all highlights" button.',
+            'Check that the three experience cards show your hotel\'s own photos and names.',
         ],
         'Customize Our Team' => [
             'Change the photos of each team member.',
@@ -443,12 +395,6 @@ class TaskChecklist
             'Edit the highlight names or titles to match your hotel.',
             'Add new highlights that showcase the best features of your hotel.',
             'Remove unnecessary highlights and review the section to make sure everything matches your hotel.',
-        ],
-        'Colour the Experience Page' => [
-            'Open Background Colours in Design mode.',
-            'Set the background of the Experience page.',
-            'Pick a background your text still reads against.',
-            'Check it still looks like the same hotel as the Home page.',
         ],
         'Create Your Room Categories' => [
             'Decide the categories your hotel sells rooms in.',
@@ -582,23 +528,11 @@ class TaskChecklist
             'Make sure every facility a guest can use is listed.',
             'Check the page against the rest of the site before you finish.',
         ],
-        'Write the Experience Page' => [
-            'Decide what staying at your hotel is actually like.',
-            'Write each section of the page in your own words.',
-            'Cut the sample copy that does not describe your hotel.',
-            'Lay the page out so it matches the rest of the site.',
-        ],
         'Colour the Amenities Page' => [
             'Open Background Colours in Design mode.',
             'Set the background of the Amenities page.',
             'Pick a background your text still reads against.',
             'Check it still looks like the same hotel as the Home page.',
-        ],
-        'Illustrate the Experience Page' => [
-            'List the things the page describes.',
-            'Find or take a photograph for each of them.',
-            'Replace every sample image on the page.',
-            'Read the page through and cut any picture that adds nothing.',
         ],
         'Write the Amenities Page Introduction' => [
             'Rewrite the eyebrow line over the heading.',
@@ -752,10 +686,6 @@ class TaskChecklist
         // Rows assigned before the rename still carry the old title.
         'brand your hotel' => ['page' => 'home', 'section' => 'header'],
         'design the home page' => ['page' => 'home', 'section' => 'hero'],
-        "write your hotel's story" => ['page' => 'home', 'section' => 'hero'],
-        "choose the site's colours" => ['page' => 'home', 'section' => null],
-        "set the site's typography" => ['page' => 'home', 'section' => null],
-        'add your social profiles' => ['page' => 'home', 'section' => 'footer'],
         'customize promos and packages' => ['page' => 'home', 'section' => 'promos'],
         // Rows assigned before the rename still carry the old title.
         'fill in the promos section' => ['page' => 'home', 'section' => 'promos'],
@@ -765,13 +695,11 @@ class TaskChecklist
         'customize our team' => ['page' => 'home', 'section' => 'team'],
         // Rows assigned before the rename still carry the old title.
         'introduce your team' => ['page' => 'home', 'section' => 'team'],
+        'customize hotel experiences' => ['page' => 'home', 'section' => 'highlights'],
         'customize the footer' => ['page' => 'home', 'section' => 'footer'],
         // The highlights are added, photographed and renamed on the Highlights
         // page; the Home page only previews the first three.
         'customize hotel highlights' => ['page' => 'experience', 'section' => null],
-        'write the experience page' => ['page' => 'experience', 'section' => null],
-        'colour the experience page' => ['page' => 'experience', 'section' => null],
-        'illustrate the experience page' => ['page' => 'experience', 'section' => null],
     ];
 
     /**
@@ -830,6 +758,7 @@ class TaskChecklist
         'customize our team' => 'team',
         'introduce your team' => 'team',
         'customize the footer' => 'footer',
+        'customize hotel experiences' => 'highlights',
         'customize hotel highlights' => 'highlights',
     ];
 
@@ -842,6 +771,30 @@ class TaskChecklist
     public static function stockReviewFor(string $title): ?string
     {
         return self::REVIEW_AGAINST_STOCK[mb_strtolower(trim($title))] ?? null;
+    }
+
+    /**
+     * The number a task is shown under within its role - 'FD TASK 3' - or null
+     * for the hotel concept and for anything not on the checklist.
+     *
+     * Read from the checklist, not from where a card happens to sit: the cards
+     * are re-sorted as work is handed in, and a number taken from the position
+     * moved every time one was.
+     */
+    public static function taskNumber(string $title, string $role): ?int
+    {
+        $number = 0;
+        foreach (self::TASKS[$role] ?? [] as $task) {
+            if (self::isConceptTitle($task['title'])) {
+                continue;
+            }
+            $number++;
+            if (strcasecmp($task['title'], trim($title)) === 0) {
+                return $number;
+            }
+        }
+
+        return null;
     }
 
     /** Whether a title is the hotel concept, TASK 01's first activity. */

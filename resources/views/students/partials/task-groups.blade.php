@@ -104,9 +104,12 @@
 @if(!empty($studentRoles))
     @foreach($taskGroups as $taskGroup)
         @php
-            // Active work first (the concept task sorts first among those
-            // via conceptFirst()), completed work after.
-            $groupRows = $taskGroup->rows->sortBy(fn ($r) => in_array($r->status, ['completed', 'pending'], true) ? 1 : 0)->values();
+            // In checklist order - the hotel concept, then FD TASK 1, 2, 3 -
+            // whatever state each is in, so a card keeps its place once handed
+            // in. Anything not on the checklist follows, in the order it came.
+            $groupRows = $taskGroup->rows->sortBy(fn ($r) => $r->task->is_hotel_concept
+                ? 0
+                : (\App\Support\TaskChecklist::taskNumber((string) $r->task->title, (string) $r->task->role) ?? 999))->values();
 
             $groupTotal       = $groupRows->count();
             $groupDone        = $groupRows->where('status', 'completed')->count();
@@ -228,10 +231,14 @@
                             $rowDueLabel   = $task->due_date
                                                 ? $task->due_date->format('M j, Y') . ' · ' . $task->due_date->format('g:i A')
                                                 : 'No due date';
-                            // 'FD TASK 1' — the role's initials plus the task's place in
-                            // this group, which is what the card is known by.
-                            $rowCode       = ($roleTaskCodes[$task->role] ?? strtoupper(substr($task->role, 0, 2)))
-                                             . ' TASK ' . $taskRowIndex;
+                            // 'FD TASK 1' — the role's initials plus the task's number on
+                            // the checklist, which is what the card is known by. The
+                            // concept is not one of the numbered tasks; a task not on the
+                            // checklist falls back to its place in this group.
+                            $rowNumber     = \App\Support\TaskChecklist::taskNumber((string) $task->title, (string) $task->role) ?? $taskRowIndex;
+                            $rowCode       = $task->is_hotel_concept
+                                             ? 'HOTEL CONCEPT'
+                                             : ($roleTaskCodes[$task->role] ?? strtoupper(substr($task->role, 0, 2))) . ' TASK ' . $rowNumber;
                         @endphp
                         {{-- The concept task is not a one-line tick: the whole proposal is
                              written on it, so its card keeps #conceptPanelCard —
