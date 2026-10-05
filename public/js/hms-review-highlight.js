@@ -20,7 +20,7 @@
      recomputing it — that second computation is where they went missing. */
   let added = [];
   let modified = [];
-  // 'branding', 'home', 'promos', 'partners', 'team' or 'footer': the page check run for that task. See run().
+  // 'branding', 'home', 'promos', 'partners', 'team', 'footer' or 'highlights': the page check run for that task. See run().
   let stockReview = null;
   let booted = false;
 
@@ -333,7 +333,23 @@
     return out;
   }
 
-  // Brands removed from the strip: nothing left on the page to box, so the
+  /* Customize Hotel Highlights: the same reading as the partner strip, on the
+     Home page's Selected Highlights and on the Highlights page alike. Each
+     highlight the team made is outlined as added, a stock one with a new
+     photo or new words as changed, and the legend counts the ones removed. */
+  function highlightsChanges() {
+    const out = [];
+    queryAll('[data-hms-exp-state]').forEach(function (el) {
+      out.push({ el: el, count: 1, type: el.getAttribute('data-hms-exp-state') === 'added' ? 'added' : 'modified' });
+    });
+    Array.prototype.push.apply(out, sectionChanges('[data-hms-section="highlights"]'));
+    Array.prototype.push.apply(out, sectionChanges('[data-hms-highlights-header]'));
+    const grid = queryAll('[data-hms-exps-removed]')[0];
+    removedCount = grid ? (parseInt(grid.getAttribute('data-hms-exps-removed'), 10) || 0) : 0;
+    return out;
+  }
+
+  // Brands or highlights removed: nothing left on the page to box, so the
   // legend counts them instead.
   let removedCount = 0;
 
@@ -343,6 +359,7 @@
     }
     if (stockReview === 'home') return homeChanges();
     if (stockReview === 'partners') return partnersChanges();
+    if (stockReview === 'highlights') return highlightsChanges();
     // Customize Our Team and Customize the Footer: the shared check alone.
     if (stockReview === 'team' || stockReview === 'footer') {
       return sectionChanges('[data-hms-section="' + stockReview + '"]');

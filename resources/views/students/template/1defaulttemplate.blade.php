@@ -961,7 +961,7 @@
     text-shadow: 0 1px 6px rgba(0,0,0,0.65);
   }
   .exp-tile-label i { flex: none; color: var(--accent-light); font-size: 0.8rem; }
-  .exp-tile-tools { position: absolute; top: 0.45rem; right: 0.45rem; z-index: 3; }
+  .exp-tile-tools { position: absolute; top: 0.45rem; right: 0.45rem; z-index: 3; display: flex; gap: 6px; }
   .exp-tile-add {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.45rem;
     border: 2px dashed var(--border); background: rgba(201,168,76,0.05);
@@ -1733,7 +1733,25 @@ function expCardImg(item) {
   const byId = resolveCardImg('exp', item.id, '');
   if (byId) return byId;
   const byTitle = item.title ? resolveCardImg('exp', item.title, '') : '';
-  return byTitle || item.img || '';
+  // The store keeps a tile's words, not its stock photograph, so a stock tile
+  // read back after any edit to the gallery carries no img of its own.
+  const stock = DEFAULT_EXPERIENCES.find(d => d.id === item.id);
+  return byTitle || item.img || (stock && stock.img) || '';
+}
+
+/* What the faculty review reads off a highlight: 'added' for one the team
+   made, 'changed' for a stock one with a new photo or new words, else nothing. */
+function expReviewState(item) {
+  const stock = DEFAULT_EXPERIENCES.find(d => d.id === item.id);
+  if (!stock) return 'added';
+  const changed = expCardImg(item) !== stock.img || item.title !== stock.title
+    || (item.desc || '') !== stock.desc || (item.icon || '') !== stock.icon;
+  return changed ? 'changed' : undefined;
+}
+
+// How many of the template's own highlights the team removed.
+function expRemovedCount(items) {
+  return DEFAULT_EXPERIENCES.filter(d => !(items || []).some(i => i.id === d.id)).length;
 }
 
 const LUMIERE_MENU = [
@@ -3740,10 +3758,10 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
       <section data-hms-section="highlights" data-hms-bg-target="1" style={{ padding: '2rem 1.5rem 3rem', maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
           <div>
-            <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Worth the stay</p>
-            <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Selected Highlights</h2>
+            <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }} data-hms-stock="Worth the stay">Worth the stay</p>
+            <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }} data-hms-stock="Selected Highlights">Selected Highlights</h2>
           </div>
-          <button className="btn-outline" onClick={() => onNavigate('experience')} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>View all highlights</button>
+          <button className="btn-outline" onClick={() => onNavigate('experience')} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }} data-hms-stock="View all highlights">View all highlights</button>
         </div>
         <SelectedHighlights items={experiences} onOpen={() => onNavigate('experience')} />
       </section>
@@ -6794,10 +6812,11 @@ function SelectedHighlights({ items, onOpen }) {
   const list = (items || []).slice(0, 3);
   if (!list.length) return null;
   return (
-    <div data-hms-no-edit="1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+    <div data-hms-no-edit="1" data-hms-exps-removed={expRemovedCount(items)} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
       {list.map(item => (
         <article
           key={item.id}
+          data-hms-exp-state={expReviewState(item)}
           role="button"
           tabIndex={0}
           aria-label={'Open ' + item.title + ' in Highlights'}
@@ -6875,10 +6894,11 @@ function ExperienceGallery({ items, canEdit, onToast, onAdd, onUpdate, onRemove 
   return (
     <>
       <div className={'exp-gallery' + (selected ? ' has-preview' : '')}>
-        <div className="exp-grid">
+        <div className="exp-grid" data-hms-exps-removed={expRemovedCount(list)}>
           {list.map(item => (
             <article
               key={item.id}
+              data-hms-exp-state={expReviewState(item)}
               className={'exp-tile' + (selected && selected.id === item.id ? ' is-active' : '')}
               role="button"
               tabIndex={0}
@@ -6897,10 +6917,27 @@ function ExperienceGallery({ items, canEdit, onToast, onAdd, onUpdate, onRemove 
                 {item.title}
               </span>
               {canEdit && (
+                /* Rename and remove sit on the tile as well as in the panel: in
+                   Design mode the editor takes a click on the tile itself, so the
+                   panel never opens there. */
                 <span className="exp-tile-tools" data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
                   <button type="button" title="Upload a photo for this tile"
                     onClick={() => replacePhoto(item)}
                     style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                  <button type="button" title="Edit text"
+                    onClick={() => setEditing(item)}
+                    style={toolBtnStyle('image')}><i className="fa-solid fa-pen" style={{ fontSize: 11 }}></i></button>
+                  <button type="button"
+                    title={confirmingId === item.id ? 'Press again to remove ' + item.title : 'Remove'}
+                    onClick={() => remove(item)}
+                    onBlur={() => setConfirmingId(null)}
+                    style={Object.assign({}, toolBtnStyle('danger'), confirmingId === item.id
+                      ? { width: 'auto', padding: '0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }
+                      : null)}>
+                    {confirmingId === item.id
+                      ? 'Remove?'
+                      : <i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i>}
+                  </button>
                 </span>
               )}
             </article>
@@ -6957,10 +6994,10 @@ function ExperienceGallery({ items, canEdit, onToast, onAdd, onUpdate, onRemove 
 function ExperiencePage({ onNavigate, canEdit, onToast, experiences, onAddExperience, onUpdateExperience, onRemoveExperience }) {
   return (
     <>
-      <div className="page-header">
-        <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Beyond the Room</p>
-        <h1 className="font-display">The SPC Highlights</h1>
-        <p>Every detail is designed to elevate your stay from memorable to extraordinary.</p>
+      <div className="page-header" data-hms-highlights-header="1">
+        <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }} data-hms-stock="Beyond the Room">Beyond the Room</p>
+        <h1 className="font-display" data-hms-stock="The SPC Highlights">The SPC Highlights</h1>
+        <p data-hms-stock="Every detail is designed to elevate your stay from memorable to extraordinary.">Every detail is designed to elevate your stay from memorable to extraordinary.</p>
       </div>
       <section style={{ padding: '0 1.5rem 4rem', maxWidth: 1200, margin: '0 auto' }}>
         <ExperienceGallery

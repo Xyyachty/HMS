@@ -161,6 +161,10 @@ class TaskChecklist
                 'description' => 'Customize the Footer by updating the hotel information, links, contact details, and other text to match the hotel.',
             ],
             [
+                'title' => 'Customize Hotel Highlights',
+                'description' => 'Customize the Hotel Highlights section to showcase the best features, attractions, and special things your hotel offers.',
+            ],
+            [
                 'title' => 'Write Your Hotel\'s Story',
                 'description' => "Replace the sample words with your own: the tagline over the headline, the paragraph introducing the hotel, and the contact block every footer prints - address, phone, email and the hours the desk keeps. These are one record for the whole site, so what you write here is what the Rooms page and the Restaurant page say too.",
             ],
@@ -330,6 +334,7 @@ class TaskChecklist
         'Customize Partner Brands' => 'Every card is one of your hotel\'s real partners, with its own name and image, and no sample brands remain.',
         'Customize Our Team' => 'Every team member shows their own photo, their correct name and the position they hold.',
         'Customize the Footer' => 'The footer\'s description, links and contact details are all correct for your hotel.',
+        'Customize Hotel Highlights' => 'Every highlight is one your hotel really offers, with its own photo and title, and no sample highlights remain.',
         'Colour the Experience Page' => 'The page carries a background of its own that still belongs to the site.',
         'Create Your Room Categories' => 'The categories are the ones your hotel sells, each with an opening rate.',
         'Build Your Room Types' => 'Every room type the hotel has is on the page, under the right category.',
@@ -432,6 +437,12 @@ class TaskChecklist
             'Update the footer links and their names.',
             'Update the contact details, including the address, phone number, and email.',
             'Review the footer and make sure all information is correct and matches the hotel.',
+        ],
+        'Customize Hotel Highlights' => [
+            'Change the images of the hotel highlights.',
+            'Edit the highlight names or titles to match your hotel.',
+            'Add new highlights that showcase the best features of your hotel.',
+            'Remove unnecessary highlights and review the section to make sure everything matches your hotel.',
         ],
         'Colour the Experience Page' => [
             'Open Background Colours in Design mode.',
@@ -755,6 +766,9 @@ class TaskChecklist
         // Rows assigned before the rename still carry the old title.
         'introduce your team' => ['page' => 'home', 'section' => 'team'],
         'customize the footer' => ['page' => 'home', 'section' => 'footer'],
+        // The highlights are added, photographed and renamed on the Highlights
+        // page; the Home page only previews the first three.
+        'customize hotel highlights' => ['page' => 'experience', 'section' => null],
         'write the experience page' => ['page' => 'experience', 'section' => null],
         'colour the experience page' => ['page' => 'experience', 'section' => null],
         'illustrate the experience page' => ['page' => 'experience', 'section' => null],
@@ -816,6 +830,7 @@ class TaskChecklist
         'customize our team' => 'team',
         'introduce your team' => 'team',
         'customize the footer' => 'footer',
+        'customize hotel highlights' => 'highlights',
     ];
 
     public static function reviewsAgainstStock(string $title): bool
@@ -823,7 +838,7 @@ class TaskChecklist
         return self::stockReviewFor($title) !== null;
     }
 
-    /** Which page check a task's After preview runs: 'branding', 'home', 'promos', 'partners', 'team', 'footer', or null. */
+    /** Which page check a task's After preview runs: 'branding', 'home', 'promos', 'partners', 'team', 'footer', 'highlights', or null. */
     public static function stockReviewFor(string $title): ?string
     {
         return self::REVIEW_AGAINST_STOCK[mb_strtolower(trim($title))] ?? null;
