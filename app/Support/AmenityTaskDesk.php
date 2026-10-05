@@ -7,7 +7,8 @@ use App\Models\Task;
 use App\Models\User;
 
 /**
- * Where "Customize Hotel Amenities" stands for a team.
+ * Where "Review Hotel Amenities" (HK TASK 5, the one that hands the whole
+ * section in) stands for a team.
  *
  * It reports; it does not gate. The facilities list belongs to Housekeeping and
  * holding that role is the whole test for changing it — this class exists so the
@@ -22,7 +23,7 @@ use App\Models\User;
 class AmenityTaskDesk
 {
     /** The checklist entry, matched by title — a task row keeps no reference to it. */
-    public const TASK_TITLE = 'Customize Hotel Amenities';
+    public const TASK_TITLE = 'Review Hotel Amenities';
 
     public const ROLE = HotelAmenityAccess::MANAGE_ROLE;
 

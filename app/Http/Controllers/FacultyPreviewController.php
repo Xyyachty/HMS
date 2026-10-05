@@ -106,13 +106,17 @@ class FacultyPreviewController extends Controller
             ->get();
 
         $repairs = HotelAmenityDesk::latestRepairsFor($membership);
+        // Only faculty read this feed, so it is where the review learns which
+        // facilities differ from the template's starting five.
+        $review = \App\Support\HotelAmenityAccess::reviewStates($amenities);
 
         return response()->json([
             'items' => $amenities
                 ->map(fn (HotelAmenity $amenity) => $amenity->toTemplateArray(
                     $repairs[$amenity->hotel_amenity_id] ?? null
-                ))
+                ) + ['reviewState' => $review['states'][$amenity->hotel_amenity_id] ?? null])
                 ->values(),
+            'removed_defaults' => $review['removed'],
         ]);
     }
 

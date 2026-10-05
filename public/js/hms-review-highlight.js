@@ -349,6 +349,25 @@
     return out;
   }
 
+  /* The Housekeeping tasks, on the Amenities page. The header (HK TASK 1) is
+     judged by its text like any section. The facilities (HK TASK 2-4) live in
+     the database, so the faculty feed marks each one added or changed against
+     the template's starting five and says how many of those were removed.
+     HK TASK 5 reviews the whole page, so it gets both. */
+  function amenityHeaderChanges() {
+    return sectionChanges('[data-hms-amenities-header]');
+  }
+
+  function amenityCardChanges() {
+    const out = [];
+    queryAll('[data-hms-amenity-state]').forEach(function (el) {
+      out.push({ el: el, count: 1, type: el.getAttribute('data-hms-amenity-state') === 'added' ? 'added' : 'modified' });
+    });
+    const grid = queryAll('[data-hms-amenities-removed]')[0];
+    removedCount = grid ? (parseInt(grid.getAttribute('data-hms-amenities-removed'), 10) || 0) : 0;
+    return out;
+  }
+
   // Brands or highlights removed: nothing left on the page to box, so the
   // legend counts them instead.
   let removedCount = 0;
@@ -360,6 +379,9 @@
     if (stockReview === 'home') return homeChanges();
     if (stockReview === 'partners') return partnersChanges();
     if (stockReview === 'highlights') return highlightsChanges();
+    if (stockReview === 'amenities-header') return amenityHeaderChanges();
+    if (stockReview === 'amenities') return amenityCardChanges();
+    if (stockReview === 'amenities-all') return amenityHeaderChanges().concat(amenityCardChanges());
     // Customize Our Team and Customize the Footer: the shared check alone.
     if (stockReview === 'team' || stockReview === 'footer') {
       return sectionChanges('[data-hms-section="' + stockReview + '"]');

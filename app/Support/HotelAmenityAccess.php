@@ -240,6 +240,66 @@ class HotelAmenityAccess
      * is walked into. Left unset they all defaulted to open, which is the one type
      * nothing can be booked under.
      */
+    /**
+     * How a team's facilities differ from the five the template starts with, for
+     * the faculty review: 'added' for one the team made, 'changed' for a starting
+     * one whose name, location, hours, description or photos are no longer the
+     * stock ones, and how many starting ones were removed.
+     *
+     * The starting five are the rows seeded together, so they share the team's
+     * earliest created_at. A row keeps no reference to the default it came from,
+     * so each is matched to the default it still agrees with most; a facility
+     * renamed and re-photographed still matches on what it kept, and one changed
+     * in every field is changed whichever default it is read against.
+     *
+     * @param  \Illuminate\Support\Collection<int, HotelAmenity>  $amenities
+     * @return array{states: array<int, string>, removed: int}
+     */
+    public static function reviewStates($amenities): array
+    {
+        $defaults = self::defaultAmenities();
+        $seededAt = (string) $amenities->min('created_at');
+        $fields = fn ($row) => [
+            'name' => trim((string) ($row['name'] ?? '')),
+            'description' => trim((string) ($row['description'] ?? '')),
+            'location' => trim((string) ($row['location'] ?? '')),
+            'opens_at' => substr((string) ($row['opens_at'] ?? ''), 0, 5),
+            'closes_at' => substr((string) ($row['closes_at'] ?? ''), 0, 5),
+            'image' => (string) ($row['image'] ?? ''),
+        ];
+
+        $states = [];
+        $unclaimed = array_keys($defaults);
+        $seeds = 0;
+        foreach ($amenities as $amenity) {
+            if ($seededAt === '' || (string) $amenity->created_at !== $seededAt) {
+                $states[$amenity->hotel_amenity_id] = 'added';
+                continue;
+            }
+            $seeds++;
+            $mine = $fields($amenity->getAttributes());
+            $best = null;
+            $bestScore = -1;
+            foreach ($unclaimed as $i) {
+                $score = count(array_intersect_assoc($mine, $fields($defaults[$i])));
+                if ($score > $bestScore) {
+                    [$best, $bestScore] = [$i, $score];
+                }
+            }
+            if ($best === null) {
+                $states[$amenity->hotel_amenity_id] = 'added';
+                continue;
+            }
+            $unclaimed = array_values(array_diff($unclaimed, [$best]));
+            $photos = is_array($amenity->gallery) ? array_filter($amenity->gallery) : [];
+            if ($bestScore < count($mine) || $photos !== []) {
+                $states[$amenity->hotel_amenity_id] = 'changed';
+            }
+        }
+
+        return ['states' => $states, 'removed' => max(0, count($defaults) - $seeds)];
+    }
+
     private static function defaultAmenities(): array
     {
         return [

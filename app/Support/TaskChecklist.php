@@ -25,7 +25,9 @@ namespace App\Support;
  *                                              Highlights page
  *   TASK 02  Room Management Customization   — the Rooms page
  *   TASK 03  Restaurant Management Customization — the Restaurant page
- *   TASK 04  Housekeeping Customization      — the Amenities page
+ *   TASK 04  Housekeeping Customization      — the Amenities page: HK TASK
+ *                                              1-5, header, images, information,
+ *                                              a new amenity and a review
  *
  * Each entry under a task is one activity: its own row, submitted and reviewed on
  * its own. Maintenance owns no page of the site (HotelTemplateBuilder::
@@ -260,32 +262,28 @@ class TaskChecklist
         ],
 
         'housekeeping' => [
+            // HK TASK 1-5, in order. All five are done on the Amenities
+            // page: its header in Design mode, the facilities with the card
+            // tools or the Housekeeping Amenities screen - one team list.
             [
-                // The gate on the facilities list: nobody may add, edit,
-                // photograph or remove an amenity until this lands on them. See
-                // AmenityTaskDesk, which reads a task row back by this title.
-                'title' => 'Customize Hotel Amenities',
-                'description' => "Add and customize the hotel's amenities displayed in the default template. Give each one its name, where it is, the hours it keeps, whether it is open, and a description a guest can read, then photograph it: the card cycles through every picture you upload and View Details opens them in a carousel.",
+                'title' => 'Customize Amenities Header',
+                'description' => 'Customize the main Amenities section so it matches the hotel.',
             ],
             [
-                'title' => 'Build the Amenities Page',
-                'description' => 'Fill in the Amenities page with what your hotel actually offers, so it matches the add-ons you lend out.',
+                'title' => 'Update Amenity Images',
+                'description' => 'Update the images of the amenities so they properly represent each hotel facility or service.',
             ],
             [
-                'title' => 'Colour the Amenities Page',
-                'description' => "Give the Amenities page its own background from Background Colours. It's the page guests read after the rooms, so it should look like the same hotel - close enough to the site's palette to belong to it, different enough to be its own.",
+                'title' => 'Edit Amenity Information',
+                'description' => 'Update the information of each amenity so guests can clearly understand what it offers.',
             ],
             [
-                'title' => 'Write the Amenities Page Introduction',
-                'description' => "Write the words above the facility cards: the small line over the heading, the heading, and the paragraph under it. Say what a guest can actually use and how they get at it, rather than repeating the word Amenities.",
+                'title' => 'Add a New Amenity',
+                'description' => 'Add a new hotel facility or service to the Amenities section.',
             ],
             [
-                'title' => 'Check the Amenities Page on a Phone',
-                'description' => "Narrow the window until the cards stack and read the page as a guest with a phone would: headings that wrap badly, photographs cropped to nothing, a carousel that no longer fits.",
-            ],
-            [
-                'title' => 'Review the Amenities Page Against the Site',
-                'description' => "Open the Home page, then Amenities. They should look like the same hotel: the same typeface, the same kind of photograph, headings written in the same voice.",
+                'title' => 'Review Hotel Amenities',
+                'description' => 'Review the complete Amenities section and make sure all information and images are correct before submitting.',
             ],
         ],
     ];
@@ -300,6 +298,11 @@ class TaskChecklist
      */
     private const COMPLETION = [
         HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_COMPLETION,
+        'Customize Amenities Header' => 'The label, the title and the description above the amenities are your own words.',
+        'Update Amenity Images' => 'Every amenity shows slider images of the real facility or service.',
+        'Edit Amenity Information' => 'Every amenity has its own name, location, available hours and description.',
+        'Add a New Amenity' => 'A new amenity of your hotel appears in the Amenities section with its details and images.',
+        'Review Hotel Amenities' => 'Every amenity is one the hotel really has, with correct details and images.',
         'Customize Your Hotel Branding' => 'Your own logo, hotel name and navigation names appear correctly on View Live.',
         'Customize the Home Page' => 'The 5 slider images, the small heading, the main heading and the description are all your own.',
         'Customize Promos and Packages' => 'Every promo carries your own image, title, offer label, description and details.',
@@ -328,12 +331,6 @@ class TaskChecklist
         'Make the Dish Photographs Consistent' => 'The menu reads as one set of photographs rather than a collection.',
         'Check the Restaurant Page on a Phone' => 'The page reads cleanly in one column with the tabs and every card intact.',
         'Review the Restaurant Page Against the Site' => 'The two pages read as one hotel, with any remaining difference a deliberate one.',
-        'Customize Hotel Amenities' => 'Every facility the hotel has is listed, described, and photographed more than once.',
-        'Build the Amenities Page' => 'The page lists every facility a guest can use, in your own words.',
-        'Colour the Amenities Page' => 'The page carries a background of its own that still belongs to the site.',
-        'Write the Amenities Page Introduction' => 'The heading and its introduction are your own words, with no sample copy left on the page.',
-        'Check the Amenities Page on a Phone' => 'The page reads cleanly in one column with the carousel and every card intact.',
-        'Review the Amenities Page Against the Site' => 'The page sits with the rest of the site rather than beside it.',
     ];
 
     /**
@@ -349,6 +346,33 @@ class TaskChecklist
      */
     private const ACTIVITIES = [
         HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_ACTIVITIES,
+        'Customize Amenities Header' => [
+            'Edit the small label above the title.',
+            'Edit the "Hotel Amenities" title.',
+            'Edit the description below the title.',
+        ],
+        'Update Amenity Images' => [
+            'Select an amenity to update.',
+            'Replace or upload its slider images.',
+            'Review the images and make sure they match the amenity.',
+        ],
+        'Edit Amenity Information' => [
+            'Edit the amenity name.',
+            'Edit the amenity location.',
+            'Edit the available hours.',
+            'Edit the amenity description.',
+        ],
+        'Add a New Amenity' => [
+            'Click "Add an Amenity".',
+            'Enter the amenity name and required details.',
+            'Upload the slider images for the new amenity.',
+            'Save the amenity and confirm that it appears correctly in the Amenities section.',
+        ],
+        'Review Hotel Amenities' => [
+            'Check that every amenity has the correct name, location, available hours, and description.',
+            'Check that all amenity slider images are correct and properly displayed.',
+            'Update or remove any amenity that does not match the hotel.',
+        ],
         'Customize Your Hotel Branding' => [
             'Change the Logo: upload your team\'s hotel logo.',
             'Change the Hotel Name: replace the default hotel name with your team\'s hotel name.',
@@ -515,42 +539,6 @@ class TaskChecklist
             'Note every difference that is not deliberate.',
             'Fix the ones that make the pages look unrelated.',
             'Check the dining section on Home matches the page it previews.',
-        ],
-        'Customize Hotel Amenities' => [
-            'Add the facilities your hotel actually has, and remove the ones it does not.',
-            'Give each its location, opening hours, availability and description.',
-            'Upload several photographs of every facility.',
-            'Open View Details on a card and check the carousel reads well.',
-        ],
-        'Build the Amenities Page' => [
-            'Read the page against the add-ons you lend out.',
-            'Write the heading and the introduction in your own words.',
-            'Make sure every facility a guest can use is listed.',
-            'Check the page against the rest of the site before you finish.',
-        ],
-        'Colour the Amenities Page' => [
-            'Open Background Colours in Design mode.',
-            'Set the background of the Amenities page.',
-            'Pick a background your text still reads against.',
-            'Check it still looks like the same hotel as the Home page.',
-        ],
-        'Write the Amenities Page Introduction' => [
-            'Rewrite the eyebrow line over the heading.',
-            'Rewrite the heading in your hotel\'s own words.',
-            'Write the paragraph under it in two or three sentences.',
-            'Read it against the Home page so the two sound like one hotel.',
-        ],
-        'Check the Amenities Page on a Phone' => [
-            'Narrow the browser until the amenity cards stack in one column.',
-            'Read every card for text that wraps or overflows.',
-            'Open View Details at that width and check the carousel fits.',
-            'Fix what breaks and check again.',
-        ],
-        'Review the Amenities Page Against the Site' => [
-            'Open the Home page, then the Amenities page, and compare them.',
-            'Note every difference that is not deliberate.',
-            'Fix the ones that make the pages look unrelated.',
-            'Read both headings aloud and check they sound like one writer.',
         ],
     ];
 
@@ -760,6 +748,11 @@ class TaskChecklist
         'customize the footer' => 'footer',
         'customize hotel experiences' => 'highlights',
         'customize hotel highlights' => 'highlights',
+        'customize amenities header' => 'amenities-header',
+        'update amenity images' => 'amenities',
+        'edit amenity information' => 'amenities',
+        'add a new amenity' => 'amenities',
+        'review hotel amenities' => 'amenities-all',
     ];
 
     public static function reviewsAgainstStock(string $title): bool
@@ -767,7 +760,7 @@ class TaskChecklist
         return self::stockReviewFor($title) !== null;
     }
 
-    /** Which page check a task's After preview runs: 'branding', 'home', 'promos', 'partners', 'team', 'footer', 'highlights', or null. */
+    /** Which page check a task's After preview runs: 'branding', 'home', 'promos', 'partners', 'team', 'footer', 'highlights', or one of the amenities checks, or null. */
     public static function stockReviewFor(string $title): ?string
     {
         return self::REVIEW_AGAINST_STOCK[mb_strtolower(trim($title))] ?? null;

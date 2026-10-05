@@ -5984,10 +5984,10 @@ function AmenitiesPage({ amenities, slideSeconds, onToast }) {
 
   return (
     <>
-      <div className="page-header">
-        <span className="section-num">Beyond the Stay</span>
-        <h1 className="font-display">Hotel Amenities</h1>
-        <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
+      <div className="page-header" data-hms-amenities-header="1">
+        <span className="section-num" data-hms-stock="Beyond the Stay">Beyond the Stay</span>
+        <h1 className="font-display" data-hms-stock="Hotel Amenities">Hotel Amenities</h1>
+        <p data-hms-stock="Everything on hand to make your stay more comfortable, available on request at the front desk.">Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
       </div>
       <section style={{ padding: '2.5rem 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
         {list.length === 0 ? (
@@ -5996,12 +5996,13 @@ function AmenitiesPage({ amenities, slideSeconds, onToast }) {
             <p style={{ margin: 0 }}>Amenities coming soon.</p>
           </div>
         ) : (
-          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1.5rem' }}>
+          <div className="grid-3" data-hms-amenities-removed={window.__HMS_AMENITIES_REMOVED__} style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1.5rem' }}>
             {list.map((item, index) => {
               const shots = amenityShots(item);
               return (
               <div
                 key={item.id}
+                data-hms-amenity-state={item.reviewState || undefined}
                 className={'facility-card' + (item.status === 'Available' ? '' : ' is-unavailable')}
                 role="button"
                 tabIndex={0}
@@ -6446,6 +6447,9 @@ function App() {
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
+        // The faculty feed also says how many starting facilities were removed,
+        // which the review counts beside its outlines.
+        if (typeof data.removed_defaults === 'number') window.__HMS_AMENITIES_REMOVED__ = data.removed_defaults;
         if (Array.isArray(data.items)) setAmenities(data.items);
       })
       .catch(() => {});
