@@ -8,144 +8,222 @@
     --bg: #0c0b09; --bg-warm: #111110; --fg: #f5f0e8; --fg-muted: #9e978b;
     --accent: #c9a84c; --accent-light: #e2cc7a; --card: #181714; --border: #2a2621;
   }
+
+  /* Everything below reads the shell's tokens (--bg, --card, --border, --fg,
+     --fg-muted, --accent), so the page follows Template 1, Template 2 and a
+     team's own site colours without a palette of its own. Tints are mixed from
+     those tokens rather than hard-coded.
+
+     Shape rule: choice chips are pills; inputs and buttons are 10px; panels and
+     cards are 14px. */
   #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
   .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
-  .btn-outline {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    background: transparent; color: var(--accent);
-    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
-    font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
-    cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
-    text-decoration: none;
-  }
-  .btn-outline:hover { background: var(--accent); color: var(--bg); transform: translateY(-1px); }
-  .btn-outline:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-  .btn-solid {
-    display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
-    background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
-    font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 600;
-    font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 0.75rem 1.2rem; border-radius: 6px; cursor: pointer;
-    transition: filter 0.2s;
-  }
-  .btn-solid:hover { filter: brightness(1.1); }
-  .btn-solid:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
-  .booking-input {
-    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
-    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.85rem;
-    outline: none; transition: border-color 0.2s; width: 100%;
-  }
-  .booking-input:focus { border-color: var(--accent); }
-  .booking-input::placeholder { color: var(--fg-muted); opacity: 0.5; }
-  input[type="date"].booking-input,
-  input[type="time"].booking-input { color-scheme: dark; }
-  select.booking-input { appearance: auto; }
-  select.booking-input option { background: var(--card); color: var(--fg); }
 
-  /* Two jobs on one page, one at a time. */
-  .wi-tabs { display: inline-flex; gap: 0.35rem; padding: 0.3rem; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
-  .wi-tab {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.78rem; font-weight: 600;
-    padding: 0.55rem 1rem; border-radius: 7px; border: 0; background: transparent;
-    color: var(--fg-muted); cursor: pointer; transition: background 0.15s, color 0.15s;
+  .wi {
+    --wi-soft: color-mix(in srgb, var(--fg) 4%, transparent);
+    --wi-tint: color-mix(in srgb, var(--accent) 12%, transparent);
+    --wi-line: var(--border);
+    --wi-danger: var(--danger, #f87171);
+    --wi-ok: var(--success, #4ade80);
+    max-width: 1240px; margin: 0 auto; padding: 1.5rem 1.5rem 3rem;
+    color: var(--fg);
   }
-  .wi-tab:hover { color: var(--fg); }
-  .wi-tab.is-active { background: var(--accent); color: var(--bg); }
 
-  /* Form on the left, what it books on the right; one column on a narrow screen. */
-  .wi-layout { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 1.25rem; align-items: start; }
-  @media (max-width: 900px) { .wi-layout { grid-template-columns: 1fr; } }
-  .wi-panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.2rem 1.25rem 1.3rem; }
-  .wi-panel-title { margin: 0 0 0.9rem; color: var(--fg); font-size: 0.95rem; font-weight: 700; }
-  .wi-form { display: grid; gap: 0.85rem; }
-  .wi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
-  @media (max-width: 420px) { .wi-row { grid-template-columns: 1fr; } }
-  .wi-label {
-    display: block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--fg-muted); margin-bottom: 0.35rem;
-  }
-  .wi-label em { font-style: normal; color: var(--accent); }
-  .wi-hint { margin: 0.3rem 0 0; color: var(--fg-muted); font-size: 0.7rem; }
-  .wi-divider { border: 0; border-top: 1px solid var(--border); margin: 0.2rem 0; }
+  /* Page header */
+  .wi-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .wi-head h1 { margin: 0; font-size: 1.85rem; line-height: 1.15; color: var(--fg); }
+  .wi-head p { margin: 0.45rem 0 0; color: var(--fg-muted); font-size: 0.92rem; max-width: 56ch; line-height: 1.5; }
 
-  .wi-step {
-    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
-    background: rgba(255,255,255,0.03); color: var(--fg); cursor: pointer;
-    display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;
+  /* Buttons */
+  .wi-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+    font: 600 0.9rem/1 var(--font-body, 'Outfit', sans-serif);
+    padding: 0.85rem 1.2rem; border-radius: 10px; cursor: pointer; text-decoration: none;
+    border: 1px solid var(--accent); transition: filter 0.15s, background 0.15s, transform 0.1s;
   }
-  .wi-step:disabled { opacity: 0.35; cursor: not-allowed; }
-  .wi-stepper {
-    display: flex; align-items: center; gap: 0.6rem;
-    border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.45rem;
-    background: rgba(255,255,255,0.03); width: fit-content;
+  .wi-btn:active { transform: translateY(1px); }
+  .wi-btn-primary { background: var(--accent); color: var(--bg); width: 100%; padding: 1rem 1.2rem; font-size: 0.95rem; }
+  .wi-btn-primary:hover { filter: brightness(1.08); }
+  .wi-btn-primary:disabled { opacity: 0.5; cursor: progress; filter: none; }
+  .wi-btn-ghost { background: transparent; color: var(--accent); }
+  .wi-btn-ghost:hover { background: var(--wi-tint); }
+  .wi-btn:focus-visible, .wi-mode:focus-visible, .wi-chip:focus-visible, .wi-card:focus-visible, .wi-step-btn:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
   }
-  .wi-stepper output { color: var(--fg); min-width: 28px; text-align: center; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
 
-  .wi-seg { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-  .wi-seg button {
-    font-family: var(--font-body, 'Outfit', sans-serif);
-    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em;
-    padding: 0.45rem 0.85rem; border-radius: 100px; border: 1.5px solid var(--border);
-    background: transparent; color: var(--fg-muted); cursor: pointer; transition: all 0.15s;
+  /* What is the guest here for: two large choices */
+  .wi-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; margin-bottom: 1.5rem; }
+  .wi-mode {
+    display: flex; align-items: center; gap: 0.95rem; text-align: left;
+    padding: 1rem 1.1rem; border-radius: 14px; cursor: pointer;
+    background: var(--card); border: 1.5px solid var(--wi-line); color: var(--fg);
+    font-family: var(--font-body, 'Outfit', sans-serif); transition: border-color 0.15s, background 0.15s;
   }
-  .wi-seg button:hover { border-color: var(--accent); color: var(--accent); }
-  .wi-seg button.is-active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
-
-  /* The rooms or tables the guest can have, as cards to click. */
-  .wi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0.75rem; }
-  .wi-pick {
-    text-align: left; background: rgba(255,255,255,0.02); border: 1.5px solid var(--border);
-    border-radius: 12px; padding: 0.85rem 0.95rem; cursor: pointer; color: var(--fg);
-    font-family: var(--font-body, 'Outfit', sans-serif);
-    display: flex; flex-direction: column; gap: 0.3rem; transition: border-color 0.15s, background 0.15s;
+  .wi-mode:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--wi-line)); }
+  .wi-mode.is-on { border-color: var(--accent); background: var(--wi-tint); }
+  .wi-mode-icon {
+    flex: none; width: 46px; height: 46px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+    background: var(--wi-soft); color: var(--accent);
   }
-  .wi-pick:hover { border-color: rgba(201,168,76,0.5); }
-  .wi-pick.is-picked { border-color: var(--accent); background: rgba(201,168,76,0.08); }
-  .wi-pick-name { font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-  .wi-pick-name i { color: var(--accent); font-size: 0.8rem; }
-  .wi-pick-sub { color: var(--fg-muted); font-size: 0.72rem; }
-  .wi-pick-price { color: var(--accent-light); font-size: 0.8rem; font-weight: 600; }
+  .wi-mode.is-on .wi-mode-icon { background: var(--accent); color: var(--bg); }
+  .wi-mode-text b { display: block; font-size: 1rem; }
+  .wi-mode-text small { display: block; color: var(--fg-muted); font-size: 0.82rem; margin-top: 0.15rem; }
 
-  .wi-total {
-    display: flex; justify-content: space-between; align-items: baseline;
-    padding: 0.75rem 0.9rem; border: 1px solid var(--border); border-radius: 8px;
-    background: rgba(255,255,255,0.02);
-  }
-  .wi-total span { color: var(--fg-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
-  .wi-total b { color: var(--fg); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
-  .wi-error { margin: 0; color: var(--danger, #fb7185); font-size: 0.78rem; }
-  .wi-empty { border: 1px dashed var(--border); border-radius: 14px; padding: 2.25rem 1.25rem; text-align: center; color: var(--fg-muted); font-size: 0.85rem; }
+  /* Form beside its summary; one column on a narrow screen */
+  .wi-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1.25rem; align-items: start; }
+  .wi-steps { display: grid; gap: 1rem; min-width: 0; }
 
-  .wi-done { text-align: center; padding: 2rem 1.25rem; }
-  .wi-done-icon {
-    width: 54px; height: 54px; border-radius: 50%; margin: 0 auto 0.9rem;
+  .wi-section { background: var(--card); border: 1px solid var(--wi-line); border-radius: 14px; padding: 1.2rem 1.3rem 1.35rem; }
+  .wi-section-head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .wi-num {
+    flex: none; width: 30px; height: 30px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(34,197,94,0.15); color: var(--success, #4ade80); font-size: 1.4rem;
+    font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    border: 1.5px solid var(--wi-line); color: var(--fg-muted);
   }
-  .wi-done dl { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 0.9rem; text-align: left; max-width: 360px; margin: 1rem auto 1.25rem; }
-  .wi-done dt { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); padding-top: 0.15rem; }
-  .wi-done dd { margin: 0; color: var(--fg); font-size: 0.85rem; }
+  .wi-section.is-done .wi-num { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .wi-section-head h2 { margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--fg); }
+  .wi-section-head p { margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--fg-muted); }
+  .wi-section-head .wi-spacer { flex: 1; }
 
-  /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ── */
+  .wi-fields { display: grid; gap: 0.95rem; }
+  .wi-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; }
+  .wi-field label { display: block; font-size: 0.84rem; font-weight: 600; color: var(--fg); margin-bottom: 0.4rem; }
+  .wi-field label small { font-weight: 400; color: var(--fg-muted); font-size: 0.78rem; margin-left: 0.3rem; }
+  .wi-field .wi-help { margin: 0.35rem 0 0; font-size: 0.78rem; color: var(--fg-muted); }
+  .wi-field .wi-bad { margin: 0.35rem 0 0; font-size: 0.78rem; color: var(--wi-danger); }
+
+  .wi-input {
+    width: 100%; box-sizing: border-box;
+    background: var(--wi-soft); border: 1px solid var(--wi-line); border-radius: 10px;
+    padding: 0.8rem 0.9rem; color: var(--fg); outline: none;
+    font: 400 0.95rem/1.3 var(--font-body, 'Outfit', sans-serif);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .wi-input::placeholder { color: var(--fg-muted); opacity: 0.75; }
+  .wi-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--wi-tint); }
+  .wi-input.is-bad { border-color: var(--wi-danger); }
+  .wi-input[readonly] { color: var(--fg-muted); }
+  input[type="date"].wi-input, input[type="time"].wi-input { color-scheme: dark; }
+
+  /* Bigger + / - for touch */
+  .wi-stepper { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem; border-radius: 10px; background: var(--wi-soft); border: 1px solid var(--wi-line); }
+  .wi-step-btn {
+    width: 42px; height: 42px; border-radius: 8px; border: 0; cursor: pointer;
+    background: var(--card); color: var(--fg); font-size: 0.95rem;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .wi-step-btn:hover:not(:disabled) { color: var(--accent); }
+  .wi-step-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .wi-stepper output { min-width: 3.2rem; text-align: center; font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .wi-stepper output small { display: block; font-size: 0.7rem; font-weight: 500; color: var(--fg-muted); }
+
+  /* Pill choices */
+  .wi-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+  .wi-chip {
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    font: 600 0.84rem/1 var(--font-body, 'Outfit', sans-serif);
+    padding: 0.6rem 0.95rem; border-radius: 999px; cursor: pointer;
+    border: 1.5px solid var(--wi-line); background: transparent; color: var(--fg-muted);
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .wi-chip:hover { border-color: var(--accent); color: var(--fg); }
+  .wi-chip.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+  .wi-dates {
+    display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+    padding: 0.75rem 0.9rem; border-radius: 10px; background: var(--wi-soft); font-size: 0.86rem;
+  }
+  .wi-dates i { color: var(--accent); }
+  .wi-dates b { color: var(--fg); font-weight: 600; }
+  .wi-dates span { color: var(--fg-muted); }
+
+  /* Rooms and tables to pick from */
+  .wi-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 0.8rem; }
+  .wi-card {
+    position: relative; text-align: left; padding: 0; overflow: hidden; cursor: pointer;
+    background: var(--wi-soft); border: 1.5px solid var(--wi-line); border-radius: 14px; color: var(--fg);
+    font-family: var(--font-body, 'Outfit', sans-serif);
+    display: flex; flex-direction: column; transition: border-color 0.15s, transform 0.15s;
+  }
+  .wi-card:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--wi-line)); transform: translateY(-1px); }
+  .wi-card.is-on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--wi-tint); }
+  .wi-card-photo { aspect-ratio: 16 / 10; background: var(--wi-soft); display: flex; align-items: center; justify-content: center; color: var(--fg-muted); font-size: 1.4rem; }
+  .wi-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .wi-card-body { padding: 0.75rem 0.85rem 0.85rem; display: grid; gap: 0.2rem; }
+  .wi-card-name { font-weight: 700; font-size: 0.98rem; }
+  .wi-card-sub { color: var(--fg-muted); font-size: 0.78rem; }
+  .wi-card-price { color: var(--fg); font-size: 0.86rem; font-weight: 600; margin-top: 0.25rem; }
+  .wi-card-price small { color: var(--fg-muted); font-weight: 400; }
+  .wi-card-tick {
+    position: absolute; top: 0.55rem; right: 0.55rem; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); color: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+  }
+  .wi-table-icon { aspect-ratio: auto; padding: 1.1rem 0 0.4rem; background: transparent; color: var(--accent); }
+
+  .wi-empty {
+    border: 1.5px dashed var(--wi-line); border-radius: 14px; padding: 2rem 1.25rem;
+    text-align: center; color: var(--fg-muted); font-size: 0.9rem; line-height: 1.5;
+  }
+  .wi-empty i { display: block; font-size: 1.4rem; margin-bottom: 0.6rem; color: var(--accent); }
+  .wi-skeleton { border-radius: 14px; background: var(--wi-soft); aspect-ratio: 16 / 13; animation: wi-pulse 1.4s ease-in-out infinite; }
+  @keyframes wi-pulse { 50% { opacity: 0.5; } }
+  @media (prefers-reduced-motion: reduce) { .wi-skeleton { animation: none; } .wi-card:hover { transform: none; } }
+
+  /* Summary: stays in view while the form scrolls */
+  .wi-summary { position: sticky; top: 1rem; background: var(--card); border: 1px solid var(--wi-line); border-radius: 14px; padding: 1.2rem 1.25rem 1.3rem; display: grid; gap: 1rem; }
+  .wi-summary h3 { margin: 0; font-size: 1rem; font-weight: 700; color: var(--fg); }
+  .wi-sum-rows { display: grid; gap: 0.55rem; margin: 0; }
+  .wi-sum-rows div { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.86rem; }
+  .wi-sum-rows dt { color: var(--fg-muted); }
+  .wi-sum-rows dd { margin: 0; text-align: right; color: var(--fg); font-weight: 500; }
+  .wi-sum-total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 0.9rem; border-top: 1px solid var(--wi-line); }
+  .wi-sum-total span { color: var(--fg-muted); font-size: 0.86rem; }
+  .wi-sum-total b { font-size: 1.45rem; font-variant-numeric: tabular-nums; color: var(--fg); }
+  .wi-todo { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+  .wi-todo li { display: flex; align-items: center; gap: 0.55rem; font-size: 0.84rem; color: var(--fg-muted); }
+  .wi-todo li i { width: 1rem; text-align: center; }
+  .wi-todo li.is-ok { color: var(--fg); }
+  .wi-todo li.is-ok i { color: var(--wi-ok); }
+  .wi-alert {
+    display: flex; gap: 0.6rem; align-items: flex-start; margin: 0;
+    padding: 0.75rem 0.85rem; border-radius: 10px; font-size: 0.84rem; line-height: 1.45;
+    color: var(--wi-danger); background: color-mix(in srgb, var(--wi-danger) 10%, transparent);
+  }
+  .wi-note { margin: 0; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.5; }
+
+  /* Booked */
+  .wi-done { max-width: 560px; margin: 0 auto; background: var(--card); border: 1px solid var(--wi-line); border-radius: 14px; padding: 2rem 1.6rem 1.7rem; text-align: center; }
+  .wi-done-icon {
+    width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 1rem;
+    display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+    background: color-mix(in srgb, var(--wi-ok) 16%, transparent); color: var(--wi-ok);
+  }
+  .wi-done h2 { margin: 0; font-size: 1.55rem; color: var(--fg); }
+  .wi-done dl { margin: 1.3rem 0; text-align: left; background: var(--wi-soft); border-radius: 10px; padding: 0.9rem 1rem; }
+  .wi-done-actions { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }
+  .wi-done-actions .wi-btn-primary { width: auto; }
+
+  @media (max-width: 1000px) {
+    .wi-layout { grid-template-columns: minmax(0, 1fr); }
+    .wi-summary { position: static; min-width: 0; }
+  }
+  @media (max-width: 640px) {
+    .wi { padding: 1rem 1rem 2.5rem; }
+    .wi-modes, .wi-two { grid-template-columns: 1fr; }
+    .wi-head h1 { font-size: 1.5rem; }
+  }
+
+  /* Template 2 (cream / forest green / DM Sans + Cormorant Garamond) */
   :root[data-ops-theme="2"] {
-    --bg: #f7f4ef; --bg-warm: #efe9e0; --fg: #1a1a1a; --fg-muted: #7a7570;
+    --bg: #f7f4ef; --bg-warm: #efe9e0; --fg: #1a1a1a; --fg-muted: #6b6560;
     --accent: #1b4332; --accent-light: #2d6a4f; --card: #ffffff; --border: #e2ddd5;
     --font-body: 'DM Sans', sans-serif; --font-display: 'Cormorant Garamond', serif;
-    --danger: #e11d48; --success: #15803d;
+    --danger: #c81e3a; --success: #15803d;
   }
-  :root[data-ops-theme="2"] .booking-input,
-  :root[data-ops-theme="2"] .wi-step,
-  :root[data-ops-theme="2"] .wi-stepper,
-  :root[data-ops-theme="2"] .wi-pick,
-  :root[data-ops-theme="2"] .wi-total { background: rgba(27,67,50,0.03); }
-  :root[data-ops-theme="2"] .wi-pick.is-picked { background: rgba(27,67,50,0.08); }
-  :root[data-ops-theme="2"] .wi-pick:hover { border-color: rgba(27,67,50,0.35); }
-  :root[data-ops-theme="2"] .wi-done-icon { background: #dcfce7; color: #15803d; }
-  :root[data-ops-theme="2"] input[type="date"].booking-input,
-  :root[data-ops-theme="2"] input[type="time"].booking-input { color-scheme: light; }
+  :root[data-ops-theme="2"] input[type="date"].wi-input,
+  :root[data-ops-theme="2"] input[type="time"].wi-input { color-scheme: light; }
 </style>
 @endsection
 
@@ -172,7 +250,12 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 const CFG = window.HMS_WALK_IN;
 // Rooms are priced per 12-hour block (HotelBooking::BLOCK_HOURS), so a night is two.
 const BLOCKS_PER_NIGHT = 2;
-const PAYMENT_METHODS = ['Cash', 'Card', 'GCash', 'Bank Transfer'];
+const PAYMENT_METHODS = [
+  ['Cash', 'fa-money-bill-wave'],
+  ['Card', 'fa-credit-card'],
+  ['GCash', 'fa-mobile-screen'],
+  ['Bank Transfer', 'fa-building-columns'],
+];
 
 function csrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
@@ -192,6 +275,12 @@ function niceDate(iso) {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 }
+function niceTime(hhmm) {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
 
 /* Free for [from, to): no open booking on the room overlaps those dates. The
    server checks again under a lock; this only keeps taken rooms off the list. */
@@ -205,41 +294,116 @@ async function send(url, method, payload) {
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
     body: JSON.stringify(payload),
-  }).catch(() => { throw new Error('You seem to be offline. Nothing was booked — try again.'); });
+  }).catch(() => { throw new Error('You seem to be offline. Nothing was booked. Try again.'); });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const first = data.errors && Object.values(data.errors)[0];
-    throw new Error((Array.isArray(first) && first[0]) || data.message || 'That did not go through. Nothing was booked — try again.');
+    throw new Error((Array.isArray(first) && first[0]) || data.message || 'That did not go through. Nothing was booked. Try again.');
   }
   return data;
 }
 
-function Stepper({ value, min, max, onChange, label }) {
+/* ── Small building blocks ─────────────────────────────────────────────── */
+
+function Section({ n, title, hint, done, aside, children }) {
+  return (
+    <section className={'wi-section' + (done ? ' is-done' : '')}>
+      <div className="wi-section-head">
+        <span className="wi-num" aria-hidden="true">{done ? <i className="fa-solid fa-check"></i> : n}</span>
+        <div>
+          <h2>{title}</h2>
+          {hint && <p>{hint}</p>}
+        </div>
+        <span className="wi-spacer"></span>
+        {aside}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Field({ id, label, optional, help, bad, children }) {
+  return (
+    <div className="wi-field">
+      <label htmlFor={id}>{label}{optional && <small>(optional)</small>}</label>
+      {children}
+      {bad ? <p className="wi-bad" role="alert">{bad}</p> : help ? <p className="wi-help">{help}</p> : null}
+    </div>
+  );
+}
+
+function Stepper({ value, min, max, onChange, unit }) {
   return (
     <div className="wi-stepper">
-      <button type="button" className="wi-step" aria-label={'Fewer ' + label} disabled={value <= min}
-        onClick={() => onChange(Math.max(min, value - 1))}>−</button>
-      <output>{value}</output>
-      <button type="button" className="wi-step" aria-label={'More ' + label} disabled={value >= max}
-        onClick={() => onChange(Math.min(max, value + 1))}>+</button>
+      <button type="button" className="wi-step-btn" aria-label={'Fewer ' + unit + 's'} disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}><i className="fa-solid fa-minus"></i></button>
+      <output aria-live="polite">{value}<small>{value === 1 ? unit : unit + 's'}</small></output>
+      <button type="button" className="wi-step-btn" aria-label={'More ' + unit + 's'} disabled={value >= max}
+        onClick={() => onChange(Math.min(max, value + 1))}><i className="fa-solid fa-plus"></i></button>
     </div>
+  );
+}
+
+function Chips({ options, value, onChange, label }) {
+  return (
+    <div className="wi-chips" role="radiogroup" aria-label={label}>
+      {options.map(([key, text, icon]) => (
+        <button key={key} type="button" role="radio" aria-checked={value === key}
+          className={'wi-chip' + (value === key ? ' is-on' : '')} onClick={() => onChange(key)}>
+          {icon && <i className={'fa-solid ' + icon}></i>}{text}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CardSkeletons() {
+  return <div className="wi-cards">{[0, 1, 2].map(i => <div key={i} className="wi-skeleton"></div>)}</div>;
+}
+
+/* The right-hand panel: what is being booked, what is still missing, and the button. */
+function Summary({ title, rows, total, todo, error, busy, button, note }) {
+  return (
+    <aside className="wi-summary" aria-label="Summary">
+      <h3>{title}</h3>
+      <dl className="wi-sum-rows">
+        {rows.map(([k, v]) => (
+          <div key={k}><dt>{k}</dt><dd>{v || <span style={{ color: 'var(--fg-muted)' }}>Not set</span>}</dd></div>
+        ))}
+      </dl>
+      {total && (
+        <div className="wi-sum-total"><span>{total[0]}</span><b>{total[1]}</b></div>
+      )}
+      <ul className="wi-todo">
+        {todo.map(([text, ok]) => (
+          <li key={text} className={ok ? 'is-ok' : ''}>
+            <i className={ok ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'}></i>{text}
+          </li>
+        ))}
+      </ul>
+      {error && <p className="wi-alert" role="alert"><i className="fa-solid fa-circle-exclamation" style={{ marginTop: 2 }}></i>{error}</p>}
+      <button type="submit" className="wi-btn wi-btn-primary" disabled={busy}>
+        <i className={'fa-solid ' + (busy ? 'fa-spinner fa-spin' : button[1])}></i>{busy ? 'Saving…' : button[0]}
+      </button>
+      {note && <p className="wi-note">{note}</p>}
+    </aside>
   );
 }
 
 function Done({ title, rows, note, primary, onAgain }) {
   return (
-    <div className="wi-panel wi-done">
+    <div className="wi-done">
       <div className="wi-done-icon"><i className="fa-solid fa-check"></i></div>
-      <h2 className="font-display" style={{ margin: 0, fontSize: '1.5rem', color: 'var(--fg)' }}>{title}</h2>
-      <dl>
-        {rows.map(([k, v]) => (<React.Fragment key={k}><dt>{k}</dt><dd>{v}</dd></React.Fragment>))}
+      <h2 className="font-display">{title}</h2>
+      <dl className="wi-sum-rows">
+        {rows.map(([k, v]) => (<div key={k}><dt>{k}</dt><dd>{v}</dd></div>))}
       </dl>
-      {note && <p className="wi-hint" style={{ maxWidth: 420, margin: '0 auto 1.25rem' }}>{note}</p>}
-      <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button type="button" className="btn-solid" onClick={onAgain}>
-          <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem' }}></i> Next walk-in
+      {note && <p className="wi-note" style={{ marginBottom: '1.3rem' }}>{note}</p>}
+      <div className="wi-done-actions">
+        <button type="button" className="wi-btn wi-btn-primary" onClick={onAgain}>
+          <i className="fa-solid fa-user-plus"></i> Next walk-in guest
         </button>
-        <a className="btn-outline" href={primary.href}>{primary.label}</a>
+        <a className="wi-btn wi-btn-ghost" href={primary.href}>{primary.label}</a>
       </div>
     </div>
   );
@@ -263,6 +427,7 @@ function RoomWalkIn() {
   const [method, setMethod] = useState('Cash');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
+  const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
   const writing = useRef(false);
@@ -277,7 +442,7 @@ function RoomWalkIn() {
         setLoadError('');
         setLoaded(true);
       })
-      .catch(() => { setLoadError('Could not load the rooms. Retrying…'); setLoaded(true); });
+      .catch(() => { setLoadError('Could not load the rooms. Trying again…'); setLoaded(true); });
   }, []);
 
   useEffect(() => {
@@ -300,20 +465,27 @@ function RoomWalkIn() {
   const shown = category === 'All' ? free : free.filter(r => r.category === category);
   const room = free.find(r => r.dbId === roomId) || null;
   const total = room ? room.price * nights * BLOCKS_PER_NIGHT : 0;
+  const paidNow = payType === 'Full' ? total : payType === 'Partial' ? Number(amount) || 0 : 0;
 
   // A picked room that stopped being free (a teammate booked it) is dropped.
   useEffect(() => { if (roomId && !room) setRoomId(null); }, [roomId, room]);
   useEffect(() => { if (!categories.includes(category)) setCategory('All'); }, [categories, category]);
 
+  const nameOk = !!fullName.trim();
+  const contactOk = !!contactNo.trim();
+  const emailOk = !email.trim() || /^\S+@\S+\.\S+$/.test(email.trim());
+  const payOk = payType !== 'Partial' || (Number(amount) > 0 && Number(amount) <= total);
+
   const reset = () => {
     setFullName(''); setContactNo(''); setEmail(''); setIdNumber('');
     setNights(1); setCheckInTime(nowClock()); setRoomId(null);
     setPayType('Full'); setAmount(''); setMethod('Cash'); setNotes('');
-    setError(''); setDone(null); load();
+    setError(''); setTried(false); setDone(null); load();
   };
 
   const submit = async (e) => {
     e.preventDefault();
+    setTried(true);
     if (!fullName.trim()) return setError('Enter the guest’s full name.');
     if (!contactNo.trim()) return setError('Enter a contact number for the guest.');
     if (email.trim() && !/^\S+@\S+\.\S+$/.test(email.trim())) return setError('That email address does not look right.');
@@ -363,13 +535,15 @@ function RoomWalkIn() {
       <Done
         title={'Welcome, ' + fullName.trim()}
         rows={[
-          ['Room', done.room.name + (done.room.category ? ' · ' + done.room.category : '')],
-          ['Stay', niceDate(checkIn) + ' → ' + niceDate(checkOut) + ' (' + nights + ' night' + (nights === 1 ? '' : 's') + ')'],
+          ['Room', done.room.name + (done.room.category ? ', ' + done.room.category : '')],
+          ['Check-in', niceDate(checkIn) + ', ' + niceTime(checkInTime)],
+          ['Check-out', niceDate(checkOut)],
+          ['Length of stay', plural(nights, 'night')],
           ['Status', 'Arrived'],
-          ['Paid', peso(done.paid)],
-          ['Balance', peso(balance)],
+          ['Paid now', peso(done.paid)],
+          ['Still to pay', peso(balance)],
         ]}
-        note="Room Management hands over the room and checks the guest in. Any balance is settled at check-out from Guest Information."
+        note="Room Management hands over the room and checks the guest in. Anything still to pay is settled at check-out from Guest Information."
         primary={{ href: CFG.guestInfoUrl, label: 'Open Guest Information' }}
         onAgain={reset}
       />
@@ -378,122 +552,139 @@ function RoomWalkIn() {
 
   return (
     <form className="wi-layout" onSubmit={submit} noValidate>
-      <div className="wi-panel">
-        <h2 className="wi-panel-title">Guest</h2>
-        <div className="wi-form">
-          <div>
-            <label className="wi-label">Full name <em>*</em></label>
-            <input className="booking-input" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="As on their ID" autoFocus />
-          </div>
-          <div>
-            <label className="wi-label">Contact number <em>*</em></label>
-            <input type="tel" className="booking-input" value={contactNo} onChange={e => setContactNo(e.target.value)} placeholder="09XX XXX XXXX" />
-          </div>
-          <div className="wi-row">
-            <div>
-              <label className="wi-label">Email</label>
-              <input type="email" className="booking-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="Optional" />
+      <div className="wi-steps">
+        <Section n={1} title="Who is the guest?" hint="Copy the name exactly as it appears on their ID." done={nameOk && contactOk && emailOk}>
+          <div className="wi-fields">
+            <Field id="wi-name" label="Full name" bad={tried && !nameOk ? 'Enter the guest’s full name.' : ''}>
+              <input id="wi-name" className={'wi-input' + (tried && !nameOk ? ' is-bad' : '')} value={fullName}
+                onChange={e => setFullName(e.target.value)} placeholder="e.g. Maria Santos" autoComplete="off" autoFocus />
+            </Field>
+            <div className="wi-two">
+              <Field id="wi-contact" label="Contact number" bad={tried && !contactOk ? 'Enter a number we can reach them on.' : ''}>
+                <input id="wi-contact" type="tel" inputMode="tel" className={'wi-input' + (tried && !contactOk ? ' is-bad' : '')}
+                  value={contactNo} onChange={e => setContactNo(e.target.value)} placeholder="09XX XXX XXXX" autoComplete="off" />
+              </Field>
+              <Field id="wi-email" label="Email" optional bad={!emailOk ? 'That email address does not look right.' : ''}>
+                <input id="wi-email" type="email" className={'wi-input' + (!emailOk ? ' is-bad' : '')}
+                  value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" autoComplete="off" />
+              </Field>
             </div>
-            <div>
-              <label className="wi-label">ID number</label>
-              <input className="booking-input" value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Optional" />
-            </div>
+            <Field id="wi-id" label="ID number" optional help="Any valid ID the guest shows you, such as a driver’s license or passport.">
+              <input id="wi-id" className="wi-input" value={idNumber} onChange={e => setIdNumber(e.target.value)} autoComplete="off" />
+            </Field>
           </div>
+        </Section>
 
-          <hr className="wi-divider" />
-
-          <div className="wi-row">
-            <div>
-              <label className="wi-label">Nights</label>
-              <Stepper value={nights} min={1} max={30} onChange={setNights} label="nights" />
+        <Section n={2} title="How long are they staying?" hint="Walk-in guests always check in today." done>
+          <div className="wi-fields">
+            <div className="wi-two">
+              <Field id="wi-nights" label="Number of nights">
+                <Stepper value={nights} min={1} max={30} onChange={setNights} unit="night" />
+              </Field>
+              <Field id="wi-time" label="Check-in time" help="Set to the time right now. Change it if needed.">
+                <input id="wi-time" type="time" className="wi-input" value={checkInTime} onChange={e => setCheckInTime(e.target.value)} />
+              </Field>
             </div>
-            <div>
-              <label className="wi-label">Check-in time</label>
-              <input type="time" className="booking-input" value={checkInTime} onChange={e => setCheckInTime(e.target.value)} />
-            </div>
-          </div>
-          <p className="wi-hint" style={{ marginTop: '-0.4rem' }}>
-            Today, {niceDate(checkIn)} → {niceDate(checkOut)}
-          </p>
-
-          <hr className="wi-divider" />
-
-          <div>
-            <label className="wi-label">Payment now</label>
-            <div className="wi-seg">
-              {[['Full', 'Pay in full'], ['Partial', 'Deposit'], ['None', 'Pay at check-out']].map(([key, text]) => (
-                <button key={key} type="button" className={payType === key ? 'is-active' : ''} onClick={() => setPayType(key)}>{text}</button>
-              ))}
+            <div className="wi-dates">
+              <i className="fa-regular fa-calendar"></i>
+              <span>Check-in</span><b>{niceDate(checkIn)}</b>
+              <i className="fa-solid fa-arrow-right" style={{ color: 'var(--fg-muted)', fontSize: '0.75rem' }}></i>
+              <span>Check-out</span><b>{niceDate(checkOut)}</b>
             </div>
           </div>
-          {payType !== 'None' && (
-            <div className="wi-row">
-              <div>
-                <label className="wi-label">Amount</label>
-                {payType === 'Full'
-                  ? <input className="booking-input" value={room ? peso(total) : 'Pick a room'} readOnly />
-                  : <input type="number" min="1" step="0.01" className="booking-input" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />}
-              </div>
-              <div>
-                <label className="wi-label">Method</label>
-                <select className="booking-input" value={method} onChange={e => setMethod(e.target.value)}>
-                  {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
+        </Section>
 
-          <div>
-            <label className="wi-label">Notes</label>
-            <input className="booking-input" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional — e.g. late check-out asked" />
-          </div>
-
-          <div className="wi-total">
-            <span>{room ? nights + ' night' + (nights === 1 ? '' : 's') + ' · ' + room.name : 'Total'}</span>
-            <b>{room ? peso(total) : '—'}</b>
-          </div>
-
-          {error && <p className="wi-error" role="alert">{error}</p>}
-
-          <button type="submit" className="btn-solid" disabled={busy}>
-            <i className="fa-solid fa-key" style={{ fontSize: '0.7rem' }}></i>
-            {busy ? 'Booking…' : 'Book room & mark arrived'}
-          </button>
-        </div>
-      </div>
-
-      <div className="wi-panel">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
-          <h2 className="wi-panel-title" style={{ margin: 0 }}>Rooms ready now · {free.length}</h2>
+        <Section n={3} title="Choose a room"
+          hint={loaded ? (free.length === 1 ? '1 room is clean and free for this stay.' : free.length + ' rooms are clean and free for this stay.') : 'Finding rooms that are ready…'}
+          done={!!room}>
           {categories.length > 2 && (
-            <div className="wi-seg">
-              {categories.map(c => (
-                <button key={c} type="button" className={category === c ? 'is-active' : ''} onClick={() => setCategory(c)}>{c}</button>
-              ))}
+            <div style={{ marginBottom: '0.9rem' }}>
+              <Chips label="Room type" value={category} onChange={setCategory}
+                options={categories.map(c => [c, c === 'All' ? 'All types' : c])} />
             </div>
           )}
-        </div>
-        {loadError && <p className="wi-error" style={{ marginBottom: '0.7rem' }}>{loadError}</p>}
-        {!loaded ? (
-          <div className="wi-empty">Loading rooms…</div>
-        ) : shown.length === 0 ? (
-          <div className="wi-empty">
-            No room is clean and free for {nights === 1 ? 'tonight' : 'those ' + nights + ' nights'}.
-            {nights > 1 ? ' Try a shorter stay.' : ' Rooms appear here once Housekeeping clears them.'}
+          {loadError && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>{loadError}</p>}
+          {tried && !room && loaded && shown.length > 0 && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>Pick a room for the guest.</p>}
+          {!loaded ? <CardSkeletons /> : shown.length === 0 ? (
+            <div className="wi-empty">
+              <i className="fa-solid fa-bed"></i>
+              No room is clean and free for {nights === 1 ? 'tonight' : 'those ' + nights + ' nights'}.<br />
+              {nights > 1 ? 'Try a shorter stay.' : 'Rooms appear here as soon as Housekeeping clears them.'}
+            </div>
+          ) : (
+            <div className="wi-cards">
+              {shown.map(r => {
+                const on = r.dbId === roomId;
+                return (
+                  <button key={r.dbId} type="button" className={'wi-card' + (on ? ' is-on' : '')}
+                    onClick={() => setRoomId(r.dbId)} aria-pressed={on}>
+                    <div className="wi-card-photo">
+                      {r.img ? <img src={r.img} alt="" loading="lazy" /> : <i className="fa-solid fa-bed"></i>}
+                    </div>
+                    <div className="wi-card-body">
+                      <span className="wi-card-name">{r.name}</span>
+                      <span className="wi-card-sub">{r.category || 'Room'}</span>
+                      <span className="wi-card-price">{peso(r.price * BLOCKS_PER_NIGHT)} <small>per night</small></span>
+                    </div>
+                    {on && <span className="wi-card-tick"><i className="fa-solid fa-check"></i></span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </Section>
+
+        <Section n={4} title="Payment" hint="How much is the guest paying right now?" done={!!room && payOk}>
+          <div className="wi-fields">
+            <Chips label="Payment now" value={payType} onChange={setPayType} options={[
+              ['Full', 'Pay in full', 'fa-check-double'],
+              ['Partial', 'Pay a deposit', 'fa-coins'],
+              ['None', 'Pay at check-out', 'fa-clock'],
+            ]} />
+            {payType !== 'None' && (
+              <>
+                <Field id="wi-amount" label={payType === 'Full' ? 'Amount to collect' : 'Deposit amount'}
+                  bad={tried && payType === 'Partial' && !payOk ? (Number(amount) > total && room ? 'A deposit cannot be more than ' + peso(total) + '.' : 'Enter how much they are paying now.') : ''}
+                  help={payType === 'Partial' && room ? 'The rest (' + peso(Math.max(0, total - (Number(amount) || 0))) + ') is paid at check-out.' : ''}>
+                  {payType === 'Full'
+                    ? <input id="wi-amount" className="wi-input" value={room ? peso(total) : 'Choose a room first'} readOnly />
+                    : <input id="wi-amount" type="number" min="1" step="0.01" inputMode="decimal"
+                        className={'wi-input' + (tried && !payOk ? ' is-bad' : '')}
+                        value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />}
+                </Field>
+                <Field id="wi-method" label="Paid by">
+                  <Chips label="Payment method" value={method} onChange={setMethod}
+                    options={PAYMENT_METHODS.map(([m, icon]) => [m, m, icon])} />
+                </Field>
+              </>
+            )}
+            <Field id="wi-notes" label="Notes for the team" optional help="For example: asked for a late check-out, needs an extra pillow.">
+              <input id="wi-notes" className="wi-input" value={notes} onChange={e => setNotes(e.target.value)} autoComplete="off" />
+            </Field>
           </div>
-        ) : (
-          <div className="wi-grid">
-            {shown.map(r => (
-              <button key={r.dbId} type="button" className={'wi-pick' + (r.dbId === roomId ? ' is-picked' : '')}
-                onClick={() => setRoomId(r.dbId)} aria-pressed={r.dbId === roomId}>
-                <span className="wi-pick-name">{r.name}{r.dbId === roomId && <i className="fa-solid fa-circle-check"></i>}</span>
-                <span className="wi-pick-sub">{r.category || 'Room'}</span>
-                <span className="wi-pick-price">{peso(r.price * BLOCKS_PER_NIGHT)} / night</span>
-              </button>
-            ))}
-          </div>
-        )}
+        </Section>
       </div>
+
+      <Summary
+        title="Booking summary"
+        rows={[
+          ['Guest', fullName.trim()],
+          ['Room', room ? room.name : ''],
+          ['Stay', plural(nights, 'night') + ', until ' + niceDate(checkOut)],
+          ['Paying now', room ? (payType === 'None' ? 'Nothing yet' : peso(paidNow) + ' by ' + method) : ''],
+        ]}
+        total={['Total for the stay', room ? peso(total) : peso(0)]}
+        todo={[
+          ['Guest name', nameOk],
+          ['Contact number', contactOk],
+          ['Room chosen', !!room],
+          ['Payment set', !!room && payOk],
+        ]}
+        error={error}
+        busy={busy}
+        button={['Book room and mark arrived', 'fa-key']}
+        note="The guest is marked as arrived straight away. Room Management then hands over the key."
+      />
     </form>
   );
 }
@@ -512,6 +703,7 @@ function TableWalkIn() {
   const [atTime, setAtTime] = useState(nowClock);
   const [tableId, setTableId] = useState(null);
   const [error, setError] = useState('');
+  const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
   const writing = useRef(false);
@@ -527,7 +719,7 @@ function TableWalkIn() {
         setLoadError('');
         setLoaded(true);
       })
-      .catch(() => { setLoadError('Could not load the tables. Retrying…'); setLoaded(true); });
+      .catch(() => { setLoadError('Could not load the tables. Trying again…'); setLoaded(true); });
   }, []);
 
   useEffect(() => {
@@ -547,17 +739,22 @@ function TableWalkIn() {
 
   useEffect(() => { if (tableId && !table) setTableId(null); }, [tableId, table]);
 
+  const nameOk = !!guestName.trim();
+  const contactOk = !!contactNo.trim();
+  const whenOk = when === 'now' || (!!onDate && !!atTime && new Date(onDate + 'T' + atTime) >= new Date(Date.now() - 60000));
+
   const reset = () => {
     setGuestName(''); setContactNo(''); setParty(2); setWhen('now');
     setOnDate(today()); setAtTime(nowClock()); setTableId(null);
-    setError(''); setDone(null); load();
+    setError(''); setTried(false); setDone(null); load();
   };
 
   const submit = async (e) => {
     e.preventDefault();
+    setTried(true);
     if (!guestName.trim()) return setError('Enter the guest’s name.');
     if (!contactNo.trim()) return setError('Enter a contact number for the guest.');
-    if (!table) return setError('Pick a table that fits the pax.');
+    if (!table) return setError('Pick a table that fits the group.');
     if (when === 'later') {
       if (!onDate || !atTime) return setError('Pick the date and time they are coming back.');
       if (new Date(onDate + 'T' + atTime) < new Date(Date.now() - 60000)) return setError('That time has already passed.');
@@ -587,14 +784,15 @@ function TableWalkIn() {
       <Done
         title={when === 'now' ? guestName.trim() + ' is dining in' : 'Table held for ' + guestName.trim()}
         rows={[
-          ['Table', done.table.name + ' · good for ' + done.table.capacity + ' pax'],
-          ['Pax', String(party)],
-          ['When', when === 'now' ? 'Now' : niceDate(onDate) + ', ' + atTime],
+          ['Table', done.table.name],
+          ['Seats', String(done.table.capacity)],
+          ['Guests', String(party)],
+          ['When', when === 'now' ? 'Now' : niceDate(onDate) + ', ' + niceTime(atTime)],
           ['Status', when === 'now' ? 'Occupied' : 'Reserved'],
         ]}
         note={when === 'now'
           ? 'The restaurant takes their order from here and settles the bill.'
-          : 'When they come back, press Customer Arrived on Dine-in Tables to start their dine-in.'}
+          : 'When they come back, press Customer Arrived on Dine-in Tables to start their meal.'}
         primary={{ href: CFG.dineInUrl, label: 'Open Dine-in Tables' }}
         onAgain={reset}
       />
@@ -602,79 +800,106 @@ function TableWalkIn() {
   }
 
   if (loaded && !canAssign) {
-    return <div className="wi-empty">Only Front Desk staff can assign or reserve a table for a guest.</div>;
+    return (
+      <div className="wi-empty">
+        <i className="fa-solid fa-lock"></i>
+        Only Front Desk staff can seat or reserve a table for a guest.
+      </div>
+    );
   }
 
   return (
     <form className="wi-layout" onSubmit={submit} noValidate>
-      <div className="wi-panel">
-        <h2 className="wi-panel-title">Pax</h2>
-        <div className="wi-form">
-          <div>
-            <label className="wi-label">Guest name <em>*</em></label>
-            <input className="booking-input" value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Who's dining?" autoFocus />
+      <div className="wi-steps">
+        <Section n={1} title="Who is dining?" hint="The name the table is held under." done={nameOk && contactOk}>
+          <div className="wi-two">
+            <Field id="wt-name" label="Guest name" bad={tried && !nameOk ? 'Enter the guest’s name.' : ''}>
+              <input id="wt-name" className={'wi-input' + (tried && !nameOk ? ' is-bad' : '')} value={guestName}
+                onChange={e => setGuestName(e.target.value)} placeholder="e.g. Juan Dela Cruz" autoComplete="off" autoFocus />
+            </Field>
+            <Field id="wt-contact" label="Contact number" bad={tried && !contactOk ? 'Enter a number we can reach them on.' : ''}>
+              <input id="wt-contact" type="tel" inputMode="tel" className={'wi-input' + (tried && !contactOk ? ' is-bad' : '')}
+                value={contactNo} onChange={e => setContactNo(e.target.value)} placeholder="09XX XXX XXXX" autoComplete="off" />
+            </Field>
           </div>
-          <div>
-            <label className="wi-label">Contact number <em>*</em></label>
-            <input type="tel" className="booking-input" value={contactNo} onChange={e => setContactNo(e.target.value)} placeholder="09XX XXX XXXX" />
-          </div>
-          <div>
-            <label className="wi-label">Pax</label>
-            <Stepper value={party} min={1} max={Math.max(1, biggest)} onChange={setParty} label="guests" />
-          </div>
+        </Section>
 
-          <hr className="wi-divider" />
+        <Section n={2} title="How many people, and when?" done={whenOk}>
+          <div className="wi-fields">
+            <Field id="wt-party" label="Number of guests">
+              <Stepper value={party} min={1} max={Math.max(1, biggest)} onChange={setParty} unit="guest" />
+            </Field>
+            <Chips label="When" value={when} onChange={setWhen} options={[
+              ['now', 'Seat them now', 'fa-utensils'],
+              ['later', 'Reserve for later', 'fa-calendar-day'],
+            ]} />
+            {when === 'later' && (
+              <div className="wi-two">
+                <Field id="wt-date" label="Date">
+                  <input id="wt-date" type="date" className="wi-input" value={onDate} min={today()} onChange={e => setOnDate(e.target.value)} />
+                </Field>
+                <Field id="wt-time" label="Time" bad={tried && !whenOk ? 'That time has already passed.' : ''}>
+                  <input id="wt-time" type="time" className={'wi-input' + (tried && !whenOk ? ' is-bad' : '')} value={atTime} onChange={e => setAtTime(e.target.value)} />
+                </Field>
+              </div>
+            )}
+          </div>
+        </Section>
 
-          <div>
-            <label className="wi-label">When</label>
-            <div className="wi-seg">
-              <button type="button" className={when === 'now' ? 'is-active' : ''} onClick={() => setWhen('now')}>Dine in now</button>
-              <button type="button" className={when === 'later' ? 'is-active' : ''} onClick={() => setWhen('later')}>Reserve for later</button>
+        <Section n={3} title="Choose a table"
+          hint={loaded ? (fits.length === 1 ? '1 free table fits ' + plural(party, 'guest') + '. Smallest first.' : fits.length + ' free tables fit ' + plural(party, 'guest') + '. Smallest first.') : 'Finding free tables…'}
+          done={!!table}>
+          {loadError && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>{loadError}</p>}
+          {tried && !table && loaded && fits.length > 0 && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>Pick a table that fits the group.</p>}
+          {!loaded ? <CardSkeletons /> : tables.length === 0 ? (
+            <div className="wi-empty">
+              <i className="fa-solid fa-chair"></i>
+              Restaurant Management has not added any tables yet.
             </div>
-          </div>
-          {when === 'later' && (
-            <div className="wi-row">
-              <div>
-                <label className="wi-label">Date</label>
-                <input type="date" className="booking-input" value={onDate} min={today()} onChange={e => setOnDate(e.target.value)} />
-              </div>
-              <div>
-                <label className="wi-label">Time</label>
-                <input type="time" className="booking-input" value={atTime} onChange={e => setAtTime(e.target.value)} />
-              </div>
+          ) : fits.length === 0 ? (
+            <div className="wi-empty">
+              <i className="fa-solid fa-chair"></i>
+              No free table seats {plural(party, 'guest')} right now.<br />Try a smaller group, or reserve for later.
+            </div>
+          ) : (
+            <div className="wi-cards">
+              {fits.map(t => {
+                const on = t.id === tableId;
+                return (
+                  <button key={t.id} type="button" className={'wi-card' + (on ? ' is-on' : '')}
+                    onClick={() => setTableId(t.id)} aria-pressed={on}>
+                    <div className="wi-card-photo wi-table-icon"><i className="fa-solid fa-chair"></i></div>
+                    <div className="wi-card-body" style={{ textAlign: 'center' }}>
+                      <span className="wi-card-name">{t.name}</span>
+                      <span className="wi-card-sub">Seats {t.capacity}</span>
+                    </div>
+                    {on && <span className="wi-card-tick"><i className="fa-solid fa-check"></i></span>}
+                  </button>
+                );
+              })}
             </div>
           )}
-
-          {error && <p className="wi-error" role="alert">{error}</p>}
-
-          <button type="submit" className="btn-solid" disabled={busy}>
-            <i className="fa-solid fa-chair" style={{ fontSize: '0.7rem' }}></i>
-            {busy ? 'Saving…' : (when === 'now' ? 'Dine in now' : 'Reserve table')}
-          </button>
-        </div>
+        </Section>
       </div>
 
-      <div className="wi-panel">
-        <h2 className="wi-panel-title">Free tables for {party} pax · {fits.length}</h2>
-        {loadError && <p className="wi-error" style={{ marginBottom: '0.7rem' }}>{loadError}</p>}
-        {!loaded ? (
-          <div className="wi-empty">Loading tables…</div>
-        ) : tables.length === 0 ? (
-          <div className="wi-empty">Restaurant Management hasn't added any tables yet.</div>
-        ) : fits.length === 0 ? (
-          <div className="wi-empty">No free table fits {party} pax right now.</div>
-        ) : (
-          <div className="wi-grid">
-            {fits.map(t => (
-              <button key={t.id} type="button" className={'wi-pick' + (t.id === tableId ? ' is-picked' : '')}
-                onClick={() => setTableId(t.id)} aria-pressed={t.id === tableId}>
-                <span className="wi-pick-name">{t.name}{t.id === tableId && <i className="fa-solid fa-circle-check"></i>}</span>
-                <span className="wi-pick-sub">Good for {t.capacity} pax</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <Summary
+        title={when === 'now' ? 'Seating summary' : 'Reservation summary'}
+        rows={[
+          ['Name', guestName.trim()],
+          ['Party size', plural(party, 'guest')],
+          ['When', when === 'now' ? 'Now' : (onDate && atTime ? niceDate(onDate) + ', ' + niceTime(atTime) : '')],
+          ['Table', table ? table.name + ' (seats ' + table.capacity + ')' : ''],
+        ]}
+        todo={[
+          ['Guest name', nameOk],
+          ['Contact number', contactOk],
+          ['Table chosen', !!table],
+        ]}
+        error={error}
+        busy={busy}
+        button={when === 'now' ? ['Seat guests now', 'fa-utensils'] : ['Reserve this table', 'fa-calendar-check']}
+        note={when === 'now' ? 'The table shows as Occupied and the restaurant takes it from there.' : 'The table is held for them until they arrive.'}
+      />
     </form>
   );
 }
@@ -682,30 +907,29 @@ function TableWalkIn() {
 function App() {
   const [tab, setTab] = useState(CFG.startTab);
   return (
-    <div data-hms-no-edit="1" style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+    <div className="wi" data-hms-no-edit="1">
+      <header className="wi-head">
         <div>
-          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Front Desk</p>
-          <h1 className="font-display" style={{ fontSize: '1.9rem', margin: 0, color: 'var(--fg)' }}>Walk-in Guests</h1>
-          <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.82rem', maxWidth: 520 }}>
-            For a guest who arrives without a booking: give them a room for tonight, or a table in the restaurant.
-          </p>
+          <h1 className="font-display">Walk-in Guests</h1>
+          <p>A guest has arrived without a booking. Choose what they need, then follow the steps.</p>
         </div>
-        <a href={CFG.backUrl} className="btn-outline" style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
-          <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.75rem' }}></i> Back
+        <a href={CFG.backUrl} className="wi-btn wi-btn-ghost">
+          <i className="fa-solid fa-arrow-left"></i> Back to tasks
         </a>
+      </header>
+
+      <div className="wi-modes" role="tablist" aria-label="What does the guest need?">
+        <button type="button" role="tab" aria-selected={tab === 'room'} className={'wi-mode' + (tab === 'room' ? ' is-on' : '')} onClick={() => setTab('room')}>
+          <span className="wi-mode-icon"><i className="fa-solid fa-bed"></i></span>
+          <span className="wi-mode-text"><b>A room to stay in</b><small>Book a room from today and mark them arrived.</small></span>
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'table'} className={'wi-mode' + (tab === 'table' ? ' is-on' : '')} onClick={() => setTab('table')}>
+          <span className="wi-mode-icon"><i className="fa-solid fa-utensils"></i></span>
+          <span className="wi-mode-text"><b>A table to eat at</b><small>Seat them in the restaurant now, or hold a table.</small></span>
+        </button>
       </div>
 
-      <div className="wi-tabs" role="tablist" style={{ marginBottom: '1.25rem' }}>
-        <button type="button" role="tab" aria-selected={tab === 'room'} className={'wi-tab' + (tab === 'room' ? ' is-active' : '')} onClick={() => setTab('room')}>
-          <i className="fa-solid fa-bed"></i> Book a Room
-        </button>
-        <button type="button" role="tab" aria-selected={tab === 'table'} className={'wi-tab' + (tab === 'table' ? ' is-active' : '')} onClick={() => setTab('table')}>
-          <i className="fa-solid fa-utensils"></i> Reserve a Table
-        </button>
-      </div>
-
-      {tab === 'room' ? <RoomWalkIn /> : <TableWalkIn />}
+      {tab === 'room' ? <RoomWalkIn key="room" /> : <TableWalkIn key="table" />}
     </div>
   );
 }
