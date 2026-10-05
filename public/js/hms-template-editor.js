@@ -2812,7 +2812,7 @@
     '.nav-bar [data-hms-brand-name]',
     '.nav-bar [data-hms-nav-link]',
   ];
-  const TASK_OUTLINE_COLOR = '#84cc16';
+  const TASK_OUTLINE_COLOR = '#22c55e';
 
   /** The elements to outline for a task area. */
   function resolveTaskFocusTargets(page, section) {

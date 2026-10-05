@@ -21,7 +21,9 @@
 
   const LAYER_ID = 'hms-review-highlight-layer';
   const LEGEND_ID = 'hms-review-highlight-legend';
-  const COLORS = { added: '#22c55e', modified: '#f59e0b' };
+  /* One green for everything the student did, added or changed: the faculty
+     question is "what did they touch", and the badge still says which. */
+  const COLORS = { added: '#22c55e', modified: '#22c55e' };
   const BADGES = { added: 'added', modified: 'changed' };
 
   let layer = null;
@@ -137,8 +139,8 @@
     const color = COLORS[type];
 
     const box = document.createElement('div');
-    box.style.cssText = 'position:fixed;box-sizing:border-box;pointer-events:none;border-radius:3px;'
-      + 'outline:2px solid ' + color + ';outline-offset:2px;'
+    box.style.cssText = 'position:fixed;box-sizing:border-box;pointer-events:none;border-radius:10px;'
+      + 'outline:2px solid ' + color + ';outline-offset:4px;'
       + 'top:' + rect.top + 'px;left:' + rect.left + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;';
     if (key && key === focusKey) {
       box.style.boxShadow = '0 0 0 4px rgba(99,102,241,.55)';
@@ -147,7 +149,7 @@
 
     const badge = document.createElement('span');
     badge.textContent = BADGES[type];
-    badge.style.cssText = 'position:absolute;top:-9px;left:-4px;white-space:nowrap;'
+    badge.style.cssText = 'position:absolute;top:-15px;left:-6px;white-space:nowrap;'
       + 'font:700 9px/1.6 system-ui,sans-serif;letter-spacing:.02em;text-transform:uppercase;'
       + 'padding:0 5px;border-radius:999px;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);'
       + 'background:' + color + ';';
@@ -180,8 +182,9 @@
     modified.forEach(function (entry) { if (paint(entry, 'modified')) modifiedCount++; });
 
     const parts = [];
-    if (addedCount) parts.push('<span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COLORS.added + '"></i> ' + addedCount + ' added</span>');
-    if (modifiedCount) parts.push('<span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COLORS.modified + '"></i> ' + modifiedCount + ' changed</span>');
+    const swatch = '<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COLORS.added + '"></i> ';
+    if (addedCount) parts.push('<span>' + swatch + addedCount + ' added</span>');
+    if (modifiedCount) parts.push('<span>' + swatch + modifiedCount + ' changed</span>');
     const bar = ensureLegend();
     bar.innerHTML = parts.join('');
     bar.style.display = parts.length ? 'flex' : 'none';
