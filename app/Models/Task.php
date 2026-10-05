@@ -155,6 +155,23 @@ class Task extends Model
         return $this->belongsTo(User::class, 'assigned_to', 'user_id');
     }
 
+    /**
+     * The snapshot a review's "Before" shows, or null for the stock template.
+     *
+     * One place for it, because the review panel and the After preview's
+     * outlines both compare against it and must agree.
+     */
+    public function reviewBeforeVersionId(): ?int
+    {
+        if (\App\Support\TaskChecklist::reviewsAgainstStock((string) $this->title)) {
+            return null;
+        }
+
+        $id = $this->previous_version_id;
+
+        return $id && TeamRoleTemplateVersion::whereKey($id)->exists() ? (int) $id : null;
+    }
+
     protected static function booted(): void
     {
         static::saving(function (Task $task) {

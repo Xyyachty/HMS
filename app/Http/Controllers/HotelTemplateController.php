@@ -255,10 +255,15 @@ class HotelTemplateController extends Controller
         try {
             DB::transaction(function () use ($tasks, $saved, $snapshotId, $membership, $user, $role) {
                 foreach ($tasks as $task) {
+                    // A row with no snapshot of its own falls back to the last version
+                    // saved before it was assigned. The newest version is the
+                    // student's own save, which already holds the work being handed
+                    // in, so "Before" matched "After" and the review outlined nothing.
                     $previousVersionId = $task->previous_version_id
                         ?: $task->submitted_version_id
                         ?: TeamRoleTemplateVersion::where('team_role_template_id', $saved->team_role_template_id)
                             ->when($snapshotId, fn ($q) => $q->where('team_role_template_version_id', '!=', $snapshotId))
+                            ->when($task->created_at, fn ($q) => $q->where('created_at', '<=', $task->created_at))
                             ->orderByDesc('team_role_template_version_id')
                             ->value('team_role_template_version_id');
 

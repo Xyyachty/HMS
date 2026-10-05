@@ -2150,9 +2150,7 @@ class FacultyController extends Controller
                     'highlight_task' => $task->task_id,
                 ]);
 
-                $beforeVersionId = ($task->previous_version_id && TeamRoleTemplateVersion::whereKey($task->previous_version_id)->exists())
-                    ? (int) $task->previous_version_id
-                    : null;
+                $beforeVersionId = $task->reviewBeforeVersionId();
 
                 // No earlier snapshot (e.g. a task predating this feature) renders
                 // Before as the pristine template rather than hiding the toggle —
@@ -2496,9 +2494,7 @@ class FacultyController extends Controller
                 && (int) $data['before_version'] === (int) $task->submitted_version_id
             ) {
                 $roleTemplate = \App\Support\HotelTemplateBuilder::ensureTemplate($membership, $task->role);
-                $beforeVersionId = ($task->previous_version_id && TeamRoleTemplateVersion::whereKey($task->previous_version_id)->exists())
-                    ? (int) $task->previous_version_id
-                    : null;
+                $beforeVersionId = $task->reviewBeforeVersionId();
                 $reviewHighlight = \App\Support\TemplateDiff::between(
                     $roleTemplate,
                     $beforeVersionId,

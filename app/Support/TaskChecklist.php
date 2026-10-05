@@ -773,6 +773,26 @@ class TaskChecklist
         return $role === null ? null : self::STEP_LABELS[$role];
     }
 
+    /**
+     * Titles (lowercased) whose review compares against the stock template
+     * rather than a snapshot. Branding is the team's first change to the site,
+     * so "what did the student change" means "what differs from the template
+     * they were given": the logo, the hotel name, the link labels. A snapshot
+     * taken later — the student's own save, which is what a row with no
+     * assignment snapshot fell back to — already holds that work, and the
+     * review then outlined nothing.
+     */
+    private const REVIEW_AGAINST_STOCK = [
+        'customize your hotel branding',
+        // Rows assigned before the rename still carry the old title.
+        'brand your hotel',
+    ];
+
+    public static function reviewsAgainstStock(string $title): bool
+    {
+        return in_array(mb_strtolower(trim($title)), self::REVIEW_AGAINST_STOCK, true);
+    }
+
     /** Whether a title is the hotel concept, TASK 01's first activity. */
     public static function isConceptTitle(string $title): bool
     {
