@@ -212,6 +212,8 @@
     const swatch = '<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COLORS.added + '"></i> ';
     if (addedCount) parts.push('<span>' + swatch + addedCount + ' added</span>');
     if (modifiedCount) parts.push('<span>' + swatch + modifiedCount + ' changed</span>');
+    reportStatus(addedCount + modifiedCount, added.length + modified.length);
+
     // Changes exist but none of them is on this page: say so, rather than
     // leaving faculty to wonder whether the outlines failed.
     if (!parts.length) parts.push('<span>No changes on this page</span>');
@@ -281,5 +283,18 @@
     window.addEventListener('load', scheduleRun);
   }
 
+  /* Tell the review panel what was outlined, so it can say so beside the After
+     label — an outline that silently fails to appear looks exactly like a
+     student who changed nothing. */
+  let lastStatus = '';
+  function reportStatus(outlined, total) {
+    const key = outlined + '/' + total;
+    if (key === lastStatus || window.parent === window) return;
+    lastStatus = key;
+    window.parent.postMessage({ type: 'hms-review-highlight-status', outlined: outlined, total: total }, '*');
+  }
+
   setData(window.__HMS_REVIEW_HIGHLIGHT__);
+  // Ask the panel for its Changes list: it may have missed this page's load.
+  if (window.parent !== window) window.parent.postMessage({ type: 'hms-review-highlight-ready' }, '*');
 })();

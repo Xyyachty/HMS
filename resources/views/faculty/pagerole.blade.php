@@ -882,7 +882,11 @@
                  itself for the hotel concept — that submission has no page to render. -->
             <div class="review-modal-work flex-1 min-h-0 bg-slate-100 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200">
                 <div class="px-3 py-2 flex items-center justify-between gap-2 bg-white border-b border-slate-100 flex-shrink-0">
-                    <span id="reviewWorkLabel" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">The team's live site</span>
+                    <span class="flex items-center gap-2 min-w-0">
+                        <span id="reviewWorkLabel" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">The team's live site</span>
+                        {{-- What the After preview managed to outline, reported back by hms-review-highlight.js. --}}
+                        <span id="reviewHighlightStatus" class="hidden text-[10px] font-semibold truncate"></span>
+                    </span>
                     <div class="flex items-center gap-3">
                         {{-- Only rendered once this task has a submission to anchor "After" to. --}}
                         <div id="reviewCompareToggle" class="hidden inline-flex rounded-lg bg-slate-100 p-0.5">
@@ -2664,6 +2668,34 @@ let reviewFrameSide = 'after';
 /* Hand the After preview the Changes list this panel is showing, so it can
    outline each one. The preview used to work the list out again on its own and
    came up with nothing for some submissions; this copy is the one faculty see. */
+let reviewHighlightTimer = null;
+
+function setReviewHighlightStatus(text, tone) {
+    const el = document.getElementById('reviewHighlightStatus');
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('hidden', !text);
+    el.style.color = tone === 'ok' ? '#16a34a' : (tone === 'warn' ? '#b45309' : '#64748b');
+}
+
+/* The preview answers with how many of the changes it outlined. */
+window.addEventListener('message', function (e) {
+    const frame = document.getElementById('reviewPreviewFrame');
+    if (!frame || e.source !== frame.contentWindow || !e.data) return;
+    if (e.data.type === 'hms-review-highlight-ready') {
+        postReviewHighlight();
+    } else if (e.data.type === 'hms-review-highlight-status' && reviewFrameSide === 'after') {
+        clearTimeout(reviewHighlightTimer);
+        const n = Number(e.data.outlined) || 0;
+        const total = Number(e.data.total) || 0;
+        if (n > 0) {
+            setReviewHighlightStatus('● ' + n + (n === 1 ? ' change' : ' changes') + ' outlined in green', 'ok');
+        } else if (total > 0) {
+            setReviewHighlightStatus('None of the changes are on this page', 'muted');
+        }
+    }
+});
+
 function postReviewHighlight() {
     if (reviewFrameSide !== 'after') return;
     const frame = document.getElementById('reviewPreviewFrame');
@@ -2678,9 +2710,29 @@ function postReviewHighlight() {
     } catch (err) { /* ignore */ }
 }
 
+function onReviewFrameLoad() {
+    clearTimeout(reviewHighlightTimer);
+    if (reviewFrameSide !== 'after') {
+        setReviewHighlightStatus('', null);
+        return;
+    }
+    const hasOutlinable = reviewChanges.some(function (c) {
+        return c && c.key && (c.type === 'added' || c.type === 'modified');
+    });
+    if (!hasOutlinable) {
+        setReviewHighlightStatus(reviewChanges.length ? 'These changes have no single spot to outline' : '', 'muted');
+        return;
+    }
+    setReviewHighlightStatus('Outlining changes…', 'muted');
+    postReviewHighlight();
+    reviewHighlightTimer = setTimeout(function () {
+        setReviewHighlightStatus('Outlines did not load — refresh the page', 'warn');
+    }, 15000);
+}
+
 (function bindReviewFrameLoad() {
     const frame = document.getElementById('reviewPreviewFrame');
-    if (frame) frame.addEventListener('load', postReviewHighlight);
+    if (frame) frame.addEventListener('load', onReviewFrameLoad);
     else document.addEventListener('DOMContentLoaded', bindReviewFrameLoad);
 })();
 
@@ -2699,6 +2751,7 @@ function setReviewCompareSide(side) {
     const changesPane = document.getElementById('reviewChangesPane');
 
     if (side === 'changes') {
+        setReviewHighlightStatus('', null);
         frame.classList.add('hidden');
         changesPane.classList.remove('hidden');
         document.getElementById('reviewWorkLabel').textContent = 'Highlighted changes';
@@ -2825,6 +2878,7 @@ function openTaskReview(taskId) {
                 return;
             }
 
+            setReviewHighlightStatus('', null);
             if (d.preview_url) {
                 reviewFrameSide = 'after';
                 frame.src = d.preview_url;
