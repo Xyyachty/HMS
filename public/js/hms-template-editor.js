@@ -2794,9 +2794,13 @@
    * React re-renders the template freely and would drop a class it did not set.
    */
   let pendingTaskFocus = null;
-  let activeTaskFocus = null;
+  // The open task's area, kept outlined for as long as the task is open — set by
+  // the editor sidebar (set-standing-task-area). Only the branding task's header.
+  let standingTaskArea = null;
+  // The area of a task just opened from the sidebar, outlined for a moment.
+  let flashTaskArea = null;
+  let flashTaskTimer = null;
   let taskFocusOverlays = [];
-  let taskFocusTimer = null;
   let taskFocusTick = null;
 
   /* The header has no data-hms-section, and the branding task is three separate
@@ -2808,6 +2812,7 @@
     '.nav-bar [data-hms-brand-name]',
     '.nav-bar [data-hms-nav-link]',
   ];
+  const TASK_OUTLINE_COLOR = '#84cc16';
 
   /** The elements to outline for a task area. */
   function resolveTaskFocusTargets(page, section) {
@@ -2834,20 +2839,6 @@
     return false;
   }
 
-  function clearTaskFocusBoxes() {
-    taskFocusOverlays.forEach(function (box) { box.remove(); });
-    taskFocusOverlays = [];
-  }
-
-  function stopTaskFocus() {
-    clearTimeout(taskFocusTimer);
-    clearInterval(taskFocusTick);
-    taskFocusTimer = null;
-    taskFocusTick = null;
-    activeTaskFocus = null;
-    clearTaskFocusBoxes();
-  }
-
   function taskFocusBox(el, small) {
     const rect = el.getBoundingClientRect();
     // Hidden at this width — the desktop links collapse into the phone menu.
@@ -2864,48 +2855,57 @@
       height: rect.height + 'px',
       pointerEvents: 'none',
       zIndex: '2147483000',
-      borderRadius: '6px',
+      borderRadius: small ? '10px' : '6px',
       // Outside a small piece so it does not cover the words; inside a whole
       // section so the edges are not cut off by the side of the window.
-      outline: '2px solid #22d3ee',
-      outlineOffset: small ? '4px' : '-3px',
-      transition: 'opacity 0.6s ease',
-      opacity: '1',
+      outline: '2px solid ' + TASK_OUTLINE_COLOR,
+      outlineOffset: small ? '5px' : '-3px',
     });
     document.body.appendChild(box);
     return box;
   }
 
-  function drawTaskFocus() {
-    if (!activeTaskFocus) return;
-    clearTaskFocusBoxes();
-    const targets = resolveTaskFocusTargets(activeTaskFocus.page, activeTaskFocus.section);
-    const small = activeTaskFocus.section === 'header';
-    targets.forEach(function (el) {
-      const box = taskFocusBox(el, small);
-      if (box) taskFocusOverlays.push(box);
+  /* Redrawn on a short tick while anything is outlined: a rename resizes the
+     link, React may swap the node, and the page can scroll or resize under it.
+     Overlays rather than a class on the element, because React drops classes it
+     did not set. */
+  function redrawTaskFocus() {
+    taskFocusOverlays.forEach(function (box) { box.remove(); });
+    taskFocusOverlays = [];
+
+    const page = getCurrentPage();
+    const seen = new Set();
+    [standingTaskArea, flashTaskArea].forEach(function (area) {
+      if (!area || area.page !== page) return;
+      const small = area.section === 'header';
+      resolveTaskFocusTargets(area.page, area.section).forEach(function (el) {
+        if (seen.has(el)) return;
+        seen.add(el);
+        const box = taskFocusBox(el, small);
+        if (box) taskFocusOverlays.push(box);
+      });
     });
+
+    const active = !!(standingTaskArea || flashTaskArea);
+    if (active && !taskFocusTick) taskFocusTick = setInterval(redrawTaskFocus, 500);
+    if (!active && taskFocusTick) {
+      clearInterval(taskFocusTick);
+      taskFocusTick = null;
+    }
   }
 
-  /* The header's outlines stay on for as long as the task is the one open:
-     the student works through the logo, the name and the links one dialog at a
-     time and needs to see which pieces are left. They are redrawn on a short
-     tick because a rename resizes the link and React may swap the node. A
-     section's outline is a pointer to where the work is, so it fades. */
-  function showTaskFocus(focus) {
-    stopTaskFocus();
-    activeTaskFocus = focus;
-    drawTaskFocus();
-    if (focus.section === 'header') {
-      taskFocusTick = setInterval(drawTaskFocus, 500);
-      return;
-    }
-    const shown = taskFocusOverlays.slice();
-    taskFocusTimer = setTimeout(function () {
-      shown.forEach(function (box) { box.style.opacity = '0'; });
-      setTimeout(function () {
-        if (activeTaskFocus === focus) stopTaskFocus();
-      }, 650);
+  function setStandingTaskArea(area) {
+    standingTaskArea = area && area.page ? { page: area.page, section: area.section || null } : null;
+    redrawTaskFocus();
+  }
+
+  function flashTaskFocus(focus) {
+    clearTimeout(flashTaskTimer);
+    flashTaskArea = focus;
+    redrawTaskFocus();
+    flashTaskTimer = setTimeout(function () {
+      flashTaskArea = null;
+      redrawTaskFocus();
     }, 2400);
   }
 
@@ -2923,10 +2923,10 @@
       const y = target.getBoundingClientRect().top + window.scrollY - 80;
       window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
       // Measure after the smooth scroll has moved things.
-      setTimeout(function () { showTaskFocus(focus); }, 450);
+      setTimeout(function () { flashTaskFocus(focus); }, 450);
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(function () { showTaskFocus(focus); }, 350);
+      setTimeout(function () { flashTaskFocus(focus); }, 350);
     }
   }
 
@@ -2949,6 +2949,9 @@
     switch (data.type) {
       case 'focus-task-area':
         focusTaskArea(data.page, data.section);
+        break;
+      case 'set-standing-task-area':
+        setStandingTaskArea(data.area);
         break;
       case 'set-mode':
         setDesignMode(data.mode === 'design' || data.mode === 'build');
@@ -3127,8 +3130,8 @@
     setTimeout(syncSectionMode, 80);
     updateEditHint();
     postToParent({ type: 'page-changed', page: currentPage, canEditPage: canEditCurrentPage() });
-    // A task's outlines belong to its page; leaving it puts them away.
-    if (activeTaskFocus && activeTaskFocus.page !== currentPage) stopTaskFocus();
+    // A task's outlines belong to its page; redraw for the page now showing.
+    redrawTaskFocus();
 
     // An assigned task was waiting on this page: focus it once React has mounted
     // the page and the section reset above has run.

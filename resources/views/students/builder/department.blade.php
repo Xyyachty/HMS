@@ -1561,7 +1561,29 @@
             // leave the page pointed past the end.
             assignedTaskPage = Math.min(assignedTaskPage, assignedTaskPageCount() - 1);
             renderAssignedTaskPage();
+            syncStandingTaskArea();
         }
+
+        /* While the branding task is still open, the template keeps its logo,
+           hotel name and links outlined so the student can see what the task is
+           asking them to change. Only the header is kept on like this: a whole
+           section outlined for as long as a task is open would sit over the work. */
+        function syncStandingTaskArea() {
+            if (typeof postToTemplate !== 'function') return;
+            const open = assignedTasks.find(function (t) {
+                return t.role === @json($builderRole) && t.section === 'header' && t.status !== 'completed';
+            });
+            postToTemplate({
+                type: 'set-standing-task-area',
+                area: open ? { page: open.page, section: open.section } : null,
+            });
+        }
+
+        // The template drops anything posted before it is ready, so repeat it then.
+        window.addEventListener('message', function (event) {
+            const data = event.data || {};
+            if (data.source === 'hms-template' && data.type === 'editor-ready') syncStandingTaskArea();
+        });
 
         function goToAssignedTaskPage(page) {
             assignedTaskPage = Math.max(0, Math.min(page, assignedTaskPageCount() - 1));
