@@ -9,6 +9,7 @@
   const ROOMS_KEY = '__rooms';
   const MENUS_KEY = '__menus';
   const CARD_IMAGES_KEY = '__cardImages';
+  const DELETED_KEY = '__deleted';
   const HERO_SLIDES_KEY = '__heroSlides';
   const RESERVATION_NOTIFICATIONS_KEY = '__reservationNotifications';
   const ROOM_RESERVATIONS_KEY = '__roomReservations';
@@ -1335,7 +1336,36 @@
     if (cardImageKey(kind, id) === cardImageKey('brand', 'logo') && !canEditLogo()) return;
     const map = getCardImages();
     map[cardImageKey(kind, id)] = String(url);
-    patch(CARD_IMAGES_KEY, { map: map });
+    const next = Object.assign({}, getCustomizations());
+    next[CARD_IMAGES_KEY] = { map: map };
+    undeleteContentImage(kind, id, next);
+    persist(next);
+  }
+
+  /**
+   * Choosing a new picture for an image means it should be seen. If the image
+   * was deleted in Design mode earlier, its "deleted" entry kept hiding it with
+   * display:none, so every new picture landed on an element nobody could see —
+   * the Restaurant hero plate stayed blank however many times it was changed.
+   * Drop the entries that point at this image and show it again.
+   */
+  function undeleteContentImage(kind, id, next) {
+    const esc = window.CSS && CSS.escape ? CSS.escape : (s) => String(s).replace(/"/g, '\\"');
+    const els = Array.prototype.slice.call(document.querySelectorAll(
+      '[data-hms-content-kind="' + esc(String(kind)) + '"][data-hms-content-id="' + esc(String(id)) + '"]'
+    ));
+    if (!els.length) return;
+    els.forEach((el) => el.style.removeProperty('display'));
+
+    const list = Array.isArray(next[DELETED_KEY]) ? next[DELETED_KEY] : [];
+    const kept = list.filter((entry) => {
+      const selector = typeof entry === 'string' ? entry : (entry && entry.id);
+      if (!selector) return true;
+      let hit = null;
+      try { hit = document.querySelector(selector); } catch (e) { return true; }
+      return els.indexOf(hit) === -1;
+    });
+    if (kept.length !== list.length) next[DELETED_KEY] = kept;
   }
 
   /** Open a file picker and return an image data-URL (works inside the builder iframe). */
