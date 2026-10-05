@@ -5454,7 +5454,7 @@ function ExperiencePage({ onNav, canEdit, onToast, cardImages, experiences, onAd
     <>
       <div className="page-header">
         <span className="section-num">03 — Beyond the Room</span>
-        <h1 className="font-display">The SPC Experience</h1>
+        <h1 className="font-display">The SPC Highlights</h1>
         <p>Every detail is designed to elevate your stay from memorable to extraordinary.</p>
       </div>
       <section style={{ padding: '0 1.5rem 4rem', maxWidth: 1100, margin: '0 auto' }}>

@@ -6959,7 +6959,7 @@ function ExperiencePage({ onNavigate, canEdit, onToast, experiences, onAddExperi
     <>
       <div className="page-header">
         <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Beyond the Room</p>
-        <h1 className="font-display">The SPC Experience</h1>
+        <h1 className="font-display">The SPC Highlights</h1>
         <p>Every detail is designed to elevate your stay from memorable to extraordinary.</p>
       </div>
       <section style={{ padding: '0 1.5rem 4rem', maxWidth: 1200, margin: '0 auto' }}>
