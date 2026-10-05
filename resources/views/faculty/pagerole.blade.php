@@ -235,6 +235,20 @@
     }
     .btn-sendback:hover { background:#5E1024; }
 
+    /* ── Task review verdict: Revise amber, Approve green ──
+       Spelled out for the same reason: the frozen build has no hover shade for
+       either colour. */
+    .btn-revise {
+        background:#D97706; color:#fff; border:1px solid #B45309;
+        box-shadow:0 4px 12px -2px rgba(217,119,6,.35);
+    }
+    .btn-revise:hover { background:#B45309; }
+    .btn-approve {
+        background:#16A34A; color:#fff; border:1px solid #15803D;
+        box-shadow:0 4px 12px -2px rgba(22,163,74,.35);
+    }
+    .btn-approve:hover { background:#15803D; }
+
     /* ── Student list in form ── */
     .student-row { transition:all .2s ease; }
     .student-row:hover { background:#FBEEE9 !important; }
@@ -942,11 +956,11 @@
                              Revise, so it stays out of the way until that is chosen. --}}
                         <div id="reviewChoiceStep" class="flex items-center justify-end gap-2 pt-2">
                             <button type="button" id="reviewReviseBtn" onclick="showReviseStep()"
-                                class="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition bg-white text-rose-600 border border-slate-200 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700">
+                                class="btn-revise inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition">
                                 <span class="iconify text-sm" data-icon="mdi:pencil-circle-outline"></span> Revise
                             </button>
                             <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')"
-                                class="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition bg-emerald-600 text-white shadow-sm hover:bg-emerald-700">
+                                class="btn-approve inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition">
                                 <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve
                             </button>
                         </div>
@@ -969,7 +983,7 @@
                                     Cancel
                                 </button>
                                 <button type="button" id="reviewSendFeedbackBtn" onclick="submitTaskFeedback('revise')"
-                                    class="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition bg-emerald-600 text-white shadow-sm hover:bg-emerald-700">
+                                    class="btn-revise inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition">
                                     <span class="iconify text-sm" data-icon="mdi:send-outline"></span> Send feedback
                                 </button>   
                             </div>
