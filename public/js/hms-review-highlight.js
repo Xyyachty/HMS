@@ -231,7 +231,8 @@
     return out.filter(function (el) { return !el.closest('.mobile-menu'); });
   }
 
-  /* Customize the Home Page: the five slides and the hero's three lines of text.
+  /* Customize the Home Page: the five slides, the hero's three lines of text and
+     its two button labels.
      The templates mark each slide that is not its stock photograph, and give
      each hero line the text it shows when untouched (data-hms-stock) — the
      approved concept's words where there are some, else the template's. */

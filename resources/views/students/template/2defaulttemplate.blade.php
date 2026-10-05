@@ -4004,10 +4004,10 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
             {blurb}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button className="btn-primary" onClick={() => onNav('rooms')}>
+            <button className="btn-primary" data-hms-stock="Explore Rooms" onClick={() => onNav('rooms')}>
               Explore Rooms <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
             </button>
-            <button className="btn-ghost" onClick={() => onBookNow()}>Book Now</button>
+            <button className="btn-ghost" data-hms-stock="Book Now" onClick={() => onBookNow()}>Book Now</button>
           </div>
         </div>
       </div>
