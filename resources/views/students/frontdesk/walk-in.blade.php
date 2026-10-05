@@ -557,7 +557,7 @@ function TableWalkIn() {
     e.preventDefault();
     if (!guestName.trim()) return setError('Enter the guest’s name.');
     if (!contactNo.trim()) return setError('Enter a contact number for the guest.');
-    if (!table) return setError('Pick a table for the party.');
+    if (!table) return setError('Pick a table that fits the pax.');
     if (when === 'later') {
       if (!onDate || !atTime) return setError('Pick the date and time they are coming back.');
       if (new Date(onDate + 'T' + atTime) < new Date(Date.now() - 60000)) return setError('That time has already passed.');
@@ -588,7 +588,7 @@ function TableWalkIn() {
         title={when === 'now' ? guestName.trim() + ' is seated' : 'Table held for ' + guestName.trim()}
         rows={[
           ['Table', done.table.name + ' · seats ' + done.table.capacity],
-          ['Party', String(party)],
+          ['Pax', String(party)],
           ['When', when === 'now' ? 'Now' : niceDate(onDate) + ', ' + atTime],
           ['Status', when === 'now' ? 'Occupied' : 'Reserved'],
         ]}
@@ -608,7 +608,7 @@ function TableWalkIn() {
   return (
     <form className="wi-layout" onSubmit={submit} noValidate>
       <div className="wi-panel">
-        <h2 className="wi-panel-title">Party</h2>
+        <h2 className="wi-panel-title">Pax</h2>
         <div className="wi-form">
           <div>
             <label className="wi-label">Guest name <em>*</em></label>
@@ -619,7 +619,7 @@ function TableWalkIn() {
             <input type="tel" className="booking-input" value={contactNo} onChange={e => setContactNo(e.target.value)} placeholder="09XX XXX XXXX" />
           </div>
           <div>
-            <label className="wi-label">Party size</label>
+            <label className="wi-label">Pax</label>
             <Stepper value={party} min={1} max={Math.max(1, biggest)} onChange={setParty} label="guests" />
           </div>
 
@@ -655,14 +655,14 @@ function TableWalkIn() {
       </div>
 
       <div className="wi-panel">
-        <h2 className="wi-panel-title">Free tables for {party} · {fits.length}</h2>
+        <h2 className="wi-panel-title">Free tables for {party} pax · {fits.length}</h2>
         {loadError && <p className="wi-error" style={{ marginBottom: '0.7rem' }}>{loadError}</p>}
         {!loaded ? (
           <div className="wi-empty">Loading tables…</div>
         ) : tables.length === 0 ? (
           <div className="wi-empty">Restaurant Management hasn't added any tables yet.</div>
         ) : fits.length === 0 ? (
-          <div className="wi-empty">No free table seats a party of {party} right now.</div>
+          <div className="wi-empty">No free table seats {party} pax right now.</div>
         ) : (
           <div className="wi-grid">
             {fits.map(t => (
