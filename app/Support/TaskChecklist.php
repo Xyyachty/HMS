@@ -141,8 +141,8 @@ class TaskChecklist
                 'description' => 'Make the website your own by changing the hotel logo, hotel name, and navigation names.',
             ],
             [
-                'title' => 'Design the Home Page',
-                'description' => 'Customise the page a guest lands on: pick the five photographs that rotate across the top, rewrite the headline and the introduction under them so they describe your hotel rather than the sample text, and rename the links in the top menu so they read the way your hotel would label them.',
+                'title' => 'Customize the Home Page',
+                'description' => 'Customize the Home page by changing the 5 slider images and editing the text in the Hero section to match your hotel.',
             ],
             [
                 'title' => 'Write Your Hotel\'s Story',
@@ -317,7 +317,7 @@ class TaskChecklist
     private const COMPLETION = [
         HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_COMPLETION,
         'Customize Your Hotel Branding' => 'Your own logo, hotel name and navigation names appear correctly on View Live.',
-        'Design the Home Page' => 'The photographs, the headline, the introduction and the menu links are all your own.',
+        'Customize the Home Page' => 'The 5 slider images, the small heading, the main heading and the description are all your own.',
         'Write Your Hotel\'s Story' => 'The tagline, the introduction and the whole contact block are filled in and correct.',
         'Choose the Site\'s Colours' => 'The site carries your palette and every page\'s text still reads against it.',
         'Set the Site\'s Typography' => 'One typeface, one body size and your own text and heading colours across the site.',
@@ -375,11 +375,11 @@ class TaskChecklist
             'Rename the Navigation: change the names of the main navigation items, such as Home, Rooms, Restaurant, Amenities, and Highlights.',
             'Check Your Changes: click View Live and make sure your logo, hotel name, and navigation names appear correctly.',
         ],
-        'Design the Home Page' => [
-            'Replace the five photographs that rotate across the top of the page.',
-            'Rewrite the headline and the line above it so they name your hotel.',
-            'Rewrite the introduction under the headline in your own words.',
-            'Rename the links in the top menu to the wording your hotel would use.',
+        'Customize the Home Page' => [
+            'Change the 5 Slider Images: replace all 5 images in the Home page slider with images that represent your hotel.',
+            'Edit the Small Heading: change the small text above the main heading, such as "COMFORT BY THE SEA."',
+            'Edit the Main Heading: change the main Hero text, such as "Where Elegance Meets Comfort."',
+            'Edit the Description: change the short description below the main heading to describe your hotel.',
         ],
         'Write Your Hotel\'s Story' => [
             'Write the tagline that sits above the headline on the landing page.',
