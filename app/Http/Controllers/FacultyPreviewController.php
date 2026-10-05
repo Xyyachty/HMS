@@ -61,14 +61,19 @@ class FacultyPreviewController extends Controller
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
-            ->get()
-            ->map(fn (HotelRoom $room) => $room->toTemplateArray());
+            ->get();
+
+        // Only faculty read this feed, so it is where the review learns what the
+        // team changed against the Rooms page it started with.
+        $review = HotelRoomDefaults::reviewFor(HotelRoomDefaults::categoriesFor($membership), $rooms);
 
         return response()->json([
-            'rooms' => $rooms,
+            'rooms' => $rooms->map(fn (HotelRoom $room) => $room->toTemplateArray()
+                + ['reviewState' => $review['rooms'][$room->hotel_room_id] ?? null]),
             // The point of the whole controller: the categories the team actually
             // has, including one added this morning with no rooms in it yet.
-            'categories' => HotelRoomDefaults::categoriesFor($membership),
+            'categories' => $review['categories'],
+            'removed_categories' => $review['removed'],
         ]);
     }
 

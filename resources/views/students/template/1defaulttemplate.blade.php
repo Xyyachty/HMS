@@ -3801,7 +3801,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ROOMS PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function RoomTabBar({ tabs, active, onChange, items, getKey, allKey, extra, onRenameTab }) {
+function RoomTabBar({ tabs, active, onChange, items, getKey, allKey, extra, onRenameTab, review, removed }) {
   const keyFn = getKey || ((it) => normalizeRoomCategory(it.category || it.label));
   const counts = useMemo(() => {
     const map = {};
@@ -3814,10 +3814,14 @@ function RoomTabBar({ tabs, active, onChange, items, getKey, allKey, extra, onRe
   }, [tabs, items, keyFn, allKey]);
 
   return (
-    <div className="tab-bar" role="tablist">
+    <div className="tab-bar" role="tablist" data-hms-cats-removed={removed}>
       {tabs.map(tab => (
         <button
           key={tab}
+          data-hms-cat-added={review && review[tab] && review[tab].added ? '1' : undefined}
+          data-hms-cat-renamed={review && review[tab] && review[tab].renamed ? '1' : undefined}
+          data-hms-cat-details={review && review[tab] && review[tab].details ? '1' : undefined}
+          data-hms-cat-photos={review && review[tab] && review[tab].photos ? '1' : undefined}
           type="button"
           className={`tab-btn${active === tab ? ' active' : ''}`}
           onClick={() => onChange(tab)}
@@ -4814,6 +4818,8 @@ function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPi
             return (
               <button
                 key={room.id}
+                data-hms-room-added={room.reviewState && room.reviewState.added ? '1' : undefined}
+                data-hms-room-photos={room.reviewState && room.reviewState.photos ? '1' : undefined}
                 type="button"
                 className={ROOM_STATE_CLASS[state] + (onPickRoom ? ' rn-clickable' : '')}
                 title={room.name + ' \u2014 ' + state}
@@ -4929,7 +4935,11 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
   const capacity = detail?.capacity || 0;
 
   return (
-    <article className="cat-card" data-hms-category={name}>
+    <article className="cat-card" data-hms-category={name} data-hms-cat-card="1"
+      data-hms-cat-added={detail && detail.review && detail.review.added ? '1' : undefined}
+      data-hms-cat-renamed={detail && detail.review && detail.review.renamed ? '1' : undefined}
+      data-hms-cat-details={detail && detail.review && detail.review.details ? '1' : undefined}
+      data-hms-cat-photos={detail && detail.review && detail.review.photos ? '1' : undefined}>
       <div className="cat-media">
         <CategorySlides
           slides={slides}
@@ -5404,15 +5414,23 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
     }).catch(() => { /* onCreateBooking already toasted the failure */ });
   };
 
+  /* What the faculty feed says each category changed, by name. Only that feed
+     sends it, so on a student's own page every tab is left unmarked. */
+  const catReview = useMemo(() => {
+    const map = {};
+    (categoryDetails || []).forEach((c) => { if (c && c.review) map[c.name] = c.review; });
+    return map;
+  }, [categoryDetails]);
   return (
     <>
-      <div className="page-header">
-        <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Accommodations</p>
-        <h1 className="font-display">Our Rooms & Suites</h1>
-        <p>Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.</p>
+      <div className="page-header" data-hms-rooms-header="1">
+        <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.75rem' }} data-hms-stock="Accommodations">Accommodations</p>
+        <h1 className="font-display" data-hms-stock="Our Rooms & Suites">Our Rooms & Suites</h1>
+        <p data-hms-stock="Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.">Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.</p>
       </div>
       <RoomTabBar
         tabs={tabs} active={tab} onChange={setTab} items={list} allKey="All"
+        review={catReview} removed={window.__HMS_ROOM_CATS_REMOVED__}
         onRenameTab={canEditRooms ? ((name) => { setRenameError(''); setRenameFrom(name); }) : null}
         extra={canEditRooms ? (
           <button
@@ -8320,6 +8338,9 @@ function App() {
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
+        // The faculty feed also says how many starting categories were removed,
+        // which the review counts beside its outlines.
+        if (typeof data.removed_categories === 'number') window.__HMS_ROOM_CATS_REMOVED__ = data.removed_categories;
         if (Array.isArray(data.rooms)) setRooms(data.rooms);
         if (Array.isArray(data.categories) && data.categories.length) {
           const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);

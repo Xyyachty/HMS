@@ -23,7 +23,9 @@ namespace App\Support;
  *                                              partner brands, hotel experiences,
  *                                              our team, the footer and the
  *                                              Highlights page
- *   TASK 02  Room Management Customization   — the Rooms page
+ *   TASK 02  Room Management Customization   — the Rooms page: RM TASK 1-5,
+ *                                              header, categories, details,
+ *                                              slider photos and rooms
  *   TASK 03  Restaurant Management Customization — the Restaurant page
  *   TASK 04  Housekeeping Customization      — the Amenities page: HK TASK
  *                                              1-5, header, images, information,
@@ -173,44 +175,29 @@ class TaskChecklist
         ],
 
         'room_management' => [
+            // RM TASK 1-5, in order, all on the Rooms page: the header in
+            // Design mode; the categories with the tab bar's + and pencils;
+            // their details and photos from each category's own tools; the
+            // rooms with Add Room.
             [
-                // The step DesignTaskChain watches: approving it hands the team
-                // "Detail Every Room Category", which is not on this list because
-                // it cannot be done before the categories are agreed.
-                'title' => 'Create Your Room Categories',
-                'description' => 'Decide the room categories your hotel sells and set them up on the Rooms page — add the ones you need with the + tab, rename the starting ones that do not fit, and drop the sample wording. Get the names right first; you describe and price them once your faculty approves this.',
+                'title' => 'Customize Rooms Header',
+                'description' => 'Customize the main Rooms section so it matches your hotel.',
             ],
             [
-                'title' => 'Build Your Room Types',
-                'description' => 'Replace the sample rooms with the room types your hotel actually offers. Give each one its own name and describe what it includes, so a guest can tell them apart without asking.',
+                'title' => 'Manage Room Categories',
+                'description' => 'Create and organize the room categories offered by your hotel. Examples are Classic, Superior, Deluxe, Premium, Family, Executive, and Presidential.',
             ],
             [
-                'title' => 'Photograph and Price Every Room',
-                'description' => 'Give every room type its own picture — none should be left on the placeholder image — set a nightly rate you can explain, and lay the Rooms page out so it matches the rest of the site.',
+                'title' => 'Customize Room Details',
+                'description' => 'Update the information for each room category so guests can clearly understand the room.',
             ],
             [
-                'title' => 'Style the Rooms Page',
-                'description' => "Give the Rooms page its own look: the colour behind the room cards, the colour of the cards themselves, and the colour of the booking popup that opens when a guest picks one. The card colour is shared with the preview on the Home page, so it sets the tone in both places at once.",
+                'title' => 'Update Room Slider Images',
+                'description' => 'Add or replace the photos displayed in each room\'s image slider.',
             ],
             [
-                'title' => 'List What Each Room Includes',
-                'description' => "Set the amenity chips under every room - the bed, the view, the bath, the wifi - so a guest can compare two rooms without opening either. Use the icons that match what is actually in the room rather than leaving the sample set.",
-            ],
-            [
-                'title' => 'Write the Rooms Page Introduction',
-                'description' => "Write the words above the room cards: the small line over the heading, the heading itself, and the paragraph under it. They are what a guest reads before any price, so say what kind of rooms these are rather than repeating the word Rooms.",
-            ],
-            [
-                'title' => 'Name the Category Tabs',
-                'description' => "The tabs across the Rooms page are how a guest narrows the list. Name them the way your hotel sells rooms, put them in the order you want them read, and make sure the tab a room sits under is the one a guest would look for it in.",
-            ],
-            [
-                'title' => 'Set the Room Booking Popup',
-                'description' => "The popup that opens from a room card is where a guest decides. Check what it shows - the photograph, the price, what the room includes, the availability calendar - and set its colour so it reads as part of your site rather than a dialog on top of it.",
-            ],
-            [
-                'title' => 'Check the Rooms Page on a Phone',
-                'description' => "Most guests will read this page on a phone. Narrow the window until the cards stack and look for what breaks: a name that wraps badly, a price that leaves the card, a photograph cropped to nothing.",
+                'title' => 'Add and Manage Rooms',
+                'description' => 'Add the actual hotel rooms under the correct room category and make sure their information is correct.',
             ],
         ],
 
@@ -298,6 +285,11 @@ class TaskChecklist
      */
     private const COMPLETION = [
         HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_COMPLETION,
+        'Customize Rooms Header' => 'The label, the title and the description above the rooms are your own words.',
+        'Manage Room Categories' => 'The category tabs are the ones your hotel offers, named the way it sells them.',
+        'Customize Room Details' => 'Every room category has its own name, price per night and description.',
+        'Update Room Slider Images' => 'Every room category\'s slider shows uploaded photos of that room.',
+        'Add and Manage Rooms' => 'The hotel\'s rooms are listed under the right categories with correct details.',
         'Customize Amenities Header' => 'The label, the title and the description above the amenities are your own words.',
         'Update Amenity Images' => 'Every amenity shows slider images of the real facility or service.',
         'Edit Amenity Information' => 'Every amenity has its own name, location, available hours and description.',
@@ -311,15 +303,6 @@ class TaskChecklist
         'Customize Our Team' => 'Every team member shows their own photo, their correct name and the position they hold.',
         'Customize the Footer' => 'The footer\'s description, links and contact details are all correct for your hotel.',
         'Customize Hotel Highlights' => 'Every highlight is one your hotel really offers, with its own photo and title, and no sample highlights remain.',
-        'Create Your Room Categories' => 'The categories are the ones your hotel sells, each with an opening rate.',
-        'Build Your Room Types' => 'Every room type the hotel has is on the page, under the right category.',
-        'Photograph and Price Every Room' => 'Every room card carries its own photograph, its price and its own description.',
-        'Style the Rooms Page' => 'The section, the cards and the booking popup all sit in your palette.',
-        'List What Each Room Includes' => 'Every room card names what is in the room, with icons that match.',
-        'Write the Rooms Page Introduction' => 'The heading and its introduction are your own words, with no sample copy left on the page.',
-        'Name the Category Tabs' => 'Every tab is named in your own words and every room is filed under the right one.',
-        'Set the Room Booking Popup' => 'The popup shows your own content and its colour belongs to your palette.',
-        'Check the Rooms Page on a Phone' => 'The page reads cleanly in one column with nothing overflowing or cropped away.',
         'Build Your Menu' => 'Every dish the restaurant serves is on the page and no sample dish remains.',
         'Photograph and Price the Menu' => 'Every dish carries its own photograph and its price.',
         'Organise the Menu into Categories' => 'Every dish sits in a named section, and the tabs read as your restaurant\'s.',
@@ -346,6 +329,36 @@ class TaskChecklist
      */
     private const ACTIVITIES = [
         HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_ACTIVITIES,
+        'Customize Rooms Header' => [
+            'Edit the small “ACCOMMODATIONS” label.',
+            'Edit the “Our Rooms & Suites” title.',
+            'Edit the description below the title.',
+        ],
+        'Manage Room Categories' => [
+            'Review the existing room categories.',
+            'Edit a room category name if needed.',
+            'Add a new room category.',
+            'Make sure the categories are organized and displayed correctly.',
+        ],
+        'Customize Room Details' => [
+            'Edit the room/category name.',
+            'Edit the room price per night.',
+            'Edit the room description.',
+            'Review and save the updated room information.',
+        ],
+        'Update Room Slider Images' => [
+            'Select the room category you want to update.',
+            'Open “Change Photos.”',
+            'Upload or replace the room slider images.',
+            'Review the slider and make sure all images display correctly.',
+        ],
+        'Add and Manage Rooms' => [
+            'Select the correct room category.',
+            'Add a new room.',
+            'Enter the room number and required room details.',
+            'Make sure the room appears under the correct category.',
+            'Review the room and save the changes.',
+        ],
         'Customize Amenities Header' => [
             'Edit the small label above the title.',
             'Edit the "Hotel Amenities" title.',
@@ -419,60 +432,6 @@ class TaskChecklist
             'Edit the highlight names or titles to match your hotel.',
             'Add new highlights that showcase the best features of your hotel.',
             'Remove unnecessary highlights and review the section to make sure everything matches your hotel.',
-        ],
-        'Create Your Room Categories' => [
-            'Decide the categories your hotel sells rooms in.',
-            'Add each one with the name a guest would recognise.',
-            'Set the opening rate a new room of that category starts from.',
-            'Remove any sample category your hotel does not offer.',
-        ],
-        'Build Your Room Types' => [
-            'Add a room card for each type the hotel has.',
-            'Put every card under the category it belongs to.',
-            'Name each one the way it appears on the door.',
-            'Check the Rooms page reads as your hotel rather than the sample.',
-        ],
-        'Photograph and Price Every Room' => [
-            'Upload a photograph of each room type.',
-            'Set the price for the stay length the site quotes.',
-            'Write a description of the room in your own words.',
-            'Compare two cards side by side and make them consistent.',
-        ],
-        'Style the Rooms Page' => [
-            'Set the background colour behind the room cards.',
-            'Set the colour of the cards themselves.',
-            'Set the colour of the booking popup that opens from a card.',
-            'Check the room preview on the Home page still looks right.',
-        ],
-        'List What Each Room Includes' => [
-            'Decide the four things worth naming on each room.',
-            'Set the amenity chips on every card to match them.',
-            'Choose icons that fit what is actually in the room.',
-            'Read two cards together and confirm a guest could choose between them.',
-        ],
-        'Write the Rooms Page Introduction' => [
-            'Rewrite the eyebrow line over the heading.',
-            'Rewrite the heading in your hotel\'s own words.',
-            'Write the paragraph under it in two or three sentences.',
-            'Read it back against the Home page so the two sound like one hotel.',
-        ],
-        'Name the Category Tabs' => [
-            'Read the tabs as a guest would and note any that do not fit.',
-            'Rename each tab to the wording your hotel uses.',
-            'Check every room sits under the tab a guest would look in.',
-            'Confirm the first tab is the one you want opened by default.',
-        ],
-        'Set the Room Booking Popup' => [
-            'Open a room card and read the popup as a guest would.',
-            'Fix anything in it that still reads as sample content.',
-            'Set the popup\'s colour from Background Colours.',
-            'Check it against a second room before you finish.',
-        ],
-        'Check the Rooms Page on a Phone' => [
-            'Narrow the browser until the room cards stack in one column.',
-            'Read every card for text that wraps or overflows.',
-            'Open the booking popup at that width and check it fits.',
-            'Fix what breaks and check again.',
         ],
         'Build Your Menu' => [
             'Decide what your restaurant serves.',
@@ -753,6 +712,11 @@ class TaskChecklist
         'edit amenity information' => 'amenities',
         'add a new amenity' => 'amenities',
         'review hotel amenities' => 'amenities-all',
+        'customize rooms header' => 'rooms-header',
+        'manage room categories' => 'room-categories',
+        'customize room details' => 'room-details',
+        'update room slider images' => 'room-photos',
+        'add and manage rooms' => 'rooms-added',
     ];
 
     public static function reviewsAgainstStock(string $title): bool

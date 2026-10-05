@@ -51,6 +51,66 @@ class HotelRoomDefaults
         'Family'   => 'Room for the whole family, with extra beds and space to spread out.',
     ];
 
+    /**
+     * How a team's Rooms page differs from the one it started with, for the
+     * faculty review of RM TASK 2-5.
+     *
+     * A category keeps its hundreds block when it is renamed, so a category on
+     * one of the five starting floors is read against that floor's default:
+     * renamed, its details (rate, description, what the stay includes, how many
+     * rooms, sleeps, bed, size) changed, or photographed - the defaults carry no
+     * photo. A category on any other floor is one the team added. The starting
+     * rooms were seeded together, so they share the team's earliest created_at;
+     * a later room is one the team added, and a room with a photo has had one
+     * uploaded, since none was seeded with one.
+     *
+     * @param  array<int, array<string, mixed>>  $categories  categoriesFor()'s list
+     * @param  \Illuminate\Support\Collection<int, HotelRoom>  $rooms
+     * @return array{categories: array<int, array<string, mixed>>, rooms: array<int, array{added: bool, photos: bool}>, removed: int}
+     */
+    public static function reviewFor(array $categories, $rooms): array
+    {
+        $byFloor = array_flip(self::CATEGORY_FLOORS);
+        $kept = 0;
+        foreach ($categories as &$category) {
+            $stock = $byFloor[(int) ($category['floor'] ?? 0)] ?? null;
+            if ($stock === null) {
+                $category['review'] = ['added' => true, 'renamed' => false, 'details' => false, 'photos' => false];
+                continue;
+            }
+            $kept++;
+            $description = trim((string) ($category['description'] ?? ''));
+            $category['review'] = [
+                'added' => false,
+                'renamed' => strcasecmp(trim((string) $category['name']), $stock) !== 0,
+                'details' => ($category['rate'] !== null && (int) $category['rate'] !== self::CATEGORY_RATES[$stock])
+                    || ($description !== '' && $description !== self::CATEGORY_DESCRIPTIONS[$stock])
+                    || !empty($category['inclusions'])
+                    || $category['rooms_available'] !== null
+                    || $category['capacity'] !== null
+                    || filled($category['bed_type'])
+                    || filled($category['room_size']),
+                'photos' => filled($category['image']) || !empty($category['gallery']),
+            ];
+        }
+        unset($category);
+
+        $seededAt = (string) $rooms->min('created_at');
+        $roomStates = [];
+        foreach ($rooms as $room) {
+            $roomStates[$room->hotel_room_id] = [
+                'added' => $seededAt !== '' && (string) $room->created_at !== $seededAt,
+                'photos' => filled($room->image) || !empty(array_filter((array) $room->gallery)),
+            ];
+        }
+
+        return [
+            'categories' => $categories,
+            'rooms' => $roomStates,
+            'removed' => max(0, count(self::CATEGORY_FLOORS) - $kept),
+        ];
+    }
+
     /** How many rooms per category a new team starts with. */
     public const PER_CATEGORY = 10;
 

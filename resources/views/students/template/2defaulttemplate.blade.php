@@ -2637,7 +2637,7 @@ function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, on
 
 
 /* â•â•â•â•â•â•â•â•â•â•â• REUSABLE TAB BAR â•â•â•â•â•â•â•â•â•â•â• */
-function TabBar({ tabs, active, onChange, items, extra, onRenameTab }) {
+function TabBar({ tabs, active, onChange, items, extra, onRenameTab, review, removed }) {
   const counts = useMemo(() => {
     const map = { All: items.length };
     tabs.forEach(t => { if (t !== 'All') map[t] = items.filter(it => it.category === t).length; });
@@ -2645,10 +2645,14 @@ function TabBar({ tabs, active, onChange, items, extra, onRenameTab }) {
   }, [tabs, items]);
 
   return (
-    <div className="tab-bar" role="tablist">
+    <div className="tab-bar" role="tablist" data-hms-cats-removed={removed}>
       {tabs.map(tab => (
         <button
           key={tab}
+          data-hms-cat-added={review && review[tab] && review[tab].added ? '1' : undefined}
+          data-hms-cat-renamed={review && review[tab] && review[tab].renamed ? '1' : undefined}
+          data-hms-cat-details={review && review[tab] && review[tab].details ? '1' : undefined}
+          data-hms-cat-photos={review && review[tab] && review[tab].photos ? '1' : undefined}
           className={`tab-btn${active === tab ? ' active' : ''}`}
           onClick={() => onChange(tab)}
           role="tab"
@@ -4353,10 +4357,12 @@ function RoomCard({ room, onSelect, canEdit, onEdit, onRemove, onChangeImage }) 
   const isLuxe = category === 'Premium' || category === 'Family';
   const amenities = room.amenities || [];
   return (
-    <div className="room-card" style={{ position: 'relative' }} onClick={() => onSelect(room.id)}>
+    <div className="room-card" style={{ position: 'relative' }} onClick={() => onSelect(room.id)}
+      data-hms-room-added={room.reviewState && room.reviewState.added ? '1' : undefined}
+      data-hms-room-photos={room.reviewState && room.reviewState.photos ? '1' : undefined}>
       {canEdit && (
         <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }} data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
-          <button type="button" title="Change image" onClick={() => onChangeImage && onChangeImage(room)} style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
+          <button type="button" title="Change photos" onClick={() => onChangeImage && onChangeImage(room)} style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
           <button type="button" title="Remove room" onClick={() => onRemove(room.id)} style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
         </div>
       )}
@@ -4584,15 +4590,23 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
     }).catch(() => { /* onCreateBooking already toasted the failure */ });
   };
 
+  /* What the faculty feed says each category changed, by name. Only that feed
+     sends it, so on a student's own page every tab is left unmarked. */
+  const catReview = useMemo(() => {
+    const map = {};
+    (categoryDetails || []).forEach((c) => { if (c && c.review) map[c.name] = c.review; });
+    return map;
+  }, [categoryDetails]);
   return (
     <>
-      <div className="page-header">
-        <span className="section-num">01 — Accommodations</span>
-        <h1 className="font-display">Our Rooms & Suites</h1>
-        <p>Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.</p>
+      <div className="page-header" data-hms-rooms-header="1">
+        <span className="section-num" data-hms-stock="01 — Accommodations">01 — Accommodations</span>
+        <h1 className="font-display" data-hms-stock="Our Rooms & Suites">Our Rooms & Suites</h1>
+        <p data-hms-stock="Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.">Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.</p>
       </div>
       <TabBar
         tabs={tabs} active={tab} onChange={setTab} items={list}
+        review={catReview} removed={window.__HMS_ROOM_CATS_REMOVED__}
         onRenameTab={canEditRooms ? ((name) => { setRenameError(''); setRenameFrom(name); }) : null}
         extra={canEditRooms ? (
           <button
@@ -7017,6 +7031,9 @@ function App() {
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
+        // The faculty feed also says how many starting categories were removed,
+        // which the review counts beside its outlines.
+        if (typeof data.removed_categories === 'number') window.__HMS_ROOM_CATS_REMOVED__ = data.removed_categories;
         if (Array.isArray(data.rooms)) setRooms(data.rooms);
         if (Array.isArray(data.categories) && data.categories.length) {
           const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);

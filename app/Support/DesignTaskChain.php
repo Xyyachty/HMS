@@ -32,10 +32,9 @@ class DesignTaskChain
      * a team assigned the older one is not left with the follow-up unreachable.
      */
     public const TRIGGERS = [
-        'room_management' => [
-            'create your room categories',
-            'build your room types',
-        ],
+        // Room Management's follow-up ("Detail Every Room Category") is RM TASK 3,
+        // Customize Room Details, on the checklist itself now, so no approval
+        // hands it out a second time.
     ];
 
     /** What that approval hands out, per role. */

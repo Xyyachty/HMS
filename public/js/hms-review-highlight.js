@@ -368,6 +368,43 @@
     return out;
   }
 
+  /* The Room Management tasks, on the Rooms page. The header (RM TASK 1) is
+     judged by its text. Categories and rooms live in the database, so the
+     faculty feed marks each category tab - and, on Template 1, its card - with
+     what changed against its starting slot, and each room added after the
+     starting set or given a photo. A category counts once, on its tab; its
+     card is boxed beside it without being counted twice. */
+  function roomCategoryFlags(flags, type) {
+    const out = [];
+    flags.forEach(function (flag) {
+      queryAll('.tab-btn[data-hms-cat-' + flag + ']').forEach(function (el) {
+        out.push({ el: el, count: 1, type: type });
+      });
+      queryAll('[data-hms-cat-card][data-hms-cat-' + flag + ']').forEach(function (el) {
+        out.push({ el: el, count: 0, type: type });
+      });
+    });
+    return out;
+  }
+
+  function roomChanges(check) {
+    if (check === 'rooms-header') return sectionChanges('[data-hms-rooms-header]');
+    if (check === 'room-categories') {
+      const bar = queryAll('[data-hms-cats-removed]')[0];
+      removedCount = bar ? (parseInt(bar.getAttribute('data-hms-cats-removed'), 10) || 0) : 0;
+      return roomCategoryFlags(['added'], 'added').concat(roomCategoryFlags(['renamed'], 'modified'));
+    }
+    if (check === 'room-details') return roomCategoryFlags(['renamed', 'details'], 'modified');
+    if (check === 'room-photos') {
+      return roomCategoryFlags(['photos'], 'modified').concat(queryAll('[data-hms-room-photos]').map(function (el) {
+        return { el: el, count: 1 };
+      }));
+    }
+    return queryAll('[data-hms-room-added]').map(function (el) {
+      return { el: el, count: 1, type: 'added' };
+    });
+  }
+
   // Brands or highlights removed: nothing left on the page to box, so the
   // legend counts them instead.
   let removedCount = 0;
@@ -379,6 +416,7 @@
     if (stockReview === 'home') return homeChanges();
     if (stockReview === 'partners') return partnersChanges();
     if (stockReview === 'highlights') return highlightsChanges();
+    if (/^room/.test(stockReview)) return roomChanges(stockReview);
     if (stockReview === 'amenities-header') return amenityHeaderChanges();
     if (stockReview === 'amenities') return amenityCardChanges();
     if (stockReview === 'amenities-all') return amenityHeaderChanges().concat(amenityCardChanges());
