@@ -2503,6 +2503,9 @@ class FacultyController extends Controller
                     $beforeVersionId,
                     (int) $task->submitted_version_id
                 )['highlight'];
+                // The branding task is also checked on the page against the stock
+                // template, so the outlines do not hang on the snapshots alone.
+                $reviewHighlight['stock_branding'] = \App\Support\TaskChecklist::reviewsAgainstStock((string) $task->title);
             }
         }
 

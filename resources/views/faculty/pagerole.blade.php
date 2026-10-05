@@ -2708,7 +2708,9 @@ function postReviewHighlight() {
         payload[c.type].push({ key: String(c.key), hms_id: c.hms_id || null, page: c.page || 'home' });
     });
     try {
-        frame.contentWindow.postMessage(payload, window.location.origin);
+        // '*': the preview may be served from APP_URL's spelling of this host, and
+        // a strict origin drops the message silently. Selectors are not secret.
+        frame.contentWindow.postMessage(payload, '*');
     } catch (err) { /* ignore */ }
 }
 

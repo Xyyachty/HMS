@@ -26,7 +26,8 @@
   function setData(data) {
     added = (data && Array.isArray(data.added)) ? data.added : [];
     modified = (data && Array.isArray(data.modified)) ? data.modified : [];
-    stockBranding = !!(data && data.stock_branding);
+    // Either source can turn it on; neither turns it back off.
+    stockBranding = stockBranding || !!(data && data.stock_branding);
     if (!added.length && !modified.length && !stockBranding) return;
     if (booted) {
       scheduleRun();
@@ -306,7 +307,7 @@
 
   window.addEventListener('message', function (e) {
     const msg = e.data;
-    if (!msg || e.source !== window.parent) return;
+    if (!msg || (e.source !== window.parent && e.origin !== window.location.origin)) return;
     if (msg.type === 'hms-diff-focus') focusEntry(msg.key);
     if (msg.type === 'hms-review-highlight') setData(msg);
   });
