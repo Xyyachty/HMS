@@ -259,8 +259,14 @@
       }
     }
 
-    added.forEach(function (entry) { if (paint(entry, 'added')) addedCount++; });
-    modified.forEach(function (entry) { if (paint(entry, 'modified')) modifiedCount++; });
+    /* The branding task is judged against the stock template, so its change
+       list holds every edit the team ever made to Home - the hero, the team,
+       the promos - and boxing those buried the logo, name and links the task
+       is about. For that task the page check below is the whole answer. */
+    if (!stockBranding) {
+      added.forEach(function (entry) { if (paint(entry, 'added')) addedCount++; });
+      modified.forEach(function (entry) { if (paint(entry, 'modified')) modifiedCount++; });
+    }
 
     if (stockBranding) {
       try {
@@ -286,10 +292,15 @@
     bar.style.display = 'flex';
   }
 
+  /* A throttle, not a debounce. The hero carousel and the other live parts of
+     the page change the DOM several times a second, and a debounce restarted on
+     every change never fired: the only pass that ran was the one at load,
+     before React had drawn anything, so the review said "No changes on this
+     page" over a page full of them. */
   let timer = null;
   function scheduleRun() {
-    clearTimeout(timer);
-    timer = setTimeout(run, 150);
+    if (timer) return;
+    timer = setTimeout(function () { timer = null; run(); }, 150);
   }
 
   function focusEntry(key) {
