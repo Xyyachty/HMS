@@ -25,7 +25,7 @@
     --wi-line: var(--border);
     --wi-danger: var(--danger, #f87171);
     --wi-ok: var(--success, #4ade80);
-    max-width: 1240px; margin: 0 auto; padding: 1.5rem 1.5rem 3rem;
+    padding: 1.5rem 1.5rem 3rem;
     color: var(--fg);
   }
 
@@ -71,7 +71,7 @@
   .wi-mode-text small { display: block; color: var(--fg-muted); font-size: 0.82rem; margin-top: 0.15rem; }
 
   /* Form beside its summary; one column on a narrow screen */
-  .wi-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1.25rem; align-items: start; }
+  .wi-layout { display: grid; grid-template-columns: minmax(0, 1fr) clamp(320px, 26vw, 400px); gap: 1.25rem; align-items: start; }
   .wi-steps { display: grid; gap: 1rem; min-width: 0; }
 
   .wi-section { background: var(--card); border: 1px solid var(--wi-line); border-radius: 14px; padding: 1.2rem 1.3rem 1.35rem; }
