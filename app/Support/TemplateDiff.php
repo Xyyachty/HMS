@@ -83,6 +83,15 @@ class TemplateDiff
         'experiences' => 'Highlight',
     ];
 
+    /** Header link key => the label it ships with. Kept in step with DEFAULT_NAV in hms-site-content.js. */
+    private const DEFAULT_NAV_LABELS = [
+        'home' => 'Home',
+        'rooms' => 'Rooms',
+        'restaurant' => 'Restaurant',
+        'amenities' => 'Amenities',
+        'experience' => 'Highlights',
+    ];
+
     /**
      * @return array{summary: array{added:int,modified:int,removed:int}, changes: array, highlight: array{added: array, modified: array}}
      */
@@ -418,6 +427,10 @@ class TemplateDiff
         switch ($jsonName) {
             case 'brandName':
                 return '[data-hms-brand-name]';
+            case 'navLinks':
+                return isset($item['key']) && is_string($item['key']) && $item['key'] !== ''
+                    ? '[data-hms-nav-link="' . $item['key'] . '"]'
+                    : null;
             case 'heroSlides':
                 /* Whichever slide is showing: the photographs are the change, and
                    the band they rotate in is the thing to box. Both skins are
@@ -558,6 +571,29 @@ class TemplateDiff
                         'label' => 'Name',
                         'from' => HotelTemplateBuilder::DEFAULT_BRAND_NAME,
                         'to' => $item['label'] ?? '',
+                    ]],
+                ];
+                continue;
+            }
+            // The header always saves all five links, so a team's first rename
+            // has no Before rows and would report every link as added. Report
+            // only the ones whose label moved off the default, as renamed.
+            if ($jsonName === 'navLinks') {
+                $default = self::DEFAULT_NAV_LABELS[$item['key'] ?? ''] ?? null;
+                $to = trim((string) ($item['label'] ?? ''));
+                if ($default === null || $to === '' || $to === $default) {
+                    continue;
+                }
+                $changes[] = [
+                    'type' => 'modified', 'scope' => 'collection_item',
+                    'key' => self::collectionSelector($jsonName, $item), 'hms_id' => null,
+                    'page' => $item['page'] ?? 'home',
+                    'label' => $label . ': ' . $to,
+                    'fields' => [[
+                        'property' => 'label',
+                        'label' => 'Name',
+                        'from' => $default,
+                        'to' => $to,
                     ]],
                 ];
                 continue;
