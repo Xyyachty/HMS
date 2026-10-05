@@ -250,8 +250,29 @@
         out.push({ el: el, count: 1 });
       }
     });
+    // Restyled or moved in Design mode - a button given a new colour keeps its
+    // label, so the text check above passes it. Any saved entry on a hero
+    // element carrying more than its text and bookkeeping is a change.
+    const saved = (window.HMSTemplateEditor && window.HMSTemplateEditor.getCustomizations
+      && window.HMSTemplateEditor.getCustomizations()) || window.__HMS_CUSTOMIZATIONS__ || {};
+    Object.keys(saved).forEach(function (key) {
+      const entry = saved[key];
+      if (key.indexOf('__') === 0 || !entry || typeof entry !== 'object') return;
+      const styled = Object.keys(entry).some(function (prop) {
+        const value = entry[prop];
+        return NOT_STYLE.indexOf(prop) === -1 && value != null && value !== '' && value !== false;
+      });
+      if (!styled) return;
+      resolveElements({ key: key }).forEach(function (el) {
+        if (el.closest(hero)) out.push({ el: el, count: 1 });
+      });
+    });
     return out;
   }
+
+  // Entry fields that are not a visible change. Kept in step with
+  // TemplateDiff::IGNORED_PROPERTIES, plus the text the check above judges.
+  const NOT_STYLE = ['hmsId', 'page', 'freePosition', 'moveMode', 'keepFixed', 'position', 'text', 'value'];
 
   function stockChanges() {
     if (stockReview === 'branding') {
