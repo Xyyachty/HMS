@@ -362,9 +362,9 @@
                                     @endif
                                     @php $activities = $task->activityList(); @endphp
                                     @if($activities)
-                                        {{-- This role's own activity, broken into the four steps it
-                                             is done in. Ticked as the student works, and all four
-                                             have to be ticked before it can be handed in - the
+                                        {{-- This role's own activity, broken into the steps it
+                                             is done in. Ticked as the student works, and every one
+                                             has to be ticked before it can be handed in - the
                                              submit route checks the same thing the button does. --}}
                                         <div class="rounded-xl border border-slate-200 bg-white px-3 py-2.5"
                                              data-activity-panel data-task="{{ $task->task_id }}">
@@ -394,8 +394,8 @@
                                             @if($task->status === 'active')
                                                 <p class="text-[11px] text-slate-400 mt-2" data-activity-hint>
                                                     {{ $task->activitiesComplete()
-                                                        ? 'All four done - you can submit this task.'
-                                                        : 'Tick each step as you finish it. Complete all four steps before submitting the task.' }}
+                                                        ? 'All steps done - you can submit this task.'
+                                                        : 'Tick each step as you finish it. Complete all steps before submitting the task.' }}
                                                 </p>
                                             @endif
                                         </div>

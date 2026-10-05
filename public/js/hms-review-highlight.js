@@ -20,7 +20,7 @@
      recomputing it — that second computation is where they went missing. */
   let added = [];
   let modified = [];
-  // 'branding', 'home', 'promos' or 'partners': the page check run for that task. See run().
+  // 'branding', 'home', 'promos', 'partners', 'team' or 'footer': the page check run for that task. See run().
   let stockReview = null;
   let booted = false;
 
@@ -284,13 +284,10 @@
     return out;
   }
 
-  /* Customize Promos and Packages: every promo picture that is not its stock
-     photograph, every line whose text differs from the template's (each one
-     carries it in data-hms-stock), and anything restyled. A listed promo only
-     shows its offer and title, so an edited description or terms line of a
-     promo not featured is boxed on its row in the list instead. */
-  function promosChanges() {
-    const section = '[data-hms-section="promos"]';
+  /* The check every stock-reviewed section shares: a picture that is not its
+     stock photograph (data-hms-img-changed), a line whose text differs from the
+     template's (data-hms-stock), and anything restyled in Design mode. */
+  function sectionChanges(section) {
     const out = [];
     queryAll(section + ' img[data-hms-img-changed]').forEach(function (el) {
       out.push({ el: el, count: 1 });
@@ -301,6 +298,15 @@
       }
     });
     styledIn(section).forEach(function (el) { out.push({ el: el, count: 1 }); });
+    return out;
+  }
+
+  /* Customize Promos and Packages: the shared check, plus one thing. A listed
+     promo only shows its offer and title, so an edited description or terms
+     line of a promo not featured is boxed on its row in the list instead. */
+  function promosChanges() {
+    const section = '[data-hms-section="promos"]';
+    const out = sectionChanges(section);
     const saved = savedEntries();
     Object.keys(saved).forEach(function (key) {
       const m = /data-hms-category="(promo-[\w-]+?)-(?:offer|title|desc|terms)"/.exec(key);
@@ -321,12 +327,7 @@
     queryAll(section + ' [data-hms-partner-state]').forEach(function (el) {
       out.push({ el: el, count: 1, type: el.getAttribute('data-hms-partner-state') === 'added' ? 'added' : 'modified' });
     });
-    queryAll(section + ' [data-hms-stock]').forEach(function (el) {
-      if (normalise(el.innerText || el.textContent) !== normalise(el.getAttribute('data-hms-stock'))) {
-        out.push({ el: el, count: 1 });
-      }
-    });
-    styledIn(section).forEach(function (el) { out.push({ el: el, count: 1 }); });
+    Array.prototype.push.apply(out, sectionChanges(section));
     const grid = queryAll(section + ' [data-hms-partners-removed]')[0];
     removedCount = grid ? (parseInt(grid.getAttribute('data-hms-partners-removed'), 10) || 0) : 0;
     return out;
@@ -342,6 +343,10 @@
     }
     if (stockReview === 'home') return homeChanges();
     if (stockReview === 'partners') return partnersChanges();
+    // Customize Our Team and Customize the Footer: the shared check alone.
+    if (stockReview === 'team' || stockReview === 'footer') {
+      return sectionChanges('[data-hms-section="' + stockReview + '"]');
+    }
     return stockReview === 'promos' ? promosChanges() : [];
   }
 

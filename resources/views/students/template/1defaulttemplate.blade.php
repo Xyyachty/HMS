@@ -3750,14 +3750,15 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
 
       <section data-hms-section="team" data-hms-bg-target="1" style={{ padding: '2rem 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ marginBottom: '2rem' }}>
-          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>The people here</p>
-          <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Our Team</h2>
+          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }} data-hms-stock="The people here">The people here</p>
+          <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }} data-hms-stock="Our Team">Our Team</h2>
         </div>
         <div className="team-grid">
           {DEFAULT_TEAM.map(member => (
             <article key={member.id} className="team-card">
               <div className="team-photo">
-                <img src={resolveCardImg('team', member.id, member.img)} alt={member.name} loading="lazy" />
+                <img src={resolveCardImg('team', member.id, member.img)} alt={member.name} loading="lazy"
+                  data-hms-img-changed={resolveCardImg('team', member.id, member.img) !== member.img ? '1' : undefined} />
                 {canEditHome && (
                   <div style={{ position: 'absolute', bottom: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1">
                     <button type="button" title="Change photo"
@@ -3767,8 +3768,8 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
                 )}
               </div>
               <div className="team-info">
-                <h3 className="font-display team-name">{member.name}</h3>
-                <p className="team-role">{member.role}</p>
+                <h3 className="font-display team-name" data-hms-stock={member.name}>{member.name}</h3>
+                <p className="team-role" data-hms-stock={member.role}>{member.role}</p>
               </div>
             </article>
           ))}
@@ -8129,13 +8130,18 @@ function Footer({ onNavigate, cardImages, page, brandName, hotelInfo, socialLink
      team that has not filled the form in still has a finished-looking site. */
   const info = hotelInfo || {};
   const socials = Array.isArray(socialLinks) ? socialLinks : [];
-  const blurb = (info.description || '').trim()
+  /* What the footer reads before anyone edits it: the approved concept's
+     description, else the template's. The faculty review outlines any line
+     that differs (data-hms-stock). */
+  const concept = (window.HMSSiteContent && window.HMSSiteContent.hotelDefaults()) || {};
+  const stockBlurb = concept.description
     || 'A sanctuary of refined hospitality. Where every guest becomes part of our story.';
+  const blurb = (info.description || '').trim() || stockBlurb;
   const contactRows = [
-    { icon: 'fa-solid fa-location-dot', value: (info.address || '').trim() || '42 Rivoli Blvd, Paris' },
-    { icon: 'fa-solid fa-phone', value: (info.phone || '').trim() || '+33 1 42 60 00 00' },
-    { icon: 'fa-solid fa-envelope', value: (info.email || '').trim() || 'stay@spchotel.com' },
-    { icon: 'fa-solid fa-clock', value: (info.hours || '').trim() },
+    { icon: 'fa-solid fa-location-dot', value: (info.address || '').trim() || '42 Rivoli Blvd, Paris', stock: '42 Rivoli Blvd, Paris' },
+    { icon: 'fa-solid fa-phone', value: (info.phone || '').trim() || '+33 1 42 60 00 00', stock: '+33 1 42 60 00 00' },
+    { icon: 'fa-solid fa-envelope', value: (info.email || '').trim() || 'stay@spchotel.com', stock: 'stay@spchotel.com' },
+    { icon: 'fa-solid fa-clock', value: (info.hours || '').trim(), stock: '' },
   ].filter((row) => row.value !== '');
 
   return (
@@ -8149,7 +8155,7 @@ function Footer({ onNavigate, cardImages, page, brandName, hotelInfo, socialLink
                   no-edit stops a double-click caret fighting the next React render. */}
               <span data-hms-brand-name="1" data-hms-no-edit="1" style={{ fontSize: '1.05rem', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase' }}>{brandName}</span>
             </div>
-            <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', fontWeight: 300, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem' }}>{blurb}</p>
+            <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', fontWeight: 300, lineHeight: 1.65, maxWidth: 280, marginBottom: '1.25rem' }} data-hms-stock={stockBlurb}>{blurb}</p>
             {socials.length ? (
               <div data-hms-content-kind="socialLinks" data-hms-content-id="all" style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
                 {socials.map((link) => (
@@ -8167,28 +8173,28 @@ function Footer({ onNavigate, cardImages, page, brandName, hotelInfo, socialLink
             ) : null}
           </div>
           <div>
-            <h4 style={{ fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '1rem' }}>Hotel</h4>
+            <h4 style={{ fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '1rem' }} data-hms-stock="Hotel">Hotel</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <a href="javascript:void(0)" onClick={() => onNavigate('rooms')} style={{ fontSize: '0.82rem', fontWeight: 300 }}>Rooms & Suites</a>
-              <a href="javascript:void(0)" onClick={() => onNavigate('restaurant')} style={{ fontSize: '0.82rem', fontWeight: 300 }}>Dining</a>
-              <a href="javascript:void(0)" onClick={() => onNavigate('experience')} style={{ fontSize: '0.82rem', fontWeight: 300 }}>Spa & Wellness</a>
-              <a href="javascript:void(0)" onClick={() => onNavigate('experience')} style={{ fontSize: '0.82rem', fontWeight: 300 }}>Events</a>
+              <a href="javascript:void(0)" onClick={() => onNavigate('rooms')} style={{ fontSize: '0.82rem', fontWeight: 300 }} data-hms-stock="Rooms & Suites">Rooms & Suites</a>
+              <a href="javascript:void(0)" onClick={() => onNavigate('restaurant')} style={{ fontSize: '0.82rem', fontWeight: 300 }} data-hms-stock="Dining">Dining</a>
+              <a href="javascript:void(0)" onClick={() => onNavigate('experience')} style={{ fontSize: '0.82rem', fontWeight: 300 }} data-hms-stock="Spa & Wellness">Spa & Wellness</a>
+              <a href="javascript:void(0)" onClick={() => onNavigate('experience')} style={{ fontSize: '0.82rem', fontWeight: 300 }} data-hms-stock="Events">Events</a>
             </div>
           </div>
           <div>
-            <h4 style={{ fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '1rem' }}>Services</h4>
+            <h4 style={{ fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '1rem' }} data-hms-stock="Services">Services</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <a href="javascript:void(0)" onClick={() => onNavigate('booking')} style={{ fontSize: '0.82rem', fontWeight: 300 }}>Book Now</a>
-              <a href="#" style={{ fontSize: '0.82rem', fontWeight: 300 }}>Concierge</a>
-              <a href="#" style={{ fontSize: '0.82rem', fontWeight: 300 }}>Airport Transfer</a>
-              <a href="#" style={{ fontSize: '0.82rem', fontWeight: 300 }}>Gift Vouchers</a>
+              <a href="javascript:void(0)" onClick={() => onNavigate('booking')} style={{ fontSize: '0.82rem', fontWeight: 300 }} data-hms-stock="Book Now">Book Now</a>
+              <a href="#" style={{ fontSize: '0.82rem', fontWeight: 300 }} data-hms-stock="Concierge">Concierge</a>
+              <a href="#" style={{ fontSize: '0.82rem', fontWeight: 300 }} data-hms-stock="Airport Transfer">Airport Transfer</a>
+              <a href="#" style={{ fontSize: '0.82rem', fontWeight: 300 }} data-hms-stock="Gift Vouchers">Gift Vouchers</a>
             </div>
           </div>
           <div>
-            <h4 style={{ fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '1rem' }}>Contact</h4>
+            <h4 style={{ fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '1rem' }} data-hms-stock="Contact">Contact</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               {contactRows.map((row) => (
-                <span key={row.icon} style={{ fontSize: '0.82rem', fontWeight: 300, color: 'var(--fg-muted)' }}>
+                <span key={row.icon} data-hms-stock={row.stock} style={{ fontSize: '0.82rem', fontWeight: 300, color: 'var(--fg-muted)' }}>
                   <i className={row.icon} style={{ color: 'var(--accent)', width: 14, marginRight: '0.35rem' }}></i>{row.value}
                 </span>
               ))}
@@ -8198,8 +8204,8 @@ function Footer({ onNavigate, cardImages, page, brandName, hotelInfo, socialLink
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           <span data-hms-brand-text="1" data-hms-no-edit="1" style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', fontWeight: 300 }}>{new Date().getFullYear()} {brandName}. All rights reserved.</span>
           <div style={{ display: 'flex', gap: '1.25rem' }}>
-            <a href="#" style={{ fontSize: '0.72rem', fontWeight: 300 }}>Privacy Policy</a>
-            <a href="#" style={{ fontSize: '0.72rem', fontWeight: 300 }}>Terms of Service</a>
+            <a href="#" style={{ fontSize: '0.72rem', fontWeight: 300 }} data-hms-stock="Privacy Policy">Privacy Policy</a>
+            <a href="#" style={{ fontSize: '0.72rem', fontWeight: 300 }} data-hms-stock="Terms of Service">Terms of Service</a>
           </div>
         </div>
       </div>

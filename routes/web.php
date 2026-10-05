@@ -680,7 +680,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return back()->withErrors(['task' => 'This task has already been submitted.']);
         }
 
-        /* All four steps of this activity first. They are the work broken into the
+        /* Every step of this activity first. They are the work broken into the
            order it is actually done in, so handing it in with one untouched is
            handing in work that is not finished. A task assigned before the steps
            existed carries none and submits as it always did. */
@@ -688,7 +688,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $left = count($task->activityList()) - $task->activitiesDoneCount();
 
             return back()->withErrors([
-                'task' => 'Finish all four steps first — ' . $left
+                'task' => 'Finish all the steps first — ' . $left
                     . ' still to go. Tick each one as you complete it.',
             ]);
         }

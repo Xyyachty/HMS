@@ -704,7 +704,7 @@
       if (!entry || entry.freePosition !== true) return;
       // A free-position rule is a page's own layout; it must not move the element
       // another page happens to match with the same selector.
-      if (!entryBelongsToCurrentPage(entry)) return;
+      if (!entryBelongsToCurrentPage(entry, id)) return;
       let sel = id;
       let probe = null;
       try {
@@ -1369,7 +1369,7 @@
       if (!id) return;
       // Same selector-collision problem: hiding "the second card" on the restaurant
       // page must not hide the second room card too.
-      if (typeof entry !== 'string' && !entryBelongsToCurrentPage(entry)) return;
+      if (typeof entry !== 'string' && !entryBelongsToCurrentPage(entry, id)) return;
       const el = findByKey(id);
       // A legacy entry for "#root > nav" would hide the whole header.
       if (el && !isHeaderLocked(el)) el.style.display = 'none';
@@ -1384,11 +1384,16 @@
    * and a room name on the rooms page, so an edit to one was landing on the other.
    * An entry with no page is left alone: those predate the field and have always been
    * applied wherever they matched.
+   *
+   * The footer is the exception: it is one block under every page, owned by Home
+   * (SECTION_OWNER_PAGE), so a footer link renamed on Home has to read the same
+   * under Rooms. Its key is a selector through the <footer> element itself.
    */
-  function entryBelongsToCurrentPage(entry) {
+  function entryBelongsToCurrentPage(entry, id) {
     if (!entry || !entry.page) return true;
     const page = getCurrentPage();
-    return !page || entry.page === page;
+    if (!page || entry.page === page) return true;
+    return entry.page === 'home' && /(^|[\s>])footer(?=[\s>:.\[]|$)/.test(String(id || ''));
   }
 
   function applyAllCustomizations() {
@@ -1419,7 +1424,7 @@
     let migrated = false;
     Object.keys(customizations).forEach((id) => attempt('entry ' + id, () => {
       if (id === USER_KEY || id === DELETED_KEY || SITE_CONTENT_KEYS.indexOf(id) !== -1) return;
-      if (!entryBelongsToCurrentPage(customizations[id])) return;
+      if (!entryBelongsToCurrentPage(customizations[id], id)) return;
       let el = findByKey(id);
       if (!el) return;
 

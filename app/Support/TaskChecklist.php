@@ -153,6 +153,14 @@ class TaskChecklist
                 'description' => 'Customize the Partner Brands section by adding your hotel’s partner brands and updating their names and images.',
             ],
             [
+                'title' => 'Customize Our Team',
+                'description' => 'Customize the Our Team section by updating the photos, names, and positions of the hotel team members.',
+            ],
+            [
+                'title' => 'Customize the Footer',
+                'description' => 'Customize the Footer by updating the hotel information, links, contact details, and other text to match the hotel.',
+            ],
+            [
                 'title' => 'Write Your Hotel\'s Story',
                 'description' => "Replace the sample words with your own: the tagline over the headline, the paragraph introducing the hotel, and the contact block every footer prints - address, phone, email and the hours the desk keeps. These are one record for the whole site, so what you write here is what the Rooms page and the Restaurant page say too.",
             ],
@@ -167,10 +175,6 @@ class TaskChecklist
             [
                 'title' => 'Add Your Social Profiles',
                 'description' => "Put the hotel's social accounts in the footer. Add only the networks the hotel actually uses - each one shows as its own icon, and an account nobody keeps is worse than a missing one.",
-            ],
-            [
-                'title' => 'Introduce Your Team',
-                'description' => "Put four real people in Our Team: a photograph of each, their full name, and the position they hold. This is the section a guest reads to see who runs the hotel, so use the roles your team actually assigned.",
             ],
             [
                 'title' => 'Write the Experience Page',
@@ -324,7 +328,8 @@ class TaskChecklist
         'Add Your Social Profiles' => 'Every icon in the footer belongs to an account the hotel actually keeps.',
         'Customize Promos and Packages' => 'Every promo carries your own image, title, offer label, description and details.',
         'Customize Partner Brands' => 'Every card is one of your hotel\'s real partners, with its own name and image, and no sample brands remain.',
-        'Introduce Your Team' => 'Four people, each with a photograph, a full name and the position they hold.',
+        'Customize Our Team' => 'Every team member shows their own photo, their correct name and the position they hold.',
+        'Customize the Footer' => 'The footer\'s description, links and contact details are all correct for your hotel.',
         'Colour the Experience Page' => 'The page carries a background of its own that still belongs to the site.',
         'Create Your Room Categories' => 'The categories are the ones your hotel sells, each with an opening rate.',
         'Build Your Room Types' => 'Every room type the hotel has is on the page, under the right category.',
@@ -357,7 +362,7 @@ class TaskChecklist
     ];
 
     /**
-     * The four steps one activity is worked through as, keyed by its title.
+     * The steps one activity is worked through as, keyed by its title.
      *
      * Kept beside the tasks rather than inside them so the entries above stay
      * readable as a list of work, and appended to the description on the way out
@@ -417,11 +422,16 @@ class TaskChecklist
             'Add new partner brands using the Add Brand button.',
             'Remove unnecessary brands and review the section to make sure all partner information is correct.',
         ],
-        'Introduce Your Team' => [
-            'Agree which four people the section will show.',
-            'Upload a photograph for each of them.',
-            'Write each name in full.',
-            'Give each the position they actually hold on your team.',
+        'Customize Our Team' => [
+            'Change the photos of each team member.',
+            'Edit the names to show the correct team members.',
+            'Edit their positions or roles to match their responsibilities in the hotel.',
+        ],
+        'Customize the Footer' => [
+            'Edit the hotel description with information about the hotel.',
+            'Update the footer links and their names.',
+            'Update the contact details, including the address, phone number, and email.',
+            'Review the footer and make sure all information is correct and matches the hotel.',
         ],
         'Colour the Experience Page' => [
             'Open Background Colours in Design mode.',
@@ -600,10 +610,10 @@ class TaskChecklist
     ];
 
     /**
-     * A task with its steps written into the description, as "Steps:" and four
+     * A task with its steps written into the description, as "Steps:" and its
      * numbered lines. Every reader of the checklist goes through here, so the
      * Create Task tab, the row it saves and the student's copy all carry the same
-     * four steps.
+     * steps.
      *
      * A task with no steps listed is returned untouched rather than given an
      * empty heading.
@@ -630,7 +640,7 @@ class TaskChecklist
         $task['activities'] = $steps;
         $task['completion'] = self::COMPLETION[$task['title'] ?? ''] ?? null;
         // The description as written, before the steps were appended: a screen
-        // rendering the four as their own list wants the paragraph on its own,
+        // rendering the steps as their own list wants the paragraph on its own,
         // not the paragraph with the list printed under it twice.
         $task['summary'] = rtrim($task['description'] ?? '');
         $task['description'] = rtrim($task['description'] ?? '')
@@ -741,7 +751,10 @@ class TaskChecklist
         'customize partner brands' => ['page' => 'home', 'section' => 'partners'],
         // Rows assigned before the rename still carry the old title.
         'build the partner brands strip' => ['page' => 'home', 'section' => 'partners'],
+        'customize our team' => ['page' => 'home', 'section' => 'team'],
+        // Rows assigned before the rename still carry the old title.
         'introduce your team' => ['page' => 'home', 'section' => 'team'],
+        'customize the footer' => ['page' => 'home', 'section' => 'footer'],
         'write the experience page' => ['page' => 'experience', 'section' => null],
         'colour the experience page' => ['page' => 'experience', 'section' => null],
         'illustrate the experience page' => ['page' => 'experience', 'section' => null],
@@ -800,6 +813,9 @@ class TaskChecklist
         'fill in the promos section' => 'promos',
         'customize partner brands' => 'partners',
         'build the partner brands strip' => 'partners',
+        'customize our team' => 'team',
+        'introduce your team' => 'team',
+        'customize the footer' => 'footer',
     ];
 
     public static function reviewsAgainstStock(string $title): bool
@@ -807,7 +823,7 @@ class TaskChecklist
         return self::stockReviewFor($title) !== null;
     }
 
-    /** Which page check a task's After preview runs: 'branding', 'home', 'promos', 'partners', or null. */
+    /** Which page check a task's After preview runs: 'branding', 'home', 'promos', 'partners', 'team', 'footer', or null. */
     public static function stockReviewFor(string $title): ?string
     {
         return self::REVIEW_AGAINST_STOCK[mb_strtolower(trim($title))] ?? null;

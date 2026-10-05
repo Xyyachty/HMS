@@ -174,6 +174,7 @@
             }
         }
     </style>
+    @include('partials.ink-all-styles')
 </head>
 <body class="bg-surface min-h-screen flex">
 
@@ -289,7 +290,7 @@
                 </button>
 
                 <!-- Breadcrumb / Page Title -->
-                <div class="hidden sm:flex items-center gap-2 text-sm">
+                <div id="breadcrumb" class="ink-all hidden sm:flex items-center gap-2 text-sm">
                     <span class="text-slate-400">Hotel Management System</span>
                     <span class="iconify text-slate-300 text-xs" data-icon="mdi:chevron-right"></span>
                     <span id="breadcrumb-current" class="font-semibold text-slate-700">Dashboard</span>
@@ -389,7 +390,7 @@
                 $homeRingOffset = $homeRingLength - ($homeRingLength * min(100, max(0, $homeRate)) / 100);
             @endphp
 
-            <div id="home-section" class="section-content fade-in space-y-5">
+            <div id="home-section" class="ink-all section-content fade-in space-y-5">
                 <!-- Welcome -->
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
@@ -707,7 +708,7 @@
                 $groupTint = fn($role, $key) => $groupRoleTints[$role][$key] ?? ($key === 'bar' ? 'bg-slate-400' : ($key === 'text' ? 'text-slate-400' : 'bg-slate-100'));
             @endphp
 
-            <div id="group-section" class="section-content hidden fade-in space-y-4">
+            <div id="group-section" class="ink-all section-content hidden fade-in space-y-4">
                 <div>
                     <h2 class="text-2xl sm:text-[30px] font-extrabold tracking-tight text-slate-900 leading-tight">My Team</h2>
                     <p class="text-sm text-slate-500 mt-1">View your team details, members, tasks and progress.</p>
@@ -992,7 +993,7 @@
             </div>
 
             <!-- ==================== TASKS SECTION ==================== -->
-            <div id="tasks-section" class="section-content hidden fade-in space-y-5">
+            <div id="tasks-section" class="ink-all section-content hidden fade-in space-y-5">
                 @php
                     // One entry per assigned role — a member may hold more than one.
                     $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
@@ -1087,7 +1088,7 @@
             </div>
 
             {{-- ══════════════ ACTIVITY LOGS SECTION ══════════════ --}}
-            <div id="activity-section" class="section-content hidden fade-in space-y-4">
+            <div id="activity-section" class="ink-all section-content hidden fade-in space-y-4">
                 <div>
                     <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Activity Logs</h2>
                     <p class="text-sm text-slate-400">Your own recorded activity only — teammates' logs are not shown here.</p>
@@ -1124,7 +1125,7 @@
             </div>
 
             {{-- ══════════════ REPORTS SECTION ══════════════ --}}
-            <div id="reports-section" class="section-content hidden fade-in space-y-4">
+            <div id="reports-section" class="ink-all section-content hidden fade-in space-y-4">
                 @php
                     $roleLabels = [
                         'front_desk' => 'Front Desk',
@@ -1478,7 +1479,7 @@
              save or a faculty verdict can open editing up while the page is still open,
              and the button that reveals this dialog is repainted from that response. The
              controller is the real gate. --}}
-        <div id="hotelConceptModal" class="fixed inset-0 z-50 hidden">
+        <div id="hotelConceptModal" class="ink-all fixed inset-0 z-50 hidden">
             <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeHotelConceptModal()"></div>
             <div class="relative top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100 w-[92vw] max-w-xl max-h-[90vh] overflow-y-auto">
                 <div class="brand-gradient px-5 py-4 flex items-center justify-between gap-3 sticky top-0 z-10">
@@ -1548,7 +1549,7 @@
     @endif
 
     <!-- Member Activity Logs Modal -->
-    <div id="memberActivityModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div id="memberActivityModal" class="ink-all fixed inset-0 z-50 hidden flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeMemberActivityModal()"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 36rem;">
             <div class="bg-brand-soft px-4 py-3 border-b border-brand/10 flex justify-between items-center rounded-t-2xl flex-shrink-0">
@@ -1573,7 +1574,7 @@
     {{-- Top level like the dialogs above, and for the same reason: one nested in a
          section is hidden along with it. This one has a second reason — inside
          #tasksLiveContainer the tasks poller would throw it away. --}}
-    <div id="taskInstructionsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div id="taskInstructionsModal" class="ink-all fixed inset-0 z-50 hidden flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTaskInstructions()"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 34rem;">
             <div class="bg-brand-soft px-4 py-3 border-b border-brand/10 flex justify-between items-start gap-3 rounded-t-2xl flex-shrink-0">
@@ -1637,6 +1638,8 @@
             // Update breadcrumb
             const labels = { home: 'Dashboard', group: 'Team Overview', tasks: 'Tasks', activity: 'Activity Logs', reports: 'Reports', profile: 'My Profile' };
             document.getElementById('breadcrumb-current').textContent = labels[section] || 'Dashboard';
+            // Black like the page under it on the five main pages, not on My Profile.
+            document.getElementById('breadcrumb').classList.toggle('ink-all', section !== 'profile');
 
             // Grey behind the five main pages; My Profile keeps the cream.
             document.getElementById('studentMain').style.backgroundColor = section === 'profile' ? '#FDF6F3' : '#dadada';
@@ -2818,8 +2821,8 @@ document.addEventListener('change', function (e) {
             const hint = panel.querySelector('[data-activity-hint]');
             if (hint) {
                 hint.textContent = data.complete
-                    ? 'All four done - you can submit this task.'
-                    : 'Tick each step as you finish it. Complete all four steps before submitting the task.';
+                    ? 'All steps done - you can submit this task.'
+                    : 'Tick each step as you finish it. Complete all steps before submitting the task.';
             }
 
             // Steps ticked move the card itself between Not Started and In
