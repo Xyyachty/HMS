@@ -3180,6 +3180,7 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, ed
               tabIndex={editing && canEditLogo ? 0 : undefined}
               className={editing && canEditLogo ? 'hms-header-edit' : undefined}
               data-hms-edit-label="Change logo"
+              data-hms-brand-logo="1"
               title={editing && canEditLogo ? 'Click to change the hotel logo' : undefined}
               style={{ display: 'flex' }}
               onClick={editing && canEditLogo ? (e) => openEdit(e, { kind: 'logo' }) : undefined}
@@ -3217,7 +3218,7 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, ed
               <button
                 className={`nav-link${currentPage === l.key ? ' active' : ''}${editing && canEditNav ? ' hms-header-edit' : ''}`}
                 data-hms-edit-label="Rename"
-                data-hms-nav-link={link.key}
+                data-hms-nav-link={l.key}
                 title={editing && canEditNav ? 'Click to rename this link' : undefined}
                 onClick={editing && canEditNav ? (e) => openEdit(e, { kind: 'nav', link: l }) : () => onNav(l.key)}
               >{l.label}</button>

@@ -2794,53 +2794,126 @@
    * React re-renders the template freely and would drop a class it did not set.
    */
   let pendingTaskFocus = null;
-  let taskFocusOverlay = null;
+  let taskFocusOverlays = [];
   let taskFocusTimer = null;
 
-  function resolveTaskFocusTarget(page, section) {
-    if (section === 'header') return document.querySelector('.nav-bar');
-    if (section) {
-      const found = document.querySelector('[data-hms-section="' + section + '"]');
-      if (found) return found;
+  /* The header has no data-hms-section, and the branding task is three separate
+     pieces of it. Boxing the whole bar told a student where to look but not what
+     to change, so the header is boxed piece by piece instead: the logo, the hotel
+     name, and each of the links, the first of each carrying a name. */
+  const HEADER_TASK_PARTS = [
+    { selector: '.nav-bar [data-hms-brand-logo]', label: 'Logo' },
+    { selector: '.nav-bar [data-hms-brand-name]', label: 'Hotel name' },
+    { selector: '.nav-bar [data-hms-nav-link]', label: 'Navigation' },
+  ];
+
+  /** The areas to box: [{ els, label }], one entry per named part. */
+  function resolveTaskFocusTargets(page, section) {
+    if (section === 'header') {
+      const parts = HEADER_TASK_PARTS.map(function (part) {
+        return { els: Array.from(document.querySelectorAll(part.selector)), label: part.label };
+      }).filter(function (part) { return part.els.length > 0; });
+      if (parts.length) return parts;
+      const bar = document.querySelector('.nav-bar');
+      return bar ? [{ els: [bar], label: null }] : [];
     }
+    let target = null;
+    if (section) target = document.querySelector('[data-hms-section="' + section + '"]');
     // No section named, or this template has none by that name (Template 2 has
     // no promos strip): the page itself is the area.
-    return document.querySelector('main[data-hms-page="' + page + '"]');
+    if (!target) target = document.querySelector('main[data-hms-page="' + page + '"]');
+    return target ? [{ els: [target], label: null }] : [];
   }
 
-  function flashTaskFocus(target) {
-    if (taskFocusOverlay) taskFocusOverlay.remove();
-    clearTimeout(taskFocusTimer);
-    if (!target) return;
+  /* The header is position: fixed, and its pieces are not — the box has to be
+     fixed too, or it is left behind the moment the page scrolls. */
+  function inFixedLayer(el) {
+    for (let node = el; node && node !== document.body; node = node.parentElement) {
+      if (window.getComputedStyle(node).position === 'fixed') return true;
+    }
+    return false;
+  }
 
-    const fixed = window.getComputedStyle(target).position === 'fixed';
-    const rect = target.getBoundingClientRect();
+  function clearTaskFocus() {
+    clearTimeout(taskFocusTimer);
+    taskFocusOverlays.forEach(function (box) { box.remove(); });
+    taskFocusOverlays = [];
+  }
+
+  function taskFocusBox(el, label, pad) {
+    const rect = el.getBoundingClientRect();
+    // Hidden at this width — the desktop links collapse into the phone menu.
+    if (rect.width === 0 || rect.height === 0) return null;
+    const fixed = inFixedLayer(el);
     const box = document.createElement('div');
     box.setAttribute('data-hms-no-edit', '1');
     box.setAttribute('aria-hidden', 'true');
     Object.assign(box.style, {
       position: fixed ? 'fixed' : 'absolute',
-      left: rect.left + (fixed ? 0 : window.scrollX) + 'px',
-      top: rect.top + (fixed ? 0 : window.scrollY) + 'px',
-      width: rect.width + 'px',
-      height: rect.height + 'px',
+      left: rect.left - pad + (fixed ? 0 : window.scrollX) + 'px',
+      top: rect.top - pad + (fixed ? 0 : window.scrollY) + 'px',
+      width: rect.width + pad * 2 + 'px',
+      height: rect.height + pad * 2 + 'px',
       pointerEvents: 'none',
       zIndex: '2147483000',
-      borderRadius: '10px',
+      borderRadius: pad ? '8px' : '10px',
       boxShadow: '0 0 0 3px rgba(34, 211, 238, 0.95), 0 0 28px 6px rgba(34, 211, 238, 0.45)',
       transition: 'opacity 0.6s ease',
       opacity: '1',
     });
+    if (label) {
+      // Same chip as the header's own Design-mode labels.
+      const chip = document.createElement('span');
+      chip.textContent = label;
+      Object.assign(chip.style, {
+        position: 'absolute',
+        top: 'calc(100% + 7px)',
+        left: '0',
+        padding: '3px 7px',
+        borderRadius: '999px',
+        background: '#0891b2',
+        color: '#fff',
+        fontFamily: "'Outfit', sans-serif",
+        fontSize: '0.6rem',
+        fontWeight: '600',
+        lineHeight: '1.4',
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        whiteSpace: 'nowrap',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
+      });
+      box.appendChild(chip);
+    }
     document.body.appendChild(box);
-    taskFocusOverlay = box;
+    return box;
+  }
+
+  function flashTaskFocus(parts, hold) {
+    clearTaskFocus();
+    const pad = parts.length > 1 ? 4 : 0;
+    parts.forEach(function (part) {
+      let labelled = false;
+      part.els.forEach(function (el) {
+        const box = taskFocusBox(el, labelled ? null : part.label, pad);
+        if (box) {
+          labelled = true;
+          taskFocusOverlays.push(box);
+        }
+      });
+    });
+    const shown = taskFocusOverlays.slice();
     taskFocusTimer = setTimeout(function () {
-      box.style.opacity = '0';
-      setTimeout(function () { box.remove(); if (taskFocusOverlay === box) taskFocusOverlay = null; }, 650);
-    }, 2400);
+      shown.forEach(function (box) { box.style.opacity = '0'; });
+      setTimeout(function () {
+        shown.forEach(function (box) { box.remove(); });
+        taskFocusOverlays = taskFocusOverlays.filter(function (box) { return shown.indexOf(box) === -1; });
+      }, 650);
+    }, hold);
   }
 
   function applyTaskFocus(focus) {
-    const target = resolveTaskFocusTarget(focus.page, focus.section);
+    const parts = resolveTaskFocusTargets(focus.page, focus.section);
+    const target = parts.length ? parts[0].els[0] : null;
 
     if (focus.section && focus.section !== 'header' && target && target.hasAttribute('data-hms-section')) {
       // Also select it as the active section, so Design mode's section chrome
@@ -2852,10 +2925,12 @@
       const y = target.getBoundingClientRect().top + window.scrollY - 80;
       window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
       // Measure after the smooth scroll has moved things.
-      setTimeout(function () { flashTaskFocus(target); }, 450);
+      setTimeout(function () { flashTaskFocus(parts, 2400); }, 450);
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(function () { flashTaskFocus(target); }, 350);
+      // Several small pieces take longer to read than one big box, so the
+      // header's stay up long enough to find each one.
+      setTimeout(function () { flashTaskFocus(parts, focus.section === 'header' ? 6000 : 2400); }, 350);
     }
   }
 
