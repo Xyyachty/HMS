@@ -202,7 +202,10 @@
 
   function brandingChanges() {
     const site = window.HMSSiteContent || {};
-    const stockName = normalise(site.DEFAULT_BRAND_NAME || 'SPC HOTEL');
+    // The name the site shows untouched: the approved concept's, else the stock one.
+    const stockName = normalise(typeof site.hotelDefaults === 'function'
+      ? site.hotelDefaults().name
+      : (site.DEFAULT_BRAND_NAME || 'SPC HOTEL'));
     const stockNav = {};
     (Array.isArray(site.DEFAULT_NAV) ? site.DEFAULT_NAV : [
       { key: 'home', label: 'Home' }, { key: 'rooms', label: 'Rooms' },

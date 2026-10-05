@@ -92,6 +92,8 @@ class PublicSiteController extends Controller
             'builderRole'     => null,
             // Presence of this is what switches the bridge to the public API map.
             'publicSlug'      => $slug,
+            // The approved concept's name and words, for every field the team left unset.
+            'hotelDefaults'   => HotelTemplateBuilder::hotelDefaults($groupName, $facultyId),
         ]);
     }
 

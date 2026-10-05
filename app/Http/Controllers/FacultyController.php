@@ -2521,6 +2521,12 @@ class FacultyController extends Controller
             'builderRole' => $data['role'] ?? 'front_desk',
             'reviewHighlight' => $reviewHighlight,
             'previewGroup' => (string) $membership->group_name,
+            // The approved concept's name and words, as the team's own builder
+            // shows them; without it the preview fell back to the stock hotel.
+            'hotelDefaults' => \App\Support\HotelTemplateBuilder::hotelDefaults(
+                (string) $membership->group_name,
+                (int) $membership->faculty_id
+            ),
         ]);
     }
 
