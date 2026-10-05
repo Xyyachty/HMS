@@ -1904,12 +1904,12 @@
             const title = row.dataset.taskTitle || 'Propose Two Hotel Concepts';
             // Read off the card being replaced, so the settled card keeps the same
             // code rather than assuming where the concept task sits.
-            const code = row.querySelector('[data-task-code]')?.textContent.trim() || 'FD TASK 1';
+            const code = row.querySelector('[data-task-code]')?.textContent.trim() || 'HOTEL CONCEPT';
             const group = row.closest('[data-task-group]');
             row.remove();
 
-            // Appended, not prepended: completed work sorts last in the grid, the
-            // same order the server renders the group in.
+            // Prepended: the concept is the team's first task and leads the grid
+            // whatever its state, the same order the server renders the group in.
             const list = group?.querySelector('[data-completed-list]');
             if (list) {
                 const done = document.createElement('div');
@@ -1937,7 +1937,7 @@
                             + '</span>'
                         + '</div>'
                     + '</div>';
-                list.appendChild(done);
+                list.prepend(done);
                 if (window.Iconify && typeof window.Iconify.scan === 'function') {
                     window.Iconify.scan(done);
                 }
