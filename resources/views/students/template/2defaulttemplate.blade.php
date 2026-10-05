@@ -1020,6 +1020,76 @@
     .dine-hero-tag { font-size: 0.66rem; padding: 0.5rem 0.7rem; }
     .page-header.dine-menu-head { padding-top: 2rem; }
   }
+  /* auto-fit rather than auto-fill: empty tracks collapse, so however many
+     brands or members a team ends up with, the row they make is full width. */
+  .partner-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+  .partner-card {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    min-height: 108px; padding: 1.35rem 1rem; text-align: center;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .partner-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+  /* A brand that has uploaded a picture fills its card: a logo boxed at 54px in
+     the middle of a tile reads as a stamp rather than as the brand. The padding
+     goes with it, so the image meets the card's own rounded edge. */
+  .partner-card.has-logo { padding: 0; min-height: 150px; overflow: hidden; }
+  .partner-card img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; display: block; transition: transform 0.4s;
+  }
+  .partner-card:hover img { transform: scale(1.05); }
+  /* The wordmark a brand falls back to until someone uploads its logo. */
+  .partner-name { font-size: 1.05rem; letter-spacing: 0.08em; margin: 0; color: var(--fg-muted); transition: color 0.2s; }
+  .partner-card:hover .partner-name { color: var(--accent); }
+  /* A brand with a logo still names itself, along the foot of the picture. */
+  .partner-caption {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; margin: 0;
+    padding: 1.4rem 0.6rem 0.5rem; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    color: #fff; background: linear-gradient(transparent, rgba(0,0,0,0.65));
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* The same dashed invitation the Add Room Card tile uses, sized for this
+     strip so it sits in the grid as one more brand rather than a banner. */
+  .partner-add {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    min-height: 108px; padding: 1.35rem 1rem; cursor: pointer;
+    border: 2px dashed #f43f5e; border-radius: 10px;
+    background: rgba(244,63,94,0.06); color: #fb7185;
+    font-family: 'DM Sans', sans-serif; transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .partner-add:hover { background: rgba(244,63,94,0.12); transform: translateY(-2px); }
+  .partner-add-mark {
+    width: 34px; height: 34px; border-radius: 10px; border: 1.5px solid #f43f5e;
+    display: flex; align-items: center; justify-content: center; font-size: 20px; line-height: 1;
+  }
+
+  /* Four cards, one row, every card the same size: the grid gives each column an
+     equal share and stretches every card to the tallest, and the photo is a fixed
+     4:5 rectangle of that column rather than a circle, so the four photos line up
+     whatever shape the uploaded image is. */
+  .team-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; align-items: stretch; }
+  .team-card {
+    display: flex; flex-direction: column; height: 100%; overflow: hidden;
+    text-align: center;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card);
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .team-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+  .team-photo {
+    position: relative; width: 100%; aspect-ratio: 4 / 5; overflow: hidden;
+    border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.25);
+  }
+  .team-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .team-card:hover .team-photo { border-color: var(--accent); }
+  .team-info { flex: 1; padding: 1.15rem 1rem 1.35rem; }
+  .team-name { font-size: 1.05rem; margin: 0 0 0.4rem; }
+  .team-role { margin: 0; color: var(--accent); font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; }
+  @media (max-width: 768px) {
+    .team-grid { grid-template-columns: 1fr 1fr !important; }
+    .partner-grid { grid-template-columns: 1fr 1fr !important; }
+  }
   /* Outside the builder, allow stacking a bit earlier on tablets. */
   @media (max-width: 900px) {
     html:not(.hms-in-builder) .hero-split { flex-direction: column; }
@@ -1145,6 +1215,31 @@ const DEFAULT_PROMOS = [
     terms: 'Two nights or longer',
     img: 'https://picsum.photos/seed/hotelluxurypackage/800/600.jpg',
   },
+];
+
+/* A brand shows its wordmark until someone uploads a logo for it, which reads as
+   a finished strip either way rather than as three broken images. */
+const DEFAULT_PARTNERS = [
+  { id: 'partner-1', label: 'Aurelia Travel' },
+  { id: 'partner-2', label: 'Maison Cafe' },
+  { id: 'partner-3', label: 'Northwind Air' },
+  { id: 'partner-4', label: 'Verde Spa' },
+  { id: 'partner-5', label: 'Lumiere Events' },
+  { id: 'partner-6', label: 'Basilio Wines' },
+];
+
+/* The store writes "label" (TemplateDiff prints that field in a faculty review);
+   the template's own six were written with "name". Both are read here so a team
+   that saved a list before this rename still shows its brands. */
+function partnerName(partner) {
+  return (partner && (partner.label || partner.name)) || 'Brand';
+}
+
+const DEFAULT_TEAM = [
+  { id: 'team-1', name: 'Elena Marchetti', role: 'General Manager', img: 'https://picsum.photos/seed/hotelteam1/400/400.jpg' },
+  { id: 'team-2', name: 'Diego Salvador', role: 'Front Desk Supervisor', img: 'https://picsum.photos/seed/hotelteam2/400/400.jpg' },
+  { id: 'team-3', name: 'Priya Raman', role: 'Executive Chef', img: 'https://picsum.photos/seed/hotelteam3/400/400.jpg' },
+  { id: 'team-4', name: 'Noah Fitzgerald', role: 'Guest Experience Lead', img: 'https://picsum.photos/seed/hotelteam4/400/400.jpg' },
 ];
 
 const RESTAURANTS = [
@@ -3964,8 +4059,11 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
   );
 }
 
-function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, onBookNow, brandName, experiences }) {
+function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, onBookNow, brandName, experiences, partners, canEditPartners, onAddPartner, onRenamePartner, onRemovePartner }) {
   const roomList = rooms && rooms.length ? rooms : [];
+  const partnerList = partners && partners.length ? partners : DEFAULT_PARTNERS;
+  // Which brand's × has been pressed once. The second press is the confirmation.
+  const [confirmingPartner, setConfirmingPartner] = useState(null);
   /* Both lines come from the team's Hotel Information, which starts as the
      concept faculty approved and falls back to the template's own copy while
      those fields are still blank. */
@@ -4120,6 +4218,74 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
         <PromoShowcase promos={DEFAULT_PROMOS} canEdit={canEditHeroSlides} onToast={onToast} onBook={onBookNow} />
       </section>
 
+      <section data-hms-section="partners" data-hms-bg-target="1" style={{ padding: '0 1.5rem 5rem', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ marginBottom: '1.75rem' }}>
+          <span className="section-num" data-hms-stock="In good company">In good company</span>
+          <h2 className="font-display" style={{ fontSize: '2rem', margin: '0.35rem 0 0' }} data-hms-stock="Partner Brands">Partner Brands</h2>
+        </div>
+        {/* The faculty review reads these: how many of the template's brands
+            were removed, and on each card whether it is new or changed. */}
+        <div className="partner-grid" data-hms-partners-removed={DEFAULT_PARTNERS.filter(d => !partnerList.some(p => p.id === d.id)).length}>
+          {partnerList.map(partner => {
+            const logo = resolveCardImg('partner', partner.id, '');
+            const name = partnerName(partner);
+            const stock = DEFAULT_PARTNERS.find(d => d.id === partner.id);
+            const state = !stock ? 'added' : (logo || name !== stock.label ? 'changed' : undefined);
+            return (
+              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state}>
+                {/* The name is the brand's record, renamed with the pencil, so
+                    Design mode does not lay a second copy of it over the card. */}
+                {logo
+                  ? <><img src={logo} alt={name} loading="lazy" /><p className="partner-caption" data-hms-no-edit="1">{name}</p></>
+                  : <p className="partner-name font-display" data-hms-no-edit="1">{name}</p>}
+                {canEditPartners && (
+                  <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, display: 'flex', gap: 6 }} data-hms-no-edit="1">
+                    <button type="button" title={logo ? 'Change logo' : 'Upload logo'}
+                      onClick={() => changeCardImg('partner', partner.id, () => onToast && onToast(name + ' logo updated'))}
+                      style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                    <button type="button" title="Rename brand"
+                      onClick={() => onRenamePartner && onRenamePartner(partner)}
+                      style={toolBtnStyle('image')}><i className="fa-solid fa-pen" style={{ fontSize: 11 }}></i></button>
+                    <button type="button"
+                      title={confirmingPartner === partner.id ? 'Press again to remove ' + name : 'Remove brand'}
+                      onClick={() => {
+                        if (confirmingPartner !== partner.id) {
+                          setConfirmingPartner(partner.id);
+                          return;
+                        }
+                        setConfirmingPartner(null);
+                        if (onRemovePartner) onRemovePartner(partner);
+                      }}
+                      onBlur={() => setConfirmingPartner(null)}
+                      style={Object.assign({}, toolBtnStyle('danger'), confirmingPartner === partner.id
+                        ? { width: 'auto', padding: '0 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }
+                        : null)}>
+                      {confirmingPartner === partner.id
+                        ? 'Remove?'
+                        : <i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i>}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {canEditPartners && (
+            <button
+              type="button"
+              onClick={() => onAddPartner && onAddPartner()}
+              onMouseDown={(e) => e.stopPropagation()}
+              title="Add partner brand"
+              data-hms-no-edit="1"
+              data-hms-action="add-partner"
+              className="partner-add"
+            >
+              <span className="partner-add-mark">+</span>
+              <span style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 11 }}>Add Brand</span>
+            </button>
+          )}
+        </div>
+      </section>
+
       <section data-hms-section="highlights" data-hms-bg-target="1" style={{ padding: '0 1.5rem 5rem', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
           <div>
@@ -4129,6 +4295,34 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
           <button className="btn-ghost" onClick={() => onNav('experience')} style={{ fontSize: '0.72rem' }} data-hms-stock="View all highlights">View all highlights</button>
         </div>
         <SelectedHighlights items={experiences} onOpen={() => onNav('experience')} />
+      </section>
+
+      <section data-hms-section="team" data-hms-bg-target="1" style={{ padding: '0 1.5rem 5rem', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ marginBottom: '1.75rem' }}>
+          <span className="section-num" data-hms-stock="The people here">The people here</span>
+          <h2 className="font-display" style={{ fontSize: '2rem', margin: '0.35rem 0 0' }} data-hms-stock="Our Team">Our Team</h2>
+        </div>
+        <div className="team-grid">
+          {DEFAULT_TEAM.map(member => (
+            <article key={member.id} className="team-card">
+              <div className="team-photo">
+                <img src={resolveCardImg('team', member.id, member.img)} alt={member.name} loading="lazy"
+                  data-hms-img-changed={resolveCardImg('team', member.id, member.img) !== member.img ? '1' : undefined} />
+                {canEditHeroSlides && (
+                  <div style={{ position: 'absolute', bottom: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1">
+                    <button type="button" title="Change photo"
+                      onClick={() => changeCardImg('team', member.id, () => onToast && onToast(member.name + ' photo updated'))}
+                      style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                  </div>
+                )}
+              </div>
+              <div className="team-info">
+                <h3 className="font-display team-name" data-hms-stock={member.name}>{member.name}</h3>
+                <p className="team-role" data-hms-stock={member.role}>{member.role}</p>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
       {photoRoom ? (
         <RoomPhotosModal
@@ -6777,6 +6971,8 @@ function App() {
   const pendingGuestAction = useRef(null);
   const [canOrderMenu, setCanOrderMenu] = useState(false);
   const [canEditExperiences, setCanEditExperiences] = useState(false);
+  const [partners, setPartnersState] = useState(DEFAULT_PARTNERS);
+  const [canEditPartners, setCanEditPartners] = useState(false);
   const [experiences, setExperiencesState] = useState(() => (
     window.HMSSiteContent && window.HMSSiteContent.getExperiences
       ? window.HMSSiteContent.getExperiences(DEFAULT_EXPERIENCES)
@@ -7043,6 +7239,8 @@ function App() {
         : false
     );
     if (window.HMSSiteContent.canEditExperiences) setCanEditExperiences(window.HMSSiteContent.canEditExperiences());
+    if (window.HMSSiteContent.getPartners) setPartnersState(window.HMSSiteContent.getPartners(DEFAULT_PARTNERS));
+    if (window.HMSSiteContent.canEditPartners) setCanEditPartners(window.HMSSiteContent.canEditPartners());
     if (window.HMSSiteContent.getExperiences) setExperiencesState(window.HMSSiteContent.getExperiences(DEFAULT_EXPERIENCES));
   }, []);
 
@@ -7439,6 +7637,49 @@ function App() {
     }
   }, [rooms, canManageRooms, page, openRoomManagement]);
 
+  /* A brand is named as it is added: the strip shows the name until a logo is
+     uploaded for it, so an unnamed tile would be a blank card.
+
+     Asked for in the site's own dialog rather than window.prompt, which paints
+     the browser's chrome and the deployment's hostname over a page the student is
+     designing. Same modal the header edits use. */
+  const addPartner = () => {
+    setHeaderEdit({ kind: 'partner' });
+  };
+
+  // The same dialog, holding the brand being renamed.
+  const renamePartner = (partner) => {
+    setHeaderEdit({ kind: 'partner', partner: partner });
+  };
+
+  const savePartnerName = (name) => {
+    const content = window.HMSSiteContent;
+    if (!content || !content.addPartner) return;
+    const clean = String(name || '').trim();
+    if (!clean) return;
+    const added = content.addPartner(clean, DEFAULT_PARTNERS);
+    if (!added) {
+      showToast('Only the role that owns the Home page can add a brand.');
+      return;
+    }
+    setPartnersState(content.getPartners(DEFAULT_PARTNERS));
+    showToast(clean + ' added to Partner Brands');
+  };
+
+  /* Two clicks rather than a browser confirm: the × asks in place and removes on
+     the second press, which keeps the question inside the page being designed. */
+  const removePartner = (partner) => {
+    const content = window.HMSSiteContent;
+    if (!content || !content.removePartner) return;
+    const name = (partner && (partner.label || partner.name)) || 'That brand';
+    if (!content.removePartner(partner.id, DEFAULT_PARTNERS)) {
+      showToast('Only the role that owns the Home page can remove a brand.');
+      return;
+    }
+    setPartnersState(content.getPartners(DEFAULT_PARTNERS));
+    showToast(name + ' removed');
+  };
+
   /* The Experience gallery's tiles. The store holds the whole list from the
      first edit, so adding one writes the template's own twelve alongside it. */
   const addExperience = (values) => {
@@ -7555,6 +7796,11 @@ function App() {
         )}
         brandName={brandName}
         experiences={experiences}
+        partners={partners}
+        canEditPartners={canEditPartners}
+        onAddPartner={addPartner}
+        onRenamePartner={renamePartner}
+        onRemovePartner={removePartner}
         />
     ),
     rooms: (
@@ -7669,6 +7915,15 @@ function App() {
           maxLength: 60,
           hint: 'Shown in the header and the footer of every page.',
         }
+      : headerEdit.kind === 'partner'
+        ? {
+            mode: 'text',
+            title: headerEdit.partner ? 'Rename Partner Brand' : 'Add Partner Brand',
+            fieldLabel: 'Brand name',
+            value: headerEdit.partner ? partnerName(headerEdit.partner) : '',
+            maxLength: 40,
+            hint: 'Shown on the brand\'s card, along the foot of its logo once one is uploaded.',
+          }
       : headerEdit.kind === 'nav'
         ? {
             mode: 'text',
@@ -7689,6 +7944,20 @@ function App() {
   const saveHeaderEdit = (value) => {
     const content = window.HMSSiteContent;
     if (!content || !headerEdit) return;
+    if (headerEdit.kind === 'partner' && headerEdit.partner) {
+      const clean = String(value || '').trim();
+      if (clean && content.updatePartner && content.updatePartner(headerEdit.partner.id, { label: clean }, DEFAULT_PARTNERS)) {
+        setPartnersState(content.getPartners(DEFAULT_PARTNERS));
+        showToast('Brand renamed to ' + clean);
+      }
+      setHeaderEdit(null);
+      return;
+    }
+    if (headerEdit.kind === 'partner') {
+      savePartnerName(value);
+      setHeaderEdit(null);
+      return;
+    }
     if (headerEdit.kind === 'brand') {
       if (content.setBrandName(value)) showToast('Hotel name updated across the whole site');
     } else if (headerEdit.kind === 'nav') {
