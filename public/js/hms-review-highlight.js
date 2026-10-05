@@ -20,12 +20,14 @@
      recomputing it — that second computation is where they went missing. */
   let added = [];
   let modified = [];
+  let stockBranding = false;
   let booted = false;
 
   function setData(data) {
     added = (data && Array.isArray(data.added)) ? data.added : [];
     modified = (data && Array.isArray(data.modified)) ? data.modified : [];
-    if (!added.length && !modified.length) return;
+    stockBranding = !!(data && data.stock_branding);
+    if (!added.length && !modified.length && !stockBranding) return;
     if (booted) {
       scheduleRun();
     } else if (document.readyState === 'loading') {
@@ -179,6 +181,51 @@
     ensureLayer().appendChild(box);
   }
 
+  /* Customize Your Hotel Branding: the page itself is compared with the stock
+     template, so the outline does not depend on any snapshot. A logo that is
+     not the default logo, a hotel name that is not the default name, a link
+     whose label is not its default label — each of those is the student's
+     work, whatever was saved when. */
+  function normalise(text) {
+    return String(text == null ? '' : text).replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  function isDefaultLogo(img) {
+    if (!img || img.tagName !== 'IMG') return true;
+    if (img.getAttribute('data-logo-fallback') === '1') return true;
+    const src = img.getAttribute('src') || '';
+    const stock = window.HMS_DEFAULT_LOGO || '/new_logo_in_chtm....png';
+    return src === '' || src === stock || src.endsWith(stock) || src.endsWith('new_logo_in_chtm....png');
+  }
+
+  function brandingChanges() {
+    const site = window.HMSSiteContent || {};
+    const stockName = normalise(site.DEFAULT_BRAND_NAME || 'SPC HOTEL');
+    const stockNav = {};
+    (Array.isArray(site.DEFAULT_NAV) ? site.DEFAULT_NAV : [
+      { key: 'home', label: 'Home' }, { key: 'rooms', label: 'Rooms' },
+      { key: 'restaurant', label: 'Restaurant' }, { key: 'amenities', label: 'Amenities' },
+      { key: 'experience', label: 'Highlights' },
+    ]).forEach(function (link) { stockNav[link.key] = [normalise(link.label)]; });
+    // A label the nav used to ship with is still the stock label, not a rename.
+    (stockNav.experience = stockNav.experience || []).push('experience');
+
+    const out = [];
+    queryAll('img[data-hms-content-kind="brand"][data-hms-content-id="logo"]').forEach(function (img) {
+      if (!isDefaultLogo(img)) out.push(img);
+    });
+    queryAll('[data-hms-brand-name]').forEach(function (el) {
+      if (normalise(el.textContent) !== stockName) out.push(el);
+    });
+    queryAll('.nav-bar [data-hms-nav-link]').forEach(function (el) {
+      const stock = stockNav[el.getAttribute('data-hms-nav-link')] || [];
+      if (stock.indexOf(normalise(el.textContent)) === -1) out.push(el);
+    });
+    // The phone menu's copies are never on screen in the review; counting them
+    // would tell faculty about outlines they cannot see.
+    return out.filter(function (el) { return !el.closest('.mobile-menu'); });
+  }
+
   function run() {
     const host = ensureLayer();
     host.innerHTML = '';
@@ -189,6 +236,14 @@
 
     // Counted on presence, drawn on visibility: the tally is what this page
     // contains, so it does not tick up and down as the preview is scrolled.
+    // Each element is boxed once, however many entries point at it.
+    const drawn = new Set();
+    function box(el, type, key) {
+      if (drawn.has(el)) return;
+      drawn.add(el);
+      if (isPaintable(el)) drawBox(el, type, key);
+    }
+
     // One entry that cannot be drawn is skipped, never allowed to take the rest
     // of the boxes down with it.
     function paint(entry, type) {
@@ -196,9 +251,7 @@
         if (!entry || (entry.page && entry.page !== page)) return false;
         const els = resolveElements(entry);
         if (!els.length) return false;
-        els.forEach(function (el) {
-          if (isPaintable(el)) drawBox(el, type, entry.key);
-        });
+        els.forEach(function (el) { box(el, type, entry.key); });
         return true;
       } catch (e) {
         return false;
@@ -208,11 +261,21 @@
     added.forEach(function (entry) { if (paint(entry, 'added')) addedCount++; });
     modified.forEach(function (entry) { if (paint(entry, 'modified')) modifiedCount++; });
 
+    if (stockBranding) {
+      try {
+        brandingChanges().forEach(function (el) {
+          if (drawn.has(el)) return;
+          box(el, 'modified', null);
+          modifiedCount++;
+        });
+      } catch (e) { /* the diff outlines above still stand */ }
+    }
+
     const parts = [];
     const swatch = '<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COLORS.added + '"></i> ';
     if (addedCount) parts.push('<span>' + swatch + addedCount + ' added</span>');
     if (modifiedCount) parts.push('<span>' + swatch + modifiedCount + ' changed</span>');
-    reportStatus(addedCount + modifiedCount, added.length + modified.length);
+    reportStatus(addedCount + modifiedCount, added.length + modified.length + (stockBranding ? 1 : 0));
 
     // Changes exist but none of them is on this page: say so, rather than
     // leaving faculty to wonder whether the outlines failed.

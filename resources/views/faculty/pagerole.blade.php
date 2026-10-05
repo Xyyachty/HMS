@@ -2664,6 +2664,8 @@ function hideReviseStep() {
 
 /* Which side the iframe is showing, so the outlines go onto After only. */
 let reviewFrameSide = 'after';
+// The branding task: After also outlines whatever differs from the stock template.
+let reviewOutlineBranding = false;
 
 /* Hand the After preview the Changes list this panel is showing, so it can
    outline each one. The preview used to work the list out again on its own and
@@ -2700,7 +2702,7 @@ function postReviewHighlight() {
     if (reviewFrameSide !== 'after') return;
     const frame = document.getElementById('reviewPreviewFrame');
     if (!frame || !frame.contentWindow) return;
-    const payload = { type: 'hms-review-highlight', added: [], modified: [] };
+    const payload = { type: 'hms-review-highlight', added: [], modified: [], stock_branding: reviewOutlineBranding };
     reviewChanges.forEach(function (c) {
         if (!c || !c.key || (c.type !== 'added' && c.type !== 'modified')) return;
         payload[c.type].push({ key: String(c.key), hms_id: c.hms_id || null, page: c.page || 'home' });
@@ -2719,7 +2721,7 @@ function onReviewFrameLoad() {
     const hasOutlinable = reviewChanges.some(function (c) {
         return c && c.key && (c.type === 'added' || c.type === 'modified');
     });
-    if (!hasOutlinable) {
+    if (!hasOutlinable && !reviewOutlineBranding) {
         setReviewHighlightStatus(reviewChanges.length ? 'These changes have no single spot to outline' : '', 'muted');
         return;
     }
@@ -2888,6 +2890,7 @@ function openTaskReview(taskId) {
 
                 reviewPreviewUrls = { before: d.before_preview_url || null, after: d.preview_url };
                 reviewChanges = Array.isArray(d.changes) ? d.changes : [];
+                reviewOutlineBranding = !!d.outline_branding;
                 renderReviewChanges(reviewChanges);
 
                 if (d.before_preview_url) {

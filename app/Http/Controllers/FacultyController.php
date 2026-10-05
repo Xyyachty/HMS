@@ -2200,6 +2200,9 @@ class FacultyController extends Controller
             'before_preview_url' => $beforePreviewUrl,
             'changes' => $changes,
             'change_summary' => $changeSummary,
+            // The After preview outlines the logo, name and links that differ
+            // from the stock template, without relying on any snapshot.
+            'outline_branding' => \App\Support\TaskChecklist::reviewsAgainstStock((string) $task->title),
         ];
 
         // The concept is text, not a page, so the review dialog reads it inline —
