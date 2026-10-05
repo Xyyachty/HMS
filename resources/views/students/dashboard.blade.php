@@ -2814,7 +2814,7 @@ document.addEventListener('change', function (e) {
             if (hint) {
                 hint.textContent = data.complete
                     ? 'All four done - you can submit this task.'
-                    : 'Tick each step as you finish it. All four are needed before you can submit.';
+                    : 'Tick each step as you finish it. Complete all four steps before submitting the task.';
             }
 
             // Steps ticked move the card itself between Not Started and In
