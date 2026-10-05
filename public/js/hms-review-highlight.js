@@ -20,15 +20,16 @@
      recomputing it — that second computation is where they went missing. */
   let added = [];
   let modified = [];
-  let stockBranding = false;
+  // 'branding' or 'home': the page check run for that task. See run().
+  let stockReview = null;
   let booted = false;
 
   function setData(data) {
     added = (data && Array.isArray(data.added)) ? data.added : [];
     modified = (data && Array.isArray(data.modified)) ? data.modified : [];
     // Either source can turn it on; neither turns it back off.
-    stockBranding = stockBranding || !!(data && data.stock_branding);
-    if (!added.length && !modified.length && !stockBranding) return;
+    stockReview = stockReview || (data && data.stock_review) || null;
+    if (!added.length && !modified.length && !stockReview) return;
     if (booted) {
       scheduleRun();
     } else if (document.readyState === 'loading') {
@@ -227,6 +228,34 @@
     return out.filter(function (el) { return !el.closest('.mobile-menu'); });
   }
 
+  /* Customize the Home Page: the five slides and the hero's three lines of text.
+     The templates mark each slide that is not its stock photograph, and give
+     each hero line the text it shows when untouched (data-hms-stock) — the
+     approved concept's words where there are some, else the template's. */
+  function homeChanges() {
+    const hero = '[data-hms-section="hero"]';
+    const out = [];
+    const slides = queryAll(hero + ' [data-hms-slide-changed]').length;
+    const band = queryAll(hero + ' .hero-bg, ' + hero + ' .hero-img')[0];
+    // One box for the band the photographs rotate in, counted once per slide.
+    if (slides && band) out.push({ el: band, count: slides });
+    queryAll(hero + ' [data-hms-stock]').forEach(function (el) {
+      // innerText, not textContent: the heading's two lines are block spans
+      // with no space between them in the markup.
+      if (normalise(el.innerText || el.textContent) !== normalise(el.getAttribute('data-hms-stock'))) {
+        out.push({ el: el, count: 1 });
+      }
+    });
+    return out;
+  }
+
+  function stockChanges() {
+    if (stockReview === 'branding') {
+      return brandingChanges().map(function (el) { return { el: el, count: 1 }; });
+    }
+    return stockReview === 'home' ? homeChanges() : [];
+  }
+
   function run() {
     const host = ensureLayer();
     host.innerHTML = '';
@@ -259,21 +288,21 @@
       }
     }
 
-    /* The branding task is judged against the stock template, so its change
-       list holds every edit the team ever made to Home - the hero, the team,
-       the promos - and boxing those buried the logo, name and links the task
-       is about. For that task the page check below is the whole answer. */
-    if (!stockBranding) {
+    /* The branding and Home Page tasks are judged against the stock template,
+       so their change list holds every edit the team ever made to Home, and
+       boxing those buried what the task is about. For those tasks the page
+       check below is the whole answer. */
+    if (!stockReview) {
       added.forEach(function (entry) { if (paint(entry, 'added')) addedCount++; });
       modified.forEach(function (entry) { if (paint(entry, 'modified')) modifiedCount++; });
     }
 
-    if (stockBranding) {
+    if (stockReview) {
       try {
-        brandingChanges().forEach(function (el) {
-          if (drawn.has(el)) return;
-          box(el, 'modified', null);
-          modifiedCount++;
+        stockChanges().forEach(function (change) {
+          if (drawn.has(change.el)) return;
+          box(change.el, 'modified', null);
+          modifiedCount += change.count;
         });
       } catch (e) { /* the diff outlines above still stand */ }
     }
@@ -282,7 +311,7 @@
     const swatch = '<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COLORS.added + '"></i> ';
     if (addedCount) parts.push('<span>' + swatch + addedCount + ' added</span>');
     if (modifiedCount) parts.push('<span>' + swatch + modifiedCount + ' changed</span>');
-    reportStatus(addedCount + modifiedCount, added.length + modified.length + (stockBranding ? 1 : 0));
+    reportStatus(addedCount + modifiedCount, added.length + modified.length + (stockReview ? 1 : 0));
 
     // Changes exist but none of them is on this page: say so, rather than
     // leaving faculty to wonder whether the outlines failed.

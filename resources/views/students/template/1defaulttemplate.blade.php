@@ -3350,6 +3350,7 @@ function HeroSlider({ slides, canEdit }) {
              behind it is what a click reaches. Change image replaces them. */
           data-hms-bg-layer="1"
           className={`hero-slide${i === active ? ' is-active' : ''}`}
+          data-hms-slide-changed={slide.img !== DEFAULT_HERO_SLIDES[i].img ? '1' : undefined}
           style={{ backgroundImage: cssUrl(slide.img) }}
         ></div>
       ))}
@@ -3492,8 +3493,12 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
      back to the template's own copy while those fields are still blank. */
   const info = hotelInfo || {};
   const tagline = (info.tagline || '').trim() || 'Boutique Luxury';
-  const blurb = (info.description || '').trim()
-    || ('Nestled in the heart of the city, ' + (brandName || 'SPC HOTEL') + ' offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.');
+  const stockBlurb = 'Nestled in the heart of the city, ' + (brandName || 'SPC HOTEL') + ' offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.';
+  const blurb = (info.description || '').trim() || stockBlurb;
+  /* What the hero reads before anyone edits it: the approved concept's words,
+     else the template's. The faculty review outlines any line that differs. */
+  const concept = (window.HMSSiteContent && window.HMSSiteContent.hotelDefaults()) || {};
+  const untouched = { tagline: concept.tagline || 'Boutique Luxury', blurb: concept.description || stockBlurb };
   const roomList = rooms && rooms.length ? rooms : [];
   const menuList = menus || [];
   const partnerList = partners && partners.length ? partners : DEFAULT_PARTNERS;
@@ -3541,12 +3546,12 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
         </div>
         <div className="hero-overlay" data-hms-no-move="1"></div>
         <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 1.5rem', maxWidth: 760 }}>
-          <p data-hms-content-kind="hotelInfo" data-hms-content-id="tagline" style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '1.25rem' }}>{tagline}</p>
-          <h1 className="font-display hero-title" data-hms-move-root="1" style={{ fontSize: '4.2rem', fontWeight: 900, lineHeight: 1.08, marginBottom: '1.25rem', textAlign: 'center' }}>
+          <p data-hms-content-kind="hotelInfo" data-hms-content-id="tagline" data-hms-stock={untouched.tagline} style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '1.25rem' }}>{tagline}</p>
+          <h1 className="font-display hero-title" data-hms-move-root="1" data-hms-stock="Where Elegance Meets Comfort" style={{ fontSize: '4.2rem', fontWeight: 900, lineHeight: 1.08, marginBottom: '1.25rem', textAlign: 'center' }}>
             <span style={{ display: 'block' }}>Where Elegance</span>
             <span style={{ display: 'block', color: 'var(--accent)', fontStyle: 'italic', fontWeight: 400 }}>Meets Comfort</span>
           </h1>
-          <p data-hms-content-kind="hotelInfo" data-hms-content-id="description" style={{ color: 'var(--fg-muted)', fontSize: '1.05rem', fontWeight: 300, maxWidth: 480, margin: '0 auto 2.25rem', lineHeight: 1.7 }}>
+          <p data-hms-content-kind="hotelInfo" data-hms-content-id="description" data-hms-stock={untouched.blurb} style={{ color: 'var(--fg-muted)', fontSize: '1.05rem', fontWeight: 300, maxWidth: 480, margin: '0 auto 2.25rem', lineHeight: 1.7 }}>
             {blurb}
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>

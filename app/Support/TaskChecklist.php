@@ -781,16 +781,28 @@ class TaskChecklist
      * taken later — the student's own save, which is what a row with no
      * assignment snapshot fell back to — already holds that work, and the
      * review then outlined nothing.
+     *
+     * The Home Page task has the same problem: the slides and the hero text are
+     * usually changed long before the task is handed in. The value names which
+     * page check the After preview runs (see hms-review-highlight.js).
      */
     private const REVIEW_AGAINST_STOCK = [
-        'customize your hotel branding',
+        'customize your hotel branding' => 'branding',
         // Rows assigned before the rename still carry the old title.
-        'brand your hotel',
+        'brand your hotel' => 'branding',
+        'customize the home page' => 'home',
+        'design the home page' => 'home',
     ];
 
     public static function reviewsAgainstStock(string $title): bool
     {
-        return in_array(mb_strtolower(trim($title)), self::REVIEW_AGAINST_STOCK, true);
+        return self::stockReviewFor($title) !== null;
+    }
+
+    /** Which page check a task's After preview runs: 'branding', 'home', or null. */
+    public static function stockReviewFor(string $title): ?string
+    {
+        return self::REVIEW_AGAINST_STOCK[mb_strtolower(trim($title))] ?? null;
     }
 
     /** Whether a title is the hotel concept, TASK 01's first activity. */

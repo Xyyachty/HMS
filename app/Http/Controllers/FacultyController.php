@@ -2200,9 +2200,10 @@ class FacultyController extends Controller
             'before_preview_url' => $beforePreviewUrl,
             'changes' => $changes,
             'change_summary' => $changeSummary,
-            // The After preview outlines the logo, name and links that differ
-            // from the stock template, without relying on any snapshot.
-            'outline_branding' => \App\Support\TaskChecklist::reviewsAgainstStock((string) $task->title),
+            // The After preview outlines what differs from the stock template
+            // (branding: logo, name, links; home: slides and hero text),
+            // without relying on any snapshot.
+            'stock_review' => \App\Support\TaskChecklist::stockReviewFor((string) $task->title),
         ];
 
         // The concept is text, not a page, so the review dialog reads it inline —
@@ -2503,9 +2504,10 @@ class FacultyController extends Controller
                     $beforeVersionId,
                     (int) $task->submitted_version_id
                 )['highlight'];
-                // The branding task is also checked on the page against the stock
-                // template, so the outlines do not hang on the snapshots alone.
-                $reviewHighlight['stock_branding'] = \App\Support\TaskChecklist::reviewsAgainstStock((string) $task->title);
+                // The branding and Home Page tasks are also checked on the page
+                // against the stock template, so the outlines do not hang on the
+                // snapshots alone.
+                $reviewHighlight['stock_review'] = \App\Support\TaskChecklist::stockReviewFor((string) $task->title);
             }
         }
 

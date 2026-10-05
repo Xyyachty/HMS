@@ -3808,6 +3808,7 @@ function HeroSlider({ slides, canEdit, brandName }) {
              behind it is what a click reaches. Change image replaces them. */
           data-hms-bg-layer="1"
           className={`hero-slide-img${i === active ? ' is-active' : ''}`}
+          data-hms-slide-changed={slide.img !== DEFAULT_HERO_SLIDES[i].img ? '1' : undefined}
           src={slide.img}
           alt={brandName}
         />
@@ -3949,8 +3950,12 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
      those fields are still blank. */
   const info = hotelInfo || {};
   const tagline = (info.tagline || '').trim() || 'Est. 1923';
-  const blurb = (info.description || '').trim()
-    || ('Nestled in the heart of the city, ' + (brandName || 'SPC HOTEL') + ' offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.');
+  const stockBlurb = 'Nestled in the heart of the city, ' + (brandName || 'SPC HOTEL') + ' offers an unparalleled experience of refined hospitality, curated dining, and timeless sophistication.';
+  const blurb = (info.description || '').trim() || stockBlurb;
+  /* What the hero reads before anyone edits it: the approved concept's words,
+     else the template's. The faculty review outlines any line that differs. */
+  const concept = (window.HMSSiteContent && window.HMSSiteContent.hotelDefaults()) || {};
+  const untouched = { tagline: concept.tagline || 'Est. 1923', blurb: concept.description || stockBlurb };
   const menuList = menus || [];
   // The room whose photo dialog is open, by id, or null when it is closed.
   const [photoRoomId, setPhotoRoomId] = useState(null);
@@ -3990,12 +3995,12 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
           <HeroSlider slides={heroSlides} canEdit={canEditHeroSlides} brandName={brandName} />
         </div>
         <div className="hero-content">
-          <span className="section-num" data-hms-content-kind="hotelInfo" data-hms-content-id="tagline">{tagline}</span>
-          <h1 className="font-display" data-hms-move-root="1" style={{ fontSize: '3.2rem', fontWeight: 600, lineHeight: 1.1, marginBottom: '1.25rem' }}>
+          <span className="section-num" data-hms-content-kind="hotelInfo" data-hms-content-id="tagline" data-hms-stock={untouched.tagline}>{tagline}</span>
+          <h1 className="font-display" data-hms-move-root="1" data-hms-stock="A Sanctuary of Timeless Luxury" style={{ fontSize: '3.2rem', fontWeight: 600, lineHeight: 1.1, marginBottom: '1.25rem' }}>
             <span style={{ display: 'block' }}>A Sanctuary of</span>
             <em style={{ display: 'block', color: 'var(--warm)' }}>Timeless Luxury</em>
           </h1>
-          <p style={{ color: 'var(--fg-muted)', fontSize: '0.95rem', fontWeight: 400, lineHeight: 1.7, marginBottom: '2rem', maxWidth: 400 }}>
+          <p data-hms-stock={untouched.blurb} style={{ color: 'var(--fg-muted)', fontSize: '0.95rem', fontWeight: 400, lineHeight: 1.7, marginBottom: '2rem', maxWidth: 400 }}>
             {blurb}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
