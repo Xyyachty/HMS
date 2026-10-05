@@ -888,14 +888,14 @@
                         <span id="reviewHighlightStatus" class="hidden text-[10px] font-semibold truncate"></span>
                     </span>
                     <div class="flex items-center gap-3">
-                        {{-- Only rendered once this task has a submission to anchor "After" to. --}}
+                        {{-- Only rendered once this task has a submission to anchor "After" to.
+                             No Changes tab: what the student changed is outlined in green on
+                             After itself, so faculty never have to leave the page to find it. --}}
                         <div id="reviewCompareToggle" class="hidden inline-flex rounded-lg bg-slate-100 p-0.5">
                             <button type="button" data-compare="before"
                                 class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 transition">Before</button>
                             <button type="button" data-compare="after"
                                 class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-white text-slate-800 shadow-sm transition">After</button>
-                            <button type="button" data-compare="changes"
-                                class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 transition">Changes <span id="reviewChangesCount"></span></button>
                         </div>
                         <a id="reviewOpenTab" href="#" target="_blank" rel="noopener"
                            class="text-[10px] font-bold text-brand hover:underline hidden">Open in new tab ↗</a>
@@ -2810,7 +2810,6 @@ function openTaskReview(taskId) {
     conceptPane.innerHTML = '';
     changesPane.classList.add('hidden');
     changesPane.innerHTML = '';
-    document.getElementById('reviewChangesCount').textContent = '';
     document.getElementById('reviewWorkLabel').textContent = "The team's live site";
     document.getElementById('reviewDecisionBlock').classList.remove('hidden');
     document.getElementById('reviewConceptHint').classList.add('hidden');
@@ -2890,7 +2889,6 @@ function openTaskReview(taskId) {
                 reviewPreviewUrls = { before: d.before_preview_url || null, after: d.preview_url };
                 reviewChanges = Array.isArray(d.changes) ? d.changes : [];
                 renderReviewChanges(reviewChanges);
-                document.getElementById('reviewChangesCount').textContent = reviewChanges.length ? '(' + reviewChanges.length + ')' : '';
 
                 if (d.before_preview_url) {
                     document.getElementById('reviewCompareToggle').classList.remove('hidden');
