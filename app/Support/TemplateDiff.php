@@ -64,6 +64,7 @@ class TemplateDiff
         'bottom' => 'Position (bottom)',
         'display' => 'Visibility',
         'overflow' => 'Overflow',
+        'plateShape' => 'Plate shape',
     ];
 
     /** Bookkeeping keys inside an element entry that are not user-visible content. */

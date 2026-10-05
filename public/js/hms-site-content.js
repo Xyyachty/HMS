@@ -387,12 +387,36 @@
     return item && typeof item.bg === 'string' ? item.bg.trim() : '';
   }
 
+  /* The Restaurant hero's plate photograph rides on the same record: one
+     restaurant-owned style row, so it needs no storage of its own. Each setter
+     keeps the other's value. */
+  const PLATE_SHAPES = ['circle', 'rounded', 'square', 'rectangle'];
+
+  function menuCardStyleItem() {
+    const c = getCustomizations();
+    const entry = c[MENU_CARD_STYLE_KEY];
+    return (entry && Array.isArray(entry.items) && entry.items[0]) || {};
+  }
+
+  function patchMenuCardStyle(changes) {
+    const item = Object.assign({}, menuCardStyleItem(), changes, { id: MENU_CARD_STYLE_ID });
+    patch(MENU_CARD_STYLE_KEY, { page: 'restaurant', items: [item] });
+  }
+
   function setMenuCardBg(bg) {
     if (!canEditMenuCardStyle()) return false;
-    patch(MENU_CARD_STYLE_KEY, {
-      page: 'restaurant',
-      items: [{ id: MENU_CARD_STYLE_ID, bg: String(bg == null ? '' : bg).trim().slice(0, 32) }],
-    });
+    patchMenuCardStyle({ bg: String(bg == null ? '' : bg).trim().slice(0, 32) });
+    return true;
+  }
+
+  function getPlateShape() {
+    const shape = menuCardStyleItem().plateShape;
+    return PLATE_SHAPES.includes(shape) ? shape : 'circle';
+  }
+
+  function setPlateShape(shape) {
+    if (!canEditMenuCardStyle() || !PLATE_SHAPES.includes(shape)) return false;
+    patchMenuCardStyle({ plateShape: shape });
     return true;
   }
 
@@ -1437,6 +1461,9 @@
     canEditRoomCardStyle,
     getMenuCardBg,
     setMenuCardBg,
+    getPlateShape,
+    setPlateShape,
+    PLATE_SHAPES,
     canEditMenuCardStyle,
     getSiteColors,
     setSiteColor,

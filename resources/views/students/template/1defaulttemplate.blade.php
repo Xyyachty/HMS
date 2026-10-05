@@ -1315,6 +1315,15 @@
     box-shadow: 0 40px 80px -40px rgba(0,0,0,0.95);
   }
   .dine-hero-plate img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .dine-hero-plate.shape-rounded { border-radius: 28px; }
+  .dine-hero-plate.shape-square { border-radius: 0; }
+  .dine-hero-plate.shape-rectangle { border-radius: 18px; aspect-ratio: 4 / 3; width: min(480px, 100%); }
+  .dine-plate-tools {
+    position: absolute; right: 1.5rem; bottom: 1.4rem; z-index: 3;
+    display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem;
+  }
+  .dine-plate-tools .hero-edit-btn { position: static; }
+  .dine-plate-tools .hero-edit-btn.is-active { border-color: var(--accent); color: var(--accent); }
   /* A second, wider ring outside the plate. It turns once a minute, which reads as
      a serving dish being brought round rather than as an animation. */
   .dine-hero-ring {
@@ -6172,6 +6181,9 @@ const RESTAURANT_HERO_IMAGE = 'https://images.unsplash.com/photo-1504674900247-0
 /* The promotional band above the menu. It says what the kitchen is before the
    page asks the guest to choose a course, and it carries the two ways on: down
    to the menu, or straight to a table. */
+/* Outlines the Restaurant hero's plate can take. Keys match PLATE_SHAPES in hms-site-content.js. */
+const PLATE_SHAPE_OPTIONS = [['circle', 'Circle'], ['rounded', 'Rounded'], ['square', 'Square'], ['rectangle', 'Rectangle']];
+
 function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, canEditImage, onToast }) {
   const menuList = menus || [];
   const dishCount = menuList.length;
@@ -6185,6 +6197,24 @@ function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, c
     const photographed = menuList.find(item => item && item.img);
     setHeroSrc(chosenSrc || (photographed ? photographed.img : RESTAURANT_HERO_IMAGE));
   }, [menus, chosenSrc]);
+
+  /* The plate's outline is the Restaurant team's to choose. Stored with the
+     menu card colour, and re-read on any content change so an undo or another
+     tab's save repaints it. */
+  const siteContent = window.HMSSiteContent;
+  const [plateShape, setPlateShapeState] = useState(() => (
+    siteContent && siteContent.getPlateShape ? siteContent.getPlateShape() : 'circle'
+  ));
+  useEffect(() => {
+    if (!siteContent || !siteContent.subscribe) return undefined;
+    return siteContent.subscribe(() => setPlateShapeState(siteContent.getPlateShape()));
+  }, []);
+  const pickPlateShape = (shape) => {
+    if (siteContent && siteContent.setPlateShape && siteContent.setPlateShape(shape)) {
+      setPlateShapeState(shape);
+      onToast && onToast('Plate shape updated');
+    }
+  };
 
   return (
     <header className="dine-hero">
@@ -6227,8 +6257,8 @@ function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, c
         </div>
 
         <div className="dine-hero-art">
-          <span className="dine-hero-ring"></span>
-          <div className="dine-hero-plate">
+          {plateShape === 'circle' && <span className="dine-hero-ring"></span>}
+          <div className={'dine-hero-plate shape-' + plateShape}>
             <img
               src={heroSrc}
               data-hms-dynamic-src="1"
@@ -6250,14 +6280,26 @@ function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, c
             </div>
           )}
           {canEditImage && (
-            <button
-              type="button"
-              className="hero-edit-btn"
-              data-hms-no-edit="1"
-              onClick={() => changeCardImg('restaurant', 'hero', () => onToast && onToast('Restaurant photo updated'))}
-            >
-              <i className="fa-solid fa-image" style={{ fontSize: 10 }}></i> Change Image
-            </button>
+            <div className="dine-plate-tools" data-hms-no-edit="1">
+              {PLATE_SHAPE_OPTIONS.map(([shape, label]) => (
+                <button
+                  key={shape}
+                  type="button"
+                  className={'hero-edit-btn' + (plateShape === shape ? ' is-active' : '')}
+                  aria-pressed={plateShape === shape}
+                  onClick={() => pickPlateShape(shape)}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="hero-edit-btn"
+                onClick={() => changeCardImg('restaurant', 'hero', () => onToast && onToast('Restaurant photo updated'))}
+              >
+                <i className="fa-solid fa-image" style={{ fontSize: 10 }}></i> Change Image
+              </button>
+            </div>
           )}
         </div>
       </div>
