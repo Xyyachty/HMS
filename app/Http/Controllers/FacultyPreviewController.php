@@ -81,11 +81,15 @@ class FacultyPreviewController extends Controller
     {
         $membership = $this->team($group);
 
-        $items = HotelMenuItem::where('group_name', $membership->group_name)
+        $rows = HotelMenuItem::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_menu_item_id')
-            ->get()
-            ->map(fn (HotelMenuItem $item) => $item->toTemplateArray());
+            ->get();
+        // Only faculty read this feed, so it is where the review learns what the
+        // team changed against the house menu it started with.
+        $review = \App\Support\HotelMenuAccess::reviewFor($rows, $membership);
+        $items = $rows->map(fn (HotelMenuItem $item) => $item->toTemplateArray()
+            + ['reviewState' => $review['items'][$item->hotel_menu_item_id] ?? null]);
 
         /* The courses too, not just the dishes. Without them the review renders the
            five constants, so a course the team named itself has no tab and its dishes
@@ -97,6 +101,9 @@ class FacultyPreviewController extends Controller
                 $membership->group_name,
                 $membership->faculty_id
             ),
+            'category_review' => (object) $review['categories'],
+            'removed_items' => $review['removed_items'],
+            'removed_categories' => $review['removed_categories'],
         ]);
     }
 

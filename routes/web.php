@@ -2074,6 +2074,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'stock'       => 'nullable|integer|min:0|max:99999',
             'description' => 'nullable|string|max:500',
             'image'       => 'nullable|string|max:900000',
+            'best_seller' => 'sometimes|boolean',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
         ]);
@@ -2095,7 +2096,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'stock'       => (int) ($data['stock'] ?? 0),
             'description' => $data['description'] ?? null,
             'image'       => $imagePath,
-        ]);
+        ] + (HotelMenuItem::supportsBestSeller() ? ['best_seller' => (bool) ($data['best_seller'] ?? false)] : []));
 
         return response()->json([
             'item' => $item->toTemplateArray(),
@@ -2137,11 +2138,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'stock'       => 'sometimes|integer|min:0|max:99999',
             'description' => 'sometimes|nullable|string|max:500',
             'image'       => 'sometimes|nullable|string|max:900000',
+            'best_seller' => 'sometimes|boolean',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
         ]);
 
         if (array_key_exists('name', $data))        $item->name        = trim($data['name']);
+        if (array_key_exists('best_seller', $data) && HotelMenuItem::supportsBestSeller()) $item->best_seller = (bool) $data['best_seller'];
         if (array_key_exists('category', $data))    $item->category    = \App\Support\HotelMenuDefaults::normalizeCategory($data['category'], $membership);
         if (array_key_exists('price', $data))       $item->price       = (int) $data['price'];
         if (array_key_exists('stock', $data))       $item->stock       = (int) $data['stock'];

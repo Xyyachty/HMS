@@ -405,6 +405,50 @@
     });
   }
 
+  /* The Restaurant tasks, on the Restaurant page. The first section (RS TASK
+     1) is judged by its words, its picture and its plate's outline. Dishes
+     and courses live in the database, so the faculty feed marks each dish
+     added or changed against the house menu, says which courses were added
+     or renamed, and how many dishes and courses were removed. A dish shown in
+     Best Seller is also on the menu below it; it is counted in Best Seller
+     for RS TASK 2 and on the menu for RS TASK 4, never twice in one. */
+  function restaurantChanges(check) {
+    const out = [];
+    let removed = 0;
+    const take = function (list) { Array.prototype.push.apply(out, list); };
+    const cardType = function (el) {
+      return el.getAttribute('data-hms-menu-state') === 'added' ? 'added' : 'modified';
+    };
+    if (check === 'restaurant-intro' || check === 'restaurant-all') {
+      take(sectionChanges('[data-hms-restaurant-hero]'));
+      take(queryAll('[data-hms-restaurant-hero] [data-hms-shape-changed]').map(function (el) {
+        return { el: el, count: 1 };
+      }));
+    }
+    if (check === 'best-sellers' || check === 'restaurant-all') {
+      take(sectionChanges('[data-hms-best-sellers]'));
+      // In the full review a featured dish is counted where the menu lists it.
+      take(queryAll('[data-hms-best-sellers] [data-hms-menu-state], [data-hms-best-sellers] [data-hms-best-picked]').map(function (el) {
+        return { el: el, count: check === 'restaurant-all' ? 0 : 1, type: cardType(el) };
+      }));
+    }
+    if (check === 'menu-categories' || check === 'restaurant-all') {
+      const bar = queryAll('[data-hms-cats-removed]')[0];
+      removed += bar ? (parseInt(bar.getAttribute('data-hms-cats-removed'), 10) || 0) : 0;
+      take(roomCategoryFlags(['added'], 'added').concat(roomCategoryFlags(['renamed'], 'modified')));
+    }
+    if (check === 'menu-items' || check === 'restaurant-all') {
+      removed += parseInt(window.__HMS_MENU_ITEMS_REMOVED__, 10) || 0;
+      take(queryAll('[data-hms-menu-card][data-hms-menu-state]').filter(function (el) {
+        return !el.closest('[data-hms-best-sellers]');
+      }).map(function (el) {
+        return { el: el, count: 1, type: cardType(el) };
+      }));
+    }
+    removedCount = removed;
+    return out;
+  }
+
   // Brands or highlights removed: nothing left on the page to box, so the
   // legend counts them instead.
   let removedCount = 0;
@@ -417,6 +461,9 @@
     if (stockReview === 'partners') return partnersChanges();
     if (stockReview === 'highlights') return highlightsChanges();
     if (/^room/.test(stockReview)) return roomChanges(stockReview);
+    if (['restaurant-intro', 'best-sellers', 'menu-categories', 'menu-items', 'restaurant-all'].indexOf(stockReview) !== -1) {
+      return restaurantChanges(stockReview);
+    }
     if (stockReview === 'amenities-header') return amenityHeaderChanges();
     if (stockReview === 'amenities') return amenityCardChanges();
     if (stockReview === 'amenities-all') return amenityHeaderChanges().concat(amenityCardChanges());

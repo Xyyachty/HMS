@@ -43,7 +43,9 @@ class HotelMenuAccess
     }
 
     /** The checklist entry this page's design work is reviewed against. */
-    public const TASK_TITLE = 'Build Your Menu';
+    // RS TASK 5, the one that hands the whole menu in. The four tasks before it
+    // are small pieces of the same menu and do not close it while they are marked.
+    public const TASK_TITLE = 'Review Restaurant Menu';
 
     /**
      * The team's copy of the Build Your Menu task, newest first.
@@ -143,6 +145,94 @@ class HotelMenuAccess
      * random placeholder the seed used to carry: whoever is taking a dine-in order
      * picks by sight, and a picture of the wrong food is worse than none.
      */
+    /**
+     * How a team's menu differs from the house menu it started with, for the
+     * faculty review of RS TASK 2-5.
+     *
+     * Dishes: the house menu is seeded in one insert, so its rows share the
+     * team's earliest created_at, and a later dish is one the team added. A
+     * row keeps no reference to the dish it was seeded as, so each is matched
+     * to the house dish it still agrees with most; one that no longer agrees
+     * in every field (name, course, price, description, picture) is changed.
+     *
+     * Courses: a course keeps its slot when renamed, so one on a starting slot
+     * is renamed when its name is not that slot's default, and one on any other
+     * slot is one the team added.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\HotelMenuItem>  $items
+     * @return array{items: array<int, string>, removed_items: int, categories: array<string, array{added: bool, renamed: bool}>, removed_categories: int}
+     */
+    public static function reviewFor($items, StudentGroup $membership): array
+    {
+        $defaults = self::defaultMenu();
+        $fields = fn ($row) => [
+            'name' => trim((string) ($row['name'] ?? '')),
+            'category' => trim((string) ($row['category'] ?? '')),
+            'price' => (int) ($row['price'] ?? 0),
+            'description' => trim((string) ($row['description'] ?? '')),
+            'image' => (string) ($row['image'] ?? ''),
+        ];
+        $stock = array_map($fields, $defaults);
+
+        $seededAt = (string) $items->min('created_at');
+        $unclaimed = array_keys($stock);
+        $states = [];
+        $seeds = 0;
+        foreach ($items as $item) {
+            if ($seededAt === '' || (string) $item->created_at !== $seededAt) {
+                $states[$item->hotel_menu_item_id] = 'added';
+                continue;
+            }
+            $seeds++;
+            $mine = $fields($item->getAttributes());
+            $best = null;
+            $bestScore = -1;
+            foreach ($unclaimed as $i) {
+                $score = count(array_intersect_assoc($mine, $stock[$i]));
+                if ($score > $bestScore) {
+                    [$best, $bestScore] = [$i, $score];
+                }
+            }
+            if ($best !== null) {
+                $unclaimed = array_values(array_diff($unclaimed, [$best]));
+            }
+            if ($best === null || $bestScore < count($mine)) {
+                $states[$item->hotel_menu_item_id] = 'changed';
+            }
+        }
+
+        $categories = [];
+        $kept = 0;
+        $bySlot = array_flip(HotelMenuDefaults::CATEGORIES);
+        if (\App\Models\HotelMenuCategory::tableReady()) {
+            $rows = \App\Models\HotelMenuCategory::where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->get(['name', 'position']);
+            foreach ($rows as $row) {
+                $default = $bySlot[(int) $row->position] ?? null;
+                if ($default !== null) {
+                    $kept++;
+                }
+                $categories[(string) $row->name] = [
+                    'added' => $default === null,
+                    'renamed' => $default !== null && strcasecmp(trim((string) $row->name), $default) !== 0,
+                ];
+            }
+            // A team whose courses were never written down still has all five.
+            if ($rows->isEmpty()) {
+                $kept = count(HotelMenuDefaults::CATEGORIES);
+            }
+        }
+
+        return [
+            'items' => $states,
+            // A team whose menu was never opened has no dishes yet, not none left.
+            'removed_items' => $items->isEmpty() ? 0 : max(0, count($defaults) - $seeds),
+            'categories' => $categories,
+            'removed_categories' => max(0, count(HotelMenuDefaults::CATEGORIES) - $kept),
+        ];
+    }
+
     public static function defaultMenu(): array
     {
         return [

@@ -3655,7 +3655,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
           <button className="btn-outline" onClick={() => onNavigate('restaurant')} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>View dining</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
-          {menuList.slice(0, 6).map(item => (
+          {bestSellerList(menuList).map(item => (
             <div key={item.id || item.name} className="menu-card" style={{ position: 'relative', display: 'flex', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', alignItems: 'center' }}>
               {canEditMenuColor && (
                 <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1">
@@ -6105,6 +6105,7 @@ function MenuItemModal({ open, item, categories, defaultCategory, saving, error,
   const [price, setPrice] = React.useState('250');
   const [category, setCategory] = React.useState('');
   const [image, setImage] = React.useState('');
+  const [bestSeller, setBestSeller] = React.useState(false);
 
   // No item is a new dish rather than one being changed, so the form opens empty
   // on the course the student is looking at.
@@ -6117,6 +6118,7 @@ function MenuItemModal({ open, item, categories, defaultCategory, saving, error,
     setPrice(String((item && item.price) || 250));
     setCategory((item && item.category) || defaultCategory || (categories && categories[0]) || '');
     setImage(item && item.img ? String(item.img) : '');
+    setBestSeller(!!(item && item.bestSeller));
   }, [open, item, categories, defaultCategory]);
 
   if (!open) return null;
@@ -6125,7 +6127,7 @@ function MenuItemModal({ open, item, categories, defaultCategory, saving, error,
   const canSave = !!name.trim() && priceValue > 0 && !saving;
   const submit = () => {
     if (!canSave) return;
-    const values = { name: name.trim(), description: sub.trim(), price: priceValue, category };
+    const values = { name: name.trim(), description: sub.trim(), price: priceValue, category, best_seller: bestSeller };
     /* Sent only when the picture changed, which includes Clear emptying it — the
        route leaves the column alone when the key is absent, so omitting an empty
        string is what used to make Clear do nothing. A save that never touched the
@@ -6185,6 +6187,13 @@ function MenuItemModal({ open, item, categories, defaultCategory, saving, error,
           ) : null}
         </div>
 
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginTop: '1.1rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+          <input type="checkbox" checked={bestSeller} onChange={(e) => setBestSeller(e.target.checked)}
+            style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
+          <span><i className="fa-solid fa-star" style={{ color: 'var(--accent)', marginRight: 5 }}></i>Show in Best Seller</span>
+        </label>
+        <p className="header-modal-hint" style={{ marginTop: '0.3rem' }}>Ticked dishes are the ones the Best Seller section shows, up to six.</p>
+
         {error ? <p className="header-modal-hint" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p> : null}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.4rem' }}>
@@ -6240,6 +6249,14 @@ const RESTAURANT_HERO_IMAGE = 'https://images.unsplash.com/photo-1504674900247-0
 /* Outlines the Restaurant hero's plate can take. Keys match PLATE_SHAPES in hms-site-content.js. */
 const PLATE_SHAPE_OPTIONS = [['circle', 'Circle'], ['rounded', 'Rounded'], ['square', 'Square'], ['rectangle', 'Rectangle']];
 
+/* The Best Seller section's dishes: the ones the Restaurant team ticked
+   "Show in Best Seller" on, up to six, or the first six on the menu while none
+   is ticked - which is all the section ever showed before it could be chosen. */
+function bestSellerList(menus) {
+  const list = menus || [];
+  const picked = list.filter(item => item && item.bestSeller);
+  return (picked.length ? picked : list).slice(0, 6);
+}
 function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, canEditImage, onToast }) {
   const menuList = menus || [];
   const dishCount = menuList.length;
@@ -6273,53 +6290,54 @@ function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, c
   };
 
   return (
-    <header className="dine-hero">
+    <header className="dine-hero" data-hms-restaurant-hero="1">
       <div className="dine-hero-inner">
         <div>
           <div className="dine-hero-chips">
-            <span className="dine-hero-chip"><i className="fa-solid fa-circle"></i>Farm Fresh</span>
-            <span className="dine-hero-chip"><i className="fa-solid fa-circle"></i>Chef Curated</span>
+            <span className="dine-hero-chip" data-hms-stock="Farm Fresh"><i className="fa-solid fa-circle"></i>Farm Fresh</span>
+            <span className="dine-hero-chip" data-hms-stock="Chef Curated"><i className="fa-solid fa-circle"></i>Chef Curated</span>
           </div>
-          <h1 className="dine-hero-title font-display">
+          <h1 className="dine-hero-title font-display" data-hms-stock="Delicious Food Served Your Way">
             Delicious Food
             <em>Served Your Way</em>
           </h1>
-          <p className="dine-hero-text">
+          <p className="dine-hero-text" data-hms-stock="Fresh ingredients, honest flavours, and the dishes our kitchen is known for — plated in the dining room or brought straight to your suite.">
             Fresh ingredients, honest flavours, and the dishes our kitchen is known for —
             plated in the dining room or brought straight to your suite.
           </p>
           <div className="dine-hero-actions">
-            <button type="button" className="btn-primary" onClick={onExplore}>
+            <button type="button" className="btn-primary" onClick={onExplore} data-hms-stock="View the Menu">
               View the Menu <i className="fa-solid fa-arrow-down" style={{ fontSize: '0.7rem' }}></i>
             </button>
-            <button type="button" className="btn-outline" onClick={() => onNavigate && onNavigate('booking')}>
+            <button type="button" className="btn-outline" onClick={() => onNavigate && onNavigate('booking')} data-hms-stock="Reserve a Table">
               Reserve a Table
             </button>
           </div>
           <div className="dine-hero-facts">
             <div className="dine-hero-fact">
               <span className="dine-hero-fact-icon"><i className="fa-solid fa-utensils"></i></span>
-              <div className="dine-hero-fact-copy"><strong>Chef-Curated</strong><span>Plated to order</span></div>
+              <div className="dine-hero-fact-copy"><strong data-hms-stock="Chef-Curated">Chef-Curated</strong><span data-hms-stock="Plated to order">Plated to order</span></div>
             </div>
             <div className="dine-hero-fact">
               <span className="dine-hero-fact-icon"><i className="fa-solid fa-leaf"></i></span>
-              <div className="dine-hero-fact-copy"><strong>Fresh &amp; Local</strong><span>Market produce daily</span></div>
+              <div className="dine-hero-fact-copy"><strong data-hms-stock="Fresh & Local">Fresh &amp; Local</strong><span data-hms-stock="Market produce daily">Market produce daily</span></div>
             </div>
             <div className="dine-hero-fact">
               <span className="dine-hero-fact-icon"><i className="fa-solid fa-bell-concierge"></i></span>
-              <div className="dine-hero-fact-copy"><strong>In-Room Dining</strong><span>Served to your door</span></div>
+              <div className="dine-hero-fact-copy"><strong data-hms-stock="In-Room Dining">In-Room Dining</strong><span data-hms-stock="Served to your door">Served to your door</span></div>
             </div>
           </div>
         </div>
 
         <div className="dine-hero-art">
           {plateShape === 'circle' && <span className="dine-hero-ring"></span>}
-          <div className={'dine-hero-plate shape-' + plateShape}>
+          <div className={'dine-hero-plate shape-' + plateShape} data-hms-shape-changed={plateShape !== 'circle' ? '1' : undefined}>
             <img
               src={heroSrc}
               data-hms-dynamic-src="1"
               data-hms-content-kind="restaurant"
               data-hms-content-id="hero"
+              data-hms-img-changed={chosenSrc ? '1' : undefined}
               alt={(brandName ? brandName + ' — ' : '') + 'signature dish'}
               draggable={false}
               onError={() => { if (heroSrc !== RESTAURANT_HERO_IMAGE) setHeroSrc(RESTAURANT_HERO_IMAGE); }}
@@ -6327,7 +6345,7 @@ function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, c
           </div>
           <div className="dine-hero-tag dine-hero-tag-hours">
             <i className="fa-solid fa-clock"></i>
-            <span><strong>6:00 AM – 11:00 PM</strong><br /><span>Open every day</span></span>
+            <span><strong data-hms-stock="6:00 AM – 11:00 PM">6:00 AM – 11:00 PM</strong><br /><span data-hms-stock="Open every day">Open every day</span></span>
           </div>
           {dishCount > 0 && (
             <div className="dine-hero-tag dine-hero-tag-count">
@@ -6532,6 +6550,7 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
   const renderMenuCard = (item) => (
     <div
       key={item.id || item.name}
+      data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined}
       className="menu-food-card"
       style={{ position: 'relative', cursor: 'pointer' }}
       onClick={() => setSelectedMenuId(item.id)}
@@ -6582,14 +6601,20 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
       {/* The same six dishes the home page's Best Seller section shows. A card
           opens the dish, where it can be ordered. */}
       {menuList.length > 0 && (
-        <section style={{ padding: '3rem 1.5rem 0', maxWidth: 1200, margin: '0 auto' }}>
+        <section data-hms-best-sellers="1" style={{ padding: '3rem 1.5rem 0', maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ marginBottom: '2rem' }}>
-            <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Dining</p>
-            <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Best Seller</h2>
+            <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }} data-hms-stock="Dining">Dining</p>
+            <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }} data-hms-stock="Best Seller">Best Seller</h2>
           </div>
+          {canManageMenus ? (
+            <p data-hms-no-edit="1" style={{ margin: '0 0 1rem', color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
+              <i className="fa-solid fa-star" style={{ marginRight: 6, color: 'var(--accent)' }}></i>
+              To choose these dishes, open a dish's edit form and tick <strong>Show in Best Seller</strong>. Until you tick any, the first six dishes show.
+            </p>
+          ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
-            {menuList.slice(0, 6).map(item => (
-              <div key={item.id || item.name} className="menu-card" onClick={() => setSelectedMenuId(item.id)} style={{ position: 'relative', display: 'flex', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', alignItems: 'center', cursor: 'pointer' }}>
+            {bestSellerList(menuList).map(item => (
+              <div key={item.id || item.name} className="menu-card" data-hms-best-picked={item.bestSeller ? '1' : undefined} data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined} onClick={() => setSelectedMenuId(item.id)} style={{ position: 'relative', display: 'flex', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', alignItems: 'center', cursor: 'pointer' }}>
                 {canEditMenuColor && (
                   <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
                     <CardColorButton kind="menu" label="Card colour (all menu cards)" />
@@ -6624,6 +6649,7 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
           </p>
         ) : null}
       <RoomTabBar
+        review={window.__HMS_MENU_CAT_REVIEW__} removed={window.__HMS_MENU_CATS_REMOVED__}
         tabs={menuTabs}
         active={menuTab}
         onChange={setMenuTab}
@@ -8391,6 +8417,11 @@ function App() {
       .then(r => r.json())
       .then(data => {
         if (pendingWrites.current > 0) return;
+        // The faculty feed also says which courses were added or renamed and how
+        // many starting courses and dishes were removed, for the review.
+        if (data.category_review) window.__HMS_MENU_CAT_REVIEW__ = data.category_review;
+        if (typeof data.removed_categories === 'number') window.__HMS_MENU_CATS_REMOVED__ = data.removed_categories;
+        if (typeof data.removed_items === 'number') window.__HMS_MENU_ITEMS_REMOVED__ = data.removed_items;
         if (Array.isArray(data.items)) setMenus(data.items);
         if (Array.isArray(data.categories) && data.categories.length) setMenuCategories(data.categories);
         setCanManageMenus(data.can_manage === true);

@@ -26,7 +26,9 @@ namespace App\Support;
  *   TASK 02  Room Management Customization   — the Rooms page: RM TASK 1-5,
  *                                              header, categories, details,
  *                                              slider photos and rooms
- *   TASK 03  Restaurant Management Customization — the Restaurant page
+ *   TASK 03  Restaurant Management Customization — the Restaurant page: RS
+ *                                              TASK 1-5, introduction, Best
+ *                                              Sellers, categories, dishes, review
  *   TASK 04  Housekeeping Customization      — the Amenities page: HK TASK
  *                                              1-5, header, images, information,
  *                                              a new amenity and a review
@@ -202,49 +204,30 @@ class TaskChecklist
         ],
 
         'restaurant_management' => [
+            // RS TASK 1-5, in order, all on the Restaurant page: the first
+            // section in Design mode and its plate tools; the Best Seller
+            // dishes picked in each dish's form; the courses with + Category
+            // and the tab pencils; the dishes with Add Item and each card's
+            // edit button.
             [
-                'title' => 'Build Your Menu',
-                'description' => 'Replace the sample dishes with your own menu, grouped so a guest can find what they want.',
+                'title' => 'Customize Restaurant Introduction',
+                'description' => 'Customize the first section of the Restaurant page so it represents your hotel restaurant.',
             ],
             [
-                'title' => 'Photograph and Price the Menu',
-                'description' => 'Add a picture to every dish, set a price for every dish, and lay the Restaurant page out so it matches the rest of the site.',
+                'title' => 'Customize Best Sellers',
+                'description' => 'Update the Best Seller section to show the restaurant\'s featured dishes.',
             ],
             [
-                'title' => 'Organise the Menu into Categories',
-                'description' => "Sort the menu into the sections a diner reads it by - starters, mains, desserts, drinks - and name them the way your restaurant would. The tabs on the Restaurant page and the preview on the Home page both follow these, so a dish in the wrong section is in the wrong section twice.",
+                'title' => 'Manage Menu Categories',
+                'description' => 'Organize the Restaurant Menu by creating and editing food categories.',
             ],
             [
-                'title' => 'Style the Menu Cards',
-                'description' => "Set the colour of the dish cards and the background of the Restaurant section behind them. The card colour carries to the dining preview on the Home page, so check both before you call it done.",
+                'title' => 'Manage Food & Drink Items',
+                'description' => 'Add or update the food and drinks available in your restaurant.',
             ],
             [
-                'title' => 'Design the Restaurant Hero',
-                'description' => "The hero is the first thing a guest sees on the Restaurant page: the big two-line heading, the paragraph under it and the three short facts below the buttons. Replace the sample words with your restaurant's own. The plate photograph beside them is your first photographed dish, so make sure that dish is one worth leading with.",
-            ],
-            [
-                'title' => 'Edit the Best Seller Section',
-                'description' => "Best Seller sits under the hero and shows the first six dishes on your menu - the same six the Home page previews. Rename the section in your restaurant's voice, and give every one of the six a photograph, a price and a line saying what it is.",
-            ],
-            [
-                'title' => 'Write the Restaurant Page Introduction',
-                'description' => "Write the words above the menu: the small line over the heading, the heading, and the paragraph under it. Say what kind of kitchen this is - the food, the room, the hours a guest can eat - rather than repeating the word Menu.",
-            ],
-            [
-                'title' => 'Write Every Dish Description',
-                'description' => "A price and a photograph are not enough to choose by. Give each dish a line that says what it actually is - what is in it, how it is cooked, how big it is - in the voice the rest of the site is written in.",
-            ],
-            [
-                'title' => 'Make the Dish Photographs Consistent',
-                'description' => "A menu photographed six different ways reads as six different restaurants. Frame the dishes the same way - the same distance, the same light, the same plate if you can - and replace the ones that do not match.",
-            ],
-            [
-                'title' => 'Check the Restaurant Page on a Phone',
-                'description' => "Narrow the window until the dish cards stack and read the page as a guest with a phone would: names that wrap, prices that leave the card, tabs that no longer fit on one line.",
-            ],
-            [
-                'title' => 'Review the Restaurant Page Against the Site',
-                'description' => "Open the Home page and the Restaurant page one after the other. They should look like the same hotel: the same typeface, the same kind of photograph, prices written the same way, headings in the same voice.",
+                'title' => 'Review Restaurant Menu',
+                'description' => 'Check the Restaurant page and make sure all information, images, categories, and menu items are correct before submitting.',
             ],
         ],
 
@@ -285,6 +268,11 @@ class TaskChecklist
      */
     private const COMPLETION = [
         HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_COMPLETION,
+        'Customize Restaurant Introduction' => 'The labels, title, description, image, image shape and other details of the first section are your restaurant\'s own.',
+        'Customize Best Sellers' => 'The Best Seller section shows the dishes you chose, each with its own name, description, price and image.',
+        'Manage Menu Categories' => 'The menu categories are the ones your restaurant uses, named its own way.',
+        'Manage Food & Drink Items' => 'The menu lists your restaurant\'s food and drinks, each with its name, description, price and image.',
+        'Review Restaurant Menu' => 'Everything on the Restaurant page is correct for your hotel restaurant.',
         'Customize Rooms Header' => 'The label, the title and the description above the rooms are your own words.',
         'Manage Room Categories' => 'The category tabs are the ones your hotel offers, named the way it sells them.',
         'Customize Room Details' => 'Every room category has its own name, price per night and description.',
@@ -303,17 +291,6 @@ class TaskChecklist
         'Customize Our Team' => 'Every team member shows their own photo, their correct name and the position they hold.',
         'Customize the Footer' => 'The footer\'s description, links and contact details are all correct for your hotel.',
         'Customize Hotel Highlights' => 'Every highlight is one your hotel really offers, with its own photo and title, and no sample highlights remain.',
-        'Build Your Menu' => 'Every dish the restaurant serves is on the page and no sample dish remains.',
-        'Photograph and Price the Menu' => 'Every dish carries its own photograph and its price.',
-        'Organise the Menu into Categories' => 'Every dish sits in a named section, and the tabs read as your restaurant\'s.',
-        'Style the Menu Cards' => 'The dish cards and the section behind them sit in your palette.',
-        'Design the Restaurant Hero' => 'The heading, the paragraph and the three facts are your own words, and the plate shows one of your dishes.',
-        'Edit the Best Seller Section' => 'The section is named in your own words and its six dishes each carry a photograph, a price and a description.',
-        'Write the Restaurant Page Introduction' => 'The heading and its introduction are your own words, with no sample copy left on the page.',
-        'Write Every Dish Description' => 'Every dish on the menu has its own description and none of the sample lines remain.',
-        'Make the Dish Photographs Consistent' => 'The menu reads as one set of photographs rather than a collection.',
-        'Check the Restaurant Page on a Phone' => 'The page reads cleanly in one column with the tabs and every card intact.',
-        'Review the Restaurant Page Against the Site' => 'The two pages read as one hotel, with any remaining difference a deliberate one.',
     ];
 
     /**
@@ -329,6 +306,43 @@ class TaskChecklist
      */
     private const ACTIVITIES = [
         HotelConceptDesk::TASK_TITLE => HotelConceptDesk::TASK_ACTIVITIES,
+        'Customize Restaurant Introduction' => [
+            'Edit the small labels above the restaurant title.',
+            'Edit the main restaurant title.',
+            'Edit the restaurant description.',
+            'Change the main restaurant image.',
+            'Choose the image shape: Circle, Rounded, Square, or Rectangle.',
+            'Edit the other restaurant information shown in this section.',
+        ],
+        'Customize Best Sellers' => [
+            'Edit the Dining label and Best Seller title.',
+            'Choose the dishes you want to feature.',
+            'Edit the dish names.',
+            'Edit the descriptions and prices.',
+            'Change the images of the featured dishes.',
+        ],
+        'Manage Menu Categories' => [
+            'Check the existing menu categories.',
+            'Rename a category if needed.',
+            'Add a new category using + Category.',
+            'Enter the name of the new category.',
+            'Check that all categories are displayed correctly.',
+        ],
+        'Manage Food & Drink Items' => [
+            'Select the category where the item belongs.',
+            'Add a new item or choose an existing item to edit.',
+            'Enter or edit the item name.',
+            'Enter or edit its description and price.',
+            'Upload or change the item\'s image.',
+            'Save the item and check that it appears correctly on the menu.',
+        ],
+        'Review Restaurant Menu' => [
+            'Check the Restaurant Introduction.',
+            'Check the Best Seller section.',
+            'Check all menu categories.',
+            'Check the names, descriptions, prices, and images of the food and drinks.',
+            'Fix or remove anything that does not match your hotel restaurant.',
+        ],
         'Customize Rooms Header' => [
             'Edit the small “ACCOMMODATIONS” label.',
             'Edit the “Our Rooms & Suites” title.',
@@ -432,72 +446,6 @@ class TaskChecklist
             'Edit the highlight names or titles to match your hotel.',
             'Add new highlights that showcase the best features of your hotel.',
             'Remove unnecessary highlights and review the section to make sure everything matches your hotel.',
-        ],
-        'Build Your Menu' => [
-            'Decide what your restaurant serves.',
-            'Add a card for each dish with its name.',
-            'Write a short line under each saying what it is.',
-            'Remove the sample dishes you are not serving.',
-        ],
-        'Photograph and Price the Menu' => [
-            'Upload a photograph for each dish.',
-            'Set the price of every one.',
-            'Rewrite any description that no longer matches the picture.',
-            'Check the dining preview on the Home page reads well.',
-        ],
-        'Organise the Menu into Categories' => [
-            'Decide the sections a diner reads your menu by.',
-            'Name each section the way your restaurant would.',
-            'Move every dish into the section it belongs to.',
-            'Check the tabs and the Home page preview both follow them.',
-        ],
-        'Style the Menu Cards' => [
-            'Set the colour of the dish cards.',
-            'Set the background of the Restaurant section behind them.',
-            'Check the cards still read against their new background.',
-            'Look at the dining preview on the Home page before you finish.',
-        ],
-        'Design the Restaurant Hero' => [
-            'Rewrite both lines of the hero heading so they name your restaurant\'s food.',
-            'Rewrite the paragraph under it in two or three sentences.',
-            'Rewrite the three facts under the buttons to say what your kitchen offers.',
-            'Check the plate photograph is a dish you want guests to see first.',
-        ],
-        'Edit the Best Seller Section' => [
-            'Rewrite the small line and the Best Seller heading in your own words.',
-            'Read the six dishes it shows as a guest would, looking for sample content.',
-            'Give each of the six a photograph, a price and a one-line description.',
-            'Open the Home page and confirm its Best Seller preview matches.',
-        ],
-        'Write the Restaurant Page Introduction' => [
-            'Rewrite the eyebrow line over the heading.',
-            'Rewrite the heading in your restaurant\'s own words.',
-            'Write the paragraph under it in two or three sentences.',
-            'Read it against the Home page so the two sound like one hotel.',
-        ],
-        'Write Every Dish Description' => [
-            'Read every dish card for a description still carrying sample text.',
-            'Write what each dish is, in one line.',
-            'Keep the lines a similar length so the cards sit evenly.',
-            'Read three of them together and cut any word doing no work.',
-        ],
-        'Make the Dish Photographs Consistent' => [
-            'Look at the menu as a grid and pick out the photographs that do not fit.',
-            'Replace them with pictures framed like the rest.',
-            'Check every card fills its picture area without stretching.',
-            'Look at the dining preview on the Home page as well.',
-        ],
-        'Check the Restaurant Page on a Phone' => [
-            'Narrow the browser until the dish cards stack in one column.',
-            'Read every card for text that wraps or overflows.',
-            'Check the category tabs still work at that width.',
-            'Fix what breaks and check again.',
-        ],
-        'Review the Restaurant Page Against the Site' => [
-            'Open the Home page, then the Restaurant page, and compare them.',
-            'Note every difference that is not deliberate.',
-            'Fix the ones that make the pages look unrelated.',
-            'Check the dining section on Home matches the page it previews.',
         ],
     ];
 
@@ -717,6 +665,11 @@ class TaskChecklist
         'customize room details' => 'room-details',
         'update room slider images' => 'room-photos',
         'add and manage rooms' => 'rooms-added',
+        'customize restaurant introduction' => 'restaurant-intro',
+        'customize best sellers' => 'best-sellers',
+        'manage menu categories' => 'menu-categories',
+        'manage food & drink items' => 'menu-items',
+        'review restaurant menu' => 'restaurant-all',
     ];
 
     public static function reviewsAgainstStock(string $title): bool
