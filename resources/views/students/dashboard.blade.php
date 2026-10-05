@@ -629,10 +629,11 @@
                             @forelse($homeRecentActivities as $task)
                                 @php
                                     $isDone = $task->status === 'archived';
+                                    $isPending = $isDone && $task->awaiting_review;
                                     $needsRevision = !$isDone && filled($task->feedback ?? null);
-                                    $actionLabel = $isDone ? 'You completed task' : ($needsRevision ? 'Faculty sent back task' : 'Task assigned to you');
-                                    $actionIcon  = $isDone ? 'mdi:check-circle-outline' : ($needsRevision ? 'mdi:pencil-outline' : 'mdi:file-document-outline');
-                                    $actionTint  = $isDone ? 'bg-emerald-50 text-emerald-500' : ($needsRevision ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-500');
+                                    $actionLabel = $isPending ? 'You submitted task' : ($isDone ? 'You completed task' : ($needsRevision ? 'Faculty sent back task' : 'Task assigned to you'));
+                                    $actionIcon  = $isPending ? 'mdi:clock-outline' : ($isDone ? 'mdi:check-circle-outline' : ($needsRevision ? 'mdi:pencil-outline' : 'mdi:file-document-outline'));
+                                    $actionTint  = $isPending ? 'bg-blue-50 text-blue-600' : ($isDone ? 'bg-emerald-50 text-emerald-500' : ($needsRevision ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-500'));
                                     $stamp       = $task->updated_at;
                                     $stampDay    = $stamp
                                         ? ($stamp->isToday() ? 'Today' : ($stamp->isYesterday() ? 'Yesterday' : $stamp->format('M j, Y')))
@@ -2488,11 +2489,13 @@
             const done  = rows.filter((r) => r.dataset.taskStatus === 'completed').length;
             const hasRevision   = rows.some((r) => r.dataset.taskStatus === 'revision');
             const allNotStarted = total > 0 && rows.every((r) => r.dataset.taskStatus === 'not_started');
+            const allHandedIn   = total > 0 && rows.every((r) => ['completed', 'pending'].includes(r.dataset.taskStatus));
             const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
             let statusKey;
             if (total > 0 && done === total) statusKey = 'completed';
             else if (hasRevision) statusKey = 'revision';
+            else if (allHandedIn) statusKey = 'pending';
             else if (allNotStarted) statusKey = 'not_started';
             else statusKey = 'in_progress';
 
@@ -2500,6 +2503,7 @@
                 not_started: { label: 'Not Started', badge: 'bg-slate-100 text-slate-500', icon: 'mdi:circle-outline' },
                 in_progress: { label: 'In Progress', badge: 'bg-brand-soft text-brand', icon: 'mdi:progress-clock' },
                 revision: { label: 'Needs Revision', badge: 'bg-amber-50 text-amber-700', icon: 'mdi:message-alert-outline' },
+                pending: { label: 'Pending', badge: 'bg-blue-50 text-blue-700', icon: 'mdi:clock-outline' },
                 completed: { label: 'Completed', badge: 'bg-emerald-50 text-emerald-600', icon: 'mdi:check-decagram-outline' },
             }[statusKey];
 

@@ -736,7 +736,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         \App\Support\Notifier::taskSubmitted($authUser, $task, $authUser->name);
 
-        return back()->with('success', 'Task marked as completed.');
+        return back()->with('success', 'Task submitted. It is pending until your faculty approves it.');
     })->name('tasks.complete');
 
     /*

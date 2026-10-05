@@ -51,7 +51,8 @@
         $addToGroup($task, $rowStatus, $rowPercent);
     }
     foreach ($myCompletedTasks as $task) {
-        $addToGroup($task, 'completed', 100);
+        // Submitted is not finished: it is Completed only once faculty approve it.
+        $addToGroup($task, $task->awaiting_review ? 'pending' : 'completed', 100);
     }
 
     // Numbered steps in order, the 'other' bucket last.
@@ -84,6 +85,7 @@
         'not_started' => ['label' => 'Not Started',    'badge' => 'bg-slate-100 text-slate-500', 'icon' => 'mdi:circle-outline'],
         'in_progress' => ['label' => 'In Progress',    'badge' => 'bg-brand-soft text-brand',    'icon' => 'mdi:progress-clock'],
         'revision'    => ['label' => 'Needs Revision', 'badge' => 'bg-amber-50 text-amber-700',  'icon' => 'mdi:message-alert-outline'],
+        'pending'     => ['label' => 'Pending',        'badge' => 'bg-blue-50 text-blue-700',    'icon' => 'mdi:clock-outline'],
         'completed'   => ['label' => 'Completed',      'badge' => 'bg-emerald-50 text-emerald-600', 'icon' => 'mdi:check-decagram-outline'],
     ];
 
@@ -104,7 +106,7 @@
         @php
             // Active work first (the concept task sorts first among those
             // via conceptFirst()), completed work after.
-            $groupRows = $taskGroup->rows->sortBy(fn ($r) => $r->status === 'completed' ? 1 : 0)->values();
+            $groupRows = $taskGroup->rows->sortBy(fn ($r) => in_array($r->status, ['completed', 'pending'], true) ? 1 : 0)->values();
 
             $groupTotal       = $groupRows->count();
             $groupDone        = $groupRows->where('status', 'completed')->count();
@@ -115,6 +117,8 @@
                 $groupStatus = 'completed';
             } elseif ($groupHasRevision) {
                 $groupStatus = 'revision';
+            } elseif ($groupRows->every(fn ($r) => in_array($r->status, ['completed', 'pending'], true))) {
+                $groupStatus = 'pending';
             } elseif ($groupRows->every(fn ($r) => $r->status === 'not_started')) {
                 $groupStatus = 'not_started';
             } else {
@@ -205,12 +209,13 @@
                             $taskRowIndex++;
                             $isOverdue   = $task->due_date && $task->due_date->isPast();
                             $isCompleted = $row->status === 'completed';
+                            $isPending   = $row->status === 'pending';
                             /* Cards are per member; the submit button belongs on this
                                student's own card, on an unclaimed one, and on a card whose
                                named student has since given the role up — the team was
                                reshuffled and the work would otherwise be unreachable by
                                anybody. The submit route asks the same question. */
-                            $isMine        = !$isCompleted && \App\Support\TaskClaim::mayWork($task, auth()->user(), $groupMembership ?? null);
+                            $isMine        = !$isCompleted && !$isPending && \App\Support\TaskClaim::mayWork($task, auth()->user(), $groupMembership ?? null);
                             $needsRevision = $row->status === 'revision';
                             $rowMeta       = $groupStatusMeta[$row->status];
                             $rowModule     = \App\Support\HotelTemplateBuilder::modulesForRoles([$task->role])[0] ?? null;
@@ -287,7 +292,7 @@
                                 <div class="flex items-center gap-1.5 min-w-0">
                                     <span class="iconify text-slate-300 text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>
                                     @if($task->due_date)
-                                        <p class="text-[11px] font-semibold truncate {{ $isOverdue && !$isCompleted ? 'text-red-500' : 'text-slate-500' }}">
+                                        <p class="text-[11px] font-semibold truncate {{ $isOverdue && !$isCompleted && !$isPending ? 'text-red-500' : 'text-slate-500' }}">
                                             {{ $task->due_date->format('M j, Y') }} &middot; {{ $task->due_date->format('g:i A') }}
                                         </p>
                                     @else
@@ -303,6 +308,12 @@
                                     @if($isCompleted)
                                         <span class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
                                             <span class="iconify text-base" data-icon="mdi:check"></span>
+                                        </span>
+                                    @elseif($isPending)
+                                        {{-- Handed in: nothing to press until faculty approve or send it back. --}}
+                                        <span class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"
+                                              title="Waiting for faculty approval">
+                                            <span class="iconify text-base" data-icon="mdi:clock-outline"></span>
                                         </span>
                                     @elseif($task->is_hotel_concept)
                                         {{-- Nothing to tick here: the verdict closes this task, and

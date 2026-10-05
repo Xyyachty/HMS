@@ -128,6 +128,18 @@ class Task extends Model
         return $this->status === 'active' && filled($this->feedback);
     }
 
+    /**
+     * Handed in and waiting on faculty: submitted, with no verdict yet. Approval
+     * stamps feedback_at, so 'archived' alone is not "completed". The hotel
+     * concept is excluded — its row is archived by the concept review itself,
+     * which never stamps feedback_at. Same rule as
+     * FacultyController::pendingReviewTaskQuery.
+     */
+    public function getAwaitingReviewAttribute(): bool
+    {
+        return $this->status === 'archived' && $this->feedback_at === null && !$this->is_hotel_concept;
+    }
+
     public function faculty()
     {
         return $this->belongsTo(Faculty::class, 'faculty_id', 'user_information_id');
