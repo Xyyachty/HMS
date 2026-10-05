@@ -7489,7 +7489,6 @@ function FacilityModal({ facility, onClose, slideSeconds, onToast }) {
    here; HMSSiteContent clamps it to 3-5 seconds and answers this default until
    one is picked. */
 const AMENITY_SLIDE_SECONDS = 4;
-const AMENITY_SLIDE_CHOICES = [3, 4, 5];
 
 function readAmenitySlideSeconds() {
   return (window.HMSSiteContent && typeof window.HMSSiteContent.getAmenitySlideSeconds === 'function')
@@ -7754,15 +7753,6 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
   const [photoId, setPhotoId] = useState(null);
   const photoItem = list.find(item => item.id === photoId) || null;
 
-  /* How fast the cards slide, saved for the team rather than held here: the pace
-     belongs to the page, so a guest sees the one Housekeeping picked. The store
-     clamps it, and the App re-reads it through its own subscription. */
-  const chooseSlideSeconds = (seconds) => {
-    if (window.HMSSiteContent && typeof window.HMSSiteContent.setAmenitySlideSeconds === 'function') {
-      window.HMSSiteContent.setAmenitySlideSeconds(seconds);
-    }
-  };
-
   /* The card's three photographs: the first is the amenity's own image, the
      other two its gallery. Sent whole every time, so clearing a slot is simply
      leaving it out. Only a warning is announced — the thumbnails redraw on
@@ -7822,45 +7812,6 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
         <p>Everything on hand to make your stay more comfortable, available on request at the front desk.</p>
       </div>
 
-      {/* Said once, at the top, rather than as a tooltip per icon: the student
-          arrives here from a task that tells them to build this page, and the
-          first thing they need is what on it is theirs to change. */}
-      {canEdit ? (
-        <div data-hms-no-edit="1" style={{
-          maxWidth: 1200, margin: '0 auto 1.25rem', padding: '0.85rem 1.1rem', borderRadius: 12,
-          border: '1px dashed var(--accent)', background: 'rgba(244,63,94,0.06)',
-          display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap',
-        }}>
-          <i className="fa-solid fa-wand-magic-sparkles" style={{ color: 'var(--accent)' }}></i>
-          <span style={{ fontSize: '0.8rem', lineHeight: 1.5 }}>
-            <strong>You are designing this page.</strong> Hover a card to change its three
-            photographs, edit its details or remove it, and use <em>Add an Amenity</em> at
-            the bottom to add one. The heading and the words above can be edited by clicking them.
-          </span>
-
-          {/* How long each photograph is held before the card slides to the next. */}
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)' }}>Slide every</span>
-            {AMENITY_SLIDE_CHOICES.map((seconds) => {
-              const on = Number(slideSeconds) === seconds;
-              return (
-                <button
-                  key={seconds}
-                  type="button"
-                  className="btn-outline"
-                  aria-pressed={on}
-                  onClick={() => chooseSlideSeconds(seconds)}
-                  style={{
-                    padding: '0.3rem 0.62rem', fontSize: '0.7rem',
-                    borderColor: on ? 'var(--accent)' : undefined,
-                    color: on ? 'var(--accent)' : undefined,
-                  }}
-                >{seconds}s</button>
-              );
-            })}
-          </span>
-        </div>
-      ) : null}
       <section style={{ padding: '0 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
         {list.length === 0 ? (
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '4rem 1.5rem', textAlign: 'center', color: 'var(--fg-muted)' }}>
