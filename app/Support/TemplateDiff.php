@@ -134,7 +134,14 @@ class TemplateDiff
 
         $summary = ['added' => 0, 'modified' => 0, 'removed' => 0];
         $highlight = ['added' => [], 'modified' => []];
-        foreach ($changes as $change) {
+        foreach ($changes as $i => $change) {
+            // A customization saved under a numeric key comes back from the
+            // array as an int, and reaches the preview as a JSON number that the
+            // highlighter cannot treat as a selector. Keys are always strings.
+            if (isset($change['key']) && !is_string($change['key'])) {
+                $change['key'] = (string) $change['key'];
+                $changes[$i]['key'] = $change['key'];
+            }
             $summary[$change['type']]++;
             if ($change['type'] === 'removed' || empty($change['key'])) {
                 continue;

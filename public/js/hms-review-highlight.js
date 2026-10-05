@@ -74,14 +74,19 @@
    * single match would leave the other copies looking untouched.
    */
   function resolveElements(entry) {
-    if (entry.key) {
-      let els = queryAll('[data-edit-id="' + entry.key.replace(/"/g, '\\"') + '"]');
+    /* A key is not always a string: a customization saved under a numeric key
+       comes back from PHP as a JSON number, and calling .replace on it threw
+       inside run() — one such entry stopped every box and the legend from being
+       drawn, so the whole review looked as if nothing had changed. */
+    const key = entry.key == null ? '' : String(entry.key);
+    if (key) {
+      let els = queryAll('[data-edit-id="' + key.replace(/"/g, '\\"') + '"]');
       if (els.length) return els;
-      els = queryAll(entry.key);
+      els = queryAll(key);
       if (els.length) return els;
     }
     if (entry.hms_id) {
-      const els = queryAll('[data-hms-id="' + cssEscapeSafe(entry.hms_id) + '"]');
+      const els = queryAll('[data-hms-id="' + cssEscapeSafe(String(entry.hms_id)) + '"]');
       if (els.length) return els;
     }
     return [];
@@ -142,7 +147,7 @@
     box.style.cssText = 'position:fixed;box-sizing:border-box;pointer-events:none;border-radius:10px;'
       + 'outline:2px solid ' + color + ';outline-offset:4px;'
       + 'top:' + rect.top + 'px;left:' + rect.left + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;';
-    if (key && key === focusKey) {
+    if (key != null && focusKey != null && String(key) === String(focusKey)) {
       box.style.boxShadow = '0 0 0 4px rgba(99,102,241,.55)';
       box.style.background = 'rgba(99,102,241,.12)';
     }
@@ -168,14 +173,20 @@
 
     // Counted on presence, drawn on visibility: the tally is what this page
     // contains, so it does not tick up and down as the preview is scrolled.
+    // One entry that cannot be drawn is skipped, never allowed to take the rest
+    // of the boxes down with it.
     function paint(entry, type) {
-      if (entry.page && entry.page !== page) return false;
-      const els = resolveElements(entry);
-      if (!els.length) return false;
-      els.forEach(function (el) {
-        if (isPaintable(el)) drawBox(el, type, entry.key);
-      });
-      return true;
+      try {
+        if (!entry || (entry.page && entry.page !== page)) return false;
+        const els = resolveElements(entry);
+        if (!els.length) return false;
+        els.forEach(function (el) {
+          if (isPaintable(el)) drawBox(el, type, entry.key);
+        });
+        return true;
+      } catch (e) {
+        return false;
+      }
     }
 
     added.forEach(function (entry) { if (paint(entry, 'added')) addedCount++; });
@@ -201,7 +212,7 @@
     const all = added.concat(modified);
     let target = null;
     for (let i = 0; i < all.length && !target; i++) {
-      if (all[i].key === key) target = resolveElements(all[i])[0] || null;
+      if (String(all[i].key) === String(key)) target = resolveElements(all[i])[0] || null;
     }
     if (!target) target = queryAll(key)[0] || null;
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
