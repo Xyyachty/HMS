@@ -3462,7 +3462,7 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
             <div className="promo-mini-copy">
               <span className="promo-mini-offer">{promo.offer}</span>
               <h4 className="promo-mini-title font-display">{promo.title}</h4>
-              <span className="promo-mini-cta" data-hms-no-edit="1">
+              <span className="promo-mini-cta">
                 Book now <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.6rem' }}></i>
               </span>
             </div>
