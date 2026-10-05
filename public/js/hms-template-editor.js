@@ -2044,11 +2044,29 @@
     beginHistoryStep();
     el.contentEditable = 'true';
     el.focus();
+    /* A button takes focus without a caret, so what was typed went nowhere, or
+       into the text edited before it. Select the text when the caret is not
+       already inside: the label only, so a button's icon is kept. */
+    const sel = window.getSelection();
+    if (sel && !(sel.anchorNode && el.contains(sel.anchorNode))) {
+      const slot = textSlot(el);
+      const range = document.createRange();
+      range.selectNodeContents(slot && slot.nodeType === 3 ? slot : el);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
     textEditEl = el;
     let liveSaveTimer = null;
     const onInput = () => {
       clearTimeout(liveSaveTimer);
       liveSaveTimer = setTimeout(() => saveElementState(el), 500);
+    };
+    // Space is a button's own activation key, and Chrome drops it instead of
+    // typing it: "New Label" was saved as "NewLabel".
+    const onKeyDown = (ev) => {
+      if (ev.key !== ' ' || el.tagName !== 'BUTTON') return;
+      ev.preventDefault();
+      document.execCommand('insertText', false, ' ');
     };
     const finish = () => {
       clearTimeout(liveSaveTimer);
@@ -2056,10 +2074,12 @@
       el.contentEditable = 'false';
       el.removeEventListener('blur', finish);
       el.removeEventListener('input', onInput);
+      el.removeEventListener('keydown', onKeyDown);
       saveElementState(el);
       selectElement(el);
     };
     el.addEventListener('input', onInput);
+    el.addEventListener('keydown', onKeyDown);
     el.addEventListener('blur', finish);
   }
 
