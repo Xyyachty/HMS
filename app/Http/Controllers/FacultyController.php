@@ -1362,6 +1362,9 @@ class FacultyController extends Controller
                         // The concept task is not deletable and reviews differently.
                         'is_hotel_concept' => $task->is_hotel_concept,
                         'has_feedback' => filled($task->feedback),
+                        // Submitted with no verdict yet. has_feedback reads the comment,
+                        // which an approval may leave empty, so it cannot tell this apart.
+                        'awaiting_review' => $task->awaiting_review,
                         'activities_done' => $task->activitiesDoneCount(),
                         'activities_total' => $activityCount,
                         'student_name' => $studentName,
@@ -2180,6 +2183,7 @@ class FacultyController extends Controller
             'role_label' => $task->role_label,
             'status' => $task->status,
             'needs_revision' => $task->needs_revision,
+            'awaiting_review' => $task->awaiting_review,
             'is_hotel_concept' => $task->is_hotel_concept,
             'activities' => $activities,
             'activities_done' => $task->activitiesDoneCount(),

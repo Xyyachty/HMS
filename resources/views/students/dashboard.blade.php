@@ -1013,6 +1013,7 @@
                                 <option value="not_started">Not Started</option>
                                 <option value="in_progress">In Progress</option>
                                 <option value="revision">Needs Revision</option>
+                                <option value="pending">Pending</option>
                                 <option value="completed">Completed</option>
                             </select>
 

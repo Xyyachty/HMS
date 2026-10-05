@@ -2754,8 +2754,11 @@ function openTaskReview(taskId) {
             ].filter(Boolean).join(' · ');
 
             const badges = [];
-            if (d.status === 'archived') {
-                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold">Submitted' + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
+            if (d.awaiting_review) {
+                // Handed in, no verdict yet: it is not Completed until approved.
+                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold">Pending' + (d.submitted_at ? ' · submitted ' + escHtml(d.submitted_at) : '') + '</span>');
+            } else if (d.status === 'archived') {
+                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold">' + (d.is_hotel_concept ? 'Submitted' : 'Completed') + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
             } else {
                 badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold">Not submitted</span>');
             }
@@ -4617,7 +4620,9 @@ function renderTeamModalActivityPage() {
         // The concept is only "Completed" once it is approved, and approving stamps
         // the feedback — so a submitted-but-unanswered concept says Submitted.
         const doneLabel = (log.is_hotel_concept && !log.has_feedback) ? 'Submitted' : 'Completed';
-        const statusBadge = isDone
+        const statusBadge = log.awaiting_review
+            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Pending</span>'
+            : isDone
             ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>' + doneLabel + '</span>'
             : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Assigned</span>';
 
@@ -4641,12 +4646,12 @@ function renderTeamModalActivityPage() {
                     : 'View progress so far — feedback opens once it is submitted') + '"'
                 + ' class="w-full inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition '
                 + (isDone
-                    ? (log.has_feedback
+                    ? (!log.awaiting_review
                         ? 'bg-white text-brand border border-brand/30 hover:bg-brand-soft'
                         : 'bg-brand text-white hover:opacity-90 shadow-sm shadow-brand/20')
                     : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50') + '">'
                 + '<span class="iconify text-xs shrink-0" data-icon="' + (isDone ? 'mdi:file-document-edit-outline' : 'mdi:eye-outline') + '"></span>'
-                + (isDone ? (log.has_feedback ? 'Reviewed' : 'Review') : 'View')
+                + (isDone ? (log.awaiting_review ? 'Review' : 'Reviewed') : 'View')
               + '</button>'
             : '<span class="block text-center text-[10px] font-semibold text-slate-300">—</span>';
 
@@ -4692,7 +4697,7 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
     // Review Submission opens straight onto what it announced — every other
     // caller (View Team, Update) gets the full, unfiltered activity list.
     const logs = (Array.isArray(activityLogs) ? activityLogs : [])
-        .filter((l) => !options.onlyAwaitingReview || (l.status === 'archived' && !l.has_feedback));
+        .filter((l) => !options.onlyAwaitingReview || l.awaiting_review);
     const nameSuffix = document.getElementById('modalTeamNameSuffix');
     if (nameSuffix) {
         nameSuffix.textContent = groupName ? ' — ' + groupName : '';

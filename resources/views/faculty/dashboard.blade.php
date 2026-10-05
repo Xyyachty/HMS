@@ -107,6 +107,7 @@
                             ? (trim(implode(' ', array_filter([$actor->first_name, $actor->last_name]))) ?: ($actor->name ?? 'Student'))
                             : null;
                         $isDone = $task->status === 'archived';
+                        $isPending = $task->awaiting_review;
                     @endphp
                     <div class="px-5 py-3 flex items-start gap-3">
                         <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $tint($task->role, 'bg') }} {{ $tint($task->role, 'text') }}">
@@ -125,9 +126,9 @@
                         </div>
                         <div class="text-right shrink-0">
                             <p class="text-[10px] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
-                            <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isDone ? 'text-emerald-600' : 'text-slate-900' }}">
-                                <span class="w-1.5 h-1.5 rounded-full {{ $isDone ? 'bg-emerald-500' : 'bg-slate-900' }}"></span>
-                                {{ $isDone ? 'Completed' : 'Assigned' }}
+                            <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isPending ? 'text-amber-700' : ($isDone ? 'text-emerald-600' : 'text-slate-900') }}">
+                                <span class="w-1.5 h-1.5 rounded-full {{ $isPending ? 'bg-amber-500' : ($isDone ? 'bg-emerald-500' : 'bg-slate-900') }}"></span>
+                                {{ $isPending ? 'Pending' : ($isDone ? 'Completed' : 'Assigned') }}
                             </p>
                         </div>
                     </div>
