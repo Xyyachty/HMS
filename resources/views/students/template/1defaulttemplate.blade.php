@@ -3436,7 +3436,7 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
           <h3 className="promo-feature-title font-display">{featured.title}</h3>
           <p className="promo-feature-desc">{featured.desc}</p>
           <p className="promo-feature-terms">{featured.terms}</p>
-          <div className="promo-feature-actions" data-hms-no-edit="1">
+          <div className="promo-feature-actions">
             <button type="button" className="btn-primary" onClick={() => onBook && onBook()}>
               Book This Offer <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
             </button>
