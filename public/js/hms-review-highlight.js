@@ -20,7 +20,7 @@
      recomputing it — that second computation is where they went missing. */
   let added = [];
   let modified = [];
-  // 'branding', 'home' or 'promos': the page check run for that task. See run().
+  // 'branding', 'home', 'promos' or 'partners': the page check run for that task. See run().
   let stockReview = null;
   let booted = false;
 
@@ -312,11 +312,36 @@
     return out;
   }
 
+  /* Customize Partner Brands: the template marks each card that is new or
+     changed (a new name or a logo) and says how many of its own brands were
+     removed. Headings and restyles are judged as on the other sections. */
+  function partnersChanges() {
+    const section = '[data-hms-section="partners"]';
+    const out = [];
+    queryAll(section + ' [data-hms-partner-state]').forEach(function (el) {
+      out.push({ el: el, count: 1, type: el.getAttribute('data-hms-partner-state') === 'added' ? 'added' : 'modified' });
+    });
+    queryAll(section + ' [data-hms-stock]').forEach(function (el) {
+      if (normalise(el.innerText || el.textContent) !== normalise(el.getAttribute('data-hms-stock'))) {
+        out.push({ el: el, count: 1 });
+      }
+    });
+    styledIn(section).forEach(function (el) { out.push({ el: el, count: 1 }); });
+    const grid = queryAll(section + ' [data-hms-partners-removed]')[0];
+    removedCount = grid ? (parseInt(grid.getAttribute('data-hms-partners-removed'), 10) || 0) : 0;
+    return out;
+  }
+
+  // Brands removed from the strip: nothing left on the page to box, so the
+  // legend counts them instead.
+  let removedCount = 0;
+
   function stockChanges() {
     if (stockReview === 'branding') {
       return brandingChanges().map(function (el) { return { el: el, count: 1 }; });
     }
     if (stockReview === 'home') return homeChanges();
+    if (stockReview === 'partners') return partnersChanges();
     return stockReview === 'promos' ? promosChanges() : [];
   }
 
@@ -365,8 +390,10 @@
       try {
         stockChanges().forEach(function (change) {
           if (drawn.has(change.el)) return;
-          box(change.el, 'modified', null);
-          modifiedCount += change.count;
+          const type = change.type || 'modified';
+          box(change.el, type, null);
+          if (type === 'added') addedCount += change.count;
+          else modifiedCount += change.count;
         });
       } catch (e) { /* the diff outlines above still stand */ }
     }
@@ -375,7 +402,8 @@
     const swatch = '<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + COLORS.added + '"></i> ';
     if (addedCount) parts.push('<span>' + swatch + addedCount + ' added</span>');
     if (modifiedCount) parts.push('<span>' + swatch + modifiedCount + ' changed</span>');
-    reportStatus(addedCount + modifiedCount, added.length + modified.length + (stockReview ? 1 : 0));
+    if (removedCount) parts.push('<span>' + removedCount + ' removed</span>');
+    reportStatus(addedCount + modifiedCount + removedCount, added.length + modified.length + (stockReview ? 1 : 0));
 
     // Changes exist but none of them is on this page: say so, rather than
     // leaving faculty to wonder whether the outlines failed.

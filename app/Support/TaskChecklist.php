@@ -149,6 +149,10 @@ class TaskChecklist
                 'description' => 'Customize the Promos and Packages section by updating the images, titles, descriptions, and other promo details to match your hotel.',
             ],
             [
+                'title' => 'Customize Partner Brands',
+                'description' => 'Customize the Partner Brands section by adding your hotel’s partner brands and updating their names and images.',
+            ],
+            [
                 'title' => 'Write Your Hotel\'s Story',
                 'description' => "Replace the sample words with your own: the tagline over the headline, the paragraph introducing the hotel, and the contact block every footer prints - address, phone, email and the hours the desk keeps. These are one record for the whole site, so what you write here is what the Rooms page and the Restaurant page say too.",
             ],
@@ -163,10 +167,6 @@ class TaskChecklist
             [
                 'title' => 'Add Your Social Profiles',
                 'description' => "Put the hotel's social accounts in the footer. Add only the networks the hotel actually uses - each one shows as its own icon, and an account nobody keeps is worse than a missing one.",
-            ],
-            [
-                'title' => 'Build the Partner Brands Strip',
-                'description' => "List the businesses the hotel works with - the travel agency, the cafe, the airline. Add a card per brand and upload each one's logo; a brand with no logo yet shows its name instead, so the strip is never half empty. Remove the sample brands you are not using.",
             ],
             [
                 'title' => 'Introduce Your Team',
@@ -323,7 +323,7 @@ class TaskChecklist
         'Set the Site\'s Typography' => 'One typeface, one body size and your own text and heading colours across the site.',
         'Add Your Social Profiles' => 'Every icon in the footer belongs to an account the hotel actually keeps.',
         'Customize Promos and Packages' => 'Every promo carries your own image, title, offer label, description and details.',
-        'Build the Partner Brands Strip' => 'Every card is a real partner, with a logo or its name, and no sample brands remain.',
+        'Customize Partner Brands' => 'Every card is one of your hotel\'s real partners, with its own name and image, and no sample brands remain.',
         'Introduce Your Team' => 'Four people, each with a photograph, a full name and the position they hold.',
         'Colour the Experience Page' => 'The page carries a background of its own that still belongs to the site.',
         'Create Your Room Categories' => 'The categories are the ones your hotel sells, each with an opening rate.',
@@ -411,11 +411,11 @@ class TaskChecklist
             'Edit the descriptions and other details of each promo or package.',
             'Review the Promos and Packages section and make sure all information and images match your hotel.',
         ],
-        'Build the Partner Brands Strip' => [
-            'Decide which businesses the hotel works with.',
-            'Add a card per brand with Add Brand and name it.',
-            'Upload each brand\'s logo so it fills its card.',
-            'Remove the sample brands your hotel is not partnered with.',
+        'Customize Partner Brands' => [
+            'Change the images of the existing partner brands.',
+            'Edit the brand names to match your hotel’s actual partners.',
+            'Add new partner brands using the Add Brand button.',
+            'Remove unnecessary brands and review the section to make sure all partner information is correct.',
         ],
         'Introduce Your Team' => [
             'Agree which four people the section will show.',
@@ -738,6 +738,8 @@ class TaskChecklist
         'customize promos and packages' => ['page' => 'home', 'section' => 'promos'],
         // Rows assigned before the rename still carry the old title.
         'fill in the promos section' => ['page' => 'home', 'section' => 'promos'],
+        'customize partner brands' => ['page' => 'home', 'section' => 'partners'],
+        // Rows assigned before the rename still carry the old title.
         'build the partner brands strip' => ['page' => 'home', 'section' => 'partners'],
         'introduce your team' => ['page' => 'home', 'section' => 'team'],
         'write the experience page' => ['page' => 'experience', 'section' => null],
@@ -796,6 +798,8 @@ class TaskChecklist
         'design the home page' => 'home',
         'customize promos and packages' => 'promos',
         'fill in the promos section' => 'promos',
+        'customize partner brands' => 'partners',
+        'build the partner brands strip' => 'partners',
     ];
 
     public static function reviewsAgainstStock(string $title): bool
@@ -803,7 +807,7 @@ class TaskChecklist
         return self::stockReviewFor($title) !== null;
     }
 
-    /** Which page check a task's After preview runs: 'branding', 'home', 'promos', or null. */
+    /** Which page check a task's After preview runs: 'branding', 'home', 'promos', 'partners', or null. */
     public static function stockReviewFor(string $title): ?string
     {
         return self::REVIEW_AGAINST_STOCK[mb_strtolower(trim($title))] ?? null;

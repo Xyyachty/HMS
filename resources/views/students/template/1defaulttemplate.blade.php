@@ -1205,6 +1205,13 @@
   /* The wordmark a brand falls back to until someone uploads its logo. */
   .partner-name { font-size: 1.05rem; letter-spacing: 0.08em; margin: 0; color: var(--fg-muted); transition: color 0.2s; }
   .partner-card:hover .partner-name { color: var(--accent); }
+  /* A brand with a logo still names itself, along the foot of the picture. */
+  .partner-caption {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; margin: 0;
+    padding: 1.4rem 0.6rem 0.5rem; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    color: #fff; background: linear-gradient(transparent, rgba(0,0,0,0.65));
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
 
   /* The same dashed invitation the Add Room Card tile uses, sized for this
      strip so it sits in the grid as one more brand rather than a banner. */
@@ -3488,7 +3495,7 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
   );
 }
 
-function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRemovePartner, onBookNow, brandName, experiences }) {
+function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRenamePartner, onRemovePartner, onBookNow, brandName, experiences }) {
   // Passed only so the promo, partner and team pictures re-render once one is replaced.
   void cardImages;
   /* The landing page says what the hotel is. Both lines come from the team's
@@ -3664,23 +3671,32 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
 
       <section data-hms-section="partners" data-hms-bg-target="1" style={{ padding: '2rem 1.5rem 3rem', maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ marginBottom: '2rem' }}>
-          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>In good company</p>
-          <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Partner Brands</h2>
+          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }} data-hms-stock="In good company">In good company</p>
+          <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }} data-hms-stock="Partner Brands">Partner Brands</h2>
         </div>
-        <div className="partner-grid">
+        {/* The faculty review reads these: how many of the template's brands
+            were removed, and on each card whether it is new or changed. */}
+        <div className="partner-grid" data-hms-partners-removed={DEFAULT_PARTNERS.filter(d => !partnerList.some(p => p.id === d.id)).length}>
           {partnerList.map(partner => {
             const logo = resolveCardImg('partner', partner.id, '');
             const name = partnerName(partner);
+            const stock = DEFAULT_PARTNERS.find(d => d.id === partner.id);
+            const state = !stock ? 'added' : (logo || name !== stock.label ? 'changed' : undefined);
             return (
-              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')}>
+              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state}>
+                {/* The name is the brand's record, renamed with the pencil, so
+                    Design mode does not lay a second copy of it over the card. */}
                 {logo
-                  ? <img src={logo} alt={name} loading="lazy" />
-                  : <p className="partner-name font-display">{name}</p>}
+                  ? <><img src={logo} alt={name} loading="lazy" /><p className="partner-caption" data-hms-no-edit="1">{name}</p></>
+                  : <p className="partner-name font-display" data-hms-no-edit="1">{name}</p>}
                 {canEditPartners && (
                   <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, display: 'flex', gap: 6 }} data-hms-no-edit="1">
                     <button type="button" title={logo ? 'Change logo' : 'Upload logo'}
                       onClick={() => changeCardImg('partner', partner.id, () => onToast && onToast(name + ' logo updated'))}
                       style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                    <button type="button" title="Rename brand"
+                      onClick={() => onRenamePartner && onRenamePartner(partner)}
+                      style={toolBtnStyle('image')}><i className="fa-solid fa-pen" style={{ fontSize: 11 }}></i></button>
                     <button type="button"
                       title={confirmingPartner === partner.id ? 'Press again to remove ' + name : 'Remove brand'}
                       onClick={() => {
@@ -9035,6 +9051,11 @@ function App() {
     setHeaderEdit({ kind: 'partner' });
   };
 
+  // The same dialog, holding the brand being renamed.
+  const renamePartner = (partner) => {
+    setHeaderEdit({ kind: 'partner', partner: partner });
+  };
+
   const savePartnerName = (name) => {
     const content = window.HMSSiteContent;
     if (!content || !content.addPartner) return;
@@ -9122,6 +9143,7 @@ function App() {
         partners={partners}
         canEditPartners={canEditPartners}
         onAddPartner={addPartner}
+        onRenamePartner={renamePartner}
         onRemovePartner={removePartner}
         experiences={experiences}
         onBookNow={() => requireGuest(
@@ -9249,11 +9271,11 @@ function App() {
       : headerEdit.kind === 'partner'
         ? {
             mode: 'text',
-            title: 'Add Partner Brand',
+            title: headerEdit.partner ? 'Rename Partner Brand' : 'Add Partner Brand',
             fieldLabel: 'Brand name',
-            value: '',
+            value: headerEdit.partner ? partnerName(headerEdit.partner) : '',
             maxLength: 40,
-            hint: 'Shown on the card until you upload that brand\'s logo.',
+            hint: 'Shown on the brand\'s card, along the foot of its logo once one is uploaded.',
           }
       : headerEdit.kind === 'nav'
         ? {
@@ -9275,6 +9297,15 @@ function App() {
   const saveHeaderEdit = (value) => {
     const content = window.HMSSiteContent;
     if (!content || !headerEdit) return;
+    if (headerEdit.kind === 'partner' && headerEdit.partner) {
+      const clean = String(value || '').trim();
+      if (clean && content.updatePartner && content.updatePartner(headerEdit.partner.id, { label: clean }, DEFAULT_PARTNERS)) {
+        setPartnersState(content.getPartners(DEFAULT_PARTNERS));
+        showToast('Brand renamed to ' + clean);
+      }
+      setHeaderEdit(null);
+      return;
+    }
     if (headerEdit.kind === 'partner') {
       savePartnerName(value);
       setHeaderEdit(null);
