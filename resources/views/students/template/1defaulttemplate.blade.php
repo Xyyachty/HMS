@@ -2405,6 +2405,33 @@ function AddCategoryModal({ open, saving, error, onSubmit, onCancel }) {
 
    The name still travels on its own write, because renaming a category moves
    every room in it too; the rest is one save against the category's own row. */
+/* One photo in a form: the picture and a button that opens the file picker.
+   A file, never a link - pickImageFile hands back the chosen picture, which
+   the server stores as a file of the team's own. */
+function PhotoUploadField({ value, onChange, label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <div style={{
+        width: 84, height: 60, borderRadius: 8, overflow: 'hidden', flex: '0 0 auto',
+        border: '1px solid var(--border)', background: 'rgba(127,127,127,0.12)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {value
+          ? <img src={value} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <i className="fa-solid fa-image" style={{ opacity: 0.5 }}></i>}
+      </div>
+      <button type="button" className="btn-outline" style={{ fontSize: '0.7rem' }} aria-label={(value ? 'Change ' : 'Upload ') + (label || 'photo')}
+        onClick={() => pickImageFile((url) => { if (url) onChange(url); })}>
+        <i className="fa-solid fa-upload" style={{ fontSize: '0.65rem', marginRight: '0.35rem' }}></i>
+        {value ? 'Change photo' : 'Upload photo'}
+      </button>
+      {value ? (
+        <button type="button" className="btn-outline" style={{ fontSize: '0.7rem' }} onClick={() => onChange('')}>Remove</button>
+      ) : null}
+    </div>
+  );
+}
+
 function RenameCategoryModal({ open, from, category, saving, error, onSubmit, onCancel }) {
   const [name, setName] = React.useState('');
   const [rate, setRate] = React.useState('');
@@ -2494,23 +2521,7 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
         />
 
         <label style={fieldLabel}>Photo 1 of 3 \u2014 the main angle</label>
-        <input
-          className="header-modal-field"
-          type="text"
-          value={image}
-          maxLength={2048}
-          placeholder="https://… the picture guests see for this category"
-          onChange={(e) => setImage(e.target.value)}
-          onKeyDown={onKeyDown}
-        />
-        {image ? (
-          <img
-            src={image}
-            alt=""
-            style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8, marginTop: '0.5rem', display: 'block' }}
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-        ) : null}
+        <PhotoUploadField value={image} onChange={setImage} label="photo 1" />
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -2605,26 +2616,10 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
         </div>
 
         <label style={fieldLabel}>Photo 2 of 3</label>
-        <input
-          className="header-modal-field"
-          type="text"
-          value={angle2}
-          maxLength={2048}
-          placeholder="https://\u2026 the same room from another angle"
-          onChange={(e) => setAngle2(e.target.value)}
-          onKeyDown={onKeyDown}
-        />
+        <PhotoUploadField value={angle2} onChange={setAngle2} label="photo 2" />
 
         <label style={fieldLabel}>Photo 3 of 3</label>
-        <input
-          className="header-modal-field"
-          type="text"
-          value={angle3}
-          maxLength={2048}
-          placeholder="https://\u2026 and a third"
-          onChange={(e) => setAngle3(e.target.value)}
-          onKeyDown={onKeyDown}
-        />
+        <PhotoUploadField value={angle3} onChange={setAngle3} label="photo 3" />
         <p className="header-modal-hint" style={{ marginTop: '0.35rem' }}>
           Three angles of the one room design. Every room in this category shows
           these three, so they do not need a photograph each.
