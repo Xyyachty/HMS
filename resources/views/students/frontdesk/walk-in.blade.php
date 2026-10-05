@@ -571,7 +571,7 @@ function TableWalkIn() {
       else payload.reserved_for = onDate + ' ' + atTime + ':00';
       const data = await send(CFG.tablesUrl + '/' + table.id, 'PATCH', payload);
       setDone({ table: data.table || table });
-      if (window.toast) window.toast((when === 'now' ? 'Seated ' : 'Reserved ' + table.name + ' for ') + guestName.trim() + (when === 'now' ? ' at ' + table.name : ''));
+      if (window.toast) window.toast(when === 'now' ? guestName.trim() + ' is dining in at ' + table.name : 'Reserved ' + table.name + ' for ' + guestName.trim());
     } catch (err) {
       setError(err.message);
       writing.current = false;
@@ -585,16 +585,16 @@ function TableWalkIn() {
   if (done) {
     return (
       <Done
-        title={when === 'now' ? guestName.trim() + ' is seated' : 'Table held for ' + guestName.trim()}
+        title={when === 'now' ? guestName.trim() + ' is dining in' : 'Table held for ' + guestName.trim()}
         rows={[
-          ['Table', done.table.name + ' · seats ' + done.table.capacity],
+          ['Table', done.table.name + ' · good for ' + done.table.capacity + ' pax'],
           ['Pax', String(party)],
           ['When', when === 'now' ? 'Now' : niceDate(onDate) + ', ' + atTime],
           ['Status', when === 'now' ? 'Occupied' : 'Reserved'],
         ]}
         note={when === 'now'
           ? 'The restaurant takes their order from here and settles the bill.'
-          : 'When they come back, press Customer Arrived on Dine-in Tables to seat them.'}
+          : 'When they come back, press Customer Arrived on Dine-in Tables to start their dine-in.'}
         primary={{ href: CFG.dineInUrl, label: 'Open Dine-in Tables' }}
         onAgain={reset}
       />
@@ -602,7 +602,7 @@ function TableWalkIn() {
   }
 
   if (loaded && !canAssign) {
-    return <div className="wi-empty">Only Front Desk staff can seat or reserve a table for a guest.</div>;
+    return <div className="wi-empty">Only Front Desk staff can assign or reserve a table for a guest.</div>;
   }
 
   return (
@@ -628,7 +628,7 @@ function TableWalkIn() {
           <div>
             <label className="wi-label">When</label>
             <div className="wi-seg">
-              <button type="button" className={when === 'now' ? 'is-active' : ''} onClick={() => setWhen('now')}>Seat now</button>
+              <button type="button" className={when === 'now' ? 'is-active' : ''} onClick={() => setWhen('now')}>Dine in now</button>
               <button type="button" className={when === 'later' ? 'is-active' : ''} onClick={() => setWhen('later')}>Reserve for later</button>
             </div>
           </div>
@@ -649,7 +649,7 @@ function TableWalkIn() {
 
           <button type="submit" className="btn-solid" disabled={busy}>
             <i className="fa-solid fa-chair" style={{ fontSize: '0.7rem' }}></i>
-            {busy ? 'Saving…' : (when === 'now' ? 'Seat guest now' : 'Reserve table')}
+            {busy ? 'Saving…' : (when === 'now' ? 'Dine in now' : 'Reserve table')}
           </button>
         </div>
       </div>
@@ -662,14 +662,14 @@ function TableWalkIn() {
         ) : tables.length === 0 ? (
           <div className="wi-empty">Restaurant Management hasn't added any tables yet.</div>
         ) : fits.length === 0 ? (
-          <div className="wi-empty">No free table seats {party} pax right now.</div>
+          <div className="wi-empty">No free table fits {party} pax right now.</div>
         ) : (
           <div className="wi-grid">
             {fits.map(t => (
               <button key={t.id} type="button" className={'wi-pick' + (t.id === tableId ? ' is-picked' : '')}
                 onClick={() => setTableId(t.id)} aria-pressed={t.id === tableId}>
                 <span className="wi-pick-name">{t.name}{t.id === tableId && <i className="fa-solid fa-circle-check"></i>}</span>
-                <span className="wi-pick-sub">Seats {t.capacity}</span>
+                <span className="wi-pick-sub">Good for {t.capacity} pax</span>
               </button>
             ))}
           </div>
