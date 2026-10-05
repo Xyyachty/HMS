@@ -1206,7 +1206,12 @@
       el.className = entry.iconClass;
       if (selected) el.classList.add('hms-edit-selected');
     }
-    if (entry.text != null && !['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA'].includes(el.tagName)) {
+    /* Never into the text being typed. The builder autosaves each pause and
+       hands the saved template back in, and rewriting the text node under the
+       caret threw it to the start of the line - and the saved copy can be a
+       keystroke behind. The edit saves itself when it ends. */
+    const typing = textEditEl && (el === textEditEl || el.contains(textEditEl) || textEditEl.contains(el));
+    if (entry.text != null && !typing && !['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA'].includes(el.tagName)) {
       writeEditableText(el, entry.text);
     }
   }
