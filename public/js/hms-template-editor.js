@@ -2794,9 +2794,6 @@
    * React re-renders the template freely and would drop a class it did not set.
    */
   let pendingTaskFocus = null;
-  // The open task's area, kept outlined for as long as the task is open — set by
-  // the editor sidebar (set-standing-task-area). Only the branding task's header.
-  let standingTaskArea = null;
   // The area of a task just opened from the sidebar, outlined for a moment.
   let flashTaskArea = null;
   let flashTaskTimer = null;
@@ -2875,8 +2872,8 @@
 
     const page = getCurrentPage();
     const seen = new Set();
-    [standingTaskArea, flashTaskArea].forEach(function (area) {
-      if (!area || area.page !== page) return;
+    const area = flashTaskArea;
+    if (area && area.page === page) {
       const small = area.section === 'header';
       resolveTaskFocusTargets(area.page, area.section).forEach(function (el) {
         if (seen.has(el)) return;
@@ -2884,19 +2881,14 @@
         const box = taskFocusBox(el, small);
         if (box) taskFocusOverlays.push(box);
       });
-    });
+    }
 
-    const active = !!(standingTaskArea || flashTaskArea);
+    const active = !!flashTaskArea;
     if (active && !taskFocusTick) taskFocusTick = setInterval(redrawTaskFocus, 500);
     if (!active && taskFocusTick) {
       clearInterval(taskFocusTick);
       taskFocusTick = null;
     }
-  }
-
-  function setStandingTaskArea(area) {
-    standingTaskArea = area && area.page ? { page: area.page, section: area.section || null } : null;
-    redrawTaskFocus();
   }
 
   function flashTaskFocus(focus) {
@@ -2949,9 +2941,6 @@
     switch (data.type) {
       case 'focus-task-area':
         focusTaskArea(data.page, data.section);
-        break;
-      case 'set-standing-task-area':
-        setStandingTaskArea(data.area);
         break;
       case 'set-mode':
         setDesignMode(data.mode === 'design' || data.mode === 'build');
