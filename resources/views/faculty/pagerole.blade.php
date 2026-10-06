@@ -235,6 +235,11 @@
     }
     .btn-sendback:hover { background:#5E1024; }
 
+    /* ── Review Submission (Task Submission Indicator) ──
+       Navy, spelled out for the same reason: the frozen build has no such colour. */
+    .btn-review-submission { background:#1F3A5F; color:#FFFFFF; }
+    .btn-review-submission:hover { background:#162C49; }
+
     /* ── Task review verdict: Revise amber, Approve green ──
        Spelled out for the same reason: the frozen build has no hover shade for
        either colour. */
@@ -598,7 +603,7 @@
                                     </div>
                                     <button type="button"
                                             onclick='openTeamModalAwaitingReview({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
-                                            class="shrink-0 h-8 px-2.5 rounded-lg bg-brand text-white text-[11px] font-bold hover:opacity-95 transition inline-flex items-center gap-1">
+                                            class="btn-review-submission shrink-0 h-8 px-2.5 rounded-lg text-white text-[11px] font-bold transition inline-flex items-center gap-1">
                                         <span class="iconify text-xs" data-icon="mdi:eye-check-outline"></span> Review Submission
                                     </button>
                                 </div>
