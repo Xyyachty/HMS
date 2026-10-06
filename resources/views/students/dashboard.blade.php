@@ -1377,9 +1377,28 @@
                         background: #7B1730; color: #fff; border-color: transparent;
                         box-shadow: 0 8px 20px -6px rgba(123,23,48,.4);
                     }
+                    /* On a wide screen the section is exactly as tall as the space under the
+                       top bar, so the page does not scroll: the title, tabs and figures stay
+                       put, and the two cards under them share the rest side by side, each
+                       scrolling inside. */
+                    @media (min-width: 1024px) {
+                        #reports-section:not(.hidden) { height: calc(100dvh - 3.5rem - 1px - 1.5rem); display: flex; flex-direction: column; }
+                        #reports-section:not(.hidden) > :not(.rp-panel) { flex-shrink: 0; }
+                        #reports-section .rp-panel:not(.hidden) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+                        #reports-section .rp-stats { flex: none; }
+                        #reports-section .rp-body { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+                        #reports-section .rp-card { display: flex; flex-direction: column; min-height: 0; }
+                        #reports-section .rp-card > :not(.rp-scroll) { flex: none; }
+                        #reports-section .rp-scroll { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
+                    }
+                    #reports-section .rp-scroll { scrollbar-width: thin; scrollbar-color: #9E9E9E #F3F2F1; }
+                    #reports-section .rp-scroll::-webkit-scrollbar { width: 8px; }
+                    #reports-section .rp-scroll::-webkit-scrollbar-track { background: #F3F2F1; border-radius: 99px; }
+                    #reports-section .rp-scroll::-webkit-scrollbar-thumb { background: #9E9E9E; border-radius: 99px; }
+                    #reports-section .rp-scroll::-webkit-scrollbar-thumb:hover { background: #6B6B6B; }
                 </style>
 
-                <div>
+                <div class="!mt-0">
                     <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Reports</h2>
                     <p class="text-sm text-slate-400">Completed task assignment reports for yourself and your team.</p>
                 </div>
@@ -1393,8 +1412,8 @@
                     </button>
                 </div>
 
-                <div id="report-panel-self" class="space-y-4">
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div id="report-panel-self" class="rp-panel space-y-4">
+                    <div class="rp-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
                             <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed</p>
                             <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfCompleted->count() }}</p>
@@ -1417,9 +1436,10 @@
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                    <div class="rp-body grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                         <h3 class="text-sm font-bold text-slate-800 mb-4">Completed Task</h3>
-                        <div class="space-y-3">
+                        <div class="rp-scroll space-y-3 pr-1">
                             @forelse($selfByRole as $role => $count)
                                 <div>
                                     <div class="flex items-center justify-between text-xs mb-1">
@@ -1436,11 +1456,11 @@
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                         <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
                             <h3 class="text-sm font-bold text-slate-800">My Completed Assignments</h3>
                         </div>
-                        <div class="divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
+                        <div class="rp-scroll divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
                             @forelse($selfCompleted as $task)
                                 <div class="px-5 py-3.5 flex items-start gap-3">
                                     <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
@@ -1456,10 +1476,11 @@
                             @endforelse
                         </div>
                     </div>
+                    </div>
                 </div>
 
-                <div id="report-panel-team" class="space-y-4 hidden">
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div id="report-panel-team" class="rp-panel space-y-4 hidden">
+                    <div class="rp-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
                             <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed</p>
                             <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamCompleted->count() }}</p>
@@ -1482,9 +1503,10 @@
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                    <div class="rp-body grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                         <h3 class="text-sm font-bold text-slate-800 mb-4">Completed Task</h3>
-                        <div class="space-y-4">
+                        <div class="rp-scroll space-y-4 pr-1">
                             @forelse($teamByRole as $role => $count)
                                 @php
                                     $lastTask = $teamLastByRole[$role] ?? null;
@@ -1518,11 +1540,11 @@
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                         <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
                             <h3 class="text-sm font-bold text-slate-800">Team Completed Assignments</h3>
                         </div>
-                        <div class="divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
+                        <div class="rp-scroll divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
                             @forelse($teamCompleted as $task)
                                 <div class="px-5 py-3.5 flex items-start gap-3">
                                     <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
@@ -1537,6 +1559,7 @@
                                 <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No team completed assignments yet.</div>
                             @endforelse
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
