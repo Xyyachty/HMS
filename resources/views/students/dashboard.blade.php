@@ -90,7 +90,8 @@
         }
         .sidebar-link:hover #navTasksBadge { background: #E4E2E0; color: #181818; }
         .sidebar-link.active {
-            background: rgba(255,255,255,0.22);
+            background: #4A4643;
+            color: #fff;
             box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.25);
         }
 
