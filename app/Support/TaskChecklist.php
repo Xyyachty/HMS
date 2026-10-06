@@ -571,7 +571,7 @@ class TaskChecklist
      * Section names are the template's own data-hms-section values, plus
      * 'header' for the nav bar, which carries none. A null section opens the
      * page at the top — the whole page is the work. A section a template does
-     * not have (Template 2 has no promos strip) falls back to the page top in
+     * not have falls back to the page top in
      * the editor rather than failing.
      *
      * @var array<string, array{page: string, section: ?string}>
