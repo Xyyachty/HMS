@@ -66,8 +66,8 @@
         border-radius: 0.75rem; background: #fff; border: 1px solid #111; overflow: hidden;
         transition: width 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
-    #userSearchWrap:not(.is-open):hover { background: #111; }
-    #userSearchWrap:not(.is-open):hover .search-toggle { color: #fff; }
+    #userSearchWrap:not(.is-open):hover { background: #dadada; }
+    #userSearchWrap:not(.is-open):hover .search-toggle { color: #181818; }
     #userSearchWrap.is-open {
         width: 12.5rem; background: #fff; border-color: #111;
         box-shadow: 0 0 0 3px rgba(17,17,17, 0.10);
