@@ -1387,14 +1387,14 @@
                     }
                     /* On a wide screen the section is exactly as tall as the space under the
                        top bar, so the page does not scroll: the title, tabs and figures stay
-                       put, and the two cards under them share the rest side by side, each
-                       scrolling inside. */
+                       put, and Completed Task sits under them and the completed
+                       list takes the rest, scrolling inside. */
                     @media (min-width: 1024px) {
                         #reports-section:not(.hidden) { height: calc(100dvh - 3.5rem - 1px - 1.5rem); display: flex; flex-direction: column; }
                         #reports-section:not(.hidden) > :not(.rp-panel) { flex-shrink: 0; }
                         #reports-section .rp-panel:not(.hidden) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
                         #reports-section .rp-stats { flex: none; }
-                        #reports-section .rp-body { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+                        #reports-section .rp-body { flex: 1; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
                         #reports-section .rp-card { display: flex; flex-direction: column; min-height: 0; }
                         #reports-section .rp-card > :not(.rp-scroll) { flex: none; }
                         #reports-section .rp-scroll { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
@@ -1444,7 +1444,7 @@
                         </div>
                     </div>
 
-                    <div class="rp-body grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="rp-body grid grid-cols-1 gap-4">
                     <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                         <h3 class="text-sm font-bold text-slate-800 mb-4">Completed Task</h3>
                         <div class="rp-scroll space-y-3 pr-1">
@@ -1511,7 +1511,7 @@
                         </div>
                     </div>
 
-                    <div class="rp-body grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="rp-body grid grid-cols-1 gap-4">
                     <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                         <h3 class="text-sm font-bold text-slate-800 mb-4">Completed Task</h3>
                         <div class="rp-scroll space-y-4 pr-1">
