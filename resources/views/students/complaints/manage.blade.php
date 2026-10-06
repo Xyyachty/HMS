@@ -640,9 +640,9 @@ function App() {
 
   const inDepartment = c => departmentFilter === 'all' || c.department === departmentFilter;
   const STATUS_TABS = [
-    { key: 'open',   label: 'Still open',     icon: 'fa-hourglass-half', match: c => OPEN_STATUSES.includes(c.status) },
-    { key: 'closed', label: 'Fixed or closed', icon: 'fa-circle-check',  match: c => !OPEN_STATUSES.includes(c.status) },
-    { key: 'all',    label: 'All',             icon: 'fa-list',          match: () => true },
+    { key: 'open',   label: 'Not fixed yet',  icon: 'fa-hourglass-half', match: c => OPEN_STATUSES.includes(c.status) },
+    { key: 'closed', label: 'Done',            icon: 'fa-circle-check',  match: c => !OPEN_STATUSES.includes(c.status) },
+    { key: 'all',    label: 'All complaints',  icon: 'fa-list',          match: () => true },
   ];
   const TEAM_TABS = [['all', 'All teams'], ...Object.entries(DEPARTMENT_LABELS)];
 
@@ -674,8 +674,8 @@ function App() {
       ? 'When a guest reports a problem, use the form to send it to the right team.'
       : 'Nothing has been sent to your team yet. New complaints will show up here.';
   } else if (statusFilter === 'open' && !search.trim()) {
-    emptyTitle = 'All caught up';
-    emptyText = 'Every complaint here has been fixed or closed.';
+    emptyTitle = 'Nothing left to fix';
+    emptyText = 'Every complaint here is done. You can see them under Done.';
   }
 
   const list = (
@@ -736,7 +736,7 @@ function App() {
           <h1 className="font-display">{heading}</h1>
           <p className="cx-lead">{lead}</p>
           <p className="cx-lead" style={{ marginTop: '0.35rem', color: 'var(--fg)', fontWeight: 600 }}>
-            {openCount === 0 ? 'Nothing is waiting right now.' : `${openCount} ${openCount === 1 ? 'complaint is' : 'complaints are'} still open.`}
+            {openCount === 0 ? 'Nothing is waiting right now.' : `${openCount} ${openCount === 1 ? 'complaint is' : 'complaints are'} not fixed yet.`}
           </p>
         </div>
         <a href={CFG.backUrl} className="cx-btn cx-btn-ghost">
