@@ -127,7 +127,7 @@
         font-size: 13px; font-weight: 700; color: #111; background: #fff; border: 1px solid #EADAD5;
         transition: all .15s ease;
     }
-    a.st-page:hover { color: #111; border-color: #8A817A; background: #F3F2F1; }
+    a.st-page:hover { color: #181818; border-color: #dadada; background: #dadada; }
     .st-page.is-current { background: #111; border-color: #111; color: #fff; }
     .st-page.is-disabled { color: #111; opacity: .4; background: #FAF6F5; cursor: not-allowed; }
 
