@@ -1193,7 +1193,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
+                <div class="act-panel bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
                     {{-- What to show --}}
                     <div class="px-4 sm:px-5 py-3 border-b border-[#E7E1DD] bg-[#F5F2EF]/60">
                         <p class="text-[11px] font-semibold text-slate-500 mb-2">Show</p>
@@ -1212,7 +1212,7 @@
                     </div>
 
                     {{-- Timeline, newest first, under a heading for each day --}}
-                    <div class="max-h-[60vh] overflow-y-auto px-4 sm:px-5 py-3" id="activityTimeline">
+                    <div class="act-timeline max-h-[60vh] overflow-y-auto px-4 sm:px-5 py-3" id="activityTimeline">
                         @forelse($actRows->groupBy('day') as $actDay => $actDayRows)
                             <div data-act-day class="mb-3 last:mb-0">
                                 <p class="sticky top-0 z-[1] bg-white py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{{ $actDay }}</p>
@@ -1250,6 +1250,15 @@
                 </div>
 
                 <style>
+                    /* On a wide screen the section is exactly as tall as the space under the
+                       top bar (3.5rem plus its 1px border) less the page's own padding (py-3),
+                       so the page does not scroll: only the timeline scrolls, inside its panel. */
+                    @media (min-width: 1024px) {
+                        #activity-section:not(.hidden) { height: calc(100dvh - 3.5rem - 1px - 1.5rem); display: flex; flex-direction: column; }
+                        #activity-section .act-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+                        #activity-section:not(.hidden) > :not(.act-panel), #activity-section .act-panel > :not(.act-timeline) { flex-shrink: 0; }
+                        #activity-section .act-timeline { flex: 1; min-height: 0; max-height: none; }
+                    }
                     .act-chip { background: #fff; border-color: #E7E1DD; color: #181818; }
                     .act-chip:hover { border-color: #8A817A; }
                     .act-chip .act-count { background: #F5F2EF; }
