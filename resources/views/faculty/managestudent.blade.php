@@ -198,7 +198,7 @@
         border: 1px solid #E4D3CF; background: #fff; color: #6B4A54;
         transition: color 0.2s, border-color 0.2s, opacity 0.2s;
     }
-    .bulk-pager-btn:hover:not(:disabled) { color: #181818; border-color: #8A817A; }
+    .bulk-pager-btn:hover:not(:disabled) { color: #181818; border-color: #dadada; background: #dadada; }
     .bulk-pager-btn:disabled { opacity: 0.4; cursor: default; }
 
     /* Add Student / Bulk Upload with no block assigned. Same reason as above: the
