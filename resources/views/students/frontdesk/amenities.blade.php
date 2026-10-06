@@ -12,52 +12,151 @@
   #opsContentWrap { font-family: 'Outfit', sans-serif; }
   .font-display { font-family: 'Playfair Display', serif; }
 
-  .am-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 1.25rem; }
-  .am-card {
-    display: flex; flex-direction: column;
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    overflow: hidden;
+  /* Page, toolbar and cards read the shell's tokens, the same way Walk-in Guests and
+     Room Service do, so the screen follows Template 1, Template 2 and a team's own
+     site colours. Tints are mixed from those tokens rather than hard-coded.
+     Shape rule: pills for tabs and status, 10px for buttons, 14px for cards. */
+  .af {
+    --af-soft: color-mix(in srgb, var(--fg) 4%, transparent);
+    --af-tint: color-mix(in srgb, var(--accent) 12%, transparent);
+    --af-line: var(--border);
+    padding: 1.5rem 1.5rem 3rem;
+    color: var(--fg);
   }
-  .am-media { position: relative; height: 150px; flex: 0 0 150px; overflow: hidden; }
-  .am-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .am-card.is-shut .am-media img { filter: grayscale(0.7); }
-  .am-body { flex: 1 1 auto; padding: 1rem 1.15rem 1.15rem; display: flex; flex-direction: column; gap: 0.55rem; }
-  .am-meta { display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--fg-muted); }
 
+  /* Page header */
+  .af-head { margin-bottom: 1.4rem; }
+  .af-eyebrow { color: var(--accent); font-size: 0.72rem; letter-spacing: 0.25em; text-transform: uppercase; margin: 0 0 0.5rem; }
+  .af-head h1 { margin: 0; font-size: 1.85rem; line-height: 1.15; color: var(--fg); }
+  .af-lead { margin: 0.45rem 0 0; color: var(--fg-muted); font-size: 0.92rem; max-width: 64ch; line-height: 1.5; }
+  .af-readonly {
+    display: flex; align-items: center; gap: 0.55rem; margin-top: 0.9rem; width: fit-content; max-width: 100%;
+    padding: 0.6rem 0.85rem; border-radius: 10px; font-size: 0.82rem;
+    background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--fg);
+    border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  }
+  .af-readonly i { color: var(--warn); }
+
+  /* Tabs: what the desk does for a facility */
+  .af-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  .af-tabs { box-sizing: border-box; max-width: 100%; display: inline-flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.3rem; border-radius: 999px; background: var(--af-soft); border: 1px solid var(--af-line); }
+  .af-tab {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font: 600 0.86rem/1 'Outfit', sans-serif;
+    padding: 0.62rem 1rem; border-radius: 999px; cursor: pointer;
+    border: 0; background: transparent; color: var(--fg-muted);
+    transition: background 0.15s, color 0.15s;
+  }
+  .af-tab:hover { color: var(--fg); }
+  .af-tab.is-on { background: var(--accent); color: var(--bg); }
+  .af-tab i { font-size: 0.8rem; }
+  .af-count {
+    min-width: 1.45rem; padding: 0.2rem 0.4rem; border-radius: 999px; text-align: center;
+    font-size: 0.74rem; font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--fg) 8%, transparent);
+  }
+  .af-tab.is-on .af-count { background: color-mix(in srgb, var(--bg) 22%, transparent); }
+  .af-summary { margin: 0; color: var(--fg-muted); font-size: 0.82rem; display: flex; align-items: center; gap: 0.45rem; }
+  .af-summary b { color: var(--fg); font-variant-numeric: tabular-nums; }
+  .af-summary i { color: var(--accent); }
+
+  /* Cards */
+  .af-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 1.15rem; align-items: start; }
+  .af-card { min-width: 0; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--af-line); border-radius: 14px; overflow: hidden; }
+  .af-media { position: relative; height: 160px; overflow: hidden; background: var(--af-soft); }
+  .af-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .af-card.is-shut .af-media img { filter: grayscale(0.65); }
+  /* One status on the photo, on a solid backing so it reads over any picture */
+  .af-state {
+    position: absolute; left: 0.75rem; bottom: 0.75rem;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.38rem 0.7rem; border-radius: 999px;
+    background: var(--card); color: var(--fg); font-size: 0.76rem; font-weight: 600;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+  }
+  .af-state .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-muted); }
+  .af-state.is-open .dot { background: var(--success); }
+  .af-state.is-closed .dot { background: var(--warn); }
+  .af-state.is-repair .dot { background: var(--danger); }
+
+  .af-body { padding: 1rem 1.1rem 1.1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .af-title { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--fg); line-height: 1.2; }
+  .af-does {
+    display: inline-flex; align-items: center; gap: 0.45rem; width: fit-content;
+    padding: 0.32rem 0.65rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600;
+    background: var(--af-tint); color: var(--accent); margin-top: 0.45rem;
+  }
+  .af-facts { display: grid; gap: 0.35rem; font-size: 0.84rem; color: var(--fg); }
+  .af-facts div { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+  .af-facts i { width: 1rem; text-align: center; color: var(--fg-muted); font-size: 0.8rem; flex: none; }
+  .af-facts span { min-width: 0; overflow-wrap: anywhere; }
+
+  .af-action { display: grid; gap: 0.7rem; padding-top: 0.85rem; border-top: 1px solid var(--af-line); }
+  .af-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; width: 100%;
+    font: 600 0.88rem/1 'Outfit', sans-serif;
+    padding: 0.8rem 1rem; border-radius: 10px; cursor: pointer;
+    background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
+    transition: filter 0.15s, transform 0.1s;
+  }
+  .af-btn:hover:not(:disabled) { filter: brightness(1.08); }
+  .af-btn:active:not(:disabled) { transform: translateY(1px); }
+  .af-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .af-btn-sm {
+    flex: none; display: inline-flex; align-items: center; gap: 0.35rem;
+    font: 600 0.78rem/1 'Outfit', sans-serif;
+    padding: 0.5rem 0.75rem; border-radius: 8px; cursor: pointer;
+    background: transparent; color: var(--fg); border: 1px solid var(--af-line);
+  }
+  .af-btn-sm:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .af-btn-sm:disabled { opacity: 0.5; cursor: progress; }
+  .af-tab:focus-visible, .af-btn:focus-visible, .af-btn-sm:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .af-why { margin: -0.2rem 0 0; font-size: 0.78rem; color: var(--fg-muted); display: flex; gap: 0.45rem; align-items: flex-start; }
+  .af-why i { color: var(--warn); margin-top: 0.12rem; }
+  .af-note { margin: 0; font-size: 0.84rem; color: var(--fg-muted); line-height: 1.5; display: flex; gap: 0.55rem; align-items: flex-start; }
+  .af-note i { color: var(--accent); margin-top: 0.18rem; }
+
+  /* How full a sign-in facility is */
+  .af-meter-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.82rem; color: var(--fg-muted); }
+  .af-meter-head b { color: var(--fg); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  .af-meter { height: 6px; border-radius: 999px; background: var(--af-soft); border: 1px solid var(--af-line); overflow: hidden; margin-top: 0.4rem; }
+  .af-meter span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+  .af-meter.is-full span { background: var(--danger); }
+
+  /* Who is inside / what is booked */
+  .af-list { display: grid; gap: 0.45rem; }
+  .af-list-title { margin: 0; font-size: 0.74rem; font-weight: 600; color: var(--fg-muted); letter-spacing: 0.04em; }
+  .af-row {
+    display: flex; align-items: center; gap: 0.65rem;
+    padding: 0.6rem 0.7rem; border-radius: 10px;
+    background: var(--af-soft); border: 1px solid var(--af-line);
+  }
+  .af-row-text { min-width: 0; flex: 1; }
+  .af-row-text b { display: block; font-size: 0.86rem; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .af-row-text small { display: block; font-size: 0.75rem; color: var(--fg-muted); margin-top: 0.15rem; }
+  .af-more { margin: 0; font-size: 0.78rem; color: var(--fg-muted); }
+
+  /* Empty / loading */
+  .af-empty { border: 1.5px dashed var(--af-line); border-radius: 14px; padding: 2.4rem 1.5rem; text-align: center; }
+  .af-empty-icon {
+    width: 56px; height: 56px; margin: 0 auto 0.9rem; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.35rem;
+    background: var(--af-tint); color: var(--accent);
+  }
+  .af-empty h2 { margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--fg); }
+  .af-empty p { margin: 0.4rem auto 0; max-width: 46ch; font-size: 0.86rem; line-height: 1.5; color: var(--fg-muted); }
+
+  @media (max-width: 560px) {
+    .af { padding: 1.1rem 1rem 2.5rem; }
+    .af-tabs { width: 100%; border-radius: 14px; }
+  }
+
+  /* Still used by the booking dialog */
   .am-badge {
     padding: 0.22rem 0.65rem; border-radius: 4px;
     font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent; white-space: nowrap; display: inline-block;
   }
-  .am-badge.is-available   { background: rgba(74,222,128,0.16); color: var(--success); border-color: rgba(74,222,128,0.35); }
-  .am-badge.is-closed      { background: rgba(251,191,36,0.14); color: var(--warn);    border-color: rgba(251,191,36,0.35); }
-  .am-badge.is-maintenance { background: rgba(244,63,94,0.14);  color: var(--danger);  border-color: rgba(244,63,94,0.35); }
-  .am-status-pin { position: absolute; top: 0.7rem; left: 0.7rem; }
-  /* The access type is what the desk reads first — it decides which buttons exist. */
-  .am-kind {
-    position: absolute; top: 0.7rem; right: 0.7rem;
-    padding: 0.22rem 0.6rem; border-radius: 4px;
-    background: rgba(12,11,9,0.82); color: var(--accent);
-    border: 1px solid rgba(201,168,76,0.3);
-    font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600;
-  }
-  /* Open now vs shut for the night — separate from the amenity's own status, because a
-     pool can be Available and still closed at midnight. */
-  .am-now { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; }
-  .am-now.is-on  { color: var(--success); }
-  .am-now.is-off { color: var(--fg-muted); }
-  .am-now .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
-
-  .am-action { margin-top: auto; padding-top: 0.7rem; border-top: 1px solid var(--border); }
-  .am-note { font-size: 0.74rem; color: var(--fg-muted); line-height: 1.5; margin: 0; }
-  .am-inside { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.6rem; }
-  .am-inside-row {
-    display: flex; align-items: center; gap: 0.6rem;
-    padding: 0.5rem 0.6rem; border-radius: 8px;
-    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    font-size: 0.75rem;
-  }
-  .am-inside-row .who { color: var(--fg); font-weight: 600; }
   .am-cap {
     font-size: 0.68rem; color: var(--fg-muted);
     letter-spacing: 0.06em; text-transform: uppercase;
@@ -122,12 +221,8 @@
   :root[data-ops-theme="2"] .font-display { font-family: 'Cormorant Garamond', serif; }
   :root[data-ops-theme="2"] select.booking-input { color-scheme: light; }
   :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
-  :root[data-ops-theme="2"] .am-badge.is-available   { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
-  :root[data-ops-theme="2"] .am-badge.is-closed      { background: #fef3c7; color: #b45309; border-color: #fde68a; }
-  :root[data-ops-theme="2"] .am-badge.is-maintenance { background: #ffe4e6; color: #be123c; border-color: #fecdd3; }
-  :root[data-ops-theme="2"] .am-kind { background: rgba(255,255,255,0.92); border-color: rgba(27,67,50,0.2); }
-  :root[data-ops-theme="2"] .am-inside-row { background: #faf8f5; }
-  :root[data-ops-theme="2"] .am-card { box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  :root[data-ops-theme="2"] .af-card { box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  :root[data-ops-theme="2"] #opsContentWrap .af-tab, :root[data-ops-theme="2"] #opsContentWrap .af-btn, :root[data-ops-theme="2"] #opsContentWrap .af-btn-sm { font-family: 'DM Sans', sans-serif; }
 </style>
 @endsection
 
@@ -195,12 +290,6 @@ function amenityImg(amenity) {
   if (amenity && amenity.img) return amenity.img;
   const seed = encodeURIComponent((amenity && (amenity.id || amenity.name)) || 'amenity');
   return 'https://picsum.photos/seed/amenity-' + seed + '/800/600.jpg';
-}
-
-function statusClass(status) {
-  if (status === 'Available') return 'is-available';
-  if (status === 'Temporarily Closed') return 'is-closed';
-  return 'is-maintenance';
 }
 
 /* A ticking clock, so the "in the pool for 34m" figures move without a refetch.
@@ -899,17 +988,42 @@ function ReservationModal({ reservation, onClose, onChanged }) {
   );
 }
 
+/* What the desk does for each kind of facility, in plain words. The kind comes
+   from accessType, set by Housekeeping, never from the amenity's name. */
+const KINDS = {
+  registered:  { tab: 'signin', does: 'Sign guests in and out', icon: 'fa-right-to-bracket' },
+  appointment: { tab: 'book',   does: 'Book an appointment',    icon: 'fa-calendar-check' },
+  event:       { tab: 'book',   does: 'Book an event',          icon: 'fa-calendar-days' },
+  open:        { tab: 'open',   does: 'Guests walk in freely',  icon: 'fa-door-open' },
+};
+const kindOf = amenity => KINDS[amenity.accessType] || KINDS.open;
+
+const TABS = [
+  { key: 'all',    label: 'All facilities',  icon: 'fa-grip' },
+  { key: 'signin', label: 'Sign guests in',  icon: 'fa-right-to-bracket' },
+  { key: 'book',   label: 'Book ahead',      icon: 'fa-calendar-check' },
+  { key: 'open',   label: 'Walk in freely',  icon: 'fa-door-open' },
+];
+
+/* One status for the photo. Housekeeping's own status wins; otherwise it is open or
+   shut by the clock, because a pool can be Available and still closed at midnight. */
+function amenityState(amenity) {
+  if (amenity.status === 'Under Maintenance') return { cls: 'is-repair', label: 'Under maintenance' };
+  if (amenity.status !== 'Available') return { cls: 'is-closed', label: amenity.status || 'Closed' };
+  return amenity.isOpenNow ? { cls: 'is-open', label: 'Open now' } : { cls: 'is-closed', label: 'Closed right now' };
+}
+
 /* The action area is the whole point of this screen: it is different for each kind of
    facility, driven by accessType rather than by the amenity's name. */
-function AmenityActions({ amenity, visits, reservations, guests, canRegister, now, onOpenEntry, onExit, exitingId, onOpenBooking, onOpenReservation }) {
+function AmenityActions({ amenity, visits, reservations, canRegister, now, onOpenEntry, onExit, exitingId, onOpenBooking, onOpenReservation }) {
   const kind = amenity.accessType || 'open';
 
   if (kind === 'open') {
     return (
-      <div className="am-action">
-        <p className="am-note">
-          <i className="fa-solid fa-door-open" style={{ color: 'var(--accent)', marginRight: '0.4rem' }}></i>
-          Open access — guests walk in during opening hours. Nothing to register.
+      <div className="af-action">
+        <p className="af-note">
+          <i className="fa-solid fa-circle-info"></i>
+          <span>No sign-in needed. Guests can use it on their own during opening hours.</span>
         </p>
       </div>
     );
@@ -918,42 +1032,51 @@ function AmenityActions({ amenity, visits, reservations, guests, canRegister, no
   if (kind === 'registered') {
     const inside = visits.filter(v => v.amenityId === amenity.dbId);
     const heads = inside.reduce((sum, v) => sum + (v.partySize || 1), 0);
-    const full = amenity.capacity !== null && heads >= amenity.capacity;
-    const blocked = amenity.status !== 'Available' || !amenity.isOpenNow;
+    const hasCap = amenity.capacity !== null && amenity.capacity !== undefined;
+    const full = hasCap && heads >= amenity.capacity;
+    const shut = amenity.status !== 'Available' || !amenity.isOpenNow;
+    const why = !canRegister ? null
+      : shut ? (amenity.status !== 'Available'
+          ? 'It is ' + String(amenity.status).toLowerCase() + ', so no one can be signed in.'
+          : 'It is closed right now, so no one can be signed in.')
+      : full ? 'It is full. Sign someone out first.'
+      : null;
+    const pct = hasCap && amenity.capacity > 0 ? Math.min(100, Math.round((heads / amenity.capacity) * 100)) : 0;
 
     return (
-      <div className="am-action">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-          <button
-            type="button" className="btn-outline"
-            disabled={!canRegister || blocked || full}
-            onClick={() => onOpenEntry(amenity)}
-            title={blocked ? 'The facility is not open right now.' : (full ? 'At capacity.' : undefined)}
-          >
-            <i className="fa-solid fa-right-to-bracket" style={{ fontSize: '0.65rem' }}></i> Register Entry
-          </button>
-          <span className="am-cap">
-            {heads} inside{amenity.capacity !== null ? ' / ' + amenity.capacity : ''}
-          </span>
+      <div className="af-action">
+        <div>
+          <div className="af-meter-head">
+            <span>Guests inside now</span>
+            <b>{heads}{hasCap ? ' of ' + amenity.capacity : ''}</b>
+          </div>
+          {hasCap ? <div className={'af-meter' + (full ? ' is-full' : '')}><span style={{ width: pct + '%' }}></span></div> : null}
         </div>
 
+        {canRegister && (
+          <button type="button" className="af-btn" disabled={shut || full} onClick={() => onOpenEntry(amenity)}>
+            <i className="fa-solid fa-right-to-bracket"></i> Sign a guest in
+          </button>
+        )}
+        {why && <p className="af-why"><i className="fa-solid fa-circle-exclamation"></i><span>{why}</span></p>}
+
         {inside.length > 0 && (
-          <div className="am-inside">
+          <div className="af-list">
+            <p className="af-list-title">Inside now</p>
             {inside.map(v => (
-              <div key={v.id} className="am-inside-row">
-                <span className="who">{v.guestName}</span>
-                <span style={{ color: 'var(--fg-muted)' }}>
-                  {v.roomName ? 'Room ' + v.roomName + ' · ' : ''}
-                  {v.partySize > 1 ? v.partySize + ' people · ' : ''}
-                  {sinceLabel(v.enteredAt, now)}
-                </span>
+              <div key={v.id} className="af-row">
+                <div className="af-row-text">
+                  <b>{v.guestName}</b>
+                  <small>
+                    {v.roomName ? 'Room ' + v.roomName + ' · ' : ''}
+                    {v.partySize > 1 ? v.partySize + ' people · ' : ''}
+                    in for {sinceLabel(v.enteredAt, now)}
+                  </small>
+                </div>
                 {canRegister && (
-                  <button
-                    type="button" className="btn-outline is-exit"
-                    disabled={exitingId === v.id}
-                    onClick={() => onExit(v)}
-                  >
-                    {exitingId === v.id ? 'Signing out…' : 'Exit'}
+                  <button type="button" className="af-btn-sm" disabled={exitingId === v.id} onClick={() => onExit(v)}>
+                    <i className="fa-solid fa-right-from-bracket"></i>
+                    {exitingId === v.id ? 'Signing out…' : 'Sign out'}
                   </button>
                 )}
               </div>
@@ -972,55 +1095,56 @@ function AmenityActions({ amenity, visits, reservations, guests, canRegister, no
   const blocked = amenity.status !== 'Available';
 
   return (
-    <div className="am-action">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <button
-          type="button" className="btn-outline"
-          disabled={!canRegister || blocked}
-          onClick={() => onOpenBooking(amenity)}
-          title={blocked ? 'The facility is not available right now.' : undefined}
-        >
-          <i className="fa-solid fa-calendar-plus" style={{ fontSize: '0.65rem' }}></i>
-          {kind === 'event' ? 'Book Event' : 'Book Appointment'}
-        </button>
-        {kind === 'event' && amenity.rate > 0 && (
-          <span className="am-cap">{peso(amenity.rate)} / event</span>
-        )}
-        {booked.length > 0 && <span className="am-cap">{booked.length} booked</span>}
-      </div>
+    <div className="af-action">
+      {kind === 'event' && amenity.rate > 0 && (
+        <div className="af-meter-head">
+          <span>Hall rate</span>
+          <b>{peso(amenity.rate)} per event</b>
+        </div>
+      )}
 
-      {booked.length > 0 && (
-        <div className="am-inside">
+      {canRegister && (
+        <button type="button" className="af-btn" disabled={blocked} onClick={() => onOpenBooking(amenity)}>
+          <i className="fa-solid fa-calendar-plus"></i>
+          {kind === 'event' ? 'Book an event' : 'Book an appointment'}
+        </button>
+      )}
+      {canRegister && blocked && (
+        <p className="af-why"><i className="fa-solid fa-circle-exclamation"></i><span>It is {String(amenity.status).toLowerCase()}, so it is not taking bookings.</span></p>
+      )}
+
+      {booked.length > 0 ? (
+        <div className="af-list">
+          <p className="af-list-title">Coming up ({booked.length})</p>
           {booked.slice(0, 4).map(r => (
-            <div key={r.id} className="am-inside-row" style={{ alignItems: 'flex-start' }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="who">{r.customerName}</div>
-                <div style={{ color: 'var(--fg-muted)', fontSize: '0.7rem', marginTop: 2 }}>
+            <div key={r.id} className="af-row">
+              <div className="af-row-text">
+                <b>{r.customerName}</b>
+                <small>
                   {r.scheduledOn} · {r.timeLabel}
                   {r.serviceName ? ' · ' + r.serviceName : ''}
                   {r.eventType ? ' · ' + r.eventType : ''}
                   {r.guestCount ? ' · ' + r.guestCount + ' guests' : ''}
-                </div>
-                <div style={{ fontSize: '0.7rem', marginTop: 3 }}>
+                </small>
+                <small>
                   <span style={{ color: statusTone(r.status), fontWeight: 600 }}>{r.status}</span>
                   {r.balance > 0
-                    ? <span style={{ color: 'var(--fg-muted)' }}> · {peso(r.balance)} due</span>
-                    : <span style={{ color: 'var(--success)' }}> · settled</span>}
-                </div>
+                    ? <span> · {peso(r.balance)} still to pay</span>
+                    : <span style={{ color: 'var(--success)' }}> · fully paid</span>}
+                </small>
               </div>
-              <button
-                type="button" className="btn-outline is-exit"
-                style={{ alignSelf: 'center' }}
-                onClick={() => onOpenReservation(r)}
-              >
-                Open
+              <button type="button" className="af-btn-sm" onClick={() => onOpenReservation(r)}>
+                View
               </button>
             </div>
           ))}
-          {booked.length > 4 && (
-            <p className="am-note">and {booked.length - 4} more.</p>
-          )}
+          {booked.length > 4 && <p className="af-more">and {booked.length - 4} more.</p>}
         </div>
+      ) : (
+        <p className="af-note">
+          <i className="fa-solid fa-circle-info"></i>
+          <span>No bookings yet.</span>
+        </p>
       )}
     </div>
   );
@@ -1028,38 +1152,29 @@ function AmenityActions({ amenity, visits, reservations, guests, canRegister, no
 
 function AmenityCard(props) {
   const { amenity, now } = props;
-  const shut = amenity.status !== 'Available' || !amenity.isOpenNow;
+  const state = amenityState(amenity);
+  const kind = kindOf(amenity);
 
   return (
-    <div className={'am-card' + (shut ? ' is-shut' : '')}>
-      <div className="am-media">
+    <article className={'af-card' + (state.cls !== 'is-open' ? ' is-shut' : '')}>
+      <div className="af-media">
         <img src={amenityImg(amenity)} alt={amenity.name} />
-        <span className={'am-badge am-status-pin ' + statusClass(amenity.status)}>{amenity.status}</span>
-        <span className="am-kind">{amenity.accessLabel}</span>
+        <span className={'af-state ' + state.cls}><span className="dot"></span>{state.label}</span>
       </div>
-      <div className="am-body">
-        <h3 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--fg)' }}>
-          {amenity.name}
-        </h3>
-        {amenity.location && (
-          <div className="am-meta">
-            <i className="fa-solid fa-location-dot" style={{ color: 'var(--accent)', fontSize: '0.7rem' }}></i>
-            {amenity.location}
-          </div>
-        )}
-        <div className="am-meta" style={{ justifyContent: 'space-between' }}>
-          <span>
-            <i className="fa-solid fa-clock" style={{ color: 'var(--accent)', fontSize: '0.7rem', marginRight: '0.4rem' }}></i>
-            {amenity.hours || 'No posted hours'}
-          </span>
-          {/* Separate from status on purpose: a pool can be Available and still shut at 3am. */}
-          <span className={'am-now ' + (amenity.isOpenNow ? 'is-on' : 'is-off')}>
-            <span className="dot"></span>{amenity.isOpenNow ? 'Open now' : 'Closed now'}
-          </span>
+      <div className="af-body">
+        <div>
+          <h2 className="af-title font-display">{amenity.name}</h2>
+          <span className="af-does"><i className={'fa-solid ' + kind.icon}></i>{kind.does}</span>
+        </div>
+        <div className="af-facts">
+          {amenity.location && (
+            <div><i className="fa-solid fa-location-dot"></i><span>{amenity.location}</span></div>
+          )}
+          <div><i className="fa-regular fa-clock"></i><span>{amenity.hours ? 'Open ' + amenity.hours : 'No opening hours posted'}</span></div>
         </div>
         <AmenityActions {...props} now={now} />
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -1076,6 +1191,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [entryFor, setEntryFor] = useState(null);
   const [exitingId, setExitingId] = useState(null);
+  const [tab, setTab] = useState('all');
   const now = useNow(30000);
 
   // A poll landing mid-save would put a guest back in the pool they were just signed
@@ -1176,50 +1292,88 @@ function App() {
       });
   }, []);
 
+  const inTab = key => amenities.filter(a => key === 'all' || kindOf(a).tab === key);
+  const shown = inTab(tab);
+  const insideNow = visits.reduce((sum, v) => sum + (v.partySize || 1), 0);
+  const currentTab = TABS.find(t => t.key === tab) || TABS[0];
+
   return (
-    <div style={{ padding: '1.5rem' }} data-hms-no-edit="1">
-      <div style={{ marginBottom: '1.25rem' }}>
-        <h3 className="font-display" style={{ fontSize: '1.35rem', fontWeight: 700, margin: '0 0 0.35rem', color: 'var(--fg)' }}>
-          Amenities
-        </h3>
-        <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0, lineHeight: 1.5, maxWidth: 620 }}>
-          What each facility needs from the desk depends on the facility. Housekeeping sets that
-          up and keeps the hours and condition current; you register guests in and out.
+    <div className="af" data-hms-no-edit="1">
+      <header className="af-head">
+        <p className="af-eyebrow">Front Desk</p>
+        <h1 className="font-display">Amenities</h1>
+        <p className="af-lead">
+          The hotel's facilities and what the desk does for each one: sign guests in and out
+          of places like the pool and gym, and book the ones that need a reservation.
+          Housekeeping keeps the opening hours and condition up to date.
         </p>
         {!loading && !canRegister && (
-          <p style={{ color: 'var(--warn)', fontSize: '0.76rem', marginTop: '0.6rem' }}>
-            <i className="fa-solid fa-eye" style={{ marginRight: '0.4rem' }}></i>
-            You are viewing this read-only — registering guests is Front Desk work.
+          <p className="af-readonly">
+            <i className="fa-solid fa-eye"></i>
+            You can look but not change anything here. Signing guests in and booking is Front Desk work.
           </p>
         )}
-      </div>
+      </header>
 
       {loading ? (
-        <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Loading amenities…</p>
+        <p style={{ color: 'var(--fg-muted)', fontSize: '0.86rem' }}>Loading amenities…</p>
       ) : amenities.length === 0 ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--fg-muted)' }}>
-          <i className="fa-solid fa-person-swimming" style={{ fontSize: '1.6rem', opacity: 0.5, display: 'block', marginBottom: '0.6rem' }}></i>
-          <p style={{ margin: 0, fontSize: '0.82rem' }}>No amenities yet.</p>
+        <div className="af-empty">
+          <div className="af-empty-icon"><i className="fa-solid fa-person-swimming"></i></div>
+          <h2>No amenities yet</h2>
+          <p>Housekeeping adds the hotel's facilities. Once they do, they will show up here.</p>
         </div>
       ) : (
-        <div className="am-grid">
-          {amenities.map(amenity => (
-            <AmenityCard
-              key={amenity.id}
-              amenity={amenity}
-              visits={visits}
-              guests={guests}
-              canRegister={canRegister}
-              now={now}
-              exitingId={exitingId}
-              onOpenEntry={setEntryFor}
-              onExit={handleExit}
-              reservations={reservations}
-              onOpenBooking={setBookingFor}
-              onOpenReservation={setOpenReservation}
-            />
-          ))}
-        </div>
+        <>
+          <div className="af-toolbar">
+            <div className="af-tabs" role="group" aria-label="Show facilities by what the desk does">
+              {TABS.map(t => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={'af-tab' + (tab === t.key ? ' is-on' : '')}
+                  aria-pressed={tab === t.key}
+                  onClick={() => setTab(t.key)}
+                >
+                  <i className={'fa-solid ' + t.icon}></i>
+                  {t.label}
+                  <span className="af-count">{inTab(t.key).length}</span>
+                </button>
+              ))}
+            </div>
+            <p className="af-summary">
+              <i className="fa-solid fa-users"></i>
+              <span><b>{insideNow}</b> {insideNow === 1 ? 'guest' : 'guests'} signed in right now</span>
+            </p>
+          </div>
+
+          {shown.length === 0 ? (
+            <div className="af-empty">
+              <div className="af-empty-icon"><i className={'fa-solid ' + currentTab.icon}></i></div>
+              <h2>Nothing under {currentTab.label}</h2>
+              <p>None of the hotel's facilities work this way. Pick another tab to see the rest.</p>
+            </div>
+          ) : (
+            <div className="af-grid">
+              {shown.map(amenity => (
+                <AmenityCard
+                  key={amenity.id}
+                  amenity={amenity}
+                  visits={visits}
+                  guests={guests}
+                  canRegister={canRegister}
+                  now={now}
+                  exitingId={exitingId}
+                  onOpenEntry={setEntryFor}
+                  onExit={handleExit}
+                  reservations={reservations}
+                  onOpenBooking={setBookingFor}
+                  onOpenReservation={setOpenReservation}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {entryFor && (
