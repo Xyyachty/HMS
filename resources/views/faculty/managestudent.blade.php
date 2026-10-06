@@ -284,7 +284,7 @@
                 @if ($canEnrol) onclick="openModal('bulkUploadModal')" @else disabled @endif
                 title="{{ $canEnrol ? 'Bulk Upload' : $noBlockHint }}"
                 aria-label="Bulk Upload"
-                class="h-10 shrink-0 bg-emerald-600 text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-emerald-600/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'ms-light-hover' : 'intake-disabled' }}"
+                class="h-10 shrink-0 bg-brand text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'ms-light-hover' : 'intake-disabled' }}"
             >
                 <span class="iconify text-base" data-icon="mdi:upload"></span>
                 Bulk Upload
