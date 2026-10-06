@@ -35,10 +35,10 @@
   }
 
   /* Header */
-  .cx-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .cx-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
   .cx-eyebrow { color: var(--accent); font-size: 0.72rem; letter-spacing: 0.25em; text-transform: uppercase; margin: 0 0 0.5rem; }
   .cx-head h1 { margin: 0; font-size: 1.85rem; line-height: 1.15; color: var(--fg); }
-  .cx-lead { margin: 0.45rem 0 0; color: var(--fg-muted); font-size: 0.92rem; max-width: 62ch; line-height: 1.5; }
+  .cx-lead { margin: 0.45rem 0 0; color: var(--fg-muted); font-size: 0.92rem; max-width: 95ch; line-height: 1.5; }
 
   /* Buttons */
   .cx-btn {
@@ -53,7 +53,7 @@
   .cx-btn-ghost { background: transparent; color: var(--accent); }
   .cx-btn-ghost:hover:not(:disabled) { background: var(--cx-tint); }
   .cx-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .cx-btn-wide { width: 100%; padding: 1rem 1.2rem; font-size: 0.95rem; }
+  .cx-btn-wide { width: 100%; padding: 0.9rem 1.2rem; font-size: 0.95rem; }
   .cx-btn-sm {
     display: inline-flex; align-items: center; gap: 0.4rem;
     font: 600 0.8rem/1 var(--font-body, 'Outfit', sans-serif);
@@ -67,15 +67,15 @@
   }
 
   /* Page layout: the form beside the list; one column on a narrow screen */
-  .cx-layout { display: grid; grid-template-columns: clamp(340px, 30vw, 430px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+  .cx-layout { display: grid; grid-template-columns: clamp(380px, 34vw, 520px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
   .cx-layout.is-single { grid-template-columns: minmax(0, 1fr); }
-  .cx-panel { background: var(--card); border: 1px solid var(--cx-line); border-radius: 14px; padding: 1.2rem 1.3rem 1.35rem; min-width: 0; }
+  .cx-panel { background: var(--card); border: 1px solid var(--cx-line); border-radius: 14px; padding: 1.05rem 1.25rem 1.15rem; min-width: 0; }
   .cx-panel-title { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--fg); }
   .cx-panel-sub { margin: 0.25rem 0 0; font-size: 0.82rem; color: var(--fg-muted); line-height: 1.45; }
 
   /* The report form, as numbered steps */
-  .cx-steps { display: grid; gap: 1.15rem; margin-top: 1.1rem; }
-  .cx-step-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.55rem; }
+  .cx-steps { display: grid; gap: 0.75rem; margin-top: 0.75rem; }
+  .cx-step-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
   .cx-num {
     flex: none; width: 24px; height: 24px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -88,7 +88,7 @@
   .cx-input {
     width: 100%; box-sizing: border-box;
     background: var(--cx-soft); border: 1px solid var(--cx-line); border-radius: 10px;
-    padding: 0.75rem 0.85rem; color: var(--fg); outline: none;
+    padding: 0.65rem 0.85rem; color: var(--fg); outline: none;
     font: 400 0.92rem/1.35 var(--font-body, 'Outfit', sans-serif);
     transition: border-color 0.15s, box-shadow 0.15s;
   }
@@ -96,14 +96,14 @@
   .cx-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--cx-tint); }
   .cx-input:disabled { opacity: 0.6; cursor: not-allowed; }
   select.cx-input option { background: var(--card); color: var(--fg); }
-  textarea.cx-input { resize: vertical; min-height: 92px; }
-  .cx-two { display: grid; gap: 0.6rem; }
+  textarea.cx-input { resize: vertical; min-height: 58px; }
+  .cx-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
 
-  .cx-group-label { margin: 0.2rem 0 0.4rem; font-size: 0.72rem; font-weight: 600; color: var(--fg-muted); }
+  .cx-group-label { margin: 0.1rem 0 0.3rem; font-size: 0.72rem; font-weight: 600; color: var(--fg-muted); }
   .cx-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .cx-chip {
     font: 600 0.8rem/1 var(--font-body, 'Outfit', sans-serif);
-    padding: 0.55rem 0.8rem; border-radius: 999px; cursor: pointer;
+    padding: 0.42rem 0.7rem; border-radius: 999px; cursor: pointer;
     border: 1.5px solid var(--cx-line); background: transparent; color: var(--fg-muted);
     transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
@@ -113,7 +113,7 @@
   .cx-teams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
   .cx-team {
     display: flex; align-items: center; gap: 0.6rem; text-align: left;
-    padding: 0.75rem 0.8rem; border-radius: 10px; cursor: pointer;
+    padding: 0.6rem 0.8rem; border-radius: 10px; cursor: pointer;
     background: transparent; border: 1.5px solid var(--cx-line); color: var(--fg);
     font: 600 0.86rem/1.2 var(--font-body, 'Outfit', sans-serif);
   }
@@ -202,6 +202,24 @@
   }
   .cx-empty h2 { margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--fg); }
   .cx-empty p { margin: 0.4rem auto 0; max-width: 46ch; font-size: 0.86rem; line-height: 1.5; color: var(--fg-muted); }
+
+  /* On a wide screen the page itself does not scroll: the header and the report
+     form stay where they are and only the list of complaints scrolls, in its own
+     column. The form scrolls on its own only if the screen is too short for it.
+     A narrow screen stacks everything and scrolls as one page instead. */
+  @media (min-width: 1101px) {
+    #ops-root { height: 100%; }
+    .cx { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; padding-bottom: 1.25rem; }
+    .cx-head { flex: none; }
+    .cx-layout { flex: 1; min-height: 0; align-items: stretch; }
+    .cx-layout > .cx-panel { min-height: 0; overflow-y: auto; }
+    .cx-list-col { display: flex; flex-direction: column; min-height: 0; }
+    .cx-list-col .cx-toolbar { flex: none; }
+    .cx-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 0.35rem; }
+  }
+  .cx-scroll::-webkit-scrollbar, .cx-layout > .cx-panel::-webkit-scrollbar { width: 6px; }
+  .cx-scroll::-webkit-scrollbar-track, .cx-layout > .cx-panel::-webkit-scrollbar-track { background: transparent; }
+  .cx-scroll::-webkit-scrollbar-thumb, .cx-layout > .cx-panel::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--fg) 25%, transparent); border-radius: 10px; }
 
   @media (max-width: 1100px) {
     .cx-layout { grid-template-columns: minmax(0, 1fr); }
@@ -357,31 +375,30 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
   return (
     <form onSubmit={submit} className="cx-panel" noValidate>
       <h2 className="cx-panel-title">Report a problem</h2>
-      <p className="cx-panel-sub">A guest called or came to the desk about something wrong. Fill this in and the right team gets it straight away.</p>
 
       <div className="cx-steps">
         <div className={'cx-step' + (roomNumber ? ' is-done' : '')}>
           <div className="cx-step-head"><span className="cx-num">1</span><label htmlFor="cxRoom">Which room?</label></div>
           {/* Always a dropdown. With nobody checked in there is no room to complain
               from, so it disables and says so rather than turning into a text box. */}
-          <select id="cxRoom" className="cx-input" value={roomNumber} onChange={e => pickRoom(e.target.value)} disabled={occupiedRooms.length === 0}>
-            <option value="">{occupiedRooms.length === 0 ? 'No guests are checked in' : 'Choose a room…'}</option>
-            {occupiedRooms.map(room => (
-              <option key={room.id} value={room.name}>Room {room.name} · {room.reservation.fullName || 'Guest'}</option>
-            ))}
-          </select>
+          <div className="cx-two">
+            <select id="cxRoom" className="cx-input" value={roomNumber} onChange={e => pickRoom(e.target.value)} disabled={occupiedRooms.length === 0}>
+              <option value="">{occupiedRooms.length === 0 ? 'No guests are checked in' : 'Choose a room…'}</option>
+              {occupiedRooms.map(room => (
+                <option key={room.id} value={room.name}>Room {room.name} · {room.reservation.fullName || 'Guest'}</option>
+              ))}
+            </select>
+            <input type="text" className="cx-input" placeholder="Guest name" value={guestName} onChange={e => setGuestName(e.target.value)} aria-label="Guest name (filled in from the room)" title="Filled in from the room" />
+          </div>
           {occupiedRooms.length === 0 && (
             <p className="cx-help">Only rooms with a checked-in guest are listed. Check a guest in first.</p>
           )}
-          <div className="cx-two" style={{ marginTop: '0.6rem' }}>
-            <input type="text" className="cx-input" placeholder="Guest name (filled in from the room)" value={guestName} onChange={e => setGuestName(e.target.value)} aria-label="Guest name" />
-          </div>
         </div>
 
         <div className={'cx-step' + (category ? ' is-done' : '')}>
           <div className="cx-step-head"><span className="cx-num">2</span><span className="cx-q">What kind of problem?</span></div>
           {groups.map(group => (
-            <div key={group.key} style={{ marginBottom: '0.5rem' }}>
+            <div key={group.key} style={{ marginBottom: '0.35rem' }}>
               <p className="cx-group-label">Usually {group.label}</p>
               <div className="cx-chips">
                 {group.names.map(name => (
@@ -408,7 +425,6 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
               </button>
             ))}
           </div>
-          <p className="cx-help">Picked for you from the problem type. Change it if another team should handle it.</p>
         </div>
 
         <div className={'cx-step' + (details.trim() ? ' is-done' : '')}>
@@ -664,7 +680,7 @@ function App() {
   const heading = isDepartmentView ? 'Complaints & Concerns' : 'Guest Complaints';
   const lead = isDepartmentView
     ? 'Problems guests reported at the Front Desk that need your team. Start on each one, mark it fixed when it is done, and write down what you did.'
-    : 'When a guest reports a problem, write it down here and send it to the team that can fix it. You can follow each one until it is fixed.';
+    : 'Write down a guest’s problem, send it to the team that can fix it, and follow it until it is fixed.';
 
   let emptyTitle = 'Nothing matches';
   let emptyText = 'Try another tab, another team, or clear the search.';
@@ -679,7 +695,7 @@ function App() {
   }
 
   const list = (
-    <section style={{ minWidth: 0 }}>
+    <section className="cx-list-col" style={{ minWidth: 0 }}>
       <div className="cx-toolbar">
         <div className="cx-toolbar-row">
           <div className="cx-tabs" role="group" aria-label="Show complaints by status">
@@ -704,6 +720,7 @@ function App() {
         </div>
       </div>
 
+      <div className="cx-scroll">
       {!loaded ? (
         <div className="cx-empty"><p style={{ margin: 0 }}>Loading complaints…</p></div>
       ) : visible.length === 0 ? (
@@ -725,6 +742,7 @@ function App() {
           ))}
         </div>
       )}
+      </div>
     </section>
   );
 
