@@ -18,11 +18,11 @@
         background: #fff; border: 1px solid #E4D3CF; cursor: pointer;
         white-space: nowrap; transition: all .2s ease;
     }
-    .rp-tab:hover { border-color: rgba(123,23,48,.4); color: #7B1730; }
+    .rp-tab:hover { border-color: #8A817A; color: #181818; }
     .rp-tab.active {
-        background: #7B1730;
+        background: #5F5A55;
         color: #fff; border-color: transparent;
-        box-shadow: 0 8px 20px -6px rgba(123,23,48,.4);
+        box-shadow: 0 8px 20px -6px rgba(24,24,24,.3);
     }
     .rp-panel { display: none; }
     .rp-panel.active { display: block; }
@@ -40,14 +40,14 @@
         border-radius: .75rem; border: 1px solid #E4D3CF; background: #fff;
         font-size: 12px; font-weight: 600; color: #5A3941;
     }
-    .rp-filter:focus { outline: none; border-color: #7B1730; box-shadow: 0 0 0 3px rgba(123,23,48,.12); }
-    .rp-filter.is-set { border-color: #7B1730; color: #7B1730; background: #FBEEE9; }
+    .rp-filter:focus { outline: none; border-color: #8A817A; box-shadow: 0 0 0 3px rgba(138,129,122,.2); }
+    .rp-filter.is-set { border-color: #8A817A; color: #181818; background: #F3F2F1; }
     .rp-filter-clear {
         display: inline-flex; align-items: center; gap: .375rem; height: 2.5rem; padding: 0 .875rem;
         border-radius: .75rem; border: 1px solid #E4D3CF; background: #fff;
         font-size: 12px; font-weight: 700; color: #6B4A54;
     }
-    .rp-filter-clear:hover { color: #7B1730; border-color: rgba(123,23,48,.4); }
+    .rp-filter-clear:hover { color: #181818; border-color: #8A817A; }
 
     .rp-track { height: .5rem; border-radius: 9999px; background: #F2E9E7; overflow: hidden; }
     .rp-track > span { display: block; height: 100%; border-radius: 9999px; }

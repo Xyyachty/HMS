@@ -17,7 +17,7 @@
     .bu-badge {
         width: 2.25rem; height: 2.25rem; border-radius: .7rem; flex: 0 0 auto;
         display: inline-flex; align-items: center; justify-content: center;
-        background: #FBEEE9; color: #7B1730; font-size: 1.15rem;
+        background: #F3F2F1; color: #4A4643; font-size: 1.15rem;
     }
     .bu-card-title { font-size: 13.5px; font-weight: 800; color: #2A1118; line-height: 1.25; }
     .bu-card-sub { font-size: 11.5px; color: #8A6F76; margin-top: .1rem; }
@@ -32,31 +32,31 @@
     .bu-download {
         margin-top: auto; align-self: flex-start;
         display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .85rem; border-radius: .7rem;
-        font-size: 12px; font-weight: 800; color: #7B1730; background: #fff; border: 1px solid #D9B86A;
+        font-size: 12px; font-weight: 800; color: #181818; background: #fff; border: 1px solid #DADADA;
         transition: all .15s ease;
     }
-    .bu-download:hover { background: #7B1730; border-color: #C9A45C; color: #fff; }
+    .bu-download:hover { background: #5F5A55; border-color: #5F5A55; color: #fff; }
     .bu-notes { margin-top: .875rem; display: grid; gap: .45rem; }
     .bu-notes li { display: flex; align-items: flex-start; gap: .5rem; font-size: 11.5px; line-height: 1.5; color: #6B4A54; }
-    .bu-notes li .iconify { flex: 0 0 auto; font-size: .95rem; color: #B8873C; margin-top: .1rem; }
+    .bu-notes li .iconify { flex: 0 0 auto; font-size: .95rem; color: #4A4643; margin-top: .1rem; }
     .bu-drop {
         margin-top: 1rem; border: 2px dashed #DEC6BF; border-radius: 1.1rem; background: #FDF8F6;
         padding: 2rem 1.25rem; display: flex; flex-direction: column; align-items: center; gap: .4rem;
         text-align: center; cursor: pointer; transition: border-color .2s ease, background-color .2s ease;
     }
-    .bu-drop:hover { border-color: #C9A45C; background: #FBEEE9; }
+    .bu-drop:hover { border-color: #8A817A; background: #F3F2F1; }
     .bu-drop-icon {
         width: 3.25rem; height: 3.25rem; border-radius: 9999px; margin-bottom: .25rem;
         display: inline-flex; align-items: center; justify-content: center;
-        background: #fff; color: #7B1730; font-size: 1.6rem; box-shadow: 0 6px 16px -8px rgba(123,23,48,.45);
+        background: #fff; color: #4A4643; font-size: 1.6rem; box-shadow: 0 6px 16px -8px rgba(24,24,24,.35);
     }
     .bu-drop-title { font-size: 13.5px; font-weight: 800; color: #2A1118; }
     .bu-drop-sub { font-size: 11.5px; color: #8A6F76; }
     .bu-browse {
         margin-top: .35rem; display: inline-flex; align-items: center; padding: .45rem .95rem; border-radius: .7rem;
-        font-size: 12px; font-weight: 800; color: #fff; background: #7B1730;
+        font-size: 12px; font-weight: 800; color: #fff; background: #5F5A55;
     }
-    #bulkDropZone.drag-over { border-color: #C9A45C; background-color: #FBEEE9; }
+    #bulkDropZone.drag-over { border-color: #8A817A; background-color: #F3F2F1; }
     #bulkImportBtn:disabled {
         opacity:.6;
         cursor:not-allowed;
@@ -71,7 +71,7 @@
     #studentsTable { table-layout: fixed; width: 100%; border-collapse: collapse; }
     #studentsTable th, #studentsTable td { vertical-align: middle; }
     #studentsTable thead th {
-        background: #7B1730; color: #fff;
+        background: #EFEFEF; color: #181818;
         font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
         padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
@@ -125,7 +125,7 @@
         font-size: 13px; font-weight: 700; color: #111; background: #fff; border: 1px solid #EADAD5;
         transition: all .15s ease;
     }
-    a.st-page:hover { color: #111; border-color: #C9A45C; background: #FBEEE9; }
+    a.st-page:hover { color: #111; border-color: #8A817A; background: #F3F2F1; }
     .st-page.is-current { background: #111; border-color: #111; color: #fff; }
     .st-page.is-disabled { color: #111; opacity: .4; background: #FAF6F5; cursor: not-allowed; }
 
@@ -196,7 +196,7 @@
         border: 1px solid #E4D3CF; background: #fff; color: #6B4A54;
         transition: color 0.2s, border-color 0.2s, opacity 0.2s;
     }
-    .bulk-pager-btn:hover:not(:disabled) { color: #7B1730; border-color: #C9A45C; }
+    .bulk-pager-btn:hover:not(:disabled) { color: #181818; border-color: #8A817A; }
     .bulk-pager-btn:disabled { opacity: 0.4; cursor: default; }
 
     /* Add Student / Bulk Upload with no block assigned. Same reason as above: the

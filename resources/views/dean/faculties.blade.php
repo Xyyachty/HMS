@@ -500,8 +500,8 @@
     /* The faculty header above each set of teams. */
     #teamsTable tbody tr.faculty-group-row,
     #teamsTable tbody tr.faculty-group-row:hover {
-        background: #FBEEE9;
-        border-top: 1px solid #E4D3CF;
+        background: #F3F2F1;
+        border-top: 1px solid #E4E2E0;
     }
 </style>
 @endpush

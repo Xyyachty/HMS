@@ -87,6 +87,7 @@
         }
         .sidebar-mobile.open { transform: translateX(0); }
     </style>
+    @include('partials.gray-scheme-styles')
     @include('partials.ink-all-styles')
     @stack('styles')
     @include('partials.status-badge-styles')
@@ -200,7 +201,7 @@
 
 
             <!-- ==================== PAGE CONTENT ==================== -->
-            <main class="{{ $inkAll ? 'ink-all' : '' }} flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#dadada">
+            <main class="{{ $inkAll ? 'ink-all' : '' }} gray-accents flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#dadada">
                 @yield('content')
             </main>
         </div>

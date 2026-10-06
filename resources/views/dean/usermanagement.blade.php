@@ -14,7 +14,7 @@
     .st-card { border: 1px solid #EADAD5; border-radius: 1rem; overflow: hidden; background: #fff; }
     table.dataTable#usersTable { border-collapse: collapse !important; width: 100% !important; margin: 0 !important; }
     table.dataTable#usersTable thead th {
-        background: #7B1730; color: #fff; border-bottom: 0 !important;
+        background: #EFEFEF; color: #181818; border-bottom: 0 !important;
         font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
         padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
@@ -97,7 +97,7 @@
         border: 1px solid #EADAD5 !important; box-shadow: none !important; transition: all .15s ease;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button:hover {
-        color: #111 !important; border-color: #C9A45C !important; background: #FBEEE9 !important;
+        color: #111 !important; border-color: #8A817A !important; background: #F3F2F1 !important;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button.current,
     #usersTable_wrapper .dataTables_paginate .paginate_button.current:hover {

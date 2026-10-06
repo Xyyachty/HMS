@@ -8,9 +8,9 @@
     /* ── Role tab colours ── */
     .tab-btn { transition: all .25s ease; }
     .tab-btn.active-tab {
-        background: #7B1730;
+        background: #5F5A55;
         color:#fff; border-color:transparent;
-        box-shadow: 0 8px 20px -4px rgba(123,23,48,.35);
+        box-shadow: 0 8px 20px -6px rgba(24,24,24,.3);
     }
 
     /* ── Task card hover ── */

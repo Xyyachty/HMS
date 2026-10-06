@@ -104,6 +104,7 @@
         .sidebar-mobile.open { transform: translateX(0); }
     </style>
     @stack('styles')
+    @include('partials.gray-scheme-styles')
     @include('partials.status-badge-styles')
 </head>
 <body class="bg-slate-50 antialiased">
@@ -209,7 +210,7 @@
             </header>
 
             <!-- Page Content Area -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#dadada">
+            <main class="gray-accents flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#dadada">
                 @yield('content')
             </main>
 

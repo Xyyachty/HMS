@@ -203,11 +203,11 @@
         color:#6B4A54; cursor:pointer; transition:all .25s ease; border:1.5px solid #E4D3CF;
         background:#fff; white-space:nowrap; user-select:none;
     }
-    .main-tab-btn:hover { border-color:#DE8299; color:#7B1730; background:#FBEEE9; }
+    .main-tab-btn:hover { border-color:#8A817A; color:#181818; background:#F3F2F1; }
     .main-tab-btn.active {
-        background:#7B1730;
+        background:#5F5A55;
         color:#fff; border-color:transparent;
-        box-shadow:0 8px 20px -4px rgba(123,23,48,.35);
+        box-shadow:0 8px 20px -6px rgba(24,24,24,.3);
     }
     .main-tab-btn .tab-badge {
         padding:.1rem .45rem; border-radius:9999px; font-size:.65rem; font-weight:800;
@@ -251,7 +251,7 @@
 
     /* ── Student list in form ── */
     .student-row { transition:all .2s ease; }
-    .student-row:hover { background:#FBEEE9 !important; }
+    .student-row:hover { background:#F3F2F1 !important; }
 
     /* ── Role color dots ── */
     .role-dot-front_desk            { background:#C4425E; }
