@@ -1177,15 +1177,15 @@
                 {{-- At a glance --}}
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="bg-white rounded-2xl border border-[#E7E1DD] px-4 py-3.5 flex items-center gap-3">
-                        <span class="w-10 h-10 rounded-xl bg-[#F5F2EF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#5F5A55]" data-icon="mdi:format-list-bulleted"></span></span>
+                        <span class="w-10 h-10 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#4A4643]" data-icon="mdi:format-list-bulleted"></span></span>
                         <div><p class="text-[11px] font-semibold text-slate-500">All entries</p><p class="text-xl font-extrabold text-slate-900 leading-tight">{{ $actRows->count() }}</p></div>
                     </div>
                     <div class="bg-white rounded-2xl border border-[#E7E1DD] px-4 py-3.5 flex items-center gap-3">
-                        <span class="w-10 h-10 rounded-xl bg-[#F5F2EF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#5F5A55]" data-icon="mdi:calendar-today-outline"></span></span>
+                        <span class="w-10 h-10 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#4A4643]" data-icon="mdi:calendar-today-outline"></span></span>
                         <div><p class="text-[11px] font-semibold text-slate-500">Today</p><p class="text-xl font-extrabold text-slate-900 leading-tight">{{ $actTodayCount }}</p></div>
                     </div>
                     <div class="bg-white rounded-2xl border border-[#E7E1DD] px-4 py-3.5 flex items-center gap-3">
-                        <span class="w-10 h-10 rounded-xl bg-[#F5F2EF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#5F5A55]" data-icon="mdi:clock-outline"></span></span>
+                        <span class="w-10 h-10 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#4A4643]" data-icon="mdi:clock-outline"></span></span>
                         <div class="min-w-0"><p class="text-[11px] font-semibold text-slate-500">Last activity</p>
                             <p class="text-sm font-bold text-slate-900 leading-tight truncate">{{ $actLast ? ($actLast['activity_label'] ?? 'Activity') : 'None yet' }}</p>
                             @if($actLast)<p class="text-[11px] text-slate-500 truncate">{{ $actLast['created_at_human'] }}</p>@endif
@@ -1195,7 +1195,7 @@
 
                 <div class="act-panel bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
                     {{-- What to show --}}
-                    <div class="px-4 sm:px-5 py-3 border-b border-[#E7E1DD] bg-[#F5F2EF]/60">
+                    <div class="px-4 sm:px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]">
                         <p class="text-[11px] font-semibold text-slate-500 mb-2">Show</p>
                         <div class="flex flex-wrap gap-2" role="group" aria-label="Show activity by kind">
                             @foreach($actGroups as $actKey => $actGroup)
@@ -1216,13 +1216,13 @@
                         @forelse($actRows->groupBy('day') as $actDay => $actDayRows)
                             <div data-act-day class="mb-3 last:mb-0">
                                 <p class="sticky top-0 z-[1] bg-white py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{{ $actDay }}</p>
-                                <ol class="relative ml-4 border-l border-[#E7E1DD]">
+                                <ol class="relative ml-4 border-l border-[#DADADA]">
                                     @foreach($actDayRows as $actLog)
-                                        <li data-act-group="{{ $actLog['group'] }}" class="relative pl-6 py-2.5">
-                                            <span class="absolute -left-[17px] top-2.5 w-8 h-8 rounded-full bg-[#F5F2EF] border border-[#E7E1DD] flex items-center justify-center">
-                                                <span class="iconify text-base text-[#5F5A55]" data-icon="{{ $actLog['icon'] }}"></span>
+                                        <li data-act-group="{{ $actLog['group'] }}" class="relative flex items-center min-h-[56px] pl-7 py-2.5">
+                                            <span class="absolute -left-[17px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#EFEFEF] border border-[#DADADA] flex items-center justify-center">
+                                                <span class="iconify text-base text-[#4A4643]" data-icon="{{ $actLog['icon'] }}"></span>
                                             </span>
-                                            <div class="flex items-start justify-between gap-3">
+                                            <div class="flex-1 min-w-0 flex items-start justify-between gap-3">
                                                 <div class="min-w-0">
                                                     <p class="text-sm font-bold text-slate-900">{{ $actLog['activity_label'] ?? $actLog['activity'] ?? 'Activity' }}</p>
                                                     @if(!empty($actLog['description']))
@@ -1240,7 +1240,7 @@
                             </div>
                         @empty
                             <div class="py-12 text-center">
-                                <span class="w-14 h-14 rounded-2xl bg-[#F5F2EF] flex items-center justify-center mx-auto mb-3"><span class="iconify text-2xl text-[#8A817A]" data-icon="mdi:history"></span></span>
+                                <span class="w-14 h-14 rounded-2xl bg-[#EFEFEF] flex items-center justify-center mx-auto mb-3"><span class="iconify text-2xl text-[#8A817A]" data-icon="mdi:history"></span></span>
                                 <p class="text-sm font-bold text-slate-800">Nothing recorded yet</p>
                                 <p class="text-xs text-slate-500 mt-1">When you sign in, hand in a task or save your work, it will show up here.</p>
                             </div>
@@ -1259,9 +1259,9 @@
                         #activity-section:not(.hidden) > :not(.act-panel), #activity-section .act-panel > :not(.act-timeline) { flex-shrink: 0; }
                         #activity-section .act-timeline { flex: 1; min-height: 0; max-height: none; }
                     }
-                    .act-chip { background: #fff; border-color: #E7E1DD; color: #181818; }
+                    .act-chip { background: #fff; border-color: #DADADA; color: #181818; }
                     .act-chip:hover { border-color: #8A817A; }
-                    .act-chip .act-count { background: #F5F2EF; }
+                    .act-chip .act-count { background: #EFEFEF; }
                     .act-chip.is-on { background: #5F5A55; border-color: #5F5A55; }
                     /* Beats the section's black-text rule: a filled chip keeps white text. */
                     .ink-all.ink-all.ink-all .act-chip.is-on, .ink-all.ink-all.ink-all .act-chip.is-on * { color: #fff; }
