@@ -1387,16 +1387,15 @@
                     }
                     /* On a wide screen the section is exactly as tall as the space under the
                        top bar, so the page does not scroll: the title, tabs and figures stay
-                       put, and the by-role card sits under them and the finished
-                       list is only as tall as its rows, up to the space left, then scrolls inside. */
+                       put, and the by-role card and the finished list sit side by side under
+                       them, each only as tall as its rows, up to the space left, then scrolling inside. */
                     @media (min-width: 1024px) {
                         #reports-section:not(.hidden) { height: calc(100dvh - 3.5rem - 1px - 1.5rem); display: flex; flex-direction: column; }
                         #reports-section:not(.hidden) > :not(.rp-panel) { flex-shrink: 0; }
                         #reports-section .rp-panel:not(.hidden) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
                         #reports-section .rp-stats { flex: none; }
-                        #reports-section .rp-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-                        #reports-section .rp-body > .rp-card:first-child { flex: none; }
-                        #reports-section .rp-body > .rp-card:last-child { flex: 0 1 auto; }
+                        #reports-section .rp-body { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+                        #reports-section .rp-body > .rp-card { max-height: 100%; }
                         #reports-section .rp-card { display: flex; flex-direction: column; min-height: 0; }
                         #reports-section .rp-card > :not(.rp-scroll) { flex: none; }
                         #reports-section .rp-scroll { flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
@@ -1446,7 +1445,7 @@
                         </div>
                     </div>
 
-                    <div class="rp-body grid grid-cols-1 gap-4">
+                    <div class="rp-body grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                     <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                         <h3 class="text-sm font-bold text-slate-800 mb-4">Tasks done, by role</h3>
                         <div class="rp-scroll space-y-3 pr-1">
@@ -1513,7 +1512,7 @@
                         </div>
                     </div>
 
-                    <div class="rp-body grid grid-cols-1 gap-4">
+                    <div class="rp-body grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                     <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                         <h3 class="text-sm font-bold text-slate-800 mb-4">Team tasks done, by role</h3>
                         <div class="rp-scroll space-y-4 pr-1">
