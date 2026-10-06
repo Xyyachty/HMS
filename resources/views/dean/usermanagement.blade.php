@@ -54,9 +54,9 @@
     }
     .st-update { color: #111; background: #fff; border-color: #111; }
     .st-update:hover,
-    table.dataTable#usersTable tbody tr:hover .st-update { background: #111; border-color: #111; color: #fff; }
-    #addFacultyBtn { color: #111; background: #fff; border: 1px solid #111; }
-    #addFacultyBtn:hover { color: #fff; background: #111; }
+    table.dataTable#usersTable tbody tr:hover .st-update { background: #dadada; border-color: #111; color: #181818; }
+    #addFacultyBtn { color: #fff; background: #4A4643; border: 1px solid #4A4643; }
+    #addFacultyBtn:hover { color: #181818; background: #dadada; border-color: #dadada; }
     .st-approve { color: #fff; background: #111; border-color: #111; }
     .st-approve:hover { background: #333; border-color: #333; }
 
