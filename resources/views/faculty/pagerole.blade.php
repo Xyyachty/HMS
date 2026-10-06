@@ -315,49 +315,248 @@
         white-space: nowrap;
     }
 
-    /* ── Review submission modal ──────────────────────────────────────────────
-       Sized rather than left to its content: the work pane is an iframe and two
-       absolutely-positioned panes, none of which give the flex column a height to
-       grow from, so the modal collapsed to the height of its header and its
-       buttons and hid the changes list behind three lines of scroll.
+    /* ── Team Details and Student Task dialogs ───────────────────────────────
+       Written out rather than composed from utilities: public/css/app.css is a
+       frozen build that lacks most of what these need. Both are wide and sized
+       to the screen, so a faculty member reads a whole page of work without the
+       dialog collapsing to its content. Gray like the rest of the faculty pages;
+       status badges keep their own colours. */
+    #teamInfoModal .hidden,
+    #taskReviewModal .hidden { display: none !important; }
+    #taskReviewModal { z-index: 60; }
 
-       Big enough to read a page in, deliberately not full screen — the team card
-       behind it is context a faculty is reviewing against. The header, the
-       compare tabs and the verdict buttons are outside the scroller, so the only
-       thing that ever scrolls is the work itself. */
-    #taskReviewModal .review-modal-box {
-        width: min(80vw, 1200px);
-        height: min(75vh, 800px);
+    .tm-box {
+        width: min(94vw, 1240px);
+        height: min(88vh, 820px);
+        border-radius: 1.25rem;
+        border: 1px solid #E4E2E0;
     }
-
-    /* A phone has no room for the margin a desktop can spare. */
+    #taskReviewModal .review-modal-box { width: min(95vw, 1360px); height: min(90vh, 880px); }
     @media (max-width: 640px) {
-        #taskReviewModal .review-modal-box {
-            width: 95vw;
-            height: 90vh;
-        }
+        .tm-box, #taskReviewModal .review-modal-box { width: 96vw; height: 92vh; }
     }
 
-    /* Revise and Approve stay reachable however long the feedback above them
-       runs; the column scrolls under them rather than past them. */
-    #taskReviewModal .review-modal-decision {
-        position: sticky;
-        bottom: 0;
-        background: #fff;
-        padding-bottom: 0.25rem;
-        margin-top: auto;
+    .tm-head {
+        display: flex; align-items: center; gap: .9rem; flex-shrink: 0;
+        padding: 1rem 1.25rem; background: #fff; border-bottom: 1px solid #E4E2E0;
+    }
+    .tm-head-icon {
+        width: 2.75rem; height: 2.75rem; border-radius: .85rem; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #F3F2F1; color: #4A4643; font-size: 1.4rem;
+    }
+    .tm-kicker { font-size: 12px; font-weight: 700; color: #5F5A55; }
+    .tm-title { font-size: 1.3rem; font-weight: 800; color: #181818; line-height: 1.25; }
+    .tm-sub { font-size: 13px; color: #5F5A55; margin-top: .15rem; }
+    .tm-close {
+        margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: .35rem;
+        height: 2.5rem; padding: 0 1rem; border-radius: .75rem; border: 1px solid #E4E2E0;
+        background: #fff; color: #181818; font-size: 13px; font-weight: 700;
+        transition: background-color .15s, border-color .15s;
+    }
+    .tm-close:hover { background: #dadada; border-color: #dadada; }
+
+    /* Section list on the left, the chosen section filling the rest. */
+    .tm-body { flex: 1; min-height: 0; display: flex; }
+    .tm-nav {
+        width: 18rem; flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column; gap: .4rem;
+        padding: 1rem .75rem; background: #F3F2F1; border-right: 1px solid #E4E2E0;
+    }
+    .tm-tab {
+        display: flex; align-items: flex-start; gap: .7rem; width: 100%; text-align: left;
+        padding: .8rem .85rem; border-radius: .9rem; border: 1px solid transparent;
+        background: transparent; color: #181818; transition: background-color .15s, border-color .15s;
+    }
+    .tm-tab:hover { background: #dadada; }
+    .tm-tab.is-on { background: #fff; border-color: #E4E2E0; box-shadow: 0 6px 18px -10px rgba(24,24,24,.35); }
+    .tm-tab-icon {
+        width: 2.25rem; height: 2.25rem; border-radius: .7rem; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #fff; color: #4A4643; font-size: 1.15rem;
+    }
+    .tm-tab.is-on .tm-tab-icon { background: #4A4643; color: #fff; }
+    .tm-tab-copy { flex: 1; min-width: 0; }
+    .tm-tab-title { display: block; font-size: 14px; font-weight: 800; }
+    .tm-tab-desc { display: block; font-size: 12px; color: #5F5A55; margin-top: .15rem; line-height: 1.4; }
+    .tm-tab-count {
+        display: inline-block; margin-top: .45rem; padding: .1rem .55rem; border-radius: 999px; white-space: nowrap;
+        font-size: 11.5px; font-weight: 800; background: #fff; color: #181818; border: 1px solid #E4E2E0;
+    }
+    .tm-tab-count:empty { display: none; }
+    .tm-tab-count.is-alert { background: #FEF3C7; color: #D97706; border-color: #FDE68A; }
+
+    .tm-content { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1.25rem 1.5rem 1.5rem; background: #fff; }
+    .tm-panel-head { margin-bottom: 1rem; }
+    .tm-panel-title { font-size: 1.1rem; font-weight: 800; color: #181818; }
+    .tm-panel-note { font-size: 13px; color: #5F5A55; line-height: 1.5; max-width: 72ch; }
+    .tm-panel-head .tm-panel-note { margin-top: .2rem; }
+
+    @media (max-width: 860px) {
+        .tm-body { flex-direction: column; }
+        .tm-nav { width: 100%; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid #E4E2E0; padding: .6rem; }
+        .tm-tab { min-width: 13rem; }
+        .tm-tab-desc { display: none; }
     }
 
-    /* Stacked on a narrow screen, the work would be squeezed to nothing by a long
-       feedback column. It keeps the larger half and the notes scroll under it. */
+    /* Shared pieces */
+    .tm-btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: .4rem; white-space: nowrap;
+        height: 2.5rem; padding: 0 1rem; border-radius: .75rem; border: 1px solid #E4E2E0;
+        background: #fff; color: #181818; font-size: 13px; font-weight: 700;
+        transition: background-color .15s, border-color .15s, color .15s;
+    }
+    .tm-btn:hover { background: #dadada; border-color: #dadada; color: #181818; }
+    .tm-btn-dark { background: #4A4643; border-color: #4A4643; color: #fff; }
+    .tm-btn-sm { height: 2.1rem; padding: 0 .75rem; font-size: 12px; }
+    .tm-btn:disabled, .tm-act:disabled { opacity: .4; cursor: not-allowed; }
+    .tm-act {
+        display: inline-flex; align-items: center; justify-content: center; gap: .4rem; white-space: nowrap;
+        height: 2.6rem; padding: 0 1rem; border-radius: .75rem; font-size: 13px; font-weight: 800;
+        transition: background-color .15s, opacity .15s;
+    }
+    .tm-actions-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .tm-actions-row > * { flex: 1 1 9rem; }
+
+    .tm-card { border: 1px solid #E4E2E0; border-radius: 1rem; overflow: hidden; background: #fff; }
+    .tm-card-head {
+        display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap;
+        padding: .7rem 1rem; background: #EFEFEF; border-bottom: 1px solid #E4E2E0;
+    }
+    .tm-card-title { font-size: 14px; font-weight: 800; color: #181818; }
+    .tm-section { border: 1px solid #E4E2E0; border-radius: 1rem; padding: .9rem 1rem; }
+    .tm-section-title { display: flex; align-items: center; gap: .4rem; font-size: 14px; font-weight: 800; color: #181818; }
+    .tm-section-title .iconify { color: #4A4643; }
+    .tm-section-count { font-size: 12px; font-weight: 700; color: #5F5A55; }
+    .tm-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .tm-chip {
+        display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .65rem; border-radius: 999px;
+        background: #F3F2F1; border: 1px solid #E4E2E0; color: #181818; font-size: 12px; font-weight: 700;
+    }
+    .tm-chip .iconify { color: #4A4643; }
+    .tm-badge {
+        display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .65rem; border-radius: 999px;
+        border: 1px solid; font-size: 12px; font-weight: 800; white-space: nowrap;
+    }
+    .tm-dot { width: .45rem; height: .45rem; border-radius: 999px; flex-shrink: 0; }
+    .tm-empty { padding: 2.5rem 1rem; text-align: center; font-size: 13.5px; color: #5F5A55; }
+    .tm-empty .iconify { display: block; margin: 0 auto .5rem; font-size: 2rem; color: #8A817A; }
+    .tm-empty.is-error { color: #DC2626; font-weight: 700; }
+    .tm-alert {
+        margin-bottom: .9rem; padding: .65rem .85rem; border-radius: .75rem;
+        background: #FEE2E2; border: 1px solid #FECACA; color: #DC2626; font-size: 13px; font-weight: 700;
+    }
+    .tm-note { margin-top: .85rem; padding: .7rem .85rem; border-radius: .75rem; background: #F3F2F1; border: 1px solid #E4E2E0; }
+    .tm-note-label { font-size: 12px; font-weight: 800; color: #181818; }
+    .tm-note-text { font-size: 13px; color: #181818; line-height: 1.5; white-space: pre-line; }
+    .tm-field-label { display: block; margin-bottom: .35rem; font-size: 13px; font-weight: 800; color: #181818; }
+    .tm-textarea {
+        width: 100%; padding: .65rem .8rem; border-radius: .75rem; border: 1px solid #DADADA;
+        background: #fff; color: #181818; font-size: 13px; line-height: 1.5; resize: vertical;
+    }
+    .tm-textarea:focus { outline: none; border-color: #8A817A; box-shadow: 0 0 0 3px rgba(138,129,122,.2); }
+    .tm-help { margin-top: .3rem; font-size: 12px; color: #5F5A55; }
+
+    /* Members */
+    .tm-member-grid { display: grid; gap: .85rem; grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr)); }
+    .tm-member {
+        display: flex; flex-direction: column; gap: .8rem; padding: 1rem; border-radius: 1rem;
+        border: 1px solid #E4E2E0; background: #fff; transition: border-color .15s, box-shadow .15s;
+    }
+    .tm-member.is-on { border-color: #4A4643; box-shadow: 0 0 0 3px rgba(74,70,67,.12); }
+    .tm-member-top { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+    .tm-avatar {
+        width: 2.75rem; height: 2.75rem; border-radius: 999px; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #4A4643; color: #fff; font-size: 1rem; font-weight: 800;
+    }
+    .tm-avatar-sm { width: 1.75rem; height: 1.75rem; font-size: .7rem; }
+    .tm-member-name { font-size: 14.5px; font-weight: 800; color: #181818; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tm-member-no { font-size: 12px; color: #5F5A55; }
+    .tm-member .tm-btn { width: 100%; margin-top: auto; }
+    .tm-activity-list { max-height: 20rem; overflow-y: auto; }
+    .tm-activity-row { display: flex; align-items: flex-start; gap: .75rem; padding: .8rem 1rem; border-top: 1px solid #EFEFEF; }
+    .tm-activity-row:first-child { border-top: 0; }
+    .tm-activity-desc { font-size: 13px; color: #181818; line-height: 1.5; }
+    .tm-activity-time { font-size: 12px; color: #5F5A55; margin-top: .15rem; }
+
+    /* Hotel concept: the two proposals side by side. */
+    .tm-concept-grid { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    .tm-span-all { grid-column: 1 / -1; }
+    @media (max-width: 900px) { .tm-concept-grid { grid-template-columns: minmax(0, 1fr); } }
+    .tm-concept-body { padding: 1rem; }
+    .tm-concept-name { font-size: 1.1rem; font-weight: 800; color: #181818; }
+    .tm-concept-tagline { margin-top: .1rem; font-size: 13px; font-style: italic; color: #4A4643; }
+    .tm-concept-desc { margin-top: .65rem; font-size: 13.5px; color: #181818; line-height: 1.6; white-space: pre-line; }
+    .tm-concept-meta { margin-top: .8rem; font-size: 12px; color: #5F5A55; line-height: 1.6; }
+    .tm-concept-meta b { color: #181818; }
+    .tm-concept-empty { border: 2px dashed #DADADA; border-radius: 1rem; padding: 2rem 1rem; text-align: center; }
+    .tm-concept-actions { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #EFEFEF; }
+    .tm-official { display: inline-flex; align-items: center; gap: .35rem; font-size: 13.5px; font-weight: 800; color: #16A34A; }
+    .tm-history { margin-top: 1rem; }
+    .tm-history-list { max-height: 16rem; overflow-y: auto; border: 1px solid #E4E2E0; border-radius: .75rem; }
+    .tm-history-row { padding: .7rem .85rem; border-top: 1px solid #EFEFEF; font-size: 12.5px; color: #181818; }
+    .tm-history-row:first-child { border-top: 0; }
+
+    /* Task activity */
+    .tm-stats { display: grid; gap: .75rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 1rem; }
+    .tm-stat { display: flex; align-items: center; gap: .8rem; padding: .85rem 1rem; border-radius: 1rem; border: 1px solid #E4E2E0; }
+    .tm-stat-icon {
+        width: 2.5rem; height: 2.5rem; border-radius: .75rem; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    }
+    .tm-stat-num { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    .tm-stat-label { margin-top: .2rem; font-size: 12.5px; font-weight: 700; color: #181818; }
+    .tm-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .tm-table th { padding: .7rem 1rem; background: #EFEFEF; text-align: left; font-size: 12.5px; font-weight: 800; color: #181818; }
+    .tm-table th.text-center { text-align: center; }
+    .tm-table td { padding: .8rem 1rem; border-top: 1px solid #EFEFEF; vertical-align: middle; font-size: 13px; color: #181818; }
+    .tm-table tbody tr:hover { background: #FAFAFA; }
+    .tm-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tm-task-name { font-weight: 800; }
+    .tm-muted { font-size: 12px; color: #5F5A55; }
+    .tm-table .tm-btn, .tm-table .tm-act { width: 100%; }
+    .tm-pager { padding: .65rem 1rem; border-top: 1px solid #EFEFEF; background: #FAFAFA; }
+    .tm-pager-label { font-size: 12.5px; font-weight: 700; color: #5F5A55; }
+    @media (max-width: 900px) { .tm-stats { grid-template-columns: minmax(0, 1fr); } }
+
+    /* Student task dialog: the work on the left, notes and decision on the right. */
+    .rv-meta { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; }
+    .rv-status { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: flex-end; flex-shrink: 0; max-width: 22rem; }
+    .rv-body { flex: 1; min-height: 0; display: flex; }
+    .rv-work { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: #EFEFEF; border-right: 1px solid #E4E2E0; }
+    .rv-toolbar {
+        display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; flex-shrink: 0;
+        padding: .7rem 1rem; background: #fff; border-bottom: 1px solid #E4E2E0;
+    }
+    .rv-work-label { font-size: 14px; font-weight: 800; color: #181818; }
+    .rv-work-hint { font-size: 12px; color: #5F5A55; margin-top: .1rem; }
+    .rv-work-hint #reviewHighlightStatus { font-weight: 700; margin-left: .25rem; }
+    .rv-seg { display: inline-flex; padding: .2rem; gap: .2rem; border-radius: .75rem; background: #F3F2F1; border: 1px solid #E4E2E0; }
+    .rv-seg button {
+        display: inline-flex; align-items: center; gap: .3rem; padding: .4rem .9rem; border-radius: .55rem;
+        font-size: 12.5px; font-weight: 700; color: #5F5A55; transition: background-color .15s, color .15s;
+    }
+    .rv-seg button:hover { background: #dadada; color: #181818; }
+    .rv-seg button.is-on { background: #4A4643; color: #fff; }
+    .rv-side { width: 24rem; flex-shrink: 0; min-height: 0; display: flex; flex-direction: column; background: #fff; }
+    .rv-side-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1rem; display: flex; flex-direction: column; gap: .75rem; }
+    .rv-bar { height: .55rem; margin-top: .65rem; border-radius: 999px; background: #EFEFEF; overflow: hidden; }
+    .rv-bar > span { display: block; height: 100%; border-radius: 999px; background: #4A4643; transition: width .4s ease; }
+    .rv-steps { margin-top: .75rem; display: flex; flex-direction: column; gap: .45rem; }
+    .rv-steps li { display: flex; align-items: flex-start; gap: .5rem; font-size: 13px; line-height: 1.45; color: #181818; }
+    .rv-steps li .iconify { flex-shrink: 0; margin-top: .1rem; font-size: 1rem; color: #8A817A; }
+    .rv-steps li.is-done { color: #5F5A55; }
+    .rv-steps li.is-done .iconify { color: #16A34A; }
+    .rv-error { margin: 0 1rem .5rem; padding: .6rem .8rem; border-radius: .75rem; background: #FEE2E2; border: 1px solid #FECACA; color: #DC2626; font-size: 12.5px; font-weight: 700; }
+    .rv-decision { flex-shrink: 0; padding: 1rem; border-top: 1px solid #E4E2E0; background: #FAFAFA; }
+
+    /* Stacked on a narrow screen: the work keeps the larger share. */
     @media (max-width: 1023px) {
-        #taskReviewModal .review-modal-work { flex: 1 1 60%; min-height: 0; }
-        #taskReviewModal .review-modal-side { flex: 1 1 40%; }
-    }
-
-    /* Its own scroller, so the notes moving does not move the work beside them. */
-    #taskReviewModal .review-modal-side {
-        overscroll-behavior: contain;
+        .rv-body { flex-direction: column; }
+        .rv-work { flex: 1 1 60%; border-right: 0; border-bottom: 1px solid #E4E2E0; }
+        .rv-side { width: 100%; flex: 1 1 40%; }
+        .tm-head { flex-wrap: wrap; }
+        .rv-status { justify-content: flex-start; max-width: none; }
     }
 </style>
 
@@ -750,257 +949,252 @@
 </div>
 
 <!-- Team Info Modal -->
+{{-- Wide on purpose: the three sections sit in a column on the left, each with a
+     one-line explanation, and the chosen one fills the rest of the dialog. --}}
 <div id="teamInfoModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTeamModal()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 52rem;">
-        <!-- Modal Header -->
-        <div class="bg-rose-50 px-4 py-3 border-b border-rose-100 flex justify-between items-center rounded-t-2xl flex-shrink-0">
-            <h4 class="font-bold text-rose-700 text-sm flex items-center gap-1.5 min-w-0">
-                <span class="iconify text-base shrink-0" data-icon="mdi:account-group-outline"></span>
-                <span class="truncate">Team Details<span id="modalTeamNameSuffix" class="font-semibold text-rose-500/80"></span></span>
-            </h4>
-            <button onclick="closeTeamModal()" class="text-slate-400 hover:text-rose-500 hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0">
-                <span class="iconify text-lg" data-icon="mdi:close"></span>
+    <div class="tm-box relative bg-white shadow-2xl flex flex-col overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="modalTeamName">
+        <div class="tm-head">
+            <span class="tm-head-icon"><span class="iconify" data-icon="mdi:account-group-outline"></span></span>
+            <div class="min-w-0">
+                <p class="tm-kicker">Team details</p>
+                <h3 id="modalTeamName" class="tm-title">Team</h3>
+                <p id="modalTeamSummary" class="tm-sub"></p>
+            </div>
+            <button type="button" onclick="closeTeamModal()" class="tm-close">
+                <span class="iconify" data-icon="mdi:close"></span> Close
             </button>
         </div>
 
-        <!-- Modal Tabs -->
-        <div class="flex border-b border-slate-200 bg-slate-50 flex-shrink-0">
-            <button type="button" onclick="switchTeamModalTab('members')" id="team-tab-members"
-                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-rose-500 text-rose-600">
-                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:account-group-outline"></span>Team Members &amp; Roles
-            </button>
-            <button type="button" onclick="switchTeamModalTab('concept')" id="team-tab-concept"
-                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
-                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:lightbulb-outline"></span>Hotel Concept
-            </button>
-            <button type="button" onclick="switchTeamModalTab('tasks')" id="team-tab-tasks"
-                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
-                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:clipboard-text-clock-outline"></span>Team Task Activity
-            </button>
-        </div>
+        <div class="tm-body">
+            <nav class="tm-nav" aria-label="Team details sections">
+                <button type="button" onclick="switchTeamModalTab('members')" id="team-tab-members" class="tm-tab">
+                    <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:account-group-outline"></span></span>
+                    <span class="tm-tab-copy">
+                        <span class="tm-tab-title">Team Members &amp; Roles</span>
+                        <span class="tm-tab-desc">Who is in the team and what each one does</span>
+                        <span id="teamTabCountMembers" class="tm-tab-count"></span>
+                    </span>
+                </button>
+                <button type="button" onclick="switchTeamModalTab('concept')" id="team-tab-concept" class="tm-tab">
+                    <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:lightbulb-outline"></span></span>
+                    <span class="tm-tab-copy">
+                        <span class="tm-tab-title">Hotel Concept</span>
+                        <span class="tm-tab-desc">The hotel ideas the team proposed for your approval</span>
+                    </span>
+                </button>
+                <button type="button" onclick="switchTeamModalTab('tasks')" id="team-tab-tasks" class="tm-tab">
+                    <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:clipboard-text-clock-outline"></span></span>
+                    <span class="tm-tab-copy">
+                        <span class="tm-tab-title">Team Task Activity</span>
+                        <span class="tm-tab-desc">Tasks given to the team and who handed them in</span>
+                        <span id="teamTabCountTasks" class="tm-tab-count"></span>
+                    </span>
+                </button>
+            </nav>
 
-        <!-- Modal Body -->
-        <div class="overflow-y-auto flex-1 p-4 space-y-4">
-            <!-- Members Table -->
-            <div id="team-panel-members">
-                <div class="border border-slate-200 rounded-lg overflow-hidden">
-                    <table class="w-full text-sm" style="table-layout: fixed;">
-                        <colgroup>
-                            <col style="width: 2.5rem;">
-                            <col>
-                            <col style="width: 10rem;">
-                            <col style="width: 6.5rem;">
-                        </colgroup>
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Member</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
-                                <th class="text-center px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Activity</th>
-                            </tr>
-                        </thead>
-                        <tbody id="teamModalMembersBody" class="divide-y divide-slate-100">
-                        </tbody>
-                    </table>
+            <div class="tm-content">
+                <!-- Members -->
+                <div id="team-panel-members">
+                    <div class="tm-panel-head">
+                        <h4 class="tm-panel-title">Team Members &amp; Roles</h4>
+                        <p class="tm-panel-note">Each card shows a student and the part of the hotel they handle. Choose See activity to read everything that student has done.</p>
+                    </div>
+                    <div id="teamModalMembersBody" class="tm-member-grid"></div>
+
+                    <!-- Selected member's centralized activity log -->
+                    <div id="memberActivityPanel" class="hidden">
+                        <div class="tm-card mt-5">
+                            <div class="tm-card-head">
+                                <p class="tm-card-title" id="memberActivityPanelTitle">Member Activity</p>
+                                <button type="button" onclick="closeMemberActivityPanel()" class="tm-btn tm-btn-sm">
+                                    <span class="iconify" data-icon="mdi:chevron-up"></span> Hide
+                                </button>
+                            </div>
+                            <div id="memberActivityPanelBody" class="tm-activity-list"></div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Selected member's centralized activity log (expandable section) -->
-                <div id="memberActivityPanel" class="hidden mt-4">
-                    <div class="flex items-center justify-between gap-2 mb-1.5">
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-brand" id="memberActivityPanelTitle">Member Activity</p>
-                        <button type="button" onclick="closeMemberActivityPanel()"
-                            class="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition">Hide</button>
+                <!-- Front Desk's hotel concept (loaded when the modal opens) -->
+                <div id="team-panel-concept" class="hidden">
+                    <div class="tm-panel-head">
+                        <h4 class="tm-panel-title">Hotel Concept</h4>
+                        <p class="tm-panel-note">The team proposes two hotel ideas. Approve the one you want them to build, or send one back with a note on what to change.</p>
                     </div>
-                    <div class="border border-brand/20 bg-brand-soft/30 rounded-lg overflow-hidden">
-                        <div id="memberActivityPanelBody" class="max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white"></div>
+                    <div id="teamConceptError" class="tm-alert hidden"></div>
+                    <div id="teamModalConceptBody" class="tm-concept-grid">
+                        <div class="tm-empty tm-span-all">Loading hotel concept…</div>
+                    </div>
+                </div>
+
+                <!-- Team task activity (assignment history) -->
+                <div id="team-panel-tasks" class="hidden">
+                    <div class="tm-panel-head">
+                        <h4 class="tm-panel-title">Team Task Activity</h4>
+                        <p class="tm-panel-note">Open a task to see the student's work, then approve it or ask for changes.</p>
+                    </div>
+                    <div id="teamModalActivityStats" class="tm-stats"></div>
+                    <div class="tm-card">
+                        <table class="tm-table">
+                            <colgroup>
+                                <col>
+                                <col style="width: 10.5rem;">
+                                <col style="width: 8.5rem;">
+                                <col style="width: 8.5rem;">
+                                <col style="width: 7rem;">
+                                <col style="width: 9rem;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Student</th>
+                                    <th>Department</th>
+                                    <th>Status</th>
+                                    <th>Handed in</th>
+                                    <th class="text-center">Open</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teamModalActivityBody"></tbody>
+                        </table>
+                        <div id="teamModalActivityPager" class="tm-pager hidden items-center justify-between gap-2">
+                            <button type="button" id="teamModalActivityPrev" class="tm-btn tm-btn-sm">
+                                <span class="iconify" data-icon="mdi:chevron-left"></span> Previous
+                            </button>
+                            <span class="tm-pager-label"><span id="teamModalActivityPageLabel"></span> <span id="teamModalActivityMeta"></span></span>
+                            <button type="button" id="teamModalActivityNext" class="tm-btn tm-btn-sm">
+                                Next <span class="iconify" data-icon="mdi:chevron-right"></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Front Desk's hotel concept + its edit history (loaded when the modal opens) -->
-            <div id="team-panel-concept" class="hidden">
-                <div id="teamConceptError" class="hidden mb-3 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-600"></div>
-                <div id="teamModalConceptBody" class="space-y-4">
-                    <div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>
-                </div>
-            </div>
-
-            <!-- Team task activity (assignment history) -->
-            <div id="team-panel-tasks" class="hidden">
-                <div class="flex items-center justify-between gap-2 mb-1.5">
-                    <span class="text-[10px] font-semibold text-slate-400">Use the Review button to open a submitted task and leave feedback.</span>
-                    <span id="teamModalActivityMeta" class="text-[10px] font-semibold text-slate-400"></span>
-                </div>
-                <div class="border border-slate-200 rounded-lg overflow-hidden">
-                    <table class="w-full text-sm" style="table-layout: fixed;">
-                        <colgroup>
-                            <col>
-                            <col style="width: 8.5rem;">
-                            <col style="width: 6rem;">
-                            <col style="width: 6.5rem;">
-                            <col style="width: 6rem;">
-                            <col style="width: 6.5rem;">
-                        </colgroup>
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Task</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Student</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Submitted</th>
-                                <th class="text-center px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Review</th>
-                            </tr>
-                        </thead>
-                        <tbody id="teamModalActivityBody" class="divide-y divide-slate-100">
-                        </tbody>
-                    </table>
-                    <div id="teamModalActivityPager" class="hidden px-3 py-2 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2">
-                        <button type="button" id="teamModalActivityPrev"
-                            class="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
-                            Previous
-                        </button>
-                        <span id="teamModalActivityPageLabel" class="text-[11px] font-semibold text-slate-500"></span>
-                        <button type="button" id="teamModalActivityNext"
-                            class="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
-                            Next
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="px-4 py-2.5 border-t border-slate-100 flex justify-end rounded-b-2xl flex-shrink-0 bg-slate-50/50">
-            <button onclick="closeTeamModal()" class="px-3.5 py-1.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition font-semibold text-xs">
-                Close
-            </button>
         </div>
     </div>
 </div>
 
 
-<!-- ═══════ REVIEW SUBMISSION MODAL — the student's actual work + feedback ═══════ -->
+<!-- ═══════ STUDENT TASK DIALOG: the student's actual work + your decision ═══════ -->
 <div id="taskReviewModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTaskReview()"></div>
-    <div class="review-modal-box relative bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden">
+    <div class="review-modal-box tm-box relative bg-white shadow-2xl flex flex-col overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="reviewTaskTitle">
 
-        <div class="bg-rose-50 px-4 py-3 border-b border-rose-100 flex justify-between items-center flex-shrink-0">
-            <div class="min-w-0">
-                <h4 id="reviewTaskTitle" class="font-bold text-rose-700 text-sm truncate">Review Submission</h4>
-                <p id="reviewTaskMeta" class="text-[11px] text-slate-500 truncate"></p>
+        <div class="tm-head">
+            <span class="tm-head-icon"><span class="iconify" data-icon="mdi:file-document-check-outline"></span></span>
+            <div class="min-w-0 flex-1">
+                <p class="tm-kicker">Student task</p>
+                <h4 id="reviewTaskTitle" class="tm-title truncate">Review Submission</h4>
+                <div id="reviewTaskMeta" class="rv-meta"></div>
             </div>
-            <button type="button" onclick="closeTaskReview()"
-                class="text-slate-400 hover:text-rose-500 hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0">
-                <span class="iconify text-lg" data-icon="mdi:close"></span>
+            <div id="reviewStatusRow" class="rv-status"></div>
+            <button type="button" onclick="closeTaskReview()" class="tm-close">
+                <span class="iconify" data-icon="mdi:close"></span> Close
             </button>
         </div>
 
-        <div class="flex-1 min-h-0 flex flex-col lg:flex-row">
+        <div class="rv-body">
             <!-- The work itself: a site to look at for most tasks, the concept text
-                 itself for the hotel concept — that submission has no page to render. -->
-            <div class="review-modal-work flex-1 min-h-0 bg-slate-100 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200">
-                <div class="px-3 py-2 flex items-center justify-between gap-2 bg-white border-b border-slate-100 flex-shrink-0">
-                    <span class="flex items-center gap-2 min-w-0">
-                        <span id="reviewWorkLabel" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">The team's live site</span>
-                        {{-- What the After preview managed to outline, reported back by hms-review-highlight.js. --}}
-                        <span id="reviewHighlightStatus" class="hidden text-[10px] font-semibold truncate"></span>
-                    </span>
-                    <div class="flex items-center gap-3">
-                        {{-- Only rendered once this task has a submission to anchor "After" to.
-                             No Changes tab: what the student changed is outlined in green on
-                             After itself, so faculty never have to leave the page to find it. --}}
-                        <div id="reviewCompareToggle" class="hidden inline-flex rounded-lg bg-slate-100 p-0.5">
-                            <button type="button" data-compare="before"
-                                class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-500 transition">Before</button>
-                            <button type="button" data-compare="after"
-                                class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-white text-slate-800 shadow-sm transition">After</button>
+                 itself for the hotel concept, which has no page to render. -->
+            <div class="review-modal-work rv-work">
+                <div class="rv-toolbar">
+                    <div class="min-w-0">
+                        <p id="reviewWorkLabel" class="rv-work-label">The team's live site</p>
+                        <p class="rv-work-hint">
+                            <span id="reviewWorkHint"></span>
+                            {{-- What the After preview managed to outline, reported back by hms-review-highlight.js. --}}
+                            <span id="reviewHighlightStatus" class="hidden"></span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {{-- Only shown once this task has a submission to anchor "After" to.
+                             What the student changed is outlined in green on After itself. --}}
+                        <div id="reviewCompareToggle" class="rv-seg hidden" role="group" aria-label="Compare">
+                            <button type="button" data-compare="before">
+                                <span class="iconify" data-icon="mdi:history"></span> Before
+                            </button>
+                            <button type="button" data-compare="after" class="is-on">
+                                <span class="iconify" data-icon="mdi:file-check-outline"></span> After
+                            </button>
                         </div>
-                        <a id="reviewOpenTab" href="#" target="_blank" rel="noopener"
-                           class="text-[10px] font-bold text-brand hover:underline hidden">Open in new tab ↗</a>
+                        <a id="reviewOpenTab" href="#" target="_blank" rel="noopener" class="tm-btn tm-btn-sm hidden">
+                            <span class="iconify" data-icon="mdi:open-in-new"></span> Open in new tab
+                        </a>
                     </div>
                 </div>
                 <div class="flex-1 min-h-0 relative">
                     <div id="reviewPreviewEmpty" class="absolute inset-0 flex items-center justify-center text-center px-6">
-                        <p class="text-xs text-slate-400">No site to preview for this submission.</p>
+                        <div class="tm-empty">
+                            <span class="iconify" data-icon="mdi:web-off"></span>
+                            No site to show for this task yet.
+                        </div>
                     </div>
                     <iframe id="reviewPreviewFrame" src="" title="Team site preview"
                             class="w-full h-full border-0 bg-white hidden"></iframe>
-                    <div id="reviewConceptPane" class="absolute inset-0 overflow-y-auto bg-white p-4 hidden"></div>
-                    <div id="reviewChangesPane" class="absolute inset-0 overflow-y-auto bg-white p-3 hidden"></div>
+                    <div id="reviewConceptPane" class="absolute inset-0 overflow-y-auto bg-white p-5 hidden"></div>
+                    <div id="reviewChangesPane" class="absolute inset-0 overflow-y-auto bg-white p-4 hidden"></div>
                 </div>
             </div>
 
-            <!-- Feedback -->
-            <div class="review-modal-side w-full lg:w-80 shrink-0 flex flex-col min-h-0 overflow-y-auto">
-                <div class="p-4 space-y-3">
-                    <div id="reviewStatusRow" class="flex flex-wrap items-center gap-1.5"></div>
-
-                    {{-- The student's checklist so far — shown whether or not the task
-                         has been submitted. Read-only: faculty view progress here, they
-                         don't tick anything. --}}
-                    <div id="reviewProgressWrap" class="hidden rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <!-- Progress, past notes and the decision -->
+            <div class="review-modal-side rv-side">
+                <div class="rv-side-scroll">
+                    {{-- The student's checklist so far, shown whether or not the task has
+                         been submitted. Read-only: faculty view progress here. --}}
+                    <div id="reviewProgressWrap" class="tm-section hidden">
                         <div class="flex items-center justify-between gap-2">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Progress</p>
-                            <p id="reviewProgressCount" class="text-[10px] font-bold text-slate-400"></p>
+                            <p class="tm-section-title"><span class="iconify" data-icon="mdi:format-list-checks"></span> Steps finished</p>
+                            <p id="reviewProgressCount" class="tm-section-count"></p>
                         </div>
-                        <ul id="reviewProgressList" class="mt-2 space-y-1"></ul>
+                        <div class="rv-bar"><span id="reviewProgressBar" style="width:0%"></span></div>
+                        <ul id="reviewProgressList" class="rv-steps"></ul>
                     </div>
 
-                    <div id="reviewPrevFeedbackWrap" class="hidden rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">Previous feedback</p>
-                        <p id="reviewPrevFeedback" class="text-xs text-amber-800 whitespace-pre-line"></p>
-                        <p id="reviewPrevFeedbackMeta" class="text-[10px] text-amber-600 mt-1"></p>
+                    <div id="reviewPrevFeedbackWrap" class="tm-section hidden">
+                        <p class="tm-section-title"><span class="iconify" data-icon="mdi:message-text-outline"></span> Your earlier feedback</p>
+                        <p id="reviewPrevFeedback" class="tm-note-text mt-2"></p>
+                        <p id="reviewPrevFeedbackMeta" class="tm-section-count mt-2"></p>
                     </div>
 
-                    {{-- One verdict for the whole task. The hotel concept is judged one
-                         concept at a time instead, so this block hides and each concept
-                         card in the left pane carries its own controls. --}}
-                    <div id="reviewDecisionBlock" class="review-modal-decision space-y-3">
-                        {{-- Step 1: pick a verdict. The feedback box only belongs to
-                             Revise, so it stays out of the way until that is chosen. --}}
-                        <div id="reviewChoiceStep" class="flex items-center justify-end gap-2 pt-2">
-                            <button type="button" id="reviewReviseBtn" onclick="showReviseStep()"
-                                class="btn-revise inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition">
-                                <span class="iconify text-sm" data-icon="mdi:pencil-circle-outline"></span> Revise
-                            </button>
-                            <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')"
-                                class="btn-approve inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition">
-                                <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve
-                            </button>
-                        </div>
-
-                        {{-- Step 2: revise only. --}}
-                        <div id="reviewReviseStep" class="hidden space-y-3">
-                            <div>
-                                <label id="reviewFeedbackLabel" for="reviewFeedback" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                    Feedback to the student
-                                </label>
-                                <textarea id="reviewFeedback" rows="6" maxlength="2000"
-                                    placeholder="What did they do well? What should change?"
-                                    class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
-                                <p class="text-[10px] text-slate-400 mt-1">Required — this is what the student will see.</p>
-                            </div>
-
-                            <div class="flex items-center justify-end gap-2">
-                                <button type="button" onclick="hideReviseStep()"
-                                    class="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200 hover:text-slate-900">
-                                    Cancel
-                                </button>
-                                <button type="button" id="reviewSendFeedbackBtn" onclick="submitTaskFeedback('revise')"
-                                    class="btn-revise inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition">
-                                    <span class="iconify text-sm" data-icon="mdi:send-outline"></span> Send feedback
-                                </button>   
-                            </div>
-                        </div>
-                    </div>
-
-                    <p id="reviewConceptHint" class="hidden text-[11px] text-slate-500 leading-relaxed">
-                        This team proposed two concepts. Approve or send back each one on its
-                        own card — your verdict on one does not touch the other.
+                    <p id="reviewConceptHint" class="tm-section tm-panel-note hidden">
+                        This team proposed two hotel concepts. Approve or send back each one on
+                        its own card. Your decision on one does not change the other.
                     </p>
+                </div>
 
-                    <p id="reviewError" class="hidden text-[11px] font-semibold text-rose-600"></p>
+                <p id="reviewError" class="rv-error hidden"></p>
+
+                {{-- One decision for the whole task. The hotel concept is judged one
+                     concept at a time instead, so this block hides and each concept
+                     card in the left pane carries its own buttons. --}}
+                <div id="reviewDecisionBlock" class="review-modal-decision rv-decision">
+                    <p class="tm-section-title"><span class="iconify" data-icon="mdi:gavel"></span> Your decision</p>
+                    <p id="reviewDecisionHint" class="tm-panel-note mt-1"></p>
+
+                    {{-- Step 1: pick a decision. The feedback box only belongs to
+                         Ask for changes, so it stays out of the way until that is chosen. --}}
+                    <div id="reviewChoiceStep" class="tm-actions-row mt-3">
+                        <button type="button" id="reviewReviseBtn" onclick="showReviseStep()" class="btn-revise tm-act">
+                            <span class="iconify" data-icon="mdi:pencil-circle-outline"></span> Ask for changes
+                        </button>
+                        <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')" class="btn-approve tm-act">
+                            <span class="iconify" data-icon="mdi:check-circle-outline"></span> Approve
+                        </button>
+                    </div>
+
+                    {{-- Step 2: ask for changes only. --}}
+                    <div id="reviewReviseStep" class="hidden mt-3">
+                        <label id="reviewFeedbackLabel" for="reviewFeedback" class="tm-field-label">What should the student change?</label>
+                        <textarea id="reviewFeedback" rows="5" maxlength="2000"
+                            placeholder="What did they do well? What should change?"
+                            class="tm-textarea"></textarea>
+                        <p class="tm-help">Required. The student will read this.</p>
+                        <div class="tm-actions-row mt-3">
+                            <button type="button" onclick="hideReviseStep()" class="tm-btn">Cancel</button>
+                            <button type="button" id="reviewSendFeedbackBtn" onclick="submitTaskFeedback('revise')" class="btn-revise tm-act">
+                                <span class="iconify" data-icon="mdi:send-outline"></span> Send to student
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2764,11 +2958,7 @@ function onReviewFrameLoad() {
    swaps to the list pane instead — there is nothing to render for it. */
 function setReviewCompareSide(side) {
     document.querySelectorAll('#reviewCompareToggle [data-compare]').forEach(function (btn) {
-        const on = btn.getAttribute('data-compare') === side;
-        btn.classList.toggle('bg-white', on);
-        btn.classList.toggle('text-slate-800', on);
-        btn.classList.toggle('shadow-sm', on);
-        btn.classList.toggle('text-slate-500', !on);
+        btn.classList.toggle('is-on', btn.getAttribute('data-compare') === side);
     });
 
     const frame = document.getElementById('reviewPreviewFrame');
@@ -2779,6 +2969,7 @@ function setReviewCompareSide(side) {
         frame.classList.add('hidden');
         changesPane.classList.remove('hidden');
         document.getElementById('reviewWorkLabel').textContent = 'Highlighted changes';
+        setReviewWorkHint('');
         return;
     }
 
@@ -2790,8 +2981,22 @@ function setReviewCompareSide(side) {
     frame.src = url;
     document.getElementById('reviewOpenTab').href = url;
     document.getElementById('reviewWorkLabel').textContent = side === 'before'
-        ? 'Before — when this task was assigned'
-        : 'After — what they submitted';
+        ? 'Before: the site when this task was given'
+        : 'After: the site the student handed in';
+    setReviewWorkHint(side === 'before'
+        ? 'Switch to After to see what the student changed.'
+        : 'What the student changed is outlined in green.');
+}
+
+/* The plain-language line under the work pane's title. */
+function setReviewWorkHint(text) {
+    const el = document.getElementById('reviewWorkHint');
+    if (el) el.textContent = text || '';
+}
+
+/* A labelled chip for the dialog header: who, which team, which department. */
+function reviewMetaChip(icon, label) {
+    return '<span class="tm-chip"><span class="iconify" data-icon="' + icon + '"></span>' + escHtml(label) + '</span>';
 }
 
 document.addEventListener('click', function (e) {
@@ -2813,7 +3018,10 @@ function openTaskReview(taskId) {
     if (!modal) return;
 
     document.getElementById('reviewTaskTitle').textContent = 'Loading…';
-    document.getElementById('reviewTaskMeta').textContent = '';
+    document.getElementById('reviewTaskMeta').innerHTML = '';
+    document.getElementById('reviewDecisionHint').textContent = '';
+    document.getElementById('reviewProgressBar').style.width = '0%';
+    setReviewWorkHint('');
     document.getElementById('reviewStatusRow').innerHTML = '';
     document.getElementById('reviewFeedback').value = '';
     document.getElementById('reviewError').classList.add('hidden');
@@ -2852,30 +3060,37 @@ function openTaskReview(taskId) {
         .then((res) => res.json().then((d) => { if (!res.ok) throw new Error(d.error || 'Could not load this submission.'); return d; }))
         .then((d) => {
             document.getElementById('reviewTaskTitle').textContent = d.title || 'Submission';
-            document.getElementById('reviewTaskMeta').textContent = [
-                d.student_name, d.group_name, d.role_label
-            ].filter(Boolean).join(' · ');
+            document.getElementById('reviewTaskMeta').innerHTML = [
+                d.student_name ? reviewMetaChip('mdi:account-outline', d.student_name) : '',
+                d.group_name ? reviewMetaChip('mdi:account-group-outline', 'Team ' + d.group_name) : '',
+                d.role_label ? reviewMetaChip('mdi:briefcase-outline', d.role_label) : '',
+            ].join('');
 
             const badges = [];
             if (d.awaiting_review) {
                 // Handed in, no verdict yet: it is not Completed until approved.
-                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full status-badge-pending border text-[10px] font-bold">Pending' + (d.submitted_at ? ' · submitted ' + escHtml(d.submitted_at) : '') + '</span>');
+                badges.push('<span class="tm-badge status-badge-pending"><span class="tm-dot status-fill-pending"></span>Pending' + (d.submitted_at ? ' · handed in ' + escHtml(d.submitted_at) : '') + '</span>');
             } else if (d.status === 'archived') {
-                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full status-badge-completed border text-[10px] font-bold">' + (d.is_hotel_concept ? 'Submitted' : 'Completed') + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
+                badges.push('<span class="tm-badge status-badge-completed"><span class="tm-dot status-fill-completed"></span>' + (d.is_hotel_concept ? 'Submitted' : 'Completed') + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
+            } else if (d.activities_done > 0) {
+                badges.push('<span class="tm-badge status-badge-in_progress"><span class="tm-dot status-fill-in_progress"></span>In Progress</span>');
             } else {
-                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold">Not submitted</span>');
+                badges.push('<span class="tm-badge status-badge-not_started"><span class="tm-dot status-fill-not_started"></span>Not Started</span>');
             }
             if (d.revision_count > 0) {
-                badges.push('<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold">Revision ' + d.revision_count + '</span>');
+                badges.push('<span class="tm-chip">Sent back ' + d.revision_count + (d.revision_count === 1 ? ' time' : ' times') + '</span>');
             }
-            document.getElementById('reviewStatusRow').innerHTML = badges.join(' ');
+            document.getElementById('reviewStatusRow').innerHTML = badges.join('');
 
             if (Array.isArray(d.activities) && d.activities.length) {
-                document.getElementById('reviewProgressCount').textContent = d.activities_done + ' of ' + d.activities_total + ' done';
+                const total = Number(d.activities_total) || d.activities.length;
+                const done = Number(d.activities_done) || 0;
+                document.getElementById('reviewProgressCount').textContent = done + ' of ' + total + ' done';
+                document.getElementById('reviewProgressBar').style.width = Math.round(done / Math.max(total, 1) * 100) + '%';
                 document.getElementById('reviewProgressList').innerHTML = d.activities.map(function (a, i) {
-                    return '<li class="flex items-start gap-1.5 text-[11px] ' + (a.done ? 'text-slate-400 line-through' : 'text-slate-600') + '">'
-                        + '<span class="iconify text-sm shrink-0 mt-0.5" data-icon="' + (a.done ? 'mdi:check-circle' : 'mdi:circle-outline') + '"></span>'
-                        + escHtml((i + 1) + '. ' + a.text)
+                    return '<li' + (a.done ? ' class="is-done"' : '') + '>'
+                        + '<span class="iconify" data-icon="' + (a.done ? 'mdi:check-circle' : 'mdi:circle-outline') + '"></span>'
+                        + '<span>' + escHtml((i + 1) + '. ' + a.text) + '</span>'
                       + '</li>';
                 }).join('');
                 document.getElementById('reviewProgressWrap').classList.remove('hidden');
@@ -2893,6 +3108,7 @@ function openTaskReview(taskId) {
                 // each carries its own verdict controls — the shared ones would only
                 // let one decision cover both.
                 document.getElementById('reviewWorkLabel').textContent = 'The two proposed hotel concepts';
+                setReviewWorkHint('Read each idea, then approve it or send it back on its own card.');
                 document.getElementById('reviewDecisionBlock').classList.add('hidden');
                 document.getElementById('reviewConceptHint').classList.remove('hidden');
                 paintReviewConcepts(d);
@@ -2918,6 +3134,8 @@ function openTaskReview(taskId) {
                 if (d.before_preview_url) {
                     document.getElementById('reviewCompareToggle').classList.remove('hidden');
                     setReviewCompareSide('after');
+                } else {
+                    setReviewWorkHint('This is the team\'s site as it is now.');
                 }
             }
 
@@ -2925,8 +3143,11 @@ function openTaskReview(taskId) {
             const canAct = d.status === 'archived';
             document.getElementById('reviewApproveBtn').disabled = !canAct;
             document.getElementById('reviewReviseBtn').disabled = !canAct;
-            [document.getElementById('reviewApproveBtn'), document.getElementById('reviewReviseBtn')]
-                .forEach((b) => b.classList.toggle('opacity-40', !canAct));
+            document.getElementById('reviewDecisionHint').textContent = !canAct
+                ? 'The student has not handed this in yet. You can decide once they do.'
+                : (d.awaiting_review
+                    ? 'Approve if the work is complete, or ask the student to change something.'
+                    : 'You have already reviewed this task.');
         })
         .catch((err) => {
             document.getElementById('reviewTaskTitle').textContent = 'Could not load';
@@ -2976,7 +3197,7 @@ function paintReviewConcepts(data) {
     const pane = document.getElementById('reviewConceptPane');
     if (!pane) return;
 
-    pane.innerHTML = '<div class="space-y-3">'
+    pane.innerHTML = '<div class="tm-concept-grid">'
         + (data.slots || []).map(renderReviewConceptCard).join('')
         + '</div>';
 }
@@ -2986,8 +3207,9 @@ function renderReviewConceptCard(entry) {
     const slot = Number(entry.slot);
 
     if (!concept) {
-        return '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-5 text-center">'
-            + '<p class="text-xs font-bold text-slate-400">' + escHtml(entry.slot_label) + ' has not been proposed yet.</p>'
+        return '<div class="tm-concept-empty">'
+            + '<p class="tm-card-title">' + escHtml(entry.slot_label) + '</p>'
+            + '<p class="tm-panel-note mt-1">Not proposed yet.</p>'
             + '</div>';
     }
 
@@ -2996,34 +3218,36 @@ function renderReviewConceptCard(entry) {
     const awaiting = entry.can_review === true;
 
     const controls = awaiting
-        ? '<div class="mt-2.5 pt-2.5 border-t border-slate-200">'
-            + '<label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5" for="reviewFeedback' + slot + '">'
-                + 'Feedback on ' + escHtml(entry.slot_label) + '</label>'
+        ? '<div class="tm-concept-actions">'
+            + '<label class="tm-field-label" for="reviewFeedback' + slot + '">'
+                + 'Your notes on ' + escHtml(entry.slot_label) + '</label>'
             + '<textarea id="reviewFeedback' + slot + '" rows="3" maxlength="2000"'
                 + ' placeholder="What works here? What should change?"'
-                + ' class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>'
-            + '<p class="text-[10px] text-slate-400 mt-1">Required when sending back for revision.</p>'
-            + '<div class="flex flex-wrap gap-2 mt-2">'
+                + ' class="tm-textarea"></textarea>'
+            + '<p class="tm-help">Required only when you send it back.</p>'
+            + '<div class="tm-actions-row mt-3">'
                 + '<button type="button" data-concept-action="' + slot + '" onclick="submitConceptFeedback(' + slot + ', \'approve\')"'
-                    + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">'
-                    + '<span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve ' + escHtml(entry.slot_label)
+                    + ' class="btn-approve tm-act">'
+                    + '<span class="iconify" data-icon="mdi:check-circle-outline"></span> Approve this concept'
                 + '</button>'
                 + '<button type="button" data-concept-action="' + slot + '" onclick="submitConceptFeedback(' + slot + ', \'revise\')"'
-                    + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-white text-amber-700 border border-amber-300 text-xs font-bold hover:bg-amber-50 transition inline-flex items-center justify-center gap-1.5">'
-                    + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back'
+                    + ' class="btn-sendback tm-act">'
+                    + '<span class="iconify" data-icon="mdi:undo-variant"></span> Send back'
                 + '</button>'
             + '</div>'
           + '</div>'
-        : '<p class="mt-2.5 pt-2.5 border-t border-slate-200 text-[11px] font-semibold text-slate-400">'
-            + escHtml(concept.status === 'approved'
-                ? 'Official hotel concept.'
-                : 'Waiting for the other concept to be proposed before you can review either one.')
-          + '</p>';
+        : '<div class="tm-concept-actions">'
+            + (concept.status === 'approved'
+                ? '<p class="tm-official"><span class="iconify" data-icon="mdi:check-decagram"></span> Official hotel concept</p>'
+                : '<p class="tm-panel-note">Waiting for the other concept to be proposed before you can review either one.</p>')
+          + '</div>';
 
-    return '<div class="rounded-xl border border-slate-200 bg-white p-3">'
-        + '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-rose-500">' + escHtml(entry.slot_label) + '</p>'
-        + renderTeamHotelConcept({ concept: concept, history: entry.history, embedded: true })
-        + controls
+    return '<div class="tm-card">'
+        + '<div class="tm-card-head"><p class="tm-card-title">' + escHtml(entry.slot_label) + '</p></div>'
+        + '<div class="tm-concept-body">'
+            + renderTeamHotelConcept({ concept: concept, history: entry.history, embedded: true })
+            + controls
+        + '</div>'
         + '</div>';
 }
 
@@ -3114,19 +3338,14 @@ function postTaskFeedback(body, decision, approvedTitle, onSuccess, taskId, onEr
 function switchTeamModalTab(tabId) {
     const tabs = ['members', 'concept', 'tasks'];
     const current = tabs.includes(tabId) ? tabId : 'members';
-    const active = ['border-rose-500', 'text-rose-600'];
-    const idle = ['border-transparent', 'text-slate-400'];
 
     tabs.forEach(function (tab) {
         document.getElementById('team-panel-' + tab)?.classList.toggle('hidden', tab !== current);
 
         const btn = document.getElementById('team-tab-' + tab);
         if (!btn) return;
-        const isOn = tab === current;
-        btn.classList.toggle('border-rose-500', isOn);
-        btn.classList.toggle('text-rose-600', isOn);
-        btn.classList.toggle('border-transparent', !isOn);
-        btn.classList.toggle('text-slate-400', !isOn);
+        btn.classList.toggle('is-on', tab === current);
+        btn.setAttribute('aria-current', tab === current ? 'true' : 'false');
     });
 }
 
@@ -3143,7 +3362,7 @@ function loadTeamHotelConcept(groupName) {
     if (!body) return;
 
     document.getElementById('teamConceptError')?.classList.add('hidden');
-    body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>';
+    body.innerHTML = '<div class="tm-empty tm-span-all">Loading hotel concept…</div>';
 
     fetch(TEAM_CONCEPT_URL.replace('__GROUP__', encodeURIComponent(groupName || '')), {
         credentials: 'same-origin',
@@ -3158,7 +3377,7 @@ function loadTeamHotelConcept(groupName) {
             body.innerHTML = renderTeamConceptSlots(data);
         })
         .catch(err => {
-            body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
+            body.innerHTML = '<div class="tm-empty is-error tm-span-all">'
                 + escHtml(err.message || 'Could not load the hotel concept.') + '</div>';
         });
 }
@@ -3170,79 +3389,77 @@ function showTeamConceptError(msg) {
     el.classList.remove('hidden');
 }
 
-/* Both of a team's concepts for the Team Details modal — each with its own verdict
-   controls when faculty can still choose, or a note on why not. One self-contained
-   card per concept, no edit history: this tab is for deciding, not auditing —
-   the trail of who-changed-what stays in the review dialog. */
+/* Both of a team's concepts for the Team Details modal, side by side — each with
+   its own decision buttons when faculty can still choose, or a note on why not.
+   No edit history: this tab is for deciding, not auditing — the trail of
+   who-changed-what stays in the student task dialog. */
 function renderTeamConceptSlots(data) {
     const rows = (data.slots || []).map((entry) => renderTeamConceptCard(entry, data)).join('')
-        || '<div class="px-3 py-6 text-center text-xs text-slate-400">This team has no hotel concepts yet.</div>';
+        || '<div class="tm-empty tm-span-all"><span class="iconify" data-icon="mdi:lightbulb-off-outline"></span>This team has no hotel concepts yet.</div>';
 
     if (!data.all_slots_filled) {
-        return rows + '<p class="text-xs font-semibold text-slate-400 text-center">'
+        return rows + '<p class="tm-panel-note tm-span-all">'
             + 'Waiting for the team to propose both concepts before you can choose one.</p>';
     }
 
     return rows;
 }
 
-/* One concept, as a single card: slot + status up top, the content in the
-   middle, the decision (or its outcome) as a footer — everything about this
-   concept in one place instead of stacked separate blocks. */
+/* One concept, as a single card: name + status up top, the idea in the middle,
+   the decision (or its outcome) at the bottom. */
 function renderTeamConceptCard(entry, data) {
     const concept = entry.concept;
 
     if (!concept) {
-        return '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3.5 py-6 text-center mb-3">'
-            + '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-1">' + escHtml(entry.slot_label) + '</p>'
-            + '<p class="text-xs font-bold text-slate-400">Not proposed yet.</p>'
+        return '<div class="tm-concept-empty">'
+            + '<p class="tm-card-title">' + escHtml(entry.slot_label) + '</p>'
+            + '<p class="tm-panel-note mt-1">Not proposed yet.</p>'
         + '</div>';
     }
 
     const status = concept.status || 'draft';
-    const statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold '
-        + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">' + escHtml(concept.status_label) + '</span>';
+    const statusBadge = '<span class="tm-badge ' + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">'
+        + escHtml(concept.status_label) + '</span>';
 
-    // Who touched it last and when, as one line instead of a stack of paragraphs.
+    // Who touched it last and when, one line each.
     const metaParts = [];
     if (concept.updated_by || concept.updated_at) {
-        metaParts.push('Updated'
-            + (concept.updated_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.updated_by) + '</span>' : '')
+        metaParts.push('Last changed'
+            + (concept.updated_by ? ' by <b>' + escHtml(concept.updated_by) + '</b>' : '')
             + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : ''));
     }
     if (concept.submitted_at) {
-        metaParts.push('Submitted'
-            + (concept.submitted_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.submitted_by) + '</span>' : '')
+        metaParts.push('Handed in'
+            + (concept.submitted_by ? ' by <b>' + escHtml(concept.submitted_by) + '</b>' : '')
             + ' on ' + escHtml(concept.submitted_at));
     }
     if (concept.reviewed_at) {
         metaParts.push('Reviewed'
-            + (concept.reviewed_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.reviewed_by) + '</span>' : '')
+            + (concept.reviewed_by ? ' by <b>' + escHtml(concept.reviewed_by) + '</b>' : '')
             + ' on ' + escHtml(concept.reviewed_at));
     }
     const meta = metaParts.length
-        ? '<p class="text-[10px] text-slate-400 mt-2.5 leading-relaxed">' + metaParts.join(' <span class="text-slate-300">·</span> ') + '</p>'
+        ? '<p class="tm-concept-meta">' + metaParts.join('<br>') + '</p>'
         : '';
 
     const feedback = concept.faculty_feedback
-        ? '<div class="mt-2.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">'
-            + '<p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Your feedback</p>'
-            + '<p class="text-[11px] text-amber-800 mt-0.5 whitespace-pre-line">' + escHtml(concept.faculty_feedback) + '</p>'
+        ? '<div class="tm-note">'
+            + '<p class="tm-note-label">Your feedback</p>'
+            + '<p class="tm-note-text">' + escHtml(concept.faculty_feedback) + '</p>'
           + '</div>'
         : '';
 
-    return '<div class="rounded-xl border border-slate-200 bg-white overflow-hidden mb-3">'
-        + '<div class="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">'
-            + '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-rose-500">' + escHtml(entry.slot_label) + '</p>'
-            + '<div class="flex items-center gap-1.5 flex-wrap">' + statusBadge
-                + '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
-                    + escHtml(concept.hotel_type_label) + '</span>'
+    return '<div class="tm-card">'
+        + '<div class="tm-card-head">'
+            + '<p class="tm-card-title">' + escHtml(entry.slot_label) + '</p>'
+            + '<div class="tm-chips">' + statusBadge
+                + '<span class="tm-chip">' + escHtml(concept.hotel_type_label) + '</span>'
             + '</div>'
         + '</div>'
-        + '<div class="p-3.5">'
-            + '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>'
-            + (concept.tagline ? '<p class="text-[11px] italic text-brand">' + escHtml(concept.tagline) + '</p>' : '')
-            + '<p class="text-xs text-slate-600 mt-1.5 leading-relaxed whitespace-pre-line">' + escHtml(concept.description) + '</p>'
+        + '<div class="tm-concept-body">'
+            + '<p class="tm-concept-name">' + escHtml(concept.title) + '</p>'
+            + (concept.tagline ? '<p class="tm-concept-tagline">' + escHtml(concept.tagline) + '</p>' : '')
+            + '<p class="tm-concept-desc">' + escHtml(concept.description) + '</p>'
             + meta
             + feedback
             + renderTeamConceptControls(entry, data)
@@ -3253,37 +3470,33 @@ function renderTeamConceptCard(entry, data) {
 /* Approve / Send back for one concept, or the reason those are not shown — decided
    already, or this concept simply is not the one that lost.
    Approve fires immediately — there is nothing more to say. Send back needs
-   feedback first, so that field only appears once the faculty asks for it, kept
-   in a hidden panel rather than shown up front. */
+   feedback first, so that field only appears once the faculty asks for it. */
 function renderTeamConceptControls(entry, data) {
     if (entry.can_review) {
         const slot = Number(entry.slot);
-        return '<div class="mt-3 pt-3 border-t border-slate-200">'
-            + '<div class="flex flex-wrap gap-2" id="teamConceptButtons' + slot + '">'
+        return '<div class="tm-concept-actions">'
+            + '<div class="tm-actions-row" id="teamConceptButtons' + slot + '">'
                 + '<button type="button" data-team-concept-action="' + slot + '" onclick="submitTeamConceptFeedback(' + slot + ', \'approve\')"'
-                    + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-1.5">'
-                    + '<span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span> Approve ' + escHtml(entry.slot_label)
+                    + ' class="btn-approve tm-act">'
+                    + '<span class="iconify" data-icon="mdi:check-circle-outline"></span> Approve this concept'
                 + '</button>'
                 + '<button type="button" data-team-concept-action="' + slot + '" onclick="showTeamConceptRevisionForm(' + slot + ')"'
-                    + ' class="btn-sendback flex-1 min-w-[9rem] px-3 py-2 rounded-xl text-xs font-bold transition inline-flex items-center justify-center gap-1.5">'
-                    + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Send back'
+                    + ' class="btn-sendback tm-act">'
+                    + '<span class="iconify" data-icon="mdi:undo-variant"></span> Send back'
                 + '</button>'
             + '</div>'
-            + '<div id="teamConceptRevisionForm' + slot + '" class="hidden mt-3 pt-3 border-t border-dashed border-slate-200">'
-                + '<label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5" for="teamConceptFeedback' + slot + '">'
-                    + 'Feedback on ' + escHtml(entry.slot_label) + '</label>'
+            + '<div id="teamConceptRevisionForm' + slot + '" class="hidden">'
+                + '<label class="tm-field-label" for="teamConceptFeedback' + slot + '">'
+                    + 'What should the team change in ' + escHtml(entry.slot_label) + '?</label>'
                 + '<textarea id="teamConceptFeedback' + slot + '" rows="3" maxlength="2000"'
                     + ' placeholder="What works here? What should change?"'
-                    + ' class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>'
-                + '<p class="text-[10px] text-slate-400 mt-1">Required before sending back.</p>'
-                + '<div class="flex flex-wrap gap-2 mt-2">'
+                    + ' class="tm-textarea"></textarea>'
+                + '<p class="tm-help">Required before sending back. The team will read this.</p>'
+                + '<div class="tm-actions-row mt-3">'
+                    + '<button type="button" onclick="hideTeamConceptRevisionForm(' + slot + ')" class="tm-btn">Cancel</button>'
                     + '<button type="button" data-team-concept-action="' + slot + '" onclick="submitTeamConceptFeedback(' + slot + ', \'revise\')"'
-                        + ' class="btn-sendback flex-1 min-w-[9rem] px-3 py-2 rounded-xl text-xs font-bold transition inline-flex items-center justify-center gap-1.5">'
-                        + '<span class="iconify text-sm" data-icon="mdi:undo-variant"></span> Confirm send back'
-                    + '</button>'
-                    + '<button type="button" onclick="hideTeamConceptRevisionForm(' + slot + ')"'
-                        + ' class="flex-1 min-w-[9rem] px-3 py-2 rounded-xl bg-white text-slate-500 border border-slate-200 text-xs font-bold hover:bg-slate-50 transition">'
-                        + 'Cancel'
+                        + ' class="btn-sendback tm-act">'
+                        + '<span class="iconify" data-icon="mdi:send-outline"></span> Send back to team'
                     + '</button>'
                 + '</div>'
             + '</div>'
@@ -3293,9 +3506,8 @@ function renderTeamConceptControls(entry, data) {
     // Decided, and this entry made it into the payload at all — the losing
     // concept never does once a decision exists, so this is always the winner.
     if (data.decided) {
-        return '<div class="mt-3 pt-3 border-t border-slate-200">'
-            + '<p class="text-[11px] font-bold text-emerald-600 inline-flex items-center gap-1">'
-                + '<span class="iconify text-sm" data-icon="mdi:check-decagram"></span> Official hotel concept</p>'
+        return '<div class="tm-concept-actions">'
+            + '<p class="tm-official"><span class="iconify" data-icon="mdi:check-decagram"></span> Official hotel concept</p>'
         + '</div>';
     }
 
@@ -3355,94 +3567,72 @@ const CONCEPT_STATUS_CLASSES = {
     not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
 };
 
-/* Renders ONE concept and its history. Shared by the Team Details modal and the
-   review dialog — a submitted concept is read, not previewed, so the review pane
-   needs exactly this. Callers pass a single slot's { concept, history }; pass
-   embedded: true to drop the outer card when it already sits inside one. */
+/* Renders ONE concept and its edit history, for the student task dialog — a
+   submitted concept is read, not previewed. Callers pass a single slot's
+   { concept, history }; it always sits inside a card there. */
 function renderTeamHotelConcept(data) {
     const concept = data.concept;
     const history = Array.isArray(data.history) ? data.history : [];
-    const status = concept ? (concept.status || 'draft') : 'draft';
+    if (!concept) {
+        return '<p class="tm-panel-note">Not proposed yet.</p>';
+    }
 
-    const statusBadge = concept
-        ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold '
-            + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">'
-            + escHtml(concept.status_label) + '</span>'
-        : '';
+    const status = concept.status || 'draft';
+    const statusBadge = '<span class="tm-badge ' + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">'
+        + escHtml(concept.status_label) + '</span>';
 
-    // Who handed it in, and what the last verdict on it was.
-    const trail = concept
-        ? (concept.submitted_at
-                ? '<p class="text-[10px] text-slate-400 mt-1">Submitted'
-                    + (concept.submitted_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.submitted_by) + '</span>' : '')
-                    + ' on ' + escHtml(concept.submitted_at) + '</p>'
-                : '')
-            + (concept.reviewed_at
-                ? '<p class="text-[10px] text-slate-400">Reviewed'
-                    + (concept.reviewed_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.reviewed_by) + '</span>' : '')
-                    + ' on ' + escHtml(concept.reviewed_at) + '</p>'
-                : '')
-            + (concept.faculty_feedback
-                ? '<div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">'
-                    + '<p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Your feedback</p>'
-                    + '<p class="text-[11px] text-amber-800 mt-0.5 whitespace-pre-line">' + escHtml(concept.faculty_feedback) + '</p>'
-                  + '</div>'
-                : '')
-        : '';
+    // Who changed it, who handed it in, and the last decision on it.
+    const metaParts = [];
+    if (concept.updated_by || concept.updated_at) {
+        metaParts.push('Last changed'
+            + (concept.updated_by ? ' by <b>' + escHtml(concept.updated_by) + '</b>' : '')
+            + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : ''));
+    }
+    if (concept.submitted_at) {
+        metaParts.push('Handed in'
+            + (concept.submitted_by ? ' by <b>' + escHtml(concept.submitted_by) + '</b>' : '')
+            + ' on ' + escHtml(concept.submitted_at));
+    }
+    if (concept.reviewed_at) {
+        metaParts.push('Reviewed'
+            + (concept.reviewed_by ? ' by <b>' + escHtml(concept.reviewed_by) + '</b>' : '')
+            + ' on ' + escHtml(concept.reviewed_at));
+    }
 
-    // Inside the review dialog this already sits in a card, so the frame comes off.
-    const frame = data.embedded ? '' : 'rounded-lg border border-slate-200 bg-slate-50/70 p-3';
-
-    const conceptBlock = concept
-        ? '<div class="' + frame + '">' +
-            '<div class="flex items-start justify-between gap-2 flex-wrap">' +
-                '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>' +
-                (concept.tagline ? '<p class="text-[11px] italic text-brand">' + escHtml(concept.tagline) + '</p>' : '') +
-                '<div class="flex items-center gap-1.5 flex-wrap">' + statusBadge +
-                    '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
-                        + escHtml(concept.hotel_type_label) + '</span>' +
-                '</div>' +
-            '</div>' +
-            '<p class="text-xs text-slate-600 mt-2 whitespace-pre-line">' + escHtml(concept.description) + '</p>' +
-            '<p class="text-[10px] text-slate-400 mt-2">Last updated'
-                + (concept.updated_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.updated_by) + '</span>' : '')
-                + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : '') + '</p>' +
-            trail +
-          '</div>'
-        : '<div class="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center">' +
-            '<p class="text-xs font-bold text-slate-400">Not proposed yet.</p>' +
-          '</div>';
+    const conceptBlock =
+        '<div class="tm-chips">' + statusBadge + '<span class="tm-chip">' + escHtml(concept.hotel_type_label) + '</span></div>'
+        + '<p class="tm-concept-name mt-2">' + escHtml(concept.title) + '</p>'
+        + (concept.tagline ? '<p class="tm-concept-tagline">' + escHtml(concept.tagline) + '</p>' : '')
+        + '<p class="tm-concept-desc">' + escHtml(concept.description) + '</p>'
+        + (metaParts.length ? '<p class="tm-concept-meta">' + metaParts.join('<br>') + '</p>' : '')
+        + (concept.faculty_feedback
+            ? '<div class="tm-note"><p class="tm-note-label">Your feedback</p>'
+                + '<p class="tm-note-text">' + escHtml(concept.faculty_feedback) + '</p></div>'
+            : '');
 
     const historyRows = history.length
         ? history.map(function (entry) {
             const changes = (entry.changes || []).map(function (change) {
-                return '<li class="text-[11px] text-slate-500">' +
-                    '<span class="font-semibold text-slate-600">' + escHtml(change.label) + ':</span> ' +
-                    '<span class="line-through text-slate-400">' + (escHtml(change.from) || '—') + '</span> ' +
-                    '<span class="text-slate-400">to</span> ' +
-                    '<span class="text-slate-700">' + escHtml(change.to) + '</span>' +
-                '</li>';
+                return '<li class="mt-1"><b>' + escHtml(change.label) + ':</b> '
+                    + '<s class="tm-muted">' + (escHtml(change.from) || 'empty') + '</s> to '
+                    + escHtml(change.to) + '</li>';
             }).join('');
 
-            return '<div class="px-3 py-2.5">' +
-                '<div class="flex items-start justify-between gap-2 flex-wrap">' +
-                    '<p class="text-xs font-bold text-slate-700">' + escHtml(entry.editor) +
-                        ' <span class="font-semibold text-slate-400">— ' + escHtml(entry.action_label) + '</span></p>' +
-                    '<span class="text-[10px] text-slate-400">' + escHtml(entry.created_at) + ' · ' + escHtml(entry.created_at_human) + '</span>' +
-                '</div>' +
-                (changes
-                    ? '<ul class="mt-1.5 space-y-1">' + changes + '</ul>'
-                    : '<p class="mt-1.5 text-[11px] text-slate-500"><span class="font-semibold text-slate-600">'
-                        + escHtml(entry.title) + '</span> · ' + escHtml(entry.hotel_type_label) + '</p>') +
-            '</div>';
+            return '<div class="tm-history-row">'
+                + '<p><b>' + escHtml(entry.editor) + '</b> ' + escHtml(entry.action_label) + '</p>'
+                + '<p class="tm-muted">' + escHtml(entry.created_at) + ' (' + escHtml(entry.created_at_human) + ')</p>'
+                + (changes
+                    ? '<ul>' + changes + '</ul>'
+                    : '<p class="mt-1">' + escHtml(entry.title) + ', ' + escHtml(entry.hotel_type_label) + '</p>')
+            + '</div>';
         }).join('')
-        : '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>';
+        : '<div class="tm-history-row tm-muted">No changes recorded yet.</div>';
 
-    return conceptBlock +
-        '<div>' +
-            '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Edit History</p>' +
-            '<div class="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-72 overflow-y-auto">' + historyRows + '</div>' +
-        '</div>';
+    return conceptBlock
+        + '<div class="tm-history">'
+            + '<p class="tm-field-label">Changes made so far</p>'
+            + '<div class="tm-history-list">' + historyRows + '</div>'
+        + '</div>';
 }
 
 /* Step 3's Reset: hand every student back to Unassigned and clear their roles,
@@ -4695,6 +4885,49 @@ function escHtml(s) {
         .replace(/"/g, '&quot;');
 }
 
+/* Where one task row stands, in the same words and colours students see. */
+function teamTaskState(log) {
+    if (log.awaiting_review) return { key: 'pending', label: 'Pending' };
+    if (log.status === 'archived') {
+        // The concept is only "Completed" once it is approved, and approving stamps
+        // the feedback — so a submitted-but-unanswered concept says Submitted.
+        return { key: 'completed', label: (log.is_hotel_concept && !log.has_feedback) ? 'Submitted' : 'Completed' };
+    }
+    return Number(log.activities_done) > 0
+        ? { key: 'in_progress', label: 'In Progress' }
+        : { key: 'not_started', label: 'Not Started' };
+}
+
+/* Three counts over the team's tasks, so faculty see at a glance whether
+   anything is waiting on them. */
+function renderTeamModalActivityStats(logs) {
+    const box = document.getElementById('teamModalActivityStats');
+    const waiting = logs.filter((l) => l.awaiting_review).length;
+    const reviewed = logs.filter((l) => l.status === 'archived' && !l.awaiting_review).length;
+    const working = logs.length - waiting - reviewed;
+
+    const tabCount = document.getElementById('teamTabCountTasks');
+    if (tabCount) {
+        tabCount.textContent = waiting
+            ? waiting + ' waiting for your review'
+            : (logs.length ? logs.length + (logs.length === 1 ? ' task' : ' tasks') : '');
+        tabCount.classList.toggle('is-alert', waiting > 0);
+    }
+    if (!box) return;
+
+    const stat = (key, icon, num, label) =>
+        '<div class="tm-stat">'
+            + '<span class="tm-stat-icon status-badge-' + key + '"><span class="iconify" data-icon="' + icon + '"></span></span>'
+            + '<div><p class="tm-stat-num status-text-' + key + '">' + num + '</p><p class="tm-stat-label">' + label + '</p></div>'
+        + '</div>';
+
+    box.innerHTML = logs.length
+        ? stat('pending', 'mdi:clock-alert-outline', waiting, 'Waiting for your review')
+            + stat('completed', 'mdi:check-circle-outline', reviewed, 'Handed in and reviewed')
+            + stat('in_progress', 'mdi:progress-pencil', working, 'Still being worked on')
+        : '';
+}
+
 function renderTeamModalActivityPage() {
     const activityBody = document.getElementById('teamModalActivityBody');
     const pager = document.getElementById('teamModalActivityPager');
@@ -4709,8 +4942,12 @@ function renderTeamModalActivityPage() {
     if (teamModalActivityPage > totalPages) teamModalActivityPage = totalPages;
     if (teamModalActivityPage < 1) teamModalActivityPage = 1;
 
+    renderTeamModalActivityStats(logs);
+
     if (total === 0) {
-        activityBody.innerHTML = '<tr><td colspan="6" class="px-3 py-6 text-center text-xs text-slate-400">No activity logs for this team yet.</td></tr>';
+        activityBody.innerHTML = '<tr><td colspan="6"><div class="tm-empty">'
+            + '<span class="iconify" data-icon="mdi:clipboard-outline"></span>'
+            + 'No tasks have been given to this team yet.</div></td></tr>';
         if (pager) pager.classList.add('hidden');
         if (meta) meta.textContent = '';
         return;
@@ -4722,66 +4959,51 @@ function renderTeamModalActivityPage() {
 
     activityBody.innerHTML = pageLogs.map(function(log) {
         const isDone = log.status === 'archived';
-        // The concept is only "Completed" once it is approved, and approving stamps
-        // the feedback — so a submitted-but-unanswered concept says Submitted.
-        const doneLabel = (log.is_hotel_concept && !log.has_feedback) ? 'Submitted' : 'Completed';
-        const statusBadge = log.awaiting_review
-            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full status-badge-pending border text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full status-fill-pending"></span>Pending</span>'
-            : isDone
-            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full status-badge-completed border text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full status-fill-completed"></span>' + doneLabel + '</span>'
-            : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Assigned</span>';
+        const state = teamTaskState(log);
+        const statusBadge = '<span class="tm-badge status-badge-' + state.key + '">'
+            + '<span class="tm-dot status-fill-' + state.key + '"></span>' + state.label + '</span>';
 
         // A task fans out one row per member, so the student tells identical titles apart.
         const student = log.student_name
-            ? '<div class="flex items-center gap-1.5 min-w-0">' +
-                '<span class="w-5 h-5 rounded-full bg-rose-100 text-rose-600 text-[9px] font-bold flex items-center justify-center shrink-0">' +
-                    escHtml(String(log.student_name).charAt(0).toUpperCase()) +
-                '</span>' +
-                '<span class="text-[11px] font-semibold text-slate-700 truncate" title="' + escHtml(log.student_name) + '">' + escHtml(log.student_name) + '</span>' +
-              '</div>'
-            : '<span class="text-[10px] text-slate-300">Unassigned</span>';
+            ? '<div class="flex items-center gap-2 min-w-0">'
+                + '<span class="tm-avatar tm-avatar-sm">' + escHtml(String(log.student_name).charAt(0).toUpperCase()) + '</span>'
+                + '<span class="tm-ellipsis" title="' + escHtml(log.student_name) + '">' + escHtml(log.student_name) + '</span>'
+              + '</div>'
+            : '<span class="tm-muted">Not assigned</span>';
 
-        // A task can be opened and looked at any time — it's only feedback
-        // (inside the modal, gated by canAct there) that waits on a submission.
-        const reviewable = !!log.id;
-        const reviewCell = reviewable
+        // A task can be opened and looked at any time — it's only the decision
+        // (inside the dialog, gated by canAct there) that waits on a submission.
+        const openCell = log.id
             ? '<button type="button" data-review-task="' + Number(log.id) + '"'
                 + ' title="' + (isDone
-                    ? 'Open this submission and leave feedback'
-                    : 'View progress so far — feedback opens once it is submitted') + '"'
-                + ' class="w-full inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition '
-                + (isDone
-                    ? (!log.awaiting_review
-                        ? 'bg-white text-brand border border-brand/30 hover:bg-brand-soft'
-                        : 'bg-brand text-white hover:opacity-90 shadow-sm shadow-brand/20')
-                    : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50') + '">'
-                + '<span class="iconify text-xs shrink-0" data-icon="' + (isDone ? 'mdi:file-document-edit-outline' : 'mdi:eye-outline') + '"></span>'
-                + (isDone ? (log.awaiting_review ? 'Review' : 'Reviewed') : 'View')
+                    ? 'Open this task to see the work and decide'
+                    : 'See how far the student has got') + '"'
+                + ' class="tm-btn tm-btn-sm' + (log.awaiting_review ? ' tm-btn-dark' : '') + '">'
+                + '<span class="iconify" data-icon="' + (log.awaiting_review ? 'mdi:file-document-edit-outline' : 'mdi:eye-outline') + '"></span>'
+                + (log.awaiting_review ? 'Review now' : (isDone ? 'View again' : 'View progress'))
               + '</button>'
-            : '<span class="block text-center text-[10px] font-semibold text-slate-300">—</span>';
+            : '<span class="tm-muted">None</span>';
 
         const progressNote = (!isDone && log.activities_total > 0)
-            ? '<p class="text-[9px] text-slate-400 mt-0.5">' + log.activities_done + '/' + log.activities_total + ' steps</p>'
+            ? '<p class="tm-muted mt-1">' + log.activities_done + ' of ' + log.activities_total + ' steps done</p>'
             : '';
 
-        return '<tr class="hover:bg-slate-50 transition-colors">' +
-            '<td class="px-3 py-2">' +
-                '<p class="text-xs font-semibold text-slate-800 truncate" title="' + escHtml(log.title) + '">' +
-                    escHtml(log.title || '—') +
-                '</p>' +
-                (log.description ? '<p class="text-[10px] text-slate-400 truncate">' + escHtml(log.description) + '</p>' : '') +
+        return '<tr>' +
+            '<td>' +
+                '<p class="tm-task-name">' + escHtml(log.title || 'Untitled task') + '</p>' +
+                (log.description ? '<p class="tm-muted tm-ellipsis">' + escHtml(log.description) + '</p>' : '') +
             '</td>' +
-            '<td class="px-3 py-2">' + student + '</td>' +
-            '<td class="px-3 py-2 text-[11px] font-semibold text-slate-600 whitespace-nowrap">' + escHtml(log.role_label || log.role || '—') + '</td>' +
-            '<td class="px-3 py-2">' + statusBadge + progressNote + '</td>' +
-            '<td class="px-3 py-2 text-[11px] whitespace-nowrap ' + (isDone ? 'text-slate-500' : 'text-slate-300') + '">' +
-                escHtml(isDone ? (log.submitted_at || log.updated_at || '—') : 'Not yet') +
+            '<td>' + student + '</td>' +
+            '<td>' + escHtml(log.role_label || log.role || 'None') + '</td>' +
+            '<td>' + statusBadge + progressNote + '</td>' +
+            '<td' + (isDone ? '' : ' class="tm-muted"') + '>' +
+                escHtml(isDone ? (log.submitted_at || log.updated_at || '') : 'Not yet') +
             '</td>' +
-            '<td class="px-3 py-2">' + reviewCell + '</td>' +
+            '<td>' + openCell + '</td>' +
         '</tr>';
     }).join('');
 
-    if (meta) meta.textContent = 'Showing ' + (start + 1) + '–' + end + ' of ' + total;
+    if (meta) meta.textContent = '(tasks ' + (start + 1) + ' to ' + end + ' of ' + total + ')';
     if (pageLabel) pageLabel.textContent = 'Page ' + teamModalActivityPage + ' of ' + totalPages;
 
     if (pager) {
@@ -4803,43 +5025,44 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
     // caller (View Team, Update) gets the full, unfiltered activity list.
     const logs = (Array.isArray(activityLogs) ? activityLogs : [])
         .filter((l) => !options.onlyAwaitingReview || l.awaiting_review);
-    const nameSuffix = document.getElementById('modalTeamNameSuffix');
-    if (nameSuffix) {
-        nameSuffix.textContent = groupName ? ' — ' + groupName : '';
-    }
 
-    const tbody = document.getElementById('teamModalMembersBody');
+    document.getElementById('modalTeamName').textContent = groupName ? 'Team ' + groupName : 'Team';
+    document.getElementById('modalTeamSummary').textContent = [
+        members.length + (members.length === 1 ? ' member' : ' members'),
+        createdAt ? 'Created ' + createdAt : '',
+    ].filter(Boolean).join(' · ');
+    document.getElementById('teamTabCountMembers').textContent = members.length
+        ? members.length + (members.length === 1 ? ' member' : ' members') : '';
+
+    const grid = document.getElementById('teamModalMembersBody');
     if (members.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-slate-400">No members found.</td></tr>';
+        grid.innerHTML = '<div class="tm-empty" style="grid-column: 1 / -1;">'
+            + '<span class="iconify" data-icon="mdi:account-off-outline"></span>'
+            + 'This team has no members yet.</div>';
     } else {
-        tbody.innerHTML = members.map(function(m, i) {
+        grid.innerHTML = members.map(function(m, i) {
             const roleLabels = m.role_labels || [m.role_label || m.role];
-            const roleBadges = roleLabels.map(function(rl) {
-                return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">' + rl + '</span>';
-            }).join(' ');
+            const roleChips = roleLabels.filter(Boolean).map(function(rl) {
+                return '<span class="tm-chip"><span class="iconify" data-icon="mdi:briefcase-outline"></span>' + escHtml(rl) + '</span>';
+            }).join('') || '<span class="tm-muted">No role yet</span>';
             const activityBtn = m.user_id
-                ? '<button type="button" data-activity-user="' + Number(m.user_id) + '"' +
-                    ' data-activity-name="' + escHtml(m.name) + '"' +
-                    ' class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition"' +
-                    ' title="View this member\'s activity logs">' +
-                    '<span class="iconify text-xs" data-icon="mdi:clipboard-text-clock-outline"></span> Activity' +
-                  '</button>'
-                : '<span class="text-[10px] text-slate-300">—</span>';
-            return '<tr class="hover:bg-slate-50 transition-colors">' +
-                '<td class="px-3 py-2 text-[11px] text-slate-400 font-medium">' + (i + 1) + '</td>' +
-                '<td class="px-3 py-2">' +
-                    '<div class="flex items-center gap-2 min-w-0">' +
-                        '<div class="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-[10px] font-bold flex-shrink-0">' +
-                            m.name.charAt(0).toUpperCase() +
-                        '</div>' +
-                        '<span class="text-xs font-semibold text-slate-700 truncate" title="' + escHtml(m.name) + '">' + escHtml(m.name) + '</span>' +
-                    '</div>' +
-                '</td>' +
-                '<td class="px-3 py-2">' +
-                    '<div class="flex flex-wrap gap-1">' + roleBadges + '</div>' +
-                '</td>' +
-                '<td class="px-3 py-2 text-center">' + activityBtn + '</td>' +
-            '</tr>';
+                ? '<button type="button" data-activity-user="' + Number(m.user_id) + '"'
+                    + ' data-activity-name="' + escHtml(m.name) + '" class="tm-btn"'
+                    + ' title="Show everything this student has done">'
+                    + '<span class="iconify" data-icon="mdi:clipboard-text-clock-outline"></span> See activity'
+                  + '</button>'
+                : '';
+            return '<div class="tm-member" data-member-card="' + Number(m.user_id || 0) + '">'
+                + '<div class="tm-member-top">'
+                    + '<span class="tm-avatar">' + escHtml(String(m.name || '?').charAt(0).toUpperCase()) + '</span>'
+                    + '<div class="min-w-0">'
+                        + '<p class="tm-member-name" title="' + escHtml(m.name) + '">' + escHtml(m.name) + '</p>'
+                        + '<p class="tm-member-no">Member ' + (i + 1) + '</p>'
+                    + '</div>'
+                + '</div>'
+                + '<div class="tm-chips">' + roleChips + '</div>'
+                + activityBtn
+            + '</div>';
         }).join('');
     }
 
@@ -5202,6 +5425,7 @@ const MEMBER_ACTIVITY_URL = @json(route('faculty.activity.user', ['user' => '__I
 function closeMemberActivityPanel() {
     const panel = document.getElementById('memberActivityPanel');
     if (panel) panel.classList.add('hidden');
+    document.querySelectorAll('[data-member-card].is-on').forEach((c) => c.classList.remove('is-on'));
 }
 
 /* Delegated: the buttons are rebuilt whenever the team modal opens, and an
@@ -5220,8 +5444,12 @@ function viewMemberActivity(userId, memberName) {
     if (!panel || !body) return;
 
     panel.classList.remove('hidden');
-    if (title) title.textContent = (memberName || 'Member') + ' — Activity Logs';
-    body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading activity…</div>';
+    document.querySelectorAll('[data-member-card]').forEach((c) => {
+        c.classList.toggle('is-on', c.getAttribute('data-member-card') === String(userId));
+    });
+    if (title) title.textContent = 'What ' + (memberName || 'this member') + ' has done';
+    body.innerHTML = '<div class="tm-empty">Loading activity…</div>';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     fetch(MEMBER_ACTIVITY_URL.replace('__ID__', String(userId)), {
         credentials: 'same-origin',
@@ -5237,26 +5465,24 @@ function viewMemberActivity(userId, memberName) {
             body.innerHTML = renderActivityRows(data.logs || []);
         })
         .catch(function (err) {
-            body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
+            body.innerHTML = '<div class="tm-empty is-error">'
                 + escHtml(err.message || 'Could not load activity logs.') + '</div>';
         });
 }
 
 function renderActivityRows(logs) {
     if (!logs.length) {
-        return '<div class="px-3 py-6 text-center text-xs text-slate-400">No recorded activity for this member yet.</div>';
+        return '<div class="tm-empty">No recorded activity for this member yet.</div>';
     }
     return logs.map(function (log) {
-        return '<div class="px-3 py-2.5 flex items-start gap-2.5 hover:bg-slate-50/70 transition">' +
-            '<span class="mt-0.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10 whitespace-nowrap">' +
-                escHtml(log.activity_label || log.activity || '—') +
-            '</span>' +
-            '<div class="min-w-0 flex-1">' +
-                '<p class="text-xs text-slate-700">' + escHtml(log.description || '—') + '</p>' +
-                '<p class="text-[10px] text-slate-400 mt-0.5">' + escHtml(log.created_at || '') +
-                    (log.created_at_human ? ' · ' + escHtml(log.created_at_human) : '') + '</p>' +
-            '</div>' +
-        '</div>';
+        return '<div class="tm-activity-row">'
+            + '<span class="tm-chip">' + escHtml(log.activity_label || log.activity || 'Activity') + '</span>'
+            + '<div class="min-w-0 flex-1">'
+                + '<p class="tm-activity-desc">' + escHtml(log.description || '') + '</p>'
+                + '<p class="tm-activity-time">' + escHtml(log.created_at || '')
+                    + (log.created_at_human ? ' (' + escHtml(log.created_at_human) + ')' : '') + '</p>'
+            + '</div>'
+        + '</div>';
     }).join('');
 }
 
