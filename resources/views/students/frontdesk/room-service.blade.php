@@ -14,7 +14,7 @@
      Template 1, Template 2 and a team's own site colours. Tints are mixed from
      those tokens rather than hard-coded.
 
-     Shape rule: pills for the view switch and status, 10px for buttons, 14px for
+     Shape rule: pills for the status tabs and status, 10px for buttons, 14px for
      panels and cards. */
   #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
   .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
@@ -43,42 +43,14 @@
   }
   .rs-btn:hover { background: var(--rs-tint); }
   .rs-btn:active { transform: translateY(1px); }
-  .rs-btn:focus-visible, .rs-stage:focus-visible, .rs-view:focus-visible, .rs-link:focus-visible {
+  .rs-btn:focus-visible, .rs-view:focus-visible {
     outline: 2px solid var(--accent); outline-offset: 2px;
   }
-
-  /* Where the orders are: the four steps an order goes through, left to right */
-  .rs-flow-title { margin: 0 0 0.6rem; font-size: 0.84rem; font-weight: 600; color: var(--fg); }
-  .rs-flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.85rem; margin-bottom: 1.5rem; }
-  .rs-stage {
-    position: relative; display: flex; align-items: center; gap: 0.85rem; text-align: left;
-    padding: 1rem 1.05rem; border-radius: 14px; cursor: pointer;
-    background: var(--card); border: 1.5px solid var(--rs-line); color: var(--fg);
-    font-family: var(--font-body, 'Outfit', sans-serif); transition: border-color 0.15s, background 0.15s;
-  }
-  .rs-stage:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--rs-line)); }
-  .rs-stage.is-on { border-color: var(--accent); background: var(--rs-tint); }
-  /* Arrow to the next step, on screens wide enough to show the row */
-  .rs-stage:not(:last-child)::after {
-    content: ''; position: absolute; top: 50%; right: -0.62rem; z-index: 1;
-    width: 0.5rem; height: 0.5rem; transform: translateY(-50%) rotate(45deg);
-    border-top: 2px solid var(--fg-muted); border-right: 2px solid var(--fg-muted); opacity: 0.5;
-  }
-  .rs-stage-icon {
-    flex: none; width: 44px; height: 44px; border-radius: 12px;
-    display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
-    background: var(--rs-soft); color: var(--accent);
-  }
-  .rs-stage.is-on .rs-stage-icon { background: var(--accent); color: var(--bg); }
-  .rs-stage-text { min-width: 0; }
-  .rs-stage-text b { display: block; font-size: 1.45rem; line-height: 1; font-variant-numeric: tabular-nums; }
-  .rs-stage-text span { display: block; font-size: 0.9rem; font-weight: 600; margin-top: 0.3rem; }
-  .rs-stage-text small { display: block; color: var(--fg-muted); font-size: 0.76rem; margin-top: 0.15rem; line-height: 1.35; }
 
   /* The list panel */
   .rs-panel { background: var(--card); border: 1px solid var(--rs-line); border-radius: 14px; padding: 1.2rem 1.3rem 1.4rem; }
   .rs-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
-  .rs-views { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.3rem; border-radius: 999px; background: var(--rs-soft); border: 1px solid var(--rs-line); }
+  .rs-views { box-sizing: border-box; max-width: 100%; display: inline-flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.3rem; border-radius: 999px; background: var(--rs-soft); border: 1px solid var(--rs-line); }
   .rs-view {
     display: inline-flex; align-items: center; gap: 0.5rem;
     font: 600 0.86rem/1 var(--font-body, 'Outfit', sans-serif);
@@ -94,17 +66,14 @@
     background: color-mix(in srgb, var(--fg) 8%, transparent);
   }
   .rs-view.is-on .rs-count { background: color-mix(in srgb, var(--bg) 22%, transparent); }
+  .rs-view i { font-size: 0.8rem; }
   .rs-showing { margin: 0; color: var(--fg-muted); font-size: 0.8rem; display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
   .rs-live { display: inline-flex; align-items: center; gap: 0.35rem; }
   .rs-live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--rs-ok); }
-  .rs-link {
-    background: none; border: 0; padding: 0; cursor: pointer; color: var(--accent);
-    font: 600 0.8rem/1 var(--font-body, 'Outfit', sans-serif); text-decoration: underline; text-underline-offset: 2px;
-  }
 
   /* Order cards */
-  .rs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
-  .rs-card { border: 1px solid var(--rs-line); border-radius: 14px; background: var(--rs-soft); padding: 1.05rem 1.1rem 1rem; display: flex; flex-direction: column; gap: 0.85rem; }
+  .rs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 1rem; }
+  .rs-card { min-width: 0; border: 1px solid var(--rs-line); border-radius: 14px; background: var(--rs-soft); padding: 1.05rem 1.1rem 1rem; display: flex; flex-direction: column; gap: 0.85rem; }
   .rs-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
   .rs-room { display: block; font-size: 1.15rem; font-weight: 700; color: var(--fg); line-height: 1.2; }
   .rs-guest { display: block; font-size: 0.85rem; color: var(--fg-muted); margin-top: 0.2rem; }
@@ -152,15 +121,9 @@
   .rs-empty h2 { margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--fg); }
   .rs-empty p { margin: 0.4rem auto 0; max-width: 46ch; font-size: 0.86rem; line-height: 1.5; color: var(--fg-muted); }
 
-  @media (max-width: 1100px) {
-    .rs-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .rs-stage::after { display: none; }
-  }
   @media (max-width: 560px) {
     .rs { padding: 1.1rem 1rem 2.5rem; }
-    .rs-flow { grid-template-columns: minmax(0, 1fr); }
-    .rs-views { width: 100%; }
-    .rs-view { flex: 1; justify-content: center; }
+    .rs-views { width: 100%; border-radius: 14px; }
   }
 </style>
 @endsection
@@ -186,23 +149,26 @@ const CFG = window.HMS_ROOM_SERVICE;
 // Restaurant Services, delivery included — this page is a window onto their queue,
 // so each step is named for what is happening to the food, not for the status code.
 const STAGES = [
-  { status: 'Preparing',  label: 'Being cooked',     short: 'Cooking',    icon: 'fa-fire-burner',                hint: 'The kitchen is making it.' },
-  { status: 'Ready',      label: 'Ready to send up', short: 'Ready',      icon: 'fa-bell-concierge',             hint: 'Plated and waiting to go up.' },
-  { status: 'Delivering', label: 'On the way',       short: 'On the way', icon: 'fa-person-walking-arrow-right', hint: 'Heading to the guest’s room.' },
-  { status: 'Completed',  label: 'Delivered',        short: 'Delivered',  icon: 'fa-circle-check',               hint: 'With the guest and on their bill.' },
+  { status: 'Preparing',  label: 'Being cooked',     short: 'Cooking',    icon: 'fa-fire-burner' },
+  { status: 'Ready',      label: 'Ready to send up', short: 'Ready',      icon: 'fa-bell-concierge' },
+  { status: 'Delivering', label: 'On the way',       short: 'On the way', icon: 'fa-person-walking-arrow-right' },
+  { status: 'Completed',  label: 'Delivered',        short: 'Delivered',  icon: 'fa-circle-check' },
 ];
 const STAGE_BY_STATUS = STAGES.reduce((map, s) => { map[s.status] = s; return map; }, {});
 const ACTIVE_STATUSES = ['Preparing', 'Ready', 'Delivering'];
-// Cancelled is kept for the one order cancelled under the old rule; it counts as
-// finished, never as active.
-const FINISHED_STATUSES = ['Completed', 'Cancelled'];
 
-// The three views a desk clerk switches between. A stage card narrows the list
-// further to just that step.
-const VIEWS = [
-  { key: 'active', label: 'Active orders', match: o => ACTIVE_STATUSES.indexOf(o.status) !== -1 },
-  { key: 'done',   label: 'Delivered',     match: o => FINISHED_STATUSES.indexOf(o.status) !== -1 },
-  { key: 'all',    label: 'All orders',    match: () => true },
+// One tab per step, after All orders. Cancelled is kept for the one order
+// cancelled under the old rule; it sits with Delivered, as a finished order.
+const TABS = [
+  { key: 'all', label: 'All orders', icon: 'fa-list', match: () => true },
+  ...STAGES.map(s => ({
+    key: s.status,
+    label: s.label,
+    icon: s.icon,
+    match: s.status === 'Completed'
+      ? o => o.status === 'Completed' || o.status === 'Cancelled'
+      : o => o.status === s.status,
+  })),
 ];
 
 const NOTES = {
@@ -287,35 +253,22 @@ function OrderCard({ order }) {
 }
 
 function RoomServicePage({ orders, onBack }) {
-  // 'active' | 'done' | 'all', or a stage's status when a step card is picked.
-  const [view, setView] = useState('active');
+  const [tab, setTab] = useState('all');
 
   const roomServiceOrders = (orders || [])
     .filter(o => o.orderType !== 'dine_in')
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 
-  const countOf = status => roomServiceOrders.filter(o => o.status === status).length;
-  const viewDef = VIEWS.find(v => v.key === view);
-  const pickedStage = viewDef ? null : STAGE_BY_STATUS[view];
+  const current = TABS.find(t => t.key === tab) || TABS[0];
+  const visible = roomServiceOrders.filter(current.match);
+  const notDelivered = roomServiceOrders.filter(o => ACTIVE_STATUSES.indexOf(o.status) !== -1).length;
 
-  const visible = roomServiceOrders.filter(o => (viewDef ? viewDef.match(o) : o.status === view));
-  const activeCount = roomServiceOrders.filter(VIEWS[0].match).length;
-
-  // Picking the step that is already picked goes back to every active order.
-  const pickStage = status => setView(current => (current === status ? 'active' : status));
-
-  let emptyTitle = 'Nothing here right now';
-  let emptyText = 'There are no orders in this list.';
+  let emptyTitle = `No orders are ${current.label.toLowerCase()}`;
+  let emptyText = 'Pick another tab to see the rest of the orders.';
   if (roomServiceOrders.length === 0) {
     emptyTitle = 'No room-service orders yet';
     emptyText = 'When a checked-in guest orders food to their room from the hotel website’s Restaurant page, the order will appear here.';
-  } else if (pickedStage) {
-    emptyTitle = `No orders are ${pickedStage.label.toLowerCase()}`;
-    emptyText = 'Pick another step above, or show every active order.';
-  } else if (view === 'active') {
-    emptyTitle = 'All caught up';
-    emptyText = 'Every order has been delivered. New orders will appear here as guests place them.';
-  } else if (view === 'done') {
+  } else if (tab === 'Completed') {
     emptyTitle = 'Nothing delivered yet';
     emptyText = 'Orders move here once the kitchen has brought them to the guest’s room.';
   }
@@ -337,61 +290,32 @@ function RoomServicePage({ orders, onBack }) {
         </button>
       </header>
 
-      <p className="rs-flow-title">Where the orders are now</p>
-      <div className="rs-flow">
-        {STAGES.map(s => (
-          <button
-            key={s.status}
-            type="button"
-            className={`rs-stage ${view === s.status ? 'is-on' : ''}`}
-            aria-pressed={view === s.status}
-            title={`Show only orders that are ${s.label.toLowerCase()}`}
-            onClick={() => pickStage(s.status)}
-          >
-            <span className="rs-stage-icon"><i className={`fa-solid ${s.icon}`}></i></span>
-            <span className="rs-stage-text">
-              <b>{countOf(s.status)}</b>
-              <span>{s.label}</span>
-              <small>{s.hint}</small>
-            </span>
-          </button>
-        ))}
-      </div>
-
       <section className="rs-panel">
         <div className="rs-toolbar">
-          <div className="rs-views" role="group" aria-label="Which orders to show">
-            {VIEWS.map(v => (
+          <div className="rs-views" role="group" aria-label="Show orders by status">
+            {TABS.map(t => (
               <button
-                key={v.key}
+                key={t.key}
                 type="button"
-                className={`rs-view ${view === v.key ? 'is-on' : ''}`}
-                aria-pressed={view === v.key}
-                onClick={() => setView(v.key)}
+                className={`rs-view ${tab === t.key ? 'is-on' : ''}`}
+                aria-pressed={tab === t.key}
+                onClick={() => setTab(t.key)}
               >
-                {v.label}
-                <span className="rs-count">{roomServiceOrders.filter(v.match).length}</span>
+                <i className={`fa-solid ${t.icon}`}></i>
+                {t.label}
+                <span className="rs-count">{roomServiceOrders.filter(t.match).length}</span>
               </button>
             ))}
           </div>
           <p className="rs-showing">
-            {pickedStage ? (
-              <>
-                Showing only orders that are <b style={{ color: 'var(--fg)' }}>{pickedStage.label.toLowerCase()}</b>.
-                <button type="button" className="rs-link" onClick={() => setView('active')}>Show all active orders</button>
-              </>
-            ) : (
-              <>
-                <span className="rs-live">Updates on its own</span>
-                <span>· {plural(activeCount, 'order', 'orders')} not delivered yet</span>
-              </>
-            )}
+            <span className="rs-live">Updates on its own</span>
+            <span>· {plural(notDelivered, 'order', 'orders')} not delivered yet</span>
           </p>
         </div>
 
         {visible.length === 0 ? (
           <div className="rs-empty">
-            <div className="rs-empty-icon"><i className="fa-solid fa-bell-concierge"></i></div>
+            <div className="rs-empty-icon"><i className={`fa-solid ${current.key === 'all' ? 'fa-bell-concierge' : current.icon}`}></i></div>
             <h2>{emptyTitle}</h2>
             <p>{emptyText}</p>
           </div>
