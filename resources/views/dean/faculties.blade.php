@@ -492,11 +492,8 @@
     #teamsTable tbody tr:hover {
         background: #FAF6F5;
     }
-    /* A hovered View button turns black with white text. The id outranks the
-       black-text rule above. */
-    #teamsTable .view-btn:hover { background: #111; border-color: #111; }
-    #teamsTable .view-btn:hover,
-    #teamsTable .view-btn:hover * { color: #fff; }
+    /* A hovered View button turns light gray, like Update on Manage User. */
+    #teamsTable .view-btn:hover { background: #dadada; }
     /* The faculty header above each set of teams. */
     #teamsTable tbody tr.faculty-group-row,
     #teamsTable tbody tr.faculty-group-row:hover {
