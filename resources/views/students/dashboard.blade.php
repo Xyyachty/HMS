@@ -147,6 +147,9 @@
         #group-section :is(.role-badge-room, .role-badge-frontdesk, .role-badge-restaurant, .role-badge-maintenance, .role-badge-housekeeping) {
             background: #F3F2F1; color: #181818; border: 1px solid #E4E2E0;
         }
+        /* Icons still tinted with the remapped slate (mauve, pink) are dark gray too,
+           so every icon on these pages is the same gray. */
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) .iconify:is(.text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500, .text-slate-600) { color: #4A4643; }
         /* Reports: the check-mark icons sit in gray circles like Activity Logs, the
            team's role bars are dark gray, and the active Individual/Team tab is the
            same lighter dark gray as the other buttons. */
@@ -1446,9 +1449,9 @@
                     </div>
 
                     <div class="rp-body grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                        <h3 class="text-sm font-bold text-slate-800 mb-4">Tasks done, by role</h3>
-                        <div class="rp-scroll space-y-3 pr-1">
+                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]"><h3 class="text-sm font-bold text-slate-800">Tasks done, by role</h3></div>
+                        <div class="rp-scroll space-y-3 p-5">
                             @forelse($selfByRole as $role => $count)
                                 <div>
                                     <div class="flex items-center justify-between text-xs mb-1">
@@ -1466,10 +1469,10 @@
                     </div>
 
                     <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+                        <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]">
                             <h3 class="text-sm font-bold text-slate-800">Tasks I finished</h3>
                         </div>
-                        <div class="rp-scroll divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
+                        <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[420px] overflow-y-auto">
                             @forelse($selfCompleted as $task)
                                 <div class="px-5 py-3.5 flex items-start gap-3">
                                     <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
@@ -1513,9 +1516,9 @@
                     </div>
 
                     <div class="rp-body grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                        <h3 class="text-sm font-bold text-slate-800 mb-4">Team tasks done, by role</h3>
-                        <div class="rp-scroll space-y-4 pr-1">
+                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]"><h3 class="text-sm font-bold text-slate-800">Team tasks done, by role</h3></div>
+                        <div class="rp-scroll space-y-4 p-5">
                             @forelse($teamByRole as $role => $count)
                                 @php
                                     $lastTask = $teamLastByRole[$role] ?? null;
@@ -1550,10 +1553,10 @@
                     </div>
 
                     <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
+                        <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]">
                             <h3 class="text-sm font-bold text-slate-800">Tasks my team finished</h3>
                         </div>
-                        <div class="rp-scroll divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
+                        <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[420px] overflow-y-auto">
                             @forelse($teamCompleted as $task)
                                 <div class="px-5 py-3.5 flex items-start gap-3">
                                     <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
