@@ -68,8 +68,8 @@
 
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #E4D3CF; border-radius: 99px; }
-        ::-webkit-scrollbar-thumb:hover { background: #C9AFAA; }
+        ::-webkit-scrollbar-thumb { background: #BDBDBD; border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: #8A8A8A; }
 
         /* Flat wine, not a gradient: buttons wear this class, and a button reads
            as one solid colour. The name stays so every call site keeps working. */
@@ -1195,9 +1195,9 @@
                     </div>
                 </div>
 
-                <div class="act-panel bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
+                <div class="act-panel flex flex-col gap-3">
                     {{-- What to show --}}
-                    <div class="px-4 sm:px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]">
+                    <div class="px-4 sm:px-5 py-3 rounded-2xl border border-[#DADADA] bg-[#EFEFEF]">
                         <p class="text-[11px] font-semibold text-slate-500 mb-2">Show</p>
                         <div class="flex flex-wrap gap-2" role="group" aria-label="Show activity by kind">
                             @foreach($actGroups as $actKey => $actGroup)
@@ -1217,19 +1217,19 @@
                          and Previous (anything older). Each scrolls on its own, newest first,
                          under a heading for each day. --}}
                     @if($actRows->isEmpty())
-                        <div class="py-12 text-center">
+                        <div class="py-12 text-center bg-white rounded-2xl border border-[#E7E1DD]">
                             <span class="w-14 h-14 rounded-2xl bg-[#EFEFEF] flex items-center justify-center mx-auto mb-3"><span class="iconify text-2xl text-[#8A817A]" data-icon="mdi:history"></span></span>
                             <p class="text-sm font-bold text-slate-800">Nothing recorded yet</p>
                             <p class="text-xs text-slate-500 mt-1">When you sign in, hand in a task or save your work, it will show up here.</p>
                         </div>
                     @else
-                        <div class="act-columns grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-[#E7E1DD]" id="activityTimeline">
+                        <div class="act-columns grid grid-cols-1 lg:grid-cols-2 gap-3" id="activityTimeline">
                             @foreach([
                                 'recent'   => ['title' => 'Recent',   'hint' => 'Last 7 days', 'icon' => 'mdi:clock-fast',          'empty' => 'Nothing in the last 7 days.'],
                                 'previous' => ['title' => 'Previous', 'hint' => 'Older',       'icon' => 'mdi:calendar-blank-outline', 'empty' => 'Nothing older yet.'],
                             ] as $actColKey => $actCol)
                                 @php $actColRows = $actRows->where('recent', $actColKey === 'recent')->values(); @endphp
-                                <section data-act-col class="act-col flex flex-col min-h-0 min-w-0">
+                                <section data-act-col class="act-col flex flex-col min-h-0 min-w-0 bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
                                     <div class="flex-none px-4 sm:px-5 pt-3 pb-2.5 flex items-center justify-between gap-3 border-b border-[#EFEFEF]">
                                         <h3 class="flex items-center gap-2 text-[15px] font-extrabold text-slate-900">
                                             <span class="iconify text-lg text-[#4A4643]" data-icon="{{ $actCol['icon'] }}"></span>{{ $actCol['title'] }}
@@ -1284,6 +1284,11 @@
                         #activity-section .act-columns { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
                         #activity-section .act-timeline { flex: 1; min-height: 0; max-height: none; }
                     }
+                    #activity-section .act-timeline { scrollbar-width: thin; scrollbar-color: #9E9E9E #F3F2F1; }
+                    #activity-section .act-timeline::-webkit-scrollbar { width: 8px; }
+                    #activity-section .act-timeline::-webkit-scrollbar-track { background: #F3F2F1; border-radius: 99px; }
+                    #activity-section .act-timeline::-webkit-scrollbar-thumb { background: #9E9E9E; border-radius: 99px; }
+                    #activity-section .act-timeline::-webkit-scrollbar-thumb:hover { background: #6B6B6B; }
                     .act-chip { background: #fff; border-color: #DADADA; color: #181818; }
                     .act-chip:hover { border-color: #8A817A; }
                     .act-chip .act-count { background: #EFEFEF; }
