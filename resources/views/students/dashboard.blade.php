@@ -1162,6 +1162,7 @@
                             'icon'  => $actIcons[$activity] ?? (str_starts_with($activity, 'task_') ? 'mdi:clipboard-text-outline' : 'mdi:history'),
                             'day'   => $day === $actToday ? 'Today' : ($day === $actYesterday ? 'Yesterday' : ($at ? $at->format('l, M j, Y') : 'Earlier')),
                             'time'  => $at ? $at->format('g:i A') : '',
+                            'recent' => $at ? $at->gte(now()->subDays(6)->startOfDay()) : false,
                         ];
                     });
                     $actCounts = $actRows->countBy('group');
@@ -1212,42 +1213,64 @@
                         </div>
                     </div>
 
-                    {{-- Timeline, newest first, under a heading for each day --}}
-                    <div class="act-timeline max-h-[60vh] overflow-y-auto px-4 sm:px-5 py-3" id="activityTimeline">
-                        @forelse($actRows->groupBy('day') as $actDay => $actDayRows)
-                            <div data-act-day class="mb-3 last:mb-0">
-                                <p class="sticky top-0 z-[1] bg-white py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{{ $actDay }}</p>
-                                <ol class="relative ml-4 border-l border-[#DADADA]">
-                                    @foreach($actDayRows as $actLog)
-                                        <li data-act-group="{{ $actLog['group'] }}" class="relative flex items-center min-h-[56px] pl-7 py-2.5">
-                                            <span class="absolute -left-[17px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#EFEFEF] border border-[#DADADA] flex items-center justify-center">
-                                                <span class="iconify text-base text-[#4A4643]" data-icon="{{ $actLog['icon'] }}"></span>
-                                            </span>
-                                            <div class="flex-1 min-w-0 flex items-start justify-between gap-3">
-                                                <div class="min-w-0">
-                                                    <p class="text-sm font-bold text-slate-900">{{ $actLog['activity_label'] ?? $actLog['activity'] ?? 'Activity' }}</p>
-                                                    @if(!empty($actLog['description']))
-                                                        <p class="text-[13px] text-slate-600 mt-0.5 break-words">{{ $actLog['description'] }}</p>
-                                                    @endif
-                                                </div>
-                                                <div class="text-right shrink-0">
-                                                    <p class="text-[12px] font-semibold text-slate-800">{{ $actLog['time'] }}</p>
-                                                    <p class="text-[11px] text-slate-500">{{ $actLog['created_at_human'] }}</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    @endforeach
-                                </ol>
-                            </div>
-                        @empty
-                            <div class="py-12 text-center">
-                                <span class="w-14 h-14 rounded-2xl bg-[#EFEFEF] flex items-center justify-center mx-auto mb-3"><span class="iconify text-2xl text-[#8A817A]" data-icon="mdi:history"></span></span>
-                                <p class="text-sm font-bold text-slate-800">Nothing recorded yet</p>
-                                <p class="text-xs text-slate-500 mt-1">When you sign in, hand in a task or save your work, it will show up here.</p>
-                            </div>
-                        @endforelse
-                        <p id="activityFilterEmpty" class="hidden py-10 text-center text-sm text-slate-500">Nothing of this kind yet. Pick another option above.</p>
-                    </div>
+                    {{-- Two columns side by side: Recent (the last 7 days, today included)
+                         and Previous (anything older). Each scrolls on its own, newest first,
+                         under a heading for each day. --}}
+                    @if($actRows->isEmpty())
+                        <div class="py-12 text-center">
+                            <span class="w-14 h-14 rounded-2xl bg-[#EFEFEF] flex items-center justify-center mx-auto mb-3"><span class="iconify text-2xl text-[#8A817A]" data-icon="mdi:history"></span></span>
+                            <p class="text-sm font-bold text-slate-800">Nothing recorded yet</p>
+                            <p class="text-xs text-slate-500 mt-1">When you sign in, hand in a task or save your work, it will show up here.</p>
+                        </div>
+                    @else
+                        <div class="act-columns grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-[#E7E1DD]" id="activityTimeline">
+                            @foreach([
+                                'recent'   => ['title' => 'Recent',   'hint' => 'Last 7 days', 'icon' => 'mdi:clock-fast',          'empty' => 'Nothing in the last 7 days.'],
+                                'previous' => ['title' => 'Previous', 'hint' => 'Older',       'icon' => 'mdi:calendar-blank-outline', 'empty' => 'Nothing older yet.'],
+                            ] as $actColKey => $actCol)
+                                @php $actColRows = $actRows->where('recent', $actColKey === 'recent')->values(); @endphp
+                                <section data-act-col class="act-col flex flex-col min-h-0 min-w-0">
+                                    <div class="flex-none px-4 sm:px-5 pt-3 pb-2.5 flex items-center justify-between gap-3 border-b border-[#EFEFEF]">
+                                        <h3 class="flex items-center gap-2 text-[15px] font-extrabold text-slate-900">
+                                            <span class="iconify text-lg text-[#4A4643]" data-icon="{{ $actCol['icon'] }}"></span>{{ $actCol['title'] }}
+                                        </h3>
+                                        <span class="text-[12px] font-semibold text-slate-500">{{ $actCol['hint'] }} · <span data-act-col-count>{{ $actColRows->count() }}</span></span>
+                                    </div>
+                                    <div class="act-timeline max-h-[60vh] overflow-y-auto px-4 sm:px-5 py-3">
+                                    @forelse($actColRows->groupBy('day') as $actDay => $actDayRows)
+                                        <div data-act-day class="mb-3 last:mb-0">
+                                            <p class="sticky top-0 z-[1] bg-white py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{{ $actDay }}</p>
+                                            <ol class="relative ml-4 border-l border-[#DADADA]">
+                                                @foreach($actDayRows as $actLog)
+                                                    <li data-act-group="{{ $actLog['group'] }}" class="relative flex items-center min-h-[56px] pl-7 py-2.5">
+                                                        <span class="absolute -left-[17px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#EFEFEF] border border-[#DADADA] flex items-center justify-center">
+                                                            <span class="iconify text-base text-[#4A4643]" data-icon="{{ $actLog['icon'] }}"></span>
+                                                        </span>
+                                                        <div class="flex-1 min-w-0 flex items-start justify-between gap-3">
+                                                            <div class="min-w-0">
+                                                                <p class="text-sm font-bold text-slate-900">{{ $actLog['activity_label'] ?? $actLog['activity'] ?? 'Activity' }}</p>
+                                                                @if(!empty($actLog['description']))
+                                                                    <p class="text-[13px] text-slate-600 mt-0.5 break-words">{{ $actLog['description'] }}</p>
+                                                                @endif
+                                                            </div>
+                                                            <div class="text-right shrink-0">
+                                                                <p class="text-[12px] font-semibold text-slate-800">{{ $actLog['time'] }}</p>
+                                                                <p class="text-[11px] text-slate-500">{{ $actLog['created_at_human'] }}</p>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                @endforeach
+                                            </ol>
+                                        </div>
+                                    @empty
+                                        <p class="py-10 text-center text-sm text-slate-500">{{ $actCol['empty'] }}</p>
+                                    @endforelse
+                                        <p data-act-col-empty class="hidden py-10 text-center text-sm text-slate-500">Nothing of this kind here.</p>
+                                    </div>
+                                </section>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
 
                 <style>
@@ -1257,7 +1280,8 @@
                     @media (min-width: 1024px) {
                         #activity-section:not(.hidden) { height: calc(100dvh - 3.5rem - 1px - 1.5rem); display: flex; flex-direction: column; }
                         #activity-section .act-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-                        #activity-section:not(.hidden) > :not(.act-panel), #activity-section .act-panel > :not(.act-timeline) { flex-shrink: 0; }
+                        #activity-section:not(.hidden) > :not(.act-panel), #activity-section .act-panel > :not(.act-columns) { flex-shrink: 0; }
+                        #activity-section .act-columns { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
                         #activity-section .act-timeline { flex: 1; min-height: 0; max-height: none; }
                     }
                     .act-chip { background: #fff; border-color: #DADADA; color: #181818; }
@@ -1292,8 +1316,14 @@
                                     day.classList.toggle('hidden', dayShown === 0);
                                     shown += dayShown;
                                 });
-                                const empty = document.getElementById('activityFilterEmpty');
-                                if (empty) empty.classList.toggle('hidden', shown > 0 || root.querySelectorAll('[data-act-group]').length === 0);
+                                root.querySelectorAll('[data-act-col]').forEach(function (col) {
+                                    const all = col.querySelectorAll('[data-act-group]');
+                                    const visible = Array.prototype.filter.call(all, function (r) { return !r.classList.contains('hidden'); }).length;
+                                    const count = col.querySelector('[data-act-col-count]');
+                                    if (count) count.textContent = visible;
+                                    const none = col.querySelector('[data-act-col-empty]');
+                                    if (none) none.classList.toggle('hidden', visible > 0 || all.length === 0);
+                                });
                             });
                         });
                     })();
