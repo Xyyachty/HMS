@@ -61,9 +61,11 @@
   .af-summary i { color: var(--accent); }
 
   /* Cards */
-  .af-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 1.15rem; align-items: start; }
-  .af-card { min-width: 0; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--af-line); border-radius: 14px; overflow: hidden; }
-  .af-media { position: relative; height: 160px; overflow: hidden; background: var(--af-soft); }
+  .af-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 1.15rem; align-items: stretch; }
+  /* Every card in a row is the same height, and its button sits on the bottom edge,
+     so buttons and dividers line up across the row whatever each card holds. */
+  .af-card { min-width: 0; height: 100%; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--af-line); border-radius: 14px; overflow: hidden; }
+  .af-media { position: relative; flex: none; height: 160px; overflow: hidden; background: var(--af-soft); }
   .af-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .af-card.is-shut .af-media img { filter: grayscale(0.65); }
   /* One status on the photo, on a solid backing so it reads over any picture */
@@ -79,8 +81,8 @@
   .af-state.is-closed .dot { background: var(--warn); }
   .af-state.is-repair .dot { background: var(--danger); }
 
-  .af-body { padding: 1rem 1.1rem 1.1rem; display: flex; flex-direction: column; gap: 0.75rem; }
-  .af-title { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--fg); line-height: 1.2; }
+  .af-body { flex: 1; padding: 1rem 1.1rem 1.1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .af-title { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--fg); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .af-does {
     display: inline-flex; align-items: center; gap: 0.45rem; width: fit-content;
     padding: 0.32rem 0.65rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600;
@@ -91,7 +93,7 @@
   .af-facts i { width: 1rem; text-align: center; color: var(--fg-muted); font-size: 0.8rem; flex: none; }
   .af-facts span { min-width: 0; overflow-wrap: anywhere; }
 
-  .af-action { display: grid; gap: 0.7rem; padding-top: 0.85rem; border-top: 1px solid var(--af-line); }
+  .af-action { flex: 1; display: flex; flex-direction: column; gap: 0.7rem; padding-top: 0.85rem; border-top: 1px solid var(--af-line); }
   .af-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; width: 100%;
     font: 600 0.88rem/1 'Outfit', sans-serif;
@@ -99,6 +101,9 @@
     background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
     transition: filter 0.15s, transform 0.1s;
   }
+  .af-action > .af-why { order: 9; margin-top: auto; }
+  .af-action > .af-btn { order: 10; margin-top: auto; }
+  .af-action > .af-why ~ .af-btn { margin-top: 0; }
   .af-btn:hover:not(:disabled) { filter: brightness(1.08); }
   .af-btn:active:not(:disabled) { transform: translateY(1px); }
   .af-btn:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -111,7 +116,7 @@
   .af-btn-sm:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
   .af-btn-sm:disabled { opacity: 0.5; cursor: progress; }
   .af-tab:focus-visible, .af-btn:focus-visible, .af-btn-sm:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .af-why { margin: -0.2rem 0 0; font-size: 0.78rem; color: var(--fg-muted); display: flex; gap: 0.45rem; align-items: flex-start; }
+  .af-why { margin: 0; font-size: 0.78rem; color: var(--fg-muted); display: flex; gap: 0.45rem; align-items: flex-start; }
   .af-why i { color: var(--warn); margin-top: 0.12rem; }
   .af-note { margin: 0; font-size: 0.84rem; color: var(--fg-muted); line-height: 1.5; display: flex; gap: 0.55rem; align-items: flex-start; }
   .af-note i { color: var(--accent); margin-top: 0.18rem; }
@@ -1053,12 +1058,12 @@ function AmenityActions({ amenity, visits, reservations, canRegister, now, onOpe
           {hasCap ? <div className={'af-meter' + (full ? ' is-full' : '')}><span style={{ width: pct + '%' }}></span></div> : null}
         </div>
 
+        {why && <p className="af-why"><i className="fa-solid fa-circle-exclamation"></i><span>{why}</span></p>}
         {canRegister && (
           <button type="button" className="af-btn" disabled={shut || full} onClick={() => onOpenEntry(amenity)}>
             <i className="fa-solid fa-right-to-bracket"></i> Sign a guest in
           </button>
         )}
-        {why && <p className="af-why"><i className="fa-solid fa-circle-exclamation"></i><span>{why}</span></p>}
 
         {inside.length > 0 && (
           <div className="af-list">
@@ -1103,14 +1108,14 @@ function AmenityActions({ amenity, visits, reservations, canRegister, now, onOpe
         </div>
       )}
 
+      {canRegister && blocked && (
+        <p className="af-why"><i className="fa-solid fa-circle-exclamation"></i><span>It is {String(amenity.status).toLowerCase()}, so it is not taking bookings.</span></p>
+      )}
       {canRegister && (
         <button type="button" className="af-btn" disabled={blocked} onClick={() => onOpenBooking(amenity)}>
           <i className="fa-solid fa-calendar-plus"></i>
           {kind === 'event' ? 'Book an event' : 'Book an appointment'}
         </button>
-      )}
-      {canRegister && blocked && (
-        <p className="af-why"><i className="fa-solid fa-circle-exclamation"></i><span>It is {String(amenity.status).toLowerCase()}, so it is not taking bookings.</span></p>
       )}
 
       {booked.length > 0 ? (
@@ -1163,13 +1168,11 @@ function AmenityCard(props) {
       </div>
       <div className="af-body">
         <div>
-          <h2 className="af-title font-display">{amenity.name}</h2>
+          <h2 className="af-title font-display" title={amenity.name}>{amenity.name}</h2>
           <span className="af-does"><i className={'fa-solid ' + kind.icon}></i>{kind.does}</span>
         </div>
         <div className="af-facts">
-          {amenity.location && (
-            <div><i className="fa-solid fa-location-dot"></i><span>{amenity.location}</span></div>
-          )}
+          <div><i className="fa-solid fa-location-dot"></i><span>{amenity.location || 'No location given'}</span></div>
           <div><i className="fa-regular fa-clock"></i><span>{amenity.hours ? 'Open ' + amenity.hours : 'No opening hours posted'}</span></div>
         </div>
         <AmenityActions {...props} now={now} />
