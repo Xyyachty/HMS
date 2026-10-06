@@ -82,10 +82,13 @@
         .sidebar-link {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        /* Hover turns the link white, with dark text so it stays readable. */
         .sidebar-link:hover {
-            background: rgba(255,255,255,0.12);
+            background: #fff;
+            color: #181818;
             transform: translateX(2px);
         }
+        .sidebar-link:hover #navTasksBadge { background: #E4E2E0; color: #181818; }
         .sidebar-link.active {
             background: rgba(255,255,255,0.22);
             box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.25);
@@ -123,13 +126,17 @@
            editing every call site. Solid accents (icon circles, bars, progress
            rings, your own avatar) are dark gray; soft fills and borders a light
            warm gray. Text stays black (.ink-all). */
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) :is(.bg-amber-500, .bg-orange-500, .bg-brand, .bg-violet-500, .bg-teal-500, .brand-gradient) { background: #4A4643; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) :is(.bg-amber-500, .bg-orange-500, .bg-brand, .bg-violet-500, .bg-teal-500) { background: #4A4643; }
+        /* Buttons (Proceed, the area buttons, your avatar) are a lighter dark gray
+           than the bars and rings, and go a shade darker on hover. */
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) .brand-gradient { background: #5F5A55; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) .brand-gradient:is(a, button):hover { background: #4A4643; opacity: 1; }
         :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) :is(.bg-amber-50, .bg-brand-soft, .bg-red-50, .bg-emerald-50, .bg-blue-50, .bg-slate-50, .bg-slate-100) { background-color: #F3F2F1; }
         :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) :is(.border-pink-100, .border-brand-light, .border-slate-100, .border-slate-200, .border-red-200, .border-emerald-200, .border-brand\/10) { border-color: #E4E2E0; }
         :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) :is(.text-amber-500, .text-brand, .text-brand-dark, .text-red-500, .text-emerald-500, .text-blue-600):is(.iconify, svg) { color: #4A4643; }
         :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) :is(.shadow-brand\/20) { --tw-shadow-color: rgba(24, 24, 24, 0.15); }
         :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) .ring-brand { --tw-ring-color: #4A4643; }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) .hover\:bg-brand:hover { background-color: #4A4643; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) .hover\:bg-brand:hover { background-color: #5F5A55; }
         :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) .hover\:border-brand\/40:hover { border-color: #8A817A; }
         :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) circle[stroke="#7B1730"] { stroke: #4A4643; }
         :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal) circle[stroke="#F2E9E7"] { stroke: #E4E2E0; }
@@ -223,8 +230,6 @@
 
         <!-- Navigation -->
         <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-            <p class="px-3 mb-2 text-[10px] font-bold text-white uppercase tracking-[0.15em]">Main Menu</p>
-
             <button onclick="showSection('home'); closeMobileSidebar();"
                     id="nav-home"
                     class="sidebar-link active w-full flex items-center px-3 py-2.5 rounded-xl text-sm font-semibold text-white">
@@ -1022,11 +1027,7 @@
                     // One entry per assigned role — a member may hold more than one.
                     $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
                 @endphp
-                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-                    <div>
-                        <h2 class="text-2xl sm:text-[30px] font-extrabold tracking-tight text-slate-900 leading-tight">Manage Tasks</h2>
-                        <p class="text-sm text-slate-500 mt-1">View and manage all tasks assigned to you under the current group assignment.</p>
-                    </div>
+                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-end gap-3">
                     <div class="flex flex-wrap items-center gap-3">
                         @if(!empty($studentRoles))
                             {{-- The one filter the toolbar keeps: everything else the table
