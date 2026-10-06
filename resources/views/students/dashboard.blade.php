@@ -117,6 +117,19 @@
             box-shadow: 0 8px 25px -8px rgba(0,0,0,0.08);
         }
 
+        /* Dashboard (home) section: gold and maroon accents become dark gray.
+           Tailwind's stock colours are remapped to wine and gold above, so the
+           section re-points those utilities instead of editing every call site.
+           Solid accents (icon circles, bars, the progress ring) are dark gray,
+           soft fills and borders a light warm gray. Text stays black (.ink-all). */
+        #home-section :is(.bg-amber-500, .bg-orange-500, .bg-brand, .bg-violet-500, .bg-teal-500) { background-color: #4A4643; }
+        #home-section :is(.bg-amber-50, .bg-brand-soft, .bg-red-50, .bg-emerald-50, .bg-blue-50, .bg-slate-50, .bg-slate-100) { background-color: #F3F2F1; }
+        #home-section :is(.border-pink-100, .border-brand-light, .border-slate-100, .border-slate-200) { border-color: #E4E2E0; }
+        #home-section :is(.text-amber-500, .text-brand, .text-brand-dark, .text-red-500, .text-emerald-500, .text-blue-600):is(.iconify, svg) { color: #4A4643; }
+        #home-section .ring-brand { --tw-ring-color: #4A4643; }
+        #home-section circle[stroke="#7B1730"] { stroke: #4A4643; }
+        #home-section circle[stroke="#F2E9E7"] { stroke: #E4E2E0; }
+
         .task-card {
             transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
         }
