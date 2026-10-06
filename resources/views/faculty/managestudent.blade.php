@@ -116,7 +116,9 @@
         color: #111; background: #fff; border: 1px solid #111; transition: all .15s ease;
     }
     .st-update:hover,
-    #studentsTable tbody tr[data-student-id]:hover .st-update { background: #111; border-color: #111; color: #fff; }
+    #studentsTable tbody tr[data-student-id]:hover .st-update { background: #dadada; border-color: #111; color: #181818; }
+    /* Bulk Upload and Add Student turn light gray on hover, like Update and search. */
+    .ms-light-hover.ms-light-hover:hover { background: #dadada; color: #181818; opacity: 1; }
 
     .st-pager { display: flex; align-items: center; gap: .375rem; flex-wrap: wrap; }
     .st-page {
@@ -147,8 +149,8 @@
         border-color: #111;
         box-shadow: 0 0 0 3px rgba(17,17,17, 0.10);
     }
-    #studentSearchWrap:not(.is-open):hover { background: #111; }
-    #studentSearchWrap:not(.is-open):hover .search-toggle { color: #fff; }
+    #studentSearchWrap:not(.is-open):hover { background: #dadada; }
+    #studentSearchWrap:not(.is-open):hover .search-toggle { color: #181818; }
     #studentSearchWrap .search-toggle {
         width: 2.5rem;
         height: 2.5rem;
@@ -282,7 +284,7 @@
                 @if ($canEnrol) onclick="openModal('bulkUploadModal')" @else disabled @endif
                 title="{{ $canEnrol ? 'Bulk Upload' : $noBlockHint }}"
                 aria-label="Bulk Upload"
-                class="h-10 shrink-0 bg-emerald-600 text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-emerald-600/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'hover:bg-emerald-700' : 'intake-disabled' }}"
+                class="h-10 shrink-0 bg-emerald-600 text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-emerald-600/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'ms-light-hover' : 'intake-disabled' }}"
             >
                 <span class="iconify text-base" data-icon="mdi:upload"></span>
                 Bulk Upload
@@ -291,7 +293,7 @@
                 type="button"
                 @if ($canEnrol) onclick="openModal('createStudentModal')" @else disabled @endif
                 title="{{ $canEnrol ? 'Add Student' : $noBlockHint }}"
-                class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'hover:opacity-95' : 'intake-disabled' }}"
+                class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'ms-light-hover' : 'intake-disabled' }}"
             >
                 <span class="iconify text-base" data-icon="mdi:account-plus-outline"></span>
                 Add Student
