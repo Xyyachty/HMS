@@ -1174,22 +1174,25 @@
                     <p class="text-sm text-slate-500">A record of what you have done in the system, like signing in, finishing tasks and saving your work. Only your own activity is listed here.</p>
                 </div>
 
-                {{-- At a glance --}}
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div class="bg-white rounded-2xl border border-[#E7E1DD] px-4 py-3.5 flex items-center gap-3">
-                        <span class="w-10 h-10 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#4A4643]" data-icon="mdi:format-list-bulleted"></span></span>
-                        <div><p class="text-[11px] font-semibold text-slate-500">All entries</p><p class="text-xl font-extrabold text-slate-900 leading-tight">{{ $actRows->count() }}</p></div>
+                {{-- At a glance: one white strip, as wide as what it says --}}
+                <div class="self-start inline-flex flex-wrap items-center gap-y-2 bg-white rounded-2xl border border-[#E7E1DD] px-2 py-2 max-w-full">
+                    <div class="flex items-center gap-2.5 px-3 py-1">
+                        <span class="w-8 h-8 rounded-lg bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-lg text-[#4A4643]" data-icon="mdi:format-list-bulleted"></span></span>
+                        <span class="text-[13px] font-semibold text-slate-600">All entries</span>
+                        <span class="text-lg font-extrabold text-slate-900 leading-none">{{ $actRows->count() }}</span>
                     </div>
-                    <div class="bg-white rounded-2xl border border-[#E7E1DD] px-4 py-3.5 flex items-center gap-3">
-                        <span class="w-10 h-10 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#4A4643]" data-icon="mdi:calendar-today-outline"></span></span>
-                        <div><p class="text-[11px] font-semibold text-slate-500">Today</p><p class="text-xl font-extrabold text-slate-900 leading-tight">{{ $actTodayCount }}</p></div>
+                    <span class="w-px h-7 bg-[#DADADA]" aria-hidden="true"></span>
+                    <div class="flex items-center gap-2.5 px-3 py-1">
+                        <span class="w-8 h-8 rounded-lg bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-lg text-[#4A4643]" data-icon="mdi:calendar-today-outline"></span></span>
+                        <span class="text-[13px] font-semibold text-slate-600">Today</span>
+                        <span class="text-lg font-extrabold text-slate-900 leading-none">{{ $actTodayCount }}</span>
                     </div>
-                    <div class="bg-white rounded-2xl border border-[#E7E1DD] px-4 py-3.5 flex items-center gap-3">
-                        <span class="w-10 h-10 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#4A4643]" data-icon="mdi:clock-outline"></span></span>
-                        <div class="min-w-0"><p class="text-[11px] font-semibold text-slate-500">Last activity</p>
-                            <p class="text-sm font-bold text-slate-900 leading-tight truncate">{{ $actLast ? ($actLast['activity_label'] ?? 'Activity') : 'None yet' }}</p>
-                            @if($actLast)<p class="text-[11px] text-slate-500 truncate">{{ $actLast['created_at_human'] }}</p>@endif
-                        </div>
+                    <span class="w-px h-7 bg-[#DADADA]" aria-hidden="true"></span>
+                    <div class="flex items-center gap-2.5 px-3 py-1 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-lg text-[#4A4643]" data-icon="mdi:clock-outline"></span></span>
+                        <span class="text-[13px] font-semibold text-slate-600">Last activity</span>
+                        <span class="text-[14px] font-bold text-slate-900 truncate">{{ $actLast ? ($actLast['activity_label'] ?? 'Activity') : 'None yet' }}</span>
+                        @if($actLast)<span class="text-[12px] text-slate-500 whitespace-nowrap">· {{ $actLast['created_at_human'] }}</span>@endif
                     </div>
                 </div>
 
