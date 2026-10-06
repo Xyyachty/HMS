@@ -97,7 +97,7 @@
         border: 1px solid #EADAD5 !important; box-shadow: none !important; transition: all .15s ease;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button:hover {
-        color: #111 !important; border-color: #8A817A !important; background: #F3F2F1 !important;
+        color: #181818 !important; border-color: #dadada !important; background: #dadada !important;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button.current,
     #usersTable_wrapper .dataTables_paginate .paginate_button.current:hover {
