@@ -1171,14 +1171,14 @@
                     <div class="px-4 sm:px-5 py-3 border-b border-[#E7E1DD] bg-[#F5F2EF]/60">
                         <p class="text-[11px] font-semibold text-slate-500 mb-2">Show</p>
                         <div class="flex flex-wrap gap-2" role="group" aria-label="Show activity by kind">
-                            @foreach($actGroups as $key => $group)
-                                @php $n = $key === 'all' ? $actRows->count() : ($actCounts[$key] ?? 0); @endphp
-                                @continue($key !== 'all' && $n === 0)
-                                <button type="button" data-act-filter="{{ $key }}" aria-pressed="{{ $key === 'all' ? 'true' : 'false' }}"
-                                        class="act-chip {{ $key === 'all' ? 'is-on' : '' }} inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12px] font-semibold transition">
-                                    <span class="iconify text-sm" data-icon="{{ $group['icon'] }}"></span>
-                                    {{ $group['label'] }}
-                                    <span class="act-count px-1.5 py-0.5 rounded-full text-[10px] font-bold">{{ $n }}</span>
+                            @foreach($actGroups as $actKey => $actGroup)
+                                @php $actN = $actKey === 'all' ? $actRows->count() : ($actCounts[$actKey] ?? 0); @endphp
+                                @continue($actKey !== 'all' && $actN === 0)
+                                <button type="button" data-act-filter="{{ $actKey }}" aria-pressed="{{ $actKey === 'all' ? 'true' : 'false' }}"
+                                        class="act-chip {{ $actKey === 'all' ? 'is-on' : '' }} inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12px] font-semibold transition">
+                                    <span class="iconify text-sm" data-icon="{{ $actGroup['icon'] }}"></span>
+                                    {{ $actGroup['label'] }}
+                                    <span class="act-count px-1.5 py-0.5 rounded-full text-[10px] font-bold">{{ $actN }}</span>
                                 </button>
                             @endforeach
                         </div>
@@ -1186,25 +1186,25 @@
 
                     {{-- Timeline, newest first, under a heading for each day --}}
                     <div class="max-h-[60vh] overflow-y-auto px-4 sm:px-5 py-3" id="activityTimeline">
-                        @forelse($actRows->groupBy('day') as $day => $rows)
+                        @forelse($actRows->groupBy('day') as $actDay => $actDayRows)
                             <div data-act-day class="mb-3 last:mb-0">
-                                <p class="sticky top-0 z-[1] bg-white py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{{ $day }}</p>
+                                <p class="sticky top-0 z-[1] bg-white py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{{ $actDay }}</p>
                                 <ol class="relative ml-4 border-l border-[#E7E1DD]">
-                                    @foreach($rows as $log)
-                                        <li data-act-group="{{ $log['group'] }}" class="relative pl-6 py-2.5">
+                                    @foreach($actDayRows as $actLog)
+                                        <li data-act-group="{{ $actLog['group'] }}" class="relative pl-6 py-2.5">
                                             <span class="absolute -left-[17px] top-2.5 w-8 h-8 rounded-full bg-[#F5F2EF] border border-[#E7E1DD] flex items-center justify-center">
-                                                <span class="iconify text-base text-[#5F5A55]" data-icon="{{ $log['icon'] }}"></span>
+                                                <span class="iconify text-base text-[#5F5A55]" data-icon="{{ $actLog['icon'] }}"></span>
                                             </span>
                                             <div class="flex items-start justify-between gap-3">
                                                 <div class="min-w-0">
-                                                    <p class="text-sm font-bold text-slate-900">{{ $log['activity_label'] ?? $log['activity'] ?? 'Activity' }}</p>
-                                                    @if(!empty($log['description']))
-                                                        <p class="text-[13px] text-slate-600 mt-0.5 break-words">{{ $log['description'] }}</p>
+                                                    <p class="text-sm font-bold text-slate-900">{{ $actLog['activity_label'] ?? $actLog['activity'] ?? 'Activity' }}</p>
+                                                    @if(!empty($actLog['description']))
+                                                        <p class="text-[13px] text-slate-600 mt-0.5 break-words">{{ $actLog['description'] }}</p>
                                                     @endif
                                                 </div>
                                                 <div class="text-right shrink-0">
-                                                    <p class="text-[12px] font-semibold text-slate-800">{{ $log['time'] }}</p>
-                                                    <p class="text-[11px] text-slate-500">{{ $log['created_at_human'] }}</p>
+                                                    <p class="text-[12px] font-semibold text-slate-800">{{ $actLog['time'] }}</p>
+                                                    <p class="text-[11px] text-slate-500">{{ $actLog['created_at_human'] }}</p>
                                                 </div>
                                             </div>
                                         </li>
