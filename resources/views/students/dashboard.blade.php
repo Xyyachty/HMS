@@ -1089,39 +1089,178 @@
 
             {{-- ══════════════ ACTIVITY LOGS SECTION ══════════════ --}}
             <div id="activity-section" class="ink-all section-content hidden fade-in space-y-4">
+                @php
+                    /* The student's own rows from the centralized activity_logs table, the
+                       same one the faculty and dean portals read. Each kind of entry is put
+                       in a plain group for the filter chips and gets its own icon. */
+                    $actLogs = $myActivityLogs ?? collect();
+                    $actGroupOf = function (string $activity): string {
+                        if (in_array($activity, ['login', 'logout'], true)) return 'signin';
+                        if (str_starts_with($activity, 'task_') || in_array($activity, ['output_uploaded', 'evaluation_recorded'], true)) return 'tasks';
+                        if (str_starts_with($activity, 'concept_') || in_array($activity, ['website_customized', 'template_restored'], true)) return 'website';
+                        if (str_starts_with($activity, 'complaint_') || str_starts_with($activity, 'table_') || str_starts_with($activity, 'room_')
+                            || in_array($activity, ['guest_booked', 'report_generated'], true)) return 'hotel';
+                        return 'other';
+                    };
+                    $actGroups = [
+                        'all'     => ['label' => 'Everything',        'icon' => 'mdi:format-list-bulleted'],
+                        'signin'  => ['label' => 'Signing in & out',  'icon' => 'mdi:login-variant'],
+                        'tasks'   => ['label' => 'Tasks',             'icon' => 'mdi:clipboard-check-outline'],
+                        'website' => ['label' => 'Website & concept', 'icon' => 'mdi:palette-outline'],
+                        'hotel'   => ['label' => 'Hotel work',        'icon' => 'mdi:room-service-outline'],
+                        'other'   => ['label' => 'Other',             'icon' => 'mdi:history'],
+                    ];
+                    $actIcons = [
+                        'login' => 'mdi:login-variant', 'logout' => 'mdi:logout-variant',
+                        'task_submitted' => 'mdi:send-check-outline', 'output_uploaded' => 'mdi:file-upload-outline',
+                        'concept_created' => 'mdi:lightbulb-outline', 'concept_updated' => 'mdi:lightbulb-on-outline',
+                        'concept_submitted' => 'mdi:lightbulb-on-outline', 'concept_reviewed' => 'mdi:lightbulb-on-outline',
+                        'website_customized' => 'mdi:palette-outline', 'template_restored' => 'mdi:backup-restore',
+                        'complaint_filed' => 'mdi:message-alert-outline', 'complaint_resolved' => 'mdi:message-check-outline',
+                        'table_assigned' => 'mdi:silverware-fork-knife', 'table_closed' => 'mdi:silverware-clean',
+                        'guest_booked' => 'mdi:account-plus-outline', 'room_inspected' => 'mdi:magnify-scan', 'room_ready' => 'mdi:bed-outline',
+                        'report_generated' => 'mdi:chart-box-outline',
+                    ];
+
+                    // Day headings: Today, Yesterday, then the date.
+                    $actToday = now()->format('M d, Y');
+                    $actYesterday = now()->subDay()->format('M d, Y');
+                    $actRows = $actLogs->map(function ($log) use ($actGroupOf, $actIcons, $actToday, $actYesterday) {
+                        $activity = (string) ($log['activity'] ?? '');
+                        $stamp = (string) ($log['created_at'] ?? '');
+                        try { $at = \Carbon\Carbon::createFromFormat('M d, Y g:i A', $stamp); } catch (\Throwable $e) { $at = null; }
+                        $day = $at ? $at->format('M d, Y') : '';
+                        return $log + [
+                            'group' => $actGroupOf($activity),
+                            'icon'  => $actIcons[$activity] ?? (str_starts_with($activity, 'task_') ? 'mdi:clipboard-text-outline' : 'mdi:history'),
+                            'day'   => $day === $actToday ? 'Today' : ($day === $actYesterday ? 'Yesterday' : ($at ? $at->format('l, M j, Y') : 'Earlier')),
+                            'time'  => $at ? $at->format('g:i A') : '',
+                        ];
+                    });
+                    $actCounts = $actRows->countBy('group');
+                    $actTodayCount = $actRows->where('day', 'Today')->count();
+                    $actLast = $actRows->first();
+                @endphp
+
                 <div>
                     <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Activity Logs</h2>
-                    <p class="text-sm text-slate-400">Your own recorded activity only — teammates' logs are not shown here.</p>
+                    <p class="text-sm text-slate-500">A record of what you have done in the system, like signing in, finishing tasks and saving your work. Only your own activity is listed here.</p>
                 </div>
 
-                {{-- Centralized activity_logs: the same table the faculty and dean portals read. --}}
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
-                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">My Activity</p>
-                        <span class="text-[11px] font-semibold text-slate-400">{{ ($myActivityLogs ?? collect())->count() }} entries</span>
+                {{-- At a glance --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="bg-white rounded-2xl border border-[#E7E1DD] px-4 py-3.5 flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-[#F5F2EF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#5F5A55]" data-icon="mdi:format-list-bulleted"></span></span>
+                        <div><p class="text-[11px] font-semibold text-slate-500">All entries</p><p class="text-xl font-extrabold text-slate-900 leading-tight">{{ $actRows->count() }}</p></div>
                     </div>
-                    <div class="divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
-                        @forelse(($myActivityLogs ?? collect()) as $log)
-                            <div class="px-5 py-3.5 flex items-start gap-3 hover:bg-slate-50/70 transition">
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-brand-soft text-brand">
-                                    <span class="iconify text-lg" data-icon="mdi:clipboard-text-clock-outline"></span>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-bold text-slate-800">{{ $log['activity_label'] ?? $log['activity'] ?? '—' }}</p>
-                                    <p class="text-xs text-slate-500 mt-0.5">{{ $log['description'] ?: '—' }}</p>
-                                    <p class="text-[11px] text-slate-400 mt-0.5">
-                                        {{ $log['created_at'] }}{{ $log['created_at_human'] ? ' · ' . $log['created_at_human'] : '' }}
-                                    </p>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="px-5 py-12 text-center">
-                                <p class="text-sm font-semibold text-slate-400">No activity recorded yet</p>
-                                <p class="text-xs text-slate-300 mt-1">Logins, task submissions and saved work will appear here.</p>
-                            </div>
-                        @endforelse
+                    <div class="bg-white rounded-2xl border border-[#E7E1DD] px-4 py-3.5 flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-[#F5F2EF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#5F5A55]" data-icon="mdi:calendar-today-outline"></span></span>
+                        <div><p class="text-[11px] font-semibold text-slate-500">Today</p><p class="text-xl font-extrabold text-slate-900 leading-tight">{{ $actTodayCount }}</p></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-[#E7E1DD] px-4 py-3.5 flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-[#F5F2EF] flex items-center justify-center shrink-0"><span class="iconify text-xl text-[#5F5A55]" data-icon="mdi:clock-outline"></span></span>
+                        <div class="min-w-0"><p class="text-[11px] font-semibold text-slate-500">Last activity</p>
+                            <p class="text-sm font-bold text-slate-900 leading-tight truncate">{{ $actLast ? ($actLast['activity_label'] ?? 'Activity') : 'None yet' }}</p>
+                            @if($actLast)<p class="text-[11px] text-slate-500 truncate">{{ $actLast['created_at_human'] }}</p>@endif
+                        </div>
                     </div>
                 </div>
+
+                <div class="bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
+                    {{-- What to show --}}
+                    <div class="px-4 sm:px-5 py-3 border-b border-[#E7E1DD] bg-[#F5F2EF]/60">
+                        <p class="text-[11px] font-semibold text-slate-500 mb-2">Show</p>
+                        <div class="flex flex-wrap gap-2" role="group" aria-label="Show activity by kind">
+                            @foreach($actGroups as $key => $group)
+                                @php $n = $key === 'all' ? $actRows->count() : ($actCounts[$key] ?? 0); @endphp
+                                @continue($key !== 'all' && $n === 0)
+                                <button type="button" data-act-filter="{{ $key }}" aria-pressed="{{ $key === 'all' ? 'true' : 'false' }}"
+                                        class="act-chip {{ $key === 'all' ? 'is-on' : '' }} inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12px] font-semibold transition">
+                                    <span class="iconify text-sm" data-icon="{{ $group['icon'] }}"></span>
+                                    {{ $group['label'] }}
+                                    <span class="act-count px-1.5 py-0.5 rounded-full text-[10px] font-bold">{{ $n }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- Timeline, newest first, under a heading for each day --}}
+                    <div class="max-h-[60vh] overflow-y-auto px-4 sm:px-5 py-3" id="activityTimeline">
+                        @forelse($actRows->groupBy('day') as $day => $rows)
+                            <div data-act-day class="mb-3 last:mb-0">
+                                <p class="sticky top-0 z-[1] bg-white py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{{ $day }}</p>
+                                <ol class="relative ml-4 border-l border-[#E7E1DD]">
+                                    @foreach($rows as $log)
+                                        <li data-act-group="{{ $log['group'] }}" class="relative pl-6 py-2.5">
+                                            <span class="absolute -left-[17px] top-2.5 w-8 h-8 rounded-full bg-[#F5F2EF] border border-[#E7E1DD] flex items-center justify-center">
+                                                <span class="iconify text-base text-[#5F5A55]" data-icon="{{ $log['icon'] }}"></span>
+                                            </span>
+                                            <div class="flex items-start justify-between gap-3">
+                                                <div class="min-w-0">
+                                                    <p class="text-sm font-bold text-slate-900">{{ $log['activity_label'] ?? $log['activity'] ?? 'Activity' }}</p>
+                                                    @if(!empty($log['description']))
+                                                        <p class="text-[13px] text-slate-600 mt-0.5 break-words">{{ $log['description'] }}</p>
+                                                    @endif
+                                                </div>
+                                                <div class="text-right shrink-0">
+                                                    <p class="text-[12px] font-semibold text-slate-800">{{ $log['time'] }}</p>
+                                                    <p class="text-[11px] text-slate-500">{{ $log['created_at_human'] }}</p>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    @endforeach
+                                </ol>
+                            </div>
+                        @empty
+                            <div class="py-12 text-center">
+                                <span class="w-14 h-14 rounded-2xl bg-[#F5F2EF] flex items-center justify-center mx-auto mb-3"><span class="iconify text-2xl text-[#8A817A]" data-icon="mdi:history"></span></span>
+                                <p class="text-sm font-bold text-slate-800">Nothing recorded yet</p>
+                                <p class="text-xs text-slate-500 mt-1">When you sign in, hand in a task or save your work, it will show up here.</p>
+                            </div>
+                        @endforelse
+                        <p id="activityFilterEmpty" class="hidden py-10 text-center text-sm text-slate-500">Nothing of this kind yet. Pick another option above.</p>
+                    </div>
+                </div>
+
+                <style>
+                    .act-chip { background: #fff; border-color: #E7E1DD; color: #181818; }
+                    .act-chip:hover { border-color: #8A817A; }
+                    .act-chip .act-count { background: #F5F2EF; }
+                    .act-chip.is-on { background: #5F5A55; border-color: #5F5A55; }
+                    /* Beats the section's black-text rule: a filled chip keeps white text. */
+                    .ink-all.ink-all.ink-all .act-chip.is-on, .ink-all.ink-all.ink-all .act-chip.is-on * { color: #fff; }
+                    .act-chip.is-on .act-count { background: rgba(255,255,255,.2); }
+                </style>
+                <script>
+                    // Filters the timeline by kind, and hides a day heading with nothing left under it.
+                    (function () {
+                        const root = document.getElementById('activity-section');
+                        if (!root) return;
+                        root.querySelectorAll('[data-act-filter]').forEach(function (chip) {
+                            chip.addEventListener('click', function () {
+                                const key = chip.dataset.actFilter;
+                                root.querySelectorAll('[data-act-filter]').forEach(function (c) {
+                                    const on = c === chip;
+                                    c.classList.toggle('is-on', on);
+                                    c.setAttribute('aria-pressed', on ? 'true' : 'false');
+                                });
+                                let shown = 0;
+                                root.querySelectorAll('[data-act-day]').forEach(function (day) {
+                                    let dayShown = 0;
+                                    day.querySelectorAll('[data-act-group]').forEach(function (row) {
+                                        const match = key === 'all' || row.dataset.actGroup === key;
+                                        row.classList.toggle('hidden', !match);
+                                        if (match) dayShown++;
+                                    });
+                                    day.classList.toggle('hidden', dayShown === 0);
+                                    shown += dayShown;
+                                });
+                                const empty = document.getElementById('activityFilterEmpty');
+                                if (empty) empty.classList.toggle('hidden', shown > 0 || root.querySelectorAll('[data-act-group]').length === 0);
+                            });
+                        });
+                    })();
+                </script>
             </div>
 
             {{-- ══════════════ REPORTS SECTION ══════════════ --}}
