@@ -89,6 +89,7 @@
     </style>
     @include('partials.ink-all-styles')
     @stack('styles')
+    @include('partials.status-badge-styles')
 </head>
 <body class="bg-slate-50 antialiased">
 

@@ -88,8 +88,8 @@
                             </td>
                             <td class="px-4 py-3">
                                 @if($task->status === 'archived')
-                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[11px] font-bold">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full status-badge-completed border text-[11px] font-bold">
+                                        <span class="w-1.5 h-1.5 rounded-full status-fill-completed"></span>
                                         Completed
                                     </span>
                                 @else

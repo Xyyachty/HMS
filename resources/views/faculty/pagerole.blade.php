@@ -2854,9 +2854,9 @@ function openTaskReview(taskId) {
             const badges = [];
             if (d.awaiting_review) {
                 // Handed in, no verdict yet: it is not Completed until approved.
-                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold">Pending' + (d.submitted_at ? ' · submitted ' + escHtml(d.submitted_at) : '') + '</span>');
+                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full status-badge-pending border text-[10px] font-bold">Pending' + (d.submitted_at ? ' · submitted ' + escHtml(d.submitted_at) : '') + '</span>');
             } else if (d.status === 'archived') {
-                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold">' + (d.is_hotel_concept ? 'Submitted' : 'Completed') + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
+                badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full status-badge-completed border text-[10px] font-bold">' + (d.is_hotel_concept ? 'Submitted' : 'Completed') + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
             } else {
                 badges.push('<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold">Not submitted</span>');
             }
@@ -3344,9 +3344,9 @@ function submitTeamConceptFeedback(slot, decision) {
 /* Where a concept stands in the workflow. Same colours the students see. */
 const CONCEPT_STATUS_CLASSES = {
     draft: 'bg-slate-100 text-slate-600 border-slate-200',
-    submitted: 'bg-amber-50 text-amber-700 border-amber-200',
-    needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
-    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    submitted: 'status-badge-pending',
+    needs_revision: 'status-badge-revision',
+    approved: 'status-badge-completed',
     not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
 };
 
@@ -4721,9 +4721,9 @@ function renderTeamModalActivityPage() {
         // the feedback — so a submitted-but-unanswered concept says Submitted.
         const doneLabel = (log.is_hotel_concept && !log.has_feedback) ? 'Submitted' : 'Completed';
         const statusBadge = log.awaiting_review
-            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Pending</span>'
+            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full status-badge-pending border text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full status-fill-pending"></span>Pending</span>'
             : isDone
-            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>' + doneLabel + '</span>'
+            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full status-badge-completed border text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full status-fill-completed"></span>' + doneLabel + '</span>'
             : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Assigned</span>';
 
         // A task fans out one row per member, so the student tells identical titles apart.

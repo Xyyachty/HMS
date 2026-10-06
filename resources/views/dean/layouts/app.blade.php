@@ -104,6 +104,7 @@
         .sidebar-mobile.open { transform: translateX(0); }
     </style>
     @stack('styles')
+    @include('partials.status-badge-styles')
 </head>
 <body class="bg-slate-50 antialiased">
 

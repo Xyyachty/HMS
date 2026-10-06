@@ -131,8 +131,8 @@
                     </div>
                     <div class="text-right shrink-0">
                         <p class="text-[10px] text-black font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
-                        <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 text-black">
-                            <span class="w-1.5 h-1.5 rounded-full {{ $isDone ? 'bg-emerald-500' : 'bg-slate-900' }}"></span>
+                        <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isDone ? 'status-text-completed' : 'text-black' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ $isDone ? 'status-fill-completed' : 'bg-slate-900' }}"></span>
                             {{ $isDone ? 'Completed' : 'Assigned' }}
                         </p>
                     </div>

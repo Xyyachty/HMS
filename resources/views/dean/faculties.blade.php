@@ -511,14 +511,14 @@
     let teamModalActivityLogs = [];
     let teamModalActivityPage = 1;
     const TEAM_MODAL_ACTIVITY_PER_PAGE = 5;
-    // Badge colour per DeanController::teamTaskRow() status. Built into class names
-    // at runtime, which the Tailwind CDN picks up from the DOM.
-    const TASK_STATUS_COLORS = {
-        not_started: 'slate',
-        in_progress: 'blue',
-        needs_revision: 'amber',
-        submitted: 'violet',
-        completed: 'emerald',
+    // Status colour per DeanController::teamTaskRow() status, from the shared
+    // status-badge-* / status-fill-* classes. Submitted is the students' Pending.
+    const TASK_STATUS_KEYS = {
+        not_started: 'not_started',
+        in_progress: 'in_progress',
+        needs_revision: 'revision',
+        submitted: 'pending',
+        completed: 'completed',
     };
 
     function escHtml(s) {
@@ -555,12 +555,12 @@
         const end = start + pageLogs.length;
 
         activityBody.innerHTML = pageLogs.map(function (log) {
-            const color = TASK_STATUS_COLORS[log.status] || 'slate';
-            const statusBadge = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-' + color + '-50 text-' + color + '-700 border border-' + color + '-100 text-[10px] font-bold whitespace-nowrap">' +
-                '<span class="w-1.5 h-1.5 rounded-full bg-' + color + '-500"></span>' + escHtml(log.status_label) + '</span>';
+            const key = TASK_STATUS_KEYS[log.status] || 'not_started';
+            const statusBadge = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full status-badge-' + key + ' border text-[10px] font-bold whitespace-nowrap">' +
+                '<span class="w-1.5 h-1.5 rounded-full status-fill-' + key + '"></span>' + escHtml(log.status_label) + '</span>';
             const progress = log.progress_total > 0
                 ? '<div class="text-[10px] font-semibold text-slate-500">' + log.progress_done + '/' + log.progress_total + '</div>' +
-                  '<div class="h-1.5 mt-0.5 rounded-full bg-slate-200 overflow-hidden"><div class="h-full bg-' + color + '-500" style="width:' + Math.round(log.progress_done / log.progress_total * 100) + '%"></div></div>'
+                  '<div class="h-1.5 mt-0.5 rounded-full bg-slate-200 overflow-hidden"><div class="h-full status-fill-' + key + '" style="width:' + Math.round(log.progress_done / log.progress_total * 100) + '%"></div></div>'
                 : '<span class="text-[10px] text-slate-300">—</span>';
 
             return '<tr class="hover:bg-slate-50 transition-colors">' +
@@ -689,9 +689,9 @@
        faculty see. */
     const CONCEPT_STATUS_CLASSES = {
         draft: 'bg-slate-100 text-slate-600 border-slate-200',
-        submitted: 'bg-amber-50 text-amber-700 border-amber-200',
-        needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
-        approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        submitted: 'status-badge-pending',
+        needs_revision: 'status-badge-revision',
+        approved: 'status-badge-completed',
         not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
     };
 

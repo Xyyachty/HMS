@@ -74,11 +74,11 @@
     ];
 
     $groupStatusMeta = [
-        'not_started' => ['label' => 'Not Started',    'badge' => 'bg-[#F5F2EF] text-[#8A817A]', 'icon' => 'mdi:circle-outline'],
-        'in_progress' => ['label' => 'In Progress',    'badge' => 'bg-[#F5F2EF] text-[#5F5A55]', 'icon' => 'mdi:progress-clock'],
-        'revision'    => ['label' => 'Needs Revision', 'badge' => 'bg-[#E7E1DD] text-[#181818]', 'icon' => 'mdi:message-alert-outline'],
-        'pending'     => ['label' => 'Pending',        'badge' => 'bg-[#F5F2EF] text-[#5F5A55]', 'icon' => 'mdi:clock-outline'],
-        'completed'   => ['label' => 'Completed',      'badge' => 'bg-[#F5F2EF] text-[#181818]', 'icon' => 'mdi:check-decagram-outline'],
+        'not_started' => ['label' => 'Not Started',    'badge' => 'status-badge-not_started', 'icon' => 'mdi:circle-outline'],
+        'in_progress' => ['label' => 'In Progress',    'badge' => 'status-badge-in_progress', 'icon' => 'mdi:progress-clock'],
+        'revision'    => ['label' => 'Needs Revision', 'badge' => 'status-badge-revision',    'icon' => 'mdi:message-alert-outline'],
+        'pending'     => ['label' => 'Pending',        'badge' => 'status-badge-pending',     'icon' => 'mdi:clock-outline'],
+        'completed'   => ['label' => 'Completed',      'badge' => 'status-badge-completed',   'icon' => 'mdi:check-decagram-outline'],
     ];
 
     // Each task card is labelled by its role's initials and its place in

@@ -219,6 +219,7 @@
         }
     </style>
     @include('partials.ink-all-styles')
+    @include('partials.status-badge-styles')
 </head>
 <body class="bg-surface min-h-screen flex">
 
@@ -577,7 +578,7 @@
                                                     {{ $homeRoleLabels[$task->role] ?? $task->role }}
                                                 </span>
                                                 @if($isRevision)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-50 text-red-500">Revising</span>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold status-badge-revision">Needs Revision</span>
                                                 @endif
                                             </div>
                                         </div>
@@ -2061,9 +2062,9 @@
            stands at a glance. */
         const CONCEPT_BADGE_CLASSES = {
             draft: 'bg-slate-100 text-slate-600 border-slate-200',
-            submitted: 'bg-amber-50 text-amber-700 border-amber-200',
-            needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
-            approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            submitted: 'status-badge-pending',
+            needs_revision: 'status-badge-revision',
+            approved: 'status-badge-completed',
             not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
         };
 
@@ -2169,7 +2170,7 @@
                             + '<p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">' + conceptEscape(code) + '</p>'
                         + '</div>'
                         + '<div class="flex items-center gap-2 shrink-0 ml-auto">'
-                            + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap bg-[#F5F2EF] text-[#181818]">Completed</span>'
+                            + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap status-badge-completed">Completed</span>'
                         + '</div>'
                     + '</div>'
                     + '<div class="flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">'
@@ -2750,11 +2751,11 @@
             else statusKey = 'in_progress';
 
             const meta = {
-                not_started: { label: 'Not Started', badge: 'bg-[#F5F2EF] text-[#8A817A]', icon: 'mdi:circle-outline' },
-                in_progress: { label: 'In Progress', badge: 'bg-[#F5F2EF] text-[#5F5A55]', icon: 'mdi:progress-clock' },
-                revision: { label: 'Needs Revision', badge: 'bg-[#E7E1DD] text-[#181818]', icon: 'mdi:message-alert-outline' },
-                pending: { label: 'Pending', badge: 'bg-[#F5F2EF] text-[#5F5A55]', icon: 'mdi:clock-outline' },
-                completed: { label: 'Completed', badge: 'bg-[#F5F2EF] text-[#181818]', icon: 'mdi:check-decagram-outline' },
+                not_started: { label: 'Not Started', badge: 'status-badge-not_started', icon: 'mdi:circle-outline' },
+                in_progress: { label: 'In Progress', badge: 'status-badge-in_progress', icon: 'mdi:progress-clock' },
+                revision: { label: 'Needs Revision', badge: 'status-badge-revision', icon: 'mdi:message-alert-outline' },
+                pending: { label: 'Pending', badge: 'status-badge-pending', icon: 'mdi:clock-outline' },
+                completed: { label: 'Completed', badge: 'status-badge-completed', icon: 'mdi:check-decagram-outline' },
             }[statusKey];
 
             const percentEl = groupEl.querySelector('[data-summary-percent]');
@@ -2783,10 +2784,11 @@
            — shared by the checklist-tick handler and settleConceptTaskRow(). */
         function paintRowStatus(row, statusKey, percent) {
             const meta = {
-                not_started: { label: 'Not Started', badge: 'bg-[#F5F2EF] text-[#8A817A]' },
-                in_progress: { label: 'In Progress', badge: 'bg-[#F5F2EF] text-[#5F5A55]' },
-                revision: { label: 'Needs Revision', badge: 'bg-[#E7E1DD] text-[#181818]' },
-                completed: { label: 'Completed', badge: 'bg-[#F5F2EF] text-[#181818]' },
+                not_started: { label: 'Not Started', badge: 'status-badge-not_started' },
+                in_progress: { label: 'In Progress', badge: 'status-badge-in_progress' },
+                revision: { label: 'Needs Revision', badge: 'status-badge-revision' },
+                pending: { label: 'Pending', badge: 'status-badge-pending' },
+                completed: { label: 'Completed', badge: 'status-badge-completed' },
             }[statusKey];
             if (!meta) return;
 
@@ -2836,6 +2838,9 @@
             set('taskInstructionsCode',   detail.dataset.detailCode);
             set('taskInstructionsRole',   detail.dataset.detailRole);
             set('taskInstructionsStatus', detail.dataset.detailStatus);
+            const statusKey = detail.closest('[data-task-card]')?.dataset.taskStatus;
+            const statusEl = document.getElementById('taskInstructionsStatus');
+            if (statusEl) statusEl.className = 'text-[12px] font-bold truncate ' + (statusKey ? 'status-text-' + statusKey : 'text-slate-700');
             set('taskInstructionsDue',    detail.dataset.detailDue);
 
             body.appendChild(detail);
