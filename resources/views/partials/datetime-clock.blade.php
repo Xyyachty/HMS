@@ -28,17 +28,17 @@
         align-items: center;
         gap: 0.5rem;
         padding: 0.5rem 0.75rem;
-        background: #FAF6F5;
+        background: #F3F2F1;
         border-radius: 0.75rem;
     }
     @media (min-width: 768px) {
         .hms-clock { display: inline-flex; }
     }
-    .hms-clock__icon { font-size: 0.875rem; color: #7A6068; }
+    .hms-clock__icon { font-size: 0.875rem; color: #111; }
     .hms-clock__time {
         font-size: 0.75rem;
         font-weight: 600;
-        color: #6B4A54;
+        color: #111;
         white-space: nowrap;
         /* Stops the row jittering as the digits change width. */
         font-variant-numeric: tabular-nums;
@@ -46,7 +46,7 @@
     .hms-clock__zone {
         font-size: 0.625rem;
         font-weight: 700;
-        color: #C9AFAA;
+        color: #111;
         letter-spacing: 0.05em;
     }
 </style>
