@@ -259,130 +259,125 @@
 </div>
 
 <!-- Team Info Modal -->
+{{-- Same layout as the faculty Team Details dialog, read-only: the dean
+     oversees the work, the team's own faculty gives the verdict. --}}
 <div id="teamInfoModal" class="ink-all fixed inset-0 z-50 hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTeamModal()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 52rem;">
-        <!-- Modal Header -->
-        <div class="bg-rose-50 px-4 py-3 border-b border-rose-100 flex justify-between items-center rounded-t-2xl flex-shrink-0">
-            <h4 class="font-bold text-rose-700 text-sm flex items-center gap-1.5 min-w-0">
-                <span class="iconify text-base shrink-0" data-icon="mdi:account-group-outline"></span>
-                <span class="truncate">Team Details<span id="modalTeamNameSuffix" class="font-semibold text-rose-500/80"></span></span>
-            </h4>
-            <button onclick="closeTeamModal()" class="text-slate-400 hover:text-rose-500 hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0">
-                <span class="iconify text-lg" data-icon="mdi:close"></span>
+    <div class="tm-box relative bg-white shadow-2xl flex flex-col overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="modalTeamName">
+        <div class="tm-head">
+            <span class="tm-head-icon"><span class="iconify" data-icon="mdi:account-group-outline"></span></span>
+            <div class="min-w-0">
+                <p class="tm-kicker">Team details</p>
+                <h3 id="modalTeamName" class="tm-title">Team</h3>
+                <p id="modalTeamSummary" class="tm-sub"></p>
+            </div>
+            <button type="button" onclick="closeTeamModal()" class="tm-close">
+                <span class="iconify" data-icon="mdi:close"></span> Close
             </button>
         </div>
 
-        <!-- Modal Tabs -->
-        <div class="flex border-b border-slate-200 bg-slate-50 flex-shrink-0">
-            <button type="button" onclick="switchTeamModalTab('members')" id="team-tab-members"
-                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-rose-500 text-rose-600">
-                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:account-group-outline"></span>Team Members &amp; Roles
-            </button>
-            <button type="button" onclick="switchTeamModalTab('concept')" id="team-tab-concept"
-                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
-                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:lightbulb-outline"></span>Hotel Concept
-            </button>
-            <button type="button" onclick="switchTeamModalTab('tasks')" id="team-tab-tasks"
-                class="flex-1 py-2.5 text-xs font-bold text-center transition border-b-2 border-transparent text-slate-400 hover:text-slate-600">
-                <span class="iconify inline-block mr-1.5 align-[-2px]" data-icon="mdi:clipboard-text-clock-outline"></span>Student Tasks
-            </button>
-        </div>
+        <div class="tm-body">
+            <nav class="tm-nav" aria-label="Team details sections">
+                <button type="button" onclick="switchTeamModalTab('members')" id="team-tab-members" class="tm-tab">
+                    <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:account-group-outline"></span></span>
+                    <span class="tm-tab-copy">
+                        <span class="tm-tab-title">Team Members &amp; Roles</span>
+                        <span class="tm-tab-desc">Who is in the team and what each one does</span>
+                        <span id="teamTabCountMembers" class="tm-tab-count"></span>
+                    </span>
+                </button>
+                <button type="button" onclick="switchTeamModalTab('concept')" id="team-tab-concept" class="tm-tab">
+                    <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:lightbulb-outline"></span></span>
+                    <span class="tm-tab-copy">
+                        <span class="tm-tab-title">Hotel Concept</span>
+                        <span class="tm-tab-desc">The hotel ideas the team proposed</span>
+                    </span>
+                </button>
+                <button type="button" onclick="switchTeamModalTab('tasks')" id="team-tab-tasks" class="tm-tab">
+                    <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:clipboard-text-clock-outline"></span></span>
+                    <span class="tm-tab-copy">
+                        <span class="tm-tab-title">Team Task Activity</span>
+                        <span class="tm-tab-desc">Every task given to the team and how far it is</span>
+                        <span id="teamTabCountTasks" class="tm-tab-count"></span>
+                    </span>
+                </button>
+            </nav>
 
-        <!-- Modal Body -->
-        <div class="overflow-y-auto flex-1 p-4 space-y-4">
-            <!-- Members Table -->
-            <div id="team-panel-members">
-                <div class="border border-slate-200 rounded-lg overflow-hidden">
-                    <table class="w-full text-sm" style="table-layout: fixed;">
-                        <colgroup>
-                            <col style="width: 2.5rem;">
-                            <col>
-                            <col style="width: 10rem;">
-                            <col style="width: 6.5rem;">
-                        </colgroup>
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Member</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
-                                <th class="text-center px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Activity</th>
-                            </tr>
-                        </thead>
-                        <tbody id="teamModalMembersBody" class="divide-y divide-slate-100">
-                        </tbody>
-                    </table>
+            <div class="tm-content">
+                <!-- Members -->
+                <div id="team-panel-members">
+                    <div class="tm-panel-head">
+                        <h4 class="tm-panel-title">Team Members &amp; Roles</h4>
+                        <p class="tm-panel-note">Each card shows a student and the part of the hotel they handle. Choose See activity to read everything that student has done.</p>
+                    </div>
+                    <div id="teamModalMembersBody" class="tm-member-grid"></div>
+
+                    <!-- Selected member's centralized activity log -->
+                    <div id="memberActivityPanel" class="hidden">
+                        <div class="tm-card mt-5">
+                            <div class="tm-card-head">
+                                <p class="tm-card-title" id="memberActivityPanelTitle">Member Activity</p>
+                                <button type="button" onclick="closeMemberActivityPanel()" class="tm-btn tm-btn-sm">
+                                    <span class="iconify" data-icon="mdi:chevron-up"></span> Hide
+                                </button>
+                            </div>
+                            <div id="memberActivityPanelBody" class="tm-activity-list"></div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Selected member's centralized activity log (expandable section) -->
-                <div id="memberActivityPanel" class="hidden mt-4">
-                    <div class="flex items-center justify-between gap-2 mb-1.5">
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-rose-600" id="memberActivityPanelTitle">Member Activity</p>
-                        <button type="button" onclick="closeMemberActivityPanel()"
-                            class="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition">Hide</button>
+                <!-- Front Desk's hotel concepts and their edit history (loaded when the modal opens) -->
+                <div id="team-panel-concept" class="hidden">
+                    <div class="tm-panel-head">
+                        <h4 class="tm-panel-title">Hotel Concept</h4>
+                        <p class="tm-panel-note">The team proposes two hotel ideas and their faculty approves one. You can read both here, with every change the team made.</p>
                     </div>
-                    <div class="border border-rose-200 rounded-lg overflow-hidden">
-                        <div id="memberActivityPanelBody" class="max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white"></div>
+                    <div id="teamModalConceptBody" class="tm-concept-grid">
+                        <div class="tm-empty tm-span-all">Loading hotel concept…</div>
+                    </div>
+                </div>
+
+                <!-- Every task the team has been given, at any stage. View only. -->
+                <div id="team-panel-tasks" class="hidden">
+                    <div class="tm-panel-head">
+                        <h4 class="tm-panel-title">Team Task Activity</h4>
+                        <p class="tm-panel-note">Every task this team has been given, who has it, when it is due and how far it is.</p>
+                    </div>
+                    <div id="teamModalActivityStats" class="tm-stats"></div>
+                    <div class="tm-card">
+                        <table class="tm-table">
+                            <colgroup>
+                                <col>
+                                <col style="width: 10.5rem;">
+                                <col style="width: 8.5rem;">
+                                <col style="width: 7rem;">
+                                <col style="width: 9rem;">
+                                <col style="width: 8rem;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Student</th>
+                                    <th>Department</th>
+                                    <th>Due</th>
+                                    <th>Status</th>
+                                    <th>Steps done</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teamModalActivityBody"></tbody>
+                        </table>
+                        <div id="teamModalActivityPager" class="tm-pager hidden flex items-center justify-between gap-2">
+                            <button type="button" id="teamModalActivityPrev" class="tm-btn tm-btn-sm">
+                                <span class="iconify" data-icon="mdi:chevron-left"></span> Previous
+                            </button>
+                            <span class="tm-pager-label"><span id="teamModalActivityPageLabel"></span> <span id="teamModalActivityMeta"></span></span>
+                            <button type="button" id="teamModalActivityNext" class="tm-btn tm-btn-sm">
+                                Next <span class="iconify" data-icon="mdi:chevron-right"></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Front Desk's hotel concept + its edit history (loaded when the modal opens) -->
-            <div id="team-panel-concept" class="hidden">
-                <div id="teamModalConceptBody" class="space-y-3">
-                    <div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>
-                </div>
-            </div>
-
-            <!-- Every task the team has been given, at any stage. View only. -->
-            <div id="team-panel-tasks" class="hidden">
-                <div class="flex items-center justify-between gap-2 mb-1.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Every task this team has been given</p>
-                    <span id="teamModalActivityMeta" class="text-[10px] font-semibold text-slate-400"></span>
-                </div>
-                <div class="border border-slate-200 rounded-lg overflow-hidden">
-                    <table class="w-full text-sm" style="table-layout: fixed;">
-                        <colgroup>
-                            <col>
-                            <col style="width: 6.5rem;">
-                            <col style="width: 8rem;">
-                            <col style="width: 6rem;">
-                            <col style="width: 7rem;">
-                            <col style="width: 5rem;">
-                        </colgroup>
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Task</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Student</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Due</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progress</th>
-                            </tr>
-                        </thead>
-                        <tbody id="teamModalActivityBody" class="divide-y divide-slate-100">
-                        </tbody>
-                    </table>
-                    <div id="teamModalActivityPager" class="hidden px-3 py-2 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2">
-                        <button type="button" id="teamModalActivityPrev"
-                            class="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
-                            Previous
-                        </button>
-                        <span id="teamModalActivityPageLabel" class="text-[11px] font-semibold text-slate-500"></span>
-                        <button type="button" id="teamModalActivityNext"
-                            class="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
-                            Next
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="px-4 py-2.5 border-t border-slate-100 flex justify-end rounded-b-2xl flex-shrink-0 bg-slate-50/50">
-            <button onclick="closeTeamModal()" class="px-3.5 py-1.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition font-semibold text-xs">
-                Close
-            </button>
         </div>
     </div>
 </div>
@@ -466,6 +461,7 @@
 </div>
 
 @push('styles')
+@include('partials.team-dialog-styles')
 <style>
     /* Black text across Teams Overview and its popups. Beats every text-* colour
        utility, hover ones included; white text on filled buttons and avatars and
@@ -526,6 +522,35 @@
             .replace(/"/g, '&quot;');
     }
 
+    const STAT_COLOURS = { pending: '#D97706', completed: '#16A34A', in_progress: '#2563EB' };
+
+    /* Three counts over the team's tasks, so the dean sees at a glance how the
+       team is doing. */
+    function renderTeamModalActivityStats(logs) {
+        const box = document.getElementById('teamModalActivityStats');
+        const keyOf = (l) => TASK_STATUS_KEYS[l.status] || 'not_started';
+        const waiting = logs.filter((l) => keyOf(l) === 'pending').length;
+        const done = logs.filter((l) => keyOf(l) === 'completed').length;
+        const working = logs.length - waiting - done;
+
+        const tabCount = document.getElementById('teamTabCountTasks');
+        if (tabCount) tabCount.textContent = logs.length ? logs.length + (logs.length === 1 ? ' task' : ' tasks') : '';
+        if (!box) return;
+
+        const stat = (key, icon, num, label) =>
+            '<div class="tm-stat">'
+                + '<span class="tm-stat-icon status-badge-' + key + '"><span class="iconify" data-icon="' + icon + '"></span></span>'
+                // Inline colour: this page's own black-text rule outranks status-text-*.
+                + '<div><p class="tm-stat-num" style="color:' + STAT_COLOURS[key] + '">' + num + '</p><p class="tm-stat-label">' + label + '</p></div>'
+            + '</div>';
+
+        box.innerHTML = logs.length
+            ? stat('pending', 'mdi:clock-alert-outline', waiting, 'Waiting for faculty review')
+                + stat('completed', 'mdi:check-circle-outline', done, 'Completed')
+                + stat('in_progress', 'mdi:progress-pencil', working, 'Still being worked on')
+            : '';
+    }
+
     function renderTeamModalActivityPage() {
         const activityBody = document.getElementById('teamModalActivityBody');
         const pager = document.getElementById('teamModalActivityPager');
@@ -540,8 +565,12 @@
         if (teamModalActivityPage > totalPages) teamModalActivityPage = totalPages;
         if (teamModalActivityPage < 1) teamModalActivityPage = 1;
 
+        renderTeamModalActivityStats(logs);
+
         if (total === 0) {
-            activityBody.innerHTML = '<tr><td colspan="6" class="px-3 py-6 text-center text-xs text-slate-400">No tasks assigned to this team yet.</td></tr>';
+            activityBody.innerHTML = '<tr><td colspan="6"><div class="tm-empty">'
+                + '<span class="iconify" data-icon="mdi:clipboard-outline"></span>'
+                + 'No tasks have been given to this team yet.</div></td></tr>';
             if (pager) pager.classList.add('hidden');
             if (meta) meta.textContent = '';
             return;
@@ -553,28 +582,34 @@
 
         activityBody.innerHTML = pageLogs.map(function (log) {
             const key = TASK_STATUS_KEYS[log.status] || 'not_started';
-            const statusBadge = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full status-badge-' + key + ' border text-[10px] font-bold whitespace-nowrap">' +
-                '<span class="w-1.5 h-1.5 rounded-full status-fill-' + key + '"></span>' + escHtml(log.status_label) + '</span>';
+            const statusBadge = '<span class="tm-badge status-badge-' + key + '">'
+                + '<span class="tm-dot status-fill-' + key + '"></span>' + escHtml(log.status_label) + '</span>';
             const progress = log.progress_total > 0
-                ? '<div class="text-[10px] font-semibold text-slate-500">' + log.progress_done + '/' + log.progress_total + '</div>' +
-                  '<div class="h-1.5 mt-0.5 rounded-full bg-slate-200 overflow-hidden"><div class="h-full status-fill-' + key + '" style="width:' + Math.round(log.progress_done / log.progress_total * 100) + '%"></div></div>'
-                : '<span class="text-[10px] text-slate-300">—</span>';
+                ? '<p class="tm-muted">' + log.progress_done + ' of ' + log.progress_total + '</p>'
+                    + '<div class="rv-bar" style="margin-top:.35rem"><span class="status-fill-' + key + '" style="width:'
+                    + Math.round(log.progress_done / log.progress_total * 100) + '%"></span></div>'
+                : '<span class="tm-muted">None yet</span>';
+            const student = log.student
+                ? '<div class="flex items-center gap-2 min-w-0">'
+                    + '<span class="tm-avatar tm-avatar-sm">' + escHtml(String(log.student).charAt(0).toUpperCase()) + '</span>'
+                    + '<span class="tm-ellipsis" title="' + escHtml(log.student) + '">' + escHtml(log.student) + '</span>'
+                  + '</div>'
+                : '<span class="tm-muted">Not taken yet</span>';
 
-            return '<tr class="hover:bg-slate-50 transition-colors">' +
-                '<td class="px-3 py-2">' +
-                    (log.code ? '<p class="text-[10px] font-bold text-rose-500">' + escHtml(log.code) + '</p>' : '') +
-                    '<p class="text-xs font-semibold text-slate-800 truncate" title="' + escHtml(log.title) + '">' + escHtml(log.title) + '</p>' +
+            return '<tr>' +
+                '<td>' +
+                    (log.code ? '<p class="tm-muted">' + escHtml(log.code) + '</p>' : '') +
+                    '<p class="tm-task-name">' + escHtml(log.title) + '</p>' +
                 '</td>' +
-                '<td class="px-3 py-2 text-[11px] font-semibold text-slate-600 truncate">' + escHtml(log.role_label || log.role || '—') + '</td>' +
-                '<td class="px-3 py-2 text-[11px] text-slate-600 truncate" title="' + escHtml(log.student || 'Unclaimed') + '">' +
-                    (log.student ? escHtml(log.student) : '<span class="text-slate-400 italic">Unclaimed</span>') + '</td>' +
-                '<td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">' + escHtml(log.due_date || '—') + '</td>' +
-                '<td class="px-3 py-2">' + statusBadge + '</td>' +
-                '<td class="px-3 py-2">' + progress + '</td>' +
+                '<td>' + student + '</td>' +
+                '<td>' + escHtml(log.role_label || log.role || 'None') + '</td>' +
+                '<td' + (log.due_date ? '' : ' class="tm-muted"') + '>' + escHtml(log.due_date || 'No date') + '</td>' +
+                '<td>' + statusBadge + '</td>' +
+                '<td>' + progress + '</td>' +
             '</tr>';
         }).join('');
 
-        if (meta) meta.textContent = 'Showing ' + (start + 1) + '-' + end + ' of ' + total;
+        if (meta) meta.textContent = '(tasks ' + (start + 1) + ' to ' + end + ' of ' + total + ')';
         if (pageLabel) pageLabel.textContent = 'Page ' + teamModalActivityPage + ' of ' + totalPages;
         if (pager) pager.classList.toggle('hidden', total <= TEAM_MODAL_ACTIVITY_PER_PAGE);
         if (prevBtn) prevBtn.disabled = teamModalActivityPage <= 1;
@@ -583,44 +618,46 @@
 
     function openTeamModal(groupName, members, createdAt, activityLogs, facultyId) {
         const logs = Array.isArray(activityLogs) ? activityLogs : [];
+        members = Array.isArray(members) ? members : [];
         loadTeamHotelConcept(facultyId, groupName);
-        const nameSuffix = document.getElementById('modalTeamNameSuffix');
-        if (nameSuffix) {
-            nameSuffix.textContent = groupName ? ' — ' + groupName : '';
-        }
 
-        const tbody = document.getElementById('teamModalMembersBody');
-        if (!members || members.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-slate-400">No members found.</td></tr>';
+        document.getElementById('modalTeamName').textContent = groupName ? 'Team ' + groupName : 'Team';
+        document.getElementById('modalTeamSummary').textContent = [
+            members.length + (members.length === 1 ? ' member' : ' members'),
+            createdAt ? 'Created ' + createdAt : '',
+        ].filter(Boolean).join(' · ');
+        document.getElementById('teamTabCountMembers').textContent = members.length
+            ? members.length + (members.length === 1 ? ' member' : ' members') : '';
+
+        const grid = document.getElementById('teamModalMembersBody');
+        if (members.length === 0) {
+            grid.innerHTML = '<div class="tm-empty" style="grid-column: 1 / -1;">'
+                + '<span class="iconify" data-icon="mdi:account-off-outline"></span>'
+                + 'This team has no members yet.</div>';
         } else {
-            tbody.innerHTML = members.map(function (m, i) {
-                const roleLabels = m.role_labels || [m.role_label || m.role || '—'];
-                const roleBadges = roleLabels.map(function (rl) {
-                    return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">' + escHtml(rl) + '</span>';
-                }).join(' ');
+            grid.innerHTML = members.map(function (m, i) {
+                const roleLabels = m.role_labels || [m.role_label || m.role];
+                const roleChips = roleLabels.filter(Boolean).map(function (rl) {
+                    return '<span class="tm-chip"><span class="iconify" data-icon="mdi:briefcase-outline"></span>' + escHtml(rl) + '</span>';
+                }).join('') || '<span class="tm-muted">No role yet</span>';
                 const activityBtn = m.user_id
-                    ? '<button type="button" data-activity-user="' + Number(m.user_id) + '"' +
-                        ' data-activity-name="' + escHtml(m.name) + '"' +
-                        ' class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition"' +
-                        ' title="View this member\'s activity logs">' +
-                        '<span class="iconify text-xs" data-icon="mdi:clipboard-text-clock-outline"></span> Activity' +
-                      '</button>'
-                    : '<span class="text-[10px] text-slate-300">—</span>';
-                return '<tr class="hover:bg-slate-50 transition-colors">' +
-                    '<td class="px-3 py-2 text-[11px] text-slate-400 font-medium">' + (i + 1) + '</td>' +
-                    '<td class="px-3 py-2">' +
-                        '<div class="flex items-center gap-2 min-w-0">' +
-                            '<div class="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-[10px] font-bold flex-shrink-0">' +
-                                String(m.name || '?').charAt(0).toUpperCase() +
-                            '</div>' +
-                            '<span class="text-xs font-semibold text-slate-700 truncate" title="' + escHtml(m.name) + '">' + escHtml(m.name) + '</span>' +
-                        '</div>' +
-                    '</td>' +
-                    '<td class="px-3 py-2">' +
-                        '<div class="flex flex-wrap gap-1">' + roleBadges + '</div>' +
-                    '</td>' +
-                    '<td class="px-3 py-2 text-center">' + activityBtn + '</td>' +
-                '</tr>';
+                    ? '<button type="button" data-activity-user="' + Number(m.user_id) + '"'
+                        + ' data-activity-name="' + escHtml(m.name) + '" class="tm-btn"'
+                        + ' title="Show everything this student has done">'
+                        + '<span class="iconify" data-icon="mdi:clipboard-text-clock-outline"></span> See activity'
+                      + '</button>'
+                    : '';
+                return '<div class="tm-member" data-member-card="' + Number(m.user_id || 0) + '">'
+                    + '<div class="tm-member-top">'
+                        + '<span class="tm-avatar">' + escHtml(String(m.name || '?').charAt(0).toUpperCase()) + '</span>'
+                        + '<div class="min-w-0">'
+                            + '<p class="tm-member-name" title="' + escHtml(m.name) + '">' + escHtml(m.name) + '</p>'
+                            + '<p class="tm-member-no">Member ' + (i + 1) + '</p>'
+                        + '</div>'
+                    + '</div>'
+                    + '<div class="tm-chips">' + roleChips + '</div>'
+                    + activityBtn
+                + '</div>';
             }).join('');
         }
 
@@ -635,7 +672,7 @@
         document.body.style.overflow = 'hidden';
     }
 
-    /* Team Details modal tabs: Members & Roles / Hotel Concept / Student Tasks */
+    /* Team Details sections: Members & Roles / Hotel Concept / Team Task Activity */
     function switchTeamModalTab(tabId) {
         const tabs = ['members', 'concept', 'tasks'];
         const current = tabs.includes(tabId) ? tabId : 'members';
@@ -645,11 +682,8 @@
 
             const btn = document.getElementById('team-tab-' + tab);
             if (!btn) return;
-            const isOn = tab === current;
-            btn.classList.toggle('border-rose-500', isOn);
-            btn.classList.toggle('text-rose-600', isOn);
-            btn.classList.toggle('border-transparent', !isOn);
-            btn.classList.toggle('text-slate-400', !isOn);
+            btn.classList.toggle('is-on', tab === current);
+            btn.setAttribute('aria-current', tab === current ? 'true' : 'false');
         });
     }
 
@@ -661,7 +695,7 @@
         const body = document.getElementById('teamModalConceptBody');
         if (!body) return;
 
-        body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>';
+        body.innerHTML = '<div class="tm-empty tm-span-all">Loading hotel concept…</div>';
 
         const url = TEAM_CONCEPT_URL
             + '?faculty_id=' + encodeURIComponent(facultyId || '')
@@ -677,7 +711,7 @@
             }))
             .then(data => { body.innerHTML = renderTeamConceptSlots(data); })
             .catch(err => {
-                body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
+                body.innerHTML = '<div class="tm-empty is-error tm-span-all">'
                     + escHtml(err.message || 'Could not load the hotel concept.') + '</div>';
             });
     }
@@ -692,83 +726,69 @@
         not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
     };
 
-    /* Both of a team's concepts, each with its own history. Read-only: the dean
-       oversees the work, the team's own faculty gives the verdict. */
+    /* Both of a team's concepts side by side, each with its own history. Read-only:
+       the dean oversees the work, the team's own faculty gives the verdict. */
     function renderTeamConceptSlots(data) {
         return (data.slots || []).map(function (entry) {
-            return '<div class="mb-4">'
-                + '<p class="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-500 mb-1">' + escHtml(entry.slot_label) + '</p>'
-                + renderTeamHotelConcept(entry)
+            if (!entry.concept) {
+                return '<div class="tm-concept-empty">'
+                    + '<p class="tm-card-title">' + escHtml(entry.slot_label) + '</p>'
+                    + '<p class="tm-panel-note mt-1">Not proposed yet.</p>'
+                + '</div>';
+            }
+            return '<div class="tm-card">'
+                + '<div class="tm-card-head"><p class="tm-card-title">' + escHtml(entry.slot_label) + '</p></div>'
+                + '<div class="tm-concept-body">' + renderTeamHotelConcept(entry) + '</div>'
             + '</div>';
-        }).join('') || '<div class="px-3 py-6 text-center text-xs text-slate-400">This team has no hotel concepts yet.</div>';
+        }).join('') || '<div class="tm-empty tm-span-all"><span class="iconify" data-icon="mdi:lightbulb-off-outline"></span>This team has no hotel concepts yet.</div>';
     }
 
+    /* One concept and its edit history, inside its card. */
     function renderTeamHotelConcept(data) {
         const concept = data.concept;
         const history = Array.isArray(data.history) ? data.history : [];
-        const status = concept ? (concept.status || 'draft') : 'draft';
+        const status = concept.status || 'draft';
+        const statusBadge = '<span class="tm-badge ' + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">'
+            + escHtml(concept.status_label) + '</span>';
 
-        const statusBadge = concept
-            ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold '
-                + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">'
-                + escHtml(concept.status_label) + '</span>'
-            : '';
-
-        const conceptBlock = concept
-            ? '<div class="rounded-lg border border-slate-200 bg-slate-50/70 p-3">' +
-                '<div class="flex items-start justify-between gap-2 flex-wrap">' +
-                    '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>' +
-                    (concept.tagline ? '<p class="text-[11px] italic text-brand">' + escHtml(concept.tagline) + '</p>' : '') +
-                    '<div class="flex items-center gap-1.5 flex-wrap">' + statusBadge +
-                        '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
-                            + escHtml(concept.hotel_type_label) + '</span>' +
-                    '</div>' +
-                '</div>' +
-                '<p class="text-xs text-slate-600 mt-2 whitespace-pre-line">' + escHtml(concept.description) + '</p>' +
-                '<p class="text-[10px] text-slate-400 mt-2">Last updated'
-                    + (concept.updated_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.updated_by) + '</span>' : '')
-                    + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : '') + '</p>' +
-                (concept.faculty_feedback
-                    ? '<div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">'
-                        + '<p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Faculty feedback</p>'
-                        + '<p class="text-[11px] text-amber-800 mt-0.5 whitespace-pre-line">' + escHtml(concept.faculty_feedback) + '</p>'
-                      + '</div>'
-                    : '') +
-              '</div>'
-            : '<div class="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center">' +
-                '<p class="text-xs font-bold text-slate-400">Not proposed yet.</p>' +
-              '</div>';
+        const conceptBlock =
+            '<div class="tm-chips">' + statusBadge + '<span class="tm-chip">' + escHtml(concept.hotel_type_label) + '</span></div>'
+            + '<p class="tm-concept-name mt-2">' + escHtml(concept.title) + '</p>'
+            + (concept.tagline ? '<p class="tm-concept-tagline">' + escHtml(concept.tagline) + '</p>' : '')
+            + '<p class="tm-concept-desc">' + escHtml(concept.description) + '</p>'
+            + ((concept.updated_by || concept.updated_at)
+                ? '<p class="tm-concept-meta">Last changed'
+                    + (concept.updated_by ? ' by <b>' + escHtml(concept.updated_by) + '</b>' : '')
+                    + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : '') + '</p>'
+                : '')
+            + (concept.faculty_feedback
+                ? '<div class="tm-note"><p class="tm-note-label">Faculty feedback</p>'
+                    + '<p class="tm-note-text">' + escHtml(concept.faculty_feedback) + '</p></div>'
+                : '');
 
         const historyRows = history.length
             ? history.map(function (entry) {
                 const changes = (entry.changes || []).map(function (change) {
-                    return '<li class="text-[11px] text-slate-500">' +
-                        '<span class="font-semibold text-slate-600">' + escHtml(change.label) + ':</span> ' +
-                        '<span class="line-through text-slate-400">' + (escHtml(change.from) || '—') + '</span> ' +
-                        '<span class="text-slate-400">to</span> ' +
-                        '<span class="text-slate-700">' + escHtml(change.to) + '</span>' +
-                    '</li>';
+                    return '<li class="mt-1"><b>' + escHtml(change.label) + ':</b> '
+                        + '<s class="tm-muted">' + (escHtml(change.from) || 'empty') + '</s> to '
+                        + escHtml(change.to) + '</li>';
                 }).join('');
 
-                return '<div class="px-3 py-2.5">' +
-                    '<div class="flex items-start justify-between gap-2 flex-wrap">' +
-                        '<p class="text-xs font-bold text-slate-700">' + escHtml(entry.editor) +
-                            ' <span class="font-semibold text-slate-400">— ' + escHtml(entry.action_label) + '</span></p>' +
-                        '<span class="text-[10px] text-slate-400">' + escHtml(entry.created_at) + ' · ' + escHtml(entry.created_at_human) + '</span>' +
-                    '</div>' +
-                    (changes
-                        ? '<ul class="mt-1.5 space-y-1">' + changes + '</ul>'
-                        : '<p class="mt-1.5 text-[11px] text-slate-500"><span class="font-semibold text-slate-600">'
-                            + escHtml(entry.title) + '</span> · ' + escHtml(entry.hotel_type_label) + '</p>') +
-                '</div>';
+                return '<div class="tm-history-row">'
+                    + '<p><b>' + escHtml(entry.editor) + '</b> ' + escHtml(entry.action_label) + '</p>'
+                    + '<p class="tm-muted">' + escHtml(entry.created_at) + ' (' + escHtml(entry.created_at_human) + ')</p>'
+                    + (changes
+                        ? '<ul>' + changes + '</ul>'
+                        : '<p class="mt-1">' + escHtml(entry.title) + ', ' + escHtml(entry.hotel_type_label) + '</p>')
+                + '</div>';
             }).join('')
-            : '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>';
+            : '<div class="tm-history-row tm-muted">No changes recorded yet.</div>';
 
-        return conceptBlock +
-            '<div>' +
-                '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Concept Edit History</p>' +
-                '<div class="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-60 overflow-y-auto">' + historyRows + '</div>' +
-            '</div>';
+        return conceptBlock
+            + '<div class="tm-history">'
+                + '<p class="tm-field-label">Changes made so far</p>'
+                + '<div class="tm-history-list">' + historyRows + '</div>'
+            + '</div>';
     }
 
     /* Centralized activity log — same table and endpoint the faculty portal reads. */
@@ -777,6 +797,7 @@
     function closeMemberActivityPanel() {
         const panel = document.getElementById('memberActivityPanel');
         if (panel) panel.classList.add('hidden');
+        document.querySelectorAll('[data-member-card].is-on').forEach((c) => c.classList.remove('is-on'));
     }
 
     /* Delegated: the buttons are rebuilt whenever the team modal opens, and an
@@ -795,8 +816,12 @@
         if (!panel || !body) return;
 
         panel.classList.remove('hidden');
-        if (title) title.textContent = (memberName || 'Member') + ' — Activity Logs';
-        body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading activity…</div>';
+        document.querySelectorAll('[data-member-card]').forEach((c) => {
+            c.classList.toggle('is-on', c.getAttribute('data-member-card') === String(userId));
+        });
+        if (title) title.textContent = 'What ' + (memberName || 'this member') + ' has done';
+        body.innerHTML = '<div class="tm-empty">Loading activity…</div>';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
         fetch(MEMBER_ACTIVITY_URL.replace('__ID__', String(userId)), {
             credentials: 'same-origin',
@@ -812,26 +837,24 @@
                 body.innerHTML = renderActivityRows(data.logs || []);
             })
             .catch(function (err) {
-                body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
+                body.innerHTML = '<div class="tm-empty is-error">'
                     + escHtml(err.message || 'Could not load activity logs.') + '</div>';
             });
     }
 
     function renderActivityRows(logs) {
         if (!logs.length) {
-            return '<div class="px-3 py-6 text-center text-xs text-slate-400">No recorded activity for this member yet.</div>';
+            return '<div class="tm-empty">No recorded activity for this member yet.</div>';
         }
         return logs.map(function (log) {
-            return '<div class="px-3 py-2.5 flex items-start gap-2.5 hover:bg-slate-50/70 transition">' +
-                '<span class="mt-0.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100 whitespace-nowrap">' +
-                    escHtml(log.activity_label || log.activity || '—') +
-                '</span>' +
-                '<div class="min-w-0 flex-1">' +
-                    '<p class="text-xs text-slate-700">' + escHtml(log.description || '—') + '</p>' +
-                    '<p class="text-[10px] text-slate-400 mt-0.5">' + escHtml(log.created_at || '') +
-                        (log.created_at_human ? ' · ' + escHtml(log.created_at_human) : '') + '</p>' +
-                '</div>' +
-            '</div>';
+            return '<div class="tm-activity-row">'
+                + '<span class="tm-chip">' + escHtml(log.activity_label || log.activity || 'Activity') + '</span>'
+                + '<div class="min-w-0 flex-1">'
+                    + '<p class="tm-activity-desc">' + escHtml(log.description || '') + '</p>'
+                    + '<p class="tm-activity-time">' + escHtml(log.created_at || '')
+                        + (log.created_at_human ? ' (' + escHtml(log.created_at_human) + ')' : '') + '</p>'
+                + '</div>'
+            + '</div>';
         }).join('');
     }
 
