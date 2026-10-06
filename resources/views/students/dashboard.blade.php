@@ -122,8 +122,8 @@
         }
         .task-card:hover {
             transform: translateY(-1px);
-            border-color: #E4C97E;
-            box-shadow: 0 10px 30px -12px rgba(94, 16, 36, 0.18);
+            border-color: #8A817A;
+            box-shadow: 0 10px 30px -12px rgba(24, 24, 24, 0.16);
         }
 
         .tab-btn {
@@ -1009,7 +1009,7 @@
                                  used to be narrowed by (search, role) is gone in favour of
                                  the per-TASK grouping below. --}}
                             <select id="taskStatusFilter" onchange="filterTaskRows()"
-                                    class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand">
+                                    class="rounded-xl border border-[#E7E1DD] bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#8A817A]/30 focus:border-[#8A817A]">
                                 <option value="all">All</option>
                                 <option value="not_started">Not Started</option>
                                 <option value="in_progress">In Progress</option>
@@ -1038,7 +1038,7 @@
                                         'icon' => 'mdi:bell-ring-outline',
                                         'urlKey' => 'simulation_url',
                                         'modules' => array_values(array_filter($myModules, fn ($m) => !empty($m['simulation_url']))),
-                                        'class' => 'bg-white text-slate-700 border-slate-200 shadow-sm hover:border-brand/40 hover:text-brand',
+                                        'class' => 'bg-white text-slate-700 border-[#E7E1DD] shadow-sm hover:border-[#8A817A] hover:text-[#181818]',
                                     ],
                                 ];
                             @endphp
@@ -1060,11 +1060,11 @@
                                             <span class="iconify text-sm" data-icon="mdi:chevron-down"></span>
                                         </button>
                                         <div id="{{ $area['id'] }}" hidden
-                                             class="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-slate-100 shadow-xl py-1.5 z-30">
+                                             class="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-[#E7E1DD] shadow-xl py-1.5 z-30">
                                             <p class="px-3 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Choose a role</p>
                                             @foreach($area['modules'] as $module)
                                                 <a href="{{ $module[$area['urlKey']] }}"
-                                                   class="flex items-center gap-2 px-3 py-2 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-brand">
+                                                   class="flex items-center gap-2 px-3 py-2 text-[13px] font-semibold text-slate-600 hover:bg-[#F5F2EF] hover:text-[#181818]">
                                                     <span class="iconify text-base" data-icon="{{ $roleIcons[$module['role']] ?? 'mdi:clipboard-text-outline' }}"></span>
                                                     {{ $module['label'] }}
                                                 </a>
@@ -1577,12 +1577,12 @@
     <div id="taskInstructionsModal" class="ink-all fixed inset-0 z-50 hidden flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTaskInstructions()"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 34rem;">
-            <div class="bg-brand-soft px-4 py-3 border-b border-brand/10 flex justify-between items-start gap-3 rounded-t-2xl flex-shrink-0">
+            <div class="bg-[#F5F2EF] px-4 py-3 border-b border-[#E7E1DD] flex justify-between items-start gap-3 rounded-t-2xl flex-shrink-0">
                 <div class="min-w-0">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-brand/60">Task Instructions</p>
-                    <h4 id="taskInstructionsName" class="font-bold text-brand text-sm truncate">Task</h4>
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-[#8A817A]">Task Instructions</p>
+                    <h4 id="taskInstructionsName" class="font-bold text-[#181818] text-sm truncate">Task</h4>
                 </div>
-                <button type="button" onclick="closeTaskInstructions()" class="text-slate-400 hover:text-brand hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0" aria-label="Close">
+                <button type="button" onclick="closeTaskInstructions()" class="text-[#5F5A55] hover:text-[#181818] hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0" aria-label="Close">
                     <span class="iconify text-lg" data-icon="mdi:close"></span>
                 </button>
             </div>
@@ -1913,7 +1913,7 @@
             const list = group?.querySelector('[data-completed-list]');
             if (list) {
                 const done = document.createElement('div');
-                done.className = 'task-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden';
+                done.className = 'task-card bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden';
                 done.dataset.taskCard = '';
                 done.dataset.taskStatus = 'completed';
                 done.innerHTML =
@@ -1923,16 +1923,16 @@
                             + '<p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">' + conceptEscape(code) + '</p>'
                         + '</div>'
                         + '<div class="flex items-center gap-2 shrink-0 ml-auto">'
-                            + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap bg-emerald-50 text-emerald-600">Completed</span>'
+                            + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap bg-[#F5F2EF] text-[#181818]">Completed</span>'
                         + '</div>'
                     + '</div>'
                     + '<div class="flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">'
                         + '<div class="flex items-center gap-1.5 min-w-0">'
-                            + '<span class="iconify text-slate-300 text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>'
+                            + '<span class="iconify text-[#8A817A] text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>'
                             + '<p class="text-[11px] font-semibold text-slate-300">No due date</p>'
                         + '</div>'
                         + '<div class="flex items-center gap-2 shrink-0">'
-                            + '<span class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">'
+                            + '<span class="w-8 h-8 rounded-full bg-[#F5F2EF] text-[#5F5A55] flex items-center justify-center">'
                                 + '<span class="iconify text-base" data-icon="mdi:check"></span>'
                             + '</span>'
                         + '</div>'
@@ -2504,11 +2504,11 @@
             else statusKey = 'in_progress';
 
             const meta = {
-                not_started: { label: 'Not Started', badge: 'bg-slate-100 text-slate-500', icon: 'mdi:circle-outline' },
-                in_progress: { label: 'In Progress', badge: 'bg-brand-soft text-brand', icon: 'mdi:progress-clock' },
-                revision: { label: 'Needs Revision', badge: 'bg-amber-50 text-amber-700', icon: 'mdi:message-alert-outline' },
-                pending: { label: 'Pending', badge: 'bg-blue-50 text-blue-700', icon: 'mdi:clock-outline' },
-                completed: { label: 'Completed', badge: 'bg-emerald-50 text-emerald-600', icon: 'mdi:check-decagram-outline' },
+                not_started: { label: 'Not Started', badge: 'bg-[#F5F2EF] text-[#8A817A]', icon: 'mdi:circle-outline' },
+                in_progress: { label: 'In Progress', badge: 'bg-[#F5F2EF] text-[#5F5A55]', icon: 'mdi:progress-clock' },
+                revision: { label: 'Needs Revision', badge: 'bg-[#E7E1DD] text-[#181818]', icon: 'mdi:message-alert-outline' },
+                pending: { label: 'Pending', badge: 'bg-[#F5F2EF] text-[#5F5A55]', icon: 'mdi:clock-outline' },
+                completed: { label: 'Completed', badge: 'bg-[#F5F2EF] text-[#181818]', icon: 'mdi:check-decagram-outline' },
             }[statusKey];
 
             const percentEl = groupEl.querySelector('[data-summary-percent]');
@@ -2537,10 +2537,10 @@
            — shared by the checklist-tick handler and settleConceptTaskRow(). */
         function paintRowStatus(row, statusKey, percent) {
             const meta = {
-                not_started: { label: 'Not Started', badge: 'bg-slate-100 text-slate-500' },
-                in_progress: { label: 'In Progress', badge: 'bg-brand-soft text-brand' },
-                revision: { label: 'Needs Revision', badge: 'bg-amber-50 text-amber-700' },
-                completed: { label: 'Completed', badge: 'bg-emerald-50 text-emerald-600' },
+                not_started: { label: 'Not Started', badge: 'bg-[#F5F2EF] text-[#8A817A]' },
+                in_progress: { label: 'In Progress', badge: 'bg-[#F5F2EF] text-[#5F5A55]' },
+                revision: { label: 'Needs Revision', badge: 'bg-[#E7E1DD] text-[#181818]' },
+                completed: { label: 'Completed', badge: 'bg-[#F5F2EF] text-[#181818]' },
             }[statusKey];
             if (!meta) return;
 

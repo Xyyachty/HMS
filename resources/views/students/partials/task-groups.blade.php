@@ -72,21 +72,13 @@
         'maintenance'           => 'mdi:broom',
         'housekeeping'          => 'mdi:sparkles',
     ];
-    $homeRoleTints = [
-        'front_desk'            => ['bg' => 'bg-orange-50',  'text' => 'text-orange-500',  'bar' => 'bg-orange-500'],
-        'restaurant_management' => ['bg' => 'bg-amber-50',   'text' => 'text-amber-500',   'bar' => 'bg-amber-500'],
-        'room_management'       => ['bg' => 'bg-pink-50',    'text' => 'text-brand',       'bar' => 'bg-brand'],
-        'maintenance'           => ['bg' => 'bg-violet-50',  'text' => 'text-violet-500',  'bar' => 'bg-violet-500'],
-        'housekeeping'          => ['bg' => 'bg-teal-50',    'text' => 'text-teal-500',    'bar' => 'bg-teal-500'],
-    ];
-    $homeTint = fn($role, $key) => $homeRoleTints[$role][$key] ?? ($key === 'bar' ? 'bg-slate-400' : ($key === 'text' ? 'text-slate-400' : 'bg-slate-50'));
 
     $groupStatusMeta = [
-        'not_started' => ['label' => 'Not Started',    'badge' => 'bg-slate-100 text-slate-500', 'icon' => 'mdi:circle-outline'],
-        'in_progress' => ['label' => 'In Progress',    'badge' => 'bg-brand-soft text-brand',    'icon' => 'mdi:progress-clock'],
-        'revision'    => ['label' => 'Needs Revision', 'badge' => 'bg-amber-50 text-amber-700',  'icon' => 'mdi:message-alert-outline'],
-        'pending'     => ['label' => 'Pending',        'badge' => 'bg-blue-50 text-blue-700',    'icon' => 'mdi:clock-outline'],
-        'completed'   => ['label' => 'Completed',      'badge' => 'bg-emerald-50 text-emerald-600', 'icon' => 'mdi:check-decagram-outline'],
+        'not_started' => ['label' => 'Not Started',    'badge' => 'bg-[#F5F2EF] text-[#8A817A]', 'icon' => 'mdi:circle-outline'],
+        'in_progress' => ['label' => 'In Progress',    'badge' => 'bg-[#F5F2EF] text-[#5F5A55]', 'icon' => 'mdi:progress-clock'],
+        'revision'    => ['label' => 'Needs Revision', 'badge' => 'bg-[#E7E1DD] text-[#181818]', 'icon' => 'mdi:message-alert-outline'],
+        'pending'     => ['label' => 'Pending',        'badge' => 'bg-[#F5F2EF] text-[#5F5A55]', 'icon' => 'mdi:clock-outline'],
+        'completed'   => ['label' => 'Completed',      'badge' => 'bg-[#F5F2EF] text-[#181818]', 'icon' => 'mdi:check-decagram-outline'],
     ];
 
     // Each task card is labelled by its role's initials and its place in
@@ -142,23 +134,23 @@
 
             $taskRowIndex = 0;
         @endphp
-        <section data-task-group data-group-status="{{ $groupStatus }}" class="rounded-3xl border border-pink-100 bg-white overflow-hidden mb-6">
+        <section data-task-group data-group-status="{{ $groupStatus }}" class="rounded-3xl border border-[#E7E1DD] bg-white overflow-hidden mb-6">
             {{-- One rounded card per TASK group, with the summary band and the cards
                  it counts inside the same border. Held apart they read as two
                  unrelated blocks, and with several groups on the page it is not
                  obvious which cards a summary is summarising. --}}
-            <div class="bg-gradient-to-r from-brand-soft to-white border-b border-pink-100 px-5 sm:px-7 py-6">
+            <div class="bg-gradient-to-r from-[#F5F2EF] to-white border-b border-[#E7E1DD] px-5 sm:px-7 py-6">
                 <div class="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr_1fr_1fr] gap-6 lg:gap-0">
                     <div class="flex items-center lg:pr-6">
                         <div class="min-w-0">
                             <p class="text-lg font-extrabold text-slate-900 tracking-wide">{{ $groupLabel }}</p>
-                            <span class="inline-flex items-center px-2.5 py-1 mt-1 rounded-lg text-[11px] font-bold {{ $homeTint($groupRole, 'bg') }} {{ $homeTint($groupRole, 'text') }}">
+                            <span class="inline-flex items-center px-2.5 py-1 mt-1 rounded-lg text-[11px] font-bold bg-[#F5F2EF] text-[#5F5A55]">
                                 {{ $groupRoleLabel }}
                             </span>
                             <p class="text-[12px] text-slate-500 mt-2">Complete all the tasks below to fulfill the requirements for {{ $groupLabel }}.</p>
                         </div>
                     </div>
-                    <div class="lg:border-l lg:border-pink-100 lg:pl-6 flex flex-col justify-center">
+                    <div class="lg:border-l lg:border-[#E7E1DD] lg:pl-6 flex flex-col justify-center">
                         <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Progress %</p>
                         <div class="flex items-center gap-3 mt-1.5">
                             <svg width="56" height="56" viewBox="0 0 60 60" class="shrink-0 -rotate-90">
@@ -172,7 +164,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="lg:border-l lg:border-pink-100 lg:pl-6 flex flex-col justify-center">
+                    <div class="lg:border-l lg:border-[#E7E1DD] lg:pl-6 flex flex-col justify-center">
                         <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</p>
                         <span data-summary-status
                               class="inline-flex items-center gap-1.5 mt-2 w-fit px-3 py-1.5 rounded-lg text-[12px] font-bold {{ $groupMeta['badge'] }}">
@@ -180,10 +172,10 @@
                             {{ $groupMeta['label'] }}
                         </span>
                     </div>
-                    <div class="lg:border-l lg:border-pink-100 lg:pl-6 flex flex-col justify-center">
+                    <div class="lg:border-l lg:border-[#E7E1DD] lg:pl-6 flex flex-col justify-center">
                         <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Due Date</p>
                         <div class="flex items-center gap-2 mt-2">
-                            <span class="iconify text-slate-400 text-base" data-icon="mdi:calendar-blank-outline"></span>
+                            <span class="iconify text-[#8A817A] text-base" data-icon="mdi:calendar-blank-outline"></span>
                             @if($groupDue)
                                 <p class="text-[13px] font-semibold text-slate-700">{{ $groupDue->format('M j, Y') }}</p>
                             @else
@@ -202,7 +194,7 @@
             {{-- The page's own background, kept behind the cards now that they sit
                  inside the group rather than on the page, so white cards still read
                  as cards instead of dissolving into a white panel. --}}
-            <div class="bg-surface px-5 sm:px-7 py-5">
+            <div class="bg-[#F5F2EF] px-5 sm:px-7 py-5">
                 {{-- Also the drop target settleConceptTaskRow() appends the
                      settled concept card to, so it lands in the same grid. --}}
                 <div data-completed-list class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
@@ -249,7 +241,7 @@
                              data-task-id="{{ $task->task_id }}"
                              data-task-status="{{ $row->status }}"
                              data-task-role="{{ $task->role }}"
-                             class="task-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                             class="task-card bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
                             <div class="flex flex-wrap items-start gap-3 px-4 sm:px-5 pt-4 pb-3">
                                 <div class="min-w-0 flex-1 basis-[140px]">
                                     <p class="text-[14px] font-bold leading-snug {{ $isCompleted ? 'text-slate-400' : 'text-slate-800' }}">{{ $task->title }}</p>
@@ -297,9 +289,9 @@
                                  is the only progress figure now. --}}
                             <div class="flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">
                                 <div class="flex items-center gap-1.5 min-w-0">
-                                    <span class="iconify text-slate-300 text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>
+                                    <span class="iconify text-[#8A817A] text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>
                                     @if($task->due_date)
-                                        <p class="text-[11px] font-semibold truncate {{ $isOverdue && !$isCompleted && !$isPending ? 'text-red-500' : 'text-slate-500' }}">
+                                        <p class="text-[11px] font-semibold truncate {{ $isOverdue && !$isCompleted && !$isPending ? 'text-[#181818]' : 'text-slate-500' }}">
                                             {{ $task->due_date->format('M j, Y') }} &middot; {{ $task->due_date->format('g:i A') }}
                                         </p>
                                     @else
@@ -309,16 +301,16 @@
                                 <div class="flex items-center gap-2 shrink-0">
                                     <button type="button" onclick="openTaskInstructions('{{ $rowDetailId }}')"
                                             title="View instructions" aria-label="View instructions for {{ $task->title }}"
-                                            class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand hover:border-brand/40 transition-colors">
+                                            class="w-8 h-8 rounded-full border border-[#E7E1DD] flex items-center justify-center text-[#5F5A55] hover:text-[#181818] hover:border-[#8A817A] transition-colors">
                                         <span class="iconify text-base" data-icon="mdi:eye-outline"></span>
                                     </button>
                                     @if($isCompleted)
-                                        <span class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                                        <span class="w-8 h-8 rounded-full bg-[#F5F2EF] text-[#5F5A55] flex items-center justify-center">
                                             <span class="iconify text-base" data-icon="mdi:check"></span>
                                         </span>
                                     @elseif($isPending)
                                         {{-- Handed in: nothing to press until faculty approve or send it back. --}}
-                                        <span class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"
+                                        <span class="w-8 h-8 rounded-full bg-[#F5F2EF] text-[#5F5A55] flex items-center justify-center"
                                               title="Waiting for faculty approval">
                                             <span class="iconify text-base" data-icon="mdi:clock-outline"></span>
                                         </span>
@@ -335,8 +327,8 @@
                                                     aria-label="{{ $needsRevision ? 'Resubmit' : 'Mark' }} {{ $task->title }}"
                                                     class="w-8 h-8 rounded-full flex items-center justify-center transition
                                                         {{ $needsRevision
-                                                            ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100'
-                                                            : 'text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10' }}">
+                                                            ? 'text-[#181818] bg-[#E7E1DD] border border-[#8A817A] hover:bg-[#F5F2EF]'
+                                                            : 'text-[#5F5A55] bg-[#F5F2EF] border border-[#E7E1DD] hover:bg-[#E7E1DD]' }}">
                                                 <span class="iconify text-base" data-icon="{{ $needsRevision ? 'mdi:send-outline' : 'mdi:check' }}"></span>
                                             </button>
                                         </form>
@@ -354,7 +346,7 @@
                                  panel, and because the poller reprints it with fresh state.
                                  openTaskInstructions() lifts this node into the dialog and
                                  puts it back on close, so it stays hidden here either way. --}}
-                            <div class="task-detail hidden px-4 sm:px-5 py-4 bg-slate-50/60 border-t border-slate-100"
+                            <div class="task-detail hidden px-4 sm:px-5 py-4 bg-[#F5F2EF]/60 border-t border-[#E7E1DD]"
                                  id="{{ $rowDetailId }}"
                                  data-detail-name="{{ $task->title }}"
                                  data-detail-code="{{ $rowCode }}"
@@ -373,7 +365,7 @@
                                              is done in. Ticked as the student works, and every one
                                              has to be ticked before it can be handed in - the
                                              submit route checks the same thing the button does. --}}
-                                        <div class="rounded-xl border border-slate-200 bg-white px-3 py-2.5"
+                                        <div class="rounded-xl border border-[#E7E1DD] bg-white px-3 py-2.5"
                                              data-activity-panel data-task="{{ $task->task_id }}">
                                             <div class="flex items-center justify-between gap-2">
                                                 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
@@ -388,7 +380,7 @@
                                                 @foreach($activities as $i => $activity)
                                                     <li class="flex items-start gap-2">
                                                         <input type="checkbox"
-                                                               class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30 disabled:opacity-50"
+                                                               class="mt-0.5 rounded border-[#8A817A] accent-[#5F5A55] focus:ring-[#8A817A]/30 disabled:opacity-50"
                                                                data-activity-check
                                                                data-index="{{ $i }}"
                                                                @checked($activity['done'])
@@ -409,14 +401,14 @@
                                     @endif
                                     @if($needsRevision)
                                         {{-- Sent back by faculty: active again, but carrying feedback. --}}
-                                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                            <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
+                                        <div class="rounded-xl border border-[#E7E1DD] bg-[#F5F2EF] px-3 py-2">
+                                            <p class="text-[10px] font-bold uppercase tracking-wider text-[#5F5A55] flex items-center gap-1">
                                                 <span class="iconify text-xs" data-icon="mdi:message-alert-outline"></span>
                                                 Faculty feedback{{ $task->revision_count > 1 ? ' · revision ' . $task->revision_count : '' }}
                                             </p>
-                                            <p class="text-xs text-amber-800 mt-1 whitespace-pre-line">{{ $task->feedback }}</p>
+                                            <p class="text-xs text-[#181818] mt-1 whitespace-pre-line">{{ $task->feedback }}</p>
                                             @if($task->feedback_at)
-                                                <p class="text-[10px] text-amber-600 mt-1">{{ $task->feedback_at->diffForHumans() }}</p>
+                                                <p class="text-[10px] text-[#8A817A] mt-1">{{ $task->feedback_at->diffForHumans() }}</p>
                                             @endif
                                         </div>
                                     @endif
@@ -426,7 +418,7 @@
                                              paintHotelConcepts() painting only whichever the browser
                                              matched first. --}}
                                         <button type="button" onclick="showSection('group')"
-                                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-[13px] font-bold text-slate-700 hover:bg-slate-50 hover:text-brand transition-colors">
+                                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E7E1DD] text-[13px] font-bold text-slate-700 hover:bg-[#F5F2EF] hover:text-[#181818] transition-colors">
                                             <span class="iconify text-base" data-icon="mdi:lightbulb-outline"></span>
                                             Write the concepts in My Team
                                         </button>
@@ -446,22 +438,22 @@
         </section>
     @endforeach
 
-    <div id="taskFilterEmpty" class="bg-white rounded-2xl border border-slate-100 px-6 py-10 text-center hidden">
+    <div id="taskFilterEmpty" class="bg-white rounded-2xl border border-[#E7E1DD] px-6 py-10 text-center hidden">
         <p class="text-sm font-bold text-slate-500">No tasks match this filter</p>
         <p class="text-xs text-slate-400 mt-1">Pick a different status.</p>
     </div>
 
-    <div id="activeTasksEmpty" class="bg-white rounded-2xl border border-slate-100 px-6 py-12 text-center{{ $myRoleTasks->count() > 0 ? ' hidden' : '' }}">
-        <div class="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span class="iconify text-emerald-400 text-3xl" data-icon="mdi:check-decagram-outline"></span>
+    <div id="activeTasksEmpty" class="bg-white rounded-2xl border border-[#E7E1DD] px-6 py-12 text-center{{ $myRoleTasks->count() > 0 ? ' hidden' : '' }}">
+        <div class="w-16 h-16 bg-[#F5F2EF] rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span class="iconify text-[#8A817A] text-3xl" data-icon="mdi:check-decagram-outline"></span>
         </div>
         <p class="text-base font-bold text-slate-600">All tasks completed!</p>
         <p class="text-sm text-slate-400 mt-1">Great job — no pending tasks for your role.</p>
     </div>
 @else
-    <div class="bg-white rounded-2xl border border-slate-100 px-6 py-12 text-center">
-        <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span class="iconify text-slate-300 text-3xl" data-icon="mdi:account-question-outline"></span>
+    <div class="bg-white rounded-2xl border border-[#E7E1DD] px-6 py-12 text-center">
+        <div class="w-16 h-16 bg-[#F5F2EF] rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span class="iconify text-[#8A817A] text-3xl" data-icon="mdi:account-question-outline"></span>
         </div>
         <p class="text-base font-bold text-slate-500">No role assigned</p>
         <p class="text-sm text-slate-400 mt-1">Once your faculty assigns a role, your tasks will appear here.</p>
