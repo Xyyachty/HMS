@@ -718,8 +718,8 @@
             </div>
 
             @if(($groups ?? collect())->isNotEmpty())
-                <div class="mt-5 rounded-2xl border border-brand/15 bg-brand-soft/40 px-5 py-4 flex items-start gap-3">
-                    <span class="iconify text-brand text-xl shrink-0 mt-0.5" data-icon="mdi:information-outline"></span>
+                <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 flex items-start gap-3">
+                    <span class="iconify text-slate-600 text-xl shrink-0 mt-0.5" data-icon="mdi:information-outline"></span>
                     <div class="min-w-0">
                         <p class="text-[14px] font-bold text-slate-800">Need to create new teams or change team configurations?</p>
                         <p class="text-[13px] text-slate-500 mt-0.5">Click the "Team Setup" button to create one or multiple teams and manage their members.</p>
