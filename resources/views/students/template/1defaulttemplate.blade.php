@@ -1695,28 +1695,6 @@ const ROOMS = [
   }
 ];
 
-const RESTAURANTS = [
-  { name: 'Lumiere', category: 'Fine Dining', img: 'https://picsum.photos/seed/finedining/800/500.jpg',
-    desc: 'Contemporary French fine dining with a 12-course tasting menu. Michelin-starred excellence.',
-    hours: '6:00 PM \u2014 11:00 PM', menu: 'lumiere' },
-  { name: 'Sakura', category: 'Japanese', img: 'https://picsum.photos/seed/sushibar/800/500.jpg',
-    desc: 'Omakase sushi bar with imported Japanese ingredients. Intimate 12-seat counter experience.',
-    hours: '12:00 PM \u2014 10:00 PM', menu: 'japanese' },
-  { name: 'The Gilded Bar', category: 'Bar & Lounge', img: 'https://picsum.photos/seed/cocktailbar/800/500.jpg',
-    desc: 'Artisan cocktails and live jazz in a 1920s-inspired setting. The perfect nightcap destination.',
-    hours: '5:00 PM \u2014 1:00 AM', menu: 'bar' },
-  { name: 'Veranda', category: 'Fine Dining', img: 'https://picsum.photos/seed/verandarest/800/500.jpg',
-    desc: 'Mediterranean-inspired cuisine served on our open-air veranda with views of the courtyard fountain.',
-    hours: '7:00 AM \u2014 11:00 PM', menu: null },
-  { name: 'Tatami Room', category: 'Japanese', img: 'https://picsum.photos/seed/tatamiroom/800/500.jpg',
-    desc: 'Private traditional Japanese dining room for up to 8 guests, featuring seasonal kaiseki cuisine.',
-    hours: '6:00 PM \u2014 10:00 PM', menu: null },
-  { name: 'The Library Bar', category: 'Bar & Lounge', img: 'https://picsum.photos/seed/librarybar/800/500.jpg',
-    desc: 'An intimate, book-lined bar specializing in rare whiskies, cognacs, and hand-rolled cigars.',
-    hours: '4:00 PM \u2014 12:00 AM', menu: null }
-];
-const REST_TABS = ['All', 'Fine Dining', 'Japanese', 'Bar & Lounge'];
-
 /* The Experience gallery's own twelve, shown until a team edits the gallery and
    the whole list is written. Each carries an id, because the photograph uploaded
    for a tile is keyed by that id: renaming a tile keeps its picture. */
@@ -6391,40 +6369,6 @@ function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, c
   );
 }
 
-/* One of the hotel's dining venues, in Template 1's card. The picture is the
-   Restaurant team's to change, the same card image Template 2's venues use. */
-function RestCard({ r, onToast, canEdit }) {
-  const imgSrc = resolveCardImg('venue', r.name, r.img);
-  return (
-    <div className="rest-card" style={{ position: 'relative' }}>
-      {canEdit && (
-        <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
-          data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
-          <button type="button" title="Change image" onClick={() => changeCardImg('venue', r.name, () => onToast && onToast('Venue image updated'))}
-            style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
-        </div>
-      )}
-      <div className="rest-card-img"><img src={imgSrc} alt={r.name} loading="lazy" /></div>
-      <div style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
-          <h3 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>{r.name}</h3>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.68rem', color: 'var(--fg-muted)' }}>
-            <span className="rest-dot"></span> Open
-          </span>
-        </div>
-        <span style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--accent)', display: 'block', marginBottom: '0.5rem' }}>{r.category}</span>
-        <p style={{ color: 'var(--fg-muted)', fontSize: '0.8rem', fontWeight: 300, marginBottom: '0.85rem', lineHeight: 1.55 }}>{r.desc}</p>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-            <i className="fa-regular fa-clock" style={{ color: 'var(--accent)', marginRight: '0.3rem' }}></i>{r.hours}
-          </span>
-          <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.45rem 0.85rem' }}
-            onClick={() => onToast && onToast(`Table at ${r.name} noted \u2014 go to Book Now to confirm.`)}>Book Now</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, menuLockedReason, cardImages, isDesignMode, rooms, guest }) {
   const menuList = menus || [];
   /* The hero's own call to action lands here, on the menu's heading, rather than
@@ -6435,9 +6379,6 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
   };
   const [selectedMenuId, setSelectedMenuId] = useState(null);
   const selectedMenu = menuList.find(m => m.id === selectedMenuId) || null;
-  // The dining venue tab, as Template 2's Restaurant & Bar section has.
-  const [venueTab, setVenueTab] = useState('All');
-  const venues = venueTab === 'All' ? RESTAURANTS : RESTAURANTS.filter(r => r.category === venueTab);
   // The team's courses, falling back to the five constants until the first fetch.
   const menuTabs = (menuCategories && menuCategories.length) ? menuCategories : MENU_TABS;
   const [menuTab, setMenuTab] = useState(menuTabs[0] || 'Main Dishes');
@@ -6645,21 +6586,14 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
   return (
     <>
       <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNavigate={onNavigate} cardImages={cardImages} canEditImage={canEditMenuColor} onToast={onToast} />
-      {/* The hotel's dining venues - the same six, tabs and Change image as
-          Template 2's Restaurant & Bar section. */}
-      <section style={{ padding: '3rem 1.5rem 0', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>Our Venues</p>
-          <h2 className="font-display" style={{ fontSize: '2.2rem', margin: 0 }}>Restaurant & Bar</h2>
-          <p style={{ color: 'var(--fg-muted)', fontWeight: 300, margin: '0.6rem 0 0', maxWidth: 620 }}>Six distinct dining venues, each offering a unique journey through flavors crafted by award-winning chefs.</p>
-        </div>
-      </section>
-      <RoomTabBar tabs={REST_TABS} active={venueTab} onChange={setVenueTab} items={RESTAURANTS} allKey="All" getKey={(r) => r.category} />
-      <section style={{ padding: '0 1.5rem 1rem', maxWidth: 1200, margin: '0 auto' }}>
-        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1.5rem' }}>
-          {venues.map(r => <RestCard key={r.name} r={r} onToast={onToast} canEdit={canManageMenus} />)}
-        </div>
-      </section>
+      {/* The dining venues (Restaurant & Bar, with its All / Fine Dining /
+          Japanese / Bar & Lounge tabs) read as a second Best Seller and were
+          removed. These empty stand-ins keep their place: saved edits are keyed
+          by position (section:nth-of-type), so dropping them would move every
+          customization below onto the wrong element. */}
+      <section style={{ display: 'none' }} />
+      <div style={{ display: 'none' }} />
+      <section style={{ display: 'none' }} />
       {/* The same six dishes the home page's Best Seller section shows. A card
           opens the dish, where it can be ordered. */}
       {menuList.length > 0 && (

@@ -1402,29 +1402,6 @@ const DEFAULT_TEAM = [
   { id: 'team-4', name: 'Noah Fitzgerald', role: 'Guest Experience Lead', img: 'https://picsum.photos/seed/hotelteam4/400/400.jpg' },
 ];
 
-const RESTAURANTS = [
-  { name: 'Lumiere', category: 'Fine Dining', img: 'https://picsum.photos/seed/finedining/800/500.jpg',
-    desc: 'Contemporary French fine dining with a 12-course tasting menu. Michelin-starred excellence.',
-    hours: '6:00 PM \u2014 11:00 PM', menu: 'lumiere' },
-  { name: 'Sakura', category: 'Japanese', img: 'https://picsum.photos/seed/sushibar/800/500.jpg',
-    desc: 'Omakase sushi bar with imported Japanese ingredients. Intimate 12-seat counter experience.',
-    hours: '12:00 PM \u2014 10:00 PM', menu: 'japanese' },
-  { name: 'The Gilded Bar', category: 'Bar & Lounge', img: 'https://picsum.photos/seed/cocktailbar/800/500.jpg',
-    desc: 'Artisan cocktails and live jazz in a 1920s-inspired setting. The perfect nightcap destination.',
-    hours: '5:00 PM \u2014 1:00 AM', menu: 'bar' },
-  { name: 'Veranda', category: 'Fine Dining', img: 'https://picsum.photos/seed/verandarest/800/500.jpg',
-    desc: 'Mediterranean-inspired cuisine served on our open-air veranda with views of the courtyard fountain.',
-    hours: '7:00 AM \u2014 11:00 PM', menu: null },
-  { name: 'Tatami Room', category: 'Japanese', img: 'https://picsum.photos/seed/tatamiroom/800/500.jpg',
-    desc: 'Private traditional Japanese dining room for up to 8 guests, featuring seasonal kaiseki cuisine.',
-    hours: '6:00 PM \u2014 10:00 PM', menu: null },
-  { name: 'The Library Bar', category: 'Bar & Lounge', img: 'https://picsum.photos/seed/librarybar/800/500.jpg',
-    desc: 'An intimate, book-lined bar specializing in rare whiskies, cognacs, and hand-rolled cigars.',
-    hours: '4:00 PM \u2014 12:00 AM', menu: null }
-];
-
-const REST_TABS = ['All', 'Fine Dining', 'Japanese', 'Bar & Lounge'];
-
 /* Falls back to the team's first category, not to a literal "Classic" — that name is
    renameable now, so it stops being an answer the moment somebody changes it. */
 function normalizeRoomCategory(value) {
@@ -5149,35 +5126,6 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
 
 
 /* â•â•â•â•â•â•â• RESTAURANT â•â•â•â•â•â•â• */
-function RestCard({ r, onToast, canEdit }) {
-  const imgSrc = resolveCardImg('venue', r.name, r.img);
-  return (
-    <div className="rest-card" style={{ position: 'relative' }}>
-      {canEdit && (
-        <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
-          data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
-          <button type="button" title="Change image" onClick={() => changeCardImg('venue', r.name, () => onToast && onToast('Venue image updated'))}
-            style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
-        </div>
-      )}
-      <div className="rest-card-img"><img src={imgSrc} alt={r.name} loading="lazy" /></div>
-      <div style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
-          <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{r.name}</h3>
-          <span className="rest-badge"><span className="rest-badge-dot"></span> Open</span>
-        </div>
-        <span style={{ fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', opacity: 0.7, display: 'block', marginBottom: '0.5rem' }}>{r.category}</span>
-        <p style={{ color: 'var(--fg-muted)', fontSize: '0.78rem', fontWeight: 400, marginBottom: '0.85rem', lineHeight: 1.5 }}>{r.desc}</p>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-            <i className="fa-regular fa-clock" style={{ color: 'var(--accent)', marginRight: '0.3rem' }}></i>{r.hours}
-          </span>
-          <button className="btn-sm" onClick={() => onToast(`Table at ${r.name} noted \u2014 go to Book Now to confirm.`)}>Book Now</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ── The menu's own dialogs ────────────────────────────────────────────────
    window.prompt() would work, but it announces the hostname above the
@@ -5516,9 +5464,7 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
   const scrollToMenu = () => {
     if (menuAnchorRef.current) menuAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  const [tab, setTab] = useState('All');
   void cardImages;
-  const filtered = tab === 'All' ? RESTAURANTS : RESTAURANTS.filter(r => r.category === tab);
   const menuList = menus || [];
   const [selectedMenuId, setSelectedMenuId] = useState(null);
   const selectedMenu = menuList.find(m => m.id === selectedMenuId) || null;
@@ -5653,22 +5599,15 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
   return (
     <>
       <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNav={onNav} cardImages={cardImages} canEditImage={canEditMenuColor} onToast={onToast} />
-      <div className="page-header dine-menu-head">
-        <span className="section-num">02 — Culinary Arts</span>
-        <h1 className="font-display">Restaurant & Bar</h1>
-        <p>Six distinct dining venues, each offering a unique journey through flavors crafted by award-winning chefs.</p>
-      </div>
-      <TabBar tabs={REST_TABS} active={tab} onChange={setTab} items={RESTAURANTS} />
-      <section style={{ padding: '0 1.5rem 3rem', maxWidth: 1100, margin: '0 auto' }}>
-        {filtered.length === 0 ? (
-          <EmptyState text="No restaurants found in this category." />
-        ) : (
-          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1.25rem' }}>
-            {filtered.map(r => <RestCard key={r.name} r={r} onToast={onToast} canEdit={canManageMenus} />)}
-          </div>
-        )}
-      </section>
-      <Divider />
+      {/* The dining venues (Restaurant & Bar, with its All / Fine Dining /
+          Japanese / Bar & Lounge tabs) read as a second Best Seller and were
+          removed. These empty stand-ins keep their place: saved edits are keyed
+          by position (section:nth-of-type), so dropping them would move every
+          customization below onto the wrong element. */}
+      <div style={{ display: 'none' }} />
+      <div style={{ display: 'none' }} />
+      <section style={{ display: 'none' }} />
+      <div style={{ display: 'none' }} />
       {/* The same six dishes the home page's Best Seller section shows. A card
           opens the dish, where it can be ordered. */}
       {menuList.length > 0 && (
