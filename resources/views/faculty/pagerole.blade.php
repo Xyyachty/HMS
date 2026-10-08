@@ -91,7 +91,7 @@
     /* Team Setup modal */
     .setup-modal { max-width: 72rem; max-height: 92vh; }
     .setup-steps { display: flex; align-items: center; gap: 1rem; flex-wrap: nowrap; }
-    .setup-step-line { flex: 1 1 auto; min-width: 1.5rem; height: 1px; background: #E4D3CF; }
+    .setup-step-line { flex: 1 1 auto; min-width: 1.5rem; height: 1px; background: #E4E2E0; }
     .setup-grid {
         display: grid; gap: .75rem;
         grid-template-columns: minmax(0, 1fr) 300px;
@@ -180,8 +180,8 @@
     .tracking-\[0\.15em\] { letter-spacing: .15em; }
 
     .bg-brand-soft\/40 { background-color: rgba(251,238,233, .6); }
-    .bg-slate-50\/50 { background-color: rgba(250,246,245, .5); }
-    .bg-slate-50\/60 { background-color: rgba(250,246,245, .6); }
+    .bg-slate-50\/50 { background-color: rgba(243,242,241, .5); }
+    .bg-slate-50\/60 { background-color: rgba(243,242,241, .6); }
     .border-brand\/10 { border-color: rgba(123,23,48, .1); }
     .border-brand\/15 { border-color: rgba(123,23,48, .15); }
     .shadow-brand\/20 { --tw-shadow-color: rgba(123,23,48, .2); }
@@ -189,8 +189,8 @@
 
     .hover\:text-brand:hover { color: #7B1730; }
     .hover\:border-brand\/40:hover { border-color: rgba(123,23,48, .4); }
-    .hover\:bg-slate-50:hover { background-color: #FAF6F5; }
-    .hover\:bg-slate-100:hover { background-color: #F2E9E7; }
+    .hover\:bg-slate-50:hover { background-color: #F3F2F1; }
+    .hover\:bg-slate-100:hover { background-color: #E4E2E0; }
     .hover\:opacity-95:hover { opacity: .95; }
     .hover\:opacity-90:hover { opacity: .9; }
     .focus\:outline-none:focus { outline: 2px solid transparent; outline-offset: 2px; }
@@ -200,7 +200,7 @@
     .main-tab-btn {
         position:relative; display:inline-flex; align-items:center; gap:.5rem;
         padding:.65rem 1.25rem; border-radius:1rem; font-size:.8rem; font-weight:700;
-        color:#6B4A54; cursor:pointer; transition:all .25s ease; border:1.5px solid #E4D3CF;
+        color:#6B4A54; cursor:pointer; transition:all .25s ease; border:1.5px solid #E4E2E0;
         background:#fff; white-space:nowrap; user-select:none;
     }
     .main-tab-btn:hover { border-color:#8A817A; color:#181818; background:#F3F2F1; }
@@ -213,7 +213,7 @@
         padding:.1rem .45rem; border-radius:9999px; font-size:.65rem; font-weight:800;
         background:rgba(255,255,255,.25); color:#fff;
     }
-    .main-tab-btn:not(.active) .tab-badge { background:#F2E9E7; color:#6B4A54; }
+    .main-tab-btn:not(.active) .tab-badge { background:#F3F2F1; color:#6B4A54; }
 
     /* ── Tab panel animation ── */
     .tab-panel { display:none; animation:fadeInUp .3s ease; }
@@ -294,7 +294,7 @@
         max-width: 100%;
         padding: 2px 8px;
         border-radius: 9999px;
-        background: #F2E9E7;
+        background: #F3F2F1;
         font-size: 11px;
         font-weight: 600;
         color: #5A3941;

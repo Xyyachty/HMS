@@ -16,7 +16,14 @@
     .gray-accents .brand-gradient:is(a, button):hover { background: #4A4643; opacity: 1; }
     .gray-accents :is(.hover\:bg-brand, .hover\:bg-brand-dark):hover { background-color: #4A4643; }
     .gray-accents :is(.bg-brand-soft, .bg-brand-soft\/30, .bg-brand-soft\/40, .bg-brand\/10, .bg-plum-soft, .bg-amber-50, .bg-emerald-50, .bg-green-50, .bg-blue-50, .bg-violet-50, .bg-teal-50, .bg-slate-50, .bg-slate-100) { background-color: #F3F2F1; }
-    .gray-accents :is(.hover\:bg-brand-soft, .hover\:bg-brand-soft\/20, .hover\:bg-brand-soft\/50, .hover\:bg-brand\/10, .hover\:bg-amber-50):hover { background-color: #F3F2F1; }
+    .gray-accents :is(.bg-slate-50\/50, .bg-slate-50\/60) { background-color: rgba(243, 242, 241, 0.6); }
+    .gray-accents .bg-slate-200 { background-color: #E4E2E0; }
+    .gray-accents .bg-slate-300 { background-color: #D4D0CD; }
+    .gray-accents :is(.hover\:bg-brand-soft, .hover\:bg-brand-soft\/20, .hover\:bg-brand-soft\/50, .hover\:bg-brand\/10, .hover\:bg-amber-50, .hover\:bg-slate-50, .hover\:bg-slate-50\/50, .hover\:bg-slate-50\/70, .hover\:bg-slate-50\/80, .hover\:bg-slate-100):hover { background-color: #F3F2F1; }
+    .gray-accents .hover\:bg-slate-200:hover { background-color: #E4E2E0; }
+    .gray-accents :is(.divide-slate-50, .divide-slate-100) > :not([hidden]) ~ :not([hidden]) { border-color: #E4E2E0; }
+    .gray-accents .border-slate-200\/60 { border-color: rgba(228, 226, 224, 0.6); }
+    .gray-accents .border-slate-300 { border-color: #D4D0CD; }
     .gray-accents :is(.border-brand-light, .border-brand\/10, .border-brand\/15, .border-brand\/20, .border-brand\/30, .border-pink-100, .border-amber-100, .border-amber-200, .border-blue-100, .border-blue-200, .border-emerald-100, .border-emerald-200, .border-green-200, .border-slate-100, .border-slate-200) { border-color: #E4E2E0; }
     .gray-accents :is(.border-brand, .border-amber-300, .border-amber-400, .border-emerald-400) { border-color: #4A4643; }
     .gray-accents :is(.hover\:border-brand, .hover\:border-brand\/30, .hover\:border-brand\/40):hover { border-color: #8A817A; }
