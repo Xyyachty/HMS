@@ -3124,7 +3124,7 @@ function postTaskFeedback(body, decision, approvedTitle, onSuccess, taskId, onEr
                 if (onSuccess) {
                     onSuccess(d);
                 } else {
-                    window.location.reload();
+                    applyTaskVerdictInPlace(taskId, decision, d);
                 }
             });
         })
@@ -5440,9 +5440,36 @@ function renderActivityRows(logs) {
     }).join('');
 }
 
+/* A task verdict used to reload the page, which closed the Team Details modal
+   under the faculty mid-review. The verdict is now painted into the Team Task
+   Activity tab they are still on, and the page reloads only once they close the
+   modal, so the team cards (and the task lists baked into their buttons) catch up. */
+let teamModalStale = false;
+
+function applyTaskVerdictInPlace(taskId, decision, d) {
+    teamModalStale = true;
+    const log = teamModalActivityLogs.find((l) => String(l.id) === String(taskId));
+    if (log) {
+        log.status = d.status;
+        log.awaiting_review = false;
+        log.edited_since_approval = false;
+        log.state = decision === 'revise' ? 'revision' : 'approved';
+        log.revision_count = d.revision_count;
+    }
+    renderTeamModalActivityPage();
+
+    if (d.approval && teamModalGroup) {
+        TEAM_APPROVAL[teamModalGroup] = d.approval;
+        renderTeamSimRoles();
+        renderTeamApproval();
+    }
+    fetchPendingReviewPayload().catch(() => {});
+}
+
 function closeTeamModal() {
     document.getElementById('teamInfoModal').classList.add('hidden');
     document.body.style.overflow = 'auto';
+    if (teamModalStale) window.location.reload();
 }
 
 document.addEventListener('DOMContentLoaded', function () {
