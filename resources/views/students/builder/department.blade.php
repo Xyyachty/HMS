@@ -1434,15 +1434,18 @@
             if (href) window.location.href = href;
         }
 
-        // Closing the tab or reloading with edits not yet on the server: the
-        // browser asks first. Autosave runs every seven seconds, so this only
-        // catches the last few seconds of work, or a save that is failing.
+        // Closing the tab or reloading (Ctrl+R): autosave runs moments after
+        // each edit, so at most the last edit is still unsent here, and it goes
+        // out as a keepalive save instead of the browser asking "Changes you
+        // made may not be saved". isSaving() is not checked: it is also true
+        // during the four-second team sync poll, which made the browser ask
+        // over work that was already saved. Only an edit too large to send on
+        // unload (a new photo) still gets the browser's prompt.
         window.addEventListener('beforeunload', function (event) {
             if (hmsLeavingOnPurpose || !window.hmsBuilder) return;
-            if (window.hmsBuilder.isDirty() || window.hmsBuilder.isSaving()) {
-                event.preventDefault();
-                event.returnValue = '';
-            }
+            if (window.hmsBuilder.saveOnUnload()) return;
+            event.preventDefault();
+            event.returnValue = '';
         });
 
         async function syncGroupPresence() {

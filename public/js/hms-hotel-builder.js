@@ -439,6 +439,30 @@
     });
   };
 
+  /**
+   * Last-chance save while the page unloads (reload, closing the tab). A
+   * keepalive request outlives the page, so the edit lands without the
+   * browser asking. Returns false when it cannot be sent this way: keepalive
+   * bodies are capped at 64KB, which a freshly added photo can exceed.
+   */
+  HotelBuilder.prototype.saveOnUnload = function () {
+    if (!this.canEdit || !this._dirty) return true;
+    const body = JSON.stringify(this.payloadBody());
+    if (new Blob([body]).size > 60000) return false;
+    try {
+      fetch(this.routes.autosave, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: this._headers(),
+        body: body,
+        keepalive: true,
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
   HotelBuilder.prototype.startAutoSave = function (ms) {
     const self = this;
     clearInterval(this._autoSaveTimer);
