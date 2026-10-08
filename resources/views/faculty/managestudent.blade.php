@@ -9,10 +9,10 @@
        Neutral cards on the maroon palette. Written out because the frozen build
        has no grid breakpoints, and the palette file turns blue and amber into the
        wine and gold that made this read as a warning. */
-    .bu-lead { font-size: 12.5px; color: #6B4A54; margin-bottom: .75rem; }
+    .bu-lead { font-size: 12.5px; color: #111; margin-bottom: .75rem; }
     .bu-grid { display: grid; gap: .875rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     @media (max-width: 700px) { .bu-grid { grid-template-columns: minmax(0, 1fr); } }
-    .bu-card { border: 1px solid #EADAD5; border-radius: 1rem; background: #fff; padding: 1rem; display: flex; flex-direction: column; }
+    .bu-card { border: 1px solid #E4E2E0; border-radius: 1rem; background: #fff; padding: 1rem; display: flex; flex-direction: column; }
     .bu-card-head { display: flex; align-items: center; gap: .7rem; margin-bottom: .85rem; }
     .bu-badge {
         width: 2.25rem; height: 2.25rem; border-radius: .7rem; flex: 0 0 auto;
@@ -25,10 +25,10 @@
     .bu-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
     .bu-chip {
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; font-weight: 700;
-        color: #47262D; background: #F7EEEB; border: 1px solid #EADAD5; border-radius: .4rem; padding: .1rem .4rem;
+        color: #181818; background: #F3F2F1; border: 1px solid #E4E2E0; border-radius: .4rem; padding: .1rem .4rem;
     }
     .bu-chip.is-soft { color: #8A6F76; background: #fff; border-style: dashed; }
-    .bu-text { font-size: 11.5px; line-height: 1.55; color: #6B4A54; margin-top: .25rem; }
+    .bu-text { font-size: 11.5px; line-height: 1.55; color: #111; margin-top: .25rem; }
     .bu-download {
         margin-top: auto; align-self: flex-start;
         display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .85rem; border-radius: .7rem;
@@ -37,10 +37,10 @@
     }
     .bu-download:hover { background: #5F5A55; border-color: #5F5A55; color: #fff; }
     .bu-notes { margin-top: .875rem; display: grid; gap: .45rem; }
-    .bu-notes li { display: flex; align-items: flex-start; gap: .5rem; font-size: 11.5px; line-height: 1.5; color: #6B4A54; }
+    .bu-notes li { display: flex; align-items: flex-start; gap: .5rem; font-size: 11.5px; line-height: 1.5; color: #111; }
     .bu-notes li .iconify { flex: 0 0 auto; font-size: .95rem; color: #4A4643; margin-top: .1rem; }
     .bu-drop {
-        margin-top: 1rem; border: 2px dashed #DEC6BF; border-radius: 1.1rem; background: #FDF8F6;
+        margin-top: 1rem; border: 2px dashed #D4D0CD; border-radius: 1.1rem; background: #fff;
         padding: 2rem 1.25rem; display: flex; flex-direction: column; align-items: center; gap: .4rem;
         text-align: center; cursor: pointer; transition: border-color .2s ease, background-color .2s ease;
     }
@@ -67,7 +67,7 @@
        Written out rather than composed from utilities: public/css/app.css is a
        frozen build, and faculty-palette.css turns green and red into gold and
        wine, so the Active and Inactive chips carry their own hex values. */
-    .st-card { border: 1px solid #EADAD5; border-radius: 1rem; overflow: hidden; background: #fff; }
+    .st-card { border: 1px solid #E4E2E0; border-radius: 1rem; overflow: hidden; background: #fff; }
     #studentsTable { table-layout: fixed; width: 100%; border-collapse: collapse; }
     #studentsTable th, #studentsTable td { vertical-align: middle; }
     #studentsTable thead th {
@@ -76,8 +76,8 @@
         padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
     #studentsTable thead th.text-center { text-align: center; }
-    #studentsTable tbody tr { border-top: 1px solid #F2E9E7; transition: background-color .15s ease, box-shadow .15s ease; }
-    #studentsTable tbody tr:nth-child(even) { background: #FDF8F6; }
+    #studentsTable tbody tr { border-top: 1px solid #E4E2E0; transition: background-color .15s ease, box-shadow .15s ease; }
+    #studentsTable tbody tr:nth-child(even) { background: #fff; }
     #studentsTable tbody tr[data-student-id]:hover { background: #dadada; }
     #studentsTable td { padding: .8rem .9rem; }
     #studentsTable .col-student { width: 31%; }
@@ -124,12 +124,12 @@
     .st-page {
         min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem; border-radius: .7rem;
         display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
-        font-size: 13px; font-weight: 700; color: #111; background: #fff; border: 1px solid #EADAD5;
+        font-size: 13px; font-weight: 700; color: #111; background: #fff; border: 1px solid #E4E2E0;
         transition: all .15s ease;
     }
     a.st-page:hover { color: #181818; border-color: #dadada; background: #dadada; }
     .st-page.is-current { background: #111; border-color: #111; color: #fff; }
-    .st-page.is-disabled { color: #111; opacity: .4; background: #FAF6F5; cursor: not-allowed; }
+    .st-page.is-disabled { color: #111; opacity: .4; background: #fff; cursor: not-allowed; }
 
     /* Expandable student search — icon-only until opened */
     #studentSearchWrap {
@@ -195,7 +195,7 @@
     .bulk-pager-btn {
         display: inline-flex; align-items: center; justify-content: center;
         padding: 0.25rem 0.5rem; border-radius: 0.5rem;
-        border: 1px solid #E4D3CF; background: #fff; color: #6B4A54;
+        border: 1px solid #E4E2E0; background: #fff; color: #111;
         transition: color 0.2s, border-color 0.2s, opacity 0.2s;
     }
     .bulk-pager-btn:hover:not(:disabled) { color: #181818; border-color: #dadada; background: #dadada; }
@@ -206,8 +206,8 @@
     /* Black text across the section; only the Active status keeps its green.
        :hover is listed so the tabs' hover:text-* utilities cannot win. */
     .ms-ink, .ms-ink:hover { color: #111; }
-    /* Block tab names stay maroon */
-    .ms-wine { color: #7B1730; }
+    /* Block tab names are black, no maroon. */
+    .ms-wine { color: #111; }
 
     /* md:p-6 and md:px-6 are missing from the frozen build, so the dean page's
        1.5rem desktop padding around the table and toolbar is written out here. */
@@ -911,7 +911,7 @@
             html: `<p class="text-sm text-slate-500">${errorMessage}</p>`,
             confirmButtonText: 'Okay',
             backdrop: 'rgba(42,17,24, 0.35)',
-            iconColor: '#9E1B3C',
+            iconColor: '#4A4643',
             customClass: {
                 popup: 'rounded-2xl p-6 bg-white shadow-2xl',
                 title: 'text-lg font-bold text-slate-800',
@@ -990,7 +990,7 @@
         const nameLower = file.name.toLowerCase();
         if (!nameLower.endsWith('.xlsx') && !nameLower.endsWith('.xls') && !nameLower.endsWith('.ods') && !nameLower.endsWith('.csv')) {
             Swal.fire({ icon:'error', title:'Invalid file', text:'Please upload an Excel or CSV file.', timer:2500, showConfirmButton:false,
-                iconColor:'#9E1B3C', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
+                iconColor:'#4A4643', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
             return;
         }
         bulkSelectedFile = file;
@@ -1218,7 +1218,7 @@
                 if (parsed.headerRow === null) {
                     Swal.fire({icon:'error', title:'Columns Not Found',
                         html:`<p class="text-sm text-slate-500">This sheet needs a student number column, and either a <b>Name</b> column or separate first and last name columns.</p>`,
-                        confirmButtonText:'Okay', iconColor:'#9E1B3C',
+                        confirmButtonText:'Okay', iconColor:'#4A4643',
                         customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800',
                             confirmButton:'mt-4 bg-brand text-white px-4 py-2 rounded-lg font-semibold'}, buttonsStyling:false });
                     return;
@@ -1239,7 +1239,7 @@
             } catch (err) {
                 console.error(err);
                 Swal.fire({icon:'error', title:'Parse Error', text:'Could not read file as Excel.', timer:2500, showConfirmButton:false,
-                    iconColor:'#9E1B3C', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
+                    iconColor:'#4A4643', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
             }
         };
         reader.readAsArrayBuffer(file);
@@ -1337,7 +1337,7 @@
             label.textContent = 'Import Now';
             Swal.fire({icon:'error', title:'Import Failed',
                 html:`<p class="text-sm text-slate-500">${err.message}</p>`,
-                confirmButtonText:'Okay', iconColor:'#9E1B3C',
+                confirmButtonText:'Okay', iconColor:'#4A4643',
                 customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800',
                     confirmButton:'mt-4 bg-brand text-white px-4 py-2 rounded-lg font-semibold hover:bg-brand-dark'},
                 buttonsStyling:false});
