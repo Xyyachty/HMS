@@ -122,9 +122,9 @@
     .um-main .text-amber-500,
     .um-main .hover\:text-brand:hover,
     .um-main .hover\:text-slate-700:hover { color: #111; }
-    /* Faculty / Students tab labels stay maroon, like the faculty class tabs. */
+    /* Faculty / Students tab labels are black, no maroon. */
     .um-main .tab-btn,
-    .um-main .tab-btn:hover { color: #7B1730; }
+    .um-main .tab-btn:hover { color: #111; }
     .um-main .block-tab-btn.bg-brand { background-color: #111; border-color: #111; color: #fff; }
     /* No soft fills on the page: the Faculty / Students tabs, the Block bar,
        the success notice and the initials tiles are white and keep their

@@ -15,7 +15,7 @@
         display: inline-flex; align-items: center; gap: .5rem;
         padding: .7rem 1.25rem; border-radius: .875rem;
         font-size: .8125rem; font-weight: 700; color: #6B4A54;
-        background: #fff; border: 1px solid #E4D3CF; cursor: pointer;
+        background: #fff; border: 1px solid #E4E2E0; cursor: pointer;
         white-space: nowrap; transition: all .2s ease;
     }
     .rp-tab:hover { border-color: #8A817A; color: #181818; }
@@ -37,19 +37,19 @@
     .rp-filters { display: flex; align-items: center; gap: .625rem; flex-wrap: wrap; }
     .rp-filter {
         height: 2.5rem; min-width: 11rem; max-width: 100%; padding: 0 .75rem;
-        border-radius: .75rem; border: 1px solid #E4D3CF; background: #fff;
+        border-radius: .75rem; border: 1px solid #E4E2E0; background: #fff;
         font-size: 12px; font-weight: 600; color: #5A3941;
     }
     .rp-filter:focus { outline: none; border-color: #8A817A; box-shadow: 0 0 0 3px rgba(138,129,122,.2); }
     .rp-filter.is-set { border-color: #8A817A; color: #181818; background: #F3F2F1; }
     .rp-filter-clear {
         display: inline-flex; align-items: center; gap: .375rem; height: 2.5rem; padding: 0 .875rem;
-        border-radius: .75rem; border: 1px solid #E4D3CF; background: #fff;
+        border-radius: .75rem; border: 1px solid #E4E2E0; background: #fff;
         font-size: 12px; font-weight: 700; color: #6B4A54;
     }
     .rp-filter-clear:hover { color: #181818; border-color: #8A817A; }
 
-    .rp-track { height: .5rem; border-radius: 9999px; background: #F2E9E7; overflow: hidden; }
+    .rp-track { height: .5rem; border-radius: 9999px; background: #E4E2E0; overflow: hidden; }
     .rp-track > span { display: block; height: 100%; border-radius: 9999px; }
 
     @media (max-width: 1279px) {
@@ -87,26 +87,35 @@
     .pb-3 { padding-bottom: .75rem; }
     .leading-snug { line-height: 1.375; }
     .hover\:text-brand:hover { color: #7B1730; }
-    .hover\:bg-slate-50:hover { background-color: #FAF6F5; }
-    .hover\:border-brand\/40:hover { border-color: rgba(123,23,48,.4); }
-    .bg-slate-50\/60 { background-color: rgba(250,246,245,.6); }
-    .bg-slate-50\/80 { background-color: rgba(250,246,245,.8); }
-    .border-brand\/10 { border-color: rgba(123,23,48,.1); }
+    .hover\:bg-slate-50:hover { background-color: #F3F2F1; }
+    .hover\:border-brand\/40:hover { border-color: #8A817A; }
+    .bg-slate-50\/60 { background-color: rgba(243,242,241,.6); }
+    .bg-slate-50\/80 { background-color: rgba(243,242,241,.8); }
+    .border-brand\/10 { border-color: #E4E2E0; }
     .shadow-brand\/20 { --tw-shadow-color: rgba(123,23,48,.2); }
+
+    /* No maroon or soft fills on Reports (dean and faculty): stat tiles, table
+       heads, avatars, notices, buttons and the Team Details pop-up are white
+       and keep their borders. main.gray-accents outranks the layout's
+       .gray-accents fills. The active tab and a set filter keep their gray so
+       they still read as selected; row hover stays light gray. */
+    main.gray-accents :is(.bg-slate-50, .bg-slate-50\/50, .bg-slate-50\/60, .bg-slate-50\/70, .bg-slate-50\/80, .bg-slate-100, .bg-brand-soft, .bg-amber-50, .bg-emerald-50, .bg-blue-50, .bg-violet-50) { background-color: #fff; }
+    main.gray-accents .bg-brand-soft { box-shadow: inset 0 0 0 1px #E4E2E0; }
+    main.gray-accents :is(.hover\:bg-slate-50, .hover\:bg-slate-50\/80, .hover\:bg-brand\/10):hover { background-color: #F3F2F1; }
 </style>
 
 @php
     // Chart colours, kept to the palette already used across the portal. Still
     // read by the Role column further down on Activity Reports.
-    // A page can pass its own roleColors and barColor (the dean's are grays).
-    $rpRoleColors = $roleColors ?? [
-        'front_desk'            => '#C4425E',
-        'restaurant_management' => '#D9B86A',
-        'room_management'       => '#7B1730',
-        'maintenance'           => '#C9A45C',
-        'housekeeping'          => '#9E1B3C',
+    // Grays, not wine: one shade per role so the shares still tell apart.
+    $rpRoleColors = [
+        'front_desk'            => '#2F2C2A',
+        'restaurant_management' => '#8A817A',
+        'room_management'       => '#5F5A55',
+        'maintenance'           => '#B5AFAA',
+        'housekeeping'          => '#D4D0CD',
     ];
-    $rpBarColor = $barColor ?? '#7B1730';
+    $rpBarColor = '#4A4643';
 
     $rpRoleTotal = collect($roleParticipation)->sum('count');
     $rpTopStudents = collect($studentPerformance ?? [])->take(5);
@@ -469,7 +478,7 @@
                         <tr class="border-b border-slate-100">
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center gap-2 text-[13px] font-bold text-slate-700">
-                                    <span class="rp-legend-dot" style="background: {{ $rpRoleColors[$slice['role']] ?? '#C9AFAA' }}"></span>
+                                    <span class="rp-legend-dot" style="background: {{ $rpRoleColors[$slice['role']] ?? '#E4E2E0' }}"></span>
                                     {{ $slice['label'] }}
                                 </span>
                             </td>
@@ -477,7 +486,7 @@
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5">
                                     <span class="rp-track" style="flex: 1 1 auto; max-width: 16rem">
-                                        <span style="width: {{ $share }}%; background: {{ $rpRoleColors[$slice['role']] ?? '#C9AFAA' }}"></span>
+                                        <span style="width: {{ $share }}%; background: {{ $rpRoleColors[$slice['role']] ?? '#E4E2E0' }}"></span>
                                     </span>
                                     <span class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $share }}%</span>
                                 </div>
