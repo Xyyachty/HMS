@@ -25,6 +25,9 @@
     $tint = fn($role, $key) => $roleTints[$role][$key] ?? ($key === 'text' ? 'text-slate-400' : 'bg-slate-100');
 @endphp
 
+{{-- ink-all, like the faculty dashboard: row icons take the black text
+     colour instead of the gold tint, so the two dashboards' icons match. --}}
+<div class="ink-all">
 <!-- Stats Cards -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
 
@@ -227,4 +230,9 @@
         </div>
     </div>
 </div>
+</div>
 @endsection
+
+@push('styles')
+@include('partials.ink-all-styles')
+@endpush
