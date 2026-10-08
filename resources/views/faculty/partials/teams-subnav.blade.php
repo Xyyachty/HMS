@@ -64,16 +64,13 @@
     <div class="flex items-center gap-2 pb-3 shrink-0 ml-auto">
         {{-- Create Team (was Team Setup), where Add Team used to be. They opened
              the same screen under two names in two places, which read as two
-             different things to do. Deliberately not a .teams-action-btn: that
-             class is driven by setTeamsActionHighlight(), which would paint
-             over the gradient. Only one of the two is filled at a time: on
-             Set Task this one goes white so Set Task is the highlighted one. --}}
-        <button type="button" onclick="openCreateTeamModal()"
+             different things to do. White like Set Task: a button is filled
+             only for the screen you are on, and Team Setup is its own screen
+             without this bar, so this one only fills for the click itself. --}}
+        <button type="button" data-action-btn="create_team"
+            onclick="setTeamsActionHighlight('create_team'); openCreateTeamModal()"
             title="Create new team(s) or modify teams"
-            class="h-10 px-4 rounded-xl text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap
-            {{ $isSetTask
-                 ? 'bg-white text-slate-600 border border-slate-200 hover:border-brand/40 hover:text-brand'
-                 : 'brand-gradient text-white shadow-md shadow-brand/20 hover:opacity-95' }}">
+            class="teams-action-btn h-10 px-4 rounded-xl text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:border-brand/40 hover:text-brand">
             <span class="iconify text-base" data-icon="mdi:cog-outline"></span>
             <span class="iconify text-sm" data-icon="mdi:plus"></span>
             Create Team
