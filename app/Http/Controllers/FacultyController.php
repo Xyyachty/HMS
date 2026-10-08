@@ -1508,6 +1508,11 @@ class FacultyController extends Controller
             return response()->json(['error' => 'Simulation roles are not set up on this database yet.'], 422);
         }
 
+        // Confirming is final: each student has already been told their desk.
+        if (\App\Support\SimulationPhase::rolesConfirmed($groupName, (int) $facultyId)) {
+            return response()->json(['error' => 'These simulation roles are already confirmed.'], 422);
+        }
+
         $data = $request->validate([
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['required', 'string', Rule::in(array_keys(\App\Support\HotelTemplateBuilder::SIMULATION_ROLES))],

@@ -4869,6 +4869,8 @@ function renderTeamSimRoles() {
 
     const a = TEAM_APPROVAL[teamModalGroup] || {};
     const current = a.simulation_roles || {};
+    // Confirmed is final: the students were told their desks, so nothing here moves.
+    const locked = !!a.roles_confirmed;
     const options = (selected) => Object.keys(SIM_SEAT_LABELS).map((key) =>
         '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>' + escHtml(SIM_SEAT_LABELS[key]) + '</option>'
     ).join('');
@@ -4884,15 +4886,20 @@ function renderTeamSimRoles() {
             '<label style="display:flex; align-items:center; justify-content:space-between; gap:.75rem;">'
                 + '<span class="tm-ellipsis" style="font-size:13px; font-weight:700; color:#181818;">' + escHtml(m.name)
                     + ' <span class="tm-muted">(' + escHtml((m.role_labels || []).join(', ') || 'No role yet') + ')</span></span>'
-                + '<select data-sim-role="' + Number(m.student_id) + '"'
-                    + ' style="height:2.1rem; border:1px solid #E4E2E0; border-radius:.6rem; padding:0 .5rem; font-size:13px; background:#fff;">'
+                + '<select data-sim-role="' + Number(m.student_id) + '"' + (locked ? ' disabled' : '')
+                    + ' style="height:2.1rem; border:1px solid #E4E2E0; border-radius:.6rem; padding:0 .5rem; font-size:13px; background:' + (locked ? '#F3F2F1; cursor:not-allowed;' : '#fff;') + '">'
                     + options(current[String(m.student_id)]) + '</select>'
             + '</label>'
         ).join('')
         + '</div>'
         + '<div id="teamSimRolesError" class="tm-alert hidden" style="margin-top:.75rem;"></div>'
-        + '<div style="margin-top:.75rem;"><button type="button" id="teamSimRolesSave" onclick="saveTeamSimRoles()" class="tm-btn tm-btn-dark">'
-            + '<span class="iconify" data-icon="mdi:check"></span> Confirm simulation roles</button></div>';
+        + '<div style="margin-top:.75rem;">'
+            + (locked
+                ? '<button type="button" class="tm-btn" disabled style="cursor:not-allowed; opacity:.7;">'
+                    + '<span class="iconify" data-icon="mdi:check-circle"></span> Simulation roles confirmed</button>'
+                : '<button type="button" id="teamSimRolesSave" onclick="saveTeamSimRoles()" class="tm-btn tm-btn-dark">'
+                    + '<span class="iconify" data-icon="mdi:check"></span> Confirm simulation roles</button>')
+        + '</div>';
 }
 
 function saveTeamSimRoles() {
