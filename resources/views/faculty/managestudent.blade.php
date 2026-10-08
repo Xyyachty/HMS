@@ -19,15 +19,15 @@
         display: inline-flex; align-items: center; justify-content: center;
         background: #F3F2F1; color: #4A4643; font-size: 1.15rem;
     }
-    .bu-card-title { font-size: 13.5px; font-weight: 800; color: #2A1118; line-height: 1.25; }
-    .bu-card-sub { font-size: 11.5px; color: #8A6F76; margin-top: .1rem; }
-    .bu-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #8A6F76; margin: .25rem 0 .35rem; }
+    .bu-card-title { font-size: 13.5px; font-weight: 800; color: #111; line-height: 1.25; }
+    .bu-card-sub { font-size: 11.5px; color: #6B6B6B; margin-top: .1rem; }
+    .bu-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #6B6B6B; margin: .25rem 0 .35rem; }
     .bu-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
     .bu-chip {
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; font-weight: 700;
         color: #181818; background: #F3F2F1; border: 1px solid #E4E2E0; border-radius: .4rem; padding: .1rem .4rem;
     }
-    .bu-chip.is-soft { color: #8A6F76; background: #fff; border-style: dashed; }
+    .bu-chip.is-soft { color: #6B6B6B; background: #fff; border-style: dashed; }
     .bu-text { font-size: 11.5px; line-height: 1.55; color: #111; margin-top: .25rem; }
     .bu-download {
         margin-top: auto; align-self: flex-start;
@@ -50,8 +50,8 @@
         display: inline-flex; align-items: center; justify-content: center;
         background: #fff; color: #4A4643; font-size: 1.6rem; box-shadow: 0 6px 16px -8px rgba(24,24,24,.35);
     }
-    .bu-drop-title { font-size: 13.5px; font-weight: 800; color: #2A1118; }
-    .bu-drop-sub { font-size: 11.5px; color: #8A6F76; }
+    .bu-drop-title { font-size: 13.5px; font-weight: 800; color: #111; }
+    .bu-drop-sub { font-size: 11.5px; color: #6B6B6B; }
     .bu-browse {
         margin-top: .35rem; display: inline-flex; align-items: center; padding: .45rem .95rem; border-radius: .7rem;
         font-size: 12px; font-weight: 800; color: #fff; background: #5F5A55;
@@ -208,6 +208,24 @@
     .ms-ink, .ms-ink:hover { color: #111; }
     /* Block tab names are black, no maroon. */
     .ms-wine { color: #111; }
+
+    /* No maroon anywhere on Manage Students. faculty-palette.css warms slate
+       toward wine and turns red into wine; here slate text is neutral gray,
+       the pinkish slate-200 fills and the wine-black modal backdrop are gray,
+       and error reds are a true red rather than wine. body outranks the
+       palette's single-class rules. */
+    body .text-slate-300 { color: #BDBDBD; }
+    body .text-slate-400, body .hover\:text-slate-400:hover { color: #7A7A7A; }
+    body .text-slate-500 { color: #5F5F5F; }
+    body .text-slate-600, body .hover\:text-slate-600:hover { color: #4A4A4A; }
+    body .text-slate-700 { color: #333; }
+    body .text-slate-800 { color: #222; }
+    body :is(.bg-slate-200, .hover\:bg-slate-200:hover) { background-color: #E4E2E0; }
+    body .bg-slate-900\/60 { background-color: rgba(17, 17, 17, .6); }
+    body :is(.text-red-400, .text-red-500, .hover\:text-red-500:hover) { color: #DC2626; }
+    body :is(.text-red-600, .text-red-700) { color: #B91C1C; }
+    body :is(.bg-red-50, .hover\:bg-red-50:hover) { background-color: #FEF2F2; }
+    body .border-red-200 { border-color: #FECACA; }
 
     /* md:p-6 and md:px-6 are missing from the frozen build, so the dean page's
        1.5rem desktop padding around the table and toolbar is written out here. */
