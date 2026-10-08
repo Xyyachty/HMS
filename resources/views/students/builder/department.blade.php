@@ -1400,22 +1400,18 @@
         }
 
         function confirmLeaveBuilder(event) {
-            const dirty = !!(window.hmsBuilder && window.hmsBuilder.isDirty && window.hmsBuilder.isDirty())
-                || !!(document.getElementById('saveDraftBtn')?.classList.contains('has-unsaved'));
-            if (!dirty) return true;
+            if (!window.hmsBuilder) return true;
 
             // The builder auto-saves continuously, so there is nothing to actually
-            // lose — flush the pending edit and leave instead of asking the student
-            // to confirm losing work the system already persists on its own.
+            // lose — wait for the pending or in-flight save and leave instead of
+            // asking. This always goes through leaveBuilder(): a plain navigation
+            // while an autosave was mid-request tripped the beforeunload guard,
+            // and the browser asked "changes may not be saved" for saved work.
             const link = event && event.currentTarget;
             const href = link && link.getAttribute('href');
             if (event) event.preventDefault();
 
-            const flush = (window.hmsBuilder && typeof window.hmsBuilder.flush === 'function')
-                ? window.hmsBuilder.flush()
-                : Promise.resolve();
-
-            Promise.resolve(flush).then(function () {
+            Promise.resolve(window.hmsBuilder.flush()).then(function () {
                 leaveBuilder(href);
             }, async function (err) {
                 // Leaving now throws the unsaved edits away, so it is the
@@ -1684,12 +1680,9 @@
 
         function openAssignedTask(task, event) {
             // The concept is written on the dashboard, not in the template.
-            if (task.is_concept) {
-                if (task.url) window.location.href = task.url;
-                return;
-            }
             // Another module this student holds: open it there so it is editable.
-            if (task.role !== @json($builderRole) && task.url) {
+            if (task.is_concept || (task.role !== @json($builderRole) && task.url)) {
+                if (!task.url) return;
                 const link = document.createElement('a');
                 link.setAttribute('href', task.url);
                 const fakeEvent = { currentTarget: link, preventDefault: function () {} };
