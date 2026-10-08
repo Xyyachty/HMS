@@ -5,7 +5,7 @@
 @section('faculties_active', 'active')
 
 @section('content')
-<div class="ink-all bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+<div id="deanTeamsOverview" class="ink-all bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
 
     <!-- Header -->
     <div class="p-6 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-rose-50/40">
@@ -471,29 +471,36 @@
     .glass-header h2,
     .glass-header h2 + p { color: #111; }
 
+    /* Teams Overview is white throughout, like faculty Team Setup & Members:
+       the header, notices, the active tab, table heads and tiles drop their
+       soft fill and keep only their border. An id outranks the .gray-accents
+       fills. Hover rows stay light gray. */
+    #deanTeamsOverview :is(.bg-rose-50\/40, .bg-slate-50, .bg-slate-50\/50, .bg-slate-100, .bg-amber-50, .bg-emerald-50, .bg-brand-soft) { background-color: #fff; }
+    #deanTeamsOverview :is(.hover\:bg-slate-50, .hover\:bg-slate-50\/50):hover { background-color: #F3F2F1; }
+
     #teamsTable {
         border-collapse: collapse;
         width: 100%;
     }
     #teamsTable thead tr {
-        background: #FAF6F5;
+        background: #fff;
     }
     #teamsTable tbody tr {
-        border-bottom: 1px solid #F2E9E7;
+        border-bottom: 1px solid #E4E2E0;
         transition: background 0.15s;
     }
     #teamsTable tbody tr:last-child {
         border-bottom: none;
     }
     #teamsTable tbody tr:hover {
-        background: #FAF6F5;
+        background: #F3F2F1;
     }
     /* A hovered View button turns light gray, like Update on Manage User. */
     #teamsTable .view-btn:hover { background: #dadada; }
     /* The faculty header above each set of teams. */
     #teamsTable tbody tr.faculty-group-row,
     #teamsTable tbody tr.faculty-group-row:hover {
-        background: #F3F2F1;
+        background: #fff;
         border-top: 1px solid #E4E2E0;
     }
 </style>
