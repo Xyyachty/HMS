@@ -98,13 +98,15 @@
 @php
     // Chart colours, kept to the palette already used across the portal. Still
     // read by the Role column further down on Activity Reports.
-    $rpRoleColors = [
+    // A page can pass its own roleColors and barColor (the dean's are grays).
+    $rpRoleColors = $roleColors ?? [
         'front_desk'            => '#C4425E',
         'restaurant_management' => '#D9B86A',
         'room_management'       => '#7B1730',
         'maintenance'           => '#C9A45C',
         'housekeeping'          => '#9E1B3C',
     ];
+    $rpBarColor = $barColor ?? '#7B1730';
 
     $rpRoleTotal = collect($roleParticipation)->sum('count');
     $rpTopStudents = collect($studentPerformance ?? [])->take(5);
@@ -256,7 +258,7 @@
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2.5">
                                         <span class="rp-track" style="flex: 1 1 auto">
-                                            <span style="width: {{ $row['percent'] }}%; background: #7B1730"></span>
+                                            <span style="width: {{ $row['percent'] }}%; background: {{ $rpBarColor }}"></span>
                                         </span>
                                         <span class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $row['percent'] }}%</span>
                                     </div>
@@ -374,7 +376,7 @@
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5">
                                     <span class="rp-track" style="flex: 1 1 auto; max-width: 12rem">
-                                        <span style="width: {{ $row['percent'] }}%; background: #7B1730"></span>
+                                        <span style="width: {{ $row['percent'] }}%; background: {{ $rpBarColor }}"></span>
                                     </span>
                                     <span class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $row['percent'] }}%</span>
                                 </div>
