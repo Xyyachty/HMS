@@ -762,10 +762,10 @@
     .link-quiet {
       font-size: .72rem;
       font-weight: 700;
-      color: var(--wine-600);
+      color: #2563EB;
       text-decoration: none;
     }
-    .link-quiet:hover { color: var(--wine-800); text-decoration: underline; }
+    .link-quiet:hover { color: #1D4ED8; text-decoration: underline; }
     .link-quiet--under { display: block; margin-top: 8px; text-align: right; }
 
     .check {
