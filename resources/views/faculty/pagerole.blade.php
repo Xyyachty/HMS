@@ -269,11 +269,12 @@
     .student-row:hover { background:#F3F2F1 !important; }
 
     /* ── Role color dots ── */
-    .role-dot-front_desk            { background:#C4425E; }
+    /* No reds or maroons: grays and golds, one per role. */
+    .role-dot-front_desk            { background:#4A4643; }
     .role-dot-restaurant_management { background:#D9B86A; }
-    .role-dot-room_management       { background:#7B1730; }
+    .role-dot-room_management       { background:#8A817A; }
     .role-dot-maintenance           { background:#C9A45C; }
-    .role-dot-housekeeping          { background:#9E1B3C; }
+    .role-dot-housekeeping          { background:#B5AFAA; }
 
     /* ── Teams table layout ── */
     #teamsTable {
@@ -390,10 +391,11 @@
                 'housekeeping'          => 'HK',
             ];
             $roleCardTints = [
-                'front_desk'            => 'bg-rose-50 text-rose-500',
-                'restaurant_management' => 'bg-amber-50 text-amber-500',
-                'room_management'       => 'bg-brand-soft text-brand',
-                'housekeeping'          => 'bg-teal-50 text-teal-500',
+                // One neutral chip for every role, no maroon.
+                'front_desk'            => 'bg-slate-100 text-slate-700',
+                'restaurant_management' => 'bg-slate-100 text-slate-700',
+                'room_management'       => 'bg-slate-100 text-slate-700',
+                'housekeeping'          => 'bg-slate-100 text-slate-700',
             ];
             $roleCardIcons = [
                 'front_desk'            => 'mdi:desk',
@@ -580,17 +582,17 @@
                                  as the one above, over the concept's own submitted state rather
                                  than a task row's. --}}
                             <div data-concept-pending-badge
-                                 class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 {{ !$cardConceptPending ? 'hidden' : '' }}">
+                                 class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 {{ !$cardConceptPending ? 'hidden' : '' }}">
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="flex items-start gap-2 min-w-0">
-                                        <span class="iconify text-rose-500 text-lg shrink-0 mt-0.5" data-icon="mdi:lightbulb-on-outline"></span>
+                                        <span class="iconify text-slate-600 text-lg shrink-0 mt-0.5" data-icon="mdi:lightbulb-on-outline"></span>
                                         <div class="min-w-0">
-                                            <p class="text-[12px] font-extrabold text-rose-700" data-concept-pending-headline>
+                                            <p class="text-[12px] font-extrabold text-slate-800" data-concept-pending-headline>
                                                 @if($cardConceptPending)
                                                     Hotel Concept Submitted{{ $cardConceptPending['count'] > 1 ? ' — Both Proposals' : '' }}
                                                 @endif
                                             </p>
-                                            <p class="text-[11px] text-rose-600 leading-snug mt-0.5" data-concept-pending-detail>
+                                            <p class="text-[11px] text-slate-600 leading-snug mt-0.5" data-concept-pending-detail>
                                                 @if($cardConceptPending && $cardConceptPending['latest'])
                                                     {{ $cardConceptPending['latest']['submitted_by'] }} &middot; {{ $cardConceptPending['latest']['slot_label'] }} &middot;
                                                     "{{ $cardConceptPending['latest']['title'] }}" &middot; {{ $cardConceptPending['latest']['submitted_human'] }}
@@ -1525,8 +1527,8 @@
                         </div>
                     </div>
                     <div class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
-                            <span class="iconify text-rose-500 text-xl" data-icon="mdi:account-alert-outline"></span>
+                        <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                            <span class="iconify text-slate-600 text-xl" data-icon="mdi:account-alert-outline"></span>
                         </div>
                         <div class="min-w-0">
                             <p class="text-xl font-extrabold text-slate-900 leading-none">{{ $manageUnassigned }}</p>
