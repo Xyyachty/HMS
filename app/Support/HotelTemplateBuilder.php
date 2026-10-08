@@ -1048,6 +1048,9 @@ class HotelTemplateBuilder
             }
 
             if (array_key_exists('customizations', $data)) {
+                // Read before the write below replaces it: claimChangedCardImages()
+                // needs to know which pictures this save actually changed.
+                $previousCardImages = self::storedCardImageMap($templateId);
                 $ownCustomizations = self::filterCustomizationsForRole(
                     is_array($data['customizations']) ? $data['customizations'] : [],
                     $template->role
@@ -1124,6 +1127,9 @@ class HotelTemplateBuilder
             // This row is the newest writer of any shared key it holds.
             self::claimSharedContentKeys($template, $ownCustomizations ?? null);
             self::claimSharedLogo($template, $ownCustomizations ?? null);
+            if (isset($previousCardImages)) {
+                self::claimChangedCardImages($template, $previousCardImages, $ownCustomizations);
+            }
 
             // Keep legacy group_settings in sync (merged team site)
             self::syncGroupSettings($template);
@@ -1284,6 +1290,79 @@ class HotelTemplateBuilder
             return;
         }
 
+        self::dropSiblingCardImages($template, [self::LOGO_IMAGE_MAP_KEY]);
+    }
+
+    /**
+     * Give this row every card picture its save changed.
+     *
+     * Each site-owning role keeps its own copy of the whole card-image map, and
+     * mergeTeamCustomizations() unions those copies in ROLES order. So when Front
+     * Desk replaced an Our Team photo, the older copy in Restaurant's or
+     * Housekeeping's row - both later in that order - won the merge, and the photo
+     * snapped back to the old one as soon as the builder re-read the team's site.
+     *
+     * Only the entries whose picture differs from what this row held before are
+     * claimed. Claiming every entry the row carries would let a role that only
+     * re-posted the map it loaded take a teammate's newer picture away.
+     *
+     * @param  array<string, string>  $previous  This row's map before the save.
+     */
+    private static function claimChangedCardImages(TeamRoleTemplate $template, array $previous, array $mine): void
+    {
+        $map = $mine[self::CARD_IMAGES_KEY]['map'] ?? null;
+        if (!is_array($map)) {
+            return;
+        }
+
+        $changed = [];
+        foreach ($map as $key => $url) {
+            $key = (string) $key;
+            // The logo has its own rule: claimSharedLogo() takes it on every save.
+            if ($key === self::LOGO_IMAGE_MAP_KEY || !is_string($url) || trim($url) === '') {
+                continue;
+            }
+            $before = $previous[$key] ?? null;
+            if ($before !== null && HotelImageStore::relativize($before) === HotelImageStore::relativize($url)) {
+                continue;
+            }
+            $changed[] = $key;
+        }
+
+        self::dropSiblingCardImages($template, $changed);
+    }
+
+    /**
+     * This row's live card-image map as stored, keyed by map entry.
+     *
+     * @return array<string, string>
+     */
+    private static function storedCardImageMap(int $templateId): array
+    {
+        return TemplateContentItem::query()
+            ->with('fields')
+            ->where('team_role_template_id', $templateId)
+            ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
+            ->where('collection', TemplateCustomizationStore::SPECIAL_KEYS[self::CARD_IMAGES_KEY] . '_map')
+            ->get()
+            ->mapWithKeys(fn (TemplateContentItem $item) => [
+                (string) $item->item_ref => (string) ($item->fields->firstWhere('field_name', 'value')?->field_value ?? ''),
+            ])
+            ->all();
+    }
+
+    /**
+     * Delete these card-image entries from the teammates' rows, so this row's
+     * copy is the only one the merge can pick.
+     *
+     * @param  list<string>  $refs
+     */
+    private static function dropSiblingCardImages(TeamRoleTemplate $template, array $refs): void
+    {
+        if ($refs === []) {
+            return;
+        }
+
         $siblingIds = TeamRoleTemplate::where('group_name', $template->group_name)
             ->where('faculty_id', $template->faculty_id)
             ->where('team_role_template_id', '!=', $template->team_role_template_id)
@@ -1295,12 +1374,12 @@ class HotelTemplateBuilder
 
         // Card images are written as one content item per map entry, keyed by
         // item_ref — see TemplateCustomizationStore::writeCollection()'s 'map'
-        // branch. Deleting just this ref leaves every other card image intact.
+        // branch. Deleting just these refs leaves every other card image intact.
         $stale = TemplateContentItem::query()
             ->whereIn('team_role_template_id', $siblingIds)
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
             ->where('collection', TemplateCustomizationStore::SPECIAL_KEYS[self::CARD_IMAGES_KEY] . '_map')
-            ->where('item_ref', self::LOGO_IMAGE_MAP_KEY);
+            ->whereIn('item_ref', $refs);
         $affected = (clone $stale)->distinct()->pluck('team_role_template_id')->map(fn ($id) => (int) $id)->all();
         if ($affected === []) {
             return;
