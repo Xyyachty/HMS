@@ -20,6 +20,8 @@
  * red, because the colour of the button is what the person is about to press.
  * One whose button activates or reactivates an account turns its icon and button
  * green, the colour of the Active status it is about to set.
+ * Logging out turns both the icon and the button red, for dean, faculty and
+ * students alike.
  */
 (function (window) {
   'use strict';
@@ -43,6 +45,7 @@
   var DESTRUCTIVE_BUTTON = /(delete|remove|deactivate|deny|reject|discard|revoke|unpublish)/i;
   // Checked only after DESTRUCTIVE_BUTTON, so "Deactivate" never lands here.
   var CONSTRUCTIVE_BUTTON = /activate/i;
+  var LOGOUT_BUTTON = /(log ?out|sign ?out)/i;
 
   function statusFor(options) {
     var icon = options && typeof options.icon === 'string' ? options.icon.toLowerCase() : '';
@@ -55,6 +58,10 @@
 
   function isDestructive(options) {
     return DESTRUCTIVE_BUTTON.test(buttonLabel(options));
+  }
+
+  function isLogout(options) {
+    return LOGOUT_BUTTON.test(buttonLabel(options));
   }
 
   function isConstructive(options) {
@@ -72,6 +79,10 @@
     if (isConstructive(options)) {
       next.iconColor = STATUS.success.icon;
       next.confirmButtonColor = STATUS.success.confirm;
+    }
+    if (isLogout(options)) {
+      next.iconColor = STATUS.error.icon;
+      next.confirmButtonColor = STATUS.error.confirm;
     }
     if (next.showCancelButton || next.cancelButtonText) {
       next.cancelButtonColor = CANCEL_COLOR;
