@@ -92,6 +92,13 @@
     .setup-modal { max-width: 72rem; max-height: 92vh; }
     .setup-steps { display: flex; align-items: center; gap: 1rem; flex-wrap: nowrap; }
     .setup-step-line { flex: 1 1 auto; min-width: 1.5rem; height: 1px; background: #E4E2E0; }
+    /* Team Setup & Members is white throughout: fields, the One Team / Multiple
+       Teams switch, the member list, notices and tiles drop their soft fill and
+       keep only their border. An id outranks the .gray-accents fills. Red stays
+       for errors, and the step 4 circle keeps its gray so it still reads as a
+       circle. Avatar and icon tiles get a ring, having no border of their own. */
+    #panel-team_setup :is(.bg-slate-50, .bg-slate-50\/50, .bg-slate-50\/60, .bg-slate-100, .bg-amber-50, .bg-emerald-50, .bg-blue-50, .bg-brand-soft, .bg-brand-soft\/40, .bg-brand-soft\/50) { background-color: #fff; }
+    #panel-team_setup .bg-brand-soft { box-shadow: inset 0 0 0 1px #E4E2E0; }
     .setup-grid {
         display: grid; gap: .75rem;
         grid-template-columns: minmax(0, 1fr) 300px;
