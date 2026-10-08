@@ -139,7 +139,7 @@
                  it counts inside the same border. Held apart they read as two
                  unrelated blocks, and with several groups on the page it is not
                  obvious which cards a summary is summarising. --}}
-            <div class="bg-gradient-to-r from-[#F5F2EF] to-white border-b border-[#E7E1DD] px-5 sm:px-7 py-6">
+            <div class="bg-[#dadada] border-b border-[#E7E1DD] px-5 sm:px-7 py-6">
                 <div class="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr_1fr_1fr] gap-6 lg:gap-0">
                     <div class="flex items-center lg:pr-6">
                         <div class="min-w-0">
@@ -194,7 +194,7 @@
             {{-- The page's own background, kept behind the cards now that they sit
                  inside the group rather than on the page, so white cards still read
                  as cards instead of dissolving into a white panel. --}}
-            <div class="bg-[#F5F2EF] px-5 sm:px-7 py-5">
+            <div class="bg-[#dadada] px-5 sm:px-7 py-5">
                 {{-- Also the drop target settleConceptTaskRow() appends the
                      settled concept card to, so it lands in the same grid. --}}
                 <div data-completed-list class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
