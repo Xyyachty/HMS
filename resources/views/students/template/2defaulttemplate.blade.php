@@ -1256,6 +1256,12 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
+  /* Home page Selected Highlights: four across, two on narrower screens (never
+     three and a lone fourth), one on phones. --hl-cols is the tile count, so a
+     team with fewer highlights gets no empty column. */
+  .home-highlights { display: grid; gap: 1rem; grid-template-columns: repeat(var(--hl-cols, 4), minmax(0, 1fr)); }
+  @media (max-width: 900px) { .home-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .home-highlights { grid-template-columns: 1fr; } }
 </style>
 <script>
   try {
@@ -5933,14 +5939,14 @@ function ExperienceEditModal({ item, onSave, onClose }) {
   );
 }
 
-/* Selected Highlights on the Home page: the first three tiles of the team's own
+/* Selected Highlights on the Home page: the first four tiles of the team's own
    Highlights gallery, with their photographs, so the home page shows what the
    Highlights page holds. Read-only here; the gallery is edited on its own page. */
 function SelectedHighlights({ items, onOpen }) {
-  const list = (items || []).slice(0, 3);
+  const list = (items || []).slice(0, 4);
   if (!list.length) return null;
   return (
-    <div data-hms-no-edit="1" data-hms-exps-removed={expRemovedCount(items)} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+    <div data-hms-no-edit="1" data-hms-exps-removed={expRemovedCount(items)} className="home-highlights" style={{ '--hl-cols': list.length }}>
       {list.map(item => (
         <article
           key={item.id}
