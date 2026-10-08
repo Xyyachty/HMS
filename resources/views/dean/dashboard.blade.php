@@ -82,7 +82,7 @@
     <!-- Teams -->
     <a href="{{ route('dean.faculties') }}" class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 block">
         <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+            <div class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
                 <span class="iconify text-white text-xl" data-icon="mdi:account-multiple-plus-outline"></span>
             </div>
             <div class="min-w-0">
