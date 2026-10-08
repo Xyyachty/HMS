@@ -11,19 +11,19 @@
        DataTables still draws the rows and the pager, so its own stripes, borders
        and buttons are overridden here. Status chips carry their own hex values
        because the palette turns green and red into gold and wine. */
-    .st-card { border: 1px solid #EADAD5; border-radius: 1rem; overflow: hidden; background: #fff; }
+    .st-card { border: 1px solid #E4E2E0; border-radius: 1rem; overflow: hidden; background: #fff; }
     table.dataTable#usersTable { border-collapse: collapse !important; width: 100% !important; margin: 0 !important; }
     table.dataTable#usersTable thead th {
-        background: #EFEFEF; color: #181818; border-bottom: 0 !important;
+        background: #fff; color: #181818; border-bottom: 0 !important;
         font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
         padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
     table.dataTable#usersTable tbody tr { background: #fff; transition: background-color .15s ease, box-shadow .15s ease; }
-    table.dataTable#usersTable tbody tr.even { background: #FDF8F6; }
+    table.dataTable#usersTable tbody tr.even { background: #fff; }
     table.dataTable#usersTable tbody tr:hover { background: #dadada !important; }
     table.dataTable#usersTable tbody td {
         padding: .8rem .9rem; vertical-align: middle; font-size: 13px;
-        border-top: 1px solid #F2E9E7 !important; box-shadow: none !important;
+        border-top: 1px solid #E4E2E0 !important; box-shadow: none !important;
     }
     table.dataTable#usersTable.no-footer { border-bottom: 0 !important; }
 
@@ -94,7 +94,7 @@
         min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem !important; margin: 0 !important; border-radius: .7rem !important;
         display: inline-flex !important; align-items: center; justify-content: center;
         font-size: 13px; font-weight: 700; color: #111 !important; background: #fff !important;
-        border: 1px solid #EADAD5 !important; box-shadow: none !important; transition: all .15s ease;
+        border: 1px solid #E4E2E0 !important; box-shadow: none !important; transition: all .15s ease;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button:hover {
         color: #181818 !important; border-color: #dadada !important; background: #dadada !important;
@@ -106,7 +106,7 @@
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button.disabled,
     #usersTable_wrapper .dataTables_paginate .paginate_button.disabled:hover {
-        color: #111 !important; opacity: .4; background: #FAF6F5 !important; border-color: #EADAD5 !important; cursor: not-allowed;
+        color: #111 !important; opacity: .4; background: #fff !important; border-color: #E4E2E0 !important; cursor: not-allowed;
     }
     /* The dean Tailwind palette tints slate and pink borders toward wine. On this
        page (toolbar, table card, both modals) borders are neutral gray instead. */
@@ -126,6 +126,10 @@
     .um-main .tab-btn,
     .um-main .tab-btn:hover { color: #7B1730; }
     .um-main .block-tab-btn.bg-brand { background-color: #111; border-color: #111; color: #fff; }
+    /* No soft fills on the page: the Faculty / Students tabs, the Block bar,
+       the success notice and the initials tiles are white and keep their
+       borders. Doubled class to outrank the .gray-accents fills. */
+    .um-main.um-main :is(.bg-slate-50, .bg-slate-50\/60, .bg-green-50, .bg-brand-soft) { background-color: #fff; }
 
     #usersTable_wrapper .dataTables_paginate .ellipsis { padding: 0 .35rem; color: #111; }
 </style>
