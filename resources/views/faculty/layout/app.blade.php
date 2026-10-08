@@ -130,11 +130,6 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('faculty.complaints') }}" class="nav-item {{ request()->routeIs('faculty.complaints') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
-                            <span class="font-medium text-sm">Guest Complaints</span>
-                        </a>
-                    </li>
-                    <li>
                         <a href="{{ route('faculty.reports') }}" class="nav-item {{ request()->routeIs('faculty.reports') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
                             <span class="font-medium text-sm">Reports</span>
                         </a>
@@ -232,7 +227,6 @@
                 <li><a href="{{ route('faculty.dashboard') }}" class="nav-item {{ request()->routeIs('faculty.dashboard') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-semibold text-sm">Dashboard</span></a></li>
                 <li><a href="{{ route('faculty.students') }}" class="nav-item {{ request()->routeIs('faculty.students') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Manage Students</span></a></li>
                 <li><a href="{{ route('faculty.role') }}" class="nav-item {{ request()->routeIs('faculty.role') || request()->routeIs('faculty.activity') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Manage Teams</span></a></li>
-                <li><a href="{{ route('faculty.complaints') }}" class="nav-item {{ request()->routeIs('faculty.complaints') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Guest Complaints</span></a></li>
                 <li><a href="{{ route('faculty.reports') }}" class="nav-item {{ request()->routeIs('faculty.reports') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Reports</span></a></li>
             </ul>
         </nav>

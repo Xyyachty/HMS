@@ -201,8 +201,6 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     Route::get('/results', [FacultyController::class, 'results'])->name('results');
     Route::get('/reports', [FacultyController::class, 'reports'])->name('reports');
     Route::get('/activity', [FacultyController::class, 'activityLogs'])->name('activity');
-    // Read-only: every guest complaint across this faculty's own teams.
-    Route::get('/complaints', [FacultyController::class, 'complaints'])->name('complaints');
     // Same centralized log; faculty only sees students they manage
     Route::get('/activity/user/{user}', [ActivityLogController::class, 'forUser'])->name('activity.user');
 
