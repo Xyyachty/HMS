@@ -963,6 +963,17 @@
 <!-- ═══════ TEAM SETUP & MEMBERS (its own screen, reached from Team Setup) ═══════ -->
 <div id="panel-team_setup" class="tab-panel {{ $activeTab === 'team_setup' ? 'active' : '' }}">
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        {{-- Same bar as Teams and Set Task, so Create Team and Set Task stay
+             in reach here too; Back to Teams sits in the header below it. --}}
+        @include('faculty.partials.teams-subnav', [
+            'teamsSubTab' => $activeTab,
+            'groups' => $groups ?? [],
+            'classes' => $classes ?? collect(),
+            'activeClass' => $activeClass ?? null,
+            'classCapacity' => $classCapacity ?? 40,
+            'teamCountsByClass' => $teamCountsByClass ?? [],
+        ])
+
         <!-- Screen Header -->
         <div class="bg-white px-5 py-3 border-b border-slate-200 flex justify-between items-start gap-3">
             <div class="min-w-0">
