@@ -538,7 +538,7 @@
                 </div>
 
                 <!-- Three-panel row: upcoming tasks, team progress, activity -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
 
                     {{-- Tasks in Progress — work the team has changed but not submitted yet:
                          still active, with at least one activity ticked. The bar is the
