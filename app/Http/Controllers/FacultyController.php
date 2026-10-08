@@ -1547,10 +1547,15 @@ class FacultyController extends Controller
             'Confirmed the simulation roles for team "' . $groupName . '".'
         );
 
+        $approval = $this->approvalSummary($groupName, (int) $facultyId);
+
+        // Each student hears their own desk, and whether they can start now.
+        Notifier::simulationRolesConfirmed($facultyUser, $roles->all(), $approval['can_start']);
+
         return response()->json([
             'success' => true,
             'message' => 'Simulation roles confirmed.',
-            'approval' => $this->approvalSummary($groupName, (int) $facultyId),
+            'approval' => $approval,
         ]);
     }
 

@@ -363,6 +363,39 @@ class Notifier
     }
 
     /**
+     * Faculty confirmed who runs which Simulation desk. Each member hears their
+     * own desk, and whether the team can start now or is still waiting on
+     * approvals, so nobody has to open the dashboard to find out.
+     *
+     * @param  array<int|string, string>  $seatByStudentId  student id => Simulation seat
+     */
+    public static function simulationRolesConfirmed(?User $actor, array $seatByStudentId, bool $canStart): void
+    {
+        try {
+            $userIds = Student::whereIn('user_information_id', array_keys($seatByStudentId))
+                ->pluck('user_id', 'user_information_id');
+
+            foreach ($seatByStudentId as $studentId => $seat) {
+                $label = HotelTemplateBuilder::seatLabel($seat, HotelTemplateBuilder::PHASE_SIMULATION);
+
+                static::push(
+                    array_filter([$userIds[$studentId] ?? null]),
+                    UserNotification::SIMULATION_ROLES,
+                    'Your simulation role: ' . $label,
+                    "Your faculty confirmed your team's simulation roles. You run the " . $label . ' desk. '
+                        . ($canStart
+                            ? 'You are ready to simulate: press Start Simulation on your Tasks page.'
+                            : 'The Hotel Simulation opens once every customization task is approved.'),
+                    route('students.dashboard', ['section' => 'tasks']),
+                    $actor
+                );
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
      * A team handed their hotel concepts in. Faculty owns the verdict, so they are
      * the audience — this is the inbound half of the concept workflow.
      *

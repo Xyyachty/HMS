@@ -4927,6 +4927,33 @@ function saveTeamSimRoles() {
             TEAM_APPROVAL[teamModalGroup] = d.approval;
             renderTeamSimRoles();
             renderTeamApproval();
+
+            const seats = (d.approval && d.approval.simulation_roles) || {};
+            const rows = teamModalMembers.map((m) =>
+                '<li style="display:flex; justify-content:space-between; gap:1rem; padding:.35rem 0; border-top:1px solid #EFEFEF;">'
+                    + '<span style="font-weight:700; color:#181818;">' + escHtml(m.name) + '</span>'
+                    + '<span style="color:#5F5A55;">' + escHtml(SIM_SEAT_LABELS[seats[String(m.student_id)]] || 'None') + '</span>'
+                + '</li>'
+            ).join('');
+            const ready = d.approval && d.approval.can_start
+                ? 'Every task is approved, so the team is ready to simulate.'
+                : 'The simulation opens once every customization task is approved ('
+                    + Number((d.approval && d.approval.percent) || 0) + '% so far).';
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Simulation roles confirmed',
+                html: '<ul style="list-style:none; margin:0 0 .75rem; padding:0; text-align:left; font-size:13px;">' + rows + '</ul>'
+                    + '<p class="text-sm text-slate-500">Each student has been notified of their role. ' + ready + '</p>',
+                confirmButtonText: 'Done',
+                iconColor: '#B8873C',
+                customClass: {
+                    popup: 'rounded-2xl p-6 bg-white shadow-2xl',
+                    title: 'text-lg font-bold text-slate-800',
+                    confirmButton: 'tm-btn tm-btn-dark',
+                },
+                buttonsStyling: false,
+            });
         })
         .catch((e) => {
             err.textContent = e.message;

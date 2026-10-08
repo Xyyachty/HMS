@@ -31,6 +31,7 @@ class UserNotification extends Model
     public const ROOM_READY = 'room_ready';
     public const CONCEPT_SUBMITTED = 'concept_submitted';
     public const CONCEPT_REVIEWED = 'concept_reviewed';
+    public const SIMULATION_ROLES = 'simulation_roles';
 
     /** Icon + accent per type, consumed by the dropdown partial. */
     public const STYLES = [
@@ -51,6 +52,7 @@ class UserNotification extends Model
         self::ROOM_READY => ['icon' => 'mdi:bed-check', 'accent' => 'emerald'],
         self::CONCEPT_SUBMITTED => ['icon' => 'mdi:lightbulb-on', 'accent' => 'amber'],
         self::CONCEPT_REVIEWED => ['icon' => 'mdi:lightbulb-check', 'accent' => 'emerald'],
+        self::SIMULATION_ROLES => ['icon' => 'mdi:bell-ring', 'accent' => 'emerald'],
     ];
 
     protected $primaryKey = 'user_notification_id';
