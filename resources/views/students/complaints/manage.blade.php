@@ -162,17 +162,18 @@
     background: var(--cx-soft); color: var(--fg); border: 1px solid var(--cx-line);
   }
   .cx-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-muted); }
-  .cx-pill.is-Open .dot { background: var(--cx-danger); }
+  .cx-pill.is-Pending .dot { background: var(--cx-danger); }
   .cx-pill.is-In-Progress .dot { background: var(--cx-warn); }
   .cx-pill.is-Resolved .dot { background: var(--cx-ok); }
+  .cx-pill.is-Closed .dot { background: var(--accent); }
   .cx-pill i { color: var(--accent); font-size: 0.75rem; }
 
   .cx-what { margin: 0; padding: 0.75rem 0.85rem; border-radius: 10px; background: var(--cx-soft); border: 1px solid var(--cx-line); }
   .cx-what small { display: block; font-size: 0.72rem; font-weight: 600; color: var(--fg-muted); margin-bottom: 0.3rem; }
   .cx-what p { margin: 0; font-size: 0.9rem; line-height: 1.55; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; }
 
-  /* Where the complaint is: three steps */
-  .cx-track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 420px; }
+  /* Where the complaint is: four steps for a guest complaint, three for a staff report */
+  .cx-track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--cx-steps, 4), minmax(0, 1fr)); max-width: 520px; }
   .cx-track li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; font-size: 0.72rem; color: var(--fg-muted); text-align: center; }
   .cx-track li::before { content: ''; position: absolute; top: 6px; left: -50%; width: 100%; height: 2px; background: var(--cx-line); }
   .cx-track li:first-child::before { display: none; }
@@ -192,6 +193,14 @@
   .cx-actions .cx-spacer { flex: 1; }
   .cx-note-form { display: flex; gap: 0.5rem; align-items: stretch; flex-wrap: wrap; }
   .cx-note-form .cx-input { flex: 1 1 220px; }
+  select.cx-btn-sm { appearance: auto; }
+  select.cx-btn-sm option { background: var(--card); color: var(--fg); }
+
+  /* Complaint history: one line per filing, status change and hand-over */
+  .cx-history { list-style: none; margin: 0.6rem 0 0; padding: 0 0 0 0.85rem; border-left: 2px solid var(--cx-line); display: grid; gap: 0.45rem; }
+  .cx-history li { font-size: 0.8rem; color: var(--fg-muted); line-height: 1.45; }
+  .cx-history strong { color: var(--fg); font-weight: 600; }
+  .cx-history em { display: block; font-style: normal; color: var(--fg); overflow-wrap: anywhere; }
 
   /* Empty / loading */
   .cx-empty { border: 1.5px dashed var(--cx-line); border-radius: 14px; padding: 2.4rem 1.5rem; text-align: center; }
@@ -255,6 +264,7 @@
     roomsUrl: @json(route('students.hotel.rooms.index')),
     departments: @json(\App\Models\HotelComplaint::DEPARTMENTS),
     statuses: @json(\App\Models\HotelComplaint::STATUSES),
+    serviceCategories: @json(\App\Models\HotelComplaint::SERVICE_CATEGORIES),
   };
 </script>
 @verbatim
@@ -263,32 +273,41 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
 const CFG = window.HMS_COMPLAINTS;
 const DEPARTMENT_LABELS = CFG.departments;
-const STATUSES = CFG.statuses;
-const OPEN_STATUSES = ['Open', 'In Progress'];
-const COMPLAINT_FLOW = STATUSES.filter(s => s !== 'Cancelled');
+const SERVICE_CATEGORIES = CFG.serviceCategories || [];
+const OPEN_STATUSES = ['Pending', 'In Progress'];
+const DONE_STATUSES = ['Closed', 'Cancelled'];
+/* Housekeeping and Maintenance problems are always in a room; Room Management and
+   the restaurant also hear from guests who are not staying in one. */
+const ROOM_REQUIRED = ['housekeeping', 'maintenance'];
 
 /* What each status means to someone at the desk. The stored value never changes —
-   only the words on screen. */
-const STATUS_WORDS = {
-  'Open': 'Waiting for the team',
-  'In Progress': 'Being fixed',
-  'Resolved': 'Fixed',
-  'Cancelled': 'Cancelled',
+   only the hint under it. */
+const STATUS_HINTS = {
+  'Pending': 'Waiting for the department',
+  'In Progress': 'The department is working on it',
+  'Resolved': 'Fixed — Front Desk to confirm with the guest',
+  'Closed': 'Confirmed with the guest',
+  'Cancelled': 'Withdrawn',
 };
-const TRACK = [
-  { status: 'Open', label: 'Reported' },
-  { status: 'In Progress', label: 'Being fixed' },
-  { status: 'Resolved', label: 'Fixed' },
-];
-const TEAM_ICONS = { maintenance: 'fa-screwdriver-wrench', housekeeping: 'fa-broom' };
+/* A guest complaint ends when the Front Desk confirms it; a staff-raised repair
+   (inspection or amenity) has no guest, so it ends at Resolved. */
+const GUEST_TRACK = ['Pending', 'In Progress', 'Resolved', 'Closed'];
+const STAFF_TRACK = ['Pending', 'In Progress', 'Resolved'];
+const TEAM_ICONS = {
+  housekeeping: 'fa-broom',
+  maintenance: 'fa-screwdriver-wrench',
+  room_management: 'fa-bed',
+  restaurant_management: 'fa-utensils',
+};
 
-/* Mirrors HotelComplaint::isForwardTransition() — status only moves forward here
-   too, so a button that is not offered matches what the server would refuse anyway. */
+/* Mirrors HotelComplaint::isForwardTransition(), so a button that is not offered
+   matches what the server would refuse anyway. */
 function canMoveComplaintTo(from, to) {
-  if (from === to || from === 'Resolved' || from === 'Cancelled') return false;
-  if (to === 'Cancelled') return true;
-  const fromAt = COMPLAINT_FLOW.indexOf(from);
-  const toAt = COMPLAINT_FLOW.indexOf(to);
+  if (from === to || DONE_STATUSES.includes(from)) return false;
+  if (to === 'Cancelled') return from !== 'Resolved';
+  if (to === 'Closed') return from === 'Resolved';
+  const fromAt = GUEST_TRACK.indexOf(from);
+  const toAt = GUEST_TRACK.indexOf(to);
   return fromAt !== -1 && toAt !== -1 && toAt > fromAt;
 }
 
@@ -305,24 +324,14 @@ function formatWhen(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-}
-
-/* The department page a member arrives from decides what they see first; the
-   Front Desk records for both, so it starts unfiltered. */
-function defaultDepartmentFilter(role) {
-  return DEPARTMENT_LABELS[role] ? role : 'all';
+  return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 function ComplaintForm({ rooms, categories, onSubmit, busy }) {
-  const categoryNames = Object.keys(categories);
   const [roomNumber, setRoomNumber] = useState('');
   const [guestName, setGuestName] = useState('');
+  const [department, setDepartment] = useState('');
   const [category, setCategory] = useState('');
-  // Touched once the staffer overrides the category's suggestion, after which
-  // changing the category must stop moving the department under them.
-  const [departmentTouched, setDepartmentTouched] = useState(false);
-  const [department, setDepartment] = useState('maintenance');
   const [details, setDetails] = useState('');
   const [error, setError] = useState('');
 
@@ -332,11 +341,9 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
     r => r.reservation && r.reservation.status === 'Checked In'
   );
 
-  const suggested = category ? (categories[category] || 'maintenance') : null;
-
-  const pickCategory = (value) => {
-    setCategory(value);
-    if (!departmentTouched) setDepartment(categories[value] || 'maintenance');
+  const pickDepartment = (key) => {
+    setDepartment(key);
+    if (categories[category] !== key) setCategory('');
   };
 
   const pickRoom = (value) => {
@@ -346,43 +353,43 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
     if (reservedName) setGuestName(reservedName);
   };
 
+  const roomRequired = ROOM_REQUIRED.includes(department);
+
   const submit = (e) => {
     e.preventDefault();
-    if (!roomNumber.trim()) { setError('Choose the room the guest is calling about.'); return; }
+    if (!department) { setError('Choose the department responsible for the problem.'); return; }
+    if (roomRequired && !roomNumber) { setError(`Choose the room this ${DEPARTMENT_LABELS[department]} problem is in.`); return; }
+    if (!roomNumber && !guestName.trim()) { setError('Enter the guest name or choose their room.'); return; }
     if (!category) { setError('Pick what kind of problem it is.'); return; }
-    if (!details.trim()) { setError('Write down what the guest said, so the team knows what to bring.'); return; }
+    if (!details.trim()) { setError('Write down what the guest said, so the team knows what to do.'); return; }
     setError('');
     onSubmit({
-      room_number: roomNumber.trim(),
+      room_number: roomNumber,
       guest_name: guestName.trim(),
       category,
-      department,
       details: details.trim(),
-    }, () => {
+    }, department, () => {
       setDetails('');
       setCategory('');
-      setDepartmentTouched(false);
     });
   };
 
-  // Problem types, grouped by the team they normally go to.
-  const groups = Object.keys(DEPARTMENT_LABELS).map(key => ({
-    key,
-    label: DEPARTMENT_LABELS[key],
-    names: categoryNames.filter(n => categories[n] === key),
-  })).filter(g => g.names.length > 0);
+  // The chosen department's problem types, facility problems first, then staff service.
+  const names = Object.keys(categories).filter(n => categories[n] === department);
+  const groups = [
+    { key: 'facility', label: 'Facility or room problem', names: names.filter(n => !SERVICE_CATEGORIES.includes(n)) },
+    { key: 'service', label: 'Poor staff service', names: names.filter(n => SERVICE_CATEGORIES.includes(n)) },
+  ].filter(g => g.names.length > 0);
 
   return (
     <form onSubmit={submit} className="cx-panel" noValidate>
       <h2 className="cx-panel-title">Report a problem</h2>
 
       <div className="cx-steps">
-        <div className={'cx-step' + (roomNumber ? ' is-done' : '')}>
-          <div className="cx-step-head"><span className="cx-num">1</span><label htmlFor="cxRoom">Which room?</label></div>
-          {/* Always a dropdown. With nobody checked in there is no room to complain
-              from, so it disables and says so rather than turning into a text box. */}
+        <div className={'cx-step' + (roomNumber || guestName.trim() ? ' is-done' : '')}>
+          <div className="cx-step-head"><span className="cx-num">1</span><label htmlFor="cxRoom">Which guest?</label></div>
           <div className="cx-two">
-            <select id="cxRoom" className="cx-input" value={roomNumber} onChange={e => pickRoom(e.target.value)} disabled={occupiedRooms.length === 0}>
+            <select id="cxRoom" className="cx-input" value={roomNumber} onChange={e => pickRoom(e.target.value)}>
               <option value="">{occupiedRooms.length === 0 ? 'No guests are checked in' : 'Choose a room…'}</option>
               {occupiedRooms.map(room => (
                 <option key={room.id} value={room.name}>Room {room.name} · {room.reservation.fullName || 'Guest'}</option>
@@ -390,41 +397,39 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
             </select>
             <input type="text" className="cx-input" placeholder="Guest name" value={guestName} onChange={e => setGuestName(e.target.value)} aria-label="Guest name (filled in from the room)" title="Filled in from the room" />
           </div>
-          {occupiedRooms.length === 0 && (
-            <p className="cx-help">Only rooms with a checked-in guest are listed. Check a guest in first.</p>
-          )}
+          <p className="cx-help">
+            Only rooms with a checked-in guest are listed. A restaurant or lobby guest who is not staying needs only a name.
+          </p>
+        </div>
+
+        <div className={'cx-step' + (department ? ' is-done' : '')}>
+          <div className="cx-step-head"><span className="cx-num">2</span><span className="cx-q">Which department is it about?</span></div>
+          <div className="cx-teams">
+            {Object.entries(DEPARTMENT_LABELS).map(([key, label]) => (
+              <button key={key} type="button" className={'cx-team' + (department === key ? ' is-on' : '')} aria-pressed={department === key}
+                onClick={() => pickDepartment(key)}>
+                <i className={'fa-solid ' + (TEAM_ICONS[key] || 'fa-users')}></i>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className={'cx-step' + (category ? ' is-done' : '')}>
-          <div className="cx-step-head"><span className="cx-num">2</span><span className="cx-q">What kind of problem?</span></div>
+          <div className="cx-step-head"><span className="cx-num">3</span><span className="cx-q">What kind of problem?</span></div>
+          {!department && <p className="cx-help" style={{ marginTop: 0 }}>Choose a department first.</p>}
           {groups.map(group => (
             <div key={group.key} style={{ marginBottom: '0.35rem' }}>
-              <p className="cx-group-label">Usually {group.label}</p>
+              <p className="cx-group-label">{group.label}</p>
               <div className="cx-chips">
                 {group.names.map(name => (
-                  <button key={name} type="button" className={'cx-chip' + (category === name ? ' is-on' : '')} aria-pressed={category === name} onClick={() => pickCategory(name)}>
+                  <button key={name} type="button" className={'cx-chip' + (category === name ? ' is-on' : '')} aria-pressed={category === name} onClick={() => setCategory(name)}>
                     {name}
                   </button>
                 ))}
               </div>
             </div>
           ))}
-        </div>
-
-        <div className="cx-step is-done">
-          <div className="cx-step-head"><span className="cx-num">3</span><span className="cx-q">Which team should fix it?</span></div>
-          <div className="cx-teams">
-            {Object.entries(DEPARTMENT_LABELS).map(([key, label]) => (
-              <button key={key} type="button" className={'cx-team' + (department === key ? ' is-on' : '')} aria-pressed={department === key}
-                onClick={() => { setDepartment(key); setDepartmentTouched(true); }}>
-                <i className={'fa-solid ' + (TEAM_ICONS[key] || 'fa-users')}></i>
-                <span>
-                  {label}
-                  {suggested === key && <small>Suggested</small>}
-                </span>
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className={'cx-step' + (details.trim() ? ' is-done' : '')}>
@@ -436,27 +441,58 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
 
         {error && <p className="cx-error" role="alert">{error}</p>}
 
-        <button type="submit" className="cx-btn cx-btn-primary cx-btn-wide" disabled={busy || occupiedRooms.length === 0}>
+        <button type="submit" className="cx-btn cx-btn-primary cx-btn-wide" disabled={busy}>
           <i className="fa-solid fa-paper-plane"></i>
-          {busy ? 'Sending…' : `Send to ${DEPARTMENT_LABELS[department]}`}
+          {busy ? 'Sending…' : department ? `Send to ${DEPARTMENT_LABELS[department]}` : 'Send to department'}
         </button>
       </div>
     </form>
   );
 }
 
-function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
+function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
   const [note, setNote] = useState(complaint.resolutionNote || '');
-  const [noteOpen, setNoteOpen] = useState(false);
-  const otherDepartment = complaint.department === 'maintenance' ? 'housekeeping' : 'maintenance';
-  const isClosed = complaint.status === 'Resolved' || complaint.status === 'Cancelled';
-  const stepAt = TRACK.findIndex(t => t.status === complaint.status);
+  // null, 'note' (edit the note only) or 'resolve' (note, then mark Resolved).
+  const [noteMode, setNoteMode] = useState(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const isOpen = OPEN_STATUSES.includes(complaint.status);
+  const track = complaint.internal ? STAFF_TRACK : GUEST_TRACK;
+  const stepAt = track.indexOf(complaint.status);
+  const finished = complaint.status === track[track.length - 1];
+  const history = complaint.history || [];
+  const otherDepartments = Object.keys(DEPARTMENT_LABELS).filter(k => k !== complaint.department);
 
   useEffect(() => { setNote(complaint.resolutionNote || ''); }, [complaint.resolutionNote]);
 
+  const where = complaint.roomNumber ? `Room ${complaint.roomNumber}` : (complaint.guestName || 'Guest');
+
   const cancel = () => {
-    if (window.confirm(`Cancel the complaint for Room ${complaint.roomNumber}? The team will stop working on it.`)) {
+    if (window.confirm(`Cancel the complaint for ${where}? The department will stop working on it.`)) {
       onUpdate(complaint.id, { status: 'Cancelled' });
+    }
+  };
+
+  const close = () => {
+    if (window.confirm(`Has the guest confirmed the problem for ${where} is fixed? This closes the complaint.`)) {
+      onUpdate(complaint.id, { status: 'Closed' });
+    }
+  };
+
+  const saveNote = () => {
+    if (noteMode === 'resolve' && !note.trim()) {
+      window.toast && window.toast('Write what was done before marking it resolved.');
+      return;
+    }
+    const patch = { resolution_note: note };
+    if (noteMode === 'resolve') patch.status = 'Resolved';
+    onUpdate(complaint.id, patch);
+    setNoteMode(null);
+  };
+
+  const handOver = (to) => {
+    if (!to) return;
+    if (window.confirm(`Give this complaint to ${DEPARTMENT_LABELS[to]}?`)) {
+      onUpdate(complaint.id, { department: to });
     }
   };
 
@@ -464,12 +500,17 @@ function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
     <article className="cx-card">
       <div className="cx-card-top">
         <div style={{ minWidth: 0 }}>
-          <span className="cx-room">Room {complaint.roomNumber}</span>
-          <span className="cx-guest">{complaint.guestName || 'Guest name not given'} · {complaint.category}</span>
+          <span className="cx-room">{where}</span>
+          <span className="cx-guest">
+            {complaint.roomNumber ? (complaint.guestName || 'Guest name not given') + ' · ' : 'No room · '}
+            {complaint.category}
+          </span>
         </div>
         <div className="cx-pills">
-          <span className={`cx-pill is-${slug(complaint.status)}`}><span className="dot"></span>{STATUS_WORDS[complaint.status] || complaint.status}</span>
+          <span className={`cx-pill is-${slug(complaint.status)}`} title={STATUS_HINTS[complaint.status] || ''}><span className="dot"></span>{complaint.status}</span>
           <span className="cx-pill"><i className={'fa-solid ' + (TEAM_ICONS[complaint.department] || 'fa-users')}></i>{complaint.departmentLabel}</span>
+          {complaint.kind === 'service' && <span className="cx-pill"><i className="fa-solid fa-user-tie"></i>Staff service</span>}
+          {complaint.internal && <span className="cx-pill"><i className="fa-solid fa-clipboard-list"></i>Staff report</span>}
         </div>
       </div>
 
@@ -479,10 +520,10 @@ function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
       </div>
 
       {stepAt !== -1 && (
-        <ol className="cx-track" aria-label={`Progress: ${STATUS_WORDS[complaint.status]}`}>
-          {TRACK.map((t, i) => (
-            <li key={t.status} className={i < stepAt || complaint.status === 'Resolved' ? 'is-done' : i === stepAt ? 'is-now' : ''}>
-              <span className="cx-dot"></span>{t.label}
+        <ol className="cx-track" style={{ '--cx-steps': track.length }} aria-label={`Progress: ${complaint.status}`}>
+          {track.map((status, i) => (
+            <li key={status} className={i < stepAt || finished ? 'is-done' : i === stepAt ? 'is-now' : ''}>
+              <span className="cx-dot"></span>{status}
             </li>
           ))}
         </ol>
@@ -491,53 +532,64 @@ function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
       <p className="cx-meta">
         Reported {formatWhen(complaint.filedAt)} by {complaint.filedBy || 'Front Desk'}
         {complaint.handledBy ? ` · Handled by ${complaint.handledBy}` : ''}
-        {complaint.resolvedAt ? ` · Closed ${formatWhen(complaint.resolvedAt)}` : ''}
+        {complaint.resolvedAt ? ` · ${complaint.status === 'Cancelled' ? 'Cancelled' : 'Resolved'} ${formatWhen(complaint.resolvedAt)}` : ''}
       </p>
 
-      {complaint.resolutionNote && (
+      {complaint.resolutionNote ? (
         <div className="cx-fix">
-          <small>What was done</small>
+          <small>Resolution notes</small>
           <span>{complaint.resolutionNote}</span>
         </div>
+      ) : (
+        <p className="cx-meta">No resolution notes yet.</p>
       )}
 
-      {canHandle && !isClosed && (
+      {canHandle && isOpen && (
         <div className="cx-actions">
-          {complaint.status === 'Open' && (
+          {complaint.status === 'Pending' && (
             <button type="button" className="cx-btn cx-btn-primary" onClick={() => onUpdate(complaint.id, { status: 'In Progress' })}>
               <i className="fa-solid fa-person-digging"></i> Start working on it
             </button>
           )}
-          {canMoveComplaintTo(complaint.status, 'Resolved') && (
-            <button type="button" className={'cx-btn ' + (complaint.status === 'In Progress' ? 'cx-btn-primary' : 'cx-btn-ghost')}
-              onClick={() => onUpdate(complaint.id, { status: 'Resolved' })}>
-              <i className="fa-solid fa-circle-check"></i> Mark as fixed
-            </button>
-          )}
+          <button type="button" className={'cx-btn ' + (complaint.status === 'In Progress' ? 'cx-btn-primary' : 'cx-btn-ghost')}
+            onClick={() => setNoteMode(m => (m === 'resolve' ? null : 'resolve'))}>
+            <i className="fa-solid fa-circle-check"></i> Mark as resolved
+          </button>
           <span className="cx-spacer"></span>
-          <button type="button" className="cx-btn-sm" onClick={() => setNoteOpen(v => !v)}>
-            <i className="fa-solid fa-pen"></i>{complaint.resolutionNote ? 'Edit what was done' : 'Write what was done'}
+          <button type="button" className="cx-btn-sm" onClick={() => setNoteMode(m => (m === 'note' ? null : 'note'))}>
+            <i className="fa-solid fa-pen"></i>{complaint.resolutionNote ? 'Edit notes' : 'Add notes'}
           </button>
-          {/* A closed complaint cannot be handed over — that would reopen it, the
+          {/* A resolved complaint cannot be handed over — that would reopen it, the
               same backward move the status flow forbids. */}
-          <button type="button" className="cx-btn-sm" onClick={() => onUpdate(complaint.id, { department: otherDepartment })}>
-            <i className="fa-solid fa-right-left"></i>Give to {DEPARTMENT_LABELS[otherDepartment]}
-          </button>
+          <select className="cx-btn-sm cx-handover" value="" onChange={e => handOver(e.target.value)} aria-label="Give this complaint to another department">
+            <option value="">Give to…</option>
+            {otherDepartments.map(key => <option key={key} value={key}>{DEPARTMENT_LABELS[key]}</option>)}
+          </select>
           <button type="button" className="cx-btn-sm is-danger" onClick={cancel}>
             <i className="fa-solid fa-xmark"></i>Cancel
           </button>
         </div>
       )}
 
-      {canHandle && isClosed && (
+      {canHandle && !isOpen && complaint.status !== 'Cancelled' && (
         <div className="cx-actions">
-          <button type="button" className="cx-btn-sm" onClick={() => setNoteOpen(v => !v)}>
-            <i className="fa-solid fa-pen"></i>{complaint.resolutionNote ? 'Edit what was done' : 'Write what was done'}
+          <button type="button" className="cx-btn-sm" onClick={() => setNoteMode(m => (m === 'note' ? null : 'note'))}>
+            <i className="fa-solid fa-pen"></i>{complaint.resolutionNote ? 'Edit notes' : 'Add notes'}
           </button>
         </div>
       )}
 
-      {!canHandle && canCancel && canMoveComplaintTo(complaint.status, 'Cancelled') && (
+      {canFile && !complaint.internal && complaint.status === 'Resolved' && (
+        <div className="cx-actions">
+          <span className="cx-meta">{complaint.departmentLabel} resolved this. Check with the guest, then close it.</span>
+          <span className="cx-spacer"></span>
+          <button type="button" className="cx-btn cx-btn-primary" onClick={close}>
+            <i className="fa-solid fa-user-check"></i> Confirm with guest &amp; close
+          </button>
+        </div>
+      )}
+
+      {!canHandle && canFile && isOpen && (
         <div className="cx-actions">
           <span className="cx-meta">The {complaint.departmentLabel} team updates this as they work on it.</span>
           <span className="cx-spacer"></span>
@@ -547,12 +599,31 @@ function ComplaintCard({ complaint, canHandle, canCancel, onUpdate }) {
         </div>
       )}
 
-      {canHandle && noteOpen && (
+      {canHandle && noteMode && (
         <div className="cx-note-form">
-          <input type="text" className="cx-input" placeholder="What was done to fix it?" value={note} onChange={e => setNote(e.target.value)} aria-label="What was done to fix it" />
-          <button type="button" className="cx-btn cx-btn-primary" onClick={() => { onUpdate(complaint.id, { resolution_note: note }); setNoteOpen(false); }}>
-            Save
+          <input type="text" className="cx-input" placeholder="What was done to fix it?" value={note} onChange={e => setNote(e.target.value)} aria-label="What was done to fix it" autoFocus />
+          <button type="button" className="cx-btn cx-btn-primary" onClick={saveNote}>
+            {noteMode === 'resolve' ? 'Save and resolve' : 'Save'}
           </button>
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div>
+          <button type="button" className="cx-btn-sm" onClick={() => setHistoryOpen(v => !v)} aria-expanded={historyOpen}>
+            <i className={'fa-solid ' + (historyOpen ? 'fa-chevron-up' : 'fa-clock-rotate-left')}></i>History ({history.length})
+          </button>
+          {historyOpen && (
+            <ol className="cx-history">
+              {history.map((h, i) => (
+                <li key={i}>
+                  <strong>{h.event}</strong>
+                  <span> · {formatWhen(h.at)}{h.by ? ` · ${h.by}` : ''}</span>
+                  {h.note && <em>{h.note}</em>}
+                </li>
+              ))}
+            </ol>
+          )}
         </div>
       )}
     </article>
@@ -566,11 +637,15 @@ function App() {
   const [canFile, setCanFile] = useState(false);
   const [handled, setHandled] = useState([]);
   const [statusFilter, setStatusFilter] = useState('open');
-  const [departmentFilter, setDepartmentFilter] = useState(defaultDepartmentFilter(CFG.role));
+  const [departmentFilter, setDepartmentFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const pendingWrites = useRef(0);
+
+  /* A department page shows only the complaints assigned to that department; the
+     Front Desk coordinates all four, so its page has the department filter. */
+  const isDepartmentView = !!DEPARTMENT_LABELS[CFG.role];
 
   const load = useCallback(() => {
     if (pendingWrites.current > 0) return;
@@ -603,7 +678,7 @@ function App() {
 
   const fail = (message) => window.toast && window.toast(message);
 
-  const fileComplaint = (payload, reset) => {
+  const fileComplaint = (payload, department, reset) => {
     setBusy(true);
     pendingWrites.current += 1;
     fetch(CFG.storeUrl, {
@@ -619,7 +694,7 @@ function App() {
       })
       .then(data => {
         if (data.complaint) setComplaints(prev => [data.complaint, ...prev]);
-        if (window.toast) window.toast(`Sent to ${DEPARTMENT_LABELS[payload.department]} — Room ${payload.room_number}`);
+        if (window.toast) window.toast(`Sent to ${DEPARTMENT_LABELS[department]}`);
         if (reset) reset();
       })
       .catch(e => fail(e.message))
@@ -646,7 +721,7 @@ function App() {
         if (data.complaint) {
           setComplaints(prev => prev.map(c => (c.id === data.complaint.id ? data.complaint : c)));
           if (patch.department) window.toast && window.toast(`Given to ${data.complaint.departmentLabel}`);
-          else if (patch.status) window.toast && window.toast(`Marked as ${(STATUS_WORDS[data.complaint.status] || data.complaint.status).toLowerCase()}`);
+          else if (patch.status) window.toast && window.toast(`Marked ${data.complaint.status}`);
           else window.toast && window.toast('Saved');
         }
       })
@@ -654,13 +729,16 @@ function App() {
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   };
 
-  const inDepartment = c => departmentFilter === 'all' || c.department === departmentFilter;
+  const inDepartment = c => (isDepartmentView
+    ? c.department === CFG.role
+    : departmentFilter === 'all' || c.department === departmentFilter);
   const STATUS_TABS = [
-    { key: 'open',   label: 'Not fixed yet',  icon: 'fa-hourglass-half', match: c => OPEN_STATUSES.includes(c.status) },
-    { key: 'closed', label: 'Done',            icon: 'fa-circle-check',  match: c => !OPEN_STATUSES.includes(c.status) },
-    { key: 'all',    label: 'All complaints',  icon: 'fa-list',          match: () => true },
+    { key: 'open',     label: 'Not resolved yet', icon: 'fa-hourglass-half', match: c => OPEN_STATUSES.includes(c.status) },
+    { key: 'resolved', label: 'Resolved',         icon: 'fa-circle-check',   match: c => c.status === 'Resolved' },
+    { key: 'closed',   label: 'Closed',           icon: 'fa-lock',           match: c => DONE_STATUSES.includes(c.status) },
+    { key: 'all',      label: 'All',              icon: 'fa-list',           match: () => true },
   ];
-  const TEAM_TABS = [['all', 'All teams'], ...Object.entries(DEPARTMENT_LABELS)];
+  const TEAM_TABS = [['all', 'All Departments'], ...Object.entries(DEPARTMENT_LABELS)];
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -668,30 +746,30 @@ function App() {
     return complaints.filter(c => {
       if (!inDepartment(c) || !tab.match(c)) return false;
       if (!q) return true;
-      return [c.roomNumber, c.guestName, c.category, c.details, c.filedBy]
+      return [c.roomNumber, c.guestName, c.category, c.details, c.filedBy, c.resolutionNote, c.departmentLabel]
         .some(field => String(field || '').toLowerCase().includes(q));
     });
   }, [complaints, departmentFilter, statusFilter, search]);
 
   const openCount = complaints.filter(c => OPEN_STATUSES.includes(c.status) && inDepartment(c)).length;
+  const toConfirm = complaints.filter(c => c.status === 'Resolved' && !c.internal && inDepartment(c)).length;
 
-  const isDepartmentView = !!DEPARTMENT_LABELS[CFG.role];
   const eyebrow = isDepartmentView ? DEPARTMENT_LABELS[CFG.role] : 'Front Desk';
   const heading = isDepartmentView ? 'Complaints & Concerns' : 'Guest Complaints';
   const lead = isDepartmentView
-    ? 'Problems guests reported at the Front Desk that need your team. Start on each one, mark it fixed when it is done, and write down what you did.'
-    : 'Write down a guest’s problem, send it to the team that can fix it, and follow it until it is fixed.';
+    ? 'Guest complaints the Front Desk sent to your department. Start on each one, mark it resolved with notes on what you did, and the Front Desk closes it once the guest confirms.'
+    : 'Record a guest’s complaint, send it to the department responsible, follow its progress, and close it once the guest confirms it is fixed.';
 
   let emptyTitle = 'Nothing matches';
-  let emptyText = 'Try another tab, another team, or clear the search.';
-  if (complaints.length === 0) {
+  let emptyText = 'Try another tab, another department, or clear the search.';
+  if (complaints.filter(inDepartment).length === 0) {
     emptyTitle = 'No complaints yet';
-    emptyText = canFile
-      ? 'When a guest reports a problem, use the form to send it to the right team.'
-      : 'Nothing has been sent to your team yet. New complaints will show up here.';
+    emptyText = canFile && !isDepartmentView
+      ? 'When a guest reports a problem, use the form to send it to the right department.'
+      : 'Nothing has been sent to your department yet. New complaints will show up here.';
   } else if (statusFilter === 'open' && !search.trim()) {
-    emptyTitle = 'Nothing left to fix';
-    emptyText = 'Every complaint here is done. You can see them under Done.';
+    emptyTitle = 'Nothing left to resolve';
+    emptyText = 'Every complaint here has been resolved. See them under Resolved or Closed.';
   }
 
   const list = (
@@ -706,13 +784,15 @@ function App() {
               </button>
             ))}
           </div>
-          <div className="cx-tabs is-small" role="group" aria-label="Show complaints by team">
-            {TEAM_TABS.map(([key, label]) => (
-              <button key={key} type="button" className={'cx-tab' + (departmentFilter === key ? ' is-on' : '')} aria-pressed={departmentFilter === key} onClick={() => setDepartmentFilter(key)}>
-                {key !== 'all' && <i className={'fa-solid ' + (TEAM_ICONS[key] || 'fa-users')}></i>}{label}
-              </button>
-            ))}
-          </div>
+          {!isDepartmentView && (
+            <div className="cx-tabs is-small" role="group" aria-label="Show complaints by department">
+              {TEAM_TABS.map(([key, label]) => (
+                <button key={key} type="button" className={'cx-tab' + (departmentFilter === key ? ' is-on' : '')} aria-pressed={departmentFilter === key} onClick={() => setDepartmentFilter(key)}>
+                  {key !== 'all' && <i className={'fa-solid ' + (TEAM_ICONS[key] || 'fa-users')}></i>}{label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="cx-search">
           <i className="fa-solid fa-magnifying-glass"></i>
@@ -736,7 +816,7 @@ function App() {
               key={complaint.id}
               complaint={complaint}
               canHandle={handled.includes(complaint.department)}
-              canCancel={canFile}
+              canFile={canFile}
               onUpdate={updateComplaint}
             />
           ))}
@@ -746,6 +826,10 @@ function App() {
     </section>
   );
 
+  // The report form belongs to the Front Desk page only, even for a member who can
+  // also file from a department page.
+  const showForm = canFile && !isDepartmentView;
+
   return (
     <div className="cx" data-hms-no-edit="1">
       <header className="cx-head">
@@ -754,7 +838,8 @@ function App() {
           <h1 className="font-display">{heading}</h1>
           <p className="cx-lead">{lead}</p>
           <p className="cx-lead" style={{ marginTop: '0.35rem', color: 'var(--fg)', fontWeight: 600 }}>
-            {openCount === 0 ? 'Nothing is waiting right now.' : `${openCount} ${openCount === 1 ? 'complaint is' : 'complaints are'} not fixed yet.`}
+            {openCount === 0 ? 'Nothing is waiting right now.' : `${openCount} ${openCount === 1 ? 'complaint is' : 'complaints are'} not resolved yet.`}
+            {!isDepartmentView && toConfirm > 0 ? ` ${toConfirm} resolved ${toConfirm === 1 ? 'complaint needs' : 'complaints need'} confirming with the guest.` : ''}
           </p>
         </div>
         <a href={CFG.backUrl} className="cx-btn cx-btn-ghost">
@@ -762,8 +847,8 @@ function App() {
         </a>
       </header>
 
-      <div className={'cx-layout' + (canFile ? '' : ' is-single')}>
-        {canFile && <ComplaintForm rooms={rooms} categories={categories} onSubmit={fileComplaint} busy={busy} />}
+      <div className={'cx-layout' + (showForm ? '' : ' is-single')}>
+        {showForm && <ComplaintForm rooms={rooms} categories={categories} onSubmit={fileComplaint} busy={busy} />}
         {list}
       </div>
     </div>

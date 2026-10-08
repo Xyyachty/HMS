@@ -147,7 +147,7 @@
     accessLabels: @json(\App\Models\HotelAmenity::ACCESS_LABELS),
     // Same list the Front Desk complaint form offers, so a repair request lands in
     // Maintenance's queue under a category they already sort by.
-    categories: @json(array_keys(\App\Models\HotelComplaint::CATEGORY_DEPARTMENTS)),
+    categories: @json(\App\Models\HotelComplaint::categoriesFor('maintenance')),
   };
 </script>
 @verbatim
@@ -176,8 +176,8 @@ const ACCESS_HINTS = {
   appointment: 'Booked ahead for a slot against a named service, like a spa treatment.',
   event: 'Booked for a date as an event, with a package, catering and a bill.',
 };
-const CATEGORIES = CONFIG.categories || ['Furniture / Fixtures'];
-const DEFAULT_CATEGORY = CATEGORIES.indexOf('Furniture / Fixtures') >= 0 ? 'Furniture / Fixtures' : CATEGORIES[0];
+const CATEGORIES = CONFIG.categories || ['Damaged Furniture'];
+const DEFAULT_CATEGORY = CATEGORIES.indexOf('Damaged Furniture') >= 0 ? 'Damaged Furniture' : CATEGORIES[0];
 
 function hmsCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');

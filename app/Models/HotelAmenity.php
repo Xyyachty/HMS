@@ -26,7 +26,7 @@ class HotelAmenity extends Model
     public const STATUSES = ['Available', 'Temporarily Closed', 'Under Maintenance'];
 
     /** A repair Maintenance is still holding. Anything else is back on Housekeeping's desk. */
-    public const OPEN_REPAIR_STATUSES = ['Open', 'In Progress'];
+    public const OPEN_REPAIR_STATUSES = ['Pending', 'In Progress'];
 
     /**
      * How a guest gets at this facility. Front Desk's screen, the route guards and the

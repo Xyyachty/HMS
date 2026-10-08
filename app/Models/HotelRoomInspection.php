@@ -39,9 +39,9 @@ class HotelRoomInspection extends Model
      */
     public const FINDINGS = [
         'Cleaning Only'     => null,
-        'Damaged Equipment' => 'Appliance / TV',
-        'Needs Repair'      => 'Furniture / Fixtures',
-        'Missing Items'     => 'Other',
+        'Damaged Equipment' => 'Broken Television or Appliances',
+        'Needs Repair'      => 'Damaged Furniture',
+        'Missing Items'     => 'Other Maintenance Problems',
     ];
 
     protected $primaryKey = 'hotel_room_inspection_id';
@@ -96,7 +96,7 @@ class HotelRoomInspection extends Model
     public function hasOpenIssues(): bool
     {
         return $this->complaints()
-            ->whereNotIn('status', ['Resolved', 'Cancelled'])
+            ->whereNotIn('status', ['Resolved', 'Closed', 'Cancelled'])
             ->exists();
     }
 
@@ -148,7 +148,7 @@ class HotelRoomInspection extends Model
             'inspectedAt'    => optional($this->inspected_at)->toIso8601String(),
             'completedAt'    => optional($this->completed_at)->toIso8601String(),
             'issues'         => $issues->map(fn (HotelComplaint $c) => $c->toTemplateArray())->values()->all(),
-            'openIssueCount' => $issues->whereNotIn('status', ['Resolved', 'Cancelled'])->count(),
+            'openIssueCount' => $issues->whereNotIn('status', ['Resolved', 'Closed', 'Cancelled'])->count(),
         ];
     }
 }

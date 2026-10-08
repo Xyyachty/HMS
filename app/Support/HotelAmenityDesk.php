@@ -57,7 +57,7 @@ class HotelAmenityDesk
      * and the Maintenance screen watching it already exist — and parks the amenity at Under
      * Maintenance until a housekeeper verifies the finished work.
      *
-     * $issue keys: category (optional, defaults to Furniture / Fixtures), details.
+     * $issue keys: category (optional, defaults to Damaged Furniture), details.
      */
     public static function requestRepair(HotelAmenity $amenity, array $issue, ?User $actor): HotelComplaint
     {
@@ -82,12 +82,12 @@ class HotelAmenityDesk
                 'room_number'      => $amenity->location ?: $amenity->name,
                 // Nobody's stay. A broken pool is the hotel's problem before it is a guest's.
                 'guest_name'       => null,
-                'category'         => HotelComplaint::normalizeCategory($issue['category'] ?? 'Furniture / Fixtures'),
+                'category'         => HotelComplaint::normalizeCategory($issue['category'] ?? 'Damaged Furniture'),
                 // Always Maintenance: an amenity repair is never Housekeeping's own work to
                 // hand back to itself, whatever the category would otherwise route to.
                 'department'       => 'maintenance',
                 'details'          => $details,
-                'status'           => 'Open',
+                'status'           => 'Pending',
                 'filed_by'         => $actor?->name,
             ]);
 

@@ -22,8 +22,8 @@ use App\Models\StudentGroup;
  * Tables — has no badge at all rather than a permanent zero.
  *
  * Keys are per role, so the same key means different things to different desks:
- * "complaints" is unresolved work to Housekeeping and Maintenance, but to Front Desk
- * it is complaints the department has finished, which is news to pass to the guest.
+ * "complaints" is new work to the four complaint departments, but to Front Desk it is
+ * complaints a department has resolved, which still need confirming with the guest.
  */
 class HotelNavBadges
 {
@@ -43,19 +43,21 @@ class HotelNavBadges
             'room_management' => [
                 'guest-details' => self::awaitingCheckIn($membership),
                 'manage-room'   => self::roomsOutOfService($membership),
+                'complaints'    => self::complaints($membership, 'room_management', 'Pending'),
             ],
             'restaurant_management' => [
                 'orders'      => self::openOrders($membership),
                 'manage-menu' => self::soldOutMenuItems($membership),
+                'complaints'  => self::complaints($membership, 'restaurant_management', 'Pending'),
             ],
             'housekeeping' => [
                 'inspections' => self::inspectionsOnHousekeeping($membership),
-                'complaints'  => self::complaints($membership, 'housekeeping', 'Open'),
+                'complaints'  => self::complaints($membership, 'housekeeping', 'Pending'),
                 'addons'      => self::addonsFullyLentOut($membership),
                 'amenities'   => self::amenitiesOnHousekeeping($membership),
             ],
             'maintenance' => [
-                'complaints' => self::complaints($membership, 'maintenance', 'Open'),
+                'complaints' => self::complaints($membership, 'maintenance', 'Pending'),
             ],
             default => [],
         };
@@ -79,6 +81,9 @@ class HotelNavBadges
         return HotelComplaint::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->when($department, fn ($query) => $query->where('department', $department))
+            // Front Desk only confirms guest complaints; staff-raised repairs finish at
+            // Resolved and would otherwise sit in its badge forever.
+            ->when(!$department, fn ($query) => $query->whereNull('hotel_room_inspection_id')->whereNull('hotel_amenity_id'))
             ->where('status', $status)
             ->count();
     }

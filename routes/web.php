@@ -201,6 +201,8 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     Route::get('/results', [FacultyController::class, 'results'])->name('results');
     Route::get('/reports', [FacultyController::class, 'reports'])->name('reports');
     Route::get('/activity', [FacultyController::class, 'activityLogs'])->name('activity');
+    // Read-only: every guest complaint across this faculty's own teams.
+    Route::get('/complaints', [FacultyController::class, 'complaints'])->name('complaints');
     // Same centralized log; faculty only sees students they manage
     Route::get('/activity/user/{user}', [ActivityLogController::class, 'forUser'])->name('activity.user');
 
@@ -2606,7 +2608,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ->firstOrFail();
 
         $data = $request->validate([
-            'category' => ['nullable', Rule::in(array_keys(HotelComplaint::CATEGORY_DEPARTMENTS))],
+            'category' => ['nullable', Rule::in(HotelComplaint::categoriesFor('maintenance'))],
             'details'  => 'required|string|max:2000',
         ]);
 
@@ -3555,7 +3557,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
     /*
     |--------------------------------------------------------------------------
-    | Guest complaints (Front Desk records, Maintenance / Housekeeping resolve)
+    | Guest complaints (Front Desk records and closes; Housekeeping, Maintenance,
+    | Room Management or Restaurant Services resolves)
     |--------------------------------------------------------------------------
     */
 
@@ -3570,6 +3573,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ]);
         }
 
+        // Scoped to this team: a complaint never crosses into another team's queue.
         $complaints = HotelComplaint::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderByDesc('hotel_complaint_id')
@@ -3595,38 +3599,51 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
 
         $data = $request->validate([
-            'room_number' => 'required|string|max:100',
+            'room_number' => 'nullable|string|max:100',
             'guest_name'  => 'nullable|string|max:255',
-            'category'    => 'required|string|max:100',
-            'department'  => 'nullable|string|max:50',
+            'category'    => ['required', 'string', Rule::in(array_keys(HotelComplaint::CATEGORY_DEPARTMENTS))],
             'details'     => 'required|string|max:2000',
         ]);
 
-        $category = HotelComplaint::normalizeCategory($data['category']);
+        // The category decides the department, so a complaint always lands with the
+        // team that owns that kind of problem.
+        $department = HotelComplaint::departmentForCategory($data['category']);
+        $room = trim((string) ($data['room_number'] ?? ''));
+        $guest = trim((string) ($data['guest_name'] ?? ''));
 
-        $complaint = HotelComplaint::create([
+        // A dirty room or a broken aircon is always in a room. Room Management and the
+        // restaurant also hear from guests who are not staying in one.
+        if ($room === '' && in_array($department, ['housekeeping', 'maintenance'], true)) {
+            return response()->json(['message' => 'Choose the room this ' . HotelComplaint::DEPARTMENTS[$department] . ' problem is in.'], 422);
+        }
+        if ($room === '' && $guest === '') {
+            return response()->json(['message' => 'Enter the guest name or choose their room.'], 422);
+        }
+
+        $complaint = new HotelComplaint([
             'group_name'  => $membership->group_name,
             'faculty_id'  => $membership->faculty_id,
             'group_id'    => $membership->group_id,
-            'room_number' => trim($data['room_number']),
-            'guest_name'  => isset($data['guest_name']) ? trim($data['guest_name']) : null,
-            'category'    => $category,
-            // No explicit department means take the category's default.
-            'department'  => empty($data['department'])
-                ? HotelComplaint::departmentForCategory($category)
-                : HotelComplaint::normalizeDepartment($data['department']),
+            // The column is not nullable; an empty string is "no room".
+            'room_number' => $room,
+            'guest_name'  => $guest !== '' ? $guest : null,
+            'category'    => $data['category'],
+            'department'  => $department,
             'details'     => trim($data['details']),
-            'status'      => 'Open',
+            'status'      => 'Pending',
             'filed_by'    => auth()->user()?->name,
         ]);
+        $complaint->logHistory('Received and sent to ' . $complaint->departmentLabel(), $complaint->filed_by);
+        $complaint->save();
 
         \App\Support\Notifier::complaintFiled(auth()->user(), $complaint);
 
         ActivityLog::record(
             auth()->user(),
             ActivityLog::COMPLAINT_FILED,
-            'Recorded a ' . $complaint->departmentLabel() . ' complaint for room '
-                . $complaint->room_number . ' (' . $complaint->category . ').'
+            'Recorded a ' . $complaint->departmentLabel() . ' complaint'
+                . ($room !== '' ? ' for room ' . $room : ' from ' . $guest)
+                . ' (' . $complaint->category . ').'
         );
 
         return response()->json(['complaint' => $complaint->toTemplateArray()], 201);
@@ -3645,14 +3662,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $data = $request->validate([
             'status'          => 'sometimes|string|max:50',
-            'department'      => 'sometimes|string|max:50',
+            'department'      => ['sometimes', 'string', Rule::in(array_keys(HotelComplaint::DEPARTMENTS))],
             'resolution_note' => 'sometimes|nullable|string|max:2000',
         ]);
 
         // Authorised against the department the complaint sits in *now* — that is
-        // also what lets Housekeeping hand a mis-routed one to Maintenance.
+        // also what lets a department hand a mis-routed one to another.
         $handles = \App\Support\HotelComplaintAccess::canHandle($membership, $complaint->department);
         $isFrontDesk = \App\Support\HotelComplaintAccess::canFile($membership);
+        $by = auth()->user()?->name;
 
         $reassignedFrom = null;
         if (array_key_exists('department', $data)) {
@@ -3661,51 +3679,63 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     'message' => 'Only ' . $complaint->departmentLabel() . ' staff can reassign this complaint.',
                 ], 403);
             }
-            // A closed complaint has nowhere to be handed to — reassigning one used to
-            // reopen it, which is the same backward move the status pills forbid.
-            if (in_array($complaint->status, ['Resolved', 'Cancelled'], true)) {
+            // Once resolved there is nothing left to hand over — reassigning would
+            // reopen it, the same backward move the status flow forbids.
+            if (in_array($complaint->status, ['Resolved', 'Closed', 'Cancelled'], true)) {
                 return response()->json([
                     'message' => 'This complaint is already ' . $complaint->status . ' and cannot be reassigned.',
                 ], 422);
             }
-            $next = HotelComplaint::normalizeDepartment($data['department']);
+            $next = $data['department'];
             if ($next !== $complaint->department) {
                 $reassignedFrom = $complaint->department;
+                $fromLabel = $complaint->departmentLabel();
                 $complaint->department = $next;
                 // The status stays where the first department left it: status only ever
-                // moves forward, so a handed-over complaint cannot drop back to Open.
-                // handled_by clears because the new department has not worked it yet;
-                // any note the first department left stays — it is what they found.
+                // moves forward. handled_by clears because the new department has not
+                // worked it yet; any note the first department left stays.
                 $complaint->handled_by = null;
+                $complaint->logHistory('Handed from ' . $fromLabel . ' to ' . $complaint->departmentLabel(), $by);
             }
         }
 
         if (array_key_exists('status', $data)) {
             $next = HotelComplaint::normalizeStatus($data['status']);
-            // Front Desk took the complaint from the guest, so they may withdraw it —
-            // but working it is the department's job.
-            $maySet = $handles || ($isFrontDesk && $next === 'Cancelled');
+
+            // The department works it; the Front Desk closes it after checking with
+            // the guest, and may withdraw it. Staff-raised issues (an inspection or an
+            // amenity repair) have no guest to confirm with, so they finish at Resolved.
+            if ($next === 'Closed') {
+                if ($complaint->isInternal()) {
+                    return response()->json(['message' => 'This issue was raised by staff, not a guest. It is finished once Resolved.'], 422);
+                }
+                $maySet = $isFrontDesk;
+                $who = 'Front Desk';
+            } elseif ($next === 'Cancelled') {
+                $maySet = $handles || $isFrontDesk;
+                $who = $complaint->departmentLabel() . ' or Front Desk';
+            } else {
+                $maySet = $handles;
+                $who = $complaint->departmentLabel();
+            }
             if (!$maySet) {
-                return response()->json([
-                    'message' => 'Only ' . $complaint->departmentLabel() . ' staff can update this complaint.',
-                ], 403);
+                return response()->json(['message' => 'Only ' . $who . ' staff can mark this complaint ' . $next . '.'], 403);
             }
 
-            // Status only ever moves forward, for every role. Once Resolved or
-            // Cancelled, a complaint is done; nothing may reopen it this way —
-            // reassigning to the other department is the one deliberate reset,
-            // handled above, not through this field.
             if (!HotelComplaint::isForwardTransition($complaint->status, $next)) {
                 return response()->json([
-                    'message' => $complaint->status . ' cannot go back to ' . $next . '. Status only moves forward.',
+                    'message' => $complaint->status . ' cannot move to ' . $next . '.',
                 ], 422);
             }
 
             $complaint->status = $next;
-            $complaint->resolved_at = in_array($next, ['Resolved', 'Cancelled'], true) ? now() : null;
-            if ($handles) {
-                $complaint->handled_by = auth()->user()?->name;
+            if (in_array($next, ['Resolved', 'Cancelled'], true)) {
+                $complaint->resolved_at = now();
             }
+            if ($handles && $next !== 'Closed') {
+                $complaint->handled_by = $by;
+            }
+            $complaint->logHistory($next === 'Closed' ? 'Closed after confirming with the guest' : 'Marked ' . $next, $by);
         }
 
         if (array_key_exists('resolution_note', $data)) {
@@ -3714,31 +3744,43 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     'message' => 'Only ' . $complaint->departmentLabel() . ' staff can leave a resolution note.',
                 ], 403);
             }
-            $note = $data['resolution_note'];
-            $complaint->resolution_note = $note === null ? null : trim($note);
+            $note = $data['resolution_note'] === null ? null : trim($data['resolution_note']);
+            if ($note !== $complaint->resolution_note) {
+                $complaint->resolution_note = $note;
+                $complaint->logHistory('Resolution note updated', $by, $note);
+            }
         }
 
-        $closed = $complaint->isDirty('status')
+        $finished = $complaint->isDirty('status')
             && in_array($complaint->status, ['Resolved', 'Cancelled'], true);
+        $closed = $complaint->isDirty('status') && $complaint->status === 'Closed';
 
         $complaint->save();
+
+        $where = $complaint->room_number !== '' ? 'room ' . $complaint->room_number : (string) $complaint->guest_name;
 
         if ($reassignedFrom) {
             \App\Support\Notifier::complaintReassigned(auth()->user(), $complaint, $reassignedFrom);
         }
-        if ($closed) {
+        if ($finished) {
             \App\Support\Notifier::complaintResolved(auth()->user(), $complaint);
 
             ActivityLog::record(
                 auth()->user(),
                 ActivityLog::COMPLAINT_RESOLVED,
-                'Marked the room ' . $complaint->room_number . ' complaint ('
-                    . $complaint->category . ') as ' . $complaint->status . '.'
+                'Marked the ' . $where . ' complaint (' . $complaint->category . ') as ' . $complaint->status . '.'
             );
 
             // Housekeeping's pass paused for this issue — see whether it can now
             // move on to a final re-inspection.
             \App\Support\HotelHousekeepingDesk::onIssueClosed($complaint, auth()->user());
+        }
+        if ($closed) {
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::COMPLAINT_RESOLVED,
+                'Confirmed with the guest and closed the ' . $where . ' complaint (' . $complaint->category . ').'
+            );
         }
 
         return response()->json(['complaint' => $complaint->toTemplateArray()]);
@@ -3758,7 +3800,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 'can_inspect' => false,
                 'findings'    => \App\Models\HotelRoomInspection::FINDINGS,
                 'statuses'    => \App\Models\HotelRoomInspection::STATUSES,
-                'categories'  => HotelComplaint::CATEGORY_DEPARTMENTS,
+                'categories'  => array_intersect_key(HotelComplaint::CATEGORY_DEPARTMENTS, array_flip(HotelComplaint::categoriesFor('housekeeping', 'maintenance'))),
             ]);
         }
 
@@ -3775,7 +3817,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'can_inspect' => \App\Support\HotelHousekeepingAccess::canInspect($membership),
             'findings'    => \App\Models\HotelRoomInspection::FINDINGS,
             'statuses'    => \App\Models\HotelRoomInspection::STATUSES,
-            'categories'  => HotelComplaint::CATEGORY_DEPARTMENTS,
+            'categories'  => array_intersect_key(HotelComplaint::CATEGORY_DEPARTMENTS, array_flip(HotelComplaint::categoriesFor('housekeeping', 'maintenance'))),
         ]);
     })->name('hotel.inspections.index');
 
@@ -3853,7 +3895,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         return response()->json(['inspection' => $inspection->fresh(['room', 'complaints'])->toTemplateArray()], 201);
     })->name('hotel.inspections.issues.store');
 
-    // One page, three doors: each role opens it from its own module so the shell
+    // One page, five doors: each role opens it from its own module so the shell
     // keeps that role's theme, sidebar and Back target.
     Route::get('/frontdesk/complaints', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
@@ -3867,6 +3909,14 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.complaints.manage', $data);
     })->name('housekeeping.complaints');
+    Route::get('/roommanagement/complaints', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'room_management');
+        return view('students.complaints.manage', $data);
+    })->name('roommanagement.complaints');
+    Route::get('/restaurant/complaints', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');
+        return view('students.complaints.manage', $data);
+    })->name('restaurant.complaints');
 
     /*
     |--------------------------------------------------------------------------

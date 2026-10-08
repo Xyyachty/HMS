@@ -2598,6 +2598,40 @@ class FacultyController extends Controller
         return view('faculty.reports', \App\Support\ReportDesk::build((int) $facultyId, $request->only(['team', 'task', 'role'])));
     }
 
+    /**
+     * Guest complaints across this faculty's own teams, read-only. Lets the faculty
+     * review how each department handled its complaints, poor staff service included.
+     */
+    public function complaints(Request $request)
+    {
+        $facultyId = auth()->user()?->faculty?->user_information_id;
+        if (!$facultyId) {
+            abort(403, 'Faculty account not found.');
+        }
+
+        $filters = [
+            'team'       => (string) $request->query('team', ''),
+            'department' => (string) $request->query('department', ''),
+            'kind'       => (string) $request->query('kind', ''),
+            'status'     => (string) $request->query('status', ''),
+        ];
+
+        $base = \App\Models\HotelComplaint::where('faculty_id', $facultyId);
+        $teams = (clone $base)->distinct()->orderBy('group_name')->pluck('group_name');
+
+        $complaints = (clone $base)
+            ->when($filters['team'] !== '', fn ($q) => $q->where('group_name', $filters['team']))
+            ->when(array_key_exists($filters['department'], \App\Models\HotelComplaint::DEPARTMENTS), fn ($q) => $q->where('department', $filters['department']))
+            ->when($filters['kind'] === 'service', fn ($q) => $q->whereIn('category', \App\Models\HotelComplaint::SERVICE_CATEGORIES))
+            ->when($filters['kind'] === 'facility', fn ($q) => $q->whereNotIn('category', \App\Models\HotelComplaint::SERVICE_CATEGORIES))
+            ->when(in_array($filters['status'], \App\Models\HotelComplaint::STATUSES, true), fn ($q) => $q->where('status', $filters['status']))
+            ->orderByDesc('hotel_complaint_id')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('faculty.complaints', compact('complaints', 'teams', 'filters'));
+    }
+
     public function activityLogs(Request $request)
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;

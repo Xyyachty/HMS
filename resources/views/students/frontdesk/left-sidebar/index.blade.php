@@ -164,6 +164,12 @@
                     {{-- Guests registered but not checked in yet. --}}
                     @include('students.frontdesk.left-sidebar.badge', ['key' => 'guest-details'])
                 </a>
+                <a href="{{ route('students.roommanagement.complaints') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.complaints') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-comment-dots text-[13px] text-emerald-400"></i> Complaints / Concerns
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'complaints'])
+                </a>
                 @elseif(($builderRole ?? null) === 'restaurant_management')
                 <a href="{{ route('students.restaurant.manage', ['nav' => 'manage-menu']) }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
@@ -187,6 +193,12 @@
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.restaurant.manage') && request()->query('nav') === 'orders' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
                     <i class="fas fa-receipt text-[13px] text-emerald-400"></i> Orders
                     @include('students.frontdesk.left-sidebar.badge', ['key' => 'orders'])
+                </a>
+                <a href="{{ route('students.restaurant.complaints') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.restaurant.complaints') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-comment-dots text-[13px] text-emerald-400"></i> Complaints / Concerns
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'complaints'])
                 </a>
                 <a href="{{ route('students.restaurant.reports') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"

@@ -117,7 +117,7 @@ class HotelHousekeepingDesk
                 'category'                 => $category,
                 'department'               => $department,
                 'details'                  => trim((string) ($issue['details'] ?? '')),
-                'status'                   => 'Open',
+                'status'                   => 'Pending',
                 'filed_by'                 => $actor?->name,
             ]);
 

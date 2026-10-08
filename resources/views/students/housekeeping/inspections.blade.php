@@ -110,7 +110,7 @@
     roomsUrl: @json(route('students.hotel.rooms.index')),
     findings: @json(\App\Models\HotelRoomInspection::FINDINGS),
     statuses: @json(\App\Models\HotelRoomInspection::STATUSES),
-    categories: @json(\App\Models\HotelComplaint::CATEGORY_DEPARTMENTS),
+    categories: @json(array_intersect_key(\App\Models\HotelComplaint::CATEGORY_DEPARTMENTS, array_flip(\App\Models\HotelComplaint::categoriesFor('housekeeping', 'maintenance')))),
   };
 </script>
 @verbatim
