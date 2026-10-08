@@ -578,7 +578,7 @@
                                                     {{ $homeRoleLabels[$task->role] ?? $task->role }}
                                                 </span>
                                                 @if($isRevision)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold status-badge-revision">Needs Revision</span>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold status-badge-revision">Revision Required</span>
                                                 @endif
                                             </div>
                                         </div>
@@ -1039,8 +1039,23 @@
             <div id="tasks-section" class="ink-all section-content hidden fade-in space-y-5">
                 @php
                     // One entry per assigned role — a member may hold more than one.
-                    $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
+                    // Simulation reads the member's own Simulation seat, not the seats above.
+                    $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles(
+                        $studentRoles ?? [],
+                        array_filter([\App\Support\SimulationPhase::seatFor($groupMembership)])
+                    );
+                    // The Simulation door stays shut until faculty has approved every
+                    // required task and confirmed the roles — the panel below says why.
+                    $simulationOpen = \App\Support\SimulationPhase::canStart($groupMembership);
                 @endphp
+                @if(session('simulation_locked'))
+                    <div class="rounded-xl border border-[#FDE68A] bg-[#FEF3C7] px-4 py-3 text-[13px] font-semibold text-[#92400E]">
+                        The Hotel Simulation is not open for your team yet.
+                    </div>
+                @endif
+                <div id="simulationPhaseLive">
+                    @include('students.partials.simulation-phase', ['groupMembership' => $groupMembership])
+                </div>
                 <div class="flex flex-col sm:flex-row sm:items-end sm:justify-end gap-3">
                     <div class="flex flex-wrap items-center gap-3">
                         @if(!empty($studentRoles))
@@ -1052,9 +1067,9 @@
                                 <option value="all">All</option>
                                 <option value="not_started">Not Started</option>
                                 <option value="in_progress">In Progress</option>
-                                <option value="revision">Needs Revision</option>
-                                <option value="pending">Pending</option>
-                                <option value="completed">Completed</option>
+                                <option value="revision">Revision Required</option>
+                                <option value="pending">Pending Review</option>
+                                <option value="completed">Approved</option>
                             </select>
 
                             {{-- Two doors, two kinds of work. Customize is the website editor, so
@@ -1076,7 +1091,7 @@
                                         'label' => 'Simulation',
                                         'icon' => 'mdi:bell-ring-outline',
                                         'urlKey' => 'simulation_url',
-                                        'modules' => array_values(array_filter($myModules, fn ($m) => !empty($m['simulation_url']))),
+                                        'modules' => $simulationOpen ? array_values(array_filter($myModules, fn ($m) => !empty($m['simulation_url']))) : [],
                                         'class' => 'bg-white text-slate-700 border-[#E7E1DD] shadow-sm hover:border-[#8A817A] hover:text-[#181818]',
                                     ],
                                 ];
@@ -2170,7 +2185,7 @@
                             + '<p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">' + conceptEscape(code) + '</p>'
                         + '</div>'
                         + '<div class="flex items-center gap-2 shrink-0 ml-auto">'
-                            + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap status-badge-completed">Completed</span>'
+                            + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap status-badge-completed">Approved</span>'
                         + '</div>'
                     + '</div>'
                     + '<div class="flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">'
@@ -2753,9 +2768,9 @@
             const meta = {
                 not_started: { label: 'Not Started', badge: 'status-badge-not_started', icon: 'mdi:circle-outline' },
                 in_progress: { label: 'In Progress', badge: 'status-badge-in_progress', icon: 'mdi:progress-clock' },
-                revision: { label: 'Needs Revision', badge: 'status-badge-revision', icon: 'mdi:message-alert-outline' },
-                pending: { label: 'Pending', badge: 'status-badge-pending', icon: 'mdi:clock-outline' },
-                completed: { label: 'Completed', badge: 'status-badge-completed', icon: 'mdi:check-decagram-outline' },
+                revision: { label: 'Revision Required', badge: 'status-badge-revision', icon: 'mdi:message-alert-outline' },
+                pending: { label: 'Pending Review', badge: 'status-badge-pending', icon: 'mdi:clock-outline' },
+                completed: { label: 'Approved', badge: 'status-badge-completed', icon: 'mdi:check-decagram-outline' },
             }[statusKey];
 
             const percentEl = groupEl.querySelector('[data-summary-percent]');
@@ -2786,9 +2801,9 @@
             const meta = {
                 not_started: { label: 'Not Started', badge: 'status-badge-not_started' },
                 in_progress: { label: 'In Progress', badge: 'status-badge-in_progress' },
-                revision: { label: 'Needs Revision', badge: 'status-badge-revision' },
-                pending: { label: 'Pending', badge: 'status-badge-pending' },
-                completed: { label: 'Completed', badge: 'status-badge-completed' },
+                revision: { label: 'Revision Required', badge: 'status-badge-revision' },
+                pending: { label: 'Pending Review', badge: 'status-badge-pending' },
+                completed: { label: 'Approved', badge: 'status-badge-completed' },
             }[statusKey];
             if (!meta) return;
 
@@ -2957,6 +2972,7 @@
            The signature is compared first so an unchanged list never touches the
            DOM — that would collapse any detail drawer a student has open. */
         let tasksLiveSignature = null;
+        let simulationPhaseSignature = null;
         async function syncTasks() {
             try {
                 const res = await fetch(@json(route('students.tasks.live')), {
@@ -2965,6 +2981,19 @@
                 });
                 if (!res.ok) return;
                 const data = await res.json();
+
+                // The approval panel moves on teammates' verdicts too, so it keeps
+                // its own signature apart from this student's task list.
+                if (simulationPhaseSignature !== null && data.phase_signature !== simulationPhaseSignature) {
+                    const phaseBox = document.getElementById('simulationPhaseLive');
+                    if (phaseBox) {
+                        phaseBox.innerHTML = data.phase_html;
+                        if (window.Iconify && typeof window.Iconify.scan === 'function') {
+                            window.Iconify.scan(phaseBox);
+                        }
+                    }
+                }
+                simulationPhaseSignature = data.phase_signature;
 
                 if (tasksLiveSignature === null) {
                     tasksLiveSignature = data.signature;

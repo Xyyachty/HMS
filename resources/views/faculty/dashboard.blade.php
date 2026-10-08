@@ -148,7 +148,7 @@
          the panel rather than stretching the row of three. --}}
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-slate-800">Task Progress Overview</p>
+            <p class="text-sm font-bold text-slate-800">Customization Approval Progress</p>
             <a href="{{ route('faculty.role') }}" class="text-[11px] font-bold text-rose-600 hover:underline">View Report</a>
         </div>
         <div class="divide-y divide-slate-100 overflow-y-auto" style="max-height: 340px">
@@ -159,7 +159,10 @@
                     </div>
                     <div class="min-w-0 flex-1">
                         <p class="text-[13px] font-bold text-slate-800 truncate">{{ $team['name'] }}</p>
-                        <p class="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5">{{ $team['label'] }} · {{ $team['done'] }}/{{ $team['total'] }}</p>
+                        <p class="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5">
+                            {{ $team['label'] }} · {{ $team['done'] }}/{{ $team['total'] }} approved ·
+                            <span class="{{ $team['unlocked'] ? 'text-emerald-600' : '' }}">Simulation {{ $team['unlocked'] ? 'unlocked' : 'locked' }}</span>
+                        </p>
                     </div>
                     <div class="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
                         <div class="h-full rounded-full {{ $teamBars[$i % count($teamBars)] }}" style="width: {{ $team['percent'] }}%"></div>

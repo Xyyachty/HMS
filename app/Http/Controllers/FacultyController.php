@@ -87,17 +87,18 @@ class FacultyController extends Controller
                 ->orderBy('group_name')
                 ->pluck('group_name')
                 ->values()
-                ->map(function ($name, $index) use ($allTasks) {
-                    $tasks = $allTasks->where('group_name', $name);
-                    $total = $tasks->count();
-                    $done  = $tasks->where('status', 'archived')->count();
+                ->map(function ($name, $index) use ($facultyId) {
+                    // Faculty-approved required tasks, not handed-in rows: approval
+                    // is what opens the team's Hotel Simulation.
+                    $phase = \App\Support\SimulationPhase::progress($name, (int) $facultyId);
 
                     return [
-                        'name'    => $name,
-                        'label'   => 'TEAM ' . str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT),
-                        'total'   => $total,
-                        'done'    => $done,
-                        'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+                        'name'     => $name,
+                        'label'    => 'TEAM ' . str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT),
+                        'total'    => $phase['required'],
+                        'done'     => $phase['approved'],
+                        'percent'  => $phase['percent'],
+                        'unlocked' => $phase['unlocked'],
                     ];
                 })
             : collect();
@@ -1137,6 +1138,7 @@ class FacultyController extends Controller
                 'teamConceptPendingByGroup' => [],
                 'teamHeldTitles' => collect(),
                 'teamTemplateByGroup' => [],
+                'teamApprovalByGroup' => [],
             ]);
         }
 
@@ -1311,7 +1313,11 @@ class FacultyController extends Controller
             ->get();
 
         $teamActivityByGroup = [];
+        $teamApprovalByGroup = [];
         foreach ($allGroups as $groupName => $members) {
+            $teamEdits = null;
+            $teamApprovalByGroup[$groupName] = $this->approvalSummary((string) $groupName, (int) $facultyId);
+            $teamUnlocked = $teamApprovalByGroup[$groupName]['unlocked'];
             $memberStudentIds = $members->pluck('student_id')->filter()->map(fn ($id) => (int) $id)->unique()->all();
             $memberRoles = $members
                 ->flatMap(fn ($m) => $m->roles->pluck('role'))
@@ -1340,7 +1346,7 @@ class FacultyController extends Controller
                 })
                 ->take(100)
                 ->values()
-                ->map(function (Task $task) use ($roleLabels) {
+                ->map(function (Task $task) use ($roleLabels, &$teamEdits, $groupName, $facultyId, $teamUnlocked) {
                     // Tasks fan out one row per member, so name the student the row
                     // belongs to — otherwise identical titles are indistinguishable.
                     $u = $task->assignedTo;
@@ -1365,6 +1371,18 @@ class FacultyController extends Controller
                         // Submitted with no verdict yet. has_feedback reads the comment,
                         // which an approval may leave empty, so it cannot tell this apart.
                         'awaiting_review' => $task->awaiting_review,
+                        // One of SimulationPhase::STATUS_LABELS' keys.
+                        'state' => \App\Support\SimulationPhase::taskState($task),
+                        // Approved, then the department's page changed. A hint only:
+                        // faculty decide whether to send it back. Not raised once the
+                        // simulation is open, where rooms and menus change every shift.
+                        'edited_since_approval' => $task->status === 'archived'
+                            && $task->feedback_at !== null
+                            && !$teamUnlocked
+                            && \App\Support\SimulationPhase::editedSinceApproval(
+                                $task,
+                                $teamEdits ??= \App\Support\SimulationPhase::lastEdits((string) $groupName, (int) $facultyId)
+                            ),
                         'activities_done' => $task->activitiesDoneCount(),
                         'activities_total' => $activityCount,
                         'student_name' => $studentName,
@@ -1445,8 +1463,95 @@ class FacultyController extends Controller
             'teamPendingReviewByGroup',
             'teamConceptPendingByGroup',
             'teamHeldTitles',
-            'teamTemplateByGroup'
+            'teamTemplateByGroup',
+            'teamApprovalByGroup'
         ));
+    }
+
+    /**
+     * A team's Hotel Customization approval progress and Simulation roles, the
+     * shape the Manage Teams modal paints from. Recomputed after every verdict so
+     * the modal never shows a count the verdict just changed.
+     */
+    private function approvalSummary(string $groupName, int $facultyId): array
+    {
+        \App\Support\SimulationPhase::forget();
+        $phase = \App\Support\SimulationPhase::progress($groupName, $facultyId);
+
+        $members = StudentGroup::with('roles')
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->get();
+
+        return \Illuminate\Support\Arr::except($phase, 'items') + [
+            'simulation_roles' => $members
+                ->mapWithKeys(fn (StudentGroup $m) => [(string) $m->student_id => \App\Support\SimulationPhase::seatFor($m)])
+                ->all(),
+        ];
+    }
+
+    /**
+     * Faculty confirms who runs which Simulation desk. Saving is the
+     * confirmation: the team's simulation does not open before it, even with
+     * every task approved. Each member gets exactly one desk and no desk goes
+     * to two members, so nobody is handed two simulation roles. The Customization
+     * seats in student_group_roles are left exactly as they were.
+     */
+    public function storeSimulationRoles(Request $request, string $groupName)
+    {
+        $facultyUser = auth()->user();
+        $facultyId = $facultyUser?->faculty?->user_information_id;
+        if (!$facultyId) {
+            return response()->json(['error' => 'Faculty account not found for the current user.'], 403);
+        }
+        if (!\App\Support\SimulationPhase::supported()) {
+            return response()->json(['error' => 'Simulation roles are not set up on this database yet.'], 422);
+        }
+
+        $data = $request->validate([
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['required', 'string', Rule::in(array_keys(\App\Support\HotelTemplateBuilder::SIMULATION_ROLES))],
+        ]);
+
+        $members = StudentGroup::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->get()
+            ->keyBy(fn (StudentGroup $m) => (string) $m->student_id);
+
+        if ($members->isEmpty()) {
+            return response()->json(['error' => 'Team not found.'], 404);
+        }
+
+        $roles = collect($data['roles'])->mapWithKeys(fn ($seat, $studentId) => [(string) $studentId => $seat]);
+
+        if ($roles->keys()->sort()->values()->all() !== $members->keys()->sort()->values()->all()) {
+            return response()->json(['error' => 'Give every member of the team one simulation role.'], 422);
+        }
+        if ($roles->unique()->count() !== $roles->count()) {
+            return response()->json(['error' => 'Each simulation role can go to one student only.'], 422);
+        }
+
+        DB::transaction(function () use ($members, $roles, $groupName, $facultyId) {
+            foreach ($members as $studentId => $member) {
+                $member->forceFill(['simulation_role' => $roles[$studentId]])->save();
+            }
+
+            Group::firstOrCreate(['group_name' => $groupName, 'faculty_id' => $facultyId])
+                ->forceFill(['simulation_roles_confirmed_at' => now()])
+                ->save();
+        });
+
+        ActivityLog::record(
+            $facultyUser,
+            ActivityLog::ROLE_ASSIGNED,
+            'Confirmed the simulation roles for team "' . $groupName . '".'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Simulation roles confirmed.',
+            'approval' => $this->approvalSummary($groupName, (int) $facultyId),
+        ]);
     }
 
     /**
@@ -2182,6 +2287,13 @@ class FacultyController extends Controller
             'status' => $task->status,
             'needs_revision' => $task->needs_revision,
             'awaiting_review' => $task->awaiting_review,
+            'edited_since_approval' => $task->status === 'archived'
+                && $task->feedback_at !== null
+                && $membership
+                && \App\Support\SimulationPhase::editedSinceApproval(
+                    $task,
+                    \App\Support\SimulationPhase::lastEdits((string) $membership->group_name, (int) $facultyId)
+                ),
             'is_hotel_concept' => $task->is_hotel_concept,
             'activities' => $activities,
             'activities_done' => $task->activitiesDoneCount(),
@@ -2335,6 +2447,8 @@ class FacultyController extends Controller
         return response()->json([
             'success' => true,
             'status' => $task->status,
+            'group_name' => $task->group_name,
+            'approval' => $task->group_name ? $this->approvalSummary((string) $task->group_name, (int) $facultyId) : null,
             'revision_count' => (int) $task->revision_count,
             'unlocked' => $unlocked ? ['title' => $unlocked->title, 'role' => $unlocked->role] : null,
             'message' => $revise

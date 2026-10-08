@@ -138,6 +138,10 @@ class DepartmentTemplatePage
             'editablePages',
             'preferredPage',
             'navBadges'
-        ) + ['builderRole' => $role];
+        ) + [
+            'builderRole' => $role,
+            // The Simulation seat, kept apart from the Customization seats above.
+            'simulationSeats' => array_values(array_filter([SimulationPhase::seatFor($groupMembership)])),
+        ];
     }
 }

@@ -181,6 +181,8 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     // Review one submission: the student's actual work, plus feedback back to them.
     Route::get('/tasks/{task}/review', [FacultyController::class, 'reviewTask'])->name('tasks.review');
     Route::post('/tasks/{task}/feedback', [FacultyController::class, 'storeTaskFeedback'])->name('tasks.feedback');
+    // Who runs which desk once the team's simulation opens; saving confirms it.
+    Route::post('/teams/{groupName}/simulation-roles', [FacultyController::class, 'storeSimulationRoles'])->name('teams.simulation-roles');
     // Read-only render of a team's live site so faculty can see the work itself.
     Route::get('/teams/preview', [FacultyController::class, 'previewTeamSite'])->name('teams.preview');
 
@@ -210,7 +212,7 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
 });
 
 // Student Routes
-Route::prefix('students')->middleware('auth')->name('students.')->group(function () {
+Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('students.')->group(function () {
     Route::get('/dashboard', function () {
         $authUser = auth()->user();
         $student  = $authUser?->student;
@@ -588,8 +590,20 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->implode('|')
         );
 
+        $phase = \App\Support\SimulationPhase::progress(
+            $groupMembership?->group_name,
+            $groupMembership ? (int) $groupMembership->faculty_id : null
+        );
+
         return response()->json([
             'signature'    => $signature,
+            'phase_signature' => md5(json_encode([
+                \Illuminate\Support\Arr::except($phase, 'items'),
+                \App\Support\SimulationPhase::seatFor($groupMembership),
+            ])),
+            'phase_html'   => view('students.partials.simulation-phase', [
+                'groupMembership' => $groupMembership,
+            ])->render(),
             'active_count' => $myRoleTasks->count(),
             'html'         => view('students.partials.task-groups', [
                 'studentRoles'     => $studentRoles,

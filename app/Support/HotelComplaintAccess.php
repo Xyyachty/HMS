@@ -35,9 +35,8 @@ class HotelComplaintAccess
     }
 
     /**
-     * The Simulation-phase roles this member covers — a Room Management seat also
-     * runs Housekeeping, a Housekeeping seat runs only Maintenance here — plus
-     * whatever role they are signed into the hotel site as.
+     * The Simulation-phase roles this member covers — the Room & Maintenance seat
+     * runs both — plus whatever role they are signed into the hotel site as.
      */
     public static function roles(StudentGroup $membership): array
     {
@@ -45,9 +44,9 @@ class HotelComplaintAccess
 
         $sim = HotelSimulationAuth::current();
         if (is_array($sim) && ($sim['type'] ?? null) === 'staff' && is_array($sim['roles'] ?? null)) {
-            // $sim['roles'] is the logged-in-as teammate's stored seat, not yet
-            // expanded for this phase.
-            $roles = array_merge($roles, HotelTemplateBuilder::rolesForPhase($sim['roles'], HotelTemplateBuilder::PHASE_SIMULATION));
+            // The logged-in-as teammate's Simulation seat (their Customization seat on a
+            // session older than the split), not yet expanded for this phase.
+            $roles = array_merge($roles, HotelTemplateBuilder::rolesForPhase($sim['simulation_roles'] ?? $sim['roles'], HotelTemplateBuilder::PHASE_SIMULATION));
         }
 
         return $roles;

@@ -305,7 +305,7 @@
             @php
                 // Simulation's own switcher: stays inside Simulation when a
                 // multi-role member moves between their operations modules.
-                $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
+                $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? [], $simulationSeats ?? null);
                 $simModules = array_values(array_filter($myModules, fn ($m) => !empty($m['simulation_url'])));
             @endphp
             @if(count($simModules) > 1)

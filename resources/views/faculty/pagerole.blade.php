@@ -647,6 +647,18 @@
                                 </div>
                             </div>
 
+                            {{-- Simulation Indicator: opens only once every required
+                                 customization task carries your approval. --}}
+                            @php $cardApproval = ($teamApprovalByGroup ?? [])[$groupName] ?? null; @endphp
+                            @if($cardApproval)
+                                <div class="mt-3 rounded-xl border px-3 py-2 {{ $cardApproval['unlocked'] ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500' }}">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="text-[12px] font-extrabold">Simulation: {{ $cardApproval['unlocked'] ? 'Unlocked' : 'Locked' }}</p>
+                                        <span class="text-[10px] font-bold uppercase tracking-wide">{{ $cardApproval['approved'] }}/{{ $cardApproval['required'] }} approved &middot; {{ $cardApproval['percent'] }}%</span>
+                                    </div>
+                                </div>
+                            @endif
+
                             <div class="mt-5">
                                 <div class="flex items-center justify-between gap-2">
                                     <p class="text-[13px] font-semibold text-slate-600">Team Progress</p>
@@ -772,6 +784,9 @@
                     </div>
                     <div id="teamModalMembersBody" class="tm-member-grid"></div>
 
+                    <!-- Simulation roles: one desk per student, confirmed by faculty -->
+                    <div id="teamModalSimRoles" class="tm-section mt-5"></div>
+
                     <!-- Selected member's centralized activity log -->
                     <div id="memberActivityPanel" class="hidden">
                         <div class="tm-card mt-5">
@@ -804,6 +819,7 @@
                         <h4 class="tm-panel-title">Team Task Activity</h4>
                         <p class="tm-panel-note">Open a task to see the student's work, then approve it or ask for changes.</p>
                     </div>
+                    <div id="teamModalApproval" class="tm-section" style="margin-bottom: 1rem;"></div>
                     <div id="teamModalActivityStats" class="tm-stats"></div>
                     <div class="tm-card">
                         <table class="tm-table">
@@ -2850,9 +2866,11 @@ function openTaskReview(taskId) {
             const badges = [];
             if (d.awaiting_review) {
                 // Handed in, no verdict yet: it is not Completed until approved.
-                badges.push('<span class="tm-badge status-badge-pending"><span class="tm-dot status-fill-pending"></span>Pending' + (d.submitted_at ? ' · handed in ' + escHtml(d.submitted_at) : '') + '</span>');
+                badges.push('<span class="tm-badge status-badge-pending"><span class="tm-dot status-fill-pending"></span>Pending Review' + (d.submitted_at ? ' · handed in ' + escHtml(d.submitted_at) : '') + '</span>');
             } else if (d.status === 'archived') {
-                badges.push('<span class="tm-badge status-badge-completed"><span class="tm-dot status-fill-completed"></span>' + (d.is_hotel_concept ? 'Submitted' : 'Completed') + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
+                badges.push('<span class="tm-badge status-badge-completed"><span class="tm-dot status-fill-completed"></span>' + (d.is_hotel_concept ? 'Submitted' : 'Approved') + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
+            } else if (d.needs_revision) {
+                badges.push('<span class="tm-badge status-badge-revision"><span class="tm-dot status-fill-revision"></span>Revision Required</span>');
             } else if (d.activities_done > 0) {
                 badges.push('<span class="tm-badge status-badge-in_progress"><span class="tm-dot status-fill-in_progress"></span>In Progress</span>');
             } else {
@@ -2928,7 +2946,8 @@ function openTaskReview(taskId) {
                 ? 'The student has not handed this in yet. You can decide once they do.'
                 : (d.awaiting_review
                     ? 'Approve if the work is complete, or ask the student to change something.'
-                    : 'You have already reviewed this task.');
+                    : 'Approved' + (d.edited_since_approval ? ', but the page has been edited since' : '')
+                        + '. Ask for changes to withdraw the approval; the team\'s simulation stays locked until you approve it again.');
         })
         .catch((err) => {
             document.getElementById('reviewTaskTitle').textContent = 'Could not load';
@@ -4666,17 +4685,17 @@ function escHtml(s) {
         .replace(/"/g, '&quot;');
 }
 
-/* Where one task row stands, in the same words and colours students see. */
+/* Where one task row stands, in the five states of the approval workflow
+   (SimulationPhase::taskState); the badge colours are the ones students see. */
 function teamTaskState(log) {
-    if (log.awaiting_review) return { key: 'pending', label: 'Pending' };
-    if (log.status === 'archived') {
-        // The concept is only "Completed" once it is approved, and approving stamps
-        // the feedback — so a submitted-but-unanswered concept says Submitted.
-        return { key: 'completed', label: (log.is_hotel_concept && !log.has_feedback) ? 'Submitted' : 'Completed' };
-    }
-    return Number(log.activities_done) > 0
-        ? { key: 'in_progress', label: 'In Progress' }
-        : { key: 'not_started', label: 'Not Started' };
+    const labels = {
+        not_started: 'Not Started', in_progress: 'In Progress', pending: 'Pending Review',
+        revision: 'Revision Required', approved: 'Approved',
+    };
+    const key = log.state || (log.awaiting_review ? 'pending'
+        : (log.status === 'archived' ? 'approved'
+        : (Number(log.activities_done) > 0 ? 'in_progress' : 'not_started')));
+    return { key: key === 'approved' ? 'completed' : key, label: labels[key] };
 }
 
 /* Three counts over the team's tasks, so faculty see at a glance whether
@@ -4776,7 +4795,10 @@ function renderTeamModalActivityPage() {
             '</td>' +
             '<td>' + student + '</td>' +
             '<td>' + escHtml(log.role_label || log.role || 'None') + '</td>' +
-            '<td>' + statusBadge + progressNote + '</td>' +
+            '<td>' + statusBadge + progressNote
+                + (log.edited_since_approval
+                    ? '<p class="tm-muted mt-1" style="color:#B45309;" title="The department page changed after you approved this. Open it and ask for changes if it no longer meets the task.">Edited after approval</p>'
+                    : '') + '</td>' +
             '<td' + (isDone ? '' : ' class="tm-muted"') + '>' +
                 escHtml(isDone ? (log.submitted_at || log.updated_at || '') : 'Not yet') +
             '</td>' +
@@ -4800,8 +4822,123 @@ function renderTeamModalActivityPage() {
     if (nextBtn) nextBtn.disabled = teamModalActivityPage >= totalPages;
 }
 
+/* ── Hotel Customization approval & Simulation roles ─────────────────────── */
+const TEAM_APPROVAL = @json($teamApprovalByGroup ?? []);
+const SIM_SEAT_LABELS = @json(\App\Support\HotelTemplateBuilder::SIMULATION_SEAT_LABELS);
+const SIM_ROLES_URL = @json(route('faculty.teams.simulation-roles', ['groupName' => '__G__']));
+let teamModalGroup = null;
+let teamModalMembers = [];
+
+/* The team's approval progress: only approved tasks count toward it, and the
+   simulation opens at 100% once the roles are confirmed. */
+function renderTeamApproval() {
+    const box = document.getElementById('teamModalApproval');
+    if (!box) return;
+    const a = TEAM_APPROVAL[teamModalGroup];
+    if (!a || !a.required) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+
+    const lock = a.unlocked
+        ? '<span class="tm-badge status-badge-completed"><span class="tm-dot status-fill-completed"></span>Simulation unlocked'
+            + (a.roles_confirmed ? '' : ' · confirm the roles') + '</span>'
+        : '<span class="tm-badge status-badge-not_started"><span class="tm-dot status-fill-not_started"></span>Simulation locked</span>';
+    const count = (label, n, key) => '<span style="margin-right:1rem;">' + label + ': <b class="status-text-' + key + '">' + n + '</b></span>';
+
+    box.innerHTML = '<div class="flex items-center justify-between gap-2 flex-wrap">'
+            + '<p class="tm-section-title"><span class="iconify" data-icon="mdi:check-decagram-outline"></span>Team '
+                + escHtml(teamModalGroup) + ' — Hotel Customization</p>' + lock
+        + '</div>'
+        + '<p class="tm-muted mt-2">'
+            + count('Required Tasks', a.required, 'not_started') + count('Approved', a.approved, 'completed')
+            + count('Pending Review', a.pending, 'pending') + count('Revision Required', a.revision, 'revision')
+        + '</p>'
+        + '<div class="flex items-center gap-3 mt-2">'
+            + '<div style="flex:1; height:.5rem; border-radius:999px; background:#F0ECE8; overflow:hidden;">'
+                + '<div class="status-fill-completed" style="height:100%; width:' + Number(a.percent) + '%;"></div></div>'
+            + '<b style="font-size:13px;">Approval Progress ' + Number(a.percent) + '%</b>'
+        + '</div>';
+}
+
+/* One Simulation desk per student. Their Customization role is not touched;
+   saving is faculty's confirmation, which the simulation waits for. */
+function renderTeamSimRoles() {
+    const box = document.getElementById('teamModalSimRoles');
+    if (!box) return;
+    if (!teamModalMembers.length) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+
+    const a = TEAM_APPROVAL[teamModalGroup] || {};
+    const current = a.simulation_roles || {};
+    const options = (selected) => Object.keys(SIM_SEAT_LABELS).map((key) =>
+        '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>' + escHtml(SIM_SEAT_LABELS[key]) + '</option>'
+    ).join('');
+
+    box.innerHTML = '<p class="tm-section-title"><span class="iconify" data-icon="mdi:bell-ring-outline"></span>Simulation Roles</p>'
+        + '<p class="tm-muted mt-1">Each student runs one desk in the Hotel Simulation. Their customization role stays as it is. '
+            + (a.roles_confirmed
+                ? 'You have confirmed these roles.'
+                : 'Not confirmed yet: the team cannot start the simulation until you confirm them.')
+        + '</p>'
+        + '<div style="display:grid; gap:.6rem; margin-top:.75rem;">'
+        + teamModalMembers.map((m) =>
+            '<label style="display:flex; align-items:center; justify-content:space-between; gap:.75rem;">'
+                + '<span class="tm-ellipsis" style="font-size:13px; font-weight:700; color:#181818;">' + escHtml(m.name)
+                    + ' <span class="tm-muted">(' + escHtml((m.role_labels || []).join(', ') || 'No role yet') + ')</span></span>'
+                + '<select data-sim-role="' + Number(m.student_id) + '"'
+                    + ' style="height:2.1rem; border:1px solid #E4E2E0; border-radius:.6rem; padding:0 .5rem; font-size:13px; background:#fff;">'
+                    + options(current[String(m.student_id)]) + '</select>'
+            + '</label>'
+        ).join('')
+        + '</div>'
+        + '<div id="teamSimRolesError" class="tm-alert hidden" style="margin-top:.75rem;"></div>'
+        + '<div style="margin-top:.75rem;"><button type="button" id="teamSimRolesSave" onclick="saveTeamSimRoles()" class="tm-btn tm-btn-dark">'
+            + '<span class="iconify" data-icon="mdi:check"></span> Confirm simulation roles</button></div>';
+}
+
+function saveTeamSimRoles() {
+    const roles = {};
+    document.querySelectorAll('#teamModalSimRoles [data-sim-role]').forEach((select) => {
+        roles[select.dataset.simRole] = select.value;
+    });
+    const err = document.getElementById('teamSimRolesError');
+    const btn = document.getElementById('teamSimRolesSave');
+    err.classList.add('hidden');
+    btn.disabled = true;
+
+    fetch(SIM_ROLES_URL.replace('__G__', encodeURIComponent(teamModalGroup)), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
+        },
+        body: JSON.stringify({ roles: roles })
+    })
+        .then((res) => res.json().then((d) => {
+            if (!res.ok) {
+                const first = d.errors ? Object.values(d.errors)[0][0] : null;
+                throw new Error(d.error || first || d.message || 'Could not save the simulation roles.');
+            }
+            return d;
+        }))
+        .then((d) => {
+            TEAM_APPROVAL[teamModalGroup] = d.approval;
+            renderTeamSimRoles();
+            renderTeamApproval();
+        })
+        .catch((e) => {
+            err.textContent = e.message;
+            err.classList.remove('hidden');
+            btn.disabled = false;
+        });
+}
+
 function openTeamModal(groupName, members, createdAt, activityLogs, options) {
     options = options || {};
+    teamModalGroup = groupName;
+    teamModalMembers = Array.isArray(members) ? members : [];
     // Review Submission opens straight onto what it announced — every other
     // caller (View Team, Update) gets the full, unfiltered activity list.
     const logs = (Array.isArray(activityLogs) ? activityLogs : [])
@@ -4848,6 +4985,8 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
     }
 
     closeMemberActivityPanel();
+    renderTeamSimRoles();
+    renderTeamApproval();
 
     teamModalActivityLogs = logs;
     teamModalActivityPage = 1;

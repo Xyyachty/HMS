@@ -48,19 +48,23 @@ class HotelTemplateBuilder
         'housekeeping' => ['housekeeping', 'maintenance'],
     ];
 
-    /** Simulation: Room Management runs Housekeeping, Maintenance stands alone. */
+    /**
+     * Simulation: four desks. Room Management runs Maintenance as one desk, and
+     * Housekeeping stands alone. Keyed by the Simulation seat, which is stored
+     * apart from the Customization seat — see SimulationPhase::seatFor().
+     */
     public const SIMULATION_ROLES = [
         'front_desk' => ['front_desk'],
-        'room_management' => ['room_management', 'housekeeping'],
+        'room_management' => ['room_management', 'maintenance'],
+        'housekeeping' => ['housekeeping'],
         'restaurant_management' => ['restaurant_management'],
-        'housekeeping' => ['maintenance'],
     ];
 
     public const SIMULATION_SEAT_LABELS = [
         'front_desk' => 'Front Desk',
-        'room_management' => 'Room Management / Housekeeping',
-        'restaurant_management' => 'Restaurant Management',
-        'housekeeping' => 'Maintenance',
+        'room_management' => 'Room & Maintenance',
+        'housekeeping' => 'Housekeeping',
+        'restaurant_management' => 'Restaurant Services',
     ];
 
     /** How many version snapshots to keep per role template (reduces DB redundancy). */
@@ -379,12 +383,13 @@ class HotelTemplateBuilder
      * Each carries both doors: customize_url opens the website editor,
      * simulation_url opens the role's hotel operations.
      *
+     * @param  string[]|null  $simulationSeats  the member's Simulation seat; null reads the seats as their own
      * @return array<int, array{role: string, label: string, route: string, editable: bool, customize_url: string, simulation_url: ?string}>
      */
-    public static function modulesForRoles(array $roles): array
+    public static function modulesForRoles(array $roles, ?array $simulationSeats = null): array
     {
         $customize = self::rolesForPhase($roles, self::PHASE_CUSTOMIZATION);
-        $simulate = self::rolesForPhase($roles, self::PHASE_SIMULATION);
+        $simulate = self::rolesForPhase($simulationSeats ?? $roles, self::PHASE_SIMULATION);
         $modules = [];
 
         foreach (self::ROLES as $role => $label) {
@@ -436,7 +441,7 @@ class HotelTemplateBuilder
     /** @return list<string> */
     public static function simulationRoleKeys(StudentGroup $membership): array
     {
-        return self::rolesForPhase(self::studentRoleKeys($membership), self::PHASE_SIMULATION);
+        return self::rolesForPhase(array_filter([SimulationPhase::seatFor($membership)]), self::PHASE_SIMULATION);
     }
 
     /** Label for a stored seat in a phase, falling back to the plain role name. */

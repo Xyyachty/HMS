@@ -73,8 +73,8 @@ class HotelAmenityAccess
 
     /**
      * A member may turn a hall or facility around between bookings when they cover
-     * Housekeeping *in Simulation* — the Room Management seat, not the Housekeeping
-     * seat, which runs Maintenance once the team leaves Customization.
+     * Housekeeping *in Simulation* — the member whose Simulation seat is
+     * Housekeeping, not Room & Maintenance.
      */
     public static function canPrepare(StudentGroup $membership): bool
     {
@@ -104,9 +104,9 @@ class HotelAmenityAccess
 
         $sim = HotelSimulationAuth::current();
         if (is_array($sim) && ($sim['type'] ?? null) === 'staff' && is_array($sim['roles'] ?? null)) {
-            // $sim['roles'] is the logged-in-as teammate's stored seat, not yet
-            // expanded for this phase.
-            $roles = array_merge($roles, HotelTemplateBuilder::rolesForPhase($sim['roles'], HotelTemplateBuilder::PHASE_SIMULATION));
+            // The logged-in-as teammate's Simulation seat (their Customization seat on a
+            // session older than the split), not yet expanded for this phase.
+            $roles = array_merge($roles, HotelTemplateBuilder::rolesForPhase($sim['simulation_roles'] ?? $sim['roles'], HotelTemplateBuilder::PHASE_SIMULATION));
         }
 
         return $roles;

@@ -93,7 +93,7 @@ class AssignedTaskList
 
                 [$status, $statusLabel] = match (true) {
                     $task->status === 'archived' => ['completed', 'Completed'],
-                    $task->needs_revision => ['needs_revision', 'Needs Revision'],
+                    $task->needs_revision => ['needs_revision', 'Revision Required'],
                     default => ['in_progress', 'In Progress'],
                 };
 
