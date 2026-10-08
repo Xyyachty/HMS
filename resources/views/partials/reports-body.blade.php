@@ -86,7 +86,7 @@
     .pb-5 { padding-bottom: 1.25rem; }
     .pb-3 { padding-bottom: .75rem; }
     .leading-snug { line-height: 1.375; }
-    .hover\:text-brand:hover { color: #7B1730; }
+    .hover\:text-brand:hover { color: #181818; }
     .hover\:bg-slate-50:hover { background-color: #F3F2F1; }
     .hover\:border-brand\/40:hover { border-color: #8A817A; }
     .bg-slate-50\/60 { background-color: rgba(243,242,241,.6); }
