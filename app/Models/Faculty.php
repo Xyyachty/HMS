@@ -122,6 +122,40 @@ class Faculty extends UserInformation
         return FacultyClass::nextLetter((string) (end($all) ?: 'A'));
     }
 
+    /**
+     * Why this faculty cannot add students or create teams yet, or null when they can.
+     *
+     * Blocks fill in order: Block B opens only once the faculty holding Block A has a
+     * full class (FacultyClass::CAPACITY students), Block C once Block B is full, and
+     * so on. Block A is always open.
+     */
+    public function intakeLockReason(): ?string
+    {
+        $block = strtoupper(trim((string) $this->block));
+        if ($block === '') {
+            return 'No block is assigned to your account yet. Ask the dean to assign one.';
+        }
+        if ($block === 'A') {
+            return null;
+        }
+
+        // nextLetter() has no inverse, so walk up from A. Bounded in case of bad data.
+        $previous = 'A';
+        for ($i = 0; $i < 1000 && FacultyClass::nextLetter($previous) !== $block; $i++) {
+            $previous = FacultyClass::nextLetter($previous);
+        }
+
+        $previousFaculty = static::whereRaw('UPPER(block) = ?', [$previous])->first();
+        $taken = $previousFaculty ? $previousFaculty->students()->count() : 0;
+        if ($taken >= FacultyClass::CAPACITY) {
+            return null;
+        }
+
+        return 'Block ' . $block . ' is not open yet. Block ' . $previous . ' has ' . $taken
+            . ' of ' . FacultyClass::CAPACITY . ' students. You can add students and create teams once Block '
+            . $previous . ' is full.';
+    }
+
     /** Options for a faculty update dropdown: available class letters + their current block. */
     public static function selectableBlocksForFaculty(?int $facultyId = null, ?string $currentBlock = null): array
     {

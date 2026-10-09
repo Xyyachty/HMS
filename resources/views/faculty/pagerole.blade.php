@@ -342,6 +342,13 @@
 </div>
 @endif
 
+@if(!empty($intakeLock))
+<div class="mb-5 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-700 px-5 py-3 rounded-2xl text-sm font-semibold">
+    <span class="iconify text-lg shrink-0" data-icon="mdi:alert-outline"></span>
+    <span>{{ $intakeLock }} Creating teams stays switched off until then.</span>
+</div>
+@endif
+
 {{-- ═══════════════════════════════════════════════
      TAB BAR
 ═══════════════════════════════════════════════ --}}

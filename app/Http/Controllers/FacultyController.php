@@ -131,6 +131,10 @@ class FacultyController extends Controller
             return back()->withErrors(['group_name' => 'Faculty account not found for the current user.'])->withInput();
         }
 
+        if ($lock = $this->intakeLockReason()) {
+            return back()->withErrors(['group_name' => $lock])->withInput();
+        }
+
         $formSource = $request->input('_form_source', 'create_team');
 
         if ($formSource === 'create_teams_bulk') {
@@ -504,21 +508,21 @@ class FacultyController extends Controller
     }
 
     /**
-     * The block letter assigned to the signed-in faculty, or '' when there is none.
+     * Why the signed-in faculty cannot add students or create teams yet, or null.
      *
-     * The dean assigns it when creating the faculty account. Until it is set the
-     * faculty has no class to enrol anyone into, so both intake paths — Add Student
-     * and Bulk Upload — refuse rather than creating students who belong nowhere.
+     * No block assigned, or a block whose turn has not come (Block B waits for
+     * Block A to fill) — see Faculty::intakeLockReason(). Add Student, Bulk Upload
+     * and team creation all refuse while this is set.
      */
-    private function signedInFacultyBlock(): string
+    private function intakeLockReason(): ?string
     {
-        return strtoupper(trim((string) (auth()->user()?->faculty?->block ?? '')));
+        return auth()->user()?->faculty?->intakeLockReason();
     }
 
     public function students()
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
-        $hasBlock  = $this->signedInFacultyBlock() !== '';
+        $intakeLock = $this->intakeLockReason();
 
         if (!$facultyId) {
             return view('faculty.managestudent', [
@@ -527,7 +531,7 @@ class FacultyController extends Controller
                 'activeClass' => null,
                 'openClass' => null,
                 'classCapacity' => FacultyClass::CAPACITY,
-                'hasBlock' => false,
+                'intakeLock' => 'Faculty account not found.',
             ]);
         }
 
@@ -577,7 +581,7 @@ class FacultyController extends Controller
             'activeClass',
             'openClass',
             'classCapacity',
-            'hasBlock',
+            'intakeLock',
             'search'
         ));
     }
@@ -631,10 +635,8 @@ class FacultyController extends Controller
             return back()->withErrors(['error' => 'Faculty account not found.'])->withInput();
         }
 
-        if ($this->signedInFacultyBlock() === '') {
-            return back()->withErrors([
-                'error' => 'No block is assigned to your account yet. Ask the dean to assign one before adding students.',
-            ])->withInput();
+        if ($lock = $this->intakeLockReason()) {
+            return back()->withErrors(['error' => $lock])->withInput();
         }
 
         $validated = $request->validate([
@@ -886,10 +888,8 @@ class FacultyController extends Controller
             return response()->json(['message' => 'Faculty account not found.'], 403);
         }
 
-        if ($this->signedInFacultyBlock() === '') {
-            return response()->json([
-                'message' => 'No block is assigned to your account yet. Ask the dean to assign one before importing students.',
-            ], 422);
+        if ($lock = $this->intakeLockReason()) {
+            return response()->json(['message' => $lock], 422);
         }
 
         $request->validate([
@@ -1230,6 +1230,7 @@ class FacultyController extends Controller
             fn ($members) => $members->contains(fn ($member) => $member->student !== null)
         );
 
+        $intakeLock = $this->intakeLockReason();
         $setTaskBlockReason = null;
         if ($classStudentCount === 0) {
             $setTaskBlockReason = 'No students are available. Please add students before setting tasks.';
@@ -1452,6 +1453,7 @@ class FacultyController extends Controller
             'classCapacity',
             'teamCountsByClass',
             'setTaskBlockReason',
+            'intakeLock',
             'rolesMeta',
             'tasksByRole',
             'taskCounts',

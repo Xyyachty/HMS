@@ -293,14 +293,13 @@
                 >
             </div>
             @php
-                // No block, no class to enrol into — see FacultyController::students().
-                $canEnrol = $hasBlock ?? true;
-                $noBlockHint = 'No block assigned to your account yet. Ask the dean to assign one.';
+                // No block, or a block not open yet — see Faculty::intakeLockReason().
+                $canEnrol = empty($intakeLock);
             @endphp
             <button
                 type="button"
                 @if ($canEnrol) onclick="openModal('bulkUploadModal')" @else disabled @endif
-                title="{{ $canEnrol ? 'Bulk Upload' : $noBlockHint }}"
+                title="{{ $canEnrol ? 'Bulk Upload' : $intakeLock }}"
                 aria-label="Bulk Upload"
                 class="h-10 shrink-0 bg-brand text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'ms-light-hover' : 'intake-disabled' }}"
             >
@@ -310,7 +309,7 @@
             <button
                 type="button"
                 @if ($canEnrol) onclick="openModal('createStudentModal')" @else disabled @endif
-                title="{{ $canEnrol ? 'Add Student' : $noBlockHint }}"
+                title="{{ $canEnrol ? 'Add Student' : $intakeLock }}"
                 class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'ms-light-hover' : 'intake-disabled' }}"
             >
                 <span class="iconify text-base" data-icon="mdi:account-plus-outline"></span>
@@ -319,16 +318,12 @@
         </div>
     </div>
 
-    @unless ($hasBlock ?? true)
+    @if (!empty($intakeLock))
         <div class="mx-6 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 flex items-start gap-2">
             <span class="iconify text-base shrink-0" data-icon="mdi:alert-outline"></span>
-            <span>
-                <b>No block assigned to your account.</b>
-                Students are enrolled into your block, so Add Student and Bulk Upload stay
-                switched off until the dean assigns one.
-            </span>
+            <span>{{ $intakeLock }} Add Student and Bulk Upload stay switched off until then.</span>
         </div>
-    @endunless
+    @endif
 
     @if (session('success'))
         <div id="successAlert" class="mx-6 mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
