@@ -151,6 +151,198 @@
   :root[data-ops-theme="2"] .tb-cancelled { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
   :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
   :root[data-ops-theme="2"] .order-card { background: rgba(27,67,50,0.03); }
+  /* ── Manage Menu (mn-) ──────────────────────────────────────────────────
+     Reads the shell's tokens, the same way the Housekeeping pages do, so it
+     follows Template 1, Template 2 and a team's own site colours. Shape rule:
+     pills for status and tabs, 10px for buttons and fields, 14px for panels
+     and cards. Tables, Catering and Orders keep their own rm-/tb- styles. */
+  :root[data-ops-theme="2"] { --warn: #b45309; }
+  .mn {
+    --mn-soft: color-mix(in srgb, var(--fg) 4%, transparent);
+    --mn-tint: color-mix(in srgb, var(--accent) 12%, transparent);
+    --mn-line: var(--border);
+    --mn-ok: var(--success, #4ade80);
+    --mn-warn: var(--warn, #f59e0b);
+    --mn-bad: var(--danger, #fb7185);
+    color: var(--fg);
+    display: grid; gap: 1.25rem;
+  }
+  .mn-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .mn-eyebrow { color: var(--accent); font-size: 0.72rem; letter-spacing: 0.25em; text-transform: uppercase; margin: 0 0 0.5rem; }
+  .mn-head h1 { margin: 0; font-size: 1.85rem; line-height: 1.15; color: var(--fg); }
+  .mn-lead { margin: 0.45rem 0 0; color: var(--fg-muted); font-size: 0.92rem; max-width: 66ch; line-height: 1.5; }
+  .mn-head-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  .mn-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+    font: 600 0.88rem/1.15 var(--font-body, 'Outfit', sans-serif);
+    padding: 0.8rem 1.15rem; border-radius: 10px; cursor: pointer; text-decoration: none;
+    border: 1px solid var(--accent); background: transparent; color: var(--accent);
+    transition: background 0.15s, transform 0.1s, filter 0.15s;
+  }
+  .mn-btn:hover { background: var(--mn-tint); }
+  .mn-btn:active { transform: translateY(1px); }
+  .mn-btn.is-solid { background: var(--accent); color: var(--bg); }
+  .mn-btn.is-solid:hover { filter: brightness(1.08); }
+  .mn-btn.is-quiet { border-color: var(--mn-line); color: var(--fg-muted); }
+  .mn-btn.is-quiet:hover { color: var(--fg); background: var(--mn-soft); }
+  .mn-btn.is-small { padding: 0.62rem 0.95rem; font-size: 0.84rem; }
+  .mn-btn.is-wide { width: 100%; }
+  .mn-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
+  .mn-btn:focus-visible, .mn-tab:focus-visible, .mn-chip:focus-visible, .mn-link:focus-visible, .mn-close:focus-visible, .mn-photos:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  .mn-how { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+  .mn-how li { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.85rem 0.95rem; border-radius: 14px; background: var(--mn-soft); border: 1px solid var(--mn-line); }
+  .mn-how-num { flex: none; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; background: var(--mn-tint); color: var(--accent); }
+  .mn-how div b { display: block; font-size: 0.86rem; color: var(--fg); margin-bottom: 0.15rem; }
+  .mn-how div span { display: block; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.4; }
+
+  .mn-panel { background: var(--card); border: 1px solid var(--mn-line); border-radius: 14px; padding: 1.2rem 1.3rem 1.4rem; }
+  .mn-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .mn-panel-head h2 { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--fg); }
+  .mn-panel-head p { margin: 0.25rem 0 0; font-size: 0.84rem; color: var(--fg-muted); }
+  .mn-live { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--fg-muted); }
+  .mn-live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--mn-ok); }
+
+  .mn .tone-ok, .mn-modal .tone-ok       { background: color-mix(in srgb, var(--mn-ok) 16%, transparent);   color: var(--mn-ok); }
+  .mn .tone-warn, .mn-modal .tone-warn   { background: color-mix(in srgb, var(--mn-warn) 16%, transparent); color: var(--mn-warn); }
+  .mn .tone-brand, .mn-modal .tone-brand { background: var(--mn-tint); color: var(--accent); }
+
+  .mn-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.1rem; }
+  .mn-stat { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 0.95rem; border-radius: 12px; border: 1px solid var(--mn-line); background: var(--mn-soft); }
+  .mn-stat-icon { flex: none; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; }
+  .mn-stat div b { display: block; font-size: 1.35rem; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--fg); }
+  .mn-stat div span { display: block; font-size: 0.78rem; color: var(--fg-muted); }
+
+  .mn-types { display: grid; gap: 0.5rem; margin-bottom: 0.9rem; }
+  .mn-tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .mn-tab { display: inline-flex; align-items: center; gap: 0.5rem; font: 600 0.84rem/1 var(--font-body, 'Outfit', sans-serif); padding: 0.6rem 0.9rem; border-radius: 999px; cursor: pointer; border: 1px solid var(--mn-line); background: var(--mn-soft); color: var(--fg-muted); transition: background 0.15s, color 0.15s, border-color 0.15s; }
+  .mn-tab:hover { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  .mn-tab.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .mn-tab.is-new { border-style: dashed; background: transparent; color: var(--accent); }
+  .mn-count { min-width: 1.45rem; padding: 0.2rem 0.4rem; border-radius: 999px; text-align: center; font-size: 0.74rem; font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--fg) 8%, transparent); }
+  .mn-tab.is-on .mn-count { background: color-mix(in srgb, var(--bg) 22%, transparent); }
+
+  .mn-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .mn-showing { margin: 0; font-size: 0.86rem; color: var(--fg-muted); display: flex; align-items: center; gap: 0.4rem 0.9rem; flex-wrap: wrap; }
+  .mn-showing b { color: var(--fg); }
+  .mn-link { display: inline-flex; align-items: center; gap: 0.4rem; background: none; border: 0; padding: 0.25rem 0; cursor: pointer; color: var(--accent); font: 600 0.84rem/1 var(--font-body, 'Outfit', sans-serif); }
+  .mn-link:hover { text-decoration: underline; }
+  .mn-search { position: relative; flex: 1 1 240px; max-width: 340px; }
+  .mn-search i { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--fg-muted); font-size: 0.8rem; pointer-events: none; }
+  .mn-search .mn-input { padding-left: 2.3rem; }
+
+  .mn-input {
+    box-sizing: border-box; width: 100%;
+    background: var(--mn-soft); border: 1px solid var(--mn-line);
+    border-radius: 10px; padding: 0.75rem 0.9rem; color: var(--fg);
+    font: 400 0.9rem/1.4 var(--font-body, 'Outfit', sans-serif);
+    outline: none; transition: border-color 0.15s;
+  }
+  .mn-input:focus { border-color: var(--accent); }
+  .mn-input::placeholder { color: var(--fg-muted); opacity: 0.7; }
+  .mn-input.has-error { border-color: var(--mn-bad); }
+  textarea.mn-input { resize: vertical; min-height: 4.6rem; }
+
+  /* Room cards: one height per row, button at the bottom. */
+  .mn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(270px, 100%), 1fr)); gap: 1rem; align-items: stretch; }
+  .mn-card { min-width: 0; border: 1px solid var(--mn-line); border-radius: 14px; background: var(--mn-soft); overflow: hidden; display: flex; flex-direction: column; }
+  .mn-card-img { position: relative; aspect-ratio: 16 / 9; background: var(--mn-soft); overflow: hidden; }
+  .mn-card-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mn-card-img .mn-pill { position: absolute; top: 10px; left: 10px; background: var(--card); box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+  .mn-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.7rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600; white-space: nowrap; }
+  .mn-card-body { padding: 0.9rem 1rem 1rem; display: flex; flex-direction: column; gap: 0.7rem; flex: 1; }
+  .mn-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+  .mn-name { margin: 0; font-size: 1.08rem; font-weight: 700; color: var(--fg); line-height: 1.25; overflow-wrap: anywhere; }
+  .mn-type { display: block; font-size: 0.78rem; font-weight: 600; color: var(--accent); margin-top: 0.2rem; }
+  .mn-price { text-align: right; flex: none; }
+  .mn-price b { display: block; font-size: 1.02rem; color: var(--fg); font-variant-numeric: tabular-nums; }
+  .mn-price small { display: block; font-size: 0.7rem; color: var(--fg-muted); }
+  .mn-desc { margin: 0; font-size: 0.83rem; line-height: 1.5; color: var(--fg-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 3em; }
+  .mn-desc.is-empty { font-style: italic; opacity: 0.7; }
+  .mn-next { margin: auto 0 0; display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--fg); padding: 0.55rem 0.7rem; border-radius: 10px; background: var(--card); border: 1px solid var(--mn-line); }
+  .mn-next i { color: var(--fg-muted); }
+  .mn-more { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; font-size: 0.82rem; color: var(--fg-muted); }
+
+  .mn-empty { border: 1.5px dashed var(--mn-line); border-radius: 14px; padding: 2.2rem 1.5rem; text-align: center; }
+  .mn-empty-icon { width: 56px; height: 56px; margin: 0 auto 0.9rem; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; background: var(--mn-tint); color: var(--accent); }
+  .mn-empty h3 { margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--fg); }
+  .mn-empty p { margin: 0.4rem auto 0; max-width: 52ch; font-size: 0.86rem; line-height: 1.5; color: var(--fg-muted); }
+  .mn-empty .mn-btn { margin-top: 1.1rem; }
+
+  /* Dialogs. Below .room-image-overlay (260), which opens on top of them. */
+  .mn-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 1.25rem; z-index: 200; }
+  .mn-modal {
+    --mn-soft: color-mix(in srgb, var(--fg) 4%, transparent);
+    --mn-tint: color-mix(in srgb, var(--accent) 12%, transparent);
+    --mn-line: var(--border);
+    --mn-ok: var(--success, #4ade80);
+    --mn-bad: var(--danger, #fb7185);
+    box-sizing: border-box; background: var(--card); color: var(--fg); border: 1px solid var(--mn-line); border-radius: 14px; width: 100%; max-width: 580px; max-height: 92vh; overflow-y: auto;
+  }
+  .mn-modal.is-small { max-width: 460px; }
+  .mn-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.35rem 0; }
+  .mn-modal-head h2 { margin: 0; font-size: 1.45rem; line-height: 1.2; color: var(--fg); }
+  .mn-modal-head p { margin: 0.35rem 0 0; font-size: 0.84rem; color: var(--fg-muted); line-height: 1.45; }
+  .mn-close { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--mn-line); background: transparent; color: var(--fg-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .mn-close:hover { color: var(--fg); background: var(--mn-soft); }
+  .mn-form { padding: 1.1rem 1.35rem 1.35rem; display: grid; gap: 1.05rem; }
+  .mn-field { display: grid; gap: 0.4rem; align-content: start; }
+  .mn-label { font-size: 0.86rem; font-weight: 600; color: var(--fg); }
+  .mn-label em { font-style: normal; font-weight: 400; color: var(--fg-muted); }
+  .mn-help { margin: 0; font-size: 0.76rem; color: var(--fg-muted); line-height: 1.45; }
+  .mn-error { margin: 0; font-size: 0.78rem; color: var(--mn-bad); }
+  .mn-money { position: relative; }
+  .mn-money span { position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); color: var(--fg-muted); font-size: 0.9rem; pointer-events: none; }
+  .mn-money .mn-input { padding-left: 1.8rem; }
+  .mn-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .mn-chip { padding: 0.55rem 0.9rem; border-radius: 999px; border: 1px solid var(--mn-line); background: var(--mn-soft); color: var(--fg); cursor: pointer; font: 500 0.84rem/1.2 var(--font-body, 'Outfit', sans-serif); transition: border-color 0.15s, background 0.15s; }
+  .mn-chip:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  .mn-chip.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .mn-note { margin: 0; display: flex; gap: 0.55rem; align-items: flex-start; padding: 0.75rem 0.85rem; border-radius: 10px; border: 1px solid var(--mn-line); background: var(--mn-soft); font-size: 0.84rem; line-height: 1.45; color: var(--fg-muted); }
+  .mn-note i { margin-top: 0.2rem; }
+  .mn-note.is-ok { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--mn-tint); }
+  .mn-note.is-ok i { color: var(--accent); }
+  .mn-photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; padding: 0; border: 0; background: none; cursor: pointer; }
+  .mn-photo { position: relative; height: 84px; border-radius: 10px; border: 1px solid var(--mn-line); background-color: var(--mn-soft); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; color: var(--accent); }
+  .mn-photo.is-empty { border-style: dashed; }
+  .mn-photos:hover .mn-photo { border-color: var(--accent); }
+  .mn-photo small { position: absolute; top: 5px; left: 5px; padding: 0.12rem 0.45rem; border-radius: 999px; background: rgba(0,0,0,0.65); color: #fff; font-size: 0.62rem; }
+  .mn-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .mn-actions .mn-btn { flex: 1 1 auto; }
+
+  @media (max-width: 860px) {
+    .mn-how, .mn-stats { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .mn-head-actions, .mn-head-actions .mn-btn, .mn-search { width: 100%; max-width: none; }
+  }
+  .mn .tone-bad, .mn-modal .tone-bad { background: color-mix(in srgb, var(--mn-bad) 14%, transparent); color: var(--mn-bad); }
+  .mn-stat { font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s; }
+  .mn-stat:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  .mn-stat.is-on { border-color: var(--accent); }
+  .mn-stat:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mn-tab i { font-size: 0.78rem; }
+  .mn-chip i { margin-right: 0.25rem; }
+  .mn-btn.is-danger { border-color: color-mix(in srgb, var(--mn-bad) 45%, transparent); color: var(--mn-bad); }
+  .mn-btn.is-danger:hover { background: color-mix(in srgb, var(--mn-bad) 10%, transparent); }
+  .mn-card.is-out .mn-card-img img { filter: grayscale(0.7); opacity: 0.75; }
+  .mn-card-actions { display: flex; gap: 0.5rem; margin-top: auto; }
+  .mn-card-actions .mn-btn { flex: 1 1 0; }
+  .mn-type i { margin-right: 0.2rem; }
+  .mn-price { font-size: 1.05rem; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mn-note { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem; }
+  .mn-panel > .mn-note { margin-bottom: 0.9rem; }
+  .mn-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+  .mn-photo-pick { display: block; width: 100%; padding: 0; border: 1.5px dashed var(--mn-line); border-radius: 10px; background: var(--mn-soft); cursor: pointer; overflow: hidden; color: var(--fg-muted); font: inherit; }
+  .mn-photo-pick:hover { border-color: var(--accent); }
+  .mn-photo-pick img { width: 100%; height: 160px; object-fit: cover; display: block; }
+  .mn-photo-empty { height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.45rem; font-size: 0.82rem; }
+  .mn-photo-empty i { font-size: 1.4rem; color: var(--accent); }
+  .mn-modal { --mn-warn: var(--warn, #f59e0b); }
+  @media (max-width: 560px) { .mn-row2 { grid-template-columns: 1fr; } }
 </style>
 @endsection
 
@@ -165,7 +357,7 @@
 </script>
 @verbatim
 <script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
+const { useState, useEffect, useCallback, useRef, useId } = React;
 
 const MENU_CATEGORIES = ['Main Dishes', 'Appetizers', 'Soups', 'Desserts', 'Beverages'];
 const IMAGE_MAX_DIMENSION = 1280;
@@ -277,53 +469,72 @@ function createEmptyMenuForm(category) {
   return { name: '', category: category || 'Main Dishes', price: '', stock: '', sub: '', img: '' };
 }
 
-function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, onCancel }) {
-  const [form, setForm] = useState(createEmptyMenuForm);
-  const [editingId, setEditingId] = useState(null);
+/* ── Manage Menu: plain-language cards and one dialog ───────────────────────
+   Reads the shell's tokens through the mn- classes, the same way Manage Rooms
+   does. Requests, fields and categories are unchanged. */
+
+// SweetAlert draws outside the page's CSS, so it gets the live token values.
+function themeColor(name, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
+const MENU_ICONS = {
+  'Main Dishes': 'fa-drumstick-bite',
+  'Appetizers':  'fa-cheese',
+  'Soups':       'fa-bowl-food',
+  'Desserts':    'fa-ice-cream',
+  'Beverages':   'fa-mug-hot',
+};
+
+// "Running low" at five or fewer: about one busy table's worth.
+const LOW_STOCK = 5;
+
+function stockState(item) {
+  const n = Number(item.stock) || 0;
+  if (n <= 0) return { key: 'out', label: 'Sold out', icon: 'fa-circle-xmark', tone: 'tone-bad' };
+  if (n <= LOW_STOCK) return { key: 'low', label: `Only ${n} left`, icon: 'fa-triangle-exclamation', tone: 'tone-warn' };
+  return { key: 'ok', label: `${n} left`, icon: 'fa-circle-check', tone: 'tone-ok' };
+}
+
+function MenuItemModal({ item, defaultCategory, onClose, onAddMenu, onEditMenu, onToast }) {
+  const isEdit = !!item;
+  const [form, setForm] = useState(() => (isEdit ? {
+    name: item.name || '',
+    category: normalizeMenuCategory(item.category),
+    price: String(item.price || ''),
+    stock: item.stock != null ? String(item.stock) : '',
+    sub: item.sub || '',
+    img: item.img || '',
+  } : createEmptyMenuForm(defaultCategory)));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState('All');
-  const [page, setPage] = useState(1);
+  const uid = useId();
+  const firstField = useRef(null);
 
-  const fieldLabel = {
-    fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-    color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem',
-  };
+  // Once, on open — not on every render, or typing in another field would jump back.
+  useEffect(() => { if (firstField.current) firstField.current.focus(); }, []);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const update = (field, value) => {
     setForm(prev => Object.assign({}, prev, { [field]: value }));
     if (errors[field]) setErrors(prev => Object.assign({}, prev, { [field]: null }));
   };
 
-  const resetForm = () => {
-    setForm(createEmptyMenuForm());
-    setEditingId(null);
-    setErrors({});
-  };
-
-  const startEdit = (item) => {
-    setEditingId(item.id);
-    setErrors({});
-    setForm({
-      name: item.name || '',
-      category: normalizeMenuCategory(item.category),
-      price: String(item.price || ''),
-      stock: item.stock != null ? String(item.stock) : '',
-      sub: item.sub || '',
-      img: item.img || '',
-    });
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
 
     const next = {};
-    if (!String(form.name).trim()) next.name = 'Item name is required.';
+    if (!String(form.name).trim()) next.name = 'Type the name of the dish.';
     const price = parseInt(String(form.price).replace(/[^0-9]/g, ''), 10);
-    if (!Number.isFinite(price) || price <= 0) next.price = 'Enter a valid price.';
+    if (!Number.isFinite(price) || price <= 0) next.price = 'Type a price above 0.';
     const stockRaw = String(form.stock).trim();
     const stock = stockRaw === '' ? 0 : parseInt(stockRaw.replace(/[^0-9]/g, ''), 10);
-    if (!Number.isFinite(stock) || stock < 0) next.stock = 'Enter a valid stock count.';
+    if (!Number.isFinite(stock) || stock < 0) next.stock = 'Type how many, or 0.';
     setErrors(next);
     if (Object.keys(next).length) return;
 
@@ -337,246 +548,309 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast, 
     };
 
     setSaving(true);
-    const action = editingId ? onEditMenu(editingId, payload) : onAddMenu(payload);
+    const action = isEdit ? onEditMenu(item.id, payload) : onAddMenu(payload);
     Promise.resolve(action)
       .then(() => {
-        if (onToast) onToast(editingId ? `${payload.name} updated.` : `${payload.name} added to ${payload.category}.`);
-        resetForm();
+        if (onToast) onToast(isEdit ? `${payload.name} saved.` : `${payload.name} added to ${payload.category}.`);
+        onClose();
       })
       .catch((err) => {
-        setErrors({ form: (err && err.message) || 'Could not save this item.' });
+        setErrors({ form: (err && err.message) || 'Could not save this dish. Please try again.' });
       })
       .finally(() => setSaving(false));
   };
 
-  const handleRemove = (item) => {
-    if (!hmsConfirm(`Remove "${item.name}" from the menu?`)) return;
-    Promise.resolve(onRemoveMenu(item.id))
-      .then(() => {
-        if (editingId === item.id) resetForm();
-        if (onToast) onToast(`${item.name} removed.`);
-      })
-      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not remove that item.'); });
-  };
-
-  const errorText = (key) => (
-    errors[key]
-      ? <p style={{ margin: '0.35rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.72rem' }}>{errors[key]}</p>
-      : null
-  );
-
-  const list = menus || [];
-  const visible = filter === 'All' ? list : list.filter(m => normalizeMenuCategory(m.category) === filter);
-
-  // safePage rather than page: narrowing to a category with fewer items must not
-  // strand the view on a page that no longer exists.
-  const PER_PAGE = 5;
-  const totalPages = Math.max(1, Math.ceil(visible.length / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const pageItems = visible.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const err = (key) => (errors[key] ? <p className="mn-error">{errors[key]}</p> : null);
 
   return (
-    <div className="rm-panel" style={{ maxWidth: '100%' }}>
-      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Kitchen</p>
-      <h3>Manage Menu</h3>
-      <p className="rm-panel-desc">
-        {editingId
-          ? 'Editing an existing item. Save to publish the change to the Restaurant page.'
-          : 'Add a food item to the restaurant menu. It appears on the Restaurant page right away.'}
-      </p>
-
-      <form onSubmit={handleSubmit} className="rm-form-grid" noValidate style={{ maxWidth: 520 }}>
-        <div>
-          <label style={fieldLabel}>Item Name *</label>
-          <input
-            type="text" className="booking-input" placeholder="e.g. Grilled Angus Ribeye"
-            value={form.name} onChange={e => update('name', e.target.value)}
-            style={errors.name ? { borderColor: '#f43f5e' } : undefined}
-          />
-          {errorText('name')}
+    <div className="mn-overlay" onClick={onClose}>
+      <div className="mn-modal" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <div className="mn-modal-head">
+          <div>
+            <h2 id={uid + '-t'} className="font-display">{isEdit ? `Edit ${item.name}` : 'Add a dish'}</h2>
+            <p>Guests see it on the Restaurant page of your hotel website as soon as you save.</p>
+          </div>
+          <button type="button" className="mn-close" onClick={onClose} aria-label="Close">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
         </div>
 
-        <div className="rm-form-row">
-          <div>
-            <label style={fieldLabel}>Category *</label>
-            <select
-              className="booking-input" value={form.category} onChange={e => update('category', e.target.value)}
-              style={{ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}
-            >
-              {MENU_CATEGORIES.map(c => (
-                <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={fieldLabel}>Price *</label>
+        <form onSubmit={handleSubmit} className="mn-form" noValidate>
+          <div className="mn-field">
+            <label className="mn-label" htmlFor={uid + '-n'}>Dish name</label>
             <input
-              type="number" min="1" step="1" className="booking-input" placeholder="e.g. 1350"
-              value={form.price} onChange={e => update('price', e.target.value)}
-              style={errors.price ? { borderColor: '#f43f5e' } : undefined}
+              id={uid + '-n'} ref={firstField} type="text"
+              className={`mn-input ${errors.name ? 'has-error' : ''}`} placeholder="Example: Grilled Pork Belly"
+              value={form.name} onChange={e => update('name', e.target.value)}
             />
-            {errorText('price')}
+            {err('name')}
           </div>
-        </div>
 
-        <div>
-          <label style={fieldLabel}>Stock</label>
-          <input
-            type="number" min="0" step="1" className="booking-input" placeholder="e.g. 25"
-            value={form.stock} onChange={e => update('stock', e.target.value)}
-            style={errors.stock ? { borderColor: '#f43f5e' } : undefined}
-          />
-          {errorText('stock')}
-        </div>
+          <div className="mn-field">
+            <span className="mn-label">Which part of the menu?</span>
+            <div className="mn-chips" role="radiogroup" aria-label="Menu section">
+              {MENU_CATEGORIES.map(c => (
+                <button key={c} type="button" role="radio" aria-checked={form.category === c} className={`mn-chip ${form.category === c ? 'is-on' : ''}`} onClick={() => update('category', c)}>
+                  <i className={`fa-solid ${MENU_ICONS[c] || 'fa-utensils'}`}></i> {c}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <div>
-          <label style={fieldLabel}>Short Description</label>
-          <textarea
-            className="booking-input" rows={2} placeholder="garlic butter, roasted vegetables, jus"
-            value={form.sub} onChange={e => update('sub', e.target.value)}
-            style={{ resize: 'vertical', minHeight: 68 }}
-          />
-        </div>
-
-        <div>
-          <label style={fieldLabel}>Food Photo</label>
-          <div
-            onClick={() => pickImageFile(url => { if (url) update('img', url); })}
-            style={{ border: '1.5px dashed var(--border)', borderRadius: 8, cursor: 'pointer', overflow: 'hidden', background: 'rgba(255,255,255,0.02)', transition: 'border-color 0.2s' }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-          >
-            {form.img ? (
-              <img src={form.img} alt="Food preview" style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block' }} />
-            ) : (
-              <div style={{ height: 92, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--fg-muted)' }}>
-                <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '1.4rem', color: 'var(--accent)', opacity: 0.7 }}></i>
-                <span style={{ fontSize: '0.75rem' }}>Click to upload image</span>
+          <div className="mn-row2">
+            <div className="mn-field">
+              <label className="mn-label" htmlFor={uid + '-p'}>Price</label>
+              <div className="mn-money"><span>₱</span>
+                <input
+                  id={uid + '-p'} type="number" min="1" step="1" inputMode="numeric"
+                  className={`mn-input ${errors.price ? 'has-error' : ''}`} placeholder="350"
+                  value={form.price} onChange={e => update('price', e.target.value)}
+                />
               </div>
-            )}
+              {err('price') || <p className="mn-help">For one serving.</p>}
+            </div>
+            <div className="mn-field">
+              <label className="mn-label" htmlFor={uid + '-s'}>How many servings are ready?</label>
+              <input
+                id={uid + '-s'} type="number" min="0" step="1" inputMode="numeric"
+                className={`mn-input ${errors.stock ? 'has-error' : ''}`} placeholder="25"
+                value={form.stock} onChange={e => update('stock', e.target.value)}
+              />
+              {err('stock') || <p className="mn-help">Goes down by itself with each order. At 0 guests cannot order it.</p>}
+            </div>
           </div>
-          {form.img && (
-            <button type="button" onClick={() => update('img', '')}
-              style={{ marginTop: '0.4rem', background: 'none', border: 'none', color: 'var(--danger, #fb7185)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
-              <i className="fa-solid fa-xmark" style={{ marginRight: 4 }}></i>Remove image
+
+          <div className="mn-field">
+            <label className="mn-label" htmlFor={uid + '-d'}>Short description <em>(optional)</em></label>
+            <textarea
+              id={uid + '-d'} className="mn-input" rows={2} placeholder="Example: Crispy skin, garlic rice and atchara."
+              value={form.sub} onChange={e => update('sub', e.target.value)}
+            />
+          </div>
+
+          <div className="mn-field">
+            <span className="mn-label">Photo <em>(optional)</em></span>
+            <button type="button" className="mn-photo-pick" onClick={() => pickImageFile(url => { if (url) update('img', url); })}>
+              {form.img ? (
+                <img src={form.img} alt="Photo of the dish" />
+              ) : (
+                <span className="mn-photo-empty"><i className="fa-solid fa-camera"></i>Click to choose a photo</span>
+              )}
             </button>
-          )}
+            {form.img ? (
+              <button type="button" className="mn-link" onClick={() => update('img', '')}>
+                <i className="fa-solid fa-trash-can"></i> Remove photo
+              </button>
+            ) : null}
+          </div>
+
+          {errors.form ? <p className="mn-error">{errors.form}</p> : null}
+
+          <div className="mn-actions">
+            <button type="button" className="mn-btn is-quiet" onClick={onClose}>Cancel</button>
+            <button type="submit" className="mn-btn is-solid" disabled={saving}>
+              <i className={`fa-solid ${isEdit ? 'fa-floppy-disk' : 'fa-plus'}`}></i>
+              {saving ? 'Saving…' : (isEdit ? 'Save changes' : 'Add this dish')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function MenuCard({ item, onEdit, onRemove }) {
+  const stock = stockState(item);
+  const category = normalizeMenuCategory(item.category);
+  return (
+    <article className={`mn-card ${stock.key === 'out' ? 'is-out' : ''}`}>
+      <div className="mn-card-img">
+        <img src={menuFoodImg(item)} alt={item.name} loading="lazy" />
+        <span className={`mn-pill ${stock.tone}`}><i className={`fa-solid ${stock.icon}`}></i>{stock.label}</span>
+      </div>
+      <div className="mn-card-body">
+        <div className="mn-card-top">
+          <div style={{ minWidth: 0 }}>
+            <h3 className="mn-name">{item.name}</h3>
+            <span className="mn-type"><i className={`fa-solid ${MENU_ICONS[category] || 'fa-utensils'}`}></i> {category}</span>
+          </div>
+          <b className="mn-price">{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}</b>
+        </div>
+        <p className={`mn-desc ${item.sub ? '' : 'is-empty'}`}>{item.sub || 'No description yet.'}</p>
+        <div className="mn-card-actions">
+          <button type="button" className="mn-btn is-small" onClick={() => onEdit(item)}>
+            <i className="fa-solid fa-pen"></i> Edit
+          </button>
+          <button type="button" className="mn-btn is-small is-danger" onClick={() => onRemove(item)}>
+            <i className="fa-solid fa-trash-can"></i> Remove
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+const MN_PAGE = 12;
+
+function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast }) {
+  const [filter, setFilter] = useState('All');
+  const [stockFilter, setStockFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [shown, setShown] = useState(MN_PAGE);
+  const [editing, setEditing] = useState(null); // a menu item, or 'new'
+
+  const list = menus || [];
+  const q = search.trim().toLowerCase();
+  const visible = list
+    .filter(m => filter === 'All' || normalizeMenuCategory(m.category) === filter)
+    .filter(m => stockFilter === 'all' || (stockFilter === 'attention' ? stockState(m).key !== 'ok' : true))
+    .filter(m => !q || [m.name, m.sub].some(v => String(v || '').toLowerCase().includes(q)));
+  const page = visible.slice(0, shown);
+
+  const counts = list.reduce((t, m) => { t[stockState(m).key] += 1; return t; }, { ok: 0, low: 0, out: 0 });
+  const needs = counts.low + counts.out;
+
+  const pick = (fn) => (v) => { fn(v); setShown(MN_PAGE); };
+
+  /* Asked first: the dish leaves the hotel website for every guest at once. */
+  const handleRemove = (item) => {
+    const go = () => Promise.resolve(onRemoveMenu(item.id))
+      .then(() => { if (onToast) onToast(`${item.name} removed from the menu.`); })
+      .catch(e => { if (onToast) onToast((e && e.message) || 'Could not remove that dish.'); });
+    if (!window.Swal) { if (hmsConfirm(`Remove "${item.name}" from the menu?`)) go(); return; }
+    window.Swal.fire({
+      title: `Remove ${item.name}?`,
+      text: 'Guests will no longer see it or be able to order it. You cannot undo this.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, remove it',
+      cancelButtonText: 'Keep it',
+      background: themeColor('--card', '#181714'),
+      color: themeColor('--fg', '#f5f0e8'),
+      confirmButtonColor: '#be123c',
+      cancelButtonColor: '#71717a',
+    }).then(r => { if (r.isConfirmed) go(); });
+  };
+
+  return (
+    <div className="mn">
+      <header className="mn-head">
+        <div>
+          <p className="mn-eyebrow">Restaurant</p>
+          <h1 className="font-display">Manage Menu</h1>
+          <p className="mn-lead">
+            The dishes and drinks guests can order. Everything here shows on the Restaurant
+            page of your hotel website. Keep the number of servings up to date so guests
+            cannot order what the kitchen has run out of.
+          </p>
+        </div>
+        <div className="mn-head-actions">
+          <a href={window.HMS_RESTAURANT_URL} className="mn-btn">
+            <i className="fa-solid fa-arrow-left"></i> Back to Tasks
+          </a>
+          <button type="button" className="mn-btn is-solid" onClick={() => setEditing('new')}>
+            <i className="fa-solid fa-plus"></i> Add a dish
+          </button>
+        </div>
+      </header>
+
+      <ol className="mn-how" aria-label="Good to know">
+        <li><span className="mn-how-num"><i className="fa-solid fa-globe"></i></span><div><b>Guests see changes right away</b><span>A new dish or price shows on the website as soon as you save.</span></div></li>
+        <li><span className="mn-how-num"><i className="fa-solid fa-boxes-stacked"></i></span><div><b>Servings count down by themselves</b><span>Each order takes one away. Cancelled orders give it back.</span></div></li>
+        <li><span className="mn-how-num"><i className="fa-solid fa-ban"></i></span><div><b>At 0, it is sold out</b><span>Guests cannot order it until you add more servings.</span></div></li>
+      </ol>
+
+      <section className="mn-panel" aria-labelledby="mn-list">
+        <div className="mn-panel-head">
+          <div>
+            <h2 id="mn-list">Your menu</h2>
+            <p>{list.length ? `${list.length} ${list.length === 1 ? 'dish' : 'dishes and drinks'} on the menu.` : 'Nothing on the menu yet.'}</p>
+          </div>
+          <span className="mn-live">Updates on its own</span>
         </div>
 
-        {errors.form && <p style={{ margin: 0, color: 'var(--danger, #fb7185)', fontSize: '0.78rem' }}>{errors.form}</p>}
+        {list.length ? (
+          <div className="mn-stats">
+            <button type="button" className="mn-stat" onClick={() => pick(setStockFilter)('all')}>
+              <span className="mn-stat-icon tone-ok"><i className="fa-solid fa-utensils"></i></span>
+              <div><b>{counts.ok}</b><span>Ready to order</span></div>
+            </button>
+            <button type="button" className={`mn-stat ${stockFilter === 'attention' ? 'is-on' : ''}`} onClick={() => pick(setStockFilter)(stockFilter === 'attention' ? 'all' : 'attention')}>
+              <span className={`mn-stat-icon ${needs ? 'tone-warn' : 'tone-ok'}`}><i className="fa-solid fa-triangle-exclamation"></i></span>
+              <div><b>{counts.low}</b><span>Running low (5 or fewer)</span></div>
+            </button>
+            <button type="button" className={`mn-stat ${stockFilter === 'attention' ? 'is-on' : ''}`} onClick={() => pick(setStockFilter)(stockFilter === 'attention' ? 'all' : 'attention')}>
+              <span className={`mn-stat-icon ${counts.out ? 'tone-bad' : 'tone-ok'}`}><i className="fa-solid fa-circle-xmark"></i></span>
+              <div><b>{counts.out}</b><span>Sold out</span></div>
+            </button>
+          </div>
+        ) : null}
 
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-          <button type="submit" className="btn-primary" disabled={saving}>
-            <i className={`fa-solid ${editingId ? 'fa-floppy-disk' : 'fa-plus'}`} style={{ fontSize: '0.7rem' }}></i>
-            {saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Add Menu Item')}
-          </button>
-          <button type="button" className="btn-outline" style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}
-            onClick={() => (editingId ? resetForm() : (typeof onCancel === 'function' ? onCancel() : resetForm()))}>
-            Cancel
-          </button>
-        </div>
-      </form>
+        {stockFilter === 'attention' ? (
+          <p className="mn-note">
+            <i className="fa-solid fa-filter"></i>
+            <span>Showing only dishes that are running low or sold out.</span>
+            <button type="button" className="mn-link" onClick={() => pick(setStockFilter)('all')}>Show all</button>
+          </p>
+        ) : null}
 
-      <div style={{ marginTop: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Current Menu</h3>
-          <select
-            className="booking-input" value={filter} onChange={e => { setFilter(e.target.value); setPage(1); }}
-            style={{ width: 'auto', minWidth: 150, colorScheme: 'dark', fontSize: '0.78rem', padding: '0.45rem 0.7rem' }}
-          >
-            <option value="All" style={{ background: 'var(--card, #181714)' }}>All categories</option>
-            {MENU_CATEGORIES.map(c => (
-              <option key={c} value={c} style={{ background: 'var(--card, #181714)' }}>{c}</option>
+        <div className="mn-toolbar">
+          <div className="mn-tabs" role="group" aria-label="Show part of the menu">
+            {['All', ...MENU_CATEGORIES].map(c => (
+              <button key={c} type="button" aria-pressed={filter === c} className={`mn-tab ${filter === c ? 'is-on' : ''}`} onClick={() => pick(setFilter)(c)}>
+                {c !== 'All' ? <i className={`fa-solid ${MENU_ICONS[c] || 'fa-utensils'}`}></i> : null}
+                {c === 'All' ? 'Everything' : c}
+                <span className="mn-count">{c === 'All' ? list.length : list.filter(m => normalizeMenuCategory(m.category) === c).length}</span>
+              </button>
             ))}
-          </select>
+          </div>
+          {list.length ? (
+            <div className="mn-search">
+              <i className="fa-solid fa-magnifying-glass"></i>
+              <input type="text" className="mn-input" placeholder="Search a dish" aria-label="Search a dish" value={search} onChange={e => pick(setSearch)(e.target.value)} />
+            </div>
+          ) : null}
         </div>
 
         {visible.length === 0 ? (
-          <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>
-            No items{filter !== 'All' ? ` in ${filter}` : ''} yet.
-          </p>
+          <div className="mn-empty">
+            <div className="mn-empty-icon"><i className={`fa-solid ${q ? 'fa-magnifying-glass' : (MENU_ICONS[filter] || 'fa-utensils')}`}></i></div>
+            <h3>{q ? 'No dish matches your search' : list.length === 0 ? 'No dishes yet' : stockFilter === 'attention' ? 'Nothing is running low' : `Nothing in ${filter} yet`}</h3>
+            <p>{q ? 'Check the spelling, or clear the search box.' : stockFilter === 'attention' ? 'Every dish has more than 5 servings ready.' : 'Use "Add a dish" to put something on the menu. Guests can order it right away.'}</p>
+            {!q && stockFilter !== 'attention' ? (
+              <button type="button" className="mn-btn is-solid" onClick={() => setEditing('new')}>
+                <i className="fa-solid fa-plus"></i> Add a dish
+              </button>
+            ) : null}
+          </div>
         ) : (
-          <div style={{ display: 'grid', gap: '0.5rem' }}>
-            {pageItems.map(item => (
-              <div key={item.id} style={{
-                display: 'flex', alignItems: 'center', gap: '0.85rem',
-                border: '1px solid ' + (editingId === item.id ? 'var(--accent)' : 'var(--border)'),
-                borderRadius: 10, padding: '0.6rem 0.75rem',
-                background: editingId === item.id ? 'rgba(201,168,76,0.06)' : 'transparent',
-              }}>
-                <img src={menuFoodImg(item)} alt="" style={{ width: 52, height: 40, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--bg-warm, #12110f)' }} />
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ margin: 0, fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)' }}>
-                    {normalizeMenuCategory(item.category)}
-                  </p>
-                  <p style={{ margin: '2px 0 0', color: 'var(--fg)', fontWeight: 600, fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.name}
-                  </p>
-                  {item.sub && (
-                    <p style={{ margin: '2px 0 0', color: 'var(--fg-muted)', fontSize: '0.74rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.sub}
-                    </p>
-                  )}
-                </div>
-                <span style={{ color: 'var(--accent-light)', fontFamily: 'var(--font-display, Playfair Display, serif)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                  {typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}
-                </span>
-                <span style={{
-                  fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap', padding: '3px 8px', borderRadius: 999,
-                  color: item.stock > 0 ? 'var(--fg-muted)' : 'var(--danger, #fb7185)',
-                  background: item.stock > 0 ? 'rgba(255,255,255,0.05)' : 'rgba(244,63,94,0.12)',
-                }}>
-                  {item.stock > 0 ? `${item.stock} in stock` : 'Out of stock'}
-                </span>
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <button type="button" title="Edit item" onClick={() => startEdit(item)} style={toolBtnStyle('edit')}>
-                    <i className="fa-solid fa-pen" style={{ fontSize: 10 }}></i>
-                  </button>
-                  <button type="button" title="Remove item" onClick={() => handleRemove(item)} style={toolBtnStyle('danger')}>
-                    <i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.85rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--fg-muted)' }}>
-              Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, visible.length)} of {visible.length}
-            </span>
-            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={safePage === 1}
-                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === 1 ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === 1 ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === 1 ? 0.4 : 1 }}
-              >
-                <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setPage(n)}
-                  style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid ' + (n === safePage ? 'var(--accent)' : 'var(--border)'), background: n === safePage ? 'var(--accent)' : 'transparent', color: n === safePage ? 'var(--bg)' : 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: n === safePage ? 700 : 400 }}
-                >
-                  {n}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={safePage === totalPages}
-                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === totalPages ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === totalPages ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === totalPages ? 0.4 : 1 }}
-              >
-                <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
-              </button>
+          <>
+            <div className="mn-grid">
+              {page.map(item => <MenuCard key={item.id} item={item} onEdit={setEditing} onRemove={handleRemove} />)}
             </div>
-          </div>
+            <div className="mn-more">
+              <span>Showing {page.length} of {visible.length}</span>
+              {page.length < visible.length ? (
+                <button type="button" className="mn-btn is-small" onClick={() => setShown(s => s + MN_PAGE)}>
+                  <i className="fa-solid fa-chevron-down"></i> Show {Math.min(MN_PAGE, visible.length - page.length)} more
+                </button>
+              ) : null}
+            </div>
+          </>
         )}
-      </div>
+      </section>
+
+      {editing ? (
+        <MenuItemModal
+          key={editing === 'new' ? 'new' : editing.id}
+          item={editing === 'new' ? null : editing}
+          defaultCategory={filter === 'All' ? 'Main Dishes' : filter}
+          onClose={() => setEditing(null)}
+          onAddMenu={onAddMenu}
+          onEditMenu={onEditMenu}
+          onToast={onToast}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1681,6 +1955,22 @@ function RestaurantManagementPage({
 }) {
   const activeNav = initialNav || 'manage-menu';
 
+  // Manage Menu draws its own header, numbers and cards; the other sections keep
+  // the panel they have always had.
+  if (activeNav === 'manage-menu') {
+    return (
+      <div style={{ padding: '1.5rem' }} data-hms-no-edit="1">
+        <ManageMenuPanel
+          menus={menus}
+          onAddMenu={onAddMenu}
+          onEditMenu={onEditMenu}
+          onRemoveMenu={onRemoveMenu}
+          onToast={onToast}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.1rem' }}>
@@ -1695,16 +1985,6 @@ function RestaurantManagementPage({
 
       <div className="rm-row">
         <div className="rm-content">
-          {activeNav === 'manage-menu' && (
-            <ManageMenuPanel
-              menus={menus}
-              onAddMenu={onAddMenu}
-              onEditMenu={onEditMenu}
-              onRemoveMenu={onRemoveMenu}
-              onToast={onToast}
-              onCancel={onBack}
-            />
-          )}
           {activeNav === 'catering-packages' && (
             <CateringPackagesPanel
               packages={cateringPackages}
