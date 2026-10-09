@@ -130,23 +130,25 @@
   :root[data-ops-theme="2"] select.am-input { color-scheme: light; }
 
   /* Facility cards */
-  .am-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr)); gap: 1rem; align-items: start; }
+  .am-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr)); gap: 1rem; align-items: stretch; }
   .am-card { min-width: 0; border: 1px solid var(--am-line); border-radius: 14px; background: var(--am-soft); overflow: hidden; display: flex; flex-direction: column; }
   .am-card.needs-you { border-color: color-mix(in srgb, var(--am-bad) 55%, transparent); }
   .am-card-img { position: relative; aspect-ratio: 16 / 9; background: var(--am-soft); overflow: hidden; }
   .am-card-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
   .am-card-img .am-pill { position: absolute; top: 10px; left: 10px; background: var(--card); box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
-  .am-card-body { padding: 0.95rem 1.05rem 1.05rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .am-card-body { padding: 0.95rem 1.05rem 1.05rem; display: flex; flex-direction: column; gap: 0.75rem; flex: 1; }
   .am-name { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--fg); line-height: 1.25; overflow-wrap: anywhere; }
   .am-how { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.3rem; font-size: 0.78rem; font-weight: 600; color: var(--accent); }
-  .am-desc { margin: 0; font-size: 0.84rem; line-height: 1.5; color: var(--fg-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .am-desc { margin: 0; font-size: 0.84rem; line-height: 1.5; color: var(--fg-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: 4.5em; }
+  /* Same height in every card, so the facts and buttons line up across a row. */
+  .am-desc.is-empty { font-style: italic; opacity: 0.7; }
   .am-facts { list-style: none; margin: 0; padding: 0.65rem 0.75rem; border-radius: 10px; background: var(--card); border: 1px solid var(--am-line); display: grid; gap: 0.4rem; }
   .am-facts li { display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.84rem; color: var(--fg); }
   .am-facts li i { width: 1rem; text-align: center; color: var(--fg-muted); margin-top: 0.2rem; font-size: 0.8rem; }
   .am-facts li span.is-empty { color: var(--fg-muted); }
   .am-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.7rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600; white-space: nowrap; }
-  .am-card-actions { display: flex; gap: 0.5rem; }
-  .am-card-actions .am-btn { flex: 1 1 auto; }
+  .am-card-actions { display: flex; gap: 0.5rem; margin-top: auto; }
+  .am-card-actions .am-btn { flex: 1 1 0; }
 
   .am-repair { display: grid; gap: 0.6rem; padding: 0.8rem 0.85rem; border-radius: 10px; border: 1px solid var(--am-line); }
   .am-repair p { margin: 0; font-size: 0.84rem; line-height: 1.5; color: var(--fg); }
@@ -913,7 +915,9 @@ function AmenityCard({ amenity, canManage, canCustomize, verifying, removing, on
           </span>
         </div>
 
-        {amenity.description ? <p className="am-desc">{amenity.description}</p> : null}
+        {amenity.description
+          ? <p className="am-desc">{amenity.description}</p>
+          : <p className="am-desc is-empty">No description yet.</p>}
 
         <ul className="am-facts">
           <li><i className="fa-solid fa-location-dot"></i>{amenity.location ? <span>{amenity.location}</span> : <span className="is-empty">No location given</span>}</li>
