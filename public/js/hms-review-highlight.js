@@ -395,10 +395,21 @@
       return roomCategoryFlags(['added'], 'added').concat(roomCategoryFlags(['renamed'], 'modified'));
     }
     if (check === 'room-details') return roomCategoryFlags(['renamed', 'details'], 'modified');
+    /* The photographs are the change, so the slider is boxed rather than the
+       whole card - boxing the card also outlined the name, rate and words,
+       which read as if those had changed too. The tab still carries the
+       count, since Template 2 only shows the selected category's photos. */
     if (check === 'room-photos') {
-      return roomCategoryFlags(['photos'], 'modified').concat(queryAll('[data-hms-room-photos]').map(function (el) {
-        return { el: el, count: 1 };
-      }));
+      const out = queryAll('.tab-btn[data-hms-cat-photos]').map(function (el) {
+        return { el: el, count: 1, type: 'modified' };
+      });
+      queryAll('[data-hms-cat-card][data-hms-cat-photos] [data-hms-photo-media]').forEach(function (el) {
+        out.push({ el: el, count: 0, type: 'modified' });
+      });
+      queryAll('[data-hms-room-photos]').forEach(function (el) {
+        out.push({ el: el.querySelector('[data-hms-photo-media]') || el, count: 1 });
+      });
+      return out;
     }
     return queryAll('[data-hms-room-added]').map(function (el) {
       return { el: el, count: 1, type: 'added' };

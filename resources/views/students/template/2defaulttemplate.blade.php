@@ -4575,7 +4575,7 @@ function RoomCard({ room, onSelect, canEdit, onEdit, onRemove, onChangeImage }) 
           <button type="button" title="Remove room" onClick={() => onRemove(room.id)} style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
         </div>
       )}
-      <div className="room-card-img">
+      <div className="room-card-img" data-hms-photo-media="1">
         <RoomPhotos room={room} />
         <span className={`room-status-badge ${roomStatusClass(room.status)}`}>{normalizeRoomStatus(room.status)}</span>
       </div>
@@ -4700,7 +4700,7 @@ function CategoryPanel({ name, detail, canEdit, onEdit, onPhotos, onAddRoom }) {
         data-hms-cat-details={mark('details')} data-hms-cat-photos={mark('photos')}
         style={{ display: 'grid', gridTemplateColumns: main ? 'minmax(0, 320px) 1fr' : '1fr', gap: '1.5rem', alignItems: 'start', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem', background: 'var(--card, transparent)' }}>
         {main ? (
-          <div>
+          <div data-hms-photo-media="1">
             <img src={main.src} alt={name}
               style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 8, display: 'block' }}
               onError={(e) => { e.currentTarget.style.display = 'none'; }} />

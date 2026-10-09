@@ -4928,7 +4928,7 @@ function CategoryCard({ name, detail, roomsIn, checkIn, checkOut, onOpen, onPick
       data-hms-cat-renamed={detail && detail.review && detail.review.renamed ? '1' : undefined}
       data-hms-cat-details={detail && detail.review && detail.review.details ? '1' : undefined}
       data-hms-cat-photos={detail && detail.review && detail.review.photos ? '1' : undefined}>
-      <div className="cat-media">
+      <div className="cat-media" data-hms-photo-media="1">
         <CategorySlides
           slides={slides}
           index={slide}
