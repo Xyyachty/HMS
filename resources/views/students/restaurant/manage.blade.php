@@ -343,6 +343,71 @@
   .mn-photo-empty i { font-size: 1.4rem; color: var(--accent); }
   .mn-modal { --mn-warn: var(--warn, #f59e0b); }
   @media (max-width: 560px) { .mn-row2 { grid-template-columns: 1fr; } }
+  /* Orders (ord-), on top of the mn- look */
+  .mn .tone-muted { background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg-muted); }
+  .ord-types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+  .ord-type { display: flex; align-items: center; gap: 0.8rem; text-align: left; padding: 0.95rem 1rem; border-radius: 14px; border: 1px solid var(--mn-line); background: var(--card); color: var(--fg); cursor: pointer; font: inherit; transition: border-color 0.15s, background 0.15s; }
+  .ord-type:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  .ord-type.is-on { border-color: var(--accent); background: var(--mn-tint); box-shadow: inset 0 0 0 1px var(--accent); }
+  .ord-type:focus-visible, .ord-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ord-type-icon { flex: none; width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; background: var(--mn-tint); color: var(--accent); }
+  .ord-type-text { flex: 1; min-width: 0; }
+  .ord-type-text b { display: block; font-size: 0.98rem; }
+  .ord-type-text small { display: block; font-size: 0.76rem; color: var(--fg-muted); margin-top: 0.15rem; line-height: 1.35; }
+  .ord-type-count { flex: none; font-size: 0.76rem; font-weight: 700; padding: 0.3rem 0.6rem; border-radius: 999px; background: color-mix(in srgb, var(--mn-ok) 14%, transparent); color: var(--mn-ok); white-space: nowrap; }
+  .ord-type-count.has-work { background: color-mix(in srgb, var(--mn-warn) 16%, transparent); color: var(--mn-warn); }
+
+  .ord-steps { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .ord-step { flex: 1 1 130px; display: flex; align-items: center; gap: 0.6rem; text-align: left; padding: 0.65rem 0.8rem; border-radius: 12px; border: 1px solid var(--mn-line); background: var(--mn-soft); color: var(--fg); cursor: pointer; font: inherit; }
+  .ord-step:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  .ord-step.is-on { border-color: var(--accent); background: var(--mn-tint); }
+  .ord-step-num { flex: none; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.74rem; font-weight: 700; background: var(--card); border: 1px solid var(--mn-line); color: var(--fg-muted); }
+  .ord-step-text b { display: block; font-size: 1.1rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .ord-step-text small { display: block; font-size: 0.74rem; color: var(--fg-muted); line-height: 1.3; }
+
+  .ord-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 1rem; align-items: stretch; }
+  .ord-card { min-width: 0; display: flex; flex-direction: column; gap: 0.8rem; padding: 1rem 1.05rem 1.05rem; border-radius: 14px; border: 1px solid var(--mn-line); background: var(--mn-soft); }
+  .ord-card.is-new { border-color: color-mix(in srgb, var(--mn-warn) 55%, transparent); }
+  .ord-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+  .ord-sub { display: block; font-size: 0.82rem; color: var(--fg-muted); margin-top: 0.2rem; }
+  .ord-track { list-style: none; margin: 0; padding: 0; display: grid; }
+  .ord-track li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; font-size: 0.66rem; color: var(--fg-muted); text-align: center; line-height: 1.2; }
+  .ord-track li::before { content: ''; position: absolute; top: 6px; left: -50%; width: 100%; height: 2px; background: var(--mn-line); }
+  .ord-track li:first-child::before { display: none; }
+  .ord-track li.is-done::before, .ord-track li.is-now::before { background: var(--accent); }
+  .ord-dot { position: relative; z-index: 1; width: 14px; height: 14px; border-radius: 50%; background: var(--card); border: 2px solid var(--mn-line); }
+  .ord-track li.is-done .ord-dot { background: var(--accent); border-color: var(--accent); }
+  .ord-track li.is-now .ord-dot { border-color: var(--accent); box-shadow: 0 0 0 4px var(--mn-tint); }
+  .ord-track li.is-now, .ord-track li.is-done { color: var(--fg); }
+  .ord-track li.is-now { font-weight: 700; }
+  .ord-when { margin: 0; display: flex; gap: 0.5rem; align-items: center; font-size: 0.82rem; color: var(--fg-muted); }
+  .ord-items { list-style: none; margin: 0; padding: 0.65rem 0.75rem; border-radius: 10px; background: var(--card); border: 1px solid var(--mn-line); display: grid; gap: 0.35rem; }
+  .ord-items li { display: flex; gap: 0.55rem; align-items: baseline; font-size: 0.86rem; color: var(--fg); }
+  .ord-qty { flex: none; min-width: 1.9rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .ord-item { flex: 1; min-width: 0; }
+  .ord-line { color: var(--fg-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+  .ord-items .ord-total { justify-content: space-between; border-top: 1px dashed var(--mn-line); padding-top: 0.45rem; margin-top: 0.15rem; color: var(--fg-muted); }
+  .ord-items .ord-total b { color: var(--fg); font-variant-numeric: tabular-nums; }
+  .ord-note { margin: 0; display: flex; gap: 0.5rem; align-items: flex-start; font-size: 0.82rem; color: var(--fg); font-style: italic; }
+  .ord-note i { color: var(--accent); margin-top: 0.2rem; font-style: normal; }
+  .ord-actions { margin-top: auto; display: grid; gap: 0.45rem; }
+  .ord-done { margin: 0; display: flex; gap: 0.5rem; align-items: center; font-size: 0.84rem; color: var(--fg-muted); padding: 0.65rem 0.75rem; border-radius: 10px; background: var(--card); border: 1px solid var(--mn-line); }
+  .ord-cancel { justify-self: center; color: var(--mn-bad); }
+
+  .mn-modal.ord-modal { max-width: 760px; }
+  .ord-menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 0.5rem; max-height: 360px; overflow-y: auto; padding: 0.15rem; }
+  .ord-dish { display: flex; align-items: center; gap: 0.65rem; padding: 0.5rem 0.6rem; border-radius: 10px; border: 1px solid var(--mn-line); background: var(--mn-soft); }
+  .ord-dish.is-on { border-color: var(--accent); background: var(--mn-tint); }
+  .ord-dish.is-out { opacity: 0.55; }
+  .ord-dish img { width: 52px; height: 42px; object-fit: cover; border-radius: 8px; flex: none; }
+  .ord-dish-text { flex: 1; min-width: 0; }
+  .ord-dish-text b { display: block; font-size: 0.86rem; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ord-dish-text small { display: block; font-size: 0.76rem; color: var(--fg-muted); }
+  .ord-stepper { display: flex; align-items: center; gap: 0.4rem; }
+  .ord-stepper button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--accent); background: var(--card); color: var(--accent); font-size: 1.05rem; line-height: 1; cursor: pointer; }
+  .ord-stepper span { min-width: 1.4rem; text-align: center; font-weight: 700; color: var(--fg); }
+  .ord-cart { padding: 0.75rem 0.85rem; border-radius: 10px; background: var(--mn-tint); color: var(--fg); font-size: 0.9rem; }
+  @media (max-width: 860px) { .ord-types { grid-template-columns: 1fr; } }
 </style>
 @endsection
 
@@ -1313,225 +1378,6 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
  * at a time and has no cancel: it is already on the guest's bill, so it runs all the
  * way to Completed with the runner carrying it up to the room.
  */
-function RoomServiceOrderCard({ order, onMove }) {
-  const next = nextKitchenStatus(order.status, order.orderType);
-  const finished = order.status === 'Completed' || order.status === 'Cancelled';
-
-  return (
-    <div className="order-card">
-      <div className="order-card-head">
-        <span className="order-card-id">Order #{order.id}</span>
-        <span className={`tb-badge tb-${order.status.toLowerCase()}`}>{order.status}</span>
-      </div>
-
-      <dl style={{ margin: '0 0 0.75rem' }}>
-        <div className="order-field"><dt>Guest</dt><dd>{order.guestName || '—'}</dd></div>
-        <div className="order-field"><dt>Room</dt><dd>{order.roomNumber || '—'}</dd></div>
-        <div className="order-field">
-          <dt>Order</dt>
-          <dd>{(order.items || []).map(i => `${i.name} ×${i.qty}`).join(', ') || '—'}</dd>
-        </div>
-        <div className="order-field"><dt>Time</dt><dd>{formatOrderTime(order.placedAt)}</dd></div>
-        <div className="order-field">
-          <dt>Total</dt>
-          <dd style={{ color: 'var(--accent-light)', fontWeight: 700 }}>{formatPeso(order.total)}</dd>
-        </div>
-      </dl>
-
-      {order.status === 'Delivering' && (
-        <p style={{ margin: '0 0 0.6rem', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-          On the way to room {order.roomNumber || '—'}. Complete it once the guest has it.
-        </p>
-      )}
-
-      {!finished && next && (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn-primary" style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}
-            onClick={() => onMove(order, next)}>
-            {ORDER_ACTION_LABEL[next] || next}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DineInOrderCard({ order, table, onMove }) {
-  return (
-    <div className="order-card">
-      <div className="order-card-head">
-        <span className="order-card-id">Order #{order.id}</span>
-        <span className={`tb-badge tb-${order.status.toLowerCase()}`}>{order.status}</span>
-      </div>
-
-      <dl style={{ margin: '0 0 0.75rem' }}>
-        <div className="order-field"><dt>Table</dt><dd>{(table && table.name) || '—'}</dd></div>
-        <div className="order-field"><dt>Guest</dt><dd>{order.guestName || '—'}</dd></div>
-        <div className="order-field"><dt>Assigned By</dt><dd>{(table && table.assignedBy) || '—'}</dd></div>
-        <div className="order-field">
-          <dt>Order</dt>
-          <dd>{(order.items || []).map(i => `${i.name} ×${i.qty}`).join(', ') || '—'}</dd>
-        </div>
-        <div className="order-field"><dt>Time</dt><dd>{formatOrderTime(order.placedAt)}</dd></div>
-        <div className="order-field">
-          <dt>Total</dt>
-          <dd style={{ color: 'var(--accent-light)', fontWeight: 700 }}>{formatPeso(order.total)}</dd>
-        </div>
-      </dl>
-
-      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-        {ORDER_STATUSES.map(status => (
-          <button
-            key={status}
-            type="button"
-            className={`tb-tab ${order.status === status ? 'is-active' : ''}`}
-            disabled={!canMoveOrderTo(order.status, status, order.orderType)}
-            onClick={() => onMove(order, status)}
-          >
-            {status}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/*
- * Taking a dine-in order lives here now, not on the table card in Manage Tables —
- * Manage Tables only adds tables and shows their status. The cart-building logic is
- * the same as before, just keyed off a table picked from this form instead of the
- * table the card belonged to.
- */
-function NewDineInOrderForm({ tables, menus, onPlaceOrder, onToast }) {
-  const [tableId, setTableId] = useState('');
-  const [cart, setCart] = useState({});
-  const [category, setCategory] = useState('All');
-  const [placing, setPlacing] = useState(false);
-
-  const fieldLabel = {
-    fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-    color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem',
-  };
-
-  const occupiedTables = (tables || []).filter(t => t.status === 'Occupied');
-  const menuList = (menus || []).filter(m => category === 'All' || normalizeMenuCategory(m.category) === category);
-
-  const addToCart = (item) => {
-    setCart(prev => {
-      const qty = (prev[item.id] && prev[item.id].qty) || 0;
-      return Object.assign({}, prev, { [item.id]: { item, qty: qty + 1 } });
-    });
-  };
-  const removeFromCart = (id) => {
-    setCart(prev => {
-      const next = Object.assign({}, prev);
-      const line = next[id];
-      if (!line) return prev;
-      if (line.qty <= 1) { delete next[id]; return next; }
-      next[id] = Object.assign({}, line, { qty: line.qty - 1 });
-      return next;
-    });
-  };
-
-  const cartLines = Object.values(cart);
-  const cartTotal = cartLines.reduce((sum, l) => sum + (Number(l.item.price) || 0) * l.qty, 0);
-
-  const placeOrder = () => {
-    if (!tableId) { if (onToast) onToast('Choose a table first.'); return; }
-    if (!cartLines.length) { if (onToast) onToast('Add at least one item to the order.'); return; }
-    setPlacing(true);
-    const items = cartLines.map(l => ({ menu_item_id: l.item.dbId, name: l.item.name, price: l.item.price, qty: l.qty }));
-    const table = occupiedTables.find(t => String(t.id) === String(tableId));
-    Promise.resolve(onPlaceOrder(tableId, items))
-      .then(() => {
-        setCart({});
-        setTableId('');
-        if (onToast) onToast(`Order sent to the kitchen for ${table ? table.name : 'the table'}.`);
-      })
-      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not place this order.'); })
-      .finally(() => setPlacing(false));
-  };
-
-  return (
-    <div className="order-card" style={{ marginBottom: '1.2rem' }}>
-      <h4 style={{ margin: '0 0 0.85rem', fontFamily: 'var(--font-display, Playfair Display, serif)', fontSize: '1rem', color: 'var(--fg)' }}>
-        New Dine-In Order
-      </h4>
-
-      <div style={{ marginBottom: '0.9rem', maxWidth: 320 }}>
-        <label style={fieldLabel}>Table</label>
-        <select
-          className="booking-input" value={tableId} onChange={e => setTableId(e.target.value)}
-          style={{ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}
-        >
-          <option value="" style={{ background: 'var(--card, #181714)' }}>Select a seated table…</option>
-          {/* The guest's name, not assignedBy — whoever is taking this order needs to
-              know which customer they are ordering for, not which staffer seated them. */}
-          {occupiedTables.map(t => (
-            <option key={t.id} value={t.id} style={{ background: 'var(--card, #181714)' }}>
-              {t.name}{t.guestName ? ` — ${t.guestName}` : ''}
-            </option>
-          ))}
-        </select>
-        {occupiedTables.length === 0 && (
-          <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-            No customer is seated right now — seat a reserved table in Manage Tables first.
-          </p>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-        <button type="button" className={`tb-tab ${category === 'All' ? 'is-active' : ''}`} onClick={() => setCategory('All')}>All</button>
-        {MENU_CATEGORIES.map(c => (
-          <button key={c} type="button" className={`tb-tab ${category === c ? 'is-active' : ''}`} onClick={() => setCategory(c)}>{c}</button>
-        ))}
-      </div>
-
-      <div style={{ display: 'grid', gap: '0.4rem', maxHeight: 340, overflowY: 'auto', marginBottom: '0.85rem' }}>
-        {menuList.length === 0 && (
-          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem' }}>No menu items in this category.</p>
-        )}
-        {menuList.map(item => (
-          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem' }}>
-            {/* Whoever is taking the order picks the dish by sight, so the photo comes
-                before the name — same thumbnail the Manage Menu list uses. */}
-            <img src={menuFoodImg(item)} alt="" style={{ width: 52, height: 40, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--bg-warm, #12110f)' }} />
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ margin: 0, color: 'var(--fg)', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
-              {item.sub ? (
-                <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sub}</p>
-              ) : null}
-              <p style={{ margin: 0, color: 'var(--accent-light)', fontSize: '0.74rem' }}>{formatPeso(item.price)}</p>
-            </div>
-            {item.stock <= 0 ? (
-              <span style={{ fontSize: '0.68rem', color: 'var(--danger, #fb7185)' }}>Out of stock</span>
-            ) : cart[item.id] ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <button type="button" onClick={() => removeFromCart(item.id)} style={toolBtnStyle('edit')}>−</button>
-                <span style={{ color: 'var(--fg)', fontSize: '0.82rem', minWidth: 16, textAlign: 'center' }}>{cart[item.id].qty}</span>
-                <button type="button" onClick={() => addToCart(item)} style={toolBtnStyle('edit')}>+</button>
-              </div>
-            ) : (
-              <button type="button" className="btn-outline" style={{ fontSize: '0.68rem', padding: '0.4rem 0.7rem' }} onClick={() => addToCart(item)}>
-                Add
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {cartLines.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--fg-muted)', fontSize: '0.78rem' }}>{cartLines.length} item(s) · {formatPeso(cartTotal)}</span>
-          <button type="button" className="btn-primary" disabled={placing} onClick={placeOrder} style={{ fontSize: '0.7rem', padding: '0.5rem 1rem' }}>
-            {placing ? 'Sending…' : 'Order Now'}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* Catering packages — Restaurant Services' rate card for function room events.
  *
  * Not menu items, and the difference is the whole reason this panel exists: a menu item
@@ -1741,206 +1587,462 @@ function CateringPackagesPanel({ packages, canManage, onSaved, onBack }) {
 
    Everything here about the event (venue, date, headcount, requests) comes from the
    reservation Front Desk booked. Restaurant Services never type it in. */
-function CateringOrderCard({ order, onMove }) {
-  const finished = order.status === 'Completed' || order.status === 'Cancelled';
+/* ── Orders: plain-language cards, one button per step ──────────────────────
+   Uses the mn- look Manage Menu set up. Stored statuses, the forward-only rule
+   (HotelFoodOrder::isForwardTransition) and the requests are unchanged; only
+   the words and the layout are new. */
+
+const ORDER_TYPES = [
+  { key: 'room_service', label: 'Room service', icon: 'fa-bell-concierge',  hint: 'Food sent up to a guest’s room' },
+  { key: 'dine_in',      label: 'Dine-in',      icon: 'fa-utensils',        hint: 'Customers eating at a table' },
+  { key: 'catering',     label: 'Catering',     icon: 'fa-champagne-glasses', hint: 'Food for events in the function room' },
+];
+
+/* Each stored status, named for what is happening to the food, per order type. */
+const STEP_TEXT = {
+  room_service: {
+    Preparing: { label: 'Being cooked', short: 'Cooking' },
+    Ready: { label: 'Ready to send up', short: 'Ready', action: 'Food is ready' },
+    Delivering: { label: 'On the way to the room', short: 'On the way', action: 'Send it up to the room' },
+    Completed: { label: 'Delivered', short: 'Done', action: 'The guest has it' },
+  },
+  dine_in: {
+    Preparing: { label: 'Being cooked', short: 'Cooking' },
+    Ready: { label: 'Ready to serve', short: 'Ready', action: 'Food is ready' },
+    Delivering: { label: 'Bringing it to the table', short: 'To table', action: 'Bring it to the table' },
+    Completed: { label: 'Served', short: 'Done', action: 'Served, all done' },
+  },
+  catering: {
+    Pending: { label: 'New, not accepted yet', short: 'New' },
+    Confirmed: { label: 'Accepted', short: 'Accepted', action: 'Accept this catering' },
+    Preparing: { label: 'Being cooked', short: 'Cooking', action: 'Start cooking' },
+    Ready: { label: 'Food is ready', short: 'Ready', action: 'Food is ready' },
+    Serving: { label: 'Being served at the event', short: 'Serving', action: 'Start serving' },
+    Completed: { label: 'Event done', short: 'Done', action: 'Event is over, all done' },
+  },
+};
+
+function formatEventDay(iso) {
+  const d = new Date(String(iso) + 'T00:00:00');
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+}
+function orderTypeOf(o) { return o.orderType || 'room_service'; }
+function isFinished(o) { return o.status === 'Completed' || o.status === 'Cancelled'; }
+function stepText(o, status) {
+  const map = STEP_TEXT[orderTypeOf(o)] || STEP_TEXT.room_service;
+  return map[status || o.status] || { label: status || o.status, short: status || o.status };
+}
+
+function OrderTracker({ order }) {
+  const flow = flowFor(orderTypeOf(order));
+  const at = flow.indexOf(order.status);
+  if (at < 0) return null;
+  return (
+    <ol className="ord-track" style={{ gridTemplateColumns: `repeat(${flow.length}, minmax(0, 1fr))` }} aria-label={`Step ${at + 1} of ${flow.length}`}>
+      {flow.map((s, i) => (
+        <li key={s} className={i < at || order.status === 'Completed' ? 'is-done' : i === at ? 'is-now' : ''}>
+          <span className="ord-dot"></span>
+          {stepText(order, s).short}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function OrderCard({ order, table, onMove, busy }) {
+  const type = orderTypeOf(order);
+  const next = nextKitchenStatus(order.status, type);
+  const finished = isFinished(order);
+  const canCancel = !finished && (type === 'dine_in' || type === 'catering');
+  const step = stepText(order);
+
+  let title = 'Order #' + order.id;
+  let sub = order.guestName || '';
+  // roomNumber is the room's name ("Classic 102"); only a bare number needs "Room" in front.
+  if (type === 'room_service') title = order.roomNumber ? (/^\d+$/.test(String(order.roomNumber)) ? `Room ${order.roomNumber}` : order.roomNumber) : 'Room not set';
+  if (type === 'dine_in') title = (table && table.name) || 'Table';
+  if (type === 'catering') { title = order.eventVenue || 'Function Room'; sub = [order.guestName, order.eventType].filter(Boolean).join(' · '); }
+
+  const tone = order.status === 'Cancelled' ? 'tone-muted' : order.status === 'Completed' ? 'tone-ok'
+    : (order.status === 'Pending' ? 'tone-warn' : 'tone-brand');
 
   return (
-    <div className="order-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
+    <article className={`ord-card ${order.status === 'Pending' ? 'is-new' : ''}`}>
+      <div className="ord-top">
         <div style={{ minWidth: 0 }}>
-          <p style={{ margin: 0, fontWeight: 700, color: 'var(--fg)', fontSize: '0.95rem' }}>
-            {order.eventVenue || 'Function Room'}
-          </p>
-          <p style={{ margin: '0.15rem 0 0', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
-            {order.guestName}
-            {order.eventType ? ' · ' + order.eventType : ''}
-          </p>
+          <h3 className="mn-name">{title}</h3>
+          <span className="ord-sub">{sub || 'No name given'}</span>
         </div>
-        <span className={`tb-badge tb-${order.status.toLowerCase()}`}>{order.status}</span>
+        <span className={`mn-pill ${tone}`}>
+          <i className={`fa-solid ${order.status === 'Cancelled' ? 'fa-ban' : order.status === 'Completed' ? 'fa-circle-check' : 'fa-fire-burner'}`}></i>
+          {order.status === 'Cancelled' ? 'Cancelled' : step.label}
+        </span>
       </div>
 
-      <div style={{ margin: '0.6rem 0', display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.9rem', fontSize: '0.74rem', color: 'var(--fg-muted)' }}>
-        {order.eventDate && (
-          <span><i className="fa-solid fa-calendar-day" style={{ marginRight: '0.35rem', color: 'var(--accent)' }}></i>{order.eventDate}</span>
-        )}
-        {order.eventTime && (
-          <span><i className="fa-solid fa-clock" style={{ marginRight: '0.35rem', color: 'var(--accent)' }}></i>{order.eventTime}</span>
-        )}
-        {order.guestCount ? (
-          <span><i className="fa-solid fa-users" style={{ marginRight: '0.35rem', color: 'var(--accent)' }}></i>{order.guestCount} guests</span>
-        ) : null}
-      </div>
+      {order.status !== 'Cancelled' ? <OrderTracker order={order} /> : null}
 
-      <ul style={{ listStyle: 'none', margin: '0 0 0.6rem', padding: 0, display: 'grid', gap: '0.2rem' }}>
-        {(order.items || []).map((item, i) => (
-          <li key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.78rem', color: 'var(--fg-muted)' }}>
-            <span>{item.name} × {item.qty}</span>
-            <span>{formatPeso((item.price || 0) * (item.qty || 0))}</span>
-          </li>
-        ))}
-      </ul>
-
-      {order.eventRequests && (
-        <p style={{ margin: '0 0 0.6rem', fontSize: '0.74rem', color: 'var(--fg-muted)', fontStyle: 'italic', lineHeight: 1.5 }}>
-          &ldquo;{order.eventRequests}&rdquo;
+      {type === 'catering' ? (
+        <p className="ord-when">
+          <i className="fa-solid fa-calendar-day"></i>
+          <span>{order.eventDate ? formatEventDay(order.eventDate) : 'Date not set'}{order.eventTime ? ` · ${order.eventTime}` : ''}{order.guestCount ? ` · ${order.guestCount} guests` : ''}</span>
+        </p>
+      ) : (
+        <p className="ord-when">
+          <i className="fa-regular fa-clock"></i>
+          <span>Ordered at {formatOrderTime(order.placedAt)} · Order #{order.id}</span>
         </p>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.55rem' }}>
-        <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)' }}>Total</span>
-        <span style={{ fontWeight: 700, color: 'var(--fg)' }}>{formatPeso(order.total)}</span>
-      </div>
+      <ul className="ord-items" aria-label="What was ordered">
+        {(order.items || []).length === 0 ? <li style={{ color: 'var(--fg-muted)' }}>No items listed</li> : null}
+        {(order.items || []).map((item, i) => (
+          <li key={i}>
+            <span className="ord-qty">{item.qty}×</span>
+            <span className="ord-item">{item.name}</span>
+            <span className="ord-line">{formatPeso((Number(item.price) || 0) * (Number(item.qty) || 0))}</span>
+          </li>
+        ))}
+        <li className="ord-total"><span>Total</span><b>{formatPeso(order.total)}</b></li>
+      </ul>
 
-      {!finished && (
-        <div className="tb-tabs" style={{ marginTop: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-          {[...CATERING_FLOW, 'Cancelled'].map(status => (
-            <button
-              key={status}
-              type="button"
-              className={`tb-tab ${order.status === status ? 'is-active' : ''}`}
-              disabled={!canMoveOrderTo(order.status, status, 'catering')}
-              onClick={() => onMove(order, status)}
-            >
-              {status}
-            </button>
-          ))}
+      {order.eventRequests ? <p className="ord-note"><i className="fa-solid fa-comment"></i><span>{order.eventRequests}</span></p> : null}
+
+      <div className="ord-actions">
+        {!finished && next ? (
+          <button type="button" className="mn-btn is-solid is-wide" disabled={busy} onClick={() => onMove(order, next)}>
+            <i className="fa-solid fa-arrow-right"></i>
+            {busy ? 'Saving…' : (stepText(order, next).action || ORDER_ACTION_LABEL[next] || next)}
+          </button>
+        ) : (
+          <p className="ord-done">
+            <i className={`fa-solid ${order.status === 'Cancelled' ? 'fa-ban' : 'fa-circle-check'}`}></i>
+            {order.status === 'Cancelled' ? 'This order was cancelled. Nothing was charged.' : 'Finished. Nothing more to do.'}
+          </p>
+        )}
+        {canCancel ? (
+          <button type="button" className="mn-link ord-cancel" disabled={busy} onClick={() => onMove(order, 'Cancelled')}>
+            <i className="fa-solid fa-xmark"></i> Cancel this order
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+/*
+ * Taking a dine-in order. The cart logic is the one the old inline form had; it now
+ * lives in a dialog that opens from the Dine-in view, with the seated tables as big
+ * buttons and the dishes as cards with + and −.
+ */
+function NewDineInOrderModal({ tables, menus, onPlaceOrder, onToast, onClose }) {
+  const [tableId, setTableId] = useState('');
+  const [cart, setCart] = useState({});
+  const [category, setCategory] = useState('All');
+  const [placing, setPlacing] = useState(false);
+  const [error, setError] = useState('');
+  const uid = useId();
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const seated = (tables || []).filter(t => t.status === 'Occupied');
+  const menuList = (menus || []).filter(m => category === 'All' || normalizeMenuCategory(m.category) === category);
+
+  const addToCart = (item) => {
+    setError('');
+    setCart(prev => {
+      const qty = (prev[item.id] && prev[item.id].qty) || 0;
+      return Object.assign({}, prev, { [item.id]: { item, qty: qty + 1 } });
+    });
+  };
+  const removeFromCart = (id) => {
+    setCart(prev => {
+      const next = Object.assign({}, prev);
+      const line = next[id];
+      if (!line) return prev;
+      if (line.qty <= 1) { delete next[id]; return next; }
+      next[id] = Object.assign({}, line, { qty: line.qty - 1 });
+      return next;
+    });
+  };
+
+  const cartLines = Object.values(cart);
+  const cartCount = cartLines.reduce((n, l) => n + l.qty, 0);
+  const cartTotal = cartLines.reduce((sum, l) => sum + (Number(l.item.price) || 0) * l.qty, 0);
+
+  const placeOrder = () => {
+    if (!tableId) { setError('Pick the table first.'); return; }
+    if (!cartLines.length) { setError('Add at least one dish.'); return; }
+    setPlacing(true);
+    const items = cartLines.map(l => ({ menu_item_id: l.item.dbId, name: l.item.name, price: l.item.price, qty: l.qty }));
+    const table = seated.find(t => String(t.id) === String(tableId));
+    Promise.resolve(onPlaceOrder(tableId, items))
+      .then(() => {
+        if (onToast) onToast(`Order sent to the kitchen for ${table ? table.name : 'the table'}.`);
+        onClose();
+      })
+      .catch(err => setError((err && err.message) || 'Could not send this order. Please try again.'))
+      .finally(() => setPlacing(false));
+  };
+
+  return (
+    <div className="mn-overlay" onClick={onClose}>
+      <div className="mn-modal ord-modal" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <div className="mn-modal-head">
+          <div>
+            <h2 id={uid + '-t'} className="font-display">Take a dine-in order</h2>
+            <p>Pick the table, add the dishes, then send it to the kitchen.</p>
+          </div>
+          <button type="button" className="mn-close" onClick={onClose} aria-label="Close"><i className="fa-solid fa-xmark"></i></button>
         </div>
-      )}
+
+        <div className="mn-form">
+          <div className="mn-field">
+            <span className="mn-label">1. Which table?</span>
+            {seated.length ? (
+              <div className="mn-chips" role="radiogroup" aria-label="Table">
+                {seated.map(t => (
+                  <button key={t.id} type="button" role="radio" aria-checked={String(tableId) === String(t.id)} className={`mn-chip ${String(tableId) === String(t.id) ? 'is-on' : ''}`} onClick={() => { setTableId(t.id); setError(''); }}>
+                    <i className="fa-solid fa-chair"></i> {t.name}{t.guestName ? ` · ${t.guestName}` : ''}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mn-note"><i className="fa-solid fa-circle-info"></i><span>Nobody is seated yet. In Manage Tables, press Seat on the customer's table first.</span></p>
+            )}
+          </div>
+
+          <div className="mn-field">
+            <span className="mn-label">2. What would they like?</span>
+            <div className="mn-tabs">
+              {['All', ...MENU_CATEGORIES].map(c => (
+                <button key={c} type="button" aria-pressed={category === c} className={`mn-tab ${category === c ? 'is-on' : ''}`} onClick={() => setCategory(c)}>
+                  {c === 'All' ? 'Everything' : c}
+                </button>
+              ))}
+            </div>
+            <div className="ord-menu">
+              {menuList.length === 0 ? <p className="mn-help">Nothing in this part of the menu.</p> : null}
+              {menuList.map(item => {
+                const inCart = cart[item.id];
+                const out = item.stock <= 0;
+                return (
+                  <div key={item.id} className={`ord-dish ${inCart ? 'is-on' : ''} ${out ? 'is-out' : ''}`}>
+                    {/* Picked by sight, so the photo comes before the name. */}
+                    <img src={menuFoodImg(item)} alt="" />
+                    <div className="ord-dish-text">
+                      <b>{item.name}</b>
+                      <small>{formatPeso(item.price)}{out ? ' · Sold out' : ''}</small>
+                    </div>
+                    {out ? null : inCart ? (
+                      <div className="ord-stepper">
+                        <button type="button" aria-label={`One less ${item.name}`} onClick={() => removeFromCart(item.id)}>−</button>
+                        <span>{inCart.qty}</span>
+                        <button type="button" aria-label={`One more ${item.name}`} onClick={() => addToCart(item)}>+</button>
+                      </div>
+                    ) : (
+                      <button type="button" className="mn-btn is-small" onClick={() => addToCart(item)}><i className="fa-solid fa-plus"></i> Add</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="ord-cart">
+            <span>{cartCount ? `${cartCount} ${cartCount === 1 ? 'dish' : 'dishes'} · ` : 'Nothing added yet'}{cartCount ? <b>{formatPeso(cartTotal)}</b> : null}</span>
+          </div>
+          {error ? <p className="mn-error">{error}</p> : null}
+
+          <div className="mn-actions">
+            <button type="button" className="mn-btn is-quiet" onClick={onClose}>Cancel</button>
+            <button type="button" className="mn-btn is-solid" disabled={placing} onClick={placeOrder}>
+              <i className="fa-solid fa-paper-plane"></i> {placing ? 'Sending…' : 'Send to the kitchen'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
+const ORD_PAGE = 12;
+
 function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUpdateOrderStatus, onToast }) {
   const [orderType, setOrderType] = useState('room_service');
-  const [filter, setFilter] = useState('Open');
-  const [page, setPage] = useState(1);
+  const [view, setView] = useState('todo');   // todo | done | all | a stored status
+  const [shown, setShown] = useState(ORD_PAGE);
+  const [busyId, setBusyId] = useState(null);
+  const [taking, setTaking] = useState(false);
 
-  const changeOrderType = (next) => { setOrderType(next); setFilter('Open'); setPage(1); };
-  const changeFilter = (next) => { setFilter(next); setPage(1); };
+  const all = orders || [];
+  // Explicit equality on all three. "Not dine_in" would quietly drop catering orders
+  // into the Room Service view.
+  const ofType = (t) => all.filter(o => (t === 'room_service' ? (o.orderType === 'room_service' || !o.orderType) : o.orderType === t));
+  const typed = ofType(orderType).sort((a, b) => (a.id < b.id ? 1 : -1));
+  const flow = flowFor(orderType);
 
-  // Explicit equality on all three. The old test was "not dine_in", which would have
-  // quietly dropped catering orders into the Room Service tab.
-  const typedOrders = (orders || [])
-    .filter(o => (orderType === 'room_service'
-      ? (o.orderType === 'room_service' || !o.orderType)
-      : o.orderType === orderType))
-    .sort((a, b) => (a.id < b.id ? 1 : -1));
+  const matches = (o) => (view === 'all' ? true : view === 'todo' ? !isFinished(o) : view === 'done' ? isFinished(o) : o.status === view);
+  const visible = typed.filter(matches);
+  const page = visible.slice(0, shown);
+  const todo = typed.filter(o => !isFinished(o)).length;
 
-  const visible = typedOrders.filter(o => (
-    filter === 'All' ? true
-      : filter === 'Open' ? openStatusesFor(orderType).indexOf(o.status) !== -1
-      : o.status === filter
-  ));
-
-  const openCount = typedOrders.filter(o => openStatusesFor(orderType).indexOf(o.status) !== -1).length;
-  // Room service cannot be cancelled — it is already on a stay's bill — so only the tabs
-  // that can offer the filter; on room service it would never match anything.
-  const filters = ['Open', 'All', ...flowFor(orderType),
-    ...(orderType === 'dine_in' || orderType === 'catering' ? ['Cancelled'] : [])];
+  const pickType = (t) => { setOrderType(t); setView('todo'); setShown(ORD_PAGE); };
+  const pickView = (v) => { setView(v); setShown(ORD_PAGE); };
   const tableFor = (id) => (tables || []).find(t => t.id === id);
 
-  // safePage rather than page: switching to a filter with fewer orders must not
-  // strand the view on a page that no longer exists.
-  const PER_PAGE = 5;
-  const totalPages = Math.max(1, Math.ceil(visible.length / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const pageOrders = visible.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
-
-  const move = (order, status) => {
+  const send = (order, status) => {
+    setBusyId(order.id);
     Promise.resolve(onUpdateOrderStatus(order.id, status))
-      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not update this order.'); });
+      .then(() => { if (onToast) onToast(status === 'Cancelled' ? 'Order cancelled.' : `${stepText(order, status).label}.`); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not update this order.'); })
+      .finally(() => setBusyId(null));
   };
 
+  /* Cancelling is asked first: it takes the dish off the bill and puts it back in stock. */
+  const move = (order, status) => {
+    if (status !== 'Cancelled') { send(order, status); return; }
+    if (!window.Swal) { if (hmsConfirm('Cancel this order?')) send(order, status); return; }
+    window.Swal.fire({
+      title: 'Cancel this order?',
+      text: 'It comes off the bill and the servings go back on the menu. You cannot undo this.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, cancel it',
+      cancelButtonText: 'Keep it',
+      background: themeColor('--card', '#181714'),
+      color: themeColor('--fg', '#f5f0e8'),
+      confirmButtonColor: '#be123c',
+      cancelButtonColor: '#71717a',
+    }).then(r => { if (r.isConfirmed) send(order, status); });
+  };
+
+  const typeInfo = ORDER_TYPES.find(t => t.key === orderType) || ORDER_TYPES[0];
+  let emptyTitle = 'Nothing to cook right now';
+  let emptyText = orderType === 'dine_in'
+    ? 'Dine-in orders show here once you take one for a seated table.'
+    : orderType === 'catering'
+      ? 'Catering shows here on its own when the Front Desk books the function room with a catering package.'
+      : 'Room-service orders show here on their own when a checked-in guest orders food to their room.';
+  if (typed.length && view === 'done') { emptyTitle = 'Nothing finished yet'; emptyText = 'Orders move here once they are delivered, served or cancelled.'; }
+  else if (typed.length && view !== 'todo' && view !== 'all') { emptyTitle = `No orders at "${stepText({ orderType }, view).label}"`; emptyText = 'Pick another step to see the rest.'; }
+  else if (!typed.length) emptyTitle = `No ${typeInfo.label.toLowerCase()} orders yet`;
+
   return (
-    <div className="rm-panel" style={{ maxWidth: '100%' }}>
-      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Kitchen</p>
-      <h3>Orders</h3>
-      <p className="rm-panel-desc">
-        {typedOrders.length === 0
-          ? (orderType === 'dine_in'
-              ? 'No dine-in orders yet. Take one below once a guest is seated.'
-              : orderType === 'catering'
-                ? 'No catering yet. These arrive on their own when Front Desk books a function room with a catering package.'
-                : 'No room-service orders yet. Front Desk places them for checked-in guests.')
-          : `${openCount} order${openCount === 1 ? '' : 's'} still in the kitchen · ${typedOrders.length} total.`}
-      </p>
-
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-        <button type="button" className={`tb-tab ${orderType === 'room_service' ? 'is-active' : ''}`} onClick={() => changeOrderType('room_service')}>
-          <i className="fa-solid fa-bell-concierge" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Room Service
-        </button>
-        <button type="button" className={`tb-tab ${orderType === 'dine_in' ? 'is-active' : ''}`} onClick={() => changeOrderType('dine_in')}>
-          <i className="fa-solid fa-utensils" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Dine-In
-        </button>
-        <button type="button" className={`tb-tab ${orderType === 'catering' ? 'is-active' : ''}`} onClick={() => changeOrderType('catering')}>
-          <i className="fa-solid fa-champagne-glasses" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Catering
-        </button>
-      </div>
-
-      {orderType === 'dine_in' && canPlaceDineIn && (
-        <NewDineInOrderForm tables={tables} menus={menus} onPlaceOrder={onPlaceOrder} onToast={onToast} />
-      )}
-
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
-        {filters.map(f => (
-          <button key={f} type="button" className={`tb-tab ${filter === f ? 'is-active' : ''}`} onClick={() => changeFilter(f)}>{f}</button>
-        ))}
-      </div>
-
-      {visible.length === 0 ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>
-          <i className={`fa-solid ${orderType === 'dine_in' ? 'fa-utensils' : orderType === 'catering' ? 'fa-champagne-glasses' : 'fa-bell-concierge'}`} style={{ fontSize: '1.6rem', color: 'var(--fg-muted)', opacity: 0.3, display: 'block', marginBottom: '0.65rem' }}></i>
-          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.85rem' }}>No orders in this view.</p>
+    <div className="mn">
+      <header className="mn-head">
+        <div>
+          <p className="mn-eyebrow">Restaurant</p>
+          <h1 className="font-display">Orders</h1>
+          <p className="mn-lead">
+            Every food order the kitchen has to make. Pick the kind of order, then press the
+            big button on each one as the food moves along: cooked, ready, delivered.
+          </p>
         </div>
-      ) : (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', alignItems: 'stretch' }}>
-            {pageOrders.map(order => (
-              orderType === 'catering'
-                ? <CateringOrderCard key={order.id} order={order} onMove={move} />
-                : orderType === 'dine_in'
-                  ? <DineInOrderCard key={order.id} order={order} table={tableFor(order.tableId)} onMove={move} />
-                  : <RoomServiceOrderCard key={order.id} order={order} onMove={move} />
+        <div className="mn-head-actions">
+          <a href={window.HMS_RESTAURANT_URL} className="mn-btn">
+            <i className="fa-solid fa-arrow-left"></i> Back to Tasks
+          </a>
+          {canPlaceDineIn ? (
+            <button type="button" className="mn-btn is-solid" onClick={() => { pickType('dine_in'); setTaking(true); }}>
+              <i className="fa-solid fa-plus"></i> Take a dine-in order
+            </button>
+          ) : null}
+        </div>
+      </header>
+
+      <div className="ord-types" role="group" aria-label="Kind of order">
+        {ORDER_TYPES.map(t => {
+          const list = ofType(t.key);
+          const left = list.filter(o => !isFinished(o)).length;
+          return (
+            <button key={t.key} type="button" aria-pressed={orderType === t.key} className={`ord-type ${orderType === t.key ? 'is-on' : ''}`} onClick={() => pickType(t.key)}>
+              <span className="ord-type-icon"><i className={`fa-solid ${t.icon}`}></i></span>
+              <span className="ord-type-text">
+                <b>{t.label}</b>
+                <small>{t.hint}</small>
+              </span>
+              <span className={`ord-type-count ${left ? 'has-work' : ''}`}>{left ? `${left} to do` : 'All done'}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <section className="mn-panel" aria-labelledby="ord-list">
+        <div className="mn-panel-head">
+          <div>
+            <h2 id="ord-list">{typeInfo.label} orders</h2>
+            <p>{typed.length ? `${todo} still to do · ${typed.length} in all.` : typeInfo.hint + '.'}</p>
+          </div>
+          <span className="mn-live">Updates on its own</span>
+        </div>
+
+        {/* The steps an order goes through, with a count each; press one to see
+            only those orders. */}
+        <div className="ord-steps" role="group" aria-label="Show orders at a step">
+          {flow.map((s, i) => {
+            const n = typed.filter(o => o.status === s).length;
+            return (
+              <button key={s} type="button" aria-pressed={view === s} className={`ord-step ${view === s ? 'is-on' : ''}`} onClick={() => pickView(view === s ? 'todo' : s)}>
+                <span className="ord-step-num">{i + 1}</span>
+                <span className="ord-step-text"><b>{n}</b><small>{stepText({ orderType }, s).label}</small></span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mn-toolbar">
+          <div className="mn-tabs" role="group" aria-label="Show orders">
+            {[['todo', 'Still to do', 'fa-fire-burner'], ['done', 'Finished', 'fa-circle-check'], ['all', 'All orders', 'fa-list']].map(([k, label, icon]) => (
+              <button key={k} type="button" aria-pressed={view === k} className={`mn-tab ${view === k ? 'is-on' : ''}`} onClick={() => pickView(k)}>
+                <i className={`fa-solid ${icon}`}></i>{label}
+                <span className="mn-count">{typed.filter(o => (k === 'all' ? true : k === 'todo' ? !isFinished(o) : isFinished(o))).length}</span>
+              </button>
             ))}
           </div>
+          {orderType === 'dine_in' && canPlaceDineIn ? (
+            <button type="button" className="mn-btn is-small" onClick={() => setTaking(true)}>
+              <i className="fa-solid fa-plus"></i> Take a dine-in order
+            </button>
+          ) : null}
+        </div>
 
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--fg-muted)' }}>
-                Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, visible.length)} of {visible.length}
-              </span>
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={safePage === 1}
-                  style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === 1 ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === 1 ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === 1 ? 0.4 : 1 }}
-                >
-                  <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setPage(n)}
-                    style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid ' + (n === safePage ? 'var(--accent)' : 'var(--border)'), background: n === safePage ? 'var(--accent)' : 'transparent', color: n === safePage ? 'var(--bg)' : 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: n === safePage ? 700 : 400 }}
-                  >
-                    {n}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={safePage === totalPages}
-                  style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === totalPages ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === totalPages ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === totalPages ? 0.4 : 1 }}
-                >
-                  <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
-                </button>
-              </div>
+        {visible.length === 0 ? (
+          <div className="mn-empty">
+            <div className="mn-empty-icon"><i className={`fa-solid ${view === 'done' ? 'fa-circle-check' : typeInfo.icon}`}></i></div>
+            <h3>{emptyTitle}</h3>
+            <p>{emptyText}</p>
+            {orderType === 'dine_in' && canPlaceDineIn && view !== 'done' ? (
+              <button type="button" className="mn-btn is-solid" onClick={() => setTaking(true)}>
+                <i className="fa-solid fa-plus"></i> Take a dine-in order
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className="ord-grid">
+              {page.map(order => (
+                <OrderCard key={order.id} order={order} table={tableFor(order.tableId)} onMove={move} busy={busyId === order.id} />
+              ))}
             </div>
-          )}
-        </>
-      )}
+            <div className="mn-more">
+              <span>Showing {page.length} of {visible.length}</span>
+              {page.length < visible.length ? (
+                <button type="button" className="mn-btn is-small" onClick={() => setShown(s => s + ORD_PAGE)}>
+                  <i className="fa-solid fa-chevron-down"></i> Show {Math.min(ORD_PAGE, visible.length - page.length)} more
+                </button>
+              ) : null}
+            </div>
+          </>
+        )}
+      </section>
+
+      {taking ? (
+        <NewDineInOrderModal tables={tables} menus={menus} onPlaceOrder={onPlaceOrder} onToast={onToast} onClose={() => setTaking(false)} />
+      ) : null}
     </div>
   );
 }
@@ -1954,6 +2056,23 @@ function RestaurantManagementPage({
   onToast,
 }) {
   const activeNav = initialNav || 'manage-menu';
+
+  // Orders draws its own header, kinds of order and cards, like Manage Menu below.
+  if (activeNav === 'orders') {
+    return (
+      <div style={{ padding: '1.5rem' }} data-hms-no-edit="1">
+        <OrdersPanel
+          orders={orders}
+          tables={tables}
+          menus={menus}
+          canPlaceDineIn={canManageTables}
+          onPlaceOrder={onPlaceOrder}
+          onUpdateOrderStatus={onUpdateOrderStatus}
+          onToast={onToast}
+        />
+      </div>
+    );
+  }
 
   // Manage Menu draws its own header, numbers and cards; the other sections keep
   // the panel they have always had.
@@ -2005,17 +2124,6 @@ function RestaurantManagementPage({
               onSeatTable={onSeatTable}
               onFetchBill={onFetchBill}
               onSettleTable={onSettleTable}
-              onToast={onToast}
-            />
-          )}
-          {activeNav === 'orders' && (
-            <OrdersPanel
-              orders={orders}
-              tables={tables}
-              menus={menus}
-              canPlaceDineIn={canManageTables}
-              onPlaceOrder={onPlaceOrder}
-              onUpdateOrderStatus={onUpdateOrderStatus}
               onToast={onToast}
             />
           )}
