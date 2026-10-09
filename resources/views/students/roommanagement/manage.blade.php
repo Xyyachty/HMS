@@ -415,6 +415,48 @@
   @media (max-width: 560px) {
     .mr-head-actions, .mr-head-actions .mr-btn, .mr-search { width: 100%; max-width: none; }
   }
+  /* Guest Details (shares the mr- look) */
+  .mr-guests { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 1rem; align-items: stretch; }
+  .mr-guest { min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem 1.05rem 1.05rem; border-radius: 14px; border: 1px solid var(--mr-line); background: var(--mr-soft); }
+  .mr-guest.is-over { border-color: color-mix(in srgb, var(--mr-bad) 55%, transparent); }
+  .mr-guest-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+  .mr-guest-facts { list-style: none; margin: 0; padding: 0.65rem 0.75rem; border-radius: 10px; background: var(--card); border: 1px solid var(--mr-line); display: grid; gap: 0.4rem; }
+  .mr-guest-facts li { display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.84rem; color: var(--fg); }
+  .mr-guest-facts li i { width: 1rem; text-align: center; color: var(--fg-muted); margin-top: 0.2rem; font-size: 0.78rem; }
+  .mr-time { margin: 0; display: flex; gap: 0.5rem; align-items: flex-start; padding: 0.6rem 0.75rem; border-radius: 10px; font-size: 0.84rem; line-height: 1.45; font-variant-numeric: tabular-nums; }
+  .mr-time i { margin-top: 0.2rem; }
+  .mr-time.is-ok   { background: color-mix(in srgb, var(--mr-ok) 10%, transparent); color: var(--fg); }
+  .mr-time.is-ok i { color: var(--mr-ok); }
+  .mr-time.is-soon { background: color-mix(in srgb, var(--mr-warn) 12%, transparent); color: var(--fg); font-weight: 600; }
+  .mr-time.is-soon i { color: var(--mr-warn); }
+  .mr-time.is-over { background: color-mix(in srgb, var(--mr-bad) 12%, transparent); color: var(--mr-bad); font-weight: 700; }
+  .mr-time.is-idle { background: var(--card); border: 1px solid var(--mr-line); color: var(--fg-muted); }
+  .mr-owed { margin: 0; font-size: 0.84rem; color: var(--fg-muted); display: flex; align-items: center; gap: 0.4rem; }
+  .mr-owed b { color: var(--mr-bad); }
+  .mr-guest-actions { display: flex; gap: 0.5rem; margin-top: auto; }
+  .mr-guest-actions .mr-btn { flex: 1 1 0; }
+  .mr-tab i { font-size: 0.78rem; }
+
+  .mr-section { display: grid; gap: 0.55rem; }
+  .mr-section h3 { margin: 0; padding-bottom: 0.35rem; border-bottom: 1px solid var(--mr-line); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+  .mr-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1rem; }
+  .mr-fact small { display: block; font-size: 0.74rem; color: var(--fg-muted); }
+  .mr-fact span { display: block; font-size: 0.88rem; color: var(--fg); overflow-wrap: anywhere; }
+  .mr-notes { margin: 0; font-size: 0.86rem; line-height: 1.55; color: var(--fg); white-space: pre-wrap; }
+  .mr-bill { display: grid; gap: 0.15rem; }
+  .mr-bill div { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.86rem; color: var(--fg-muted); padding: 0.25rem 0; }
+  .mr-bill b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mr-bill .is-total { border-top: 2px solid var(--accent); margin-top: 0.35rem; padding-top: 0.55rem; color: var(--fg); font-weight: 700; }
+  .mr-bill .is-total b { font-size: 1.05rem; font-weight: 700; }
+  .mr-bill .is-owed { color: var(--mr-bad); font-weight: 700; }
+  .mr-bill .is-owed b { color: var(--mr-bad); font-weight: 700; }
+  .mr-bill .is-clear b { color: var(--mr-ok); }
+  .mr-payments { display: grid; gap: 0.5rem; }
+  .mr-payments > div { padding: 0.6rem 0.75rem; border-radius: 10px; border: 1px solid var(--mr-line); background: var(--mr-soft); }
+  .mr-payments > div > div { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.86rem; color: var(--fg); }
+  .mr-payments small { display: block; margin-top: 0.2rem; font-size: 0.76rem; color: var(--fg-muted); }
+  .mr-modal { --mr-warn: var(--warn, #f59e0b); }
+  @media (max-width: 560px) { .mr-facts { grid-template-columns: 1fr; } }
 </style>
 @endsection
 
@@ -1615,7 +1657,6 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCate
   );
 }
 
-/* 'Aug 12, 2026 - 2:00 PM' from a full ISO timestamp. */
 function formatStamp(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -1624,31 +1665,48 @@ function formatStamp(iso) {
     + ' · ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+/* "Fri, Oct 9 · 2:00 PM" from a stored date and clock time. */
+function formatDayTime(date, time) {
+  if (!date) return '—';
+  const d = new Date(date + 'T00:00:00');
+  const day = Number.isNaN(d.getTime()) ? date : d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  const clock = formatClockTime(time);
+  return clock ? `${day} · ${clock}` : day;
+}
+
+function formatEndsAt(reservation) {
+  const end = stayEndsAt(reservation);
+  if (!end) return reservation && reservation.checkOut ? formatDayTime(reservation.checkOut) : '—';
+  return end.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+    + ' · ' + end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+/* The three booking states, as the person at the desk would say them. */
+function guestState(reservation) {
+  const status = String((reservation && reservation.status) || '').trim();
+  if (status === 'Checked In') return { key: 'in', label: 'Staying now', icon: 'fa-bed', tone: 'tone-ok' };
+  if (status === 'Arrived') return { key: 'arrived', label: 'At the hotel, not checked in', icon: 'fa-person-walking-luggage', tone: 'tone-warn' };
+  return { key: 'booked', label: 'Booked, not here yet', icon: 'fa-calendar-check', tone: 'tone-brand' };
+}
+
+function guestBalance(res) {
+  const grand = Number(res.grandTotal) || ((Number(res.totalDue) || 0) + (Number(res.roomServiceTotal) || 0) + (Number(res.addonsTotal) || 0) + (Number(res.otherCharges) || 0));
+  const paid = Number(res.amountPaid) || 0;
+  return res.outstanding != null ? Number(res.outstanding) : Math.max(0, grand - paid);
+}
+
 /*
- * Read-only view of one stay. The table carries only what Room Management scans by
- * (who, where, when, status), so the money detail the Total and Payment columns used
- * to abbreviate lives here in full instead.
+ * Read-only view of one stay. The card carries only what Room Management scans by
+ * (who, where, when, status), so the money detail lives here in full instead.
  */
 function GuestDetailsModal({ room, onClose }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const uid = useId();
+  useEscapeKey(onClose);
 
   const res = room && room.reservation;
   if (!res) return null;
 
-  const label = { fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.15rem' };
-  const value = { margin: 0, color: 'var(--fg)', fontSize: '0.85rem' };
-  const sectionTitle = {
-    fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
-    color: 'var(--accent)', margin: '1.15rem 0 0.55rem', paddingBottom: '0.3rem',
-    borderBottom: '1px solid var(--border)',
-  };
-  const line = { display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.83rem', color: 'var(--fg-muted)', padding: '0.22rem 0' };
-  const amt = { color: 'var(--fg)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' };
-
+  const state = guestState(res);
   const roomTotal = Number(res.totalDue) || 0;
   const service = Number(res.roomServiceTotal) || 0;
   const serviceCount = Number(res.roomServiceCount) || 0;
@@ -1660,245 +1718,280 @@ function GuestDetailsModal({ room, onClose }) {
   const outstanding = res.outstanding != null ? Number(res.outstanding) : Math.max(0, grand - paid);
   const payments = res.payments || [];
 
+  const Fact = ({ label, children }) => (
+    <div className="mr-fact"><small>{label}</small><span>{children || '—'}</span></div>
+  );
+
   return (
-    <div className="room-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="room-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
-        <div style={{ padding: '1.4rem 1.6rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-          <div>
-            <p style={{ margin: 0, color: 'var(--accent)', fontSize: '0.62rem', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Guest</p>
-            <h2 className="font-display" style={{ margin: '0.25rem 0 0.4rem', fontSize: '1.35rem', color: 'var(--fg)' }}>
-              {res.fullName || 'Guest'}
-            </h2>
-            <span className={`room-status-badge ${bookingStatusClass(res.status)}`} style={{ position: 'static' }}>{res.status}</span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg-muted)', cursor: 'pointer', flexShrink: 0 }}
-          >
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-        </div>
+    <div className="mr-overlay" onClick={onClose}>
+      <div className="mr-modal" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <MrModalHead
+          titleId={uid + '-t'}
+          title={res.fullName || 'Guest'}
+          text={`${room.name} · ${room.label || room.category}`}
+          onClose={onClose}
+        />
+        <div className="mr-form">
+          <span className={`mr-pill ${state.tone}`} style={{ justifySelf: 'start' }}><i className={`fa-solid ${state.icon}`}></i>{state.label}</span>
 
-        <div style={{ padding: '0.25rem 1.6rem 1.6rem' }}>
-          <p style={sectionTitle}>Guest</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.55rem 1rem' }}>
-            <div><p style={label}>Full name</p><p style={value}>{res.fullName || '—'}</p></div>
-            <div><p style={label}>Contact no.</p><p style={value}>{res.contactNo || '—'}</p></div>
-            <div><p style={label}>Email</p><p style={{ ...value, overflowWrap: 'anywhere' }}>{res.email || '—'}</p></div>
-            <div><p style={label}>ID number</p><p style={value}>{res.idNumber || '—'}</p></div>
-          </div>
-
-          <p style={sectionTitle}>Stay</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.55rem 1rem' }}>
-            <div><p style={label}>Room</p><p style={value}>{room.name} · {room.label || room.category}</p></div>
-            <div><p style={label}>Rate / 12 hrs</p><p style={value}>{formatPeso(res.roomRate || room.price)}</p></div>
-            <div><p style={label}>Check-in</p><p style={value}>{formatCheckIn(res.checkIn, res.checkInTime)}</p></div>
-            <div><p style={label}>Check-out</p><p style={value}>{res.checkOut || '—'}</p></div>
-            <div><p style={label}>Booked</p><p style={value}>{formatStamp(res.reservedAt)}</p></div>
-            <div><p style={label}>Arrived</p><p style={value}>{formatStamp(res.arrivedAt)}</p></div>
-            <div><p style={label}>Checked in</p><p style={value}>{formatStamp(res.checkedInAt)}</p></div>
-            <div><p style={label}>Booked by</p><p style={value}>{res.bookedBy || '—'}</p></div>
-          </div>
-
-          {res.notes && (
-            <>
-              <p style={sectionTitle}>Notes</p>
-              <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.84rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{res.notes}</p>
-            </>
-          )}
-
-          <p style={sectionTitle}>Charges</p>
-          <div style={line}><span>Room charge</span><span style={amt}>{formatPeso(roomTotal)}</span></div>
-          <div style={line}>
-            <span>Room service{serviceCount > 0 ? ` (${serviceCount} order${serviceCount === 1 ? '' : 's'})` : ''}</span>
-            <span style={amt}>{formatPeso(service)}</span>
-          </div>
-          {addonsCount > 0 && (
-            <div style={line}>
-              <span>Add-ons ({addonsCount} item{addonsCount === 1 ? '' : 's'})</span>
-              <span style={amt}>{formatPeso(addonsTotal)}</span>
+          <section className="mr-section">
+            <h3>About the guest</h3>
+            <div className="mr-facts">
+              <Fact label="Full name">{res.fullName}</Fact>
+              <Fact label="Phone">{res.contactNo}</Fact>
+              <Fact label="Email">{res.email}</Fact>
+              <Fact label="ID number">{res.idNumber}</Fact>
             </div>
-          )}
-          <div style={line}><span>Other charges</span><span style={amt}>{formatPeso(extras)}</span></div>
-          <div style={{ ...line, borderTop: '2px solid var(--accent)', marginTop: '0.6rem', paddingTop: '0.6rem', color: 'var(--fg)', fontWeight: 700 }}>
-            <span>Total</span>
-            <span style={{ ...amt, color: 'var(--accent-light)', fontFamily: 'var(--font-display, Playfair Display, serif)', fontSize: '1.1rem' }}>{formatPeso(grand)}</span>
-          </div>
-          <div style={{ ...line, color: 'var(--fg)', fontWeight: 600 }}><span>Paid</span><span style={amt}>{formatPeso(paid)}</span></div>
-          <div style={line}>
-            <span>Balance</span>
-            <span style={{ ...amt, color: outstanding > 0 ? 'var(--danger, #fb7185)' : 'var(--fg)', fontWeight: 700 }}>{formatPeso(outstanding)}</span>
-          </div>
+          </section>
 
-          <p style={sectionTitle}>Payments</p>
-          {payments.length === 0 ? (
-            <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Nothing has been paid on this stay yet.</p>
-          ) : (
-            payments.map(p => (
-              <div key={p.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(42,38,33,0.5)' }}>
-                <div style={{ ...line, padding: 0 }}>
-                  <span style={{ color: 'var(--fg)' }}>{p.type} · {p.method}</span>
-                  <span style={amt}>{formatPeso(p.amountPaid)}</span>
-                </div>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                  {formatStamp(p.paidAt)}
-                  {p.reference ? ` · Ref ${p.reference}` : ''}
-                  {p.payerName ? ` · ${p.payerName}` : ''}
-                </p>
+          <section className="mr-section">
+            <h3>The stay</h3>
+            <div className="mr-facts">
+              <Fact label="Room">{room.name}</Fact>
+              <Fact label="Price per 12 hours">{formatPeso(res.roomRate || room.price)}</Fact>
+              <Fact label="Check-in">{formatDayTime(res.checkIn, res.checkInTime)}</Fact>
+              <Fact label="Check-out">{formatEndsAt(res)}</Fact>
+              <Fact label="Booked on">{res.reservedAt ? formatStamp(res.reservedAt) : null}</Fact>
+              <Fact label="Booked by">{res.bookedBy}</Fact>
+              <Fact label="Arrived at the hotel">{res.arrivedAt ? formatStamp(res.arrivedAt) : null}</Fact>
+              <Fact label="Checked in">{res.checkedInAt ? formatStamp(res.checkedInAt) : null}</Fact>
+            </div>
+          </section>
+
+          {res.notes ? (
+            <section className="mr-section">
+              <h3>Notes</h3>
+              <p className="mr-notes">{res.notes}</p>
+            </section>
+          ) : null}
+
+          <section className="mr-section">
+            <h3>Bill so far</h3>
+            <div className="mr-bill">
+              <div><span>Room</span><b>{formatPeso(roomTotal)}</b></div>
+              <div><span>Food ordered to the room{serviceCount > 0 ? ` (${serviceCount})` : ''}</span><b>{formatPeso(service)}</b></div>
+              {addonsCount > 0 ? <div><span>Borrowed items ({addonsCount})</span><b>{formatPeso(addonsTotal)}</b></div> : null}
+              <div><span>Other charges</span><b>{formatPeso(extras)}</b></div>
+              <div className="is-total"><span>Total</span><b>{formatPeso(grand)}</b></div>
+              <div><span>Paid</span><b>{formatPeso(paid)}</b></div>
+              <div className={outstanding > 0 ? 'is-owed' : 'is-clear'}>
+                <span>{outstanding > 0 ? 'Still to pay' : 'Fully paid'}</span><b>{formatPeso(outstanding)}</b>
               </div>
-            ))
-          )}
+            </div>
+          </section>
+
+          <section className="mr-section">
+            <h3>Payments</h3>
+            {payments.length === 0 ? (
+              <p className="mr-help">Nothing has been paid on this stay yet.</p>
+            ) : (
+              <div className="mr-payments">
+                {payments.map(p => (
+                  <div key={p.id}>
+                    <div><b>{p.type} · {p.method}</b><b>{formatPeso(p.amountPaid)}</b></div>
+                    <small>
+                      {formatStamp(p.paidAt)}
+                      {p.reference ? ` · Ref ${p.reference}` : ''}
+                      {p.payerName ? ` · Paid by ${p.payerName}` : ''}
+                    </small>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <div className="mr-actions">
+            <button type="button" className="mr-btn is-quiet" onClick={onClose}>Close</button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
-  const now = useNow(1000);
-  // The View action. Read-only, so it needs no fetch: the row already holds the whole
-  // reservation payload the modal renders. Keyed by room id so a poll refresh swaps
-  // in the updated row rather than leaving a stale snapshot open.
-  const [detailsRoomId, setDetailsRoomId] = useState(null);
-  // `reservation` is only ever projected from an open booking (see
-  // HotelRoom::activeBooking()), so its presence alone means the room has a live guest
-  // — hotel_rooms.status is housekeeping-only now and no longer part of this filter.
-  const occupied = (rooms || []).filter(r => r.reservation);
-  const awaitingCheckIn = occupied.filter(r => r.reservation.status !== 'Checked In').length;
-  // Resolved from the live list, so an open modal follows the 8s poll instead of
-  // holding the row as it looked when it was opened.
-  const detailsRoom = occupied.find(r => r.id === detailsRoomId) || null;
-
-  // Check-in moves the booking only — the room's own status is untouched.
-  const checkInGuest = (room) => {
-    if (typeof onBookingAction !== 'function' || !room.reservation) return;
-    onBookingAction(room.reservation.bookingId, 'check_in');
-    if (onToast) onToast(`${room.name} checked in.`);
-  };
-
-  /* No nowrap and no fixed widths: the table has to fit the page rather than force a
-     horizontal scrollbar, so long headers wrap instead of pushing the table wider.
-     Cells that must stay on one line (dates, countdown) opt in via tdTight. */
-  const thStyle = {
-    padding: '0.6rem 0.7rem', fontSize: '0.6rem', fontWeight: 700,
-    letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)',
-    borderBottom: '1px solid var(--border)',
-    textAlign: 'left', background: 'rgba(255,255,255,0.02)',
-  };
-  const tdStyle = {
-    padding: '0.7rem', fontSize: '0.78rem', color: 'var(--fg-muted)',
-    borderBottom: '1px solid rgba(42,38,33,0.5)', verticalAlign: 'middle',
-  };
-  const tdTight = { ...tdStyle, whiteSpace: 'nowrap' };
-  const rowBtn = {
-    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-    padding: '0.35rem 0.65rem', borderRadius: 6, cursor: 'pointer',
-    fontFamily: 'var(--font-body, Outfit, sans-serif)', fontSize: '0.68rem', fontWeight: 600,
-    letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-  };
-
-  if (!occupied.length) {
-    return (
-      <div className="rm-panel" style={{ maxWidth: '100%' }}>
-        <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Occupancy</p>
-        <h3>Guest Details</h3>
-        <p className="rm-panel-desc">No rooms with registered guests at this time.</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2.5rem 0' }}>
-          <div style={{ textAlign: 'center', color: 'var(--fg-muted)' }}>
-            <i className="fa-solid fa-door-open" style={{ fontSize: '2rem', opacity: 0.25, display: 'block', marginBottom: '0.75rem' }}></i>
-            <p style={{ fontSize: '0.82rem' }}>All rooms are currently vacant.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+function GuestCard({ room, now, onView, onCheckIn }) {
+  const res = room.reservation;
+  const state = guestState(res);
+  const remaining = remainingStay(res, now);
+  const owed = guestBalance(res);
+  const overdue = remaining.tone === 'over';
 
   return (
-    <div className="rm-panel" style={{ maxWidth: '100%' }}>
-      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Occupancy</p>
-      <h3>Guest Details</h3>
-      <p className="rm-panel-desc">
-        {occupied.length} room{occupied.length > 1 ? 's' : ''} with a registered guest
-        {awaitingCheckIn > 0 ? ` · ${awaitingCheckIn} awaiting check-in` : ''}.
-      </p>
-      <div style={{ borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
-          <thead>
-            <tr>
-              <th style={{ ...thStyle, width: '16%' }}>Guest Name</th>
-              <th style={{ ...thStyle, width: '13%' }}>Room</th>
-              <th style={{ ...thStyle, width: '16%' }}>Contact</th>
-              <th style={{ ...thStyle, width: '13%' }}>Check-In</th>
-              <th style={{ ...thStyle, width: '10%' }}>Check-Out</th>
-              <th style={{ ...thStyle, width: '11%' }}>Time Remaining</th>
-              <th style={{ ...thStyle, width: '10%' }}>Status</th>
-              <th style={{ ...thStyle, width: '11%' }}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {occupied.map((room, idx) => {
-              const res = room.reservation;
-              const rowBg = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)';
-              const canCheckIn = res.status !== 'Checked In';
-              const remaining = remainingStay(res, now);
-              return (
-                <tr key={room.id} style={{ background: rowBg }}>
-                  <td style={{ ...tdStyle, color: 'var(--fg)', fontWeight: 600, overflowWrap: 'anywhere' }}>
-                    <span style={{ display: 'block' }}>{res.fullName || '—'}</span>
-                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--fg-muted)', fontWeight: 400 }}>{res.idNumber || ''}</span>
-                  </td>
-                  <td style={tdStyle}>
-                    <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>{room.label || room.category}</span>
-                    <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{room.name}</span>
-                  </td>
-                  <td style={{ ...tdStyle, overflowWrap: 'anywhere' }}>
-                    <span style={{ display: 'block' }}>{res.contactNo || '—'}</span>
-                    <span style={{ display: 'block', fontSize: '0.72rem' }}>{res.email || ''}</span>
-                  </td>
-                  <td style={tdStyle}>{formatCheckIn(res.checkIn, res.checkInTime)}</td>
-                  <td style={tdTight}>{res.checkOut || '—'}</td>
-                  <td style={{
-                    ...tdTight,
-                    color: STAY_TONE_COLORS[remaining.tone],
-                    fontWeight: remaining.tone === 'idle' ? 400 : 600,
-                    opacity: remaining.tone === 'idle' ? 0.6 : 1,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}>
-                    {remaining.text}
-                  </td>
-                  <td style={tdStyle}>
-                    <span className={`room-status-badge ${bookingStatusClass(res.status)}`} style={{ position: 'static' }}>{res.status}</span>
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => setDetailsRoomId(room.id)}
-                        title="See everything recorded for this guest"
-                        style={{ ...rowBtn, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg)' }}
-                      >
-                        <i className="fa-solid fa-eye" style={{ fontSize: '0.68rem' }}></i> View
-                      </button>
-                      {canCheckIn && (
-                        <button
-                          type="button"
-                          onClick={() => checkInGuest(room)}
-                          title="Check the guest in"
-                          style={{ ...rowBtn, border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)' }}
-                        >
-                          <i className="fa-solid fa-right-to-bracket" style={{ fontSize: '0.68rem' }}></i> Check In
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+    <article className={`mr-guest ${overdue ? 'is-over' : ''}`}>
+      <div className="mr-guest-top">
+        <div style={{ minWidth: 0 }}>
+          <h3 className="mr-name">{res.fullName || 'Guest'}</h3>
+          <span className="mr-type">{room.name} · {room.label || room.category}</span>
+        </div>
+        <span className={`mr-pill ${state.tone}`}><i className={`fa-solid ${state.icon}`}></i>{state.key === 'in' ? 'Staying now' : state.key === 'arrived' ? 'At the hotel' : 'Not here yet'}</span>
       </div>
+
+      <ul className="mr-guest-facts">
+        <li><i className="fa-solid fa-phone"></i><span>{res.contactNo || 'No phone given'}</span></li>
+        <li><i className="fa-solid fa-right-to-bracket"></i><span>Check-in: {formatDayTime(res.checkIn, res.checkInTime)}</span></li>
+        <li><i className="fa-solid fa-right-from-bracket"></i><span>Check-out: {formatEndsAt(res)}</span></li>
+      </ul>
+
+      {state.key === 'in' ? (
+        <p className={`mr-time is-${remaining.tone}`}>
+          <i className={`fa-solid ${overdue ? 'fa-triangle-exclamation' : 'fa-hourglass-half'}`}></i>
+          <span>{overdue ? `Stay time is up. ${remaining.text}.` : `Time left: ${remaining.text}`}</span>
+        </p>
+      ) : (
+        <p className="mr-time is-idle">
+          <i className="fa-solid fa-circle-info"></i>
+          <span>{state.key === 'arrived' ? 'The guest is at the hotel. Check them in when the room is ready.' : 'Check the guest in when they arrive.'}</span>
+        </p>
+      )}
+
+      {owed > 0 ? <p className="mr-owed"><i className="fa-solid fa-peso-sign"></i> Still to pay: <b>{formatPeso(owed)}</b></p> : null}
+
+      <div className="mr-guest-actions">
+        <button type="button" className="mr-btn is-small" onClick={() => onView(room)}>
+          <i className="fa-solid fa-eye"></i> See details
+        </button>
+        {state.key !== 'in' ? (
+          <button type="button" className="mr-btn is-solid is-small" onClick={() => onCheckIn(room)}>
+            <i className="fa-solid fa-key"></i> Check in
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+const GUEST_TABS = [
+  { key: 'all',     label: 'All guests',          icon: 'fa-users',          match: () => true },
+  { key: 'waiting', label: 'Waiting to check in', icon: 'fa-calendar-check', match: r => r.reservation.status !== 'Checked In' },
+  { key: 'in',      label: 'Staying now',         icon: 'fa-bed',            match: r => r.reservation.status === 'Checked In' },
+];
+
+function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
+  const now = useNow(1000);
+  const [tab, setTab] = useState('all');
+  const [search, setSearch] = useState('');
+  // The See details action. Read-only, so it needs no fetch: the room already holds
+  // the whole reservation payload the dialog renders. Keyed by room id so a poll
+  // refresh swaps in the updated room rather than leaving a stale snapshot open.
+  const [detailsRoomId, setDetailsRoomId] = useState(null);
+  // `reservation` is only ever projected from an open booking (see
+  // HotelRoom::activeBooking()), so its presence alone means the room has a guest —
+  // hotel_rooms.status is housekeeping-only and no longer part of this filter.
+  const occupied = (rooms || []).filter(r => r.reservation);
+  const detailsRoom = occupied.find(r => r.id === detailsRoomId) || null;
+
+  const current = GUEST_TABS.find(t => t.key === tab) || GUEST_TABS[0];
+  const q = search.trim().toLowerCase();
+  const visible = occupied
+    .filter(current.match)
+    .filter(r => !q || [r.name, r.reservation.fullName, r.reservation.contactNo].some(v => String(v || '').toLowerCase().includes(q)));
+
+  const staying = occupied.filter(r => r.reservation.status === 'Checked In');
+  const waiting = occupied.length - staying.length;
+  const endingSoon = staying.filter(r => { const t = remainingStay(r.reservation, now).tone; return t === 'soon' || t === 'over'; }).length;
+
+  // Check-in moves the booking only — the room's own status is untouched. Asked first:
+  // it starts the guest's paid clock, and a mis-click on the wrong card is easy.
+  const checkInGuest = (room) => {
+    if (typeof onBookingAction !== 'function' || !room.reservation) return;
+    const go = () => {
+      onBookingAction(room.reservation.bookingId, 'check_in');
+      if (onToast) onToast(`${room.reservation.fullName || 'Guest'} is checked in to ${room.name}.`);
+    };
+    if (!window.Swal) { if (window.confirm(`Check in ${room.reservation.fullName || 'this guest'} to ${room.name}?`)) go(); return; }
+    window.Swal.fire({
+      title: `Check in ${room.reservation.fullName || 'this guest'}?`,
+      text: `They get the key to ${room.name}, and their stay time starts now.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, check in',
+      cancelButtonText: 'Not yet',
+      background: themeColor('--card', '#181714'),
+      color: themeColor('--fg', '#f5f0e8'),
+      confirmButtonColor: themeColor('--accent', '#c9a84c'),
+      cancelButtonColor: '#71717a',
+    }).then(r => { if (r.isConfirmed) go(); });
+  };
+
+  let emptyTitle = 'No guests right now';
+  let emptyText = 'When the Front Desk books a guest into a room, they show up here.';
+  if (q) { emptyTitle = 'No guest matches your search'; emptyText = 'Check the spelling, or clear the search box.'; }
+  else if (occupied.length && tab === 'waiting') { emptyTitle = 'Nobody is waiting'; emptyText = 'Every booked guest is already checked in.'; }
+  else if (occupied.length && tab === 'in') { emptyTitle = 'Nobody is staying yet'; emptyText = 'Guests show here once you check them in.'; }
+
+  return (
+    <div className="mr">
+      <header className="mr-head">
+        <div>
+          <p className="mr-eyebrow">Room Management</p>
+          <h1 className="font-display">Guest Details</h1>
+          <p className="mr-lead">
+            Guests staying in a room now, and guests who booked but are not checked in yet.
+            Check a guest in when they arrive, and press See details for their contact
+            information and bill.
+          </p>
+        </div>
+        <div className="mr-head-actions">
+          <a href={window.HMS_ROOMMANAGEMENT_URL} className="mr-btn">
+            <i className="fa-solid fa-arrow-left"></i> Back to Tasks
+          </a>
+        </div>
+      </header>
+
+      <ol className="mr-how" aria-label="How it works">
+        <li><span className="mr-how-num">1</span><div><b>Front Desk books the guest</b><span>The guest shows here as "Not here yet".</span></div></li>
+        <li><span className="mr-how-num">2</span><div><b>You check the guest in</b><span>Press Check in when they arrive. Their stay time starts.</span></div></li>
+        <li><span className="mr-how-num">3</span><div><b>Front Desk checks them out</b><span>The guest leaves this list and the room goes to Housekeeping.</span></div></li>
+      </ol>
+
+      <section className="mr-panel" aria-labelledby="gd-list">
+        <div className="mr-panel-head">
+          <div>
+            <h2 id="gd-list">Guests</h2>
+            <p>{occupied.length ? `${mrPlural(occupied.length, 'room has', 'rooms have')} a guest.` : 'No rooms have a guest right now.'}</p>
+          </div>
+          <span className="mr-live">Updates on its own</span>
+        </div>
+
+        {occupied.length ? (
+          <div className="mr-stats">
+            <div className="mr-stat"><span className="mr-stat-icon tone-ok"><i className="fa-solid fa-bed"></i></span><div><b>{staying.length}</b><span>Staying now</span></div></div>
+            <div className="mr-stat"><span className="mr-stat-icon tone-brand"><i className="fa-solid fa-calendar-check"></i></span><div><b>{waiting}</b><span>Waiting to check in</span></div></div>
+            <div className="mr-stat"><span className={`mr-stat-icon ${endingSoon ? 'tone-warn' : 'tone-ok'}`}><i className="fa-solid fa-hourglass-half"></i></span><div><b>{endingSoon}</b><span>Stay ends within 2 hours or is over</span></div></div>
+          </div>
+        ) : null}
+
+        {occupied.length ? (
+          <div className="mr-toolbar">
+            <div className="mr-tabs" role="group" aria-label="Show guests">
+              {GUEST_TABS.map(t => (
+                <button key={t.key} type="button" aria-pressed={tab === t.key} className={`mr-tab ${tab === t.key ? 'is-on' : ''}`} onClick={() => setTab(t.key)}>
+                  <i className={`fa-solid ${t.icon}`}></i>{t.label}
+                  <span className="mr-count">{occupied.filter(t.match).length}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mr-search">
+              <i className="fa-solid fa-magnifying-glass"></i>
+              <input type="text" className="mr-input" placeholder="Search a guest, phone or room" aria-label="Search a guest, phone or room" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+          </div>
+        ) : null}
+
+        {visible.length === 0 ? (
+          <div className="mr-empty">
+            <div className="mr-empty-icon"><i className={`fa-solid ${q ? 'fa-magnifying-glass' : 'fa-door-open'}`}></i></div>
+            <h3>{emptyTitle}</h3>
+            <p>{emptyText}</p>
+          </div>
+        ) : (
+          <div className="mr-guests">
+            {visible.map(room => (
+              <GuestCard key={room.id} room={room} now={now} onView={r => setDetailsRoomId(r.id)} onCheckIn={checkInGuest} />
+            ))}
+          </div>
+        )}
+      </section>
 
       {detailsRoom && (
         <GuestDetailsModal room={detailsRoom} onClose={() => setDetailsRoomId(null)} />
@@ -1907,7 +2000,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   );
 }
 
-function RoomManagementPage({ initialNav, rooms, categories, onBack, onAddRoom, onRoomUpdated, onAddCategory, onRenameCategory, onBookingAction, onToast }) {
+function RoomManagementPage({ initialNav, rooms, categories, onAddRoom, onRoomUpdated, onAddCategory, onRenameCategory, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
   const handleAddRoom = (payload) => {
@@ -1915,36 +2008,16 @@ function RoomManagementPage({ initialNav, rooms, categories, onBack, onAddRoom, 
     if (onToast) onToast(`${payload.name} added to Rooms.`);
   };
 
-  // Manage Rooms draws its own header, numbers and cards; Guest Details keeps the
-  // panel it has always had.
-  if (activeNav !== 'guest-details') {
-    return (
-      <div style={{ padding: '1.5rem' }} data-hms-no-edit="1">
-        {/* Manage Room is the fallback: ?nav=rooms was the old Room Availability
-            section, whose room list lives here now, so an old link still lands
-            somewhere sensible instead of on a blank panel. */}
-        <ManageRoomPanel rooms={rooms} categories={categories} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} onAddCategory={onAddCategory} onRenameCategory={onRenameCategory} onToast={onToast} />
-      </div>
-    );
-  }
-
   return (
-    <div style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.1rem' }}>
-        <div>
-          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Staff Tools</p>
-          <h1 className="font-display" style={{ fontSize: '1.9rem', margin: 0, color: 'var(--fg)' }}>Room Management</h1>
-        </div>
-        <button type="button" className="btn-outline" onClick={onBack} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
-          <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.75rem' }}></i> Back
-        </button>
-      </div>
-
-      <div className="rm-row">
-        <div className="rm-content">
-          <GuestDetailsPanel rooms={rooms} onBookingAction={onBookingAction} onToast={onToast} />
-        </div>
-      </div>
+    <div style={{ padding: '1.5rem' }} data-hms-no-edit="1">
+      {activeNav === 'guest-details' ? (
+        <GuestDetailsPanel rooms={rooms} onBookingAction={onBookingAction} onToast={onToast} />
+      ) : (
+        // Manage Room is the fallback: ?nav=rooms was the old Room Availability
+        // section, whose room list lives here now, so an old link still lands
+        // somewhere sensible instead of on a blank panel.
+        <ManageRoomPanel rooms={rooms} categories={categories} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} onAddCategory={onAddCategory} onRenameCategory={onRenameCategory} onToast={onToast} />
+      )}
     </div>
   );
 }
