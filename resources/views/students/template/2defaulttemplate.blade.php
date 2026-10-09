@@ -6106,13 +6106,18 @@ function ExperiencePage({ onNav, canEdit, onToast, cardImages, experiences, onAd
    distracted by the picture changing under it, and each card is started a beat
    apart from its neighbours - a grid of them flipping in unison reads as the
    page glitching rather than as photographs. */
-function FacilityCardSlides({ shots, name, offset, seconds }) {
-  const [active, setActive] = useState(0);
+function FacilityCardSlides({ shots, name, offset, seconds, changed }) {
+  /* On the faculty review the card holds still on the first photograph the team
+     put in, so the outline frames the picture that changed rather than whichever
+     one the rotation had reached. The dot of every new one is marked as well. */
+  const fresh = Array.isArray(changed) ? changed : [];
+  const firstFresh = shots.findIndex((src) => fresh.indexOf(src) >= 0);
+  const [active, setActive] = useState(firstFresh > 0 ? firstFresh : 0);
   const [held, setHeld] = useState(false);
   const many = shots.length > 1;
 
   useEffect(() => {
-    if (!many || held) return undefined;
+    if (!many || held || firstFresh >= 0) return undefined;
     const every = Math.min(5, Math.max(3, seconds || 4)) * 1000;
     let interval = null;
     const start = setTimeout(() => {
@@ -6148,6 +6153,7 @@ function FacilityCardSlides({ shots, name, offset, seconds }) {
             key={'dot' + index}
             type="button"
             className={'facility-card-dot' + (index === active ? ' is-active' : '')}
+            data-hms-amenity-part={fresh.indexOf(src) >= 0 ? 'new-photo' : undefined}
             onClick={() => setActive(index)}
             aria-label={'Show photo ' + (index + 1) + ' of ' + name}
             aria-current={index === active}
@@ -6906,7 +6912,7 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
                 }}
               >
                 <div className="facility-card-media" data-hms-amenity-part="photos">
-                  <FacilityCardSlides shots={shots} name={item.name} offset={index} seconds={slideSeconds} />
+                  <FacilityCardSlides shots={shots} name={item.name} offset={index} seconds={slideSeconds} changed={item.reviewPhotos} />
                   <span className={'facility-status ' + facilityStatusClass(item.status)}>{item.status}</span>
                   {shots.length > 1 && (
                     <span className="facility-shot-count">

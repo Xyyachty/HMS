@@ -129,6 +129,7 @@ class FacultyPreviewController extends Controller
                 ) + [
                     'reviewState' => $review['states'][$amenity->hotel_amenity_id] ?? null,
                     'reviewFields' => $review['fields'][$amenity->hotel_amenity_id] ?? [],
+                    'reviewPhotos' => $review['photos'][$amenity->hotel_amenity_id] ?? [],
                 ])
                 ->values(),
             'removed_defaults' => $review['removed'],

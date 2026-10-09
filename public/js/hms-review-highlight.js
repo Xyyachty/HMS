@@ -380,6 +380,12 @@
         const el = card.querySelector('[data-hms-amenity-part="' + part + '"]');
         out.push({ el: el || card, count: 1 });
       });
+      // The slider holds on the first new photograph; the dots point at the rest.
+      if (parts.indexOf('photos') >= 0) {
+        Array.prototype.forEach.call(card.querySelectorAll('[data-hms-amenity-part="new-photo"]'), function (dot) {
+          out.push({ el: dot, count: 0 });
+        });
+      }
     });
     return out;
   }

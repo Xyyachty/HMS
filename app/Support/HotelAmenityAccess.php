@@ -254,7 +254,7 @@ class HotelAmenityAccess
      * in every field is changed whichever default it is read against.
      *
      * @param  \Illuminate\Support\Collection<int, HotelAmenity>  $amenities
-     * @return array{states: array<int, string>, fields: array<int, string[]>, removed: int}
+     * @return array{states: array<int, string>, fields: array<int, string[]>, photos: array<int, string[]>, removed: int}
      */
     public static function reviewStates($amenities): array
     {
@@ -271,6 +271,7 @@ class HotelAmenityAccess
 
         $states = [];
         $changed = [];
+        $newPhotos = [];
         $unclaimed = array_keys($defaults);
         $seeds = 0;
         foreach ($amenities as $amenity) {
@@ -308,9 +309,25 @@ class HotelAmenityAccess
                 $states[$amenity->hotel_amenity_id] = 'changed';
                 $changed[$amenity->hotel_amenity_id] = $moved;
             }
+            // The photographs the team put in, as the card's slider addresses
+            // them: the primary one if it is no longer the stock picture, and
+            // every gallery one, since the stock facilities carry none.
+            $added = $mine['image'] !== $stock['image'] && $mine['image'] !== '' ? [$mine['image']] : [];
+            $urls = array_values(array_filter(array_map(
+                fn ($path) => HotelImageStore::url(is_string($path) ? $path : ''),
+                array_merge($added, $photos)
+            )));
+            if ($urls !== []) {
+                $newPhotos[$amenity->hotel_amenity_id] = $urls;
+            }
         }
 
-        return ['states' => $states, 'fields' => $changed, 'removed' => max(0, count($defaults) - $seeds)];
+        return [
+            'states' => $states,
+            'fields' => $changed,
+            'photos' => $newPhotos,
+            'removed' => max(0, count($defaults) - $seeds),
+        ];
     }
 
     private static function defaultAmenities(): array
