@@ -6895,6 +6895,7 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
               <div
                 key={item.id}
                 data-hms-amenity-state={item.reviewState || undefined}
+                data-hms-amenity-fields={(item.reviewFields || []).join(' ') || undefined}
                 className={'facility-card' + (item.status === 'Available' ? '' : ' is-unavailable')}
                 role="button"
                 tabIndex={0}
@@ -6904,7 +6905,7 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
                   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(item.id); }
                 }}
               >
-                <div className="facility-card-media">
+                <div className="facility-card-media" data-hms-amenity-part="photos">
                   <FacilityCardSlides shots={shots} name={item.name} offset={index} seconds={slideSeconds} />
                   <span className={'facility-status ' + facilityStatusClass(item.status)}>{item.status}</span>
                   {shots.length > 1 && (
@@ -6937,20 +6938,20 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
                   ) : null}
                 </div>
                 <div className="facility-card-body">
-                  <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>{item.name}</h3>
+                  <h3 className="font-display" style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }} data-hms-amenity-part="name">{item.name}</h3>
                   {item.location && (
-                    <div className="facility-card-meta">
+                    <div className="facility-card-meta" data-hms-amenity-part="location">
                       <i className="fa-solid fa-location-dot" style={{ color: 'var(--warm)', fontSize: '0.72rem' }}></i>
                       {item.location}
                     </div>
                   )}
                   {item.hours && (
-                    <div className="facility-card-meta">
+                    <div className="facility-card-meta" data-hms-amenity-part="hours">
                       <i className="fa-solid fa-clock" style={{ color: 'var(--warm)', fontSize: '0.72rem' }}></i>
                       {item.hours}
                     </div>
                   )}
-                  {item.description && <p className="facility-card-desc">{item.description}</p>}
+                  {item.description && <p className="facility-card-desc" data-hms-amenity-part="description">{item.description}</p>}
                   {/* A button, not a caption: the whole card already opens the
                       modal, but a guest reading with a keyboard or a screen reader
                       needs something that says so and can be pressed. */}

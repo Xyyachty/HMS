@@ -244,7 +244,8 @@ class HotelAmenityAccess
      * How a team's facilities differ from the five the template starts with, for
      * the faculty review: 'added' for one the team made, 'changed' for a starting
      * one whose name, location, hours, description or photos are no longer the
-     * stock ones, and how many starting ones were removed.
+     * stock ones (with which of those parts moved), and how many starting ones
+     * were removed.
      *
      * The starting five are the rows seeded together, so they share the team's
      * earliest created_at. A row keeps no reference to the default it came from,
@@ -253,7 +254,7 @@ class HotelAmenityAccess
      * in every field is changed whichever default it is read against.
      *
      * @param  \Illuminate\Support\Collection<int, HotelAmenity>  $amenities
-     * @return array{states: array<int, string>, removed: int}
+     * @return array{states: array<int, string>, fields: array<int, string[]>, removed: int}
      */
     public static function reviewStates($amenities): array
     {
@@ -269,6 +270,7 @@ class HotelAmenityAccess
         ];
 
         $states = [];
+        $changed = [];
         $unclaimed = array_keys($defaults);
         $seeds = 0;
         foreach ($amenities as $amenity) {
@@ -291,13 +293,24 @@ class HotelAmenityAccess
                 continue;
             }
             $unclaimed = array_values(array_diff($unclaimed, [$best]));
+            $stock = $fields($defaults[$best]);
             $photos = is_array($amenity->gallery) ? array_filter($amenity->gallery) : [];
-            if ($bestScore < count($mine) || $photos !== []) {
+            // Which parts of the card moved, so each task's review boxes the
+            // part it is about rather than the whole card.
+            $moved = array_keys(array_filter([
+                'name' => $mine['name'] !== $stock['name'],
+                'location' => $mine['location'] !== $stock['location'],
+                'hours' => $mine['opens_at'] !== $stock['opens_at'] || $mine['closes_at'] !== $stock['closes_at'],
+                'description' => $mine['description'] !== $stock['description'],
+                'photos' => $mine['image'] !== $stock['image'] || $photos !== [],
+            ]));
+            if ($moved !== []) {
                 $states[$amenity->hotel_amenity_id] = 'changed';
+                $changed[$amenity->hotel_amenity_id] = $moved;
             }
         }
 
-        return ['states' => $states, 'removed' => max(0, count($defaults) - $seeds)];
+        return ['states' => $states, 'fields' => $changed, 'removed' => max(0, count($defaults) - $seeds)];
     }
 
     private static function defaultAmenities(): array

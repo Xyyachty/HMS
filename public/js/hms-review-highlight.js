@@ -368,6 +368,28 @@
     return out;
   }
 
+  /* HK TASK 2-4 each box only their own part of a card: the photos, the
+     name / location / hours / description that moved off the stock ones, or
+     the facilities the team added. Boxing the whole card for every task read
+     as if everything on it had changed. */
+  function amenityPartChanges(parts) {
+    const out = [];
+    queryAll('[data-hms-amenity-state="changed"]').forEach(function (card) {
+      (card.getAttribute('data-hms-amenity-fields') || '').split(' ').forEach(function (part) {
+        if (parts.indexOf(part) < 0) return;
+        const el = card.querySelector('[data-hms-amenity-part="' + part + '"]');
+        out.push({ el: el || card, count: 1 });
+      });
+    });
+    return out;
+  }
+
+  function amenityAddedChanges() {
+    return queryAll('[data-hms-amenity-state="added"]').map(function (el) {
+      return { el: el, count: 1, type: 'added' };
+    });
+  }
+
   /* The Room Management tasks, on the Rooms page. The header (RM TASK 1) is
      judged by its text. Categories and rooms live in the database, so the
      faculty feed marks each category tab - and, on Template 1, its card - with
@@ -476,7 +498,9 @@
       return restaurantChanges(stockReview);
     }
     if (stockReview === 'amenities-header') return amenityHeaderChanges();
-    if (stockReview === 'amenities') return amenityCardChanges();
+    if (stockReview === 'amenity-images') return amenityPartChanges(['photos']);
+    if (stockReview === 'amenity-info') return amenityPartChanges(['name', 'location', 'hours', 'description']);
+    if (stockReview === 'amenity-added') return amenityAddedChanges();
     if (stockReview === 'amenities-all') return amenityHeaderChanges().concat(amenityCardChanges());
     // Customize Our Team and Customize the Footer: the shared check alone.
     if (stockReview === 'team' || stockReview === 'footer') {

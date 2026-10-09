@@ -126,7 +126,10 @@ class FacultyPreviewController extends Controller
             'items' => $amenities
                 ->map(fn (HotelAmenity $amenity) => $amenity->toTemplateArray(
                     $repairs[$amenity->hotel_amenity_id] ?? null
-                ) + ['reviewState' => $review['states'][$amenity->hotel_amenity_id] ?? null])
+                ) + [
+                    'reviewState' => $review['states'][$amenity->hotel_amenity_id] ?? null,
+                    'reviewFields' => $review['fields'][$amenity->hotel_amenity_id] ?? [],
+                ])
                 ->values(),
             'removed_defaults' => $review['removed'],
         ]);
