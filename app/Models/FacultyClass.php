@@ -127,8 +127,10 @@ class FacultyClass extends Model
                 }
             }
 
-            // If every kept class is full, open the next letter.
-            if (!$openAssigned) {
+            // If every kept class is full, open the next letter — unless another
+            // faculty holds the next block, which takes over from here instead.
+            // See Faculty::blockFullReason().
+            if (!$openAssigned && !Faculty::find($facultyId)?->nextBlockFaculty()) {
                 $last = $kept->last()['model'];
                 static::openNextClass($facultyId, $last);
             }

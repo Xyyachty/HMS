@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use App\Events\StudentCreated;
 use App\Models\ActivityLog;
+use App\Models\Faculty;
 use App\Models\FacultyClass;
 use App\Models\Group;
 use App\Models\HotelConcept;
@@ -519,10 +520,39 @@ class FacultyController extends Controller
         return auth()->user()?->faculty?->intakeLockReason();
     }
 
+    /**
+     * Why the signed-in faculty cannot add students right now, or null.
+     *
+     * The intake lock above, or a full block that the next block's faculty takes
+     * over from (Faculty::blockFullReason). Creating teams is not stopped by a
+     * full block, so this is for Add Student and Bulk Upload only.
+     */
+    private function enrolmentBlockedReason(): ?string
+    {
+        return $this->intakeLockReason() ?? auth()->user()?->faculty?->blockFullReason();
+    }
+
+    /**
+     * Tell the next block's faculty their block opened, when this enrolment is what
+     * filled the signed-in faculty's block. Returns that faculty, or null.
+     */
+    private function notifyIfBlockFilled(int $countBefore): ?Faculty
+    {
+        $faculty = auth()->user()?->faculty;
+        $next = $faculty?->nextBlockFaculty();
+        if (!$next || $countBefore >= FacultyClass::CAPACITY || $faculty->students()->count() < FacultyClass::CAPACITY) {
+            return null;
+        }
+
+        Notifier::blockOpened(auth()->user(), $faculty, $next);
+
+        return $next;
+    }
+
     public function students()
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
-        $intakeLock = $this->intakeLockReason();
+        $intakeLock = $this->enrolmentBlockedReason();
 
         if (!$facultyId) {
             return view('faculty.managestudent', [
@@ -635,7 +665,7 @@ class FacultyController extends Controller
             return back()->withErrors(['error' => 'Faculty account not found.'])->withInput();
         }
 
-        if ($lock = $this->intakeLockReason()) {
+        if ($lock = $this->enrolmentBlockedReason()) {
             return back()->withErrors(['error' => $lock])->withInput();
         }
 
@@ -682,6 +712,7 @@ class FacultyController extends Controller
             ->where('status', 'open')
             ->orderBy('sort_order')
             ->value('faculty_class_id');
+        $countBefore = Student::where('faculty_id', $facultyId)->count();
 
         [$user, $student, $class] = DB::transaction(function () use ($validated, $email, $fullName, $facultyId, $plainPassword) {
             $class = FacultyClass::claimSeat($facultyId);
@@ -720,6 +751,7 @@ class FacultyController extends Controller
 
         Notifier::studentAdded(auth()->user(), $user, $fullName, $class, $facultyId);
         $this->notifyIfClassOpened($facultyId, $openClassIdBefore);
+        $handedTo = $this->notifyIfBlockFilled($countBefore);
 
         // Only now that the account exists. This is the last point the generated
         // password is readable — the column holds a hash from here on, so a student
@@ -732,7 +764,10 @@ class FacultyController extends Controller
         );
 
         $message = 'Student account created successfully and added to ' . ($class->name ?? 'their block') . '.';
-        if ($class->status === 'closed') {
+        if ($handedTo) {
+            $message .= ' ' . $class->name . ' is now full. New students go to Block ' . strtoupper((string) $handedTo->block)
+                . ' (' . ($handedTo->user?->name ?? 'another faculty') . ').';
+        } elseif ($class->status === 'closed') {
             $message .= ' ' . $class->name . ' is now full. A new block tab was opened.';
         }
 
@@ -888,7 +923,7 @@ class FacultyController extends Controller
             return response()->json(['message' => 'Faculty account not found.'], 403);
         }
 
-        if ($lock = $this->intakeLockReason()) {
+        if ($lock = $this->enrolmentBlockedReason()) {
             return response()->json(['message' => $lock], 422);
         }
 
@@ -934,6 +969,12 @@ class FacultyController extends Controller
         $results   = [];
         $classesOpened = [];
         $lastClassLetter = null;
+
+        // When another faculty holds the next block, this one stops at a full block
+        // and the rows past it are left for that faculty. Null means no limit.
+        $countBefore = Student::where('faculty_id', $facultyId)->count();
+        $nextBlock = auth()->user()->faculty->nextBlockFaculty();
+        $seatsLeft = $nextBlock ? max(0, FacultyClass::CAPACITY - $countBefore) : null;
 
         // Each welcome email is a round trip to Gmail, so a full class costs a minute
         // or two. The default 30 seconds would cut the import in half — some students
@@ -983,6 +1024,17 @@ class FacultyController extends Controller
                     'status' => 'failed',
                     'name'   => trim("{$lastName} {$firstName}"),
                     'reason' => implode('; ', $errors),
+                ];
+                continue;
+            }
+
+            if ($seatsLeft === 0) {
+                $results[] = [
+                    'row'    => $rowNumber,
+                    'status' => 'failed',
+                    'name'   => trim("{$lastName} {$firstName}"),
+                    'reason' => 'your block is full — Block ' . strtoupper((string) $nextBlock->block)
+                        . ' (' . ($nextBlock->user?->name ?? 'another faculty') . ') adds this student',
                 ];
                 continue;
             }
@@ -1050,6 +1102,10 @@ class FacultyController extends Controller
                     $studentId
                 );
 
+                if ($seatsLeft !== null) {
+                    $seatsLeft--;
+                }
+
                 $results[] = [
                     'row'        => $rowNumber,
                     'status'     => 'success',
@@ -1083,6 +1139,10 @@ class FacultyController extends Controller
         }
         if (!empty($classesOpened)) {
             $message .= ' New block tab(s) opened: Block ' . implode(', Block ', array_unique($classesOpened)) . '.';
+        }
+        if ($handedTo = $this->notifyIfBlockFilled($countBefore)) {
+            $message .= ' Your block is now full. New students go to Block ' . strtoupper((string) $handedTo->block)
+                . ' (' . ($handedTo->user?->name ?? 'another faculty') . ').';
         }
 
         if ($created > 0) {

@@ -260,6 +260,22 @@ class Notifier
         );
     }
 
+    /** A faculty's block filled up, so the faculty holding the next block can start enrolling. */
+    public static function blockOpened(?User $actor, \App\Models\Faculty $full, \App\Models\Faculty $next): void
+    {
+        $fullBlock = 'Block ' . strtoupper((string) $full->block);
+        $nextBlock = 'Block ' . strtoupper((string) $next->block);
+
+        static::push(
+            array_merge(array_filter([$next->user_id]), static::deanUserIds()),
+            UserNotification::CLASS_OPENED,
+            $nextBlock . ' is now open',
+            $fullBlock . ' is full, so ' . $nextBlock . ' is now open. You can add students and create teams.',
+            route('faculty.students'),
+            $actor
+        );
+    }
+
     /** One or more teams were formed. */
     public static function teamCreated(?User $actor, string $groupName, int $facultyId, array $studentIds): void
     {

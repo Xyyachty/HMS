@@ -321,7 +321,7 @@
     @if (!empty($intakeLock))
         <div class="mx-6 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 flex items-start gap-2">
             <span class="iconify text-base shrink-0" data-icon="mdi:alert-outline"></span>
-            <span>{{ $intakeLock }} Add Student and Bulk Upload stay switched off until then.</span>
+            <span>{{ $intakeLock }}</span>
         </div>
     @endif
 

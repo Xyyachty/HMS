@@ -156,6 +156,38 @@ class Faculty extends UserInformation
             . $previous . ' is full.';
     }
 
+    /** The faculty holding the block after this one (Block B after Block A), if any. */
+    public function nextBlockFaculty(): ?self
+    {
+        $block = strtoupper(trim((string) $this->block));
+        if ($block === '') {
+            return null;
+        }
+
+        return static::with('user')
+            ->whereRaw('UPPER(block) = ?', [FacultyClass::nextLetter($block)])
+            ->first();
+    }
+
+    /**
+     * Why this faculty cannot add more students, or null when they can.
+     *
+     * A full block hands over to the next block only when a faculty holds it. With
+     * no faculty there yet, this one keeps enrolling into its own next class tab,
+     * so new students always have somewhere to go.
+     */
+    public function blockFullReason(): ?string
+    {
+        $next = $this->nextBlockFaculty();
+        if (!$next || $this->students()->count() < FacultyClass::CAPACITY) {
+            return null;
+        }
+
+        return 'Block ' . strtoupper((string) $this->block) . ' is full (' . FacultyClass::CAPACITY
+            . ' students). Block ' . strtoupper((string) $next->block) . ' belongs to '
+            . ($next->user?->name ?? 'another faculty') . '. Ask them to add new students.';
+    }
+
     /** Options for a faculty update dropdown: available class letters + their current block. */
     public static function selectableBlocksForFaculty(?int $facultyId = null, ?string $currentBlock = null): array
     {
