@@ -28,7 +28,7 @@
         <span class="iconify text-xl text-slate-500" data-icon="mdi:bell-outline"></span>
         <span data-notify-badge
               class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center
-                     rounded-full bg-rose-500 text-white text-[10px] font-bold leading-none shadow-sm">0</span>
+                     rounded-full bg-slate-700 text-white text-[10px] font-bold leading-none shadow-sm">0</span>
     </button>
 
     <div data-notify-panel
@@ -39,7 +39,7 @@
             <div class="flex items-center gap-2">
                 <h3 class="text-sm font-bold text-slate-900">Notifications</h3>
                 <span data-notify-unread-pill
-                      class="hidden px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[10px] font-bold">0 new</span>
+                      class="hidden px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">0 new</span>
             </div>
             <button type="button"
                     data-notify-mark-all
@@ -75,7 +75,7 @@
         position: absolute; top: -0.125rem; right: -0.125rem;
         min-width: 18px; height: 18px; padding: 0 0.25rem;
         display: flex; align-items: center; justify-content: center;
-        border-radius: 9999px; background: #f43f5e; color: #fff;
+        border-radius: 9999px; background: #334155; color: #fff;
         font-size: 10px; font-weight: 700; line-height: 1;
         box-shadow: 0 1px 2px 0 rgb(0 0 0 / .05);
     }
@@ -102,7 +102,7 @@
     }
     .hms-notify [data-notify-unread-pill] {
         padding: 0.125rem 0.375rem; border-radius: 9999px;
-        background: #fff1f2; color: #e11d48; font-size: 10px; font-weight: 700;
+        background: #f1f5f9; color: #334155; font-size: 10px; font-weight: 700;
     }
     .hms-notify [data-notify-mark-all] {
         background: none; border: 0; cursor: pointer;
@@ -150,7 +150,7 @@
         indigo:  { bg: '#e0e7ff', fg: '#4f46e5' },
         amber:   { bg: '#fef3c7', fg: '#d97706' },
         emerald: { bg: '#d1fae5', fg: '#059669' },
-        rose:    { bg: '#ffe4e6', fg: '#e11d48' },
+        rose:    { bg: '#f1f5f9', fg: '#475569' },
         slate:   { bg: '#f1f5f9', fg: '#475569' },
     };
 
