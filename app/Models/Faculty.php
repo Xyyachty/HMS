@@ -32,29 +32,55 @@ class Faculty extends UserInformation
     }
 
     /**
-     * Block options come from Faculty Manage Students classes (faculty_classes).
-     * e.g. Class A / Class B → Block A / Block B.
+     * Every block in use: each faculty's own block plus any next-block tab a
+     * faculty opened because nobody held that block (see handledBlocks()).
+     *
+     * This used to list the raw faculty_classes letters, which restart at A for
+     * every faculty, so Block B never appeared: a Block B faculty's Update User
+     * select came up blank and refused to save, and their students read "—".
      */
     public static function existingClassLetters(): array
     {
-        $letters = FacultyClass::query()
-            ->select('letter')
-            ->distinct()
-            ->pluck('letter')
-            ->map(fn ($letter) => strtoupper(trim((string) $letter)))
-            ->filter()
+        $letters = static::with('classes')
+            ->get()
+            ->flatMap(fn (self $faculty) => $faculty->handledBlocks())
             ->unique()
             ->sort()
             ->values()
             ->all();
 
-        // Class A is always created first in Manage Students — keep it selectable
-        // before any faculty has opened that page yet.
+        // Block A is always the first — keep it selectable before any faculty exists.
         if ($letters === []) {
             return ['A'];
         }
 
         return $letters;
+    }
+
+    /**
+     * The blocks this faculty runs: their own, plus the next block when it filled
+     * into a tab of theirs because no faculty held it (Block A, Block B).
+     */
+    public function handledBlocks(): array
+    {
+        $own = strtoupper(trim((string) $this->block));
+        if ($own === '') {
+            return [];
+        }
+
+        return $this->classes
+            ->map(fn (FacultyClass $class) => $class->setRelation('faculty', $this)->block_letter)
+            ->push($own)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    /** "Block A, Block B", or "—" with no block assigned. */
+    public function handledBlocksLabel(): string
+    {
+        return implode(', ', array_map(fn ($b) => 'Block ' . $b, $this->handledBlocks())) ?: '—';
     }
 
     public static function isValidBlock(?string $block): bool
@@ -74,17 +100,17 @@ class Faculty extends UserInformation
         return 'Block ' . $block;
     }
 
-    /** Unassigned class letters (optionally excluding one faculty's current assignment). */
+    /** Blocks no faculty runs (optionally ignoring one faculty's own). */
     public static function availableBlocks(?int $exceptFacultyId = null): array
     {
         $existing = static::existingClassLetters();
 
-        $taken = static::query()
+        // A block run through another faculty's extra tab is taken too, or a new
+        // faculty would be handed a block that already has students in it.
+        $taken = static::with('classes')
             ->when($exceptFacultyId, fn ($q) => $q->where('user_information_id', '!=', $exceptFacultyId))
-            ->whereNotNull('block')
-            ->where('block', '!=', '')
-            ->pluck('block')
-            ->map(fn ($b) => strtoupper((string) $b))
+            ->get()
+            ->flatMap(fn (self $faculty) => $faculty->handledBlocks())
             ->all();
 
         return array_values(array_filter(
@@ -194,7 +220,10 @@ class Faculty extends UserInformation
     /** Options for a faculty update dropdown: available class letters + their current block. */
     public static function selectableBlocksForFaculty(?int $facultyId = null, ?string $currentBlock = null): array
     {
-        $options = static::availableBlocks($facultyId);
+        // Not the extra blocks this faculty already runs: moving their own block onto
+        // one of those would relabel every tab they have.
+        $extra = $facultyId ? (static::with('classes')->find($facultyId)?->handledBlocks() ?? []) : [];
+        $options = array_values(array_diff(static::availableBlocks($facultyId), $extra));
         $current = strtoupper(trim((string) $currentBlock));
 
         if ($current !== '' && in_array($current, static::existingClassLetters(), true) && !in_array($current, $options, true)) {

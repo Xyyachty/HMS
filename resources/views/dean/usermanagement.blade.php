@@ -272,7 +272,10 @@
                             // A student's block is the block row they sit in, not the faculty's own block letter.
                             $block = $user->student?->facultyClass?->block_letter ?? null;
                         }
-                        $blockLabel = \App\Models\Faculty::blockLabel($block);
+                        // A faculty running two blocks reads "Block A, Block B".
+                        $blockLabel = $user->role === 'faculty' && $user->faculty
+                            ? $user->faculty->handledBlocksLabel()
+                            : \App\Models\Faculty::blockLabel($block);
                     @endphp
                     <tr data-user-id="{{ $user->user_id }}" data-role="{{ $user->role }}" data-block="{{ strtoupper((string) $block) }}">
                         <td>
@@ -338,6 +341,7 @@
                                         data-status="{{ $status }}"
                                         data-role="{{ $user->role }}"
                                         data-block="{{ $block ?? '' }}"
+                                        data-block-label="{{ $block ? $blockLabel : '' }}"
                                         class="st-update"
                                         aria-label="Update user"
                                     >
@@ -792,6 +796,7 @@
                         data-status="${escapeCell(user.status ?? 'active')}"
                         data-role="${escapeCell(user.role)}"
                         data-block="${escapeCell(user.block)}"
+                        data-block-label="${escapeCell(user.block ? user.block_label : '')}"
                         class="st-update"
                         aria-label="Update user"
                     >
@@ -985,6 +990,7 @@
         const status = button.getAttribute('data-status') || 'active';
         const role = button.getAttribute('data-role') || 'user';
         const block = (button.getAttribute('data-block') || '').toUpperCase();
+        const blockLabel = button.getAttribute('data-block-label') || (block ? `Block ${block}` : '');
 
         if (!firstName && !middleName && !lastName && fullName) {
             const parsed = parseNameParts(fullName);
@@ -1033,7 +1039,8 @@
             options.forEach((letter) => {
                 const opt = document.createElement('option');
                 opt.value = letter;
-                opt.textContent = `Block ${letter}`;
+                // The current block reads every block they run ("Block A, Block B").
+                opt.textContent = letter === block ? blockLabel : `Block ${letter}`;
                 if (letter === block) opt.selected = true;
                 blockSelect.appendChild(opt);
             });
@@ -1047,7 +1054,7 @@
             blockSelect.removeAttribute('name');
             blockReadonly.classList.remove('hidden');
             blockReadonly.classList.add('flex');
-            blockReadonly.textContent = (block && systemBlocks.includes(block)) ? `Block ${block}` : '—';
+            blockReadonly.textContent = block ? blockLabel : '—';
         }
 
         openModal('updateUserModal');

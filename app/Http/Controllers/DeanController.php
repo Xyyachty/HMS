@@ -127,7 +127,7 @@ class DeanController extends Controller
 
     public function users()
     {
-        $users = User::with(['faculty', 'student.facultyClass.faculty'])->latest()->get();
+        $users = User::with(['faculty.classes', 'student.facultyClass.faculty'])->latest()->get();
         $availableBlocks = Faculty::availableBlocks();
         $systemBlocks = Faculty::existingClassLetters();
 
@@ -136,7 +136,7 @@ class DeanController extends Controller
 
     public function usersLive()
     {
-        $users = User::with(['faculty', 'student.facultyClass.faculty'])->latest()->get()->map(function ($user) {
+        $users = User::with(['faculty.classes', 'student.facultyClass.faculty'])->latest()->get()->map(function ($user) {
             $displayName = trim(implode(' ', array_filter([
                 $user->last_name ?? null,
                 $user->first_name ?? null,
@@ -156,8 +156,10 @@ class DeanController extends Controller
             }
 
             $block = null;
+            $blockLabel = null;
             if ($user->role === 'faculty') {
                 $block = $user->faculty->block ?? null;
+                $blockLabel = $user->faculty?->handledBlocksLabel();
             } elseif ($user->role === 'student') {
                 // The block the student sits in, read off their faculty's block (FacultyClass::block_letter)
                 $block = $user->student?->facultyClass?->block_letter ?? null;
@@ -175,7 +177,7 @@ class DeanController extends Controller
                 'phone_number' => $phone,
                 'role' => $user->role,
                 'block' => $block ? strtoupper((string) $block) : null,
-                'block_label' => Faculty::blockLabel($block),
+                'block_label' => $blockLabel ?? Faculty::blockLabel($block),
                 'status' => $user->status ?? ($user->faculty->status ?? 'active'),
                 'joined' => optional($user->created_at)->format('M d, Y'),
             ];
