@@ -185,6 +185,26 @@
     /* Change existing teams hides the save button; the empty bar goes with it. */
     #panel-team_setup .ts-footer:not(:has(#createModalSubmitBtn:not(.hidden))) { display: none; }
 
+    /* Update Team and Add Student dialogs: neutral grays, none of the warm
+       wine/gold tint the palette and .gray-accents give their fills, borders,
+       icons and the On this team badge. Ids outrank both. */
+    :is(#updateTeamModal, #addStudentModal) :is(.bg-slate-50, .bg-slate-100, .bg-amber-50, .bg-blue-50, .bg-brand-soft, .bg-red-50) { background-color: #F5F5F5; }
+    :is(#updateTeamModal, #addStudentModal) :is(.hover\:bg-slate-50, .hover\:bg-slate-200, .hover\:bg-brand-soft\/50):hover { background-color: #EEEEEE; }
+    :is(#updateTeamModal, #addStudentModal) :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-amber-100, .border-amber-200, .border-blue-100, .border-red-200) { border-color: #E5E5E5; }
+    :is(#updateTeamModal, #addStudentModal) .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #E5E5E5; }
+    :is(#updateTeamModal, #addStudentModal) .hover\:border-brand\/40:hover { border-color: #9CA3AF; }
+    :is(#updateTeamModal, #addStudentModal) :is(input, select, textarea):focus { border-color: #9CA3AF; --tw-ring-color: rgba(156, 163, 175, .3); }
+    :is(#updateTeamModal, #addStudentModal) label:has(:checked):is(.has-\[\:checked\]\:border-brand) { border-color: #374151; background-color: #F3F4F6; }
+    :is(#updateTeamModal, #addStudentModal) :is(.brand-gradient, .bg-amber-500) { background: #374151; }
+    :is(#updateTeamModal, #addStudentModal) :is(.brand-gradient, .bg-amber-500):hover { background: #1F2937; }
+    :is(#updateTeamModal, #addStudentModal) :is(.shadow-brand\/20, .shadow-amber-400\/30) { --tw-shadow-color: rgba(17, 17, 17, .15); }
+    :is(#updateTeamModal, #addStudentModal) .bg-slate-900\/60 { background-color: rgba(17, 17, 17, .6); }
+    :is(#updateTeamModal, #addStudentModal) :is(.iconify, svg):not(:is(.brand-gradient, .bg-amber-500, .text-white) *) { color: #4B5563; }
+    :is(#updateTeamModal, #addStudentModal) :is(.text-amber-500, .text-amber-600, .text-amber-700, .text-brand, .text-slate-700, .text-slate-800, .text-slate-900, .text-red-700) { color: #111827; }
+    :is(#updateTeamModal, #addStudentModal) :is(.text-slate-500, .text-slate-600) { color: #4B5563; }
+    :is(#updateTeamModal, #addStudentModal) :is(.text-slate-300, .text-slate-400, .text-red-400) { color: #9CA3AF; }
+    :is(#updateTeamModal, #addStudentModal) .update-on-team-badge { background: #F3F4F6; border-color: #D1D5DB; color: #374151; }
+
     @media (max-width: 640px) {
         #panel-team_setup .ts-tabs,
         #panel-team_setup .ts-modes { grid-template-columns: minmax(0, 1fr); }
