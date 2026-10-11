@@ -230,6 +230,57 @@
         </div>
     </div>
 </div>
+
+<!-- Student Customization Progress: every team's approved customization tasks -->
+<div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-3">
+    <div class="px-5 py-3.5 border-b border-slate-100">
+        <div class="flex items-center justify-between gap-2">
+            <p class="text-sm font-bold text-black">Student Customization Progress</p>
+            <a href="{{ route('dean.faculties') }}" class="text-[11px] font-bold text-black hover:underline">View Teams</a>
+        </div>
+        @if(($teamProgress ?? collect())->isNotEmpty())
+            <div class="flex items-center gap-3 mt-2.5">
+                <div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div class="h-full rounded-full bg-amber-500" style="width: {{ $customizationPercent }}%"></div>
+                </div>
+                <p class="text-[13px] font-extrabold text-black shrink-0">{{ $customizationPercent }}%</p>
+            </div>
+            <p class="text-[11px] text-black mt-1">
+                Average across {{ $teamProgress->count() }} {{ Str::plural('team', $teamProgress->count()) }} ·
+                {{ $unlockedTeams }} with the Simulation unlocked
+            </p>
+        @endif
+    </div>
+    <div class="divide-y divide-slate-50 overflow-y-auto" style="max-height: 340px">
+        @forelse(($teamProgress ?? collect()) as $team)
+            <div class="px-5 py-3 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-amber-50 text-amber-500">
+                    <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[13px] font-bold text-black truncate">{{ $team['name'] }}</p>
+                    <p class="text-[10px] text-black font-bold tracking-wider mt-0.5 truncate">
+                        {{ collect([$team['block'], $team['faculty']])->filter()->implode(' · ') }}
+                        · {{ $team['done'] }}/{{ $team['total'] }} approved ·
+                        <span class="{{ $team['unlocked'] ? 'text-emerald-600' : '' }}">Simulation {{ $team['unlocked'] ? 'unlocked' : 'locked' }}</span>
+                    </p>
+                </div>
+                <div class="w-24 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
+                    <div class="h-full rounded-full bg-amber-500" style="width: {{ $team['percent'] }}%"></div>
+                </div>
+                <p class="text-[13px] font-extrabold text-black w-10 text-right shrink-0">{{ $team['percent'] }}%</p>
+            </div>
+        @empty
+            <div class="px-5 py-12 text-center">
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                    <span class="iconify text-2xl text-slate-300" data-icon="mdi:chart-timeline-variant"></span>
+                </div>
+                <p class="text-sm font-semibold text-black">No teams yet</p>
+                <p class="text-xs text-black mt-1">Progress appears once faculty create teams.</p>
+            </div>
+        @endforelse
+    </div>
+</div>
 </div>
 @endsection
 

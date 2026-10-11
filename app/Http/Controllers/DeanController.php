@@ -109,6 +109,33 @@ class DeanController extends Controller
                 return $task;
             });
 
+        // Customization progress for every team in every block: the same approved
+        // count the faculty dashboard shows (SimulationPhase::progress), with the
+        // block the team's members sit in and the faculty who runs it.
+        $teamProgress = StudentGroup::with('student.facultyClass.faculty')
+            ->get()
+            ->groupBy(fn ($member) => $member->faculty_id . '|' . $member->group_name)
+            ->map(function ($members) use ($facultyNames) {
+                $first = $members->first();
+                $phase = \App\Support\SimulationPhase::progress($first->group_name, (int) $first->faculty_id);
+                $block = $members->map(fn ($m) => $m->student?->facultyClass?->block_letter)->filter()->first();
+
+                return [
+                    'name'     => (string) $first->group_name,
+                    'block'    => $block ? 'Block ' . $block : null,
+                    'faculty'  => $facultyNames[$first->faculty_id] ?? null,
+                    'total'    => $phase['required'],
+                    'done'     => $phase['approved'],
+                    'percent'  => $phase['percent'],
+                    'unlocked' => $phase['unlocked'],
+                ];
+            })
+            ->sortBy(fn ($team) => [$team['block'] ?? 'ZZZ', mb_strtolower($team['name'])])
+            ->values();
+
+        $customizationPercent = $teamProgress->isEmpty() ? 0 : (int) round($teamProgress->avg('percent'));
+        $unlockedTeams = $teamProgress->where('unlocked', true)->count();
+
         return view('dean.dashboard', compact(
             'totalStudents',
             'totalFaculty',
@@ -121,7 +148,10 @@ class DeanController extends Controller
             'newAccounts',
             'recentTasks',
             'completedTasks',
-            'completionRate'
+            'completionRate',
+            'teamProgress',
+            'customizationPercent',
+            'unlockedTeams'
         ));
     }
 
