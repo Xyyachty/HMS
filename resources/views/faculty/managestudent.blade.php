@@ -227,6 +227,14 @@
     body :is(.bg-red-50, .hover\:bg-red-50:hover) { background-color: #FEF2F2; }
     body .border-red-200 { border-color: #FECACA; }
 
+    /* Add/Update Student modals: plain neutral gray, none of the warm tint
+       .gray-accents gives slate fills. Ids outrank its class rules. */
+    :is(#createStudentModal, #updateStudentModal) :is(input, select) { background-color: #F5F5F5; border-color: #E5E5E5; }
+    :is(#createStudentModal, #updateStudentModal) input[readonly] { background-color: #EBEBEB; }
+    :is(#createStudentModal, #updateStudentModal) :is(input, select):focus { border-color: #9CA3AF; --tw-ring-color: rgba(156, 163, 175, .3); }
+    :is(#createStudentModal, #updateStudentModal) :is(.bg-brand-soft, .bg-slate-50) { background-color: #F5F5F5; }
+    :is(#createStudentModal, #updateStudentModal) :is(.border-amber-100, .border-slate-100) { border-color: #E5E5E5; }
+
     /* md:p-6 and md:px-6 are missing from the frozen build, so the dean page's
        1.5rem desktop padding around the table and toolbar is written out here. */
     @media (min-width: 768px) {
