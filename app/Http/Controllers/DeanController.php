@@ -731,7 +731,7 @@ class DeanController extends Controller
         $tasks = Task::with('faculty.user')
             ->where('status', 'archived')
             ->orderByDesc('updated_at')
-            ->get(['id', 'faculty_id', 'group_name', 'role', 'title', 'updated_at']);
+            ->get();
 
         $byFaculty = $tasks->groupBy('faculty_id');
 
