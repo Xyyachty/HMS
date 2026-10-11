@@ -290,5 +290,6 @@
     </script>
     @include('partials.ph-phone-input')
     @stack('scripts')
+@include('partials.session-guard')
 </body>
 </html>

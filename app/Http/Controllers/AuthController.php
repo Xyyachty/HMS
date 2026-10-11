@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use App\Http\Middleware\EnforceSessionRules;
 use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -30,9 +31,9 @@ class AuthController extends Controller
         // logins with different capitalisation fail on PostgreSQL.
         $credentials['email'] = strtolower(trim($credentials['email']));
 
-        $remember = $request->boolean('remember');
-
-        if (Auth::attempt($credentials, $remember)) {
+        // No remember-me cookie: it would sign a user back in after the
+        // five-minute inactivity limit (EnforceSessionRules) had ended them.
+        if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
             $user = Auth::user();
@@ -59,6 +60,14 @@ class AuthController extends Controller
                 ])->with('error_title', 'Account Deactivated')->onlyInput('email');
             }
             if ($user) {
+                // This sign-in becomes the account's only session: any other
+                // device holding the old token ends on its next request.
+                $loginToken = Str::random(60);
+                Auth::getProvider()->updateRememberToken($user, $loginToken);
+                $request->session()->put(EnforceSessionRules::TOKEN_KEY, $loginToken);
+                $request->session()->put(EnforceSessionRules::ACTIVITY_KEY, now()->timestamp);
+                $request->session()->forget(EnforceSessionRules::ENDED_KEY);
+
                 ActivityLog::record($user, ActivityLog::LOGIN, 'Signed in to the portal.');
 
                 $roleLabel = $user->role === 'dean' ? 'admin' : $user->role;

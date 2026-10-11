@@ -518,5 +518,6 @@
         });
     </script>
     @yield('scripts')
+@include('partials.session-guard')
 </body>
 </html>

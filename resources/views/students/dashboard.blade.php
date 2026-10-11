@@ -3129,5 +3129,6 @@ document.addEventListener('change', function (e) {
 });
 </script>
 
+@include('partials.session-guard')
 </body>
 </html>

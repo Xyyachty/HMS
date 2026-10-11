@@ -9446,5 +9446,6 @@ root.render(<App />);
 @endverbatim
 
 @include('students.template.partials.editor-bridge')
+@include('partials.session-guard')
 </body>
 </html>

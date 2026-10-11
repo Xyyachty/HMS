@@ -42,6 +42,23 @@ Route::get('/', function () {
 Route::get('/login', [AuthController::class, 'login'])->middleware('guest')->name('login');
 Route::post('/login', [AuthController::class, 'authenticate'])->middleware('guest')->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
+/*
+| Session rules (App\Http\Middleware\EnforceSessionRules) and their page side,
+| partials.session-guard. The ping answers whether this session is still the
+| account's live one; with ?active=1 it also counts as the user interacting.
+| session-ended is where the page sends the user once it gives up, and says why.
+*/
+Route::get('/session/ping', function () {
+    return auth()->check()
+        ? response()->json(['ok' => true])
+        : response()->json([
+            'session_ended' => session(\App\Http\Middleware\EnforceSessionRules::ENDED_KEY, 'idle'),
+        ], 401);
+})->name('session.ping');
+Route::get('/session-ended', function (\Illuminate\Http\Request $request) {
+    return \App\Http\Middleware\EnforceSessionRules::end($request, (string) $request->query('reason', 'idle'));
+})->name('session.ended');
 Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('guest')->name('forgot-password');
 Route::post('/forgot-password', [AuthController::class, 'forgotPasswordSubmit'])->middleware('guest')->name('forgot-password.submit');
 // Throttled: unauthenticated, called on every keystroke, and its answer reveals
