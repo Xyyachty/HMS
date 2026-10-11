@@ -119,6 +119,7 @@
         border-top: 1px solid #f1f5f9; cursor: pointer;
         transition: background-color .15s ease;
     }
+    .hms-notify [data-notify-list] > [data-notify-item] { border-color: #f1f5f9; } /* beats the palette's warm divide-slate-100 */
     .hms-notify [data-notify-list] > [data-notify-item]:first-child { border-top: 0; }
     .hms-notify [data-notify-item][data-read="0"] { background: rgb(240 249 255 / .6); }
     .hms-notify [data-notify-item]:hover { background: #f8fafc; }
@@ -127,7 +128,13 @@
         display: flex; align-items: center; justify-content: center;
     }
     .hms-notify [data-notify-item] > span:nth-child(2) { min-width: 0; flex: 1 1 0%; }
-    .hms-notify [data-notify-item] > span:nth-child(2) > span { line-height: 1.375; }
+    .hms-notify [data-notify-item] > span:nth-child(2) > span { line-height: 1.375; color: #64748b; }
+    /* Text colours spelled out too: faculty-palette.css re-points slate text
+       at wine-tinted grays, which turned the faculty bell's copy maroon. */
+    .hms-notify [data-notify-item] > span:nth-child(2) > span:first-child { color: #0f172a; }
+    .hms-notify [data-notify-item] > span:nth-child(2) > span:last-child:not(:first-child) { color: #94a3b8; }
+    .hms-notify [data-notify-list] > div, .hms-notify [data-notify-list] > div p { color: #94a3b8; }
+    .hms-notify [data-notify-list] > div .iconify { color: #cbd5e1; }
 
     /* The unread dot: last child, and only ever rendered on an unread row. */
     .hms-notify [data-notify-item][data-read="0"] > span:last-child {
