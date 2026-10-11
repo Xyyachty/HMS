@@ -523,13 +523,13 @@ class FacultyController extends Controller
     /**
      * Why the signed-in faculty cannot add students right now, or null.
      *
-     * The intake lock above, or a full block that the next block's faculty takes
-     * over from (Faculty::blockFullReason). Creating teams is not stopped by a
-     * full block, so this is for Add Student and Bulk Upload only.
+     * Only the intake lock above. A full block no longer stops Add Student or Bulk
+     * Upload: the student is enrolled under the next block's faculty instead
+     * (Faculty::intakeFaculty).
      */
     private function enrolmentBlockedReason(): ?string
     {
-        return $this->intakeLockReason() ?? auth()->user()?->faculty?->blockFullReason();
+        return $this->intakeLockReason();
     }
 
     /**
@@ -706,13 +706,19 @@ class FacultyController extends Controller
             $validated['last_name'],
         ])));
 
+        // Past a full block, a faculty holding the next block takes the student.
+        $ownFacultyId = (int) $facultyId;
+        $target = auth()->user()->faculty->intakeFaculty();
+        $facultyId = (int) $target->user_information_id;
+        $handedOver = $facultyId !== $ownFacultyId;
+
         // Which class was accepting enrollments before this student took a seat —
         // if it differs afterwards, seating them is what opened the next one.
         $openClassIdBefore = FacultyClass::where('faculty_id', $facultyId)
             ->where('status', 'open')
             ->orderBy('sort_order')
             ->value('faculty_class_id');
-        $countBefore = Student::where('faculty_id', $facultyId)->count();
+        $countBefore = Student::where('faculty_id', $ownFacultyId)->count();
 
         [$user, $student, $class] = DB::transaction(function () use ($validated, $email, $fullName, $facultyId, $plainPassword) {
             $class = FacultyClass::claimSeat($facultyId);
@@ -764,7 +770,10 @@ class FacultyController extends Controller
         );
 
         $message = 'Student account created successfully and added to ' . ($class->name ?? 'their block') . '.';
-        if ($handedTo) {
+        if ($handedOver) {
+            $message = 'Your block is full, so the student was added to ' . $class->name . ' under '
+                . ($target->user?->name ?? 'its faculty') . '.';
+        } elseif ($handedTo) {
             $message .= ' ' . $class->name . ' is now full. New students go to Block ' . strtoupper((string) $handedTo->block)
                 . ' (' . ($handedTo->user?->name ?? 'another faculty') . ').';
         } elseif ($class->status === 'closed') {
@@ -780,7 +789,7 @@ class FacultyController extends Controller
                 . ' — write it down now and give it to them, it is not shown again.';
 
         return redirect()
-            ->route('faculty.students', ['class' => $class->letter])
+            ->route('faculty.students', $handedOver ? [] : ['class' => $class->letter])
             ->with('success', $message)
             ->with('success_title', 'Student Created');
     }
@@ -894,7 +903,7 @@ class FacultyController extends Controller
         $message = 'Student updated successfully.';
 
         if ($resendWelcome) {
-            $classLetter = $user->student?->facultyClass?->letter;
+            $classLetter = $user->student?->facultyClass?->block_letter;
 
             $mailResult = StudentWelcomeMailer::send(
                 $user->fresh(),
@@ -970,11 +979,11 @@ class FacultyController extends Controller
         $classesOpened = [];
         $lastClassLetter = null;
 
-        // When another faculty holds the next block, this one stops at a full block
-        // and the rows past it are left for that faculty. Null means no limit.
+        // Rows past a full block go to the faculty holding the next block, or to
+        // this faculty's own next block tab when nobody holds it (intakeFaculty).
+        $ownFaculty = auth()->user()->faculty;
         $countBefore = Student::where('faculty_id', $facultyId)->count();
-        $nextBlock = auth()->user()->faculty->nextBlockFaculty();
-        $seatsLeft = $nextBlock ? max(0, FacultyClass::CAPACITY - $countBefore) : null;
+        $handedOver = []; // faculty id => faculty, how many, and which block
 
         // Each welcome email is a round trip to Gmail, so a full class costs a minute
         // or two. The default 30 seconds would cut the import in half — some students
@@ -1028,16 +1037,8 @@ class FacultyController extends Controller
                 continue;
             }
 
-            if ($seatsLeft === 0) {
-                $results[] = [
-                    'row'    => $rowNumber,
-                    'status' => 'failed',
-                    'name'   => trim("{$lastName} {$firstName}"),
-                    'reason' => 'your block is full — Block ' . strtoupper((string) $nextBlock->block)
-                        . ' (' . ($nextBlock->user?->name ?? 'another faculty') . ') adds this student',
-                ];
-                continue;
-            }
+            $target = $ownFaculty->intakeFaculty();
+            $targetId = (int) $target->user_information_id;
 
             $fullName = trim(implode(' ', array_filter([$firstName, $middleName, $lastName])));
 
@@ -1049,11 +1050,11 @@ class FacultyController extends Controller
             $defaultPassword = Hash::make($plainPassword);
 
             try {
-                [$user, $student, $classLetter] = DB::transaction(function () use (
+                [$user, $student, $classLetter, $blockLetter] = DB::transaction(function () use (
                     $studentId, $firstName, $middleName, $lastName,
-                    $email, $phone, $fullName, $defaultPassword, $facultyId
+                    $email, $phone, $fullName, $defaultPassword, $targetId
                 ) {
-                    $class = FacultyClass::claimSeat($facultyId);
+                    $class = FacultyClass::claimSeat($targetId);
 
                     $user = User::create([
                         'name'         => $fullName,
@@ -1070,7 +1071,7 @@ class FacultyController extends Controller
 
                     $student = Student::create([
                         'user_id'          => $user->user_id,
-                        'faculty_id'       => $facultyId,
+                        'faculty_id'       => $targetId,
                         'faculty_class_id' => $class->faculty_class_id,
                         'student_number'   => $studentId,
                     ]);
@@ -1078,19 +1079,24 @@ class FacultyController extends Controller
                     $class->syncCapacity();
                     $class->refresh();
 
-                    return [$user, $student, $class->letter];
+                    return [$user, $student, $class->letter, $class->block_letter];
                 });
 
                 event(new StudentCreated($user, $student));
 
                 // Only the student's own welcome here — faculty and dean get one
                 // summary after the loop instead of a row per imported student.
-                Notifier::studentWelcomed(auth()->user(), $user, 'Block ' . $classLetter);
+                Notifier::studentWelcomed(auth()->user(), $user, 'Block ' . $blockLetter);
 
-                if ($lastClassLetter !== null && $classLetter !== $lastClassLetter) {
-                    $classesOpened[] = $classLetter;
+                if ($targetId !== (int) $facultyId) {
+                    $handedOver[$targetId] ??= ['faculty' => $target, 'count' => 0, 'block' => 'Block ' . $blockLetter];
+                    $handedOver[$targetId]['count']++;
+                } else {
+                    if ($lastClassLetter !== null && $classLetter !== $lastClassLetter) {
+                        $classesOpened[] = $classLetter;
+                    }
+                    $lastClassLetter = $classLetter;
                 }
-                $lastClassLetter = $classLetter;
 
                 // Sent only on this path, where the account is known to exist. A row
                 // that failed above never reaches here, so nobody is told an account
@@ -1098,13 +1104,9 @@ class FacultyController extends Controller
                 $mailResult = StudentWelcomeMailer::send(
                     $user,
                     $plainPassword,
-                    'Block ' . $classLetter,
+                    'Block ' . $blockLetter,
                     $studentId
                 );
-
-                if ($seatsLeft !== null) {
-                    $seatsLeft--;
-                }
 
                 $results[] = [
                     'row'        => $rowNumber,
@@ -1113,6 +1115,7 @@ class FacultyController extends Controller
                     'student_id' => $studentId,
                     'email'      => $email,
                     'class'      => $classLetter,
+                    'block'      => 'Block ' . $blockLetter,
                     'emailed'    => $mailResult['sent'],
                     'reason'     => $mailResult['sent'] ? '' : $mailResult['reason'],
                 ];
@@ -1138,11 +1141,17 @@ class FacultyController extends Controller
                 . ($notEmailed > 0 ? ", {$notEmailed} could not be emailed" : '') . '.';
         }
         if (!empty($classesOpened)) {
-            $message .= ' New block tab(s) opened: Block ' . implode(', Block ', array_unique($classesOpened)) . '.';
+            $opened = FacultyClass::where('faculty_id', $facultyId)
+                ->whereIn('letter', array_unique($classesOpened))
+                ->get()
+                ->map(fn (FacultyClass $class) => $class->name)
+                ->implode(', ');
+            $message .= ' New block tab(s) opened: ' . $opened . '.';
         }
-        if ($handedTo = $this->notifyIfBlockFilled($countBefore)) {
-            $message .= ' Your block is now full. New students go to Block ' . strtoupper((string) $handedTo->block)
-                . ' (' . ($handedTo->user?->name ?? 'another faculty') . ').';
+        $this->notifyIfBlockFilled($countBefore);
+        foreach ($handedOver as $hand) {
+            $message .= ' Your block is full, so ' . $hand['count'] . ' student(s) went to ' . $hand['block']
+                . ' under ' . ($hand['faculty']->user?->name ?? 'its faculty') . '.';
         }
 
         if ($created > 0) {
@@ -1152,7 +1161,13 @@ class FacultyController extends Controller
                     . ($failed > 0 ? ', ' . $failed . ' row(s) failed' : '') . '.'
             );
 
-            Notifier::studentsImported(auth()->user(), $facultyId, $created);
+            $ownCreated = $created - array_sum(array_column($handedOver, 'count'));
+            if ($ownCreated > 0) {
+                Notifier::studentsImported(auth()->user(), $facultyId, $ownCreated);
+            }
+            foreach ($handedOver as $handedId => $hand) {
+                Notifier::studentsImported(auth()->user(), $handedId, $hand['count']);
+            }
 
             foreach (array_unique($classesOpened) as $letter) {
                 $opened = FacultyClass::where('faculty_id', $facultyId)

@@ -198,13 +198,13 @@
     @php
         $studentBlocks = $users
             ->where('role', 'student')
-            ->map(fn ($u) => $u->student?->facultyClass?->letter)
+            ->map(fn ($u) => $u->student?->facultyClass?->block_letter)
             ->filter()
             ->map(fn ($letter) => strtoupper($letter));
         $blockTabs = collect($systemBlocks)->merge($studentBlocks)->unique()->sort()->values();
         $hasUnassignedStudents = $users
             ->where('role', 'student')
-            ->contains(fn ($u) => ! $u->student?->facultyClass?->letter);
+            ->contains(fn ($u) => ! $u->student?->facultyClass?->block_letter);
     @endphp
 
     <!-- Block sub-tabs (Students only) -->
@@ -270,7 +270,7 @@
                             $block = $user->faculty->block ?? null;
                         } elseif ($user->role === 'student') {
                             // A student's block is the block row they sit in, not the faculty's own block letter.
-                            $block = $user->student?->facultyClass?->letter ?? null;
+                            $block = $user->student?->facultyClass?->block_letter ?? null;
                         }
                         $blockLabel = \App\Models\Faculty::blockLabel($block);
                     @endphp

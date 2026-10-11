@@ -30,6 +30,37 @@ class FacultyClass extends Model
         return $this->hasMany(Student::class, 'faculty_class_id', 'faculty_class_id');
     }
 
+    /**
+     * The block this tab is, as faculty and students see it.
+     *
+     * Tabs are lettered per faculty from A, but a faculty's first tab is their own
+     * block: a Block B faculty's tab "A" is Block B, and the tab after it, opened
+     * when no faculty holds the next block, is Block C. The stored letter stays
+     * as it is, since URLs and filters key on it.
+     */
+    public function getBlockLetterAttribute(): string
+    {
+        $letter = strtoupper(trim((string) $this->letter)) ?: 'A';
+        $block = strtoupper(trim((string) $this->faculty?->block));
+        if ($block === '' || $block === 'A') {
+            return $letter;
+        }
+
+        // nextLetter() has no inverse, so step both up together. Bounded for bad data.
+        for ($walk = 'A', $i = 0; $i < 1000 && $walk !== $letter; $i++) {
+            $walk = static::nextLetter($walk);
+            $block = static::nextLetter($block);
+        }
+
+        return $block;
+    }
+
+    /** Always "Block X", whatever older rows stored ("Class A"). */
+    public function getNameAttribute(): string
+    {
+        return 'Block ' . $this->block_letter;
+    }
+
     public function isOpen(): bool
     {
         return $this->status === 'open';
@@ -66,7 +97,7 @@ class FacultyClass extends Model
             if ($classes->isEmpty()) {
                 static::create([
                     'faculty_id' => $facultyId,
-                    'name' => 'Class A',
+                    'name' => 'Block A',
                     'letter' => 'A',
                     'capacity' => self::CAPACITY,
                     'status' => 'open',
@@ -93,7 +124,7 @@ class FacultyClass extends Model
             if ($kept->isEmpty()) {
                 static::create([
                     'faculty_id' => $facultyId,
-                    'name' => 'Class A',
+                    'name' => 'Block A',
                     'letter' => 'A',
                     'capacity' => self::CAPACITY,
                     'status' => 'open',
@@ -129,7 +160,7 @@ class FacultyClass extends Model
 
             // If every kept class is full, open the next letter — unless another
             // faculty holds the next block, which takes over from here instead.
-            // See Faculty::blockFullReason().
+            // See Faculty::intakeFaculty().
             if (!$openAssigned && !Faculty::find($facultyId)?->nextBlockFaculty()) {
                 $last = $kept->last()['model'];
                 static::openNextClass($facultyId, $last);
@@ -200,7 +231,7 @@ class FacultyClass extends Model
                     'letter' => 'A',
                 ],
                 [
-                    'name' => 'Class A',
+                    'name' => 'Block A',
                     'capacity' => self::CAPACITY,
                     'status' => 'open',
                     'sort_order' => 1,

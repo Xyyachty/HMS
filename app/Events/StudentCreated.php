@@ -53,7 +53,7 @@ class StudentCreated implements ShouldBroadcast
             'phone_number' => $this->user->phone_number,
             'status' => $this->user->status ?? 'pending',
             'block' => $block ? strtoupper((string) $block) : null,
-            'block_label' => $block ? ('Block ' . strtoupper((string) $block)) : '—',
+            'block_label' => $this->student->facultyClass?->name ?? '—',
             'joined' => optional($this->user->created_at)->format('M d, Y'),
         ];
     }

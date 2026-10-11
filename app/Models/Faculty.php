@@ -170,22 +170,25 @@ class Faculty extends UserInformation
     }
 
     /**
-     * Why this faculty cannot add more students, or null when they can.
+     * Who a new student is enrolled under.
      *
-     * A full block hands over to the next block only when a faculty holds it. With
-     * no faculty there yet, this one keeps enrolling into its own next class tab,
-     * so new students always have somewhere to go.
+     * This faculty while their block has room, or when no faculty holds the next
+     * block (they then keep enrolling into their own next block tab). Once full
+     * with a faculty on the next block, the student goes to that faculty instead,
+     * and on down the chain if that block is full too.
      */
-    public function blockFullReason(): ?string
+    public function intakeFaculty(): self
     {
-        $next = $this->nextBlockFaculty();
-        if (!$next || $this->students()->count() < FacultyClass::CAPACITY) {
-            return null;
+        $faculty = $this;
+        for ($i = 0; $i < 26; $i++) {
+            $next = $faculty->nextBlockFaculty();
+            if (!$next || $faculty->students()->count() < FacultyClass::CAPACITY) {
+                break;
+            }
+            $faculty = $next;
         }
 
-        return 'Block ' . strtoupper((string) $this->block) . ' is full (' . FacultyClass::CAPACITY
-            . ' students). Block ' . strtoupper((string) $next->block) . ' belongs to '
-            . ($next->user?->name ?? 'another faculty') . '. Ask them to add new students.';
+        return $faculty;
     }
 
     /** Options for a faculty update dropdown: available class letters + their current block. */
