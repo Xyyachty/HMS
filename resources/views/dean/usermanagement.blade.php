@@ -132,6 +132,21 @@
     .um-main.um-main :is(.bg-slate-50, .bg-slate-50\/60, .bg-green-50, .bg-brand-soft) { background-color: #fff; }
 
     #usersTable_wrapper .dataTables_paginate .ellipsis { padding: 0 .35rem; color: #111; }
+
+    /* Add/Update User modals: neutral grays, none of the wine-tinted slate,
+       brand or red the dean palette and .gray-accents give them. Ids outrank
+       both. */
+    :is(#createUserModal, #updateUserModal) :is(.bg-brand-soft, .bg-slate-50, .bg-red-50) { background-color: #F5F5F5; }
+    :is(#createUserModal, #updateUserModal) .bg-slate-100 { background-color: #EBEBEB; }
+    :is(#createUserModal, #updateUserModal) .bg-brand { background-color: #374151; }
+    :is(#createUserModal, #updateUserModal) .shadow-brand\/20 { --tw-shadow-color: rgba(17, 17, 17, .15); }
+    :is(#createUserModal, #updateUserModal) .bg-slate-900\/60 { background-color: rgba(17, 17, 17, .6); }
+    :is(#createUserModal, #updateUserModal) .hover\:bg-slate-200:hover { background-color: #E5E5E5; }
+    :is(#createUserModal, #updateUserModal) .border-red-200 { border-color: #D4D4D4; }
+    :is(#createUserModal, #updateUserModal) :is(.text-brand, .text-red-500, .text-red-700, .hover\:text-brand:hover, .hover\:text-slate-600:hover) { color: #111; }
+    :is(#createUserModal, #updateUserModal) .text-slate-600 { color: #4B5563; }
+    :is(#createUserModal, #updateUserModal) .text-slate-500 { color: #6B7280; }
+    :is(#createUserModal, #updateUserModal) .text-slate-400 { color: #9CA3AF; }
 </style>
 @endpush
 
@@ -183,13 +198,13 @@
     @php
         $studentBlocks = $users
             ->where('role', 'student')
-            ->map(fn ($u) => $u->student?->facultyClass?->letter)
+            ->map(fn ($u) => $u->student?->facultyClass?->block_letter)
             ->filter()
             ->map(fn ($letter) => strtoupper($letter));
         $blockTabs = collect($systemBlocks)->merge($studentBlocks)->unique()->sort()->values();
         $hasUnassignedStudents = $users
             ->where('role', 'student')
-            ->contains(fn ($u) => ! $u->student?->facultyClass?->letter);
+            ->contains(fn ($u) => ! $u->student?->facultyClass?->block_letter);
     @endphp
 
     <!-- Block sub-tabs (Students only) -->
@@ -255,7 +270,7 @@
                             $block = $user->faculty->block ?? null;
                         } elseif ($user->role === 'student') {
                             // A student's block is the block row they sit in, not the faculty's own block letter.
-                            $block = $user->student?->facultyClass?->letter ?? null;
+                            $block = $user->student?->facultyClass?->block_letter ?? null;
                         }
                         $blockLabel = \App\Models\Faculty::blockLabel($block);
                     @endphp
