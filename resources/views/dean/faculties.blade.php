@@ -174,30 +174,22 @@
         </div>
     </div>
 
-    <!-- Complied Panel: handed-in work, grouped by team, in plain words -->
+    <!-- Complied Panel: handed-in work, one closed row per team so the page stays short -->
     @php
         $cpAll = collect($compliedGroups ?? []);
         $cpApproved = $cpAll->sum('approved');
         $cpWaiting = $cpAll->sum('waiting');
     @endphp
     <div id="fpanel-complied" class="hidden cp-wrap">
-        <div class="cp-intro">
-            <p class="cp-lead">Work the students have handed in, team by team.</p>
-            <p class="cp-sub"><b>Approved</b> means the faculty checked the work and accepted it. <b>Waiting for faculty</b> means it was handed in but nobody has checked it yet.</p>
-        </div>
-
-        <div class="cp-stats">
-            <div class="cp-stat">
-                <span class="iconify" data-icon="mdi:tray-arrow-up"></span>
-                <div><p class="cp-stat-num">{{ $cpApproved + $cpWaiting }}</p><p class="cp-stat-label">Tasks handed in</p></div>
-            </div>
-            <div class="cp-stat is-approved">
-                <span class="iconify" data-icon="mdi:check-decagram"></span>
-                <div><p class="cp-stat-num">{{ $cpApproved }}</p><p class="cp-stat-label">Approved by faculty</p></div>
-            </div>
-            <div class="cp-stat is-waiting">
-                <span class="iconify" data-icon="mdi:timer-sand"></span>
-                <div><p class="cp-stat-num">{{ $cpWaiting }}</p><p class="cp-stat-label">Waiting for faculty</p></div>
+        <div class="cp-top">
+            <p class="cp-sub">
+                Work the students handed in. <b class="is-approved">Approved</b> = faculty checked and accepted it.
+                <b class="is-waiting">Waiting</b> = handed in, not checked yet. Click a team to see its work.
+            </p>
+            <div class="cp-strip">
+                <span><b>{{ $cpApproved + $cpWaiting }}</b> handed in</span>
+                <span class="is-approved"><span class="iconify" data-icon="mdi:check-circle"></span><b>{{ $cpApproved }}</b> approved</span>
+                <span class="is-waiting"><span class="iconify" data-icon="mdi:timer-sand"></span><b>{{ $cpWaiting }}</b> waiting</span>
             </div>
         </div>
 
@@ -206,7 +198,7 @@
                 <div class="cp-chips" role="group" aria-label="Show">
                     <button type="button" class="cp-chip is-on" data-cp-filter="all">All</button>
                     <button type="button" class="cp-chip" data-cp-filter="approved">Approved</button>
-                    <button type="button" class="cp-chip" data-cp-filter="waiting">Waiting for faculty</button>
+                    <button type="button" class="cp-chip" data-cp-filter="waiting">Waiting</button>
                 </div>
                 <label class="cp-search">
                     <span class="iconify" data-icon="mdi:magnify"></span>
@@ -215,47 +207,54 @@
             </div>
         @endif
 
-        <div class="cp-groups">
+        <div class="cp-list">
             @forelse($cpAll as $group)
-                <section class="cp-team" data-cp-team>
-                    <header class="cp-team-head">
-                        <div class="min-w-0">
-                            <p class="cp-team-name">{{ $group['team'] }}</p>
-                            <p class="cp-team-meta">{{ collect([$group['block'], $group['faculty']])->filter()->implode(' · ') }}</p>
-                        </div>
-                        <p class="cp-team-count">
+                <details class="cp-team" data-cp-team>
+                    <summary class="cp-team-head">
+                        <span class="iconify cp-caret" data-icon="mdi:chevron-right"></span>
+                        <span class="cp-team-id">
+                            <span class="cp-team-name">{{ $group['team'] }}</span>
+                            <span class="cp-team-meta">{{ collect([$group['block'], $group['faculty']])->filter()->implode(' · ') }}</span>
+                        </span>
+                        <span class="cp-team-count">
                             <span class="is-approved">{{ $group['approved'] }} approved</span>
                             @if($group['waiting'])
                                 <span class="is-waiting">{{ $group['waiting'] }} waiting</span>
                             @endif
-                        </p>
-                    </header>
+                        </span>
+                    </summary>
                     <ul class="cp-rows">
+                        <li class="cp-rows-head" aria-hidden="true">
+                            <span></span><span>Task</span><span>Handed in by</span><span>Handed in on</span><span>Faculty check</span>
+                        </li>
                         @foreach($group['rows'] as $row)
                             <li class="cp-row" data-cp-status="{{ $row['approved'] ? 'approved' : 'waiting' }}"
                                 data-cp-search="{{ mb_strtolower($group['team'] . ' ' . $row['student'] . ' ' . $row['title'] . ' ' . $row['department']) }}">
-                                <span class="cp-status {{ $row['approved'] ? 'is-approved' : 'is-waiting' }}">
+                                <span class="cp-dot {{ $row['approved'] ? 'is-approved' : 'is-waiting' }}"
+                                      title="{{ $row['approved'] ? 'Approved' : 'Waiting for faculty' }}">
                                     <span class="iconify" data-icon="{{ $row['approved'] ? 'mdi:check-circle' : 'mdi:timer-sand' }}"></span>
-                                    {{ $row['approved'] ? 'Approved' : 'Waiting for faculty' }}
                                 </span>
-                                <div class="min-w-0">
-                                    <p class="cp-task">{{ $row['title'] }} <span class="cp-dept">{{ $row['department'] }}</span></p>
-                                    <p class="cp-line">
-                                        Handed in by <b>{{ $row['student'] }}</b>@if($row['handed_in']) on {{ $row['handed_in'] }}@endif
-                                        @if($row['timing'] === 'late')
-                                            <span class="cp-late">after the due date</span>
-                                        @elseif($row['timing'] === 'on_time')
-                                            <span class="cp-ontime">on time</span>
-                                        @endif
-                                    </p>
+                                <span class="cp-task">
+                                    {{ $row['title'] }}
+                                    <span class="cp-dept">{{ $row['department'] }}</span>
+                                </span>
+                                <span class="cp-who">{{ $row['student'] }}</span>
+                                <span class="cp-when">
+                                    {{ $row['handed_in'] ?? '—' }}
+                                    @if($row['timing'] === 'late')<span class="cp-late">late</span>@endif
+                                </span>
+                                <span class="cp-verdict {{ $row['approved'] ? 'is-approved' : 'is-waiting' }}">
                                     @if($row['approved'])
-                                        <p class="cp-line">Approved{{ $row['approved_by'] ? ' by ' . $row['approved_by'] : '' }}{{ $row['approved_at'] ? ' on ' . $row['approved_at'] : '' }}</p>
+                                        Approved{{ $row['approved_by'] ? ' by ' . $row['approved_by'] : '' }}
+                                        @if($row['approved_at'])<span class="cp-verdict-at">{{ $row['approved_at'] }}</span>@endif
+                                    @else
+                                        Waiting for faculty
                                     @endif
-                                </div>
+                                </span>
                             </li>
                         @endforeach
                     </ul>
-                </section>
+                </details>
             @empty
                 <div class="cp-empty">
                     <span class="iconify" data-icon="mdi:tray-arrow-up"></span>
@@ -521,58 +520,77 @@
 
     /* ── Complied tab ──
        Written out rather than with utilities: the frozen app.css lacks most of
-       them, and the gray scheme repaints any brand colour. Neutral grays, green
-       for approved, amber for waiting. */
-    .cp-wrap { padding: 1.25rem 1.5rem 1.5rem; }
-    .cp-lead { font-size: 15px; font-weight: 800; color: #181818; }
-    .cp-sub { font-size: 13px; color: #4A4643; margin-top: .25rem; max-width: 70ch; line-height: 1.5; }
-    .cp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: 1rem; }
-    .cp-stat { display: flex; align-items: center; gap: .75rem; padding: .875rem 1rem; border: 1px solid #E4E2E0; border-radius: 1rem; background: #fff; }
-    .cp-stat > .iconify { font-size: 1.5rem; color: #4A4643; flex-shrink: 0; }
-    .cp-stat.is-approved > .iconify { color: #15803D; }
-    .cp-stat.is-waiting > .iconify { color: #B45309; }
-    .cp-stat-num { font-size: 22px; font-weight: 800; color: #181818; line-height: 1.1; }
-    .cp-stat-label { font-size: 12px; color: #4A4643; }
-    .cp-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: 1rem; }
+       them, and the gray scheme repaints any brand colour. One closed row per
+       team keeps the page short; a team opens to one line per task. */
+    .cp-wrap { padding: 1rem 1.5rem 1.5rem; }
+    .cp-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
+    .cp-sub { font-size: 12.5px; color: #4A4643; line-height: 1.5; max-width: 72ch; }
+    .cp-sub b { font-weight: 800; }
+    .cp-sub .is-approved, .cp-strip .is-approved { color: #15803D; }
+    .cp-sub .is-waiting, .cp-strip .is-waiting { color: #B45309; }
+    .cp-strip { display: flex; gap: 1rem; font-size: 12.5px; color: #4A4643; white-space: nowrap; }
+    .cp-strip > span { display: inline-flex; align-items: center; gap: .25rem; }
+    .cp-strip b { font-size: 15px; font-weight: 800; color: inherit; }
+    .cp-strip > span:first-child b { color: #181818; }
+    .cp-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .75rem; }
     .cp-chips { display: flex; flex-wrap: wrap; gap: .375rem; }
-    .cp-chip { padding: .4rem .875rem; border-radius: 999px; border: 1px solid #E4E2E0; background: #fff; font-size: 12px; font-weight: 700; color: #4A4643; transition: background .2s, color .2s; }
+    .cp-chip { padding: .3rem .8rem; border-radius: 999px; border: 1px solid #E4E2E0; background: #fff; font-size: 12px; font-weight: 700; color: #4A4643; transition: background .2s, color .2s; }
     .cp-chip:hover { background: #F3F2F1; }
     .cp-chip.is-on { background: #4A4643; border-color: #4A4643; color: #fff; }
-    .cp-search { display: flex; align-items: center; gap: .5rem; height: 2.5rem; padding: 0 .875rem; border: 1px solid #E4E2E0; border-radius: .875rem; background: #fff; min-width: 16rem; color: #8A817A; }
+    .cp-search { display: flex; align-items: center; gap: .5rem; height: 2.25rem; padding: 0 .75rem; border: 1px solid #E4E2E0; border-radius: .75rem; background: #fff; min-width: 15rem; color: #8A817A; }
     .cp-search input { border: 0; outline: 0; background: transparent; font-size: 13px; color: #181818; width: 100%; }
-    .cp-groups { display: flex; flex-direction: column; gap: .875rem; margin-top: 1rem; }
-    .cp-team { border: 1px solid #E4E2E0; border-radius: 1rem; background: #fff; overflow: hidden; }
-    .cp-team-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .875rem 1.125rem; background: #F9F8F7; border-bottom: 1px solid #E4E2E0; }
-    .cp-team-name { font-size: 14px; font-weight: 800; color: #181818; }
-    .cp-team-meta { font-size: 12px; color: #4A4643; margin-top: 1px; }
-    .cp-team-count { display: flex; gap: .375rem; flex-shrink: 0; font-size: 11px; font-weight: 800; }
-    .cp-team-count span { padding: 2px 8px; border-radius: 999px; }
+    .cp-list { margin-top: .75rem; border: 1px solid #E4E2E0; border-radius: .875rem; overflow: hidden; background: #fff; }
+    .cp-team + .cp-team { border-top: 1px solid #E4E2E0; }
+    .cp-team.hidden { display: none; }
+    .cp-team-head { display: grid; grid-template-columns: 1rem minmax(0, 1fr) auto; align-items: center; gap: .75rem; padding: .625rem 1rem; cursor: pointer; list-style: none; transition: background .15s; }
+    .cp-team-head::-webkit-details-marker { display: none; }
+    .cp-team-head:hover { background: #F9F8F7; }
+    .cp-team[open] > .cp-team-head { background: #F9F8F7; border-bottom: 1px solid #F3F2F1; }
+    .cp-caret { color: #8A817A; transition: transform .2s; }
+    .cp-team[open] .cp-caret { transform: rotate(90deg); }
+    .cp-team-id { min-width: 0; display: flex; align-items: baseline; gap: .5rem; }
+    .cp-team-name { font-size: 13.5px; font-weight: 800; color: #181818; white-space: nowrap; }
+    .cp-team-meta { font-size: 12px; color: #8A817A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-team-count { display: flex; gap: .375rem; justify-content: flex-end; font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .cp-team-count span { padding: 1px 8px; border-radius: 999px; }
     .cp-team-count .is-approved { background: #F0FDF4; color: #15803D; }
     .cp-team-count .is-waiting { background: #FFFBEB; color: #B45309; }
-    .cp-rows { list-style: none; margin: 0; padding: 0; }
-    .cp-row { display: grid; grid-template-columns: 10.5rem minmax(0, 1fr); gap: .875rem; align-items: start; padding: .875rem 1.125rem; border-top: 1px solid #F3F2F1; }
-    .cp-row:first-child { border-top: 0; }
+    .cp-rows { list-style: none; margin: 0; padding: 0 0 .25rem; max-height: 22rem; overflow-y: auto; }
+    .cp-row, .cp-rows-head { display: grid; grid-template-columns: 1.25rem minmax(0, 1.6fr) minmax(0, 1fr) 11.5rem minmax(0, 1.3fr); gap: .75rem; align-items: center; padding: .45rem 1rem .45rem 2.75rem; font-size: 12.5px; color: #4A4643; }
+    .cp-rows-head { padding-top: .5rem; padding-bottom: .25rem; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #8A817A; }
+    .cp-row:hover { background: #FAFAF9; }
     .cp-row.hidden { display: none; } /* .cp-row's grid would otherwise outrank .hidden */
-    .cp-status { display: inline-flex; align-items: center; gap: .375rem; justify-self: start; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
-    .cp-status.is-approved { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
-    .cp-status.is-waiting { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
-    .cp-task { font-size: 14px; font-weight: 700; color: #181818; }
-    .cp-dept { display: inline-block; margin-left: .375rem; padding: 1px 8px; border-radius: 999px; background: #F3F2F1; color: #4A4643; font-size: 10.5px; font-weight: 700; vertical-align: 2px; }
-    .cp-line { font-size: 12.5px; color: #4A4643; margin-top: .25rem; line-height: 1.5; }
-    .cp-line b { color: #181818; font-weight: 700; }
-    .cp-ontime, .cp-late { display: inline-block; margin-left: .25rem; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 700; }
-    .cp-ontime { background: #F0FDF4; color: #15803D; }
-    .cp-late { background: #FFFBEB; color: #B45309; }
-    .cp-empty { text-align: center; padding: 2.5rem 1rem; border: 1px dashed #E4E2E0; border-radius: 1rem; color: #8A817A; }
-    .cp-empty > .iconify { font-size: 2rem; }
-    .cp-empty-title { font-size: 14px; font-weight: 700; color: #4A4643; margin-top: .375rem; }
+    .cp-dot { display: flex; font-size: 1rem; }
+    .cp-dot.is-approved { color: #15803D; }
+    .cp-dot.is-waiting { color: #B45309; }
+    .cp-task { font-weight: 700; color: #181818; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-dept { margin-left: .25rem; padding: 0 6px; border-radius: 999px; background: #F3F2F1; color: #4A4643; font-size: 10.5px; font-weight: 700; }
+    .cp-who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-when { white-space: nowrap; font-size: 12px; }
+    .cp-late { margin-left: .25rem; padding: 0 6px; border-radius: 6px; background: #FFFBEB; color: #B45309; font-size: 10.5px; font-weight: 800; }
+    .cp-verdict { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-verdict.is-approved { color: #15803D; }
+    .cp-verdict.is-waiting { color: #B45309; }
+    .cp-verdict-at { display: block; font-weight: 500; color: #8A817A; font-size: 11px; }
+    .cp-empty { text-align: center; padding: 2rem 1rem; color: #8A817A; }
+    .cp-empty > .iconify { font-size: 1.75rem; }
+    .cp-empty-title { font-size: 14px; font-weight: 700; color: #4A4643; margin-top: .25rem; }
     .cp-empty-sub { font-size: 12.5px; margin-top: .125rem; }
+    @media (max-width: 1023px) {
+        /* One task per small block: name, then who, when and the check under it. */
+        .cp-row { grid-template-columns: 1.25rem minmax(0, 1fr); gap: .125rem .625rem; align-items: start; padding: .625rem 1rem; }
+        .cp-rows-head { display: none; }
+        .cp-task, .cp-who, .cp-when, .cp-verdict { grid-column: 2; white-space: normal; }
+        .cp-who, .cp-when { font-size: 12px; }
+        .cp-who::before { content: 'By '; color: #8A817A; }
+        .cp-when::before { content: 'On '; color: #8A817A; }
+        .cp-verdict-at { display: inline; margin-left: .25rem; }
+    }
     @media (max-width: 767px) {
         .cp-wrap { padding: 1rem; }
-        .cp-stats { grid-template-columns: minmax(0, 1fr); }
         .cp-search { min-width: 0; width: 100%; }
-        .cp-row { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
-        .cp-team-head { flex-direction: column; align-items: flex-start; }
+        .cp-team-id { flex-direction: column; gap: 0; }
+        .cp-team-count { grid-column: 2; justify-content: flex-start; }
     }
 </style>
 @endpush
@@ -955,7 +973,8 @@
     }
 
     /* Complied tab: the status chips and the search narrow the rows; a team with
-       nothing left showing hides, and a note says when nothing matches at all. */
+       nothing left showing hides, a team with matches opens, and a note says when
+       nothing matches at all. */
     (function () {
         const panel = document.getElementById('fpanel-complied');
         if (!panel) return;
@@ -974,6 +993,9 @@
                     if (ok) teamShown++;
                 });
                 team.classList.toggle('hidden', teamShown === 0);
+                // Narrowing opens the teams that still match, so the hits are on
+                // screen; back to All with no search folds every team again.
+                team.open = (filter !== 'all' || q !== '') && teamShown > 0;
                 shown += teamShown;
             });
             document.getElementById('cpNoMatch')?.classList.toggle('hidden', shown > 0 || !panel.querySelector('[data-cp-team]'));
