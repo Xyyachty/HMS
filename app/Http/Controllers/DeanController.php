@@ -725,12 +725,17 @@ class DeanController extends Controller
 
     public function activityLogs()
     {
-        $logs = Task::with('faculty.user')
+        // One section per faculty instead of repeating the name on every row.
+        // Newest first, so groupBy keeps the most recently active faculty on top.
+        // ponytail: loads every finished task; page by faculty if this reaches thousands.
+        $tasks = Task::with('faculty.user')
             ->where('status', 'archived')
             ->orderByDesc('updated_at')
-            ->paginate(15);
+            ->get(['id', 'faculty_id', 'group_name', 'role', 'title', 'updated_at']);
 
-        return view('dean.activitylogs', compact('logs'));
+        $byFaculty = $tasks->groupBy('faculty_id');
+
+        return view('dean.activitylogs', compact('tasks', 'byFaculty'));
     }
 
     public function approveUser(User $user)
