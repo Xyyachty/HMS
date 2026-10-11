@@ -344,7 +344,9 @@
                 .then(r => r.ok ? r.json() : Promise.reject(r.status))
                 .then(d => setUnread(d.unread_count))
                 .catch(() => {});
-        }, 60000);
+        // Deans are few and want each task submission as it lands, so their
+        // badge ticks faster; everyone else keeps the minute.
+        }, @json(auth()->user()?->role === 'dean' ? 15000 : 60000));
 
         /* Lets a page paint the badge from its own poll instead of adding a
            request. isOpen() matters: while the panel is open it owns the count,

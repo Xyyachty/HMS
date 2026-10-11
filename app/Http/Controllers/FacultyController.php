@@ -2292,6 +2292,16 @@ class FacultyController extends Controller
             return response()->json(['error' => 'Not your task.'], 403);
         }
 
+        return response()->json($this->reviewPayload($task, (int) $facultyId));
+    }
+
+    /**
+     * What a review of the task shows. Shared with the dean's read-only review,
+     * which passes $previewQuery = ['faculty' => id] so the site previews know
+     * whose team to render — a dean has no faculty of their own.
+     */
+    public function reviewPayload(Task $task, int $facultyId, array $previewQuery = []): array
+    {
         $task->loadMissing(['assignedTo', 'feedbackBy', 'student']);
         $u = $task->assignedTo;
         $name = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name, $u?->middle_name])));
@@ -2304,7 +2314,7 @@ class FacultyController extends Controller
         $changes = [];
         $changeSummary = ['added' => 0, 'modified' => 0, 'removed' => 0];
         if ($membership && !$task->is_hotel_concept) {
-            $previewUrl = route('faculty.teams.preview', [
+            $previewUrl = route('faculty.teams.preview', $previewQuery + [
                 'group' => $membership->group_name,
                 'role' => $task->role,
             ]);
@@ -2320,7 +2330,7 @@ class FacultyController extends Controller
                 // Pin "After" to the submitted snapshot: the team keeps working
                 // while the task sits in the queue, and the live site would
                 // quietly drift away from what was actually handed in.
-                $previewUrl = route('faculty.teams.preview', [
+                $previewUrl = route('faculty.teams.preview', $previewQuery + [
                     'group' => $membership->group_name,
                     'role' => $task->role,
                     'before_version' => $afterVersionId,
@@ -2332,7 +2342,7 @@ class FacultyController extends Controller
                 // No earlier snapshot (e.g. a task predating this feature) renders
                 // Before as the pristine template rather than hiding the toggle —
                 // every customization then correctly reads as "added".
-                $beforePreviewUrl = route('faculty.teams.preview', [
+                $beforePreviewUrl = route('faculty.teams.preview', $previewQuery + [
                     'group' => $membership->group_name,
                     'role' => $task->role,
                     'before_version' => $beforeVersionId ?? 'baseline',
@@ -2398,7 +2408,7 @@ class FacultyController extends Controller
             );
         }
 
-        return response()->json($payload);
+        return $payload;
     }
 
     /**
@@ -2608,7 +2618,7 @@ class FacultyController extends Controller
      */
     public function previewTeamSite(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->user_information_id;
+        $facultyId = FacultyPreviewController::facultyIdFor($request);
         if (!$facultyId) {
             abort(403);
         }
@@ -2707,6 +2717,8 @@ class FacultyController extends Controller
             'builderRole' => $data['role'] ?? 'front_desk',
             'reviewHighlight' => $reviewHighlight,
             'previewGroup' => (string) $membership->group_name,
+            // Set for a dean only, whose catalogue reads must name the faculty.
+            'previewFacultyId' => auth()->user()?->role === 'dean' ? $facultyId : null,
             // The approved concept's name and words, as the team's own builder
             // shows them; without it the preview fell back to the stock hotel.
             'hotelDefaults' => \App\Support\HotelTemplateBuilder::hotelDefaults(

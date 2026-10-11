@@ -324,6 +324,21 @@ class DeanController extends Controller
         ];
     }
 
+    /**
+     * Read-only review of one submitted task, where the dean's notification
+     * lands. Same payload the faculty review dialog reads; the verdict stays
+     * with the faculty, so there is no feedback form here.
+     */
+    public function reviewTask(Task $task)
+    {
+        abort_unless(auth()->user()?->role === 'dean', 403);
+
+        $facultyId = (int) $task->faculty_id;
+        $review = app(FacultyController::class)->reviewPayload($task, $facultyId, ['faculty' => $facultyId]);
+
+        return view('dean.task-review', compact('review'));
+    }
+
     public function storeFaculty(Request $request)
     {
         $validated = $request->validate([

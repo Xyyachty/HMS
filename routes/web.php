@@ -143,6 +143,8 @@ Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
     Route::post('/faculties', [DeanController::class, 'storeFaculty'])->name('faculties.store');
     Route::get('/reports', [DeanController::class, 'reports'])->name('reports');
     Route::get('/activity', [DeanController::class, 'activityLogs'])->name('activity');
+    // Read-only review of one submitted task, opened from the dean's notification bell.
+    Route::get('/tasks/{task}/review', [DeanController::class, 'reviewTask'])->name('tasks.review');
 
     // Front Desk's hotel concept for any team, with its edit history.
     Route::get('/teams/hotel-concept', [HotelConceptController::class, 'deanHistory'])->name('teams.hotel-concept');
@@ -748,7 +750,7 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
             'Submitted task "' . $task->title . '" for the ' . $task->role . ' role.'
         );
 
-        \App\Support\Notifier::taskSubmitted($authUser, $task, $authUser->name);
+        \App\Support\Notifier::taskSubmitted($authUser, $task, $authUser->name, $groupMembership->group_name);
 
         return back()->with('success', 'Task submitted. It is pending until your faculty approves it.');
     })->name('tasks.complete');

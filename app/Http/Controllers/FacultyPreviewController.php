@@ -34,10 +34,25 @@ use Illuminate\Http\Request;
  */
 class FacultyPreviewController extends Controller
 {
-    /** The team named in the URL, or 404 if it is not this faculty's. */
+    /**
+     * Whose teams the viewer may preview: a faculty their own, a dean any
+     * faculty's, named by ?faculty= since a dean owns none.
+     */
+    public static function facultyIdFor(Request $request): ?int
+    {
+        $user = auth()->user();
+
+        if ($user?->role === 'dean') {
+            return $request->integer('faculty') ?: null;
+        }
+
+        return $user?->faculty?->user_information_id;
+    }
+
+    /** The team named in the URL, or 404 if it is not this viewer's to see. */
     private function team(string $group): StudentGroup
     {
-        $facultyId = auth()->user()?->faculty?->user_information_id;
+        $facultyId = self::facultyIdFor(request());
         if (!$facultyId) {
             abort(403);
         }

@@ -24,8 +24,9 @@ use Illuminate\Support\Facades\DB;
  * at event time — the bell then only ever reads its own user's rows.
  *
  * Audience model:
- *   Dean    — org-level events only (enrollment, a block opening, teams formed).
- *             Never per-task chatter, which would drown the feed.
+ *   Dean    — org-level events (enrollment, a block opening, teams formed), plus
+ *             each customization task a student hands in, which the dean
+ *             oversees. Not the rest of the per-task chatter.
  *   Faculty — everything inside their own faculty.
  *   Student — what is addressed to them or to their team.
  *
@@ -343,8 +344,12 @@ class Notifier
         }
     }
 
-    /** A student submitted a task for review. */
-    public static function taskSubmitted(?User $actor, Task $task, ?string $studentName = null): void
+    /**
+     * A student submitted a task for review. Faculty owns the verdict; every dean
+     * hears it too, named in full (student, team, task, when) and linked to a
+     * read-only review page of their own.
+     */
+    public static function taskSubmitted(?User $actor, Task $task, ?string $studentName = null, ?string $groupName = null): void
     {
         $who = $studentName ?: ($actor?->name ?? 'A student');
 
@@ -354,6 +359,18 @@ class Notifier
             'Task submitted for review',
             $who . ' submitted "' . $task->title . '" (' . $task->role_label . ').',
             route('faculty.tasks'),
+            $actor
+        );
+
+        $team = $groupName ?: $task->group_name;
+
+        static::push(
+            static::deanUserIds(),
+            UserNotification::TASK_SUBMITTED,
+            'Task submitted for review',
+            $who . ($team ? ' of team ' . $team : '') . ' submitted "' . $task->title . '" ('
+                . $task->role_label . ') on ' . now('Asia/Manila')->format('M d, Y g:i A') . '.',
+            route('dean.tasks.review', $task),
             $actor
         );
     }

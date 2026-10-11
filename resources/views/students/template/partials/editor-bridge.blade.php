@@ -35,10 +35,10 @@
        somewhere else — the preview would then fetch across origins, without the
        session, and answer nothing. */
     if ($hmsPreviewGroup) {
-        $hmsApiMap['rooms']     = route('faculty.teams.preview.rooms', ['group' => $hmsPreviewGroup], false);
-        $hmsApiMap['menus']     = route('faculty.teams.preview.menus', ['group' => $hmsPreviewGroup], false);
-        $hmsApiMap['amenities'] = route('faculty.teams.preview.amenities', ['group' => $hmsPreviewGroup], false);
-        $hmsApiMap['addons']    = route('faculty.teams.preview.addons', ['group' => $hmsPreviewGroup], false);
+        $hmsApiMap['rooms']     = route('faculty.teams.preview.rooms', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
+        $hmsApiMap['menus']     = route('faculty.teams.preview.menus', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
+        $hmsApiMap['amenities'] = route('faculty.teams.preview.amenities', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
+        $hmsApiMap['addons']    = route('faculty.teams.preview.addons', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
     }
 
     /* Whether the design task that opens the Amenities section is assigned to
