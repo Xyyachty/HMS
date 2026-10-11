@@ -163,7 +163,13 @@
     .tm-activity-time { font-size: 12px; color: #5F5A55; margin-top: .15rem; }
 
     /* Hotel concept: the two proposals side by side. */
-    .tm-concept-grid { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    .tm-concept-grid { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+    /* Both cards take the taller one's height; the verdict buttons sit on the
+       bottom edge so they line up across the pair. */
+    .tm-concept-grid > .tm-card { display: flex; flex-direction: column; }
+    .tm-concept-grid > .tm-card > .tm-concept-body { flex: 1 1 auto; display: flex; flex-direction: column; }
+    .tm-concept-grid > .tm-card > .tm-concept-body > .tm-concept-actions { margin-top: auto; }
+    .tm-concept-grid > .tm-card > .tm-concept-body > :has(+ .tm-concept-actions) { margin-bottom: 1rem; }
     .tm-span-all { grid-column: 1 / -1; }
     @media (max-width: 900px) { .tm-concept-grid { grid-template-columns: minmax(0, 1fr); } }
     .tm-concept-body { padding: 1rem; }
