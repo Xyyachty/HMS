@@ -241,34 +241,36 @@
         @if(($teamProgress ?? collect())->isNotEmpty())
             <div class="flex items-center gap-3 mt-2.5">
                 <div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div class="h-full rounded-full bg-amber-500" style="width: {{ $customizationPercent }}%"></div>
+                    <div data-team-overall-bar class="h-full rounded-full bg-amber-500" style="width: {{ $customizationPercent }}%"></div>
                 </div>
-                <p class="text-[13px] font-extrabold text-black shrink-0">{{ $customizationPercent }}%</p>
+                <p data-team-overall-percent class="text-[13px] font-extrabold text-black shrink-0">{{ $customizationPercent }}%</p>
             </div>
-            <p class="text-[11px] text-black mt-1">
+            <p data-team-summary class="text-[11px] text-black mt-1">
                 Average across {{ $teamProgress->count() }} {{ Str::plural('team', $teamProgress->count()) }} ·
-                {{ $unlockedTeams }} with the Simulation unlocked
+                {{ $completedTeams }} completed · {{ $teamProgress->count() - $completedTeams }} in progress
             </p>
         @endif
     </div>
     <div class="divide-y divide-slate-50 overflow-y-auto" style="max-height: 340px">
         @forelse(($teamProgress ?? collect()) as $team)
-            <div class="px-5 py-3 flex items-center gap-3">
+            <div data-team-key="{{ $team['key'] }}" class="px-5 py-3 flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-amber-50 text-amber-500">
                     <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
                 </div>
                 <div class="min-w-0 flex-1">
-                    <p class="text-[13px] font-bold text-black truncate">{{ $team['name'] }}</p>
+                    <div class="flex items-center gap-2 min-w-0">
+                        <p class="text-[13px] font-bold text-black truncate">{{ $team['name'] }}</p>
+                        <span data-team-pill class="shrink-0">@include('partials.team-completion', ['done' => $team['done'], 'total' => $team['total']])</span>
+                    </div>
                     <p class="text-[10px] text-black font-bold tracking-wider mt-0.5 truncate">
                         {{ collect([$team['block'], $team['faculty']])->filter()->implode(' · ') }}
-                        · {{ $team['done'] }}/{{ $team['total'] }} approved ·
-                        <span class="{{ $team['unlocked'] ? 'text-emerald-600' : '' }}">Simulation {{ $team['unlocked'] ? 'unlocked' : 'locked' }}</span>
+                        · <span data-team-count>{{ $team['done'] }}/{{ $team['total'] }} approved</span>
                     </p>
                 </div>
                 <div class="w-24 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
-                    <div class="h-full rounded-full bg-amber-500" style="width: {{ $team['percent'] }}%"></div>
+                    <div data-team-bar class="h-full rounded-full bg-amber-500" style="width: {{ $team['percent'] }}%"></div>
                 </div>
-                <p class="text-[13px] font-extrabold text-black w-10 text-right shrink-0">{{ $team['percent'] }}%</p>
+                <p data-team-percent class="text-[13px] font-extrabold text-black w-10 text-right shrink-0">{{ $team['percent'] }}%</p>
             </div>
         @empty
             <div class="px-5 py-12 text-center">
@@ -282,6 +284,9 @@
     </div>
 </div>
 </div>
+@push('scripts')
+    @include('partials.team-completion-live')
+@endpush
 @endsection
 
 @push('styles')

@@ -48,6 +48,7 @@
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Team Name</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Hotel Concept</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Members</th>
+                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Task Completion</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Created</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
                     </tr>
@@ -76,7 +77,7 @@
                              every team row beneath it. A faculty with no teams is skipped. --}}
                         @if ($facultyGroups->isNotEmpty())
                             <tr class="faculty-group-row">
-                                <td colspan="5" class="px-5 py-2.5">
+                                <td colspan="6" class="px-5 py-2.5">
                                     <div class="flex items-center gap-2.5">
                                         @include('partials.user-avatar', [
                                             'user'         => $faculty->user,
@@ -110,8 +111,10 @@
                                     ];
                                 })->values()->toJson();
                                 $activityLogs = $teamActivityByFacultyGroup[$faculty->user_information_id][$groupName] ?? [];
+                                $teamKey = $faculty->user_information_id . '|' . $groupName;
+                                $completion = $teamProgress[$teamKey] ?? null;
                             @endphp
-                            <tr class="hover:bg-slate-50 transition-colors">
+                            <tr data-team-key="{{ $teamKey }}" class="hover:bg-slate-50 transition-colors">
                                 <td class="px-5 py-3.5 pl-10">
                                     <span class="font-semibold text-slate-700">{{ $groupName }}</span>
                                 </td>
@@ -136,6 +139,9 @@
                                         <span class="iconify" data-icon="mdi:account-multiple-outline"></span>
                                         {{ $memberCount }} {{ Str::plural('member', $memberCount) }}
                                     </span>
+                                </td>
+                                <td class="px-5 py-3.5">
+                                    <span data-team-pill>@include('partials.team-completion', ['done' => $completion['done'] ?? 0, 'total' => $completion['total'] ?? 0])</span>
                                 </td>
                                 <td class="px-5 py-3.5 text-slate-500 text-sm">{{ $createdAt }}</td>
                                 <td class="px-5 py-3.5">
@@ -507,6 +513,7 @@
 @endpush
 
 @push('scripts')
+@include('partials.team-completion-live')
 <script>
     let teamModalActivityLogs = [];
     let teamModalActivityPage = 1;

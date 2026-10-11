@@ -109,32 +109,9 @@ class DeanController extends Controller
                 return $task;
             });
 
-        // Customization progress for every team in every block: the same approved
-        // count the faculty dashboard shows (SimulationPhase::progress), with the
-        // block the team's members sit in and the faculty who runs it.
-        $teamProgress = StudentGroup::with('student.facultyClass.faculty')
-            ->get()
-            ->groupBy(fn ($member) => $member->faculty_id . '|' . $member->group_name)
-            ->map(function ($members) use ($facultyNames) {
-                $first = $members->first();
-                $phase = \App\Support\SimulationPhase::progress($first->group_name, (int) $first->faculty_id);
-                $block = $members->map(fn ($m) => $m->student?->facultyClass?->block_letter)->filter()->first();
-
-                return [
-                    'name'     => (string) $first->group_name,
-                    'block'    => $block ? 'Block ' . $block : null,
-                    'faculty'  => $facultyNames[$first->faculty_id] ?? null,
-                    'total'    => $phase['required'],
-                    'done'     => $phase['approved'],
-                    'percent'  => $phase['percent'],
-                    'unlocked' => $phase['unlocked'],
-                ];
-            })
-            ->sortBy(fn ($team) => [$team['block'] ?? 'ZZZ', mb_strtolower($team['name'])])
-            ->values();
-
-        $customizationPercent = $teamProgress->isEmpty() ? 0 : (int) round($teamProgress->avg('percent'));
-        $unlockedTeams = $teamProgress->where('unlocked', true)->count();
+        $teamProgress = self::teamProgress($facultyNames);
+        $customizationPercent = self::averagePercent($teamProgress);
+        $completedTeams = $teamProgress->where('complete', true)->count();
 
         return view('dean.dashboard', compact(
             'totalStudents',
@@ -151,8 +128,79 @@ class DeanController extends Controller
             'completionRate',
             'teamProgress',
             'customizationPercent',
-            'unlockedTeams'
+            'completedTeams'
         ));
+    }
+
+    /**
+     * Customization progress for every team in every block, keyed "faculty_id|team".
+     *
+     * Faculty-approved required tasks out of all required (SimulationPhase::progress),
+     * the same figure the faculty dashboard shows, so a team is "complete" only once
+     * faculty approved every one, never on student submissions alone.
+     */
+    private static function teamProgress($facultyNames = null)
+    {
+        $facultyNames ??= Faculty::with('user')->get()->mapWithKeys(fn ($f) => [
+            $f->user_information_id => trim(implode(' ', array_filter([$f->user?->first_name, $f->user?->last_name]))) ?: ($f->user?->name ?? 'Faculty'),
+        ]);
+
+        return StudentGroup::with('student.facultyClass.faculty')
+            ->get()
+            ->groupBy(fn ($member) => $member->faculty_id . '|' . $member->group_name)
+            ->map(function ($members, $key) use ($facultyNames) {
+                $first = $members->first();
+                $phase = \App\Support\SimulationPhase::progress($first->group_name, (int) $first->faculty_id);
+                $block = $members->map(fn ($m) => $m->student?->facultyClass?->block_letter)->filter()->first();
+
+                return [
+                    'key'      => $key,
+                    'name'     => (string) $first->group_name,
+                    'block'    => $block ? 'Block ' . $block : null,
+                    'faculty'  => $facultyNames[$first->faculty_id] ?? null,
+                    'total'    => $phase['required'],
+                    'done'     => $phase['approved'],
+                    'percent'  => $phase['percent'],
+                    'unlocked' => $phase['unlocked'],
+                    'complete' => $phase['required'] > 0 && $phase['approved'] >= $phase['required'],
+                ];
+            })
+            ->sortBy(fn ($team) => [$team['block'] ?? 'ZZZ', mb_strtolower($team['name'])]);
+    }
+
+    private static function averagePercent($teamProgress): int
+    {
+        return $teamProgress->isEmpty() ? 0 : (int) round($teamProgress->avg('percent'));
+    }
+
+    private static function completionSummary($teamProgress): string
+    {
+        $done = $teamProgress->where('complete', true)->count();
+
+        return 'Average across ' . $teamProgress->count() . ' ' . \Illuminate\Support\Str::plural('team', $teamProgress->count())
+            . ' · ' . $done . ' completed · ' . ($teamProgress->count() - $done) . ' in progress';
+    }
+
+    /**
+     * The completion indicators, polled by partials.team-completion-live so the dean
+     * dashboard and Teams Overview catch a faculty approval without a reload.
+     */
+    public function teamProgressLive()
+    {
+        abort_unless(auth()->user()?->role === 'dean', 403);
+
+        $teams = self::teamProgress();
+
+        return response()->json([
+            'percent' => self::averagePercent($teams),
+            'summary' => self::completionSummary($teams),
+            'teams' => $teams->map(fn ($team) => [
+                'done' => $team['done'],
+                'total' => $team['total'],
+                'percent' => $team['percent'],
+                'pill' => view('partials.team-completion', ['done' => $team['done'], 'total' => $team['total']])->render(),
+            ]),
+        ]);
     }
 
     public function users()
@@ -304,7 +352,10 @@ class DeanController extends Controller
             }
         }
 
+        $teamProgress = self::teamProgress();
+
         return view('dean.faculties', compact(
+            'teamProgress',
             'faculties',
             'completedTasks',
             'teamActivityByFacultyGroup',

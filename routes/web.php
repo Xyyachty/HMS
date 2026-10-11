@@ -160,6 +160,8 @@ Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
     Route::post('/faculties', [DeanController::class, 'storeFaculty'])->name('faculties.store');
     Route::get('/reports', [DeanController::class, 'reports'])->name('reports');
     Route::get('/activity', [DeanController::class, 'activityLogs'])->name('activity');
+    // Team Task Completion Indicators, polled by the dashboard and Teams Overview.
+    Route::get('/team-progress', [DeanController::class, 'teamProgressLive'])->name('team-progress');
     // Read-only review of one submitted task, opened from the dean's notification bell.
     Route::get('/tasks/{task}/review', [DeanController::class, 'reviewTask'])->name('tasks.review');
 
