@@ -1993,6 +1993,7 @@
                                     @endphp
                                     <div class="student-row update-student-row team-student-card hidden rounded-xl bg-white px-3 py-3 border border-slate-200"
                                          data-student-id="{{ $sk }}"
+                                         data-student-name="{{ $dn }}"
                                          data-search="{{ $searchBlob }}"
                                          data-teams="{{ e(implode('|', $teamNames)) }}">
                                         {{-- Student info row --}}
@@ -2020,11 +2021,13 @@
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="update-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
                                                         data-student-id="{{ $sk }}"
-                                                        onchange="enforceSingleRoleCheckbox(this); refreshRoleAvailability('update')">
+                                                        onchange="onUpdateRoleToggle(this)">
                                                     {{ $rl }}
                                                 </label>
                                             @endforeach
                                         </div>
+                                        {{-- Filled by onUpdateRoleToggle() when the picked role is someone else's. --}}
+                                        <p class="update-role-warning hidden mt-2 ml-8 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700 leading-snug" role="alert"></p>
                                     </div>
                                 @empty
                                     <div class="flex flex-col items-center gap-2 py-10 text-slate-400">
@@ -4048,7 +4051,15 @@ function refreshRoleAvailability(mode) {
     document.querySelectorAll(config.card).forEach(card => {
         if (card.dataset.randomized === 'true') return; // roles locked by Randomize, leave them disabled
         card.querySelectorAll('input[type="checkbox"][name^="member_roles"]').forEach(roleCb => {
-            roleCb.disabled = !roleCb.checked && used.has(roleCb.value);
+            const taken = !roleCb.checked && used.has(roleCb.value);
+            // Update Team keeps a taken role clickable so onUpdateRoleToggle() can
+            // say who holds it; it is only dimmed here.
+            if (mode === 'update') {
+                roleCb.disabled = false;
+                roleCb.closest('label')?.style.setProperty('opacity', taken ? '.5' : '');
+            } else {
+                roleCb.disabled = taken;
+            }
         });
     });
 
@@ -4231,6 +4242,7 @@ function openUpdateModal(groupName, memberData) {
 
     document.querySelectorAll('.update-student-checkbox').forEach(cb => { cb.checked = false; });
     document.querySelectorAll('.update-role-checkbox').forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('.update-role-warning').forEach(w => w.classList.add('hidden'));
 
     const list = document.getElementById('updateMemberList');
     const rows = Array.from(document.querySelectorAll('.update-student-row'));
@@ -4299,6 +4311,37 @@ function filterUpdateStudentList() {
         const hay = row.getAttribute('data-search') || '';
         row.classList.toggle('hidden', q !== '' && !hay.includes(q));
     });
+}
+
+/* A role on Update Team belongs to one member. Picking one another member still
+   holds is undone, and the row says who has it, rather than the clash only
+   surfacing as a rejected save. */
+function onUpdateRoleToggle(roleCb) {
+    const row = roleCb.closest('.update-student-row');
+    const warning = row?.querySelector('.update-role-warning');
+    document.querySelectorAll('.update-role-warning').forEach(w => w.classList.add('hidden'));
+
+    if (roleCb.checked) {
+        const holder = Array.from(document.querySelectorAll('.update-student-row')).find(other =>
+            other !== row
+            && other.querySelector('.update-student-checkbox')?.checked
+            && other.querySelector('.update-role-checkbox[value="' + roleCb.value + '"]')?.checked
+        );
+
+        if (holder) {
+            roleCb.checked = false;
+            const name = holder.dataset.studentName || 'another member';
+            if (warning) {
+                warning.textContent = 'This role is already assigned to ' + name
+                    + '. Please uncheck the role from ' + name + ' first.';
+                warning.classList.remove('hidden');
+            }
+            return;
+        }
+    }
+
+    enforceSingleRoleCheckbox(roleCb);
+    refreshRoleAvailability('update');
 }
 
 function onUpdateMemberToggle(checkbox) {
