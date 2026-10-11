@@ -158,6 +158,22 @@
         #reports-section .srp-tab { color: #181818; border-color: #DADADA; }
         #reports-section .srp-tab:hover { border-color: #8A817A; color: #181818; }
         #reports-section .srp-tab.active { background: #5F5A55; color: #fff; border-color: transparent; box-shadow: 0 8px 20px -6px rgba(24,24,24,.3); }
+        /* Hotel concepts (the My Team card, its Propose/Edit dialog and the task
+           row): neutral grays only, no wine, red or warm tint. The palette above
+           warms slate toward wine and folds red into it, so every fill, border and
+           status colour these use is re-pointed here. Ids outrank the section
+           rules and the tripled status-badge classes. */
+        :is(#hotelConceptModal, #conceptTeamCard, #conceptPanelCard) .brand-gradient { background: #374151; }
+        :is(#hotelConceptModal, #conceptTeamCard, #conceptPanelCard) .brand-gradient:is(a, button):hover { background: #1F2937; opacity: 1; }
+        :is(#hotelConceptModal, #conceptTeamCard, #conceptPanelCard) .shadow-brand\/20 { --tw-shadow-color: rgba(17, 17, 17, .15); }
+        :is(#hotelConceptModal, #conceptTeamCard) :is(.bg-slate-50, .bg-slate-50\/50, .bg-slate-100, .bg-brand-soft, .bg-amber-50, .bg-rose-50, .bg-red-50, .bg-emerald-50) { background-color: #F5F5F5; }
+        :is(#hotelConceptModal, #conceptTeamCard) :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-brand\/10, .border-amber-200, .border-rose-200, .border-red-200, .border-emerald-200) { border-color: #E5E5E5; }
+        :is(#hotelConceptModal, #conceptTeamCard) .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #E5E5E5; }
+        :is(#hotelConceptModal, #conceptTeamCard) :is(.hover\:bg-brand\/10, .hover\:bg-slate-100):hover { background-color: #E5E5E5; }
+        :is(#hotelConceptModal, #conceptTeamCard) .iconify:not(.text-white) { color: #374151; }
+        #hotelConceptModal .bg-slate-900\/60 { background-color: rgba(17, 17, 17, .6); }
+        #hotelConceptModal :is(input, select, textarea):focus { border-color: #9CA3AF; --tw-ring-color: rgba(156, 163, 175, .3); }
+        :is(#conceptTeamCard, #conceptPanelCard) .status-badge-revision { color: #111; background-color: #E5E5E5; border-color: #D4D4D4; }
         /* "Online" reads as green, not the remapped gold. */
         #group-section .bg-emerald-400 { background-color: #16A34A; }
 
