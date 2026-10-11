@@ -127,7 +127,6 @@
 
             <!-- Navigation -->
             <nav class="flex-1 py-6 overflow-y-auto">
-                <p class="px-8 mb-3 text-[10px] font-bold uppercase tracking-widest text-white">Main Menu</p>
                 <ul class="space-y-1 px-4">
                     <li>
                         <a href="{{ route('dean.dashboard') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white @yield('dashboard_active')">
