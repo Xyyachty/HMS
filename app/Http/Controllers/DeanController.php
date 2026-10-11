@@ -272,10 +272,11 @@ class DeanController extends Controller
 
         $availableBlocks = Faculty::availableBlocks();
 
-        $completedTasks = \App\Models\Task::with(['faculty.user', 'student.user', 'assignedTo'])
+        $completedTasks = \App\Models\Task::with(['faculty.user', 'student.user', 'assignedTo', 'feedbackBy'])
             ->where('status', 'archived')
             ->orderByDesc('updated_at')
             ->get();
+        $compliedGroups = self::compliedGroups($completedTasks);
 
         $roleLabels = [
             'front_desk' => 'Front Desk',
@@ -357,7 +358,7 @@ class DeanController extends Controller
         return view('dean.faculties', compact(
             'teamProgress',
             'faculties',
-            'completedTasks',
+            'compliedGroups',
             'teamActivityByFacultyGroup',
             'roleLabels',
             'availableBlocks',
@@ -405,6 +406,79 @@ class DeanController extends Controller
             'progress_done' => $done,
             'progress_total' => count($activities),
         ];
+    }
+
+    /**
+     * The Complied tab: every handed-in task, grouped by team, in words a
+     * non-technical reader follows. "Approved" only once faculty approved it;
+     * handed in but not yet checked is "Waiting for faculty".
+     *
+     * Handed-in time is the snapshot taken at submission (submitted_version_id),
+     * not updated_at, which an approval moves too. Times are campus time.
+     */
+    private static function compliedGroups($tasks)
+    {
+        $handedInAt = \App\Models\TeamRoleTemplateVersion::whereIn(
+            'team_role_template_version_id',
+            $tasks->pluck('submitted_version_id')->filter()->unique()->all()
+        )->pluck('created_at', 'team_role_template_version_id');
+
+        $blocks = StudentGroup::with('student.facultyClass.faculty')->get()
+            ->groupBy(fn ($m) => $m->faculty_id . '|' . mb_strtolower((string) $m->group_name))
+            ->map(fn ($members) => $members->map(fn ($m) => $m->student?->facultyClass?->block_letter)->filter()->first());
+
+        $name = function ($user, bool $lastFirst = true) {
+            if (!$user) {
+                return null;
+            }
+            $parts = $lastFirst ? [$user->last_name, $user->first_name] : [$user->first_name, $user->last_name];
+            $full = trim(implode(' ', array_filter($parts)));
+            if ($lastFirst && $user->last_name && $user->first_name) {
+                $full = $user->last_name . ', ' . $user->first_name;
+            }
+
+            return $full !== '' ? $full : $user->name;
+        };
+        $when = fn ($at) => $at ? \Illuminate\Support\Carbon::parse($at)->timezone('Asia/Manila')->format('M j, Y \a\t g:i A') : null;
+
+        return $tasks
+            ->map(function (Task $task) use ($handedInAt, $name, $when) {
+                $handedIn = $handedInAt[$task->submitted_version_id] ?? $task->updated_at;
+                $late = $task->due_date && $handedIn && \Illuminate\Support\Carbon::parse($handedIn)->gt($task->due_date);
+
+                return [
+                    'group_key'   => $task->faculty_id . '|' . mb_strtolower((string) $task->group_name),
+                    'team'        => $task->group_name ?: null,
+                    'faculty_id'  => $task->faculty_id,
+                    'faculty'     => $name($task->faculty?->user, false) ?? 'Faculty',
+                    'title'       => (string) $task->title,
+                    'department'  => $task->role_label,
+                    'student'     => $name($task->student?->user ?? $task->assignedTo) ?? 'A student',
+                    'handed_in'   => $when($handedIn),
+                    'handed_in_ts'=> $handedIn ? \Illuminate\Support\Carbon::parse($handedIn)->timestamp : 0,
+                    'timing'      => $task->due_date ? ($late ? 'late' : 'on_time') : null,
+                    'approved'    => $task->feedback_at !== null,
+                    'approved_by' => $name($task->feedbackBy, false),
+                    'approved_at' => $when($task->feedback_at),
+                ];
+            })
+            ->groupBy('group_key')
+            ->map(function ($rows, $key) use ($blocks) {
+                $first = $rows->first();
+                $block = $blocks[$key] ?? null;
+
+                return [
+                    'team'     => $first['team'] ?? 'No team named',
+                    'block'    => $block ? 'Block ' . $block : null,
+                    'faculty'  => $first['faculty'],
+                    'approved' => $rows->where('approved', true)->count(),
+                    'waiting'  => $rows->where('approved', false)->count(),
+                    // Waiting first: that is the work still needing someone.
+                    'rows'     => $rows->sortBy(fn ($r) => [$r['approved'] ? 1 : 0, -$r['handed_in_ts']])->values(),
+                ];
+            })
+            ->sortBy(fn ($g) => [$g['block'] ?? 'ZZZ', mb_strtolower($g['team'])])
+            ->values();
     }
 
     /**

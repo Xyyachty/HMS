@@ -174,91 +174,100 @@
         </div>
     </div>
 
-    <!-- Complied Panel -->
-    <div id="fpanel-complied" class="hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                        <th class="px-6 py-4">Task</th>
-                        <th class="px-6 py-4">Student Name</th>
-                        <th class="px-6 py-4">Role</th>
-                        <th class="px-6 py-4">Faculty</th>
-                        <th class="px-6 py-4">Due Date</th>
-                        <th class="px-6 py-4">Date Completed</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-50">
-                    @forelse($completedTasks as $task)
-                        @php
-                            $roleLabels = [
-                                'front_desk' => 'Front Desk',
-                                'restaurant_management' => 'Restaurant',
-                                'room_management' => 'Room',
-                                'maintenance' => 'Maintenance',
-                                'housekeeping' => 'Housekeeping',
-                            ];
-                            $facultyName = trim(implode(' ', array_filter([
-                                $task->faculty?->user?->last_name,
-                                $task->faculty?->user?->first_name,
-                            ])));
-                            $facultyName = $facultyName !== ''
-                                ? $facultyName
-                                : ($task->faculty?->user?->name ?? '—');
+    <!-- Complied Panel: handed-in work, grouped by team, in plain words -->
+    @php
+        $cpAll = collect($compliedGroups ?? []);
+        $cpApproved = $cpAll->sum('approved');
+        $cpWaiting = $cpAll->sum('waiting');
+    @endphp
+    <div id="fpanel-complied" class="hidden cp-wrap">
+        <div class="cp-intro">
+            <p class="cp-lead">Work the students have handed in, team by team.</p>
+            <p class="cp-sub"><b>Approved</b> means the faculty checked the work and accepted it. <b>Waiting for faculty</b> means it was handed in but nobody has checked it yet.</p>
+        </div>
 
-                            $studentUser = $task->student?->user ?? $task->assignedTo;
-                            $studentName = trim(implode(' ', array_filter([
-                                $studentUser?->last_name,
-                                $studentUser?->first_name,
-                                $studentUser?->middle_name,
-                            ])));
-                            if ($studentName === '') {
-                                $studentName = $studentUser?->name ?? '—';
-                            }
-                        @endphp
-                        <tr class="hover:bg-slate-50/50 transition-colors">
-                            <td class="px-6 py-4">
-                                <p class="text-sm font-bold text-slate-700">{{ $task->title }}</p>
-                                @if($task->description)
-                                    <p class="text-xs text-slate-400 mt-0.5 line-clamp-2">{{ $task->description }}</p>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4 text-sm font-semibold text-slate-700">{{ $studentName }}</td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">
-                                    {{ $roleLabels[$task->role] ?? $task->role }}
+        <div class="cp-stats">
+            <div class="cp-stat">
+                <span class="iconify" data-icon="mdi:tray-arrow-up"></span>
+                <div><p class="cp-stat-num">{{ $cpApproved + $cpWaiting }}</p><p class="cp-stat-label">Tasks handed in</p></div>
+            </div>
+            <div class="cp-stat is-approved">
+                <span class="iconify" data-icon="mdi:check-decagram"></span>
+                <div><p class="cp-stat-num">{{ $cpApproved }}</p><p class="cp-stat-label">Approved by faculty</p></div>
+            </div>
+            <div class="cp-stat is-waiting">
+                <span class="iconify" data-icon="mdi:timer-sand"></span>
+                <div><p class="cp-stat-num">{{ $cpWaiting }}</p><p class="cp-stat-label">Waiting for faculty</p></div>
+            </div>
+        </div>
+
+        @if($cpAll->isNotEmpty())
+            <div class="cp-tools">
+                <div class="cp-chips" role="group" aria-label="Show">
+                    <button type="button" class="cp-chip is-on" data-cp-filter="all">All</button>
+                    <button type="button" class="cp-chip" data-cp-filter="approved">Approved</button>
+                    <button type="button" class="cp-chip" data-cp-filter="waiting">Waiting for faculty</button>
+                </div>
+                <label class="cp-search">
+                    <span class="iconify" data-icon="mdi:magnify"></span>
+                    <input type="search" id="cpSearch" placeholder="Find a team, student or task">
+                </label>
+            </div>
+        @endif
+
+        <div class="cp-groups">
+            @forelse($cpAll as $group)
+                <section class="cp-team" data-cp-team>
+                    <header class="cp-team-head">
+                        <div class="min-w-0">
+                            <p class="cp-team-name">{{ $group['team'] }}</p>
+                            <p class="cp-team-meta">{{ collect([$group['block'], $group['faculty']])->filter()->implode(' · ') }}</p>
+                        </div>
+                        <p class="cp-team-count">
+                            <span class="is-approved">{{ $group['approved'] }} approved</span>
+                            @if($group['waiting'])
+                                <span class="is-waiting">{{ $group['waiting'] }} waiting</span>
+                            @endif
+                        </p>
+                    </header>
+                    <ul class="cp-rows">
+                        @foreach($group['rows'] as $row)
+                            <li class="cp-row" data-cp-status="{{ $row['approved'] ? 'approved' : 'waiting' }}"
+                                data-cp-search="{{ mb_strtolower($group['team'] . ' ' . $row['student'] . ' ' . $row['title'] . ' ' . $row['department']) }}">
+                                <span class="cp-status {{ $row['approved'] ? 'is-approved' : 'is-waiting' }}">
+                                    <span class="iconify" data-icon="{{ $row['approved'] ? 'mdi:check-circle' : 'mdi:timer-sand' }}"></span>
+                                    {{ $row['approved'] ? 'Approved' : 'Waiting for faculty' }}
                                 </span>
-                            </td>
-                            <td class="px-6 py-4 text-sm text-slate-600 font-medium">{{ $facultyName }}</td>
-                            <td class="px-6 py-4 text-xs text-slate-500">
-                                @if($task->due_date)
-                                    <span class="flex items-center gap-1">
-                                        <span class="iconify" data-icon="mdi:calendar-outline"></span>
-                                        {{ $task->due_date->format('M d, Y g:i A') }}
-                                    </span>
-                                @else
-                                    <span class="text-slate-300">—</span>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4 text-xs text-slate-500">
-                                <span class="flex items-center gap-1">
-                                    <span class="iconify text-green-500" data-icon="mdi:check-circle-outline"></span>
-                                    {{ optional($task->updated_at)->format('M d, Y') ?? '—' }}
-                                </span>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
-                                <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                                    <span class="iconify text-slate-300 text-2xl" data-icon="mdi:clipboard-check-outline"></span>
+                                <div class="min-w-0">
+                                    <p class="cp-task">{{ $row['title'] }} <span class="cp-dept">{{ $row['department'] }}</span></p>
+                                    <p class="cp-line">
+                                        Handed in by <b>{{ $row['student'] }}</b>@if($row['handed_in']) on {{ $row['handed_in'] }}@endif
+                                        @if($row['timing'] === 'late')
+                                            <span class="cp-late">after the due date</span>
+                                        @elseif($row['timing'] === 'on_time')
+                                            <span class="cp-ontime">on time</span>
+                                        @endif
+                                    </p>
+                                    @if($row['approved'])
+                                        <p class="cp-line">Approved{{ $row['approved_by'] ? ' by ' . $row['approved_by'] : '' }}{{ $row['approved_at'] ? ' on ' . $row['approved_at'] : '' }}</p>
+                                    @endif
                                 </div>
-                                <p class="text-sm font-semibold text-slate-400">No complied tasks yet.</p>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                            </li>
+                        @endforeach
+                    </ul>
+                </section>
+            @empty
+                <div class="cp-empty">
+                    <span class="iconify" data-icon="mdi:tray-arrow-up"></span>
+                    <p class="cp-empty-title">Nothing handed in yet</p>
+                    <p class="cp-empty-sub">When a student hands in a task, it shows up here under their team.</p>
+                </div>
+            @endforelse
+            <div id="cpNoMatch" class="cp-empty hidden">
+                <span class="iconify" data-icon="mdi:magnify-remove-outline"></span>
+                <p class="cp-empty-title">No work matches</p>
+                <p class="cp-empty-sub">Try another name, or show All.</p>
+            </div>
         </div>
     </div>
 
@@ -508,6 +517,62 @@
     #teamsTable tbody tr.faculty-group-row:hover {
         background: #fff;
         border-top: 1px solid #E4E2E0;
+    }
+
+    /* ── Complied tab ──
+       Written out rather than with utilities: the frozen app.css lacks most of
+       them, and the gray scheme repaints any brand colour. Neutral grays, green
+       for approved, amber for waiting. */
+    .cp-wrap { padding: 1.25rem 1.5rem 1.5rem; }
+    .cp-lead { font-size: 15px; font-weight: 800; color: #181818; }
+    .cp-sub { font-size: 13px; color: #4A4643; margin-top: .25rem; max-width: 70ch; line-height: 1.5; }
+    .cp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: 1rem; }
+    .cp-stat { display: flex; align-items: center; gap: .75rem; padding: .875rem 1rem; border: 1px solid #E4E2E0; border-radius: 1rem; background: #fff; }
+    .cp-stat > .iconify { font-size: 1.5rem; color: #4A4643; flex-shrink: 0; }
+    .cp-stat.is-approved > .iconify { color: #15803D; }
+    .cp-stat.is-waiting > .iconify { color: #B45309; }
+    .cp-stat-num { font-size: 22px; font-weight: 800; color: #181818; line-height: 1.1; }
+    .cp-stat-label { font-size: 12px; color: #4A4643; }
+    .cp-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: 1rem; }
+    .cp-chips { display: flex; flex-wrap: wrap; gap: .375rem; }
+    .cp-chip { padding: .4rem .875rem; border-radius: 999px; border: 1px solid #E4E2E0; background: #fff; font-size: 12px; font-weight: 700; color: #4A4643; transition: background .2s, color .2s; }
+    .cp-chip:hover { background: #F3F2F1; }
+    .cp-chip.is-on { background: #4A4643; border-color: #4A4643; color: #fff; }
+    .cp-search { display: flex; align-items: center; gap: .5rem; height: 2.5rem; padding: 0 .875rem; border: 1px solid #E4E2E0; border-radius: .875rem; background: #fff; min-width: 16rem; color: #8A817A; }
+    .cp-search input { border: 0; outline: 0; background: transparent; font-size: 13px; color: #181818; width: 100%; }
+    .cp-groups { display: flex; flex-direction: column; gap: .875rem; margin-top: 1rem; }
+    .cp-team { border: 1px solid #E4E2E0; border-radius: 1rem; background: #fff; overflow: hidden; }
+    .cp-team-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .875rem 1.125rem; background: #F9F8F7; border-bottom: 1px solid #E4E2E0; }
+    .cp-team-name { font-size: 14px; font-weight: 800; color: #181818; }
+    .cp-team-meta { font-size: 12px; color: #4A4643; margin-top: 1px; }
+    .cp-team-count { display: flex; gap: .375rem; flex-shrink: 0; font-size: 11px; font-weight: 800; }
+    .cp-team-count span { padding: 2px 8px; border-radius: 999px; }
+    .cp-team-count .is-approved { background: #F0FDF4; color: #15803D; }
+    .cp-team-count .is-waiting { background: #FFFBEB; color: #B45309; }
+    .cp-rows { list-style: none; margin: 0; padding: 0; }
+    .cp-row { display: grid; grid-template-columns: 10.5rem minmax(0, 1fr); gap: .875rem; align-items: start; padding: .875rem 1.125rem; border-top: 1px solid #F3F2F1; }
+    .cp-row:first-child { border-top: 0; }
+    .cp-row.hidden { display: none; } /* .cp-row's grid would otherwise outrank .hidden */
+    .cp-status { display: inline-flex; align-items: center; gap: .375rem; justify-self: start; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .cp-status.is-approved { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+    .cp-status.is-waiting { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+    .cp-task { font-size: 14px; font-weight: 700; color: #181818; }
+    .cp-dept { display: inline-block; margin-left: .375rem; padding: 1px 8px; border-radius: 999px; background: #F3F2F1; color: #4A4643; font-size: 10.5px; font-weight: 700; vertical-align: 2px; }
+    .cp-line { font-size: 12.5px; color: #4A4643; margin-top: .25rem; line-height: 1.5; }
+    .cp-line b { color: #181818; font-weight: 700; }
+    .cp-ontime, .cp-late { display: inline-block; margin-left: .25rem; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+    .cp-ontime { background: #F0FDF4; color: #15803D; }
+    .cp-late { background: #FFFBEB; color: #B45309; }
+    .cp-empty { text-align: center; padding: 2.5rem 1rem; border: 1px dashed #E4E2E0; border-radius: 1rem; color: #8A817A; }
+    .cp-empty > .iconify { font-size: 2rem; }
+    .cp-empty-title { font-size: 14px; font-weight: 700; color: #4A4643; margin-top: .375rem; }
+    .cp-empty-sub { font-size: 12.5px; margin-top: .125rem; }
+    @media (max-width: 767px) {
+        .cp-wrap { padding: 1rem; }
+        .cp-stats { grid-template-columns: minmax(0, 1fr); }
+        .cp-search { min-width: 0; width: 100%; }
+        .cp-row { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+        .cp-team-head { flex-direction: column; align-items: flex-start; }
     }
 </style>
 @endpush
@@ -888,6 +953,41 @@
         document.getElementById('fpanel-teams').classList.toggle('hidden', tab !== 'teams');
         document.getElementById('fpanel-complied').classList.toggle('hidden', tab !== 'complied');
     }
+
+    /* Complied tab: the status chips and the search narrow the rows; a team with
+       nothing left showing hides, and a note says when nothing matches at all. */
+    (function () {
+        const panel = document.getElementById('fpanel-complied');
+        if (!panel) return;
+        let filter = 'all';
+        const search = document.getElementById('cpSearch');
+
+        function apply() {
+            const q = (search?.value || '').trim().toLowerCase();
+            let shown = 0;
+            panel.querySelectorAll('[data-cp-team]').forEach(function (team) {
+                let teamShown = 0;
+                team.querySelectorAll('.cp-row').forEach(function (row) {
+                    const ok = (filter === 'all' || row.dataset.cpStatus === filter)
+                        && (q === '' || (row.dataset.cpSearch || '').includes(q));
+                    row.classList.toggle('hidden', !ok);
+                    if (ok) teamShown++;
+                });
+                team.classList.toggle('hidden', teamShown === 0);
+                shown += teamShown;
+            });
+            document.getElementById('cpNoMatch')?.classList.toggle('hidden', shown > 0 || !panel.querySelector('[data-cp-team]'));
+        }
+
+        panel.querySelectorAll('[data-cp-filter]').forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                filter = chip.dataset.cpFilter;
+                panel.querySelectorAll('[data-cp-filter]').forEach(c => c.classList.toggle('is-on', c === chip));
+                apply();
+            });
+        });
+        search?.addEventListener('input', apply);
+    })();
 
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = 'auto'; }
