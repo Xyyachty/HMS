@@ -28,6 +28,10 @@
     .gray-accents :is(.border-brand, .border-amber-300, .border-amber-400, .border-emerald-400) { border-color: #4A4643; }
     .gray-accents :is(.hover\:border-brand, .hover\:border-brand\/30, .hover\:border-brand\/40):hover { border-color: #8A817A; }
     .gray-accents .focus\:border-brand:focus { border-color: #8A817A; }
+    /* Picked team and role cards on the faculty Manage Student tabs. */
+    .gray-accents .has-\[\:checked\]\:border-brand:has(:checked) { border-color: #4A4643; }
+    .gray-accents .has-\[\:checked\]\:bg-brand-soft:has(:checked) { background-color: #F3F2F1; }
+    .gray-accents .has-\[\:checked\]\:text-brand:has(:checked) { color: #4A4643; }
     .gray-accents :is(.focus\:ring-brand\/15, .focus\:ring-brand\/20, .focus\:ring-brand\/30):focus { --tw-ring-color: rgba(138, 129, 122, 0.3); }
     .gray-accents .ring-brand { --tw-ring-color: #4A4643; }
     .gray-accents :is(.shadow-brand, .shadow-brand\/20, .shadow-brand\/25, .shadow-amber-400\/30) { --tw-shadow-color: rgba(24, 24, 24, 0.15); }
