@@ -266,6 +266,17 @@
     }
     .btn-approve:hover { background:#15803D; }
 
+    /* Shown in place of the verdict buttons once a task is approved. Not a
+       display rule on the class itself, which would outrank .hidden. */
+    #reviewApprovedState:not(.hidden) {
+        display:flex; align-items:center; gap:.625rem;
+        padding:.75rem .875rem; border-radius:.875rem;
+        border:1px solid #BBF7D0; background:#F0FDF4; color:#15803D;
+    }
+    #reviewApprovedState .iconify { font-size:1.375rem; flex-shrink:0; }
+    #reviewApprovedState .rv-approved-title { font-size:13px; font-weight:800; }
+    #reviewApprovedState .rv-approved-meta { font-size:11px; color:#4A4643; margin-top:1px; }
+
     /* ── Student list in form ── */
     .student-row { transition:all .2s ease; }
     .student-row:hover { background:#F3F2F1 !important; }
@@ -974,6 +985,15 @@
                         <button type="button" id="reviewApproveBtn" onclick="submitTaskFeedback('approve')" class="btn-approve tm-act">
                             <span class="iconify" data-icon="mdi:check-circle-outline"></span> Approve
                         </button>
+                    </div>
+
+                    {{-- In place of the buttons once approved: who approved it, and when. --}}
+                    <div id="reviewApprovedState" class="hidden mt-3">
+                        <span class="iconify" data-icon="mdi:check-decagram"></span>
+                        <div class="min-w-0">
+                            <p class="rv-approved-title">Approved</p>
+                            <p id="reviewApprovedMeta" class="rv-approved-meta"></p>
+                        </div>
                     </div>
 
                     {{-- Step 2: ask for changes only. --}}
@@ -2855,6 +2875,9 @@ function openTaskReview(taskId) {
     document.getElementById('reviewDecisionBlock').classList.remove('hidden');
     document.getElementById('reviewConceptHint').classList.add('hidden');
     hideReviseStep();
+    // Neither the buttons nor the Approved panel until the task says which it is.
+    document.getElementById('reviewChoiceStep').classList.add('hidden');
+    document.getElementById('reviewApprovedState').classList.add('hidden');
     reviewPreviewUrls = { before: null, after: null };
     reviewChanges = [];
     document.getElementById('reviewCompareToggle').classList.add('hidden');
@@ -2950,16 +2973,22 @@ function openTaskReview(taskId) {
                 }
             }
 
-            // Only a submitted task can be acted on.
-            const canAct = d.status === 'archived';
-            document.getElementById('reviewApproveBtn').disabled = !canAct;
-            document.getElementById('reviewReviseBtn').disabled = !canAct;
-            document.getElementById('reviewDecisionHint').textContent = !canAct
-                ? 'The student has not handed this in yet. You can decide once they do.'
-                : (d.awaiting_review
-                    ? 'Approve if the work is complete, or ask the student to change something.'
-                    : 'Approved' + (d.edited_since_approval ? ', but the page has been edited since' : '')
-                        + '. Ask for changes to withdraw the approval; the team\'s simulation stays locked until you approve it again.');
+            // The buttons are for Pending Review only. An approved task shows who
+            // approved it and when instead, read back from the saved verdict.
+            const pending = d.status === 'archived' && !!d.awaiting_review;
+            const approved = d.status === 'archived' && !d.awaiting_review;
+            document.getElementById('reviewApproveBtn').disabled = !pending;
+            document.getElementById('reviewReviseBtn').disabled = !pending;
+            document.getElementById('reviewChoiceStep').classList.toggle('hidden', !pending);
+            document.getElementById('reviewApprovedState').classList.toggle('hidden', !approved);
+            document.getElementById('reviewApprovedMeta').textContent = approved
+                ? [d.feedback_by ? 'by ' + d.feedback_by : '', d.feedback_at].filter(Boolean).join(' · ')
+                : '';
+            document.getElementById('reviewDecisionHint').textContent = pending
+                ? 'Approve if the work is complete, or ask the student to change something.'
+                : (approved
+                    ? (d.edited_since_approval ? 'The page has been edited since it was approved.' : '')
+                    : 'The student has not handed this in yet. You can decide once they do.');
         })
         .catch((err) => {
             document.getElementById('reviewTaskTitle').textContent = 'Could not load';

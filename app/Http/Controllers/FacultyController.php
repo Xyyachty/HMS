@@ -2402,7 +2402,8 @@ class FacultyController extends Controller
                 ? optional($task->updated_at)->format('M d, Y g:i A')
                 : null,
             'feedback' => $task->feedback,
-            'feedback_at' => optional($task->feedback_at)->format('M d, Y g:i A'),
+            // Campus time: this is the approval stamp faculty read on the review.
+            'feedback_at' => $task->feedback_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
             'feedback_by' => $task->feedbackBy?->name,
             'revision_count' => (int) $task->revision_count,
             'preview_url' => $previewUrl,
@@ -2477,6 +2478,12 @@ class FacultyController extends Controller
             return response()->json([
                 'error' => 'This task has not been submitted yet, so there is nothing to review.',
             ], 422);
+        }
+
+        // Approved is final here: the review only offers a verdict while a task is
+        // Pending Review, and a second open tab must not undo the approval.
+        if ($task->feedback_at !== null) {
+            return response()->json(['error' => 'This task is already approved.'], 422);
         }
 
         $task->fill([
