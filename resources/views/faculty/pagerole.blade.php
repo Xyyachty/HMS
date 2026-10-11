@@ -102,6 +102,8 @@
     :is(#panel-team_setup, #panel-create_task) :is(.bg-brand-soft, .rounded-full.bg-slate-100) { box-shadow: inset 0 0 0 1px #E4E2E0; }
     /* Front Desk's rose icon reads maroon; it goes gray like the other roles. */
     #panel-create_task :is(.iconify, svg).text-rose-500 { color: #4A4643; }
+    /* A picked team reads neutral dark gray, not the warm brown-gray accent. */
+    #panel-create_task .task-team-btn:has(:checked) { border-color: #374151; background-color: #F3F4F6; }
     .setup-grid {
         display: grid; gap: .75rem;
         grid-template-columns: minmax(0, 1fr) 300px;
