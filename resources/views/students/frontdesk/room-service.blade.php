@@ -126,30 +126,87 @@
     .rs-views { width: 100%; border-radius: 14px; }
   }
 
-  /* New order: the desk orders for a booked guest; the kitchen takes it from there. */
-  .rs-btn-solid { background: var(--accent); color: var(--bg); }
-  .rs-btn-solid:hover { background: var(--accent-light, var(--accent)); }
-  .rs-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .rs-order { margin-bottom: 1.25rem; }
-  .rs-order h2 { margin: 0 0 0.3rem; font-size: 1.2rem; }
-  .rs-order .rs-sub { margin: 0 0 1.1rem; color: var(--fg-muted); font-size: 0.85rem; line-height: 1.5; }
-  .rs-order-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 1.25rem; }
-  @media (max-width: 760px) { .rs-order-grid { grid-template-columns: 1fr; } }
-  .rs-label { display: block; margin: 0 0 0.4rem; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
-  .rs-select { width: 100%; padding: 0.7rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); font: inherit; margin-bottom: 1rem; }
-  .rs-menu { display: grid; gap: 0.45rem; margin-bottom: 1rem; }
-  .rs-menu-cat { margin: 0.6rem 0 0.1rem; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
-  .rs-dish { display: flex; align-items: center; gap: 0.75rem; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 10px; }
+  /* Template 2 (cream / forest green / DM Sans + Cormorant Garamond), the same
+     set Walk-in Guests and Guest Information use. Without it this page kept
+     Template 1's dark panels, and its heading vanished on the cream background. */
+  :root[data-ops-theme="2"] {
+    --bg: #f7f4ef; --bg-warm: #efe9e0; --fg: #1a1a1a; --fg-muted: #6b6560;
+    --accent: #1b4332; --accent-light: #2d6a4f; --card: #ffffff; --border: #e2ddd5;
+    --font-body: 'DM Sans', sans-serif; --font-display: 'Cormorant Garamond', serif;
+    --danger: #c81e3a; --success: #15803d;
+  }
+
+  /* One screen, no page scroll: the shell's content area is the page height, the
+     page fills it, and only the menu and the order list scroll inside their own
+     panels. Below 1000px it stacks and the page scrolls as usual. */
+  #ops-root { height: 100%; }
+  .rs.rs-fit { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 0.85rem; padding: 1rem 1.5rem 1.1rem; }
+  .rs-fit .rs-head { margin: 0; align-items: flex-end; }
+  .rs-fit .rs-head h1 { font-size: 1.45rem; }
+  .rs-fit .rs-eyebrow { margin-bottom: 0.3rem; }
+  .rs-fit .rs-head .rs-lead { font-size: 0.86rem; margin-top: 0.2rem; max-width: none; }
+  .rs-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 1rem; }
+  .rs-col { min-height: 0; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--rs-line); border-radius: 14px; padding: 1.1rem 1.2rem; }
+  .rs-col-title { margin: 0 0 0.7rem; font-size: 1.1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+  .rs-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 0.25rem; }
+  @media (max-width: 1000px) {
+    #ops-root { height: auto; }
+    .rs.rs-fit { height: auto; }
+    .rs-body { grid-template-columns: 1fr; }
+    .rs-scroll { max-height: 60vh; }
+  }
+
+  /* Numbered steps, so the order of things is never a question. */
+  .rs-step-head { display: flex; align-items: center; gap: 0.6rem; margin: 0 0 0.45rem; font-size: 0.92rem; font-weight: 700; color: var(--fg); }
+  .rs-step-num { flex: none; width: 1.6rem; height: 1.6rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; background: var(--rs-tint); color: var(--accent); border: 1px solid var(--accent); }
+  .rs-step-head.is-done .rs-step-num { background: var(--accent); color: var(--bg); }
+
+  /* Step 1: guests as cards to tap, not a dropdown. */
+  .rs-guests { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.5rem; max-height: 7.4rem; overflow-y: auto; margin-bottom: 0.8rem; }
+  .rs-guest-btn { text-align: left; padding: 0.5rem 0.7rem; border-radius: 10px; border: 1px solid var(--rs-line); background: var(--rs-soft); color: var(--fg); cursor: pointer; font: inherit; transition: border-color 0.15s, background 0.15s, transform 0.1s; }
+  .rs-guest-btn:hover { border-color: var(--accent); }
+  .rs-guest-btn:active { transform: scale(0.98); }
+  .rs-guest-btn.is-on { border-color: var(--accent); background: var(--rs-tint); box-shadow: inset 0 0 0 1px var(--accent); }
+  .rs-guest-btn b { display: block; font-size: 0.95rem; }
+  .rs-guest-btn span { display: block; font-size: 0.78rem; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rs-guest-btn small { display: inline-block; margin-top: 0.25rem; font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 999px; background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg-muted); }
+
+  /* Step 2: the menu, filtered by course. */
+  .rs-courses { display: flex; gap: 0.35rem; overflow-x: auto; margin-bottom: 0.6rem; padding-bottom: 2px; }
+  .rs-course { padding: 0.3rem 0.75rem; border-radius: 999px; border: 1px solid var(--rs-line); background: transparent; color: var(--fg-muted); cursor: pointer; font-family: inherit; font-size: 0.76rem; font-weight: 600; line-height: 1.2; white-space: nowrap; }
+  .rs-course.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .rs-dishes { display: grid; gap: 0.35rem; }
+  .rs-dish { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0.7rem; border: 1px solid var(--rs-line); border-radius: 10px; }
+  .rs-dish.is-picked { border-color: var(--accent); background: var(--rs-tint); }
   .rs-dish-name { flex: 1; min-width: 0; }
   .rs-dish-name b { display: block; font-size: 0.9rem; }
   .rs-dish-name span { font-size: 0.75rem; color: var(--fg-muted); }
-  .rs-qty { display: inline-flex; align-items: center; gap: 0.4rem; }
-  .rs-qty button { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--fg); cursor: pointer; }
-  .rs-qty button:disabled { opacity: 0.35; cursor: not-allowed; }
-  .rs-qty output { min-width: 1.4rem; text-align: center; font-variant-numeric: tabular-nums; }
-  .rs-total { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding-top: 0.9rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
-  .rs-error { margin: 0 0 0.8rem; color: #f87171; font-size: 0.85rem; }
-  .rs-notice { margin: 0 0 1rem; padding: 0.7rem 0.9rem; border-radius: 10px; border: 1px solid var(--rs-ok); color: var(--fg); font-size: 0.86rem; }
+  .rs-stepper { display: inline-flex; align-items: center; gap: 0.45rem; }
+  .rs-stepper button { width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--rs-line); background: transparent; color: var(--fg); cursor: pointer; font-size: 1rem; line-height: 1; }
+  .rs-stepper button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .rs-stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .rs-stepper output { min-width: 1.4rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Step 3: what is about to be sent, and the one button that sends it. */
+  .rs-send { margin-top: 0.7rem; padding-top: 0.7rem; border-top: 1px solid var(--rs-line); display: grid; gap: 0.6rem; }
+  .rs-summary { margin: 0; font-size: 0.86rem; color: var(--fg-muted); line-height: 1.45; }
+  .rs-summary b { color: var(--fg); }
+  .rs-send-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+  .rs-send-total { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .rs-btn-solid { background: var(--accent); color: var(--bg); }
+  .rs-btn-solid:hover { background: var(--accent-light, var(--accent)); }
+  .rs-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .rs-btn-big { padding: 0.9rem 1.4rem; font-size: 0.95rem; }
+  .rs-error { margin: 0; color: #f87171; font-size: 0.85rem; }
+  .rs-notice { margin: 0; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--rs-ok); font-size: 0.85rem; color: var(--fg); display: flex; gap: 0.5rem; align-items: center; }
+  .rs-notice i { color: var(--rs-ok); }
+  .rs-hint { margin: 0; padding: 0.8rem; border-radius: 10px; border: 1.5px dashed var(--rs-line); font-size: 0.85rem; color: var(--fg-muted); line-height: 1.5; }
+
+  /* Orders column: the cards sit one under another in their own scroll. */
+  .rs-col .rs-views { margin-bottom: 0.75rem; flex-wrap: nowrap; overflow-x: auto; border-radius: 12px; flex: none; }
+  .rs-col .rs-view { white-space: nowrap; padding: 0.4rem 0.7rem; font-size: 0.78rem; }
+  .rs-col .rs-grid { grid-template-columns: 1fr; gap: 0.75rem; }
+  .rs-col .rs-card { padding: 0.85rem 0.95rem; gap: 0.65rem; }
 </style>
 @endsection
 
@@ -189,10 +246,11 @@ const ACTIVE_STATUSES = ['Preparing', 'Ready', 'Delivering'];
 // One tab per step, after All orders. Cancelled is kept for the one order
 // cancelled under the old rule; it sits with Delivered, as a finished order.
 const TABS = [
-  { key: 'all', label: 'All orders', icon: 'fa-list', match: () => true },
+  { key: 'all', label: 'All orders', short: 'All', icon: 'fa-list', match: () => true },
   ...STAGES.map(s => ({
     key: s.status,
     label: s.label,
+    short: s.short,
     icon: s.icon,
     match: s.status === 'Completed'
       ? o => o.status === 'Completed' || o.status === 'Cancelled'
@@ -234,7 +292,7 @@ function OrderCard({ order }) {
     <article className="rs-card">
       <div className="rs-card-top">
         <div style={{ minWidth: 0 }}>
-          <span className="rs-room">{order.roomNumber ? `Room ${order.roomNumber}` : 'Room not set'}</span>
+          <span className="rs-room">{order.roomNumber ? (/^room\b/i.test(order.roomNumber) ? order.roomNumber : `Room ${order.roomNumber}`) : 'Room not set'}</span>
           <span className="rs-guest">{order.guestName || 'Guest name not given'}</span>
         </div>
         <span className={`rs-pill is-${order.status}`}>
@@ -281,16 +339,18 @@ function OrderCard({ order }) {
   );
 }
 
-/* The desk orders food for a guest booked into a room. The order goes straight
-   to Restaurant Services' kitchen queue (status Preparing) and is billed to the
-   guest's stay; this page then follows it like any other. */
+/* The desk orders food for a guest booked into a room, in three numbered steps.
+   The order goes straight to Restaurant Services' kitchen queue (Preparing) and
+   is billed to the guest's stay; the list beside it then follows the order. */
 function NewOrderPanel({ onPlaced }) {
   const [rooms, setRooms] = useState(null);
   const [menu, setMenu] = useState(null);
   const [roomName, setRoomName] = useState('');
+  const [course, setCourse] = useState('All');
   const [qty, setQty] = useState({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   // Guests and stock change while the desk works, so both are read again on the
   // same beat as the order list, and after every order placed here.
@@ -305,20 +365,28 @@ function NewOrderPanel({ onPlaced }) {
     return () => clearInterval(id);
   }, [load]);
 
-  const clear = () => { setRoomName(''); setQty({}); setError(''); };
+  // The confirmation stays long enough to read, then clears itself.
+  useEffect(() => {
+    if (!notice) return;
+    const id = setTimeout(() => setNotice(''), 6000);
+    return () => clearTimeout(id);
+  }, [notice]);
 
   const OPEN = ['Booked', 'Arrived', 'Checked In'];
   const guests = (rooms || []).filter(r => r.reservation && OPEN.indexOf(r.reservation.status) !== -1);
   const chosen = guests.find(r => r.name === roomName) || null;
-  const categories = [];
-  (menu || []).forEach(m => { if (categories.indexOf(m.category) === -1) categories.push(m.category); });
+  const courses = ['All'];
+  (menu || []).forEach(m => { if (courses.indexOf(m.category) === -1) courses.push(m.category); });
+  const shown = (menu || []).filter(m => course === 'All' || m.category === course);
   const lines = (menu || []).filter(m => (qty[m.dbId] || 0) > 0);
+  const count = lines.reduce((sum, m) => sum + qty[m.dbId], 0);
   const total = lines.reduce((sum, m) => sum + m.price * qty[m.dbId], 0);
 
   const step = (item, delta) => setQty(prev => {
     const next = Math.max(0, Math.min(item.stock, (prev[item.dbId] || 0) + delta));
     return Object.assign({}, prev, { [item.dbId]: next });
   });
+  const clear = () => { setRoomName(''); setQty({}); setError(''); };
 
   const place = () => {
     if (!chosen || !lines.length || saving) return;
@@ -339,76 +407,95 @@ function NewOrderPanel({ onPlaced }) {
       }),
     })
       .then(r => r.json().then(d => (r.ok ? d : Promise.reject(d))))
-      .then(() => { onPlaced(chosen); clear(); load(); })
-      .catch(err => setError((err && err.message) || 'The order could not be placed. Try again.'))
+      .then(() => {
+        setNotice(`Sent. The kitchen is now cooking for ${chosen.reservation.fullName || 'the guest'} in ${chosen.name}.`);
+        onPlaced();
+        clear();
+        load();
+      })
+      .catch(err => setError((err && err.message) || 'The order could not be sent. Please try again.'))
       .finally(() => setSaving(false));
   };
 
+  let missing = '';
+  if (!chosen) missing = 'Choose who the food is for.';
+  else if (!lines.length) missing = 'Add at least one dish.';
+
   return (
-    <section className="rs-panel rs-order" aria-label="Order room service for a guest">
-        <h2 className="font-display">Order for a Guest</h2>
-        <p className="rs-sub">Pick a guest booked into a room and the food. It goes straight to the Restaurant kitchen and is added to the guest&rsquo;s bill.</p>
+    <section className="rs-col" aria-label="Order food for a guest">
+      <h2 className="rs-col-title font-display">Order food for a guest</h2>
 
-        <div className="rs-order-grid">
-        <div>
-        <label className="rs-label" htmlFor="rs-guest">Guest</label>
-        {rooms === null ? <p className="rs-sub">Loading guests&hellip;</p> : guests.length === 0 ? (
-          <p className="rs-sub">No guest is booked into a room right now. Book one on Walk-in Guests or the website first.</p>
-        ) : (
-          <select id="rs-guest" className="rs-select" value={roomName} onChange={e => setRoomName(e.target.value)}>
-            <option value="">Choose a guest&hellip;</option>
-            {guests.map(r => (
-              <option key={r.id} value={r.name}>{r.name} — {r.reservation.fullName || 'Guest'} ({r.reservation.status})</option>
-            ))}
-          </select>
-        )}
+      <p className={`rs-step-head${chosen ? ' is-done' : ''}`}><span className="rs-step-num">1</span> Who is the food for?</p>
+      {rooms === null ? <p className="rs-hint">Loading guests&hellip;</p> : guests.length === 0 ? (
+        <p className="rs-hint" style={{ marginBottom: '1rem' }}>No guest is booked into a room yet. Book one on Walk-in Guests first, then come back here.</p>
+      ) : (
+        <div className="rs-guests" role="radiogroup" aria-label="Guest">
+          {guests.map(r => (
+            <button key={r.id} type="button" role="radio" aria-checked={roomName === r.name}
+              className={`rs-guest-btn${roomName === r.name ? ' is-on' : ''}`}
+              onClick={() => setRoomName(roomName === r.name ? '' : r.name)}>
+              <b>{r.name}</b>
+              <span>{r.reservation.fullName || 'Guest'}</span>
+              <small>{r.reservation.status}</small>
+            </button>
+          ))}
         </div>
+      )}
 
-        <div>
-        <span className="rs-label">Food</span>
-        {menu === null ? <p className="rs-sub">Loading the menu&hellip;</p> : menu.length === 0 ? (
-          <p className="rs-sub">The restaurant has no dishes on its menu yet.</p>
-        ) : (
-          <div className="rs-menu">
-            {categories.map(cat => (
-              <React.Fragment key={cat}>
-                <p className="rs-menu-cat">{cat}</p>
-                {menu.filter(m => m.category === cat).map(m => (
-                  <div className="rs-dish" key={m.dbId}>
-                    <div className="rs-dish-name">
-                      <b>{m.name}</b>
-                      <span>{formatPeso(m.price)} · {m.stock > 0 ? m.stock + ' left' : 'Sold out'}</span>
-                    </div>
-                    <div className="rs-qty">
-                      <button type="button" aria-label={'One less ' + m.name} disabled={!(qty[m.dbId] > 0)} onClick={() => step(m, -1)}>&minus;</button>
-                      <output>{qty[m.dbId] || 0}</output>
-                      <button type="button" aria-label={'One more ' + m.name} disabled={(qty[m.dbId] || 0) >= m.stock} onClick={() => step(m, 1)}>+</button>
-                    </div>
-                  </div>
-                ))}
-              </React.Fragment>
+      <p className={`rs-step-head${lines.length ? ' is-done' : ''}`}><span className="rs-step-num">2</span> What would they like?</p>
+      {menu === null ? <p className="rs-hint">Loading the menu&hellip;</p> : menu.length === 0 ? (
+        <p className="rs-hint">The restaurant has not put any dishes on its menu yet.</p>
+      ) : (
+        <>
+          <div className="rs-courses" role="group" aria-label="Course">
+            {courses.map(c => (
+              <button key={c} type="button" className={`rs-course${course === c ? ' is-on' : ''}`} onClick={() => setCourse(c)}>{c}</button>
             ))}
           </div>
-        )}
-        </div>
-        </div>
+          <div className="rs-scroll">
+            <div className="rs-dishes">
+              {shown.map(m => (
+                <div className={`rs-dish${qty[m.dbId] ? ' is-picked' : ''}`} key={m.dbId}>
+                  <div className="rs-dish-name">
+                    <b>{m.name}</b>
+                    <span>{formatPeso(m.price)} · {m.stock > 0 ? m.stock + ' left' : 'Sold out'}</span>
+                  </div>
+                  <div className="rs-stepper">
+                    <button type="button" aria-label={'One less ' + m.name} disabled={!(qty[m.dbId] > 0)} onClick={() => step(m, -1)}>&minus;</button>
+                    <output aria-label={m.name + ' quantity'}>{qty[m.dbId] || 0}</output>
+                    <button type="button" aria-label={'One more ' + m.name} disabled={(qty[m.dbId] || 0) >= m.stock} onClick={() => step(m, 1)}>+</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
-        {error ? <p className="rs-error">{error}</p> : null}
-        <div className="rs-total">
-          <strong>Total {formatPeso(total)}</strong>
+      <div className="rs-send">
+        <p className={`rs-step-head${chosen && lines.length ? ' is-done' : ''}`} style={{ margin: 0 }}><span className="rs-step-num">3</span> Send it to the kitchen</p>
+        {notice ? <p className="rs-notice" role="status"><i className="fa-solid fa-circle-check"></i>{notice}</p> : null}
+        {error ? <p className="rs-error" role="alert">{error}</p> : null}
+        <p className="rs-summary">
+          {chosen && lines.length
+            ? <><b>{count} {count === 1 ? 'dish' : 'dishes'}</b> for <b>{chosen.reservation.fullName || 'the guest'}</b> in <b>{chosen.name}</b>. It is added to their bill.</>
+            : missing}
+        </p>
+        <div className="rs-send-row">
+          <span className="rs-send-total">{formatPeso(total)}</span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" className="rs-btn" onClick={clear} disabled={saving}>Clear</button>
-            <button type="button" className="rs-btn rs-btn-solid" disabled={!chosen || !lines.length || saving} onClick={place}>
+            <button type="button" className="rs-btn" onClick={clear} disabled={saving || (!roomName && !lines.length)}>Start over</button>
+            <button type="button" className="rs-btn rs-btn-solid rs-btn-big" disabled={!chosen || !lines.length || saving} onClick={place}>
               <i className="fa-solid fa-paper-plane"></i> {saving ? 'Sending…' : 'Send to Kitchen'}
             </button>
           </div>
         </div>
+      </div>
     </section>
   );
 }
 
 function RoomServicePage({ orders, onBack, onOrdered }) {
-  const [notice, setNotice] = useState('');
   const [tab, setTab] = useState('all');
 
   const roomServiceOrders = (orders || [])
@@ -422,36 +509,34 @@ function RoomServicePage({ orders, onBack, onOrdered }) {
   let emptyTitle = `No orders are ${current.label.toLowerCase()}`;
   let emptyText = 'Pick another tab to see the rest of the orders.';
   if (roomServiceOrders.length === 0) {
-    emptyTitle = 'No room-service orders yet';
-    emptyText = 'Order for a booked guest above, or wait for a guest to order from the hotel website’s Restaurant page.';
+    emptyTitle = 'No orders yet';
+    emptyText = 'Orders you send, and ones guests place on the hotel website, show up here.';
   } else if (tab === 'Completed') {
     emptyTitle = 'Nothing delivered yet';
     emptyText = 'Orders move here once the kitchen has brought them to the guest’s room.';
   }
 
   return (
-    <div className="rs">
+    <div className="rs rs-fit">
       <header className="rs-head">
         <div>
           <p className="rs-eyebrow">Front Desk</p>
           <h1 className="font-display">Room Service</h1>
-          <p className="rs-lead">
-            Food ordered to guests&rsquo; rooms. Order for a booked guest here and it goes
-            straight to the Restaurant kitchen; the kitchen moves each order along. Use this
-            page to see where an order is if a guest calls the desk.
-          </p>
+          <p className="rs-lead">Order food for a guest on the left. Follow every order on the right &mdash; the kitchen moves it along.</p>
         </div>
       </header>
-      {notice ? <p className="rs-notice" role="status">{notice}</p> : null}
-      <NewOrderPanel
-        onPlaced={(room) => {
-          setNotice(`Order for ${room.reservation.fullName || 'the guest'} in ${room.name} sent to the Restaurant kitchen.`);
-          if (onOrdered) onOrdered();
-        }}
-      />
 
-      <section className="rs-panel">
-        <div className="rs-toolbar">
+      <div className="rs-body">
+        <NewOrderPanel onPlaced={() => { if (onOrdered) onOrdered(); }} />
+
+        <section className="rs-col" aria-label="Orders">
+          <h2 className="rs-col-title font-display">
+            Orders
+            <span className="rs-showing" style={{ fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
+              <span className="rs-live">Updates on its own</span>
+              <span>· {plural(notDelivered, 'order', 'orders')} not delivered yet</span>
+            </span>
+          </h2>
           <div className="rs-views" role="group" aria-label="Show orders by status">
             {TABS.map(t => (
               <button
@@ -462,29 +547,26 @@ function RoomServicePage({ orders, onBack, onOrdered }) {
                 onClick={() => setTab(t.key)}
               >
                 <i className={`fa-solid ${t.icon}`}></i>
-                {t.label}
+                {t.short || t.label}
                 <span className="rs-count">{roomServiceOrders.filter(t.match).length}</span>
               </button>
             ))}
           </div>
-          <p className="rs-showing">
-            <span className="rs-live">Updates on its own</span>
-            <span>· {plural(notDelivered, 'order', 'orders')} not delivered yet</span>
-          </p>
-        </div>
-
-        {visible.length === 0 ? (
-          <div className="rs-empty">
-            <div className="rs-empty-icon"><i className={`fa-solid ${current.key === 'all' ? 'fa-bell-concierge' : current.icon}`}></i></div>
-            <h2>{emptyTitle}</h2>
-            <p>{emptyText}</p>
+          <div className="rs-scroll">
+            {visible.length === 0 ? (
+              <div className="rs-empty">
+                <div className="rs-empty-icon"><i className={`fa-solid ${current.key === 'all' ? 'fa-bell-concierge' : current.icon}`}></i></div>
+                <h2>{emptyTitle}</h2>
+                <p>{emptyText}</p>
+              </div>
+            ) : (
+              <div className="rs-grid">
+                {visible.map(order => <OrderCard key={order.id} order={order} />)}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="rs-grid">
-            {visible.map(order => <OrderCard key={order.id} order={order} />)}
-          </div>
-        )}
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
