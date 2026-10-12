@@ -1028,7 +1028,7 @@
                              relabels it Resubmit whenever a slot is coming back from
                              revision rather than going in for the first time. --}}
                         <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
-                            class="hidden shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60">
+                            class="hidden shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white shadow-md hover:opacity-90 transition disabled:opacity-60" style="background:#404040">
                             <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
                             <span id="conceptSubmitAllLabel">Submit both to Faculty</span>
                         </button>
