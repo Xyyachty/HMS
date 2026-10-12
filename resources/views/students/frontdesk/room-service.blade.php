@@ -130,10 +130,11 @@
   .rs-btn-solid { background: var(--accent); color: var(--bg); }
   .rs-btn-solid:hover { background: var(--accent-light, var(--accent)); }
   .rs-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .rs-modal-back { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 1rem; }
-  .rs-modal { width: min(640px, 100%); max-height: calc(100vh - 2rem); overflow: auto; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.4rem; color: var(--fg); }
-  .rs-modal h2 { margin: 0 0 0.3rem; font-size: 1.3rem; }
-  .rs-modal .rs-sub { margin: 0 0 1.1rem; color: var(--fg-muted); font-size: 0.85rem; line-height: 1.5; }
+  .rs-order { margin-bottom: 1.25rem; }
+  .rs-order h2 { margin: 0 0 0.3rem; font-size: 1.2rem; }
+  .rs-order .rs-sub { margin: 0 0 1.1rem; color: var(--fg-muted); font-size: 0.85rem; line-height: 1.5; }
+  .rs-order-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 1.25rem; }
+  @media (max-width: 760px) { .rs-order-grid { grid-template-columns: 1fr; } }
   .rs-label { display: block; margin: 0 0 0.4rem; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
   .rs-select { width: 100%; padding: 0.7rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); font: inherit; margin-bottom: 1rem; }
   .rs-menu { display: grid; gap: 0.45rem; margin-bottom: 1rem; }
@@ -283,7 +284,7 @@ function OrderCard({ order }) {
 /* The desk orders food for a guest booked into a room. The order goes straight
    to Restaurant Services' kitchen queue (status Preparing) and is billed to the
    guest's stay; this page then follows it like any other. */
-function NewOrderModal({ onClose, onPlaced }) {
+function NewOrderPanel({ onPlaced }) {
   const [rooms, setRooms] = useState(null);
   const [menu, setMenu] = useState(null);
   const [roomName, setRoomName] = useState('');
@@ -291,11 +292,20 @@ function NewOrderModal({ onClose, onPlaced }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  // Guests and stock change while the desk works, so both are read again on the
+  // same beat as the order list, and after every order placed here.
+  const load = useCallback(() => {
     const get = (url) => fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } }).then(r => r.json());
-    get(CFG.roomsUrl).then(d => setRooms(Array.isArray(d.rooms) ? d.rooms : [])).catch(() => setRooms([]));
-    get(CFG.menusUrl).then(d => setMenu(Array.isArray(d.items) ? d.items : [])).catch(() => setMenu([]));
+    get(CFG.roomsUrl).then(d => setRooms(Array.isArray(d.rooms) ? d.rooms : [])).catch(() => setRooms(prev => prev || []));
+    get(CFG.menusUrl).then(d => setMenu(Array.isArray(d.items) ? d.items : [])).catch(() => setMenu(prev => prev || []));
   }, []);
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 8000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const clear = () => { setRoomName(''); setQty({}); setError(''); };
 
   const OPEN = ['Booked', 'Arrived', 'Checked In'];
   const guests = (rooms || []).filter(r => r.reservation && OPEN.indexOf(r.reservation.status) !== -1);
@@ -329,17 +339,18 @@ function NewOrderModal({ onClose, onPlaced }) {
       }),
     })
       .then(r => r.json().then(d => (r.ok ? d : Promise.reject(d))))
-      .then(() => onPlaced(chosen))
+      .then(() => { onPlaced(chosen); clear(); load(); })
       .catch(err => setError((err && err.message) || 'The order could not be placed. Try again.'))
       .finally(() => setSaving(false));
   };
 
   return (
-    <div className="rs-modal-back" onClick={onClose}>
-      <div className="rs-modal" role="dialog" aria-modal="true" aria-label="New room-service order" onClick={e => e.stopPropagation()}>
-        <h2 className="font-display">New Room Service Order</h2>
-        <p className="rs-sub">Order for a guest booked into a room. It goes straight to the Restaurant kitchen and is added to the guest&rsquo;s bill.</p>
+    <section className="rs-panel rs-order" aria-label="Order room service for a guest">
+        <h2 className="font-display">Order for a Guest</h2>
+        <p className="rs-sub">Pick a guest booked into a room and the food. It goes straight to the Restaurant kitchen and is added to the guest&rsquo;s bill.</p>
 
+        <div className="rs-order-grid">
+        <div>
         <label className="rs-label" htmlFor="rs-guest">Guest</label>
         {rooms === null ? <p className="rs-sub">Loading guests&hellip;</p> : guests.length === 0 ? (
           <p className="rs-sub">No guest is booked into a room right now. Book one on Walk-in Guests or the website first.</p>
@@ -351,7 +362,9 @@ function NewOrderModal({ onClose, onPlaced }) {
             ))}
           </select>
         )}
+        </div>
 
+        <div>
         <span className="rs-label">Food</span>
         {menu === null ? <p className="rs-sub">Loading the menu&hellip;</p> : menu.length === 0 ? (
           <p className="rs-sub">The restaurant has no dishes on its menu yet.</p>
@@ -377,24 +390,24 @@ function NewOrderModal({ onClose, onPlaced }) {
             ))}
           </div>
         )}
+        </div>
+        </div>
 
         {error ? <p className="rs-error">{error}</p> : null}
         <div className="rs-total">
           <strong>Total {formatPeso(total)}</strong>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" className="rs-btn" onClick={onClose}>Cancel</button>
+            <button type="button" className="rs-btn" onClick={clear} disabled={saving}>Clear</button>
             <button type="button" className="rs-btn rs-btn-solid" disabled={!chosen || !lines.length || saving} onClick={place}>
               <i className="fa-solid fa-paper-plane"></i> {saving ? 'Sending…' : 'Send to Kitchen'}
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </section>
   );
 }
 
 function RoomServicePage({ orders, onBack, onOrdered }) {
-  const [ordering, setOrdering] = useState(false);
   const [notice, setNotice] = useState('');
   const [tab, setTab] = useState('all');
 
@@ -410,7 +423,7 @@ function RoomServicePage({ orders, onBack, onOrdered }) {
   let emptyText = 'Pick another tab to see the rest of the orders.';
   if (roomServiceOrders.length === 0) {
     emptyTitle = 'No room-service orders yet';
-    emptyText = 'Press New Order to order for a booked guest, or wait for a guest to order from the hotel website’s Restaurant page.';
+    emptyText = 'Order for a booked guest above, or wait for a guest to order from the hotel website’s Restaurant page.';
   } else if (tab === 'Completed') {
     emptyTitle = 'Nothing delivered yet';
     emptyText = 'Orders move here once the kitchen has brought them to the guest’s room.';
@@ -428,21 +441,14 @@ function RoomServicePage({ orders, onBack, onOrdered }) {
             page to see where an order is if a guest calls the desk.
           </p>
         </div>
-        <button type="button" className="rs-btn rs-btn-solid" onClick={() => { setNotice(''); setOrdering(true); }}>
-          <i className="fa-solid fa-plus"></i> New Order
-        </button>
       </header>
       {notice ? <p className="rs-notice" role="status">{notice}</p> : null}
-      {ordering ? (
-        <NewOrderModal
-          onClose={() => setOrdering(false)}
-          onPlaced={(room) => {
-            setOrdering(false);
-            setNotice(`Order for ${room.reservation.fullName || 'the guest'} in ${room.name} sent to the Restaurant kitchen.`);
-            if (onOrdered) onOrdered();
-          }}
-        />
-      ) : null}
+      <NewOrderPanel
+        onPlaced={(room) => {
+          setNotice(`Order for ${room.reservation.fullName || 'the guest'} in ${room.name} sent to the Restaurant kitchen.`);
+          if (onOrdered) onOrdered();
+        }}
+      />
 
       <section className="rs-panel">
         <div className="rs-toolbar">
