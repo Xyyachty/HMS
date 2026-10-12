@@ -409,6 +409,10 @@
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
     padding: 0.25rem 0.25rem 0.5rem;
+    /* Snap to the padded edge: without it the first card snapped flush with
+       the track, scrolled the row 4px on load and showed a "previous" arrow
+       with nothing before it. */
+    scroll-padding-inline: 0.25rem;
   }
   .menu-track::-webkit-scrollbar { display: none; }
   .menu-track.is-dragging { scroll-behavior: auto; cursor: grabbing; scroll-snap-type: none; }

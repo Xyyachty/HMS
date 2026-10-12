@@ -494,6 +494,71 @@
     font-family: 'Cormorant Garamond', serif; font-size: 0.95rem; color: var(--accent);
   }
   .menu-food-body { padding: 1.1rem 1.15rem 1.25rem; flex: 1; }
+  /* -- Menu rows ---------------------------------------------------------
+     Same as Template 1: four dishes at a time with the next one showing at the
+     edge, each row sliding left and right on its own. The card width is fixed
+     in the track rather than stretched to fit, which keeps the two rows lined
+     up however many dishes either holds. */
+  .menu-row { position: relative; }
+  .menu-track {
+    display: flex; gap: 1.25rem;
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.25rem 0.25rem 0.5rem;
+    /* Snap to the padded edge: without it the first card snapped flush with
+       the track, scrolled the row 4px on load and showed a "previous" arrow
+       with nothing before it. */
+    scroll-padding-inline: 0.25rem;
+  }
+  .menu-track::-webkit-scrollbar { display: none; }
+  .menu-track.is-dragging { scroll-behavior: auto; cursor: grabbing; scroll-snap-type: none; }
+  .menu-track.is-dragging .menu-food-card { pointer-events: none; }
+  .menu-track > .menu-food-card {
+    /* 4.3 rather than 4: the extra third is the next card showing. */
+    flex: 0 0 calc((100% - 3 * 1.25rem) / 4.3);
+    scroll-snap-align: start;
+  }
+  .menu-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 4;
+    width: 40px; height: 40px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--card); color: var(--accent);
+    border: 1px solid var(--accent); cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    transition: background 0.18s, color 0.18s, transform 0.18s, opacity 0.18s;
+  }
+  .menu-arrow:hover { background: var(--accent); color: #fff; transform: translateY(-50%) scale(1.06); }
+  .menu-arrow.is-prev { left: -6px; }
+  .menu-arrow.is-next { right: -6px; }
+  /* Nothing further that way: the arrow goes rather than sitting there dead. */
+  .menu-arrow[hidden] { display: none; }
+
+  .menu-pager { display: flex; align-items: center; justify-content: center; gap: 0.4rem; flex-wrap: wrap; }
+  .menu-page-btn {
+    min-width: 38px; height: 38px; padding: 0 0.7rem; border-radius: 10px;
+    background: var(--card); color: var(--fg-muted);
+    border: 1px solid var(--border); cursor: pointer;
+    font-family: inherit; font-size: 0.82rem; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: border-color 0.18s, color 0.18s, background 0.18s;
+  }
+  .menu-page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .menu-page-btn.is-current { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .menu-page-btn:disabled { opacity: 0.35; cursor: default; }
+
+  @media (max-width: 1024px) {
+    .menu-track > .menu-food-card { flex-basis: calc((100% - 2 * 1.25rem) / 3.3); }
+  }
+  @media (max-width: 780px) {
+    .menu-track > .menu-food-card { flex-basis: calc((100% - 1.25rem) / 2.2); }
+    .menu-arrow { width: 34px; height: 34px; }
+  }
+  @media (max-width: 520px) {
+    .menu-track > .menu-food-card { flex-basis: 78%; }
+  }
   .room-modal-img { position: relative; height: 220px; overflow: hidden; }
   .room-modal-img img { width: 100%; height: 100%; object-fit: cover; }
   .room-photo-dots {
@@ -5296,6 +5361,208 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
 
 /* â•â•â•â•â•â•â• RESTAURANT â•â•â•â•â•â•â• */
 
+/* -- The menu, two rows at a time ----------------------------------------
+   Four dishes across with the next one showing at the edge. The page holds a
+   fixed number so the footer stays where it is rather than being pushed down a
+   course at a time, and each row slides through its own share of them. */
+
+const MENU_ROW_SIZE = 8;                       // dishes per row on a page
+const MENU_PAGE_SIZE = MENU_ROW_SIZE * 2;      // two rows to a page
+
+/**
+ * One page of a category, split into the two rows that show it.
+ *
+ * Split down the middle rather than filled row by row, so a page of nine is
+ * five and four instead of eight and one - two rows of roughly the same length
+ * read as a block, and one full row above a nearly empty one reads as a
+ * mistake.
+ */
+function menuPageRows(items, page) {
+  const list = items || [];
+  const pageCount = Math.max(1, Math.ceil(list.length / MENU_PAGE_SIZE));
+  const current = Math.min(Math.max(1, page || 1), pageCount);
+  const onPage = list.slice((current - 1) * MENU_PAGE_SIZE, current * MENU_PAGE_SIZE);
+  const split = Math.ceil(onPage.length / 2);
+
+  return {
+    pageCount,
+    page: current,
+    rowOne: onPage.slice(0, split),
+    rowTwo: onPage.slice(split),
+  };
+}
+
+/**
+ * One sliding row.
+ *
+ * The track is an ordinary scroll container, so a touch swipe and a trackpad's
+ * sideways flick already work and cost nothing; the arrows and the drag are
+ * what has to be added for a mouse. Each row keeps its own scroll position -
+ * they are separate elements, so neither can move the other.
+ */
+function MenuRow({ items, renderCard, resetKey }) {
+  const trackRef = React.useRef(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+  const drag = React.useRef(null);
+
+  const measure = React.useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    // A pixel of slack: sub-pixel widths otherwise leave an arrow enabled at
+    // the very end of a row that cannot move any further.
+    const max = el.scrollWidth - el.clientWidth;
+    setCanPrev(el.scrollLeft > 1);
+    setCanNext(el.scrollLeft < max - 1);
+  }, []);
+
+  useEffect(() => {
+    measure();
+    const el = trackRef.current;
+    if (!el) return undefined;
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [measure, items]);
+
+  /* Back to the beginning when the category or the page changes: the dish that
+     was on screen is not in this row any more, so where it had been scrolled to
+     means nothing. */
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const behavior = el.style.scrollBehavior;
+    el.style.scrollBehavior = 'auto';
+    el.scrollLeft = 0;
+    el.style.scrollBehavior = behavior;
+    measure();
+  }, [resetKey, measure]);
+
+  const step = (direction) => {
+    const el = trackRef.current;
+    if (!el) return;
+    const card = el.querySelector('.menu-food-card');
+    const width = card ? card.getBoundingClientRect().width + 20 : el.clientWidth * 0.8;
+    // Two at a time: one card at a time reads as a nudge rather than a move.
+    el.scrollBy({ left: direction * width * 2, behavior: 'smooth' });
+  };
+
+  /* Dragging with a mouse. Pointer events cover pen and touch too, but touch
+     already scrolls the track itself, so those are left alone. */
+  const onPointerDown = (e) => {
+    if (e.pointerType === 'touch' || e.button !== 0) return;
+    const el = trackRef.current;
+    if (!el) return;
+    drag.current = { x: e.clientX, left: el.scrollLeft, moved: false, id: e.pointerId };
+  };
+
+  const onPointerMove = (e) => {
+    const el = trackRef.current;
+    const state = drag.current;
+    if (!el || !state) return;
+    const dx = e.clientX - state.x;
+    if (!state.moved) {
+      if (Math.abs(dx) < 4) return;
+      state.moved = true;
+      el.classList.add('is-dragging');
+      if (el.setPointerCapture) { try { el.setPointerCapture(state.id); } catch (err) { /* ignore */ } }
+    }
+    el.scrollLeft = state.left - dx;
+    measure();
+  };
+
+  const endDrag = () => {
+    const el = trackRef.current;
+    const state = drag.current;
+    drag.current = null;
+    if (!el || !state) return;
+    if (state.moved) {
+      el.classList.remove('is-dragging');
+      if (el.releasePointerCapture) { try { el.releasePointerCapture(state.id); } catch (err) { /* ignore */ } }
+      /* Letting go at the end of a drag is still a click as far as the card
+         underneath is concerned, and it would open a dish the guest was only
+         sliding past. Swallowed once, on the way down. */
+      const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+      el.addEventListener('click', swallow, true);
+      setTimeout(() => el.removeEventListener('click', swallow, true), 0);
+    }
+  };
+
+  if (!items.length) return null;
+
+  return (
+    <div className="menu-row">
+      <button
+        type="button"
+        className="menu-arrow is-prev"
+        hidden={!canPrev}
+        aria-label="Previous dishes"
+        data-hms-no-edit="1"
+        onClick={() => step(-1)}
+      ><i className="fa-solid fa-chevron-left" style={{ fontSize: '0.8rem' }}></i></button>
+
+      <div
+        className="menu-track"
+        ref={trackRef}
+        onScroll={measure}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onPointerLeave={endDrag}
+      >
+        {items.map(renderCard)}
+      </div>
+
+      <button
+        type="button"
+        className="menu-arrow is-next"
+        hidden={!canNext}
+        aria-label="More dishes"
+        data-hms-no-edit="1"
+        onClick={() => step(1)}
+      ><i className="fa-solid fa-chevron-right" style={{ fontSize: '0.8rem' }}></i></button>
+    </div>
+  );
+}
+
+/** Previous, the page numbers, next. */
+function MenuPager({ page, pageCount, onPage }) {
+  if (pageCount < 2) return null;
+
+  const numbers = [];
+  for (let i = 1; i <= pageCount; i++) numbers.push(i);
+
+  return (
+    <div className="menu-pager" data-hms-no-edit="1">
+      <button
+        type="button"
+        className="menu-page-btn"
+        disabled={page <= 1}
+        aria-label="Previous page"
+        onClick={() => onPage(page - 1)}
+      ><i className="fa-solid fa-chevron-left" style={{ fontSize: '0.7rem' }}></i></button>
+
+      {numbers.map((n) => (
+        <button
+          key={n}
+          type="button"
+          className={'menu-page-btn' + (n === page ? ' is-current' : '')}
+          aria-current={n === page ? 'page' : undefined}
+          onClick={() => onPage(n)}
+        >{n}</button>
+      ))}
+
+      <button
+        type="button"
+        className="menu-page-btn"
+        disabled={page >= pageCount}
+        aria-label="Next page"
+        onClick={() => onPage(page + 1)}
+      ><i className="fa-solid fa-chevron-right" style={{ fontSize: '0.7rem' }}></i></button>
+    </div>
+  );
+}
+
 /* ── The menu's own dialogs ────────────────────────────────────────────────
    window.prompt() would work, but it announces the hostname above the
    question — "hms-….onrender.com says" — which reads like the site is talking
@@ -5650,6 +5917,20 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
   const [cartOpen, setCartOpen] = useState(false);
   const filteredMenus = menuList.filter(item => menuCategoryKey(item.category, menuTabs) === menuTab);
 
+  /* The page of the category on screen, and the two rows it splits into. A
+     page holds a fixed number so the footer sits under the menu rather than a
+     screen and a half below it; the rows slide through the page's own dishes. */
+  const [menuPage, setMenuPage] = useState(1);
+  const { pageCount, page: currentPage, rowOne, rowTwo } = menuPageRows(filteredMenus, menuPage);
+
+  // A category read to page three, then narrowed to one page: the page being
+  // asked for no longer exists.
+  useEffect(() => { setMenuPage(1); }, [menuTab]);
+  useEffect(() => { if (menuPage !== currentPage) setMenuPage(currentPage); }, [menuPage, currentPage]);
+
+  // Both rows go back to their start when either of these changes.
+  const rowReset = menuTab + ':' + currentPage;
+
   // Keyed by dbId: adding the same dish twice bumps its quantity rather than
   // creating a second line the kitchen would read as two separate requests.
   const addToCart = (item, qty) => {
@@ -5765,6 +6046,46 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
     });
   };
 
+
+  // One dish, as each sliding row draws it.
+  const renderMenuCard = (item) => (
+    <div key={item.id || item.name} className="menu-food-card" data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined} style={{ position: 'relative', cursor: 'pointer' }}
+      onClick={() => setSelectedMenuId(item.id)}>
+      {canManageMenus && (
+        <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
+          data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
+          <CardColorButton kind="menu" label="Card colour (all menu cards)" />
+          <button type="button" title="Change image" onClick={() => handleMenuImage(item)} style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
+          <button type="button" title="Edit item" onClick={() => handleEdit(item)} style={toolBtnStyle('edit')}><i className="fa-solid fa-pen" style={{fontSize:10}}></i></button>
+          <button type="button" title="Remove item" onClick={() => handleRemove(item)} style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
+        </div>
+      )}
+      <div className="menu-food-img">
+        <img
+          src={menuFoodImg(item)}
+          alt={item.name}
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            const fallback = e.currentTarget.nextElementSibling;
+            if (fallback) fallback.style.display = 'flex';
+          }}
+        />
+        <div className="menu-food-img-fallback" style={{ display: 'none' }}>
+          <i className="fa-solid fa-utensils" style={{ fontSize: '1.6rem', color: 'var(--accent)' }}></i>
+        </div>
+        <div className="menu-food-price">{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}</div>
+      </div>
+      <div className="menu-food-body">
+        <p style={{ margin: '0 0 0.35rem', color: 'var(--warm)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          {menuCategoryKey(item.category, menuTabs)}
+        </p>
+        <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 0.4rem' }}>{item.name}</h3>
+        <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.8rem', fontWeight: 400, lineHeight: 1.5 }}>{item.sub}</p>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNav={onNav} cardImages={cardImages} canEditImage={canEditMenuColor} onToast={onToast} />
@@ -5848,45 +6169,15 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
         {filteredMenus.length === 0 ? (
           <EmptyState text={`No items in ${menuTab} yet.`} />
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.15rem', marginTop: '1.25rem' }}>
-            {filteredMenus.map(item => (
-              <div key={item.id || item.name} className="menu-food-card" data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined} style={{ position: 'relative', cursor: 'pointer' }}
-                onClick={() => setSelectedMenuId(item.id)}>
-                {canManageMenus && (
-                  <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
-                    data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
-                    <CardColorButton kind="menu" label="Card colour (all menu cards)" />
-                    <button type="button" title="Change image" onClick={() => handleMenuImage(item)} style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
-                    <button type="button" title="Edit item" onClick={() => handleEdit(item)} style={toolBtnStyle('edit')}><i className="fa-solid fa-pen" style={{fontSize:10}}></i></button>
-                    <button type="button" title="Remove item" onClick={() => handleRemove(item)} style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
-                  </div>
-                )}
-                <div className="menu-food-img">
-                  <img
-                    src={menuFoodImg(item)}
-                    alt={item.name}
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      const fallback = e.currentTarget.nextElementSibling;
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
-                  />
-                  <div className="menu-food-img-fallback" style={{ display: 'none' }}>
-                    <i className="fa-solid fa-utensils" style={{ fontSize: '1.6rem', color: 'var(--accent)' }}></i>
-                  </div>
-                  <div className="menu-food-price">{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}</div>
-                </div>
-                <div className="menu-food-body">
-                  <p style={{ margin: '0 0 0.35rem', color: 'var(--warm)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                    {menuCategoryKey(item.category, menuTabs)}
-                  </p>
-                  <h3 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 0.4rem' }}>{item.name}</h3>
-                  <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.8rem', fontWeight: 400, lineHeight: 1.5 }}>{item.sub}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <>
+            <div style={{ display: 'grid', gap: '1.25rem', marginTop: '1.25rem' }}>
+              <MenuRow items={rowOne} resetKey={rowReset} renderCard={renderMenuCard} />
+              <MenuRow items={rowTwo} resetKey={rowReset} renderCard={renderMenuCard} />
+            </div>
+            <div style={{ marginTop: '2rem' }}>
+              <MenuPager page={currentPage} pageCount={pageCount} onPage={setMenuPage} />
+            </div>
+          </>
         )}
 
         {canManageMenus ? (
@@ -5933,9 +6224,6 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
           </button>
         </div>
       )}
-      <div style={{ textAlign: 'center', paddingBottom: '5rem' }}>
-        <button className="btn-warm" onClick={() => onNav('booking')}>Book a Table <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i></button>
-      </div>
       <MenuTextModal
         open={categoryOpen}
         title="Add Menu Category"
