@@ -204,6 +204,12 @@
         }
         .tool-card:hover .tool-icon { transform: scale(1.05); }
 
+        /* SweetAlert2's heightAuto sets body to height:auto while a dialog is open
+           (Submit Changes asks first). This page is one h-screen flex column, so
+           the canvas grew to the full height of its content behind the dialog.
+           Keep the body at the viewport height instead. */
+        html body.swal2-height-auto { height: 100vh !important; }
+
         /* ── CANVAS AREA ── */
         .canvas-bg {
             background: #18181b;
