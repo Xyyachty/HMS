@@ -735,23 +735,6 @@
                     </div>
 
                 </div>
-
-                {{-- Closing banner: the same photo the landing page uses, behind a light
-                     wash so the headline stays readable. --}}
-                <div class="relative rounded-2xl overflow-hidden border border-slate-100 min-h-[185px] flex items-center"
-                     style="background-image: linear-gradient(90deg, rgba(255,255,255,.97) 0%, rgba(255,255,255,.90) 38%, rgba(251,238,233,.55) 68%, rgba(74,13,28,.18) 100%), url('{{ asset('images/hotel/try.jpg') }}'); background-size: cover; background-position: center;">
-                    <div class="px-6 sm:px-10 py-7 w-full flex flex-wrap items-end justify-between gap-4">
-                        <div class="min-w-0 max-w-xl">
-                            <h3 class="text-2xl sm:text-[38px] font-extrabold tracking-tight text-slate-900 leading-[1.1]">
-                                Great Hospitality<br class="hidden sm:block"> Starts with You.
-                            </h3>
-                            <p class="text-[13px] sm:text-sm text-slate-600 mt-3">Develop your skills. Work as a team. Make every guest feel at home.</p>
-                        </div>
-                        <p class="text-lg sm:text-2xl font-semibold italic text-brand-dark shrink-0 border-b-2 border-brand-light pb-1">
-                            Same People, Brighter Stays.
-                        </p>
-                    </div>
-                </div>
             </div>
 
 
