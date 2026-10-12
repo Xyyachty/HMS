@@ -3817,10 +3817,7 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
 }
 
 function MobileMenu({ open, onClose, onNav, links, cardImages, brandName }) {
-  const items = [
-    ...(links || []),
-    { key: 'booking', label: 'Book Now' },
-  ];
+  const items = [...(links || [])];
   // Passed only so the menu re-renders when the shared logo changes.
   void cardImages;
   return (
@@ -3838,7 +3835,7 @@ function MobileMenu({ open, onClose, onNav, links, cardImages, brandName }) {
 }
 
 /* The header's shape never changes: the logo and the hotel name on the left,
-   the same five links plus Book Now on the right, in that order. A student
+   the same five links on the right, in that order. A student
    clicks a piece of it in Design mode and gets a dialog for that piece's
    wording; nothing here can be dragged, resized, restyled, added to or removed.
 
@@ -3914,9 +3911,6 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, ed
               >{l.label}</button>
             </div>
           ))}
-          <button className="btn-primary" onClick={(e) => { if (editing) { e.preventDefault(); return; } onNav('booking'); }} style={{ fontSize: '0.72rem', padding: '0.5rem 1.2rem' }}>
-            <i className="fa-regular fa-calendar" style={{ fontSize: '0.7rem' }}></i> Book Now
-          </button>
         </div>
         {/* The way in for a guest. Nothing to do with the HMS login that put the
             student here - this is the hotel's own front door. */}
@@ -5922,12 +5916,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
           </button>
         </div>
       )}
-      <Divider />
-      <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem 5rem' }}>
-        <button className="btn-warm" onClick={() => onNav('booking')}>
-          Book Your Stay <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
-        </button>
-      </div>
+      <div style={{ paddingBottom: '3rem' }} />
       <RoomDetailModal
         room={selectedRoom}
         addons={addons}
