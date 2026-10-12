@@ -252,8 +252,10 @@
                                          editor, an operations task opens Simulation, and the
                                          concept task goes to My Team, where the proposals are
                                          written. A task with no area of its own opens its own
-                                         details, which is all there is to go to. --}}
-                                    @if($task->is_hotel_concept)
+                                         details, which is all there is to go to. Once faculty
+                                         approve the task there is nothing left to do, so none. --}}
+                                    @if($isCompleted)
+                                    @elseif($task->is_hotel_concept)
                                         <button type="button" onclick="showSection('group')"
                                                 title="Write the concepts in My Team"
                                                 class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl brand-gradient text-white text-[12px] font-bold shadow-md shadow-brand/20 hover:opacity-90 transition whitespace-nowrap">
