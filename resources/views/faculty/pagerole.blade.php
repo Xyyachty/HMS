@@ -365,10 +365,10 @@
        Spelled out for the same reason: the frozen build has no hover shade for
        either colour. */
     .btn-revise {
-        background:#D97706; color:#fff; border:1px solid #B45309;
-        box-shadow:0 4px 12px -2px rgba(217,119,6,.35);
+        background:#F97316; color:#fff; border:1px solid #EA580C;
+        box-shadow:0 4px 12px -2px rgba(249,115,22,.35);
     }
-    .btn-revise:hover { background:#B45309; }
+    .btn-revise:hover { background:#EA580C; }
     .btn-approve {
         background:#16A34A; color:#fff; border:1px solid #15803D;
         box-shadow:0 4px 12px -2px rgba(22,163,74,.35);
