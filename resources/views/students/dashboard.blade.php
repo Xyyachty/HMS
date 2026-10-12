@@ -2251,7 +2251,6 @@
             ) || 0;
 
             document.getElementById('navTasksBadge')?.classList.toggle('hidden', active === 0);
-            document.getElementById('activeTasksEmpty')?.classList.toggle('hidden', active > 0);
         }
 
         /* Says what changed, once, when it changes. Without this the cards would
@@ -3025,7 +3024,6 @@
                     el.textContent = String(data.active_count);
                 });
                 document.getElementById('navTasksBadge')?.classList.toggle('hidden', data.active_count === 0);
-                document.getElementById('activeTasksEmpty')?.classList.toggle('hidden', data.active_count > 0);
             } catch (e) { /* a dropped poll is not worth telling anyone about */ }
         }
         syncTasks();

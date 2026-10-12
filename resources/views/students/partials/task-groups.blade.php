@@ -419,13 +419,6 @@
         <p class="text-xs text-slate-400 mt-1">Pick a different status.</p>
     </div>
 
-    <div id="activeTasksEmpty" class="bg-white rounded-2xl border border-[#E7E1DD] px-6 py-12 text-center{{ $myRoleTasks->count() > 0 ? ' hidden' : '' }}">
-        <div class="w-16 h-16 bg-[#F5F2EF] rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span class="iconify text-[#8A817A] text-3xl" data-icon="mdi:check-decagram-outline"></span>
-        </div>
-        <p class="text-base font-bold text-slate-600">All tasks completed!</p>
-        <p class="text-sm text-slate-400 mt-1">Great job — no pending tasks for your role.</p>
-    </div>
 @else
     <div class="bg-white rounded-2xl border border-[#E7E1DD] px-6 py-12 text-center">
         <div class="w-16 h-16 bg-[#F5F2EF] rounded-2xl flex items-center justify-center mx-auto mb-4">
