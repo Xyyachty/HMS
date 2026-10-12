@@ -102,11 +102,11 @@
     #panel-create_task :is(.iconify, svg).text-rose-500 { color: #4A4643; }
     /* A picked team reads neutral dark gray, not the warm brown-gray accent. */
     #panel-create_task .task-team-btn:has(:checked) { border-color: #374151; background-color: #F3F4F6; }
-    /* A ticked task card (setTaskCardSelected adds .border-brand) fills dark gray
+    /* A ticked task card (setTaskCardSelected adds .border-brand) fills neutral dark gray (no blue tint)
        with white text, so the picked tasks stand out from the white ones. */
-    #panel-create_task .task-card.border-brand { border-color: #374151; background-color: #374151; box-shadow: none; }
+    #panel-create_task .task-card.border-brand { border-color: #404040; background-color: #404040; box-shadow: none; }
     #panel-create_task .task-card.border-brand :is(p, button, button .iconify) { color: #fff; }
-    #panel-create_task .task-card.border-brand p.text-slate-400 { color: #D1D5DB; }
+    #panel-create_task .task-card.border-brand p.text-slate-400 { color: #D4D4D4; }
     /* Checkboxes are native (text-brand isn't in the frozen build), so they tick
        browser blue; dark gray here, white on a filled task card. */
     #panel-create_task input[type="checkbox"] { accent-color: #374151; }
