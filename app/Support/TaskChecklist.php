@@ -178,7 +178,7 @@ class TaskChecklist
                 // Last, not beside Branding: taskNumber() counts by position, so
                 // an entry slotted in earlier would renumber every task after it.
                 'title' => 'Customize the Sign In',
-                'description' => 'Customize the Sign in button in the header and the words guests read inside the sign-in window, so your hotel welcomes its guests in its own words.',
+                'description' => 'Change the words on the Sign in button at the top of your website, and the words inside the window guests use to sign in or create an account, so they match your hotel.',
             ],
         ],
 
@@ -455,11 +455,11 @@ class TaskChecklist
             'Remove unnecessary highlights and review the section to make sure everything matches your hotel.',
         ],
         'Customize the Sign In' => [
-            'Open the Sign In Editor: in Design mode, click the Sign in button in the header.',
-            'Rename the Header Button: change the Sign in button text, such as "Guest Login" or "Member Sign In."',
-            'Edit the Sign In Window: change the title, the welcome message, and the button guests click to sign in.',
-            'Edit the Sign Up Window: change the title, the message, and the button new guests click to create an account.',
-            'Check Your Changes: click View Live, click the Sign in button, and make sure every word matches your hotel.',
+            'Open the window: click the Design tab, then click the "Sign in" button at the top-right of your website. A window called "Customize Sign In" opens.',
+            'Step 1 in the window: type new words for the Sign in button, such as "Guest Login."',
+            'Step 2 in the window: type the heading, the short message, and the button words guests see when they sign in. The Preview under the boxes shows how it will look.',
+            'Step 3 in the window: do the same for the window new guests use to create an account.',
+            'Click Save. Then click View Live, click your new button, and check that every word is correct and spelled right.',
         ],
     ];
 

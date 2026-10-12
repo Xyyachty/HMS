@@ -2859,14 +2859,56 @@ function Toast({ message, visible }) {
    an empty field means "use the default". Shared by the dialog that edits them
    and the dialog that shows them, so the two can never disagree. */
 const GUEST_AUTH_TEXT = [
-  { key: 'buttonLabel', label: 'Header button', fallback: 'Sign in', maxLength: 24 },
-  { key: 'signinTitle', label: 'Sign in title', fallback: 'Sign in', maxLength: 60 },
-  { key: 'signinIntro', label: 'Sign in message', fallback: 'Sign in to book a room and manage your stay.', maxLength: 200 },
-  { key: 'signinSubmit', label: 'Sign in button', fallback: 'Sign in', maxLength: 24 },
-  { key: 'signupTitle', label: 'Sign up title', fallback: 'Create your account', maxLength: 60 },
-  { key: 'signupIntro', label: 'Sign up message', fallback: 'Your details and a photo of your ID - the rest we take when you book.', maxLength: 200 },
-  { key: 'signupSubmit', label: 'Sign up button', fallback: 'Create account', maxLength: 24 },
+  { key: 'buttonLabel', section: 'button', label: 'Button text', help: 'Example: Guest Login', fallback: 'Sign in', maxLength: 24 },
+  { key: 'signinTitle', section: 'signin', label: 'Heading', help: 'The big words at the top. Example: Welcome Back', fallback: 'Sign in', maxLength: 60 },
+  { key: 'signinIntro', section: 'signin', label: 'Message', help: 'One or two short sentences under the heading.', fallback: 'Sign in to book a room and manage your stay.', maxLength: 200 },
+  { key: 'signinSubmit', section: 'signin', label: 'Button text', help: 'The button guests press to sign in. Example: Log In', fallback: 'Sign in', maxLength: 24 },
+  { key: 'signupTitle', section: 'signup', label: 'Heading', help: 'The big words at the top. Example: Join Our Hotel', fallback: 'Create your account', maxLength: 60 },
+  { key: 'signupIntro', section: 'signup', label: 'Message', help: 'One or two short sentences under the heading.', fallback: 'Your details and a photo of your ID - the rest we take when you book.', maxLength: 200 },
+  { key: 'signupSubmit', section: 'signup', label: 'Button text', help: 'The button new guests press. Example: Create My Account', fallback: 'Create account', maxLength: 24 },
 ];
+
+/* What each group is, in words a hotel student uses, and a small picture of the
+   thing it changes so nobody has to guess which "button" or "heading" is meant. */
+const GUEST_AUTH_SECTIONS = [
+  { key: 'button', title: 'Step 1 · The Sign in button', help: 'The small button at the top-right of every page of your website. Guests click it to sign in.' },
+  { key: 'signin', title: 'Step 2 · The sign-in window', help: 'Opens when a guest clicks the button. Guests who already have an account type their email and password here.' },
+  { key: 'signup', title: 'Step 3 · The create-account window', help: 'For new guests who have no account yet. They open it with the "Sign Up" link in the sign-in window.' },
+];
+
+function GuestAuthPreview({ section, values }) {
+  const text = (key) => (values[key] || '').trim() || GUEST_AUTH_TEXT.find((f) => f.key === key).fallback;
+  const box = { border: '1px dashed var(--border)', borderRadius: 8, padding: '0.75rem', background: 'var(--bg)', marginTop: '0.4rem' };
+  const caption = { fontSize: '0.62rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', margin: 0 };
+  const button = { display: 'inline-block', background: 'var(--accent)', color: '#fff', borderRadius: 6, padding: '0.35rem 0.8rem', fontSize: '0.72rem', fontWeight: 600 };
+  const fieldBox = { border: '1px solid var(--border)', borderRadius: 5, padding: '0.25rem 0.5rem', fontSize: '0.66rem', color: 'var(--fg-muted)', margin: '0.3rem 0' };
+
+  if (section === 'button') {
+    return (
+      <div style={box}>
+        <p style={caption}>Preview</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.4rem' }}>
+          <span style={{ border: '1px solid var(--fg-muted)', borderRadius: 6, padding: '0.3rem 0.8rem', fontSize: '0.7rem', color: 'var(--fg)' }}>{text('buttonLabel')}</span>
+        </div>
+      </div>
+    );
+  }
+
+  const prefix = section === 'signin' ? 'signin' : 'signup';
+  return (
+    <div style={box}>
+      <p style={caption}>Preview</p>
+      <div style={{ marginTop: '0.4rem' }}>
+        <p style={{ fontWeight: 700, fontSize: '0.95rem', margin: '0 0 0.2rem', color: 'var(--fg)' }}>{text(prefix + 'Title')}</p>
+        <p style={{ fontSize: '0.72rem', margin: '0 0 0.5rem', color: 'var(--fg-muted)', lineHeight: 1.45 }}>{text(prefix + 'Intro')}</p>
+        {(section === 'signin' ? ['Email address', 'Password'] : ['Full name', 'Email address']).map((label) => (
+          <div key={label} style={fieldBox}>{label}</div>
+        ))}
+        <div style={{ marginTop: '0.55rem' }}><span style={button}>{text(prefix + 'Submit')}</span></div>
+      </div>
+    </div>
+  );
+}
 const guestText = (texts, key) => (texts && texts[key]) || GUEST_AUTH_TEXT.find((f) => f.key === key).fallback;
 
 function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice, texts }) {
@@ -3123,7 +3165,7 @@ function HeaderEditModal({ edit, openedFor, onSave, onCancel }) {
       aria-label={edit.title}
       onClick={onCancel}
     >
-      <div className="facility-modal" style={{ width: 'min(420px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+      <div className="facility-modal" style={{ width: edit.mode === 'fields' ? 'min(540px, 100%)' : 'min(420px, 100%)', padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
         <h3 className="font-display" style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>{edit.title}</h3>
 
         {edit.mode === 'text' ? (
@@ -3148,37 +3190,54 @@ function HeaderEditModal({ edit, openedFor, onSave, onCancel }) {
           </React.Fragment>
         ) : edit.mode === 'fields' ? (
           <React.Fragment>
-            <div style={{ maxHeight: '55vh', overflowY: 'auto', paddingRight: '0.25rem' }}>
-              {edit.fields.map((f, i) => (
-                <div key={f.key} style={{ marginBottom: '0.85rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>
-                    {f.label}
-                  </label>
-                  {f.maxLength > 60 ? (
-                    <textarea
-                      className="header-modal-field"
-                      rows={2}
-                      value={fieldValues[f.key] || ''}
-                      maxLength={f.maxLength}
-                      placeholder={f.fallback}
-                      onChange={(e) => { const v = e.target.value; setFieldValues((prev) => Object.assign({}, prev, { [f.key]: v })); }}
-                      style={{ resize: 'vertical' }}
-                    />
-                  ) : (
-                    <input
-                      className="header-modal-field"
-                      type="text"
-                      value={fieldValues[f.key] || ''}
-                      maxLength={f.maxLength}
-                      placeholder={f.fallback}
-                      autoFocus={i === 0}
-                      onChange={(e) => { const v = e.target.value; setFieldValues((prev) => Object.assign({}, prev, { [f.key]: v })); }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); submit(); }
-                        if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
-                      }}
-                    />
+            {edit.intro && (
+              <p style={{ fontSize: '0.8rem', color: 'var(--fg-muted)', lineHeight: 1.55, margin: '-0.4rem 0 1rem' }}>{edit.intro}</p>
+            )}
+            <div style={{ maxHeight: '58vh', overflowY: 'auto', paddingRight: '0.25rem' }}>
+              {(edit.sections || [{ key: null }]).map((section, si) => (
+                <div key={section.key || 'all'} style={{ marginBottom: '1.3rem' }}>
+                  {section.title && (
+                    <React.Fragment>
+                      <p style={{ fontWeight: 700, fontSize: '0.92rem', margin: '0 0 0.2rem', color: 'var(--fg)' }}>{section.title}</p>
+                      <p style={{ fontSize: '0.76rem', color: 'var(--fg-muted)', lineHeight: 1.5, margin: '0 0 0.7rem' }}>{section.help}</p>
+                    </React.Fragment>
                   )}
+                  {edit.fields.filter((f) => !section.key || f.section === section.key).map((f, i) => (
+                    <div key={f.key} style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.3rem' }}>
+                        {f.label}
+                      </label>
+                      {f.maxLength > 60 ? (
+                        <textarea
+                          className="header-modal-field"
+                          rows={2}
+                          value={fieldValues[f.key] || ''}
+                          maxLength={f.maxLength}
+                          placeholder={f.fallback}
+                          onChange={(e) => { const v = e.target.value; setFieldValues((prev) => Object.assign({}, prev, { [f.key]: v })); }}
+                          style={{ resize: 'vertical' }}
+                        />
+                      ) : (
+                        <input
+                          className="header-modal-field"
+                          type="text"
+                          value={fieldValues[f.key] || ''}
+                          maxLength={f.maxLength}
+                          placeholder={f.fallback}
+                          autoFocus={si === 0 && i === 0}
+                          onChange={(e) => { const v = e.target.value; setFieldValues((prev) => Object.assign({}, prev, { [f.key]: v })); }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); submit(); }
+                            if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+                          }}
+                        />
+                      )}
+                      {f.help && (
+                        <p style={{ fontSize: '0.7rem', color: 'var(--fg-muted)', margin: '0.25rem 0 0' }}>{f.help}</p>
+                      )}
+                    </div>
+                  ))}
+                  {section.key && edit.renderPreview && edit.renderPreview(section.key, fieldValues)}
                 </div>
               ))}
             </div>
@@ -8391,8 +8450,11 @@ function App() {
         ? {
             mode: 'fields',
             title: 'Customize Sign In',
+            intro: 'Change the words guests see when they sign in to your hotel website. Type in the boxes and the Preview under each step shows how it will look. Nothing changes on your website until you click Save.',
+            sections: GUEST_AUTH_SECTIONS,
             fields: GUEST_AUTH_TEXT.map((f) => Object.assign({}, f, { value: guestTexts[f.key] || f.fallback })),
-            hint: 'The Sign in button in the header and the words inside the guest sign-in window. Leave a box empty to use the original words.',
+            renderPreview: (section, values) => <GuestAuthPreview section={section} values={values} />,
+            hint: 'Tip: empty a box to bring back the original words.',
           }
       : headerEdit.kind === 'partner'
         ? {
@@ -8440,7 +8502,7 @@ function App() {
     if (headerEdit.kind === 'signin') {
       if (content.setGuestAuth && content.setGuestAuth(value)) {
         setGuestTextsState(content.getGuestAuth());
-        showToast('Sign in text updated');
+        showToast('Sign in words saved');
       }
       setHeaderEdit(null);
       return;
