@@ -733,6 +733,12 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
             return back()->withErrors(['task' => 'This task has already been submitted.']);
         }
 
+        // Nothing saved on it yet: opening the editor or saving unchanged work
+        // does not count. A send-back clears it, so a resubmission needs a new change.
+        if (!$task->is_started) {
+            return back()->withErrors(['task' => Task::NO_CHANGES_MESSAGE]);
+        }
+
         // Freeze the work as handed in, so the faculty review can show what changed
         // between this submission and the last one. The previous anchor slides down
         // to become the "Before" side.

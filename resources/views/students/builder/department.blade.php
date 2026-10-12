@@ -1368,6 +1368,7 @@
                 // work; posting the whole merged site here used to write a stale
                 // copy of teammates' shared content back over theirs.
                 if (window.hmsBuilder) await window.hmsBuilder.flush();
+                await pendingTaskStart;
 
                 const res = await fetch(@json(route('students.templates.submit', ['role' => $builderRole])), {
                     method: 'POST',
@@ -1686,13 +1687,25 @@
            Not Started to In Progress. Only the picked one: a department's tasks
            share a page, so nothing else says which task an edit belongs to. Posted
            once per task; the server ignores a task already started. */
+        // Tasks already reported this visit, and the last report still in flight:
+        // Submit Changes waits for it, or the server could judge the task
+        // unchanged a moment before the report lands.
+        const reportedStartedTaskIds = new Set();
+        let pendingTaskStart = Promise.resolve();
+
         function markAssignedTaskStarted() {
             const task = assignedTasks.find(function (t) { return t.id === activeAssignedTaskId; });
-            if (!task || task.is_concept || task.status !== 'not_started') return;
-            task.status = 'in_progress';
-            task.status_label = 'In Progress';
-            renderAssignedTaskPage();
-            fetch('/students/tasks/' + task.id + '/started', {
+            if (!task || task.is_concept || task.status === 'in_progress' || task.status === 'completed') return;
+            if (reportedStartedTaskIds.has(task.id)) return;
+            reportedStartedTaskIds.add(task.id);
+            // A sent-back task keeps its Revision Required label; the change only
+            // counts towards resubmitting it.
+            if (task.status === 'not_started') {
+                task.status = 'in_progress';
+                task.status_label = 'In Progress';
+                renderAssignedTaskPage();
+            }
+            pendingTaskStart = fetch('/students/tasks/' + task.id + '/started', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
@@ -1700,7 +1713,9 @@
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 },
-            }).then(function () { syncAssignedTasks(); }).catch(function () {});
+            }).then(function () { syncAssignedTasks(); }).catch(function () {
+                reportedStartedTaskIds.delete(task.id);
+            });
         }
 
         // Rooms, menu items and amenities save outside the template save; the

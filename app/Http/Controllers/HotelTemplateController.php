@@ -222,32 +222,24 @@ class HotelTemplateController extends Controller
             return $failed;
         }
 
+        $tasks = $this->openTasksToSubmit($membership, $user, $role);
+
+        // Only tasks a change was saved on are handed in. With open tasks and none
+        // of them changed, nothing is submitted and the student is told why.
+        $unchanged = $tasks->reject(fn (Task $task) => $task->is_started);
+        $tasks = $tasks->filter(fn (Task $task) => $task->is_started)->values();
+        if ($tasks->isEmpty() && $unchanged->isNotEmpty()) {
+            return response()->json([
+                'error' => Task::NO_CHANGES_MESSAGE,
+                'template' => HotelTemplateBuilder::payload($saved, true),
+            ], 422);
+        }
+
         $snapshotId = HotelTemplateBuilder::snapshotForReview(
             $saved,
             $user,
             'Submitted: ' . (HotelTemplateBuilder::ROLES[$role] ?? $role) . ' website'
         );
-
-        // The team's own open rows for this role. The hotel concept is excluded
-        // for the reason it is excluded everywhere else: it closes by submitting
-        // the concepts themselves, not by handing in a website.
-        $tasks = Task::where('faculty_id', $membership->faculty_id)
-            ->where('role', $role)
-            ->where('status', 'active')
-            ->whereNull('kind')
-            ->where(function ($q) use ($membership) {
-                $q->whereRaw('LOWER(group_name) = LOWER(?)', [(string) $membership->group_name])
-                    ->orWhereNull('group_name');
-            })
-            // Rows a teammate already holds are theirs to submit, not this
-            // student's. An unclaimed row stays open to whoever hands it in.
-            ->where(function ($q) use ($user, $membership) {
-                $q->whereNull('assigned_to')->orWhere('assigned_to', $user->user_id);
-            })
-            ->where(function ($q) use ($membership) {
-                $q->whereNull('student_id')->orWhere('student_id', $membership->student_id);
-            })
-            ->get();
 
         // Every task is handed in or none is: a failure halfway used to leave
         // some archived and the rest open, with no way to tell from the screen.
@@ -302,9 +294,39 @@ class HotelTemplateController extends Controller
             // and saved, so say what happened rather than reporting an error.
             'message' => $submitted > 0
                 ? $submitted . ' task' . ($submitted === 1 ? '' : 's') . ' submitted for faculty review.'
+                    . ($unchanged->isNotEmpty()
+                        ? ' ' . $unchanged->count() . ' not submitted — no changes made to '
+                            . ($unchanged->count() === 1 ? 'it' : 'them') . ' yet.'
+                        : '')
                 : 'Your work is saved and frozen for review. You have no open task for this role right now.',
             'template' => HotelTemplateBuilder::payload($saved, true),
         ]);
+    }
+
+    /**
+     * The team's own open rows for this role. The hotel concept is excluded
+     * for the reason it is excluded everywhere else: it closes by submitting
+     * the concepts themselves, not by handing in a website.
+     */
+    private function openTasksToSubmit($membership, $user, string $role)
+    {
+        return Task::where('faculty_id', $membership->faculty_id)
+            ->where('role', $role)
+            ->where('status', 'active')
+            ->whereNull('kind')
+            ->where(function ($q) use ($membership) {
+                $q->whereRaw('LOWER(group_name) = LOWER(?)', [(string) $membership->group_name])
+                    ->orWhereNull('group_name');
+            })
+            // Rows a teammate already holds are theirs to submit, not this
+            // student's. An unclaimed row stays open to whoever hands it in.
+            ->where(function ($q) use ($user, $membership) {
+                $q->whereNull('assigned_to')->orWhere('assigned_to', $user->user_id);
+            })
+            ->where(function ($q) use ($membership) {
+                $q->whereNull('student_id')->orWhere('student_id', $membership->student_id);
+            })
+            ->get();
     }
 
     public function versions(Request $request, string $role)

@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Task extends Model
 {
+    /** Said when a task is handed in with no change saved on it. */
+    public const NO_CHANGES_MESSAGE = "You haven't made any changes to this task yet. Please customize something before submitting.";
+
     use HasFactory;
 
     protected $primaryKey = 'task_id';

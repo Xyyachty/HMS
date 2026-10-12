@@ -2563,6 +2563,8 @@ class FacultyController extends Controller
         if ($revise) {
             $task->status = 'active';
             $task->revision_count = (int) $task->revision_count + 1;
+            // The resubmission needs a change of its own, made after this feedback.
+            $task->started_at = null;
 
             // Freeze the work as it stands at the moment changes are asked for. This
             // is the "Before" the next submission is judged against, and it is the
