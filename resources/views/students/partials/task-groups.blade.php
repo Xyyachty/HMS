@@ -356,6 +356,23 @@
                                              lines, and they have to survive as lines. --}}
                                         <p class="text-[13px] text-slate-500 leading-relaxed whitespace-pre-line">{{ $task->description }}</p>
                                     @endif
+                                    @php $activities = $task->activityList(); @endphp
+                                    @if($activities)
+                                        {{-- The steps the task is done in, as a guide to read. Nothing to
+                                             tick: saving a change in the editor is what moves the task to
+                                             In Progress (Task::is_started). --}}
+                                        <div class="rounded-xl border border-[#E7E1DD] bg-white px-3 py-2.5">
+                                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                                                <span class="iconify text-xs" data-icon="mdi:format-list-numbered"></span>
+                                                Steps
+                                            </p>
+                                            <ol class="mt-2 space-y-1.5">
+                                                @foreach($activities as $i => $activity)
+                                                    <li class="text-[13px] leading-relaxed text-slate-600">{{ $i + 1 }}. {{ $activity['text'] }}</li>
+                                                @endforeach
+                                            </ol>
+                                        </div>
+                                    @endif
                                     @if($needsRevision)
                                         {{-- Sent back by faculty: active again, but carrying feedback. --}}
                                         <div class="rounded-xl border border-[#E7E1DD] bg-[#F5F2EF] px-3 py-2">
