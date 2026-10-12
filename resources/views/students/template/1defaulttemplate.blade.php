@@ -2621,7 +2621,11 @@ function RenameCategoryModal({ open, from, category, saving, error, onSubmit, on
     setCapacity(c.capacity === null || c.capacity === undefined ? '' : String(c.capacity));
     setBedType(c.bed_type || '');
     setRoomSize(c.room_size || '');
-  }, [open, from, category]);
+  /* Only when the form opens or turns to another category. category is looked
+     up again on every rooms refresh, so resetting on it wiped what was being
+     typed - and a picture just chosen - every few seconds. */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, from]);
 
   if (!open) return null;
 
@@ -6280,7 +6284,12 @@ function MenuItemModal({ open, item, categories, defaultCategory, saving, error,
     setCategory((item && item.category) || defaultCategory || (categories && categories[0]) || '');
     setImage(item && item.img ? String(item.img) : '');
     setBestSeller(!!(item && item.bestSeller));
-  }, [open, item, categories, defaultCategory]);
+  /* Only when the form opens or turns to another dish. The menu refreshes on
+     a timer and whenever the window regains focus - closing the file picker
+     does that - and each refresh hands down a new course list; resetting on it
+     wiped the typed name and the picture just chosen. */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, item]);
 
   if (!open) return null;
 
