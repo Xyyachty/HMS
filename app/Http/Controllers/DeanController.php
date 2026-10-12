@@ -329,7 +329,15 @@ class DeanController extends Controller
 
                         return in_array($task->role, $memberRoles, true);
                     })
-                    ->map(fn ($task) => self::teamTaskRow($task, $roleLabels))
+                    ->map(fn ($task) => self::teamTaskRow($task, $roleLabels) + [
+                        // The team's live site, read-only, as its students last saved it.
+                        // The hotel concept is a proposal, not a site change, so it has none.
+                        'preview_url' => $task->is_hotel_concept ? null : route('faculty.teams.preview', [
+                            'faculty' => $facultyId,
+                            'group' => $groupName,
+                            'role' => $task->role,
+                        ]),
+                    ])
                     ->sortBy(fn ($row) => [$row['step'] ?? PHP_INT_MAX, $row['title'], $row['role']])
                     ->values()
                     ->all();

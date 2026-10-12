@@ -367,6 +367,7 @@
                                 <col style="width: 7rem;">
                                 <col style="width: 9rem;">
                                 <col style="width: 8rem;">
+                                <col style="width: 7rem;">
                             </colgroup>
                             <thead>
                                 <tr>
@@ -376,6 +377,7 @@
                                     <th>Due</th>
                                     <th>Status</th>
                                     <th>Steps done</th>
+                                    <th>Preview</th>
                                 </tr>
                             </thead>
                             <tbody id="teamModalActivityBody"></tbody>
@@ -665,7 +667,7 @@
         renderTeamModalActivityStats(logs);
 
         if (total === 0) {
-            activityBody.innerHTML = '<tr><td colspan="6"><div class="tm-empty">'
+            activityBody.innerHTML = '<tr><td colspan="7"><div class="tm-empty">'
                 + '<span class="iconify" data-icon="mdi:clipboard-outline"></span>'
                 + 'No tasks have been given to this team yet.</div></td></tr>';
             if (pager) pager.classList.add('hidden');
@@ -692,6 +694,12 @@
                     + '<span class="tm-ellipsis" title="' + escHtml(log.student) + '">' + escHtml(log.student) + '</span>'
                   + '</div>'
                 : '<span class="tm-muted">Not taken yet</span>';
+            // View only: the team's live site as last saved, in a new tab.
+            const preview = log.preview_url
+                ? '<a href="' + escHtml(log.preview_url) + '" target="_blank" rel="noopener" class="tm-btn tm-btn-sm"'
+                    + ' title="See the team site as its students last saved it">'
+                    + '<span class="iconify" data-icon="mdi:eye-outline"></span> Preview</a>'
+                : '<span class="tm-muted">No site change</span>';
 
             return '<tr>' +
                 '<td>' +
@@ -703,6 +711,7 @@
                 '<td' + (log.due_date ? '' : ' class="tm-muted"') + '>' + escHtml(log.due_date || 'No date') + '</td>' +
                 '<td>' + statusBadge + '</td>' +
                 '<td>' + progress + '</td>' +
+                '<td>' + preview + '</td>' +
             '</tr>';
         }).join('');
 
