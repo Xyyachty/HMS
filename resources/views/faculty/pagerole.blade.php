@@ -346,17 +346,15 @@
         to   { opacity:1; transform:translateY(0); }
     }
 
-    /* ── Send back (concept revision) ──
+    /* ── Send Feedback (concept revision) ──
        Spelled out rather than composed from utilities: public/css/app.css is a
-       frozen build with no teal in it, so the bg-teal-600 this button used to
-       carry resolved to nothing and it rendered white on white. Rose rather than
-       teal so it reads as the opposite of the emerald Approve beside it, and
-       matches the rose "Needs revision" badge the team sees on their side. */
+       frozen build, so a utility colour may resolve to nothing. Orange so it
+       reads as "needs work", apart from the green Approve beside it. */
     .btn-sendback {
-        background:#7B1730; color:#fff; border:1px solid #5E1024;
-        box-shadow:0 4px 12px -2px rgba(123,23,48,.35);
+        background:#EA580C; color:#fff; border:1px solid #C2410C;
+        box-shadow:0 4px 12px -2px rgba(234,88,12,.35);
     }
-    .btn-sendback:hover { background:#5E1024; }
+    .btn-sendback:hover { background:#C2410C; }
 
     /* ── Review Submission (Task Submission Indicator) ──
        Navy, spelled out for the same reason: the frozen build has no such colour. */
@@ -3114,7 +3112,7 @@ function renderReviewConceptCard(entry) {
                 + '</button>'
                 + '<button type="button" data-concept-action="' + slot + '" onclick="submitConceptFeedback(' + slot + ', \'revise\')"'
                     + ' class="btn-sendback tm-act">'
-                    + '<span class="iconify" data-icon="mdi:undo-variant"></span> Send back'
+                    + '<span class="iconify" data-icon="mdi:message-reply-text-outline"></span> Send Feedback'
                 + '</button>'
             + '</div>'
           + '</div>'
@@ -3364,7 +3362,7 @@ function renderTeamConceptControls(entry, data) {
                 + '</button>'
                 + '<button type="button" data-team-concept-action="' + slot + '" onclick="showTeamConceptRevisionForm(' + slot + ')"'
                     + ' class="btn-sendback tm-act">'
-                    + '<span class="iconify" data-icon="mdi:undo-variant"></span> Send back'
+                    + '<span class="iconify" data-icon="mdi:message-reply-text-outline"></span> Send Feedback'
                 + '</button>'
             + '</div>'
             + '<div id="teamConceptRevisionForm' + slot + '" class="hidden">'
@@ -3373,12 +3371,12 @@ function renderTeamConceptControls(entry, data) {
                 + '<textarea id="teamConceptFeedback' + slot + '" rows="3" maxlength="2000"'
                     + ' placeholder="What works here? What should change?"'
                     + ' class="tm-textarea"></textarea>'
-                + '<p class="tm-help">Required before sending back. The team will read this.</p>'
+                + '<p class="tm-help">Required before sending feedback. The team will read this.</p>'
                 + '<div class="tm-actions-row mt-3">'
                     + '<button type="button" onclick="hideTeamConceptRevisionForm(' + slot + ')" class="tm-btn">Cancel</button>'
                     + '<button type="button" data-team-concept-action="' + slot + '" onclick="submitTeamConceptFeedback(' + slot + ', \'revise\')"'
                         + ' class="btn-sendback tm-act">'
-                        + '<span class="iconify" data-icon="mdi:send-outline"></span> Send back to team'
+                        + '<span class="iconify" data-icon="mdi:send-outline"></span> Send Feedback to team'
                     + '</button>'
                 + '</div>'
             + '</div>'
