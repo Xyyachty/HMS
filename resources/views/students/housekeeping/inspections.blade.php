@@ -822,9 +822,6 @@ function App() {
             next guest. If something is broken or missing, send it to Maintenance.
           </p>
         </div>
-        <a href={CFG.backUrl} className="hk-btn">
-          <i className="fa-solid fa-arrow-left"></i> Back to Tasks
-        </a>
       </header>
 
       <ol className="hk-how" aria-label="How it works">

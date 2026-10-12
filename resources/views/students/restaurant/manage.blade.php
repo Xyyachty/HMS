@@ -810,9 +810,6 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast }
           </p>
         </div>
         <div className="mn-head-actions">
-          <a href={window.HMS_RESTAURANT_URL} className="mn-btn">
-            <i className="fa-solid fa-arrow-left"></i> Back to Tasks
-          </a>
           <button type="button" className="mn-btn is-solid" onClick={() => setEditing('new')}>
             <i className="fa-solid fa-plus"></i> Add a dish
           </button>
@@ -1566,9 +1563,6 @@ function CateringPackagesPanel({ packages, canManage, onSaved, onBack }) {
         </div>
       )}
 
-      <button type="button" className="btn-outline" onClick={onBack} style={{ marginTop: '1.25rem', fontSize: '0.72rem' }}>
-        <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.7rem' }}></i> Back
-      </button>
 
       {editing && (
         <CateringPackageModal
@@ -1943,9 +1937,6 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
           </p>
         </div>
         <div className="mn-head-actions">
-          <a href={window.HMS_RESTAURANT_URL} className="mn-btn">
-            <i className="fa-solid fa-arrow-left"></i> Back to Tasks
-          </a>
           {canPlaceDineIn ? (
             <button type="button" className="mn-btn is-solid" onClick={() => { pickType('dine_in'); setTaking(true); }}>
               <i className="fa-solid fa-plus"></i> Take a dine-in order
@@ -2097,9 +2088,6 @@ function RestaurantManagementPage({
           <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Staff Tools</p>
           <h1 className="font-display" style={{ fontSize: '1.9rem', margin: 0, color: 'var(--fg)' }}>Restaurant Management</h1>
         </div>
-        <button type="button" className="btn-outline" onClick={onBack} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
-          <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.75rem' }}></i> Back
-        </button>
       </div>
 
       <div className="rm-row">

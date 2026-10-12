@@ -1561,9 +1561,6 @@ function App() {
           </p>
         </div>
         <div className="am-head-actions">
-          <a href={CONFIG.backUrl} className="am-btn">
-            <i className="fa-solid fa-arrow-left"></i> Back to Tasks
-          </a>
           {canCustomize ? (
             <button type="button" className="am-btn is-solid" onClick={() => setEditing('new')}>
               <i className="fa-solid fa-plus"></i> Add a facility

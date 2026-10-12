@@ -517,9 +517,6 @@ function App() {
             the bill once the customer arrives.
           </p>
         </div>
-        <a href={CFG.backUrl} className="btn-outline" style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
-          <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.75rem' }}></i> Back
-        </a>
       </div>
 
       {tables.length > 0 && (

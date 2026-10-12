@@ -607,9 +607,6 @@ function App() {
           </p>
         </div>
         <div className="ao-head-actions">
-          <a href={CONFIG.backUrl} className="ao-btn">
-            <i className="fa-solid fa-arrow-left"></i> Back to Tasks
-          </a>
           {canManage ? (
             <button type="button" className="ao-btn is-solid" onClick={() => setEditing('new')}>
               <i className="fa-solid fa-plus"></i> Add a new item

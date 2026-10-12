@@ -1516,9 +1516,6 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCate
           </p>
         </div>
         <div className="mr-head-actions">
-          <a href={window.HMS_ROOMMANAGEMENT_URL} className="mr-btn">
-            <i className="fa-solid fa-arrow-left"></i> Back to Tasks
-          </a>
           <button type="button" className="mr-btn is-solid" onClick={() => setAddOpen(true)}>
             <i className="fa-solid fa-plus"></i> Add a room
           </button>
@@ -1930,11 +1927,6 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
             Check a guest in when they arrive, and press See details for their contact
             information and bill.
           </p>
-        </div>
-        <div className="mr-head-actions">
-          <a href={window.HMS_ROOMMANAGEMENT_URL} className="mr-btn">
-            <i className="fa-solid fa-arrow-left"></i> Back to Tasks
-          </a>
         </div>
       </header>
 

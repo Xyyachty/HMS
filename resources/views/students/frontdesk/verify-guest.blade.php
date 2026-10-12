@@ -766,9 +766,6 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
           <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Front Desk</p>
           <h1 className="font-display" style={{ fontSize: '1.9rem', margin: 0, color: 'var(--fg)' }}>Guest Information</h1>
         </div>
-        <button type="button" className="btn-outline" onClick={onBack} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
-          <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.75rem' }}></i> Back to Front Desk
-        </button>
       </div>
 
       <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '1.5rem 1.6rem 1.75rem' }}>

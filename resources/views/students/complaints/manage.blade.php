@@ -842,9 +842,6 @@ function App() {
             {!isDepartmentView && toConfirm > 0 ? ` ${toConfirm} resolved ${toConfirm === 1 ? 'complaint needs' : 'complaints need'} confirming with the guest.` : ''}
           </p>
         </div>
-        <a href={CFG.backUrl} className="cx-btn cx-btn-ghost">
-          <i className="fa-solid fa-arrow-left"></i> Back
-        </a>
       </header>
 
       <div className={'cx-layout' + (showForm ? '' : ' is-single')}>

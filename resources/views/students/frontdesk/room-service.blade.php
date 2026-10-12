@@ -285,9 +285,6 @@ function RoomServicePage({ orders, onBack }) {
             order is if a guest calls the desk.
           </p>
         </div>
-        <button type="button" className="rs-btn" onClick={onBack}>
-          <i className="fa-solid fa-arrow-left"></i> Back to Front Desk
-        </button>
       </header>
 
       <section className="rs-panel">

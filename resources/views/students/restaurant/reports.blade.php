@@ -487,9 +487,6 @@ function App() {
             Orders the kitchen has completed — dine-in and room service.
           </p>
         </div>
-        <a href={CFG.backUrl} className="btn-outline" style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
-          <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.75rem' }}></i> Back
-        </a>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.7rem', marginBottom: '1.2rem' }}>

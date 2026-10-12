@@ -913,9 +913,6 @@ function App() {
           <h1 className="font-display">Walk-in Guests</h1>
           <p>A guest has arrived without a booking. Choose what they need, then follow the steps.</p>
         </div>
-        <a href={CFG.backUrl} className="wi-btn wi-btn-ghost">
-          <i className="fa-solid fa-arrow-left"></i> Back to tasks
-        </a>
       </header>
 
       <div className="wi-modes" role="tablist" aria-label="What does the guest need?">
