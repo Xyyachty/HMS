@@ -1214,12 +1214,12 @@
                     ];
 
                     // Day headings: Today, Yesterday, then the date.
-                    $actToday = now()->format('M d, Y');
-                    $actYesterday = now()->subDay()->format('M d, Y');
+                    $actToday = now('Asia/Manila')->format('M d, Y');
+                    $actYesterday = now('Asia/Manila')->subDay()->format('M d, Y');
                     $actRows = $actLogs->map(function ($log) use ($actGroupOf, $actIcons, $actToday, $actYesterday) {
                         $activity = (string) ($log['activity'] ?? '');
                         $stamp = (string) ($log['created_at'] ?? '');
-                        try { $at = \Carbon\Carbon::createFromFormat('M d, Y g:i A', $stamp); } catch (\Throwable $e) { $at = null; }
+                        try { $at = \Carbon\Carbon::createFromFormat('M d, Y g:i A', $stamp, 'Asia/Manila'); } catch (\Throwable $e) { $at = null; }
                         $day = $at ? $at->format('M d, Y') : '';
                         return $log + [
                             'group' => $actGroupOf($activity),

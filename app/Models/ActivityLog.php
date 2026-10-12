@@ -169,7 +169,7 @@ class ActivityLog extends Model
             'activity_label' => $this->activity_label,
             'description' => $this->description,
             'role' => $this->role,
-            'created_at' => optional($this->created_at)->format('M d, Y g:i A'),
+            'created_at' => $this->created_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
             'created_at_human' => optional($this->created_at)->diffForHumans(),
         ];
     }
