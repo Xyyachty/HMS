@@ -1068,9 +1068,6 @@
                         $studentRoles ?? [],
                         array_filter([\App\Support\SimulationPhase::seatFor($groupMembership)])
                     );
-                    // The Simulation is open whenever the student is on a team; the
-                    // customization tasks still go to faculty for approval alongside it.
-                    $simulationOpen = \App\Support\SimulationPhase::canStart($groupMembership);
                 @endphp
                 @if(session('simulation_locked'))
                     <div class="rounded-xl border border-[#FDE68A] bg-[#FEF3C7] px-4 py-3 text-[13px] font-semibold text-[#92400E]">
@@ -1096,10 +1093,10 @@
                                 <option value="completed">Approved</option>
                             </select>
 
-                            {{-- Two doors, two kinds of work. Customize is the website editor, so
-                                 it only lists roles that own a page to design; Simulation is the
-                                 hotel's day-to-day operations, which every role has. A member
-                                 holding one role goes straight in; several roles get a menu. --}}
+                            {{-- Customize is the website editor, so it only lists roles that own
+                                 a page to design. The Simulation's door is Start Simulation in the
+                                 banner above, not a second button here. A member holding one role
+                                 goes straight in; several roles get a menu. --}}
                             @php
                                 $taskAreas = [
                                     [
@@ -1109,14 +1106,6 @@
                                         'urlKey' => 'customize_url',
                                         'modules' => array_values(array_filter($myModules, fn ($m) => $m['editable'])),
                                         'class' => 'brand-gradient text-white border-transparent shadow-lg shadow-brand/20 hover:opacity-90',
-                                    ],
-                                    [
-                                        'id' => 'simulationAreaMenu',
-                                        'label' => 'Simulation',
-                                        'icon' => 'mdi:bell-ring-outline',
-                                        'urlKey' => 'simulation_url',
-                                        'modules' => $simulationOpen ? array_values(array_filter($myModules, fn ($m) => !empty($m['simulation_url']))) : [],
-                                        'class' => 'bg-white text-slate-700 border-[#E7E1DD] shadow-sm hover:border-[#8A817A] hover:text-[#181818]',
                                     ],
                                 ];
                             @endphp

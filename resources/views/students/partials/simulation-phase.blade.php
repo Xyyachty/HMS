@@ -8,9 +8,11 @@
         $groupMembership ? (int) $groupMembership->faculty_id : null
     );
     $simSeat = \App\Support\SimulationPhase::seatFor($groupMembership);
-    $simEntry = $simSeat
-        ? collect(\App\Support\HotelTemplateBuilder::modulesForRoles([], [$simSeat]))->firstWhere('simulation_url')
-        : null;
+    // A seat can cover more than one role (Room & Maintenance), so Start
+    // Simulation becomes a menu when there is more than one page to open.
+    $simEntries = $simSeat
+        ? collect(\App\Support\HotelTemplateBuilder::modulesForRoles([], [$simSeat]))->filter(fn ($m) => !empty($m['simulation_url']))->values()
+        : collect();
 @endphp
 @if($groupMembership && $simPhase['required'] > 0)
     <div class="bg-white rounded-2xl border border-[#E7E1DD] shadow-sm p-5 space-y-4">
@@ -67,12 +69,33 @@
                     @endif
                 </p>
             </div>
-            @if($simPhase['can_start'] && $simEntry)
-                <a href="{{ $simEntry['simulation_url'] }}"
+            @if($simPhase['can_start'] && $simEntries->count() === 1)
+                <a href="{{ $simEntries[0]['simulation_url'] }}"
                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl brand-gradient text-white text-xs font-bold shadow-lg shadow-brand/20 hover:opacity-90 active:scale-[0.98] transition">
                     <span class="iconify text-base" data-icon="mdi:play-circle-outline"></span>
                     Start Simulation
                 </a>
+            @elseif($simPhase['can_start'] && $simEntries->count() > 1)
+                {{-- toggleTaskAreaMenu() lives on the dashboard and closes on an outside click. --}}
+                <div class="relative" data-task-area-menu>
+                    <button type="button" onclick="toggleTaskAreaMenu('simulationStartMenu')"
+                            aria-haspopup="true" aria-controls="simulationStartMenu"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl brand-gradient text-white text-xs font-bold shadow-lg shadow-brand/20 hover:opacity-90 active:scale-[0.98] transition">
+                        <span class="iconify text-base" data-icon="mdi:play-circle-outline"></span>
+                        Start Simulation
+                        <span class="iconify text-sm" data-icon="mdi:chevron-down"></span>
+                    </button>
+                    <div id="simulationStartMenu" hidden
+                         class="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-[#E7E1DD] shadow-xl py-1.5 z-30">
+                        <p class="px-3 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Choose a role</p>
+                        @foreach($simEntries as $module)
+                            <a href="{{ $module['simulation_url'] }}"
+                               class="flex items-center gap-2 px-3 py-2 text-[13px] font-semibold text-slate-600 hover:bg-[#F5F2EF] hover:text-[#181818]">
+                                {{ $module['label'] }}
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
             @else
                 <span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#E7E1DD] bg-white text-xs font-bold text-slate-400 cursor-not-allowed">
                     <span class="iconify text-base" data-icon="mdi:account-clock-outline"></span>
