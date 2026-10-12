@@ -124,12 +124,13 @@
     .st-page {
         min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem; border-radius: .7rem;
         display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
-        font-size: 13px; font-weight: 700; color: #111; background: #fff; border: 1px solid #E4E2E0;
+        font-size: 13px; font-weight: 700; color: #404040; background: #fff; border: 1px solid #E4E2E0;
         transition: all .15s ease;
     }
-    a.st-page:hover { color: #181818; border-color: #dadada; background: #dadada; }
-    .st-page.is-current { background: #111; border-color: #111; color: #fff; }
-    .st-page.is-disabled { color: #111; opacity: .4; background: #fff; cursor: not-allowed; }
+    a.st-page:hover { color: #404040; border-color: #dadada; background: #dadada; }
+    /* Dark gray, not black, for the page you are on. */
+    .st-page.is-current { background: #404040; border-color: #404040; color: #fff; }
+    .st-page.is-disabled { color: #404040; opacity: .4; background: #fff; cursor: not-allowed; }
 
     /* Expandable student search — icon-only until opened */
     #studentSearchWrap {
@@ -195,10 +196,10 @@
     .bulk-pager-btn {
         display: inline-flex; align-items: center; justify-content: center;
         padding: 0.25rem 0.5rem; border-radius: 0.5rem;
-        border: 1px solid #E4E2E0; background: #fff; color: #111;
+        border: 1px solid #E4E2E0; background: #fff; color: #404040;
         transition: color 0.2s, border-color 0.2s, opacity 0.2s;
     }
-    .bulk-pager-btn:hover:not(:disabled) { color: #181818; border-color: #dadada; background: #dadada; }
+    .bulk-pager-btn:hover:not(:disabled) { color: #404040; border-color: #dadada; background: #dadada; }
     .bulk-pager-btn:disabled { opacity: 0.4; cursor: default; }
 
     /* Add Student / Bulk Upload with no block assigned. Same reason as above: the
