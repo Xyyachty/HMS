@@ -163,7 +163,7 @@
                             <span class="shrink-0">@include('partials.team-completion', ['done' => $team['done'], 'total' => $team['total']])</span>
                         </div>
                         <p class="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5">
-                            {{ $team['label'] }} · {{ $team['done'] }}/{{ $team['total'] }} approved ·
+                            {{ $team['done'] }}/{{ $team['total'] }} approved ·
                             <span class="{{ $team['unlocked'] ? 'text-emerald-600' : '' }}">Simulation {{ $team['unlocked'] ? 'unlocked' : 'locked' }}</span>
                         </p>
                     </div>

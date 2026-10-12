@@ -606,7 +606,6 @@
             <div id="teamCardsGrid" class="tm-card-grid">
                 @forelse($groups ?? [] as $groupName => $groupMembers)
                     @php
-                        $cardIndex  = $loop->iteration;
                         $createdAt  = optional($groupMembers->first()->created_at)->format('M d, Y');
                         $memberData = [];
                         foreach ($groupMembers as $m) {
@@ -675,7 +674,7 @@
                         <div class="px-5 pt-5 pb-5 flex-1 flex flex-col">
                             <div class="flex items-center gap-2 min-w-0">
                                 <h3 class="text-lg font-extrabold text-slate-900 leading-tight truncate" title="{{ $groupName }}">
-                                    Team {{ str_pad($cardIndex, 2, '0', STR_PAD_LEFT) }} &ndash; {{ $groupName }}
+                                    {{ $groupName }}
                                 </h3>
                                 @php $cardPhase = \App\Support\SimulationPhase::progress($groupName, (int) $groupMembers->first()->faculty_id); @endphp
                                 <span class="shrink-0">@include('partials.team-completion', ['done' => $cardPhase['approved'], 'total' => $cardPhase['required']])</span>

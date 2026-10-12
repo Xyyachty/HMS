@@ -88,14 +88,13 @@ class FacultyController extends Controller
                 ->orderBy('group_name')
                 ->pluck('group_name')
                 ->values()
-                ->map(function ($name, $index) use ($facultyId) {
+                ->map(function ($name) use ($facultyId) {
                     // Faculty-approved required tasks, not handed-in rows: approval
                     // is what opens the team's Hotel Simulation.
                     $phase = \App\Support\SimulationPhase::progress($name, (int) $facultyId);
 
                     return [
                         'name'     => $name,
-                        'label'    => 'TEAM ' . str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT),
                         'total'    => $phase['required'],
                         'done'     => $phase['approved'],
                         'percent'  => $phase['percent'],
