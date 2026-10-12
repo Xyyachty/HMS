@@ -177,7 +177,7 @@
         <div class="flex-1 flex flex-col min-w-0">
 
             @php
-                $inkAll = request()->routeIs('faculty.dashboard', 'faculty.role', 'faculty.tasks', 'faculty.activity', 'faculty.reports');
+                $inkAll = request()->routeIs('faculty.dashboard', 'faculty.role', 'faculty.activity', 'faculty.reports');
             @endphp
             <!-- Top Header -->
             <header class="glass-header h-20 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10 shrink-0">

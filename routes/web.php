@@ -196,9 +196,10 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
         ->name('role.pulse');
     Route::post('/role/groups', [FacultyController::class, 'storeGroup'])->name('role.groups.store');
     Route::put('/role/groups/{groupName}', [FacultyController::class, 'updateGroup'])->name('role.groups.update');
-    Route::get('/tasks', [FacultyController::class, 'tasks'])->name('tasks');
+    // The old Tasks page is gone; links already sent in notifications land on
+    // Manage Teams instead of a 404.
+    Route::redirect('/tasks', '/faculty/role')->name('tasks');
     Route::post('/tasks', [FacultyController::class, 'storeTask'])->name('tasks.store');
-    Route::delete('/tasks/{task}', [FacultyController::class, 'destroyTask'])->name('tasks.destroy');
     // Review one submission: the student's actual work, plus feedback back to them.
     Route::get('/tasks/{task}/review', [FacultyController::class, 'reviewTask'])->name('tasks.review');
     Route::post('/tasks/{task}/feedback', [FacultyController::class, 'storeTaskFeedback'])->name('tasks.feedback');

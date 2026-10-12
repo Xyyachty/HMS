@@ -2010,48 +2010,6 @@ class FacultyController extends Controller
           ->with('success_title', 'Team Updated');
     }
 
-    public function tasks(Request $request)
-    {
-        $facultyId = auth()->user()?->faculty?->user_information_id;
-        if (!$facultyId) {
-            return view('faculty.tasks', [
-                'tasksByRole' => collect(),
-                'taskCounts' => [],
-                'teamNames' => [],
-                'activeTeam' => null,
-            ]);
-        }
-
-        $roles = ['front_desk', 'restaurant_management', 'room_management', 'maintenance', 'housekeeping'];
-
-        // Every team this faculty owns, so the filter lists teams that hold no task
-        // yet rather than only the ones that happen to appear in the rows below.
-        $teamNames = StudentGroup::where('faculty_id', $facultyId)
-            ->orderBy('group_name')
-            ->pluck('group_name')
-            ->unique()
-            ->values()
-            ->all();
-
-        $requestedTeam = $request->query('team');
-        $activeTeam = in_array($requestedTeam, $teamNames, true) ? $requestedTeam : null;
-
-        $tasksByRole = Task::where('faculty_id', $facultyId)
-            ->where('status', 'active')
-            ->when($activeTeam, fn ($q) => $q->where('group_name', $activeTeam))
-            ->conceptFirst()
-            ->orderBy('due_date')
-            ->get()
-            ->groupBy('role');
-
-        $taskCounts = [];
-        foreach ($roles as $role) {
-            $taskCounts[$role] = $tasksByRole->get($role, collect())->count();
-        }
-
-        return view('faculty.tasks', compact('tasksByRole', 'taskCounts', 'teamNames', 'activeTeam'));
-    }
-
     public function storeTask(Request $request)
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
@@ -2818,34 +2776,6 @@ class FacultyController extends Controller
                 (int) $membership->faculty_id
             ),
         ]);
-    }
-
-    public function destroyTask(Task $task)
-    {
-        $facultyId = auth()->user()?->faculty?->user_information_id;
-        if ($task->faculty_id !== $facultyId) {
-            abort(403);
-        }
-
-        // Every team is assigned the hotel concept automatically, and the rest of
-        // their simulation is built on it, so it is not a task to hand back.
-        if ($task->is_hotel_concept) {
-            return back()->withErrors([
-                'task' => 'The hotel concept is assigned to every team automatically and cannot be deleted.',
-            ]);
-        }
-
-        $role = $task->role;
-        $title = $task->title;
-        $task->delete();
-
-        ActivityLog::recordFor(
-            ActivityLog::TASK_DELETED,
-            'Deleted task "' . $title . '" from the ' . $role . ' role.'
-        );
-
-        return redirect()->route('faculty.tasks', ['tab' => $role])
-            ->with('success', 'Task deleted.');
     }
 
     public function results()

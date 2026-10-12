@@ -2507,11 +2507,7 @@
             </div>
 
             <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                <a href="{{ route('faculty.tasks') }}"
-                    class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-brand transition">
-                    <span class="iconify" data-icon="mdi:eye-outline"></span> View all tasks
-                </a>
-                <button type="button" onclick="resetTaskWizard()" class="text-xs font-semibold text-slate-400 hover:text-slate-600 transition">Reset</button>
+                <button type="button" onclick="resetTaskWizard()" class="ml-auto text-xs font-semibold text-slate-400 hover:text-slate-600 transition">Reset</button>
             </div>
         </form>
     </div>
@@ -2895,6 +2891,18 @@ document.addEventListener('click', function (e) {
     const row = e.target.closest ? e.target.closest('[data-review-task]') : null;
     if (!row) return;
     openTaskReview(row.getAttribute('data-review-task'));
+});
+
+/* ?review=<task id> - the "Task submitted for review" notification. Opens that
+   task's review straight away, then drops the parameter so a reload does not
+   open it again. */
+document.addEventListener('DOMContentLoaded', function () {
+    const url = new URL(window.location.href);
+    const id = Number(url.searchParams.get('review'));
+    if (!id) return;
+    url.searchParams.delete('review');
+    window.history.replaceState(null, '', url.toString());
+    openTaskReview(String(id));
 });
 
 function openTaskReview(taskId) {

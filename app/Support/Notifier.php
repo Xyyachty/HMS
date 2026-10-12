@@ -359,7 +359,8 @@ class Notifier
             UserNotification::TASK_SUBMITTED,
             'Task submitted for review',
             $who . ' submitted "' . $task->title . '" (' . $task->role_label . ').',
-            route('faculty.tasks'),
+            // Manage Teams, with this task's review open.
+            route('faculty.role', ['review' => $task->task_id]),
             $actor
         );
 
