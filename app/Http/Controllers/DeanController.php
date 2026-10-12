@@ -885,4 +885,77 @@ class DeanController extends Controller
         return redirect()->route('dean.users')->with('success', 'Student account approved successfully.');
     }
 
+    public function profile()
+    {
+        $user = auth()->user();
+        abort_unless($user?->role === 'dean', 403);
+
+        return view('dean.profile', compact('user'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+        abort_unless($user?->role === 'dean', 403);
+
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            // Fourth argument names the column to ignore by. Without it the rule looks
+            // for a column called "id", which users no longer has.
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->user_id . ',user_id'],
+            'phone_number' => ['nullable', 'string', new PhilippineMobile()],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
+            'remove_avatar' => ['nullable', 'boolean'],
+        ]);
+
+        $userData = [
+            'name' => trim(implode(' ', array_filter([
+                $validated['first_name'],
+                $validated['middle_name'] ?? null,
+                $validated['last_name'],
+            ]))),
+            'first_name' => $validated['first_name'],
+            'middle_name' => $validated['middle_name'] ?? null,
+            'last_name' => $validated['last_name'],
+            'email' => $validated['email'],
+            'phone_number' => User::normalizePhone($validated['phone_number'] ?? null),
+        ];
+
+        $disk = \Illuminate\Support\Facades\Storage::disk(\App\Support\HotelImageStore::disk());
+
+        if ($request->boolean('remove_avatar') && $user->avatar) {
+            $disk->delete($user->avatar);
+            $userData['avatar'] = null;
+        }
+
+        if ($request->hasFile('avatar')) {
+            try {
+                $storedPath = $request->file('avatar')->store('avatars/dean', \App\Support\HotelImageStore::disk());
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Dean avatar upload failed', [
+                    'user_id' => $user->user_id,
+                    'disk' => \App\Support\HotelImageStore::disk(),
+                    'error' => $e->getMessage(),
+                ]);
+
+                return back()->withErrors(['avatar' => 'Could not upload the photo to storage. Please try again.']);
+            }
+
+            if ($user->avatar) {
+                $disk->delete($user->avatar);
+            }
+
+            $userData['avatar'] = $storedPath;
+        }
+
+        $user->update($userData);
+
+        ActivityLog::recordFor(ActivityLog::ACCOUNT_UPDATED, 'Updated their own dean profile.');
+
+        return redirect()->route('dean.profile')
+            ->with('success', 'Profile information updated successfully.');
+    }
+
 }
