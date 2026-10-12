@@ -190,8 +190,9 @@ class Notifier
         static::push(
             [$newUser->user_id],
             UserNotification::STUDENT_ADDED,
-            'Your account is ready',
-            'A ' . $role . ' account was created for you. Sign in to get started.',
+            // Only ever read once they are signed in, so no "sign in" prompt here.
+            'Welcome to HMS',
+            'The Dean set up your ' . $role . ' account. Everything you need starts from your dashboard.',
             $home,
             $actor
         );
