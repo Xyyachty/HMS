@@ -14,6 +14,7 @@
     'border', 'border-radius', 'box-shadow', 'opacity',
     'position', 'top', 'left', 'right', 'bottom', 'width', 'height', 'max-width',
     'min-width', 'min-height', 'z-index', 'transform', 'display', 'overflow',
+    'white-space',
   ];
 
   const USER_KEY = '__userElements';
@@ -685,7 +686,12 @@
       });
       removeFlowSpacer(el);
     }
-    el.style.removeProperty('transform');
+    /* 'none', not removed: a saved move also lives in the free-position sheet
+       with !important, so removing the inline value still left the element
+       translated. The "natural" box then already included the move, the offset
+       came out 0, and resizing or dragging a moved element threw it back to its
+       default place. */
+    setPosImportant(el, 'transform', 'none');
     // Force reflow then measure natural in-flow box.
     void el.offsetWidth;
     const natural = getVisualRect(el);
@@ -1692,21 +1698,21 @@
     const sx = closestSnap(desiredX, candidates.xs, 6);
     const sy = closestSnap(desiredY, candidates.ys, 6);
 
+    /* Off a guide, the element follows the cursor exactly. It used to round
+       to an 8px grid, which made it step behind the pointer and jitter. */
     if (sx) {
       left += sx.delta;
       guideXEl.style.left = sx.target + 'px';
       guideXEl.style.display = 'block';
-    } else {
-      left = Math.round(left / 8) * 8;
-      if (guideXEl) guideXEl.style.display = 'none';
+    } else if (guideXEl) {
+      guideXEl.style.display = 'none';
     }
     if (sy) {
       top += sy.delta;
       guideYEl.style.top = sy.target + 'px';
       guideYEl.style.display = 'block';
-    } else {
-      top = Math.round(top / 8) * 8;
-      if (guideYEl) guideYEl.style.display = 'none';
+    } else if (guideYEl) {
+      guideYEl.style.display = 'none';
     }
     return { left, top, dx: left - state.left, dy: top - state.top };
   }
@@ -1858,13 +1864,17 @@
         beginHistoryStep();
         const el = resizeState.el;
         if (!el.hasAttribute('data-hms-user')) {
-          normalizeToTransformMove(el);
+          const base = normalizeToTransformMove(el);
+          resizeState.baseX = base.x;
+          resizeState.baseY = base.y;
         } else {
           promoteToAbsolute(el);
+          resizeState.startLeft = parseFloat(el.style.left) || 0;
+          resizeState.startTop = parseFloat(el.style.top) || 0;
         }
         setPosImportant(el, 'max-width', 'none');
         setPosImportant(el, 'min-width', '0');
-        setPosImportant(el, 'min-height', '0');
+        if (!resizeState.isText) setPosImportant(el, 'min-height', '0');
         setPosImportant(el, 'width', resizeState.width + 'px');
         if (!resizeState.isText || resizeState.isCorner) {
           setPosImportant(el, 'height', resizeState.height + 'px');
@@ -1913,15 +1923,33 @@
         setPosImportant(el, 'min-width', '0');
         setPosImportant(el, 'white-space', 'nowrap');
       } else if (resizeState.isText) {
-        setPosImportant(el, 'width', width + 'px');
-        setPosImportant(el, 'height', height + 'px');
+        /* Text wraps to the new width and is never cut off: a side handle sets
+           the width, a top or bottom handle the least height, and the box still
+           grows to fit every line. A fixed height with overflow hidden clipped
+           the lines a longer heading wrapped onto. */
+        if (dir.includes('e') || dir.includes('w')) setPosImportant(el, 'width', width + 'px');
+        if (dir.includes('n') || dir.includes('s')) setPosImportant(el, 'min-height', height + 'px');
+        setPosImportant(el, 'height', 'auto');
         setPosImportant(el, 'max-width', 'none');
         setPosImportant(el, 'min-width', '0');
         setPosImportant(el, 'white-space', 'normal');
-        setPosImportant(el, 'overflow', 'hidden');
+        setPosImportant(el, 'overflow', 'visible');
       } else {
         setPosImportant(el, 'width', width + 'px');
         setPosImportant(el, 'height', height + 'px');
+      }
+      /* A left or top handle moves that edge and keeps the opposite one where it
+         was; growing the box from its top-left corner made it slide away from
+         the handle being dragged. */
+      if (!(resizeState.isText && resizeState.isCorner)) {
+        const shiftX = dir.includes('w') ? resizeState.width - width : 0;
+        const shiftY = dir.includes('n') ? resizeState.height - height : 0;
+        if (resizeState.baseX != null) {
+          setElementTranslate(el, resizeState.baseX + shiftX, resizeState.baseY + shiftY);
+        } else if (resizeState.startLeft != null) {
+          setPosImportant(el, 'left', (resizeState.startLeft + shiftX) + 'px');
+          setPosImportant(el, 'top', (resizeState.startTop + shiftY) + 'px');
+        }
       }
       updateHandles();
     }
