@@ -95,23 +95,6 @@
 
     <div>
         <div class="dtr-card">
-            <p class="text-sm font-bold text-slate-800">Steps</p>
-            <p class="text-xs text-slate-400">{{ $review['activities_done'] }} of {{ $review['activities_total'] }} done</p>
-            @if($review['activities'])
-                <ul class="dtr-list">
-                    @foreach($review['activities'] as $activity)
-                        <li>
-                            <span class="iconify" data-icon="{{ $activity['done'] ? 'mdi:check-circle' : 'mdi:checkbox-blank-circle-outline' }}"></span>
-                            <span>{{ $activity['text'] }}</span>
-                        </li>
-                    @endforeach
-                </ul>
-            @else
-                <p class="dtr-empty">This task has no steps.</p>
-            @endif
-        </div>
-
-        <div class="dtr-card">
             <p class="text-sm font-bold text-slate-800">What changed</p>
             <p class="text-xs text-slate-400">
                 {{ $review['change_summary']['added'] }} added ·

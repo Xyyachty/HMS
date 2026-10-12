@@ -51,7 +51,7 @@ class SimulationPhase
             $task->status === 'archived' && $task->feedback_at !== null => 'approved',
             $task->status === 'archived' => 'pending',
             $task->needs_revision => 'revision',
-            $task->activitiesDoneCount() > 0 => 'in_progress',
+            $task->is_started => 'in_progress',
             default => 'not_started',
         };
     }

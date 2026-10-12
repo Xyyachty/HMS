@@ -350,6 +350,8 @@
     }
 
     const seq = this._editSeq;
+    // Whether this write carries an edit, rather than re-saving what was there.
+    const changed = this._dirty || this._layoutEdited;
     const sent = clone(window.templateCustomizations || this.state.customizations || {});
     const body = Object.assign(this.payloadBody(), extra || {});
 
@@ -384,6 +386,7 @@
     }
     this._lastError = null;
     this.onChange({ type: 'dirty', dirty: this._dirty });
+    if (changed) this.onChange({ type: 'written' });
     return data.template;
   };
 

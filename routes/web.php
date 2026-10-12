@@ -373,7 +373,7 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
                 ->whereIn('status', ['active', 'archived'])
                 ->withoutSimulation()
                 ->get(array_merge(
-                    ['task_id', 'title', 'role', 'status', 'due_date', 'assigned_to', 'student_id', 'feedback', 'updated_at'],
+                    ['task_id', 'title', 'role', 'status', 'due_date', 'started_at', 'assigned_to', 'student_id', 'feedback', 'updated_at'],
                     Task::supportsActivities() ? ['activities'] : []
                 ));
 
@@ -406,12 +406,13 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
                 ->take(4)
                 ->values();
 
-            // Work that has been changed but not submitted yet: still active, with at
-            // least one activity ticked. The same line the dean's Team Details draws
-            // between In Progress and Not Started. Most recently touched first.
+            // Work that has been changed but not submitted yet: still active, and
+            // saved on at least once in the editor. The same line the dean's Team
+            // Details draws between In Progress and Not Started. Most recently
+            // touched first.
             $tasksInProgress = $teamTasks
                 ->where('status', 'active')
-                ->filter(fn ($task) => $task->activitiesDoneCount() > 0)
+                ->filter(fn ($task) => $task->is_started)
                 ->sortByDesc('updated_at')
                 ->take(4)
                 ->values();
@@ -732,19 +733,6 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
             return back()->withErrors(['task' => 'This task has already been submitted.']);
         }
 
-        /* Every step of this activity first. They are the work broken into the
-           order it is actually done in, so handing it in with one untouched is
-           handing in work that is not finished. A task assigned before the steps
-           existed carries none and submits as it always did. */
-        if (!$task->activitiesComplete()) {
-            $left = count($task->activityList()) - $task->activitiesDoneCount();
-
-            return back()->withErrors([
-                'task' => 'Finish all the steps first — ' . $left
-                    . ' still to go. Tick each one as you complete it.',
-            ]);
-        }
-
         // Freeze the work as handed in, so the faculty review can show what changed
         // between this submission and the last one. The previous anchor slides down
         // to become the "Before" side.
@@ -792,66 +780,50 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
     })->name('tasks.complete');
 
     /*
-    | Ticking one activity of a task.
+    | The student began this task: Not Started becomes In Progress.
     |
-    | Its own route rather than a field on the submit, because the point of the
-    | four is that a student marks them as they go: the ticks are how far along the
-    | work is, and they have to survive leaving the page. Only the student holding
-    | the task may set them, and only while it is theirs to work on — a submitted
-    | or approved task is a record, not a checklist.
+    | Called by the Template Editor after a save that changed something, for the
+    | task picked in its sidebar - that pick is the only thing that says which
+    | task an edit belongs to, since a department's tasks share one page. Stamps
+    | the copies of that task this student may work (their own row, or one left
+    | unclaimed), once; a later save leaves the first time alone. A submitted or
+    | approved task is a record, so it is never touched.
     */
-    Route::post('/tasks/{task}/activities/{index}', function (Request $request, $task, $index) {
+    Route::post('/tasks/{task}/started', function ($task) {
         $authUser = auth()->user();
         $student = $authUser?->student;
-        if (!$student) {
-            return response()->json(['message' => 'Student account not found.'], 404);
-        }
-
-        $task = Task::findOrFail($task);
-        $groupMembership = StudentGroup::with('roles')
-            ->where('student_id', $student->user_information_id)
-            ->first();
-
+        $groupMembership = $student
+            ? StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first()
+            : null;
         if (!$groupMembership) {
             return response()->json(['message' => 'Join a hotel team first.'], 404);
         }
-        if (filled($task->group_name)
-            && strcasecmp((string) $task->group_name, (string) $groupMembership->group_name) !== 0) {
-            return response()->json(['message' => 'That task belongs to another team.'], 403);
-        }
-        if (!in_array($task->role, $groupMembership->roles->pluck('role')->toArray(), true)) {
+
+        $task = Task::where('faculty_id', $groupMembership->faculty_id)
+            ->forTeam($groupMembership->group_name)
+            ->findOrFail($task);
+
+        $myRoles = \App\Support\HotelTemplateBuilder::rolesForPhase(
+            $groupMembership->roles->pluck('role')->all(),
+            \App\Support\HotelTemplateBuilder::PHASE_CUSTOMIZATION
+        );
+        if (!in_array($task->role, $myRoles, true)) {
             return response()->json(['message' => 'This task is not assigned to your role.'], 403);
         }
 
-        if (!\App\Support\TaskClaim::mayWork($task, $authUser, $groupMembership)) {
-            return response()->json(['message' => 'This task belongs to a teammate.'], 403);
-        }
-        if ($task->status !== 'active') {
-            return response()->json(['message' => 'This task has already been submitted.'], 422);
-        }
-        if (!Task::supportsActivities()) {
-            return response()->json(['message' => 'Activities are not enabled yet.'], 422);
-        }
+        $started = Task::where('faculty_id', $groupMembership->faculty_id)
+            ->forTeam($groupMembership->group_name)
+            ->where('role', $task->role)
+            ->whereRaw('LOWER(TRIM(title)) = ?', [mb_strtolower(trim((string) $task->title))])
+            ->where('status', 'active')
+            ->whereNull('started_at')
+            ->get()
+            ->filter(fn (Task $copy) => \App\Support\TaskClaim::mayWork($copy, $authUser, $groupMembership))
+            ->each(fn (Task $copy) => $copy->forceFill(['started_at' => now()])->save())
+            ->count();
 
-        $list = $task->activityList();
-        $index = (int) $index;
-        if (!array_key_exists($index, $list)) {
-            return response()->json(['message' => 'That activity is not on this task.'], 404);
-        }
-
-        $list[$index]['done'] = $request->boolean('done');
-        $task->activities = $list;
-        $task->save();
-
-        $done = count(array_filter($list, fn ($a) => $a['done']));
-
-        return response()->json([
-            'activities' => $list,
-            'done' => $done,
-            'total' => count($list),
-            'complete' => $done === count($list),
-        ]);
-    })->name('tasks.activities.toggle');
+        return response()->json(['started' => $started]);
+    })->name('tasks.started');
 
     /* The team's assigned tasks, as the Template Editor sidebar lists them. Polled
        by the editor so a task faculty sets appears without a reload; read-only,

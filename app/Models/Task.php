@@ -29,6 +29,8 @@ class Task extends Model
         // The four activities this task is worked through as, copied off the
         // checklist when it was assigned: [['text' => …, 'done' => bool], …].
         'activities',
+        // First save on this task in the Template Editor: Not Started -> In Progress.
+        'started_at',
         'due_date',
         'status',
         'feedback',
@@ -46,6 +48,7 @@ class Task extends Model
         // has to respect it rather than treating everything as midnight.
         'due_date' => 'datetime',
         'feedback_at' => 'datetime',
+        'started_at' => 'datetime',
         'revision_count' => 'integer',
         'activities' => 'array',
     ];
@@ -101,17 +104,14 @@ class Task extends Model
     }
 
     /**
-     * Whether the work may be submitted yet.
+     * Whether the student has begun this task: Not Started becomes In Progress.
      *
-     * A task carrying no activities — one assigned before they existed — is
-     * submittable as it always was, rather than being locked by a list it never
-     * had.
+     * Stamped by the Template Editor's first save on the task. A row ticked under
+     * the old step checklist, before the checkboxes went, counts as begun too.
      */
-    public function activitiesComplete(): bool
+    public function getIsStartedAttribute(): bool
     {
-        $list = $this->activityList();
-
-        return $list === [] || $this->activitiesDoneCount() === count($list);
+        return $this->started_at !== null || $this->activitiesDoneCount() > 0;
     }
 
     public function feedbackBy()

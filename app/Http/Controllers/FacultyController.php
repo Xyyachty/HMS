@@ -1506,11 +1506,6 @@ class FacultyController extends Controller
                     $studentName = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name])));
                     $studentName = $studentName !== '' ? $studentName : ($u?->name ?? null);
 
-                    // So the row can show "2/4 steps" before the task is even
-                    // submitted — faculty may look at how far along it is without
-                    // being able to act on it yet (that stays gated on 'archived').
-                    $activityCount = count($task->activityList());
-
                     return [
                         'id' => $task->task_id,
                         'title' => $task->title,
@@ -1536,8 +1531,6 @@ class FacultyController extends Controller
                                 $task,
                                 $teamEdits ??= \App\Support\SimulationPhase::lastEdits((string) $groupName, (int) $facultyId)
                             ),
-                        'activities_done' => $task->activitiesDoneCount(),
-                        'activities_total' => $activityCount,
                         'student_name' => $studentName,
                         'submitted_at' => $task->status === 'archived'
                             ? optional($task->updated_at)->format('M d, Y')
@@ -2451,11 +2444,6 @@ class FacultyController extends Controller
             }
         }
 
-        // The student's checklist, so faculty can see how far along an
-        // unsubmitted task is — viewing this is allowed anytime; acting on the
-        // task (below, in storeTaskFeedback) still requires status 'archived'.
-        $activities = $task->activityList();
-
         $payload = [
             'id' => $task->task_id,
             'title' => $task->title,
@@ -2473,9 +2461,8 @@ class FacultyController extends Controller
                     \App\Support\SimulationPhase::lastEdits((string) $membership->group_name, (int) $facultyId)
                 ),
             'is_hotel_concept' => $task->is_hotel_concept,
-            'activities' => $activities,
-            'activities_done' => $task->activitiesDoneCount(),
-            'activities_total' => count($activities),
+            // Saved on in the editor at least once: In Progress rather than Not Started.
+            'started' => $task->is_started,
             'student_name' => $name !== '' ? $name : ($u?->name ?? null),
             'group_name' => $membership?->group_name,
             'due_date' => optional($task->due_date)->format('M d, Y g:i A'),

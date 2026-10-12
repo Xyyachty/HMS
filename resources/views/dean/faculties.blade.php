@@ -366,7 +366,6 @@
                                 <col style="width: 8.5rem;">
                                 <col style="width: 7rem;">
                                 <col style="width: 9rem;">
-                                <col style="width: 8rem;">
                                 <col style="width: 7rem;">
                             </colgroup>
                             <thead>
@@ -376,7 +375,6 @@
                                     <th>Department</th>
                                     <th>Due</th>
                                     <th>Status</th>
-                                    <th>Steps done</th>
                                     <th>Preview</th>
                                 </tr>
                             </thead>
@@ -667,7 +665,7 @@
         renderTeamModalActivityStats(logs);
 
         if (total === 0) {
-            activityBody.innerHTML = '<tr><td colspan="7"><div class="tm-empty">'
+            activityBody.innerHTML = '<tr><td colspan="6"><div class="tm-empty">'
                 + '<span class="iconify" data-icon="mdi:clipboard-outline"></span>'
                 + 'No tasks have been given to this team yet.</div></td></tr>';
             if (pager) pager.classList.add('hidden');
@@ -683,11 +681,6 @@
             const key = TASK_STATUS_KEYS[log.status] || 'not_started';
             const statusBadge = '<span class="tm-badge status-badge-' + key + '">'
                 + '<span class="tm-dot status-fill-' + key + '"></span>' + escHtml(log.status_label) + '</span>';
-            const progress = log.progress_total > 0
-                ? '<p class="tm-muted">' + log.progress_done + ' of ' + log.progress_total + '</p>'
-                    + '<div class="rv-bar" style="margin-top:.35rem"><span class="status-fill-' + key + '" style="width:'
-                    + Math.round(log.progress_done / log.progress_total * 100) + '%"></span></div>'
-                : '<span class="tm-muted">None yet</span>';
             const student = log.student
                 ? '<div class="flex items-center gap-2 min-w-0">'
                     + '<span class="tm-avatar tm-avatar-sm">' + escHtml(String(log.student).charAt(0).toUpperCase()) + '</span>'
@@ -710,7 +703,6 @@
                 '<td>' + escHtml(log.role_label || log.role || 'None') + '</td>' +
                 '<td' + (log.due_date ? '' : ' class="tm-muted"') + '>' + escHtml(log.due_date || 'No date') + '</td>' +
                 '<td>' + statusBadge + '</td>' +
-                '<td>' + progress + '</td>' +
                 '<td>' + preview + '</td>' +
             '</tr>';
         }).join('');

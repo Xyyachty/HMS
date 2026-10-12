@@ -575,8 +575,7 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
 
                     {{-- Tasks in Progress — work the team has changed but not submitted yet:
-                         still active, with at least one activity ticked. The bar is the
-                         task's own activities, not the whole role. --}}
+                         still active, and saved on at least once in the editor. --}}
                     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                         <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
                             <div class="min-w-0">
@@ -589,9 +588,6 @@
                         <div class="divide-y divide-slate-100">
                             @forelse($homeInProgress as $task)
                                 @php
-                                    $actTotal   = count($task->activityList());
-                                    $actDone    = $task->activitiesDoneCount();
-                                    $actPct     = $actTotal > 0 ? (int) round(($actDone / $actTotal) * 100) : 0;
                                     $isRevision = $task->needs_revision;
                                     $homeTaskStep = \App\Support\TaskChecklist::stepForTitle($task->title);
                                 @endphp
@@ -616,20 +612,10 @@
                                                 @endif
                                             </div>
                                         </div>
-                                        <div class="shrink-0 rounded-xl border border-pink-100 bg-brand-soft px-2.5 py-1 text-center">
-                                            <p class="text-[9px] font-semibold text-slate-400">Done</p>
-                                            <p class="text-[15px] font-extrabold leading-tight text-slate-800">{{ $actDone }}<span class="text-[11px] text-slate-400">/{{ $actTotal }}</span></p>
-                                        </div>
                                     </div>
-                                    <div class="mt-3 flex items-center gap-3">
-                                        <div class="h-1.5 w-24 rounded-full bg-slate-100 overflow-hidden shrink-0">
-                                            <div class="h-full rounded-full bg-brand" style="width: {{ $actPct }}%"></div>
-                                        </div>
-                                        <p class="text-[12px] font-extrabold text-slate-700 shrink-0">{{ $actPct }}%</p>
-                                        <p class="text-[12px] text-slate-400 font-medium truncate">
-                                            {{ $actDone }} of {{ $actTotal }} activit{{ $actTotal === 1 ? 'y' : 'ies' }} done · edited {{ optional($task->updated_at)->diffForHumans() }}
-                                        </p>
-                                    </div>
+                                    <p class="mt-3 text-[12px] text-slate-400 font-medium truncate">
+                                        {{ $task->started_at ? 'Started ' . $task->started_at->diffForHumans() . ' · ' : '' }}edited {{ optional($task->updated_at)->diffForHumans() }}
+                                    </p>
                                 </div>
                             @empty
                                 <div class="px-5 py-12 text-center">
@@ -637,7 +623,7 @@
                                         <span class="iconify text-2xl text-slate-300" data-icon="mdi:progress-pencil"></span>
                                     </div>
                                     <p class="text-sm font-semibold text-slate-400">No tasks in progress</p>
-                                    <p class="text-xs text-slate-300 mt-1">A task shows here once an activity is ticked, until it is submitted.</p>
+                                    <p class="text-xs text-slate-300 mt-1">A task shows here once you save a change on it in the editor, until it is submitted.</p>
                                 </div>
                             @endforelse
                         </div>
@@ -2828,33 +2814,6 @@
             groupEl.dataset.groupStatus = statusKey;
         }
 
-        /* Repaints one task card's progress bar, percent and status badge in place
-           — shared by the checklist-tick handler and settleConceptTaskRow(). */
-        function paintRowStatus(row, statusKey, percent) {
-            const meta = {
-                not_started: { label: 'Not Started', badge: 'status-badge-not_started' },
-                in_progress: { label: 'In Progress', badge: 'status-badge-in_progress' },
-                revision: { label: 'Revision Required', badge: 'status-badge-revision' },
-                pending: { label: 'Pending Review', badge: 'status-badge-pending' },
-                completed: { label: 'Approved', badge: 'status-badge-completed' },
-            }[statusKey];
-            if (!meta) return;
-
-            row.dataset.taskStatus = statusKey;
-
-            const badge = row.querySelector('[data-row-status-badge]');
-            if (badge) {
-                badge.className = 'inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ' + meta.badge;
-                badge.textContent = meta.label;
-            }
-
-            /* No per-task figure on the card any more, so `percent` only decides
-               the status passed in. The drawer carries the label the instructions
-               dialog shows, so it has to move with the badge. */
-            const detail = row.querySelector('.task-detail');
-            if (detail) detail.dataset.detailStatus = meta.label;
-        }
-
         /* ── Task instructions dialog ──
            The body is the .task-detail node that lives in the card, moved into the
            dialog and moved back when it closes. Moved rather than copied so there is
@@ -3103,72 +3062,6 @@
         </script>
     @endif
 
-<script>
-/* One request per tick, so a student's progress survives leaving the page. The
-   box is put back the way it was if the write fails - showing a tick that was
-   never stored would be worse than showing none. */
-document.addEventListener('change', function (e) {
-    const box = e.target.closest('[data-activity-check]');
-    if (!box) return;
-
-    const panel = box.closest('[data-activity-panel]');
-    if (!panel) return;
-
-    const taskId = panel.dataset.task;
-    const index = box.dataset.index;
-    const wanted = box.checked;
-    box.disabled = true;
-
-    fetch('{{ url('/students/tasks') }}/' + taskId + '/activities/' + index, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-        },
-        body: JSON.stringify({ done: wanted }),
-    })
-        .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
-        .then(data => {
-            const label = box.parentElement.querySelector('[data-activity-text]');
-            if (label) {
-                label.classList.toggle('line-through', wanted);
-                label.classList.toggle('text-slate-400', wanted);
-                label.classList.toggle('text-slate-600', !wanted);
-            }
-            const count = panel.querySelector('[data-activity-count]');
-            if (count) count.textContent = data.done + ' of ' + data.total + ' done';
-            const hint = panel.querySelector('[data-activity-hint]');
-            if (hint) {
-                hint.textContent = data.complete
-                    ? 'All steps done - you can submit this task.'
-                    : 'Tick each step as you finish it. Complete all steps before submitting the task.';
-            }
-
-            // Steps ticked move the card itself between Not Started and In
-            // Progress — unless faculty already sent it back or archived it,
-            // which own their own status regardless of the checklist.
-            /* While the instructions dialog is open this panel sits in the dialog,
-               outside the grid, so walking up finds no card. Fall back to the id. */
-            const row = panel.closest('[data-task-card]')
-                || document.querySelector('[data-task-card][data-task-id="' + taskId + '"]');
-            if (row && row.dataset.taskStatus !== 'revision' && row.dataset.taskStatus !== 'completed') {
-                const newStatus = data.done > 0 ? 'in_progress' : 'not_started';
-                const percent = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;
-                paintRowStatus(row, newStatus, percent);
-                refreshTaskGroupSummary(row.closest('[data-task-group]'));
-            }
-        })
-        .catch(err => {
-            box.checked = !wanted;
-            const message = (err && err.message) ? err.message : 'That could not be saved. Please try again.';
-            if (window.Swal) window.Swal.fire({ icon: 'error', title: 'Not saved', text: message });
-            else alert(message);
-        })
-        .finally(() => { box.disabled = false; });
-});
-</script>
 
 @include('partials.session-guard')
 </body>

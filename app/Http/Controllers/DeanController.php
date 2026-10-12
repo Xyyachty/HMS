@@ -379,20 +379,18 @@ class DeanController extends Controller
      *
      * Status follows the same signals the rest of the app reads: 'archived' is
      * handed in, feedback_at on an archived row is faculty's approval, feedback
-     * on an active row is a send-back (Task::needs_revision), and a ticked
-     * activity is what separates In Progress from Not Started.
+     * on an active row is a send-back (Task::needs_revision), and a first save
+     * in the editor (Task::is_started) separates In Progress from Not Started.
      */
     private static function teamTaskRow(Task $task, array $roleLabels): array
     {
         $step = \App\Support\TaskChecklist::stepForTitle((string) $task->title);
-        $activities = $task->activityList();
-        $done = $task->activitiesDoneCount();
 
         [$status, $statusLabel] = match (true) {
             $task->status === 'archived' && $task->feedback_at !== null => ['completed', 'Completed'],
             $task->status === 'archived' => ['submitted', 'Submitted'],
             $task->needs_revision => ['needs_revision', 'Needs Revision'],
-            $done > 0 => ['in_progress', 'In Progress'],
+            $task->is_started => ['in_progress', 'In Progress'],
             default => ['not_started', 'Not Started'],
         };
 
@@ -411,8 +409,6 @@ class DeanController extends Controller
             'due_date' => optional($task->due_date)->format('M d, Y'),
             'status' => $status,
             'status_label' => $statusLabel,
-            'progress_done' => $done,
-            'progress_total' => count($activities),
         ];
     }
 

@@ -1058,17 +1058,6 @@
             <!-- Progress, past notes and the decision -->
             <div class="review-modal-side rv-side">
                 <div class="rv-side-scroll">
-                    {{-- The student's checklist so far, shown whether or not the task has
-                         been submitted. Read-only: faculty view progress here. --}}
-                    <div id="reviewProgressWrap" class="tm-section hidden">
-                        <div class="flex items-center justify-between gap-2">
-                            <p class="tm-section-title"><span class="iconify" data-icon="mdi:format-list-checks"></span> Steps finished</p>
-                            <p id="reviewProgressCount" class="tm-section-count"></p>
-                        </div>
-                        <div class="rv-bar"><span id="reviewProgressBar" style="width:0%"></span></div>
-                        <ul id="reviewProgressList" class="rv-steps"></ul>
-                    </div>
-
                     <div id="reviewPrevFeedbackWrap" class="tm-section hidden">
                         <p class="tm-section-title"><span class="iconify" data-icon="mdi:message-text-outline"></span> Your earlier feedback</p>
                         <p id="reviewPrevFeedback" class="tm-note-text mt-2"></p>
@@ -2918,14 +2907,11 @@ function openTaskReview(taskId) {
     document.getElementById('reviewTaskTitle').textContent = 'Loading…';
     document.getElementById('reviewTaskMeta').innerHTML = '';
     document.getElementById('reviewDecisionHint').textContent = '';
-    document.getElementById('reviewProgressBar').style.width = '0%';
     setReviewWorkHint('');
     document.getElementById('reviewStatusRow').innerHTML = '';
     document.getElementById('reviewFeedback').value = '';
     document.getElementById('reviewError').classList.add('hidden');
     document.getElementById('reviewPrevFeedbackWrap').classList.add('hidden');
-    document.getElementById('reviewProgressWrap').classList.add('hidden');
-    document.getElementById('reviewProgressList').innerHTML = '';
 
     const frame = document.getElementById('reviewPreviewFrame');
     const empty = document.getElementById('reviewPreviewEmpty');
@@ -2975,7 +2961,7 @@ function openTaskReview(taskId) {
                 badges.push('<span class="tm-badge status-badge-completed"><span class="tm-dot status-fill-completed"></span>' + (d.is_hotel_concept ? 'Submitted' : 'Approved') + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
             } else if (d.needs_revision) {
                 badges.push('<span class="tm-badge status-badge-revision"><span class="tm-dot status-fill-revision"></span>Revision Required</span>');
-            } else if (d.activities_done > 0) {
+            } else if (d.started) {
                 badges.push('<span class="tm-badge status-badge-in_progress"><span class="tm-dot status-fill-in_progress"></span>In Progress</span>');
             } else {
                 badges.push('<span class="tm-badge status-badge-not_started"><span class="tm-dot status-fill-not_started"></span>Not Started</span>');
@@ -2984,20 +2970,6 @@ function openTaskReview(taskId) {
                 badges.push('<span class="tm-chip">Sent back ' + d.revision_count + (d.revision_count === 1 ? ' time' : ' times') + '</span>');
             }
             document.getElementById('reviewStatusRow').innerHTML = badges.join('');
-
-            if (Array.isArray(d.activities) && d.activities.length) {
-                const total = Number(d.activities_total) || d.activities.length;
-                const done = Number(d.activities_done) || 0;
-                document.getElementById('reviewProgressCount').textContent = done + ' of ' + total + ' done';
-                document.getElementById('reviewProgressBar').style.width = Math.round(done / Math.max(total, 1) * 100) + '%';
-                document.getElementById('reviewProgressList').innerHTML = d.activities.map(function (a, i) {
-                    return '<li' + (a.done ? ' class="is-done"' : '') + '>'
-                        + '<span class="iconify" data-icon="' + (a.done ? 'mdi:check-circle' : 'mdi:circle-outline') + '"></span>'
-                        + '<span>' + escHtml((i + 1) + '. ' + a.text) + '</span>'
-                      + '</li>';
-                }).join('');
-                document.getElementById('reviewProgressWrap').classList.remove('hidden');
-            }
 
             if (d.feedback) {
                 document.getElementById('reviewPrevFeedback').textContent = d.feedback;
@@ -4847,7 +4819,7 @@ function teamTaskState(log) {
     };
     const key = log.state || (log.awaiting_review ? 'pending'
         : (log.status === 'archived' ? 'approved'
-        : (Number(log.activities_done) > 0 ? 'in_progress' : 'not_started')));
+        : 'not_started'));
     return { key: key === 'approved' ? 'completed' : key, label: labels[key] };
 }
 
@@ -4937,9 +4909,6 @@ function renderTeamModalActivityPage() {
               + '</button>'
             : '<span class="tm-muted">None</span>';
 
-        const progressNote = (!isDone && log.activities_total > 0)
-            ? '<p class="tm-muted mt-1">' + log.activities_done + ' of ' + log.activities_total + ' steps done</p>'
-            : '';
 
         return '<tr>' +
             '<td>' +
@@ -4948,7 +4917,7 @@ function renderTeamModalActivityPage() {
             '</td>' +
             '<td>' + student + '</td>' +
             '<td>' + escHtml(log.role_label || log.role || 'None') + '</td>' +
-            '<td>' + statusBadge + progressNote
+            '<td>' + statusBadge
                 + (log.edited_since_approval
                     ? '<p class="tm-muted mt-1" style="color:#B45309;" title="The department page changed after you approved this. Open it and ask for changes if it no longer meets the task.">Edited after approval</p>'
                     : '') + '</td>' +

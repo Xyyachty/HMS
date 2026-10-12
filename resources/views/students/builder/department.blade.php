@@ -856,6 +856,9 @@
                 if (evt.type === 'saving') {
                     setSaveState('saving');
                 }
+                if (evt.type === 'written') {
+                    markAssignedTaskStarted();
+                }
                 if (evt.type === 'autosaved') {
                     // Autosave keeps the draft and nothing else - it must never
                     // read as though the work has been handed in.
@@ -1547,6 +1550,7 @@
         function assignedTaskStatusClasses(status) {
             if (status === 'completed') return 'text-emerald-400 bg-zinc-800 border-emerald-500/50';
             if (status === 'needs_revision') return 'assigned-task-revision';
+            if (status === 'not_started') return 'text-zinc-400 bg-zinc-800 border-zinc-700';
             return 'text-cyan-400 bg-zinc-800 border-zinc-700';
         }
 
@@ -1671,6 +1675,34 @@
                 card.classList.toggle('is-active', active);
             });
         }
+
+        /* A save that changed something moves the task picked in this sidebar from
+           Not Started to In Progress. Only the picked one: a department's tasks
+           share a page, so nothing else says which task an edit belongs to. Posted
+           once per task; the server ignores a task already started. */
+        function markAssignedTaskStarted() {
+            const task = assignedTasks.find(function (t) { return t.id === activeAssignedTaskId; });
+            if (!task || task.is_concept || task.status !== 'not_started') return;
+            task.status = 'in_progress';
+            task.status_label = 'In Progress';
+            renderAssignedTaskPage();
+            fetch('/students/tasks/' + task.id + '/started', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+            }).then(function () { syncAssignedTasks(); }).catch(function () {});
+        }
+
+        // Rooms, menu items and amenities save outside the template save; the
+        // template tells this page when one lands (editor-bridge).
+        window.addEventListener('message', function (event) {
+            const data = event.data || {};
+            if (data.source === 'hms-template' && data.type === 'catalogue-saved') markAssignedTaskStarted();
+        });
 
         function focusTaskArea(task) {
             if (!task || !task.page || typeof postToTemplate !== 'function') return;

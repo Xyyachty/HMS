@@ -195,6 +195,12 @@ class HotelConceptController extends Controller
                         )) . '.')
             );
 
+            // Writing the concept is working the concept task: Not Started -> In Progress.
+            HotelConceptDesk::teamTasks((string) $membership->group_name, (int) $membership->faculty_id)
+                ->where('status', 'active')
+                ->whereNull('started_at')
+                ->each(fn ($task) => $task->forceFill(['started_at' => now()])->save());
+
             return true;
         });
 

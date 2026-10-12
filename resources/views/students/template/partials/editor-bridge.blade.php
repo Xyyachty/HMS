@@ -144,6 +144,29 @@
     };
 @endif
 </script>
+@if (!$hmsPublicSlug && !$hmsPreviewGroup && $hmsCanEdit)
+<script>
+    /* Rooms, menu items, amenities and add-ons save through their own endpoints,
+       not the template save. Tell the builder when one lands, so the task picked
+       in its sidebar moves to In Progress the same as a template save does. */
+    (function () {
+        if (!window.__HMS_CAN_EDIT__ || !window.fetch) return;
+        const nativeFetch = window.fetch.bind(window);
+        const CATALOGUE = /^(?:https?:\/\/[^/]+)?\/students\/hotel\/(?:rooms|menus|amenities|addons)\b/;
+        window.fetch = function (input, init) {
+            const url = typeof input === 'string' ? input : (input && input.url) || '';
+            const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+            const promise = nativeFetch(input, init);
+            if (method !== 'GET' && CATALOGUE.test(url)) {
+                promise.then(function (res) {
+                    if (res.ok) window.parent.postMessage({ source: 'hms-template', type: 'catalogue-saved' }, '*');
+                }).catch(function () {});
+            }
+            return promise;
+        };
+    })();
+</script>
+@endif
 <script src="{{ asset('js/hms-hotel-auth.js') }}"></script>
 <script src="{{ asset('js/hms-template-editor.js') }}?v={{ filemtime(public_path('js/hms-template-editor.js')) }}"></script>
 <script src="{{ asset('js/hms-site-content.js') }}?v={{ filemtime(public_path('js/hms-site-content.js')) }}"></script>

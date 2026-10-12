@@ -229,14 +229,6 @@
     .rv-seg button.is-on { background: #4A4643; color: #fff; }
     .rv-side { width: 24rem; flex-shrink: 0; min-height: 0; display: flex; flex-direction: column; background: #fff; }
     .rv-side-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1rem; display: flex; flex-direction: column; gap: .75rem; }
-    .rv-bar { height: .55rem; margin-top: .65rem; border-radius: 999px; background: #EFEFEF; overflow: hidden; }
-    .rv-bar > span { display: block; height: 100%; border-radius: 999px; transition: width .4s ease; }
-    .rv-bar > span:not([class*="status-fill-"]) { background: #4A4643; }
-    .rv-steps { margin-top: .75rem; display: flex; flex-direction: column; gap: .45rem; }
-    .rv-steps li { display: flex; align-items: flex-start; gap: .5rem; font-size: 13px; line-height: 1.45; color: #181818; }
-    .rv-steps li .iconify { flex-shrink: 0; margin-top: .1rem; font-size: 1rem; color: #8A817A; }
-    .rv-steps li.is-done { color: #5F5A55; }
-    .rv-steps li.is-done .iconify { color: #16A34A; }
     .rv-error { margin: 0 1rem .5rem; padding: .6rem .8rem; border-radius: .75rem; background: #FEE2E2; border: 1px solid #FECACA; color: #DC2626; font-size: 12.5px; font-weight: 700; }
     .rv-decision { flex-shrink: 0; padding: 1rem; border-top: 1px solid #E4E2E0; background: #FAFAFA; }
 

@@ -94,7 +94,8 @@ class AssignedTaskList
                 [$status, $statusLabel] = match (true) {
                     $task->status === 'archived' => ['completed', 'Completed'],
                     $task->needs_revision => ['needs_revision', 'Revision Required'],
-                    default => ['in_progress', 'In Progress'],
+                    $task->is_started => ['in_progress', 'In Progress'],
+                    default => ['not_started', 'Not Started'],
                 };
 
                 $url = null;

@@ -34,16 +34,13 @@
     };
 
     foreach ($myRoleTasks as $task) {
-        $activities = $task->activityList();
-        $done  = $task->activitiesDoneCount();
-        $total = count($activities);
-
         if ($task->needs_revision) {
             $rowStatus  = 'revision';
-            $rowPercent = $total > 0 ? (int) round(($done / $total) * 100) : 50;
-        } elseif ($total > 0 && $done > 0) {
+            $rowPercent = 50;
+        } elseif ($task->is_started) {
+            // Saved on in the editor at least once.
             $rowStatus  = 'in_progress';
-            $rowPercent = (int) round(($done / $total) * 100);
+            $rowPercent = 50;
         } else {
             $rowStatus  = 'not_started';
             $rowPercent = 0;
@@ -264,7 +261,9 @@
                                             <span class="iconify text-sm" data-icon="mdi:arrow-right"></span>
                                         </button>
                                     @elseif($rowModule)
-                                        <a href="{{ $rowModule['editable'] ? $rowModule['customize_url'] : $rowModule['simulation_url'] }}"
+                                        {{-- ?focus picks this task in the editor's sidebar, which is
+                                             what moves it to In Progress once a change is saved. --}}
+                                        <a href="{{ $rowModule['editable'] ? $rowModule['customize_url'] . '?focus=' . $task->task_id : $rowModule['simulation_url'] }}"
                                            title="Open {{ $rowModule['label'] }}"
                                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl brand-gradient text-white text-[12px] font-bold shadow-md shadow-brand/20 hover:opacity-90 transition whitespace-nowrap">
                                             Proceed
@@ -339,11 +338,9 @@
                                 </div>
                             </div>
 
-                            {{-- The body of the instructions dialog: description, the Steps
-                                 checklist and any faculty feedback. It is parked in the card
-                                 rather than in the dialog because the checklist's change
-                                 handler finds the card it belongs to by walking up from the
-                                 panel, and because the poller reprints it with fresh state.
+                            {{-- The body of the instructions dialog: description and any
+                                 faculty feedback. It is parked in the card rather than in the
+                                 dialog because the poller reprints it with fresh state.
                                  openTaskInstructions() lifts this node into the dialog and
                                  puts it back on close, so it stays hidden here either way. --}}
                             <div class="task-detail hidden px-4 sm:px-5 py-4 bg-[#F5F2EF]/60 border-t border-[#E7E1DD]"
@@ -358,46 +355,6 @@
                                         {{-- pre-line: the description carries the task's four activities as numbered
                                              lines, and they have to survive as lines. --}}
                                         <p class="text-[13px] text-slate-500 leading-relaxed whitespace-pre-line">{{ $task->description }}</p>
-                                    @endif
-                                    @php $activities = $task->activityList(); @endphp
-                                    @if($activities)
-                                        {{-- This role's own activity, broken into the steps it
-                                             is done in. Ticked as the student works, and every one
-                                             has to be ticked before it can be handed in - the
-                                             submit route checks the same thing the button does. --}}
-                                        <div class="rounded-xl border border-[#E7E1DD] bg-white px-3 py-2.5"
-                                             data-activity-panel data-task="{{ $task->task_id }}">
-                                            <div class="flex items-center justify-between gap-2">
-                                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                                                    <span class="iconify text-xs" data-icon="mdi:format-list-checks"></span>
-                                                    Steps
-                                                </p>
-                                                <p class="text-[10px] font-bold text-slate-400" data-activity-count>
-                                                    {{ $task->activitiesDoneCount() }} of {{ count($activities) }} done
-                                                </p>
-                                            </div>
-                                            <ul class="mt-2 space-y-1.5">
-                                                @foreach($activities as $i => $activity)
-                                                    <li class="flex items-start gap-2">
-                                                        <input type="checkbox"
-                                                               class="mt-0.5 rounded border-[#8A817A] accent-[#5F5A55] focus:ring-[#8A817A]/30 disabled:opacity-50"
-                                                               data-activity-check
-                                                               data-index="{{ $i }}"
-                                                               @checked($activity['done'])
-                                                               @disabled($task->status !== 'active')>
-                                                        <span class="text-[13px] leading-relaxed {{ $activity['done'] ? 'text-slate-400 line-through' : 'text-slate-600' }}"
-                                                              data-activity-text>{{ $i + 1 }}. {{ $activity['text'] }}</span>
-                                                    </li>
-                                                @endforeach
-                                            </ul>
-                                            @if($task->status === 'active')
-                                                <p class="text-[11px] text-slate-400 mt-2" data-activity-hint>
-                                                    {{ $task->activitiesComplete()
-                                                        ? 'All steps done - you can submit this task.'
-                                                        : 'Tick each step as you finish it. Complete all steps before submitting the task.' }}
-                                                </p>
-                                            @endif
-                                        </div>
                                     @endif
                                     @if($needsRevision)
                                         {{-- Sent back by faculty: active again, but carrying feedback. --}}
