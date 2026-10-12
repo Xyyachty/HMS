@@ -675,6 +675,11 @@ function GuestDetailsModal({ room, reservation, onClose }) {
   );
 }
 
+function fdThemeColor(name, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
 function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onSettleAndCheckOut }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -691,6 +696,32 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
   // The View action. Read-only, so it needs no fetch: the row already holds the whole
   // reservation payload the modal renders.
   const [detailsFor, setDetailsFor] = useState(null);
+
+  /* Front Desk checks an arrived guest in here too, not only Room Management -
+     the same booking action. Asked first: it starts the guest's paid stay, and
+     a mis-click on the wrong row is easy. */
+  const checkInGuest = (room, reservation) => {
+    if (typeof onBookingAction !== 'function') return;
+    const name = reservation.fullName || 'this guest';
+    const go = () => {
+      onBookingAction(reservation.bookingId, 'check_in');
+      if (onToast) onToast(`${reservation.fullName || 'Guest'} is checked in to ${room.name}.`);
+    };
+    if (!window.Swal) { if (window.confirm(`Check in ${name} to ${room.name}?`)) go(); return; }
+    window.Swal.fire({
+      title: `Check in ${name}?`,
+      text: `They get the key to ${room.name}, and their stay time starts now.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, check in',
+      cancelButtonText: 'Not yet',
+      background: fdThemeColor('--card', '#181714'),
+      color: fdThemeColor('--fg', '#f5f0e8'),
+      confirmButtonColor: fdThemeColor('--accent', '#c9a84c'),
+      cancelButtonColor: '#71717a',
+      heightAuto: false,
+    }).then(r => { if (r.isConfirmed) go(); });
+  };
 
   const openBill = (room, reservation) => {
     setBillFor({ room, reservation });
@@ -873,6 +904,16 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                                   style={{ ...rowBtn, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)' }}
                                 >
                                   <i className="fa-solid fa-door-open" style={{ fontSize: '0.68rem' }}></i> Arrive
+                                </button>
+                              )}
+                              {reservation.status === 'Arrived' && (
+                                <button
+                                  type="button"
+                                  onClick={() => checkInGuest(room, reservation)}
+                                  title="Hand the guest the key and start their stay"
+                                  style={{ ...rowBtn, border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)' }}
+                                >
+                                  <i className="fa-solid fa-key" style={{ fontSize: '0.68rem' }}></i> Check In
                                 </button>
                               )}
                             </div>
