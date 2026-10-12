@@ -86,7 +86,9 @@ class StudentWelcomeMailer
                 studentName: $displayName,
                 loginEmail: $user->email,
                 plainPassword: $plainPassword,
-                loginUrl: route('login'),
+                // From APP_URL, not the request: these emails are sent from a
+                // local machine, where route() alone would link to localhost.
+                loginUrl: rtrim((string) config('app.url'), '/') . route('login', [], false),
                 className: $className,
                 studentNumber: $studentNumber,
                 accountType: $accountType,
