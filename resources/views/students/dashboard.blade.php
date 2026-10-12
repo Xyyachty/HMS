@@ -808,6 +808,10 @@
                                         @if(!empty($studentClass))
                                             <span class="px-2.5 py-1 rounded-lg bg-brand-soft text-brand text-[11px] font-bold uppercase tracking-wider">{{ $studentClass->name }}</span>
                                         @endif
+                                        @if($groupMembership)
+                                            @php $teamCompletionPhase = \App\Support\SimulationPhase::progress($groupMembership->group_name, (int) $groupMembership->faculty_id); @endphp
+                                            @include('partials.team-completion', ['done' => $teamCompletionPhase['approved'], 'total' => $teamCompletionPhase['required']])
+                                        @endif
                                     </div>
                                     <p id="teamHeaderEyebrow" class="text-slate-400 text-[13px] font-semibold mt-1">Hotel Management Simulation</p>
                                     <p id="teamHeaderType" class="hidden text-[12px] font-bold text-slate-500 mt-0.5"></p>

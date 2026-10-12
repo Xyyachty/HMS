@@ -158,7 +158,10 @@
                         <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <p class="text-[13px] font-bold text-slate-800 truncate">{{ $team['name'] }}</p>
+                        <div class="flex items-center gap-2 min-w-0">
+                            <p class="text-[13px] font-bold text-slate-800 truncate">{{ $team['name'] }}</p>
+                            <span class="shrink-0">@include('partials.team-completion', ['done' => $team['done'], 'total' => $team['total']])</span>
+                        </div>
                         <p class="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5">
                             {{ $team['label'] }} · {{ $team['done'] }}/{{ $team['total'] }} approved ·
                             <span class="{{ $team['unlocked'] ? 'text-emerald-600' : '' }}">Simulation {{ $team['unlocked'] ? 'unlocked' : 'locked' }}</span>
