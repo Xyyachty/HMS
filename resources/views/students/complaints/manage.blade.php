@@ -472,11 +472,8 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
     }
   };
 
-  const close = () => {
-    if (window.confirm(`Has the guest confirmed the problem for ${where} is fixed? This closes the complaint.`)) {
-      onUpdate(complaint.id, { status: 'Closed' });
-    }
-  };
+  // No confirm: the button itself reads "Confirm with guest & close".
+  const close = () => onUpdate(complaint.id, { status: 'Closed' });
 
   const saveNote = () => {
     if (noteMode === 'resolve' && !note.trim()) {
