@@ -457,7 +457,7 @@
                             {{-- refreshHomeGreeting() rewrites this text on a timer, so the
                                  greeting turns over on its own when the Manila hour crosses
                                  5am/12pm/6pm without the student refreshing. --}}
-                            <span id="homeGreetingText">{{ $homeGreeting }}, {{ $homeFirstName }}!</span> <span class="align-middle">&#128075;</span>
+                            <span id="homeGreetingText">{{ $homeGreeting }}, {{ $homeFirstName }}!</span>
                         </h2>
                         <p class="text-sm text-slate-500 mt-1.5">Here's your progress and tasks for today.</p>
                     </div>
