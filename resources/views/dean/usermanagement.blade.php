@@ -378,7 +378,7 @@
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <form method="POST" action="{{ route('dean.users.store') }}" onsubmit="return validateUserPasswords()">
+        <form method="POST" action="{{ route('dean.users.store') }}">
         @csrf
         @if ($errors->any())
             <div class="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -432,23 +432,11 @@
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
-                <div class="relative">
-                    <input id="createUserPassword" name="password" type="password" placeholder="Min. 8 characters" required oninput="validateUserPasswords()" class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                    <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                    </button>
+                {{-- Not typed by the dean: generated on save and sent to the faculty
+                     member's Gmail with the welcome email. --}}
+                <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
+                    <span class="iconify" data-icon="mdi:email-lock-outline"></span> Sent to their Gmail
                 </div>
-                <p id="createUserPasswordHelp" class="mt-1 text-[11px] text-red-500 hidden">Password must be at least 8 characters.</p>
-            </div>
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm Password</label>
-                <div class="relative">
-                    <input id="createUserPasswordConfirm" name="password_confirmation" type="password" placeholder="Re-enter password" required oninput="validateUserPasswords()" class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                    <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                    </button>
-                </div>
-                <p id="createUserPasswordMatch" class="mt-1 text-[11px] text-red-500 hidden">Passwords do not match.</p>
             </div>
         </div>
         <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 relative" style="z-index: 10;">
@@ -1083,25 +1071,6 @@
             input.type = 'password';
             icon.setAttribute('data-icon', 'mdi:eye-off-outline');
         }
-    }
-
-    function validateUserPasswords() {
-        const password = document.getElementById('createUserPassword');
-        const confirm = document.getElementById('createUserPasswordConfirm');
-        const lengthHelp = document.getElementById('createUserPasswordHelp');
-        const matchHelp = document.getElementById('createUserPasswordMatch');
-
-        if (!password || !confirm) {
-            return true;
-        }
-
-        const tooShort = password.value.length > 0 && password.value.length < 8;
-        const mismatch = confirm.value.length > 0 && password.value !== confirm.value;
-
-        lengthHelp.classList.toggle('hidden', !tooShort);
-        matchHelp.classList.toggle('hidden', !mismatch);
-
-        return !(tooShort || mismatch);
     }
 
     @if ($errors->any() && old('role'))

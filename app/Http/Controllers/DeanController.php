@@ -530,9 +530,11 @@ class DeanController extends Controller
 
         return $mailResult['sent']
             ? ['success', 'Faculty account created. A welcome email with the sign-in details was sent to ' . $user->email . '.']
-            // The cause is in the log; the dean only needs to know to hand over the password.
+            // The cause is in the log. When the email did not go out, this is the only
+            // place the generated password is ever shown, so it is shown once here.
             : ['warning', 'Faculty account created, but the welcome email to ' . $user->email
-                . ' could not be sent. Give them the password you set.'];
+                . ' could not be sent. Their password is ' . $plainPassword
+                . ' - write it down now and give it to them, it is not shown again.'];
     }
 
     public function storeFaculty(Request $request)
@@ -543,8 +545,10 @@ class DeanController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => $this->facultyEmailRules($request),
             'phone_number' => ['nullable', 'string', new PhilippineMobile()],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], self::FACULTY_EMAIL_MESSAGES);
+
+        // Generated, not typed by the dean. Readable only in the welcome email.
+        $plainPassword = StudentWelcomeMailer::generatePassword();
 
         /* Active, whatever arrives. An account created switched off is one
            nobody can sign in to; deactivating is done to an account that
@@ -569,7 +573,7 @@ class DeanController extends Controller
             'middle_name' => User::cleanOptional($validated['middle_name'] ?? null),
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => Hash::make($plainPassword),
             'role' => 'faculty',
             'email_verified_at' => now(),
         ]);
@@ -588,7 +592,7 @@ class DeanController extends Controller
 
         Notifier::accountCreated(auth()->user(), $user, 'faculty');
 
-        [$flash, $message] = $this->welcomeFaculty($user, $validated['password']);
+        [$flash, $message] = $this->welcomeFaculty($user, $plainPassword);
 
         return redirect()->route('dean.faculties')
             ->with($flash, $message . ' Assigned ' . Faculty::blockLabel($block) . '.');
@@ -606,8 +610,13 @@ class DeanController extends Controller
                 : ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', new PhilippineMobile()],
             'role' => ['required', 'in:faculty,student'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            // A faculty password is generated and emailed, so the dean types none.
+            'password' => ['exclude_if:role,faculty', 'required', 'string', 'min:8', 'confirmed'],
         ], self::FACULTY_EMAIL_MESSAGES);
+
+        $plainPassword = $validated['role'] === 'faculty'
+            ? StudentWelcomeMailer::generatePassword()
+            : $validated['password'];
 
         // Active, whatever arrives - see storeFaculty().
         $status = 'active';
@@ -624,7 +633,7 @@ class DeanController extends Controller
             'middle_name' => User::cleanOptional($validated['middle_name'] ?? null),
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => Hash::make($plainPassword),
             'role' => $validated['role'],
             'email_verified_at' => now(),
         ];
@@ -652,7 +661,7 @@ class DeanController extends Controller
         Notifier::accountCreated(auth()->user(), $user, $validated['role']);
 
         [$flash, $message] = $validated['role'] === 'faculty'
-            ? $this->welcomeFaculty($user, $validated['password'])
+            ? $this->welcomeFaculty($user, $plainPassword)
             : ['success', 'Student account created successfully.'];
 
         return redirect()->route('dean.users')->with($flash, $message);

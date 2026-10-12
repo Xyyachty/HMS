@@ -455,20 +455,10 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
-                    <div class="relative">
-                        <input name="password" type="password" required class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
-                        <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                        </button>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm Password</label>
-                    <div class="relative">
-                        <input name="password_confirmation" type="password" required class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
-                        <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                        </button>
+                    {{-- Not typed by the dean: generated on save and sent to the faculty
+                         member's Gmail with the welcome email. --}}
+                    <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
+                        <span class="iconify" data-icon="mdi:email-lock-outline"></span> Sent to their Gmail
                     </div>
                 </div>
             </div>
