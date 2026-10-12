@@ -64,6 +64,9 @@
 
         ::selection { background: #7B1730; color: #fff; }
         body { font-family: 'Manrope', sans-serif; }
+        /* SweetAlert defaults to z-index 1060 and the dean modals sit at 9999, so a
+           confirm fired from inside a modal opened behind it. */
+        .swal2-container { z-index: 20000 !important; }
         /* Flat wine, not a gradient: buttons wear this class, and a button reads
            as one solid colour. The name stays so every call site keeps working. */
         .brand-gradient { background: #7B1730; }
