@@ -1125,8 +1125,8 @@
         <!-- Screen Header -->
         <div class="bg-white px-5 py-3 border-b border-slate-200 flex justify-between items-start gap-3">
             <div class="min-w-0">
-                <h4 class="font-extrabold text-slate-900 text-2xl leading-tight">Teams &amp; Students</h4>
-                <p class="text-[13px] text-slate-500 mt-0.5">Put your students into teams of 4, and give each student a role.</p>
+                <h4 class="font-extrabold text-slate-900 text-2xl leading-tight">Create Student Teams</h4>
+                <p class="text-[13px] text-slate-500 mt-0.5">Group your students into teams of 4 and give each student one role.</p>
             </div>
             <button type="button" onclick="closeCreateTeamModal()"
                 class="h-10 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition inline-flex items-center gap-2 shrink-0">
@@ -1143,16 +1143,16 @@
                 class="ts-tab border-brand text-brand">
                 <span class="ts-tab-icon"><span class="iconify" data-icon="mdi:account-multiple-plus-outline"></span></span>
                 <span class="ts-tab-copy">
-                    <span class="ts-tab-title">Make new teams</span>
-                    <span class="ts-tab-sub">For students who don't have a team yet</span>
+                    <span class="ts-tab-title">Create New Teams</span>
+                    <span class="ts-tab-sub">Put students who have no team yet into new teams</span>
                 </span>
             </button>
             <button type="button" onclick="switchCreateModalTab('insert')" id="modal-tab-insert"
                 class="ts-tab border-transparent text-slate-400">
                 <span class="ts-tab-icon"><span class="iconify" data-icon="mdi:account-edit-outline"></span></span>
                 <span class="ts-tab-copy">
-                    <span class="ts-tab-title">Change existing teams</span>
-                    <span class="ts-tab-sub">See who is in each team, add a student, or change a role</span>
+                    <span class="ts-tab-title">Edit Existing Teams</span>
+                    <span class="ts-tab-sub">View team members, add a student, or change a role</span>
                 </span>
             </button>
         </div>
@@ -1198,17 +1198,17 @@
                 <div class="ts-done">
                     <span class="ts-done-icon"><span class="iconify" data-icon="mdi:check-circle-outline"></span></span>
                     <p class="ts-done-title">Every student{{ $activeClass ? ' in ' . $activeClass->name : '' }} already has a team</p>
-                    <p class="ts-done-sub">There is no one left to put in a new team. To move a student, add one, or change a role, open the existing teams.</p>
+                    <p class="ts-done-sub">All students are already in a team. To move a student, add a student, or change a role, go to Edit Existing Teams.</p>
                     <button type="button" onclick="switchCreateModalTab('insert')" class="ts-btn-dark">
-                        <span class="iconify" data-icon="mdi:account-edit-outline"></span> Change existing teams
+                        <span class="iconify" data-icon="mdi:account-edit-outline"></span> Edit Existing Teams
                     </button>
                 </div>
             @else
             <div class="px-1 pt-1">
                 <p class="ts-lead">
                     <b>{{ $unassignedStudentCount }} {{ Str::plural('student', $unassignedStudentCount) }}</b>
-                    {{ $unassignedStudentCount === 1 ? "doesn't" : "don't" }} have a team yet{{ $activeClass ? ' in ' . $activeClass->name : '' }}.
-                    How do you want to make the teams?
+                    {{ $unassignedStudentCount === 1 ? 'is' : 'are' }} not yet assigned to a team{{ $activeClass ? ' in ' . $activeClass->name : '' }}.
+                    How would you like to create the teams?
                 </p>
                 {{-- switchCreateTeamMode() adds shadow-sm to the chosen one; .ts-mode reads that as on. --}}
                 <div class="ts-modes">
@@ -1216,16 +1216,16 @@
                         class="ts-mode bg-white text-brand shadow-sm border border-brand/10">
                         <span class="iconify ts-mode-icon" data-icon="mdi:hand-pointing-right"></span>
                         <span class="ts-mode-copy">
-                            <span class="ts-mode-title">One team, picked by me</span>
-                            <span class="ts-mode-sub">Choose the 4 students and their roles yourself</span>
+                            <span class="ts-mode-title">Choose Students Myself</span>
+                            <span class="ts-mode-sub">Create one team: you choose the 4 students and their roles</span>
                         </span>
                     </button>
                     <button type="button" id="createModeMultiBtn" onclick="switchCreateTeamMode('multiple')"
                         class="ts-mode text-slate-500 hover:text-slate-700">
                         <span class="iconify ts-mode-icon" data-icon="mdi:account-group-outline"></span>
                         <span class="ts-mode-copy">
-                            <span class="ts-mode-title">All teams at once</span>
-                            <span class="ts-mode-sub">The system groups everyone into teams of 4; you can still change it</span>
+                            <span class="ts-mode-title">Automatically Create Teams</span>
+                            <span class="ts-mode-sub">The system puts all students into teams of 4. You can still make changes.</span>
                         </span>
                     </button>
                 </div>
@@ -1247,7 +1247,7 @@
 
                 <div class="p-5 space-y-4">
                     <div>
-                        <label class="ts-label">1. Name the team</label>
+                        <label class="ts-label">1. Team Name</label>
                         <input name="group_name" type="text" placeholder="{{ $nextTeamNames[0] ?? 'e.g. Team 1' }}"
                             value="{{ old('_form_source') === 'create_team' ? old('group_name') : ($nextTeamNames[0] ?? '') }}"
                             @disabled($unassignedStudentCount === 0)
@@ -1255,8 +1255,8 @@
                     </div>
 
                     <div>
-                        <p class="ts-label">2. Pick 4 students</p>
-                        <p class="ts-help">Tick a student, then tick the one role they will play. Or let the system pick 4 for you.</p>
+                        <p class="ts-label">2. Select 4 Students</p>
+                        <p class="ts-help">Check a student, then check the role they will play. Or let the system select 4 students for you.</p>
                     </div>
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div class="relative flex-1">
@@ -1269,9 +1269,9 @@
                         <button type="button" id="createRandomizeBtn"
                             @disabled($unassignedStudentCount === 0)
                             class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-600 hover:border-brand/40 hover:text-brand transition inline-flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-60 disabled:cursor-not-allowed">
-                            <span class="iconify" data-icon="mdi:shuffle-variant"></span> Pick 4 for me
+                            <span class="iconify" data-icon="mdi:shuffle-variant"></span> Automatically Select 4 Students
                         </button>
-                        <span id="createSelectedCount" class="text-xs font-bold text-slate-500 whitespace-nowrap sm:min-w-[7rem] text-right">0 of 4 picked</span>
+                        <span id="createSelectedCount" class="text-xs font-bold text-slate-500 whitespace-nowrap sm:min-w-[7rem] text-right">0 of 4 Students Selected</span>
                     </div>
                     <p id="createRandomizeNote" class="text-[11px] text-slate-400 -mt-3"></p>
 
@@ -1284,7 +1284,7 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-[11px] font-semibold text-slate-500 mr-1">Every team needs one of each role:</span>
+                        <span class="text-[11px] font-semibold text-slate-500 mr-1">Each team needs one student for each role:</span>
                         @foreach($teamRoleOptions as $rk => $rl)
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600">
                                 <span class="w-2 h-2 rounded-full role-dot-{{ $rk }}"></span>{{ $rl }}
@@ -1297,7 +1297,7 @@
                     @if($unassignedStudentCount > 0)
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <label class="text-xs font-bold text-slate-600">Students without a team</label>
+                            <label class="text-xs font-bold text-slate-600">Students Not Yet Assigned</label>
                             <span class="text-[11px] text-slate-400">{{ ($students ?? collect())->count() }} to choose from</span>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 max-h-[22rem] overflow-y-auto">
@@ -1387,20 +1387,20 @@
                         <div class="flex items-start gap-3 mb-4">
                             <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">1</span>
                             <div class="min-w-0">
-                                <p class="text-[15px] font-bold text-slate-800">How many teams</p>
-                                <p class="text-[12px] text-slate-400">Worked out for you from the students who don't have a team.</p>
+                                <p class="text-[15px] font-bold text-slate-800">Number of Teams</p>
+                                <p class="text-[12px] text-slate-400">Counted for you from the students not yet assigned to a team.</p>
                             </div>
                         </div>
                         <div class="setup-field-grid">
                             <div>
-                                <label class="ts-label">Teams to make</label>
+                                <label class="ts-label">Teams to Create</label>
                                 <input type="number" id="bulkTeamCount" min="0" max="40" readonly
                                     value="{{ (int) floor($availableStudentCount / 4) }}"
                                     class="w-full h-11 px-4 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none cursor-not-allowed">
                                 <p class="text-[11px] text-slate-400 mt-1.5">You don't need to change this.</p>
                             </div>
                             <div>
-                                <label class="ts-label">Students in each team</label>
+                                <label class="ts-label">Students per Team</label>
                                 <input type="text" value="4" readonly
                                     class="w-full h-11 px-4 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none cursor-not-allowed">
                                 <p class="text-[11px] text-slate-400 mt-1.5">Always 4: one for each role.</p>
@@ -1410,14 +1410,14 @@
                                     <span class="iconify text-brand text-xl" data-icon="mdi:account-multiple-outline"></span>
                                 </div>
                                 <div class="min-w-0">
-                                    <p class="text-[12px] font-bold text-slate-600">Students without a team</p>
+                                    <p class="text-[12px] font-bold text-slate-600">Students Not Yet Assigned</p>
                                     <p class="text-2xl font-extrabold text-slate-900 leading-none mt-0.5">{{ $availableStudentCount }}</p>
-                                    <p class="text-[11px] text-slate-400">ready to be grouped</p>
+                                    <p class="text-[11px] text-slate-400">ready to be put into teams</p>
                                 </div>
                             </div>
                         </div>
                         <p id="bulkTeamHint" class="text-[11px] text-slate-400 mt-3">
-                            {{ $availableStudentCount }} {{ Str::plural('student', $availableStudentCount) }} without a team{{ $activeClass ? ' in ' . $activeClass->name : '' }}, 4 in each team.
+                            {{ $availableStudentCount }} {{ Str::plural('student', $availableStudentCount) }} not yet assigned{{ $activeClass ? ' in ' . $activeClass->name : '' }}, 4 in each team.
                             @if($availableStudentCount > 0 && $availableStudentCount % 4 !== 0)
                                 {{ $availableStudentCount % 4 }} {{ Str::plural('student', $availableStudentCount % 4) }} will be left over until more students join.
                             @endif
@@ -1431,7 +1431,7 @@
                             <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">2</span>
                             <div class="min-w-0">
                                 <p class="text-[15px] font-bold text-slate-800">The 4 roles in every team</p>
-                                <p class="text-[12px] text-slate-400">Each student in a team plays one of these. Nothing to choose here.</p>
+                                <p class="text-[12px] text-slate-400">Each student in a team gets one of these roles. Nothing to choose here.</p>
                             </div>
                         </div>
                         <div class="setup-role-grid">
@@ -1454,14 +1454,14 @@
                             <div class="flex items-start gap-3 min-w-0">
                                 <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">3</span>
                                 <div class="min-w-0">
-                                    <p class="text-[15px] font-bold text-slate-800">Put students into teams</p>
-                                    <p class="text-[12px] text-slate-400">Press "Group them for me", then check the list. You can move anyone to another team or change their role.</p>
+                                    <p class="text-[15px] font-bold text-slate-800">Assign Students to Teams</p>
+                                    <p class="text-[12px] text-slate-400">Press "Automatically Create Teams", then check the list. You can move any student to another team or change their role.</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
                                 <button type="button" onclick="autoGroupStudentsIntoTeamsOfFour()"
                                     class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition inline-flex items-center justify-center gap-1.5">
-                                    <span class="iconify text-base" data-icon="mdi:shuffle-variant"></span> Group them for me
+                                    <span class="iconify text-base" data-icon="mdi:shuffle-variant"></span> Automatically Create Teams
                                 </button>
                                 <button type="button" onclick="resetBulkAssignment()"
                                     class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition">
@@ -1553,28 +1553,28 @@
                     {{-- One card in plain words instead of three: who still needs a team,
                          and what pressing the button below will make. --}}
                     <div class="ts-glance">
-                        <p class="ts-glance-title">At a glance{{ $activeClass ? ' · ' . $activeClass->name : '' }}</p>
+                        <p class="ts-glance-title">Block Summary{{ $activeClass ? ' · ' . $activeClass->name : '' }}</p>
                         <div class="ts-glance-row">
-                            <span>Students without a team</span>
+                            <span>Students Not Yet Assigned</span>
                             <b>{{ $unassignedStudentCount }}</b>
                         </div>
                         <div class="ts-glance-row">
-                            <span>New teams you can make</span>
+                            <span>Available Teams to Create</span>
                             <b>{{ (int) floor($unassignedStudentCount / 4) }}</b>
                         </div>
                         <div class="ts-glance-row">
-                            <span>Students in each team</span>
+                            <span>Students per Team</span>
                             <b>4</b>
                         </div>
                         <div class="ts-glance-row">
-                            <span>Teams already made</span>
+                            <span>Teams Created</span>
                             <b>{{ ($groups ?? collect())->count() }}</b>
                         </div>
                     </div>
 
                     <div class="ts-tip">
                         <span class="iconify" data-icon="mdi:lightbulb-on-outline"></span>
-                        <p>Made a mistake? You can move students or change their roles later under <b>Change existing teams</b>.</p>
+                        <p>Made a mistake? You can move students or change their roles later in <b>Edit Existing Teams</b>.</p>
                     </div>
                 </aside>
             </div>
@@ -1627,7 +1627,7 @@
                     with <b>{{ $manageStudentCount }} {{ Str::plural('student', $manageStudentCount) }}</b>.
                     @if($manageUnassigned > 0)
                         <b>{{ $manageUnassigned }}</b> {{ Str::plural('student', $manageUnassigned) }} still {{ $manageUnassigned === 1 ? 'needs' : 'need' }} a team:
-                        <button type="button" onclick="switchCreateModalTab('add_team')" class="ts-link">make a new team</button>.
+                        <button type="button" onclick="switchCreateModalTab('add_team')" class="ts-link">create a new team</button>.
                     @endif
                     Choose a team to see who is in it.
                 </p>
@@ -1669,7 +1669,7 @@
                                 <span class="iconify text-slate-300 text-base shrink-0" data-icon="mdi:chevron-right"></span>
                             </button>
                         @empty
-                            <p class="text-[12px] text-slate-400">No teams yet. Make one under <b>Make new teams</b>.</p>
+                            <p class="text-[12px] text-slate-400">No teams yet. Create one in <b>Create New Teams</b>.</p>
                         @endforelse
                     </div>
                 </div>
@@ -1797,7 +1797,7 @@
                     @empty
                         <div class="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center">
                             <p class="text-sm font-bold text-slate-500">No teams yet</p>
-                            <p class="text-xs text-slate-400 mt-1">Make a team first under <b>Make new teams</b>; it will show up here.</p>
+                            <p class="text-xs text-slate-400 mt-1">Create a team first in <b>Create New Teams</b>. It will show up here.</p>
                         </div>
                     @endforelse
                 </div>
@@ -3883,7 +3883,7 @@ function refreshBulkTeamPreviews() {
         const leftover = totalStudents - assigned;
         const completeTeams = (getBulkTeamMemberCounts() || []).filter((c) => c === BULK_TEAM_SIZE).length;
         hint.textContent = `${assigned} of ${totalStudents} students placed · ${completeTeams} complete team${completeTeams === 1 ? '' : 's'} of ${BULK_TEAM_SIZE}`
-            + (leftover > 0 ? ` · ${leftover} still without a team` : '')
+            + (leftover > 0 ? ` · ${leftover} not yet assigned` : '')
             + '.';
     }
 
@@ -4228,7 +4228,7 @@ function randomizeSingleTeamMembers() {
     const checkboxes = Array.from(document.querySelectorAll('.create-student-checkbox'));
     const note = document.getElementById('createRandomizeNote');
     if (checkboxes.length === 0) {
-        if (note) note.textContent = 'No unassigned students available.';
+        if (note) note.textContent = 'There are no students left to assign.';
         return;
     }
 
@@ -4254,8 +4254,8 @@ function randomizeSingleTeamMembers() {
     refreshRoleAvailability('create');
     if (note) {
         note.textContent = pick.length < TEAM_MEMBER_MAX
-            ? `Selected ${pick.length} available student${pick.length === 1 ? '' : 's'} (need ${TEAM_MEMBER_MAX} for a full team).`
-            : `Randomly selected ${TEAM_MEMBER_MAX} members.`;
+            ? `Selected ${pick.length} available student${pick.length === 1 ? '' : 's'}. A full team needs ${TEAM_MEMBER_MAX}.`
+            : `${TEAM_MEMBER_MAX} students selected automatically.`;
     }
 }
 
@@ -4275,7 +4275,7 @@ function updateTeamSelectedCount(mode) {
     const count = document.querySelectorAll(selector + ':checked').length;
     if (!el) return;
     el.textContent = mode === 'create'
-        ? (count + ' of ' + TEAM_MEMBER_MAX + ' picked')
+        ? (count + ' of ' + TEAM_MEMBER_MAX + ' Students Selected')
         : (count + ' selected');
 }
 
