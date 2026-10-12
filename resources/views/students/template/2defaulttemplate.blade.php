@@ -133,25 +133,31 @@
   .nav-link:hover, .nav-link.active { color: var(--accent); }
   .nav-link:hover::after, .nav-link.active::after { width: 100%; }
 
+  /* Held to the page width, like every section under it, so the photograph
+     is a framed panel beside the copy rather than a slab running off the
+     left edge of the screen. */
   .hero-split {
     display: flex;
     flex-direction: row;
     align-items: stretch;
-    min-height: 72vh;
-    margin-top: 64px;
+    gap: 3rem;
+    max-width: 1200px;
+    margin: 64px auto 0;
+    padding: 2.5rem 1.5rem;
   }
   .hero-img {
     flex: 0 0 55%;
     position: relative;
     overflow: hidden;
-    min-height: 72vh;
+    min-height: 64vh;
     align-self: stretch;
     background: #ddd;
+    border-radius: 18px;
   }
   .hero-img img {
     width: 100%;
     height: 100%;
-    min-height: 72vh;
+    min-height: 64vh;
     object-fit: cover;
     display: block;
   }
@@ -289,8 +295,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 4rem 3.5rem;
-    background: var(--bg-alt);
+    padding: 2rem 0;
     min-width: 0;
   }
 
@@ -1092,13 +1097,13 @@
   html.hms-in-builder .hero-img {
     flex: 0 0 55% !important;
     height: auto !important;
-    min-height: 72vh !important;
+    min-height: 64vh !important;
   }
   html.hms-in-builder .hero-img img {
-    min-height: 72vh !important;
+    min-height: 64vh !important;
   }
   html.hms-in-builder .hero-content {
-    padding: 3rem 2.5rem !important;
+    padding: 2rem 0 !important;
   }
 
   /* The Restaurant page opens on this: a plated photograph, what the kitchen is
@@ -1313,7 +1318,8 @@
     .hero-split { flex-direction: column; }
     .hero-img { flex: none; height: 45vh; min-height: 300px; }
     .hero-img img { min-height: 300px; }
-    .hero-content { padding: 3rem 2rem; }
+    .hero-split { gap: 1.5rem; }
+    .hero-content { padding: 0 0.5rem 1rem; }
     .booking-layout { flex-direction: column !important; }
     .booking-sidebar { padding: 2rem; }
     .hamburger { display: flex; }
@@ -1414,7 +1420,8 @@
     html:not(.hms-in-builder) .hero-split { flex-direction: column; }
     html:not(.hms-in-builder) .hero-img { flex: none; height: 45vh; min-height: 300px; }
     html:not(.hms-in-builder) .hero-img img { min-height: 300px; }
-    html:not(.hms-in-builder) .hero-content { padding: 3rem 2rem; }
+    html:not(.hms-in-builder) .hero-split { gap: 1.5rem; }
+    html:not(.hms-in-builder) .hero-content { padding: 0 0.5rem 1rem; }
     html:not(.hms-in-builder) .booking-layout { flex-direction: column !important; }
     html:not(.hms-in-builder) .booking-sidebar { padding: 2rem; }
   }
