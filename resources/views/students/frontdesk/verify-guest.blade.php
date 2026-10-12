@@ -116,6 +116,24 @@
   :root[data-ops-theme="2"] .room-status-badge.status-cleaning { background: #fef3c7; color: #b45309; border-color: #fde68a; }
   :root[data-ops-theme="2"] .room-status-badge.status-maintenance { background: #ffe4e6; color: #be123c; border-color: #fecdd3; }
   :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
+  /* The guest's receipt: a paper slip inside the dialog, printed on its own. */
+  .receipt-print { background: #fff; color: #1a1a1a; border-radius: 10px; padding: 1.3rem 1.4rem; font-size: 0.86rem; border: 1px solid #e5e2dd; }
+  .rc-top { text-align: center; padding-bottom: 0.9rem; border-bottom: 1px dashed #c9c3ba; }
+  .rc-top h3 { margin: 0 0 0.25rem; font-size: 1.25rem; font-family: var(--font-display, 'Playfair Display', serif); color: #1a1a1a; }
+  .rc-top p { margin: 0.1rem 0; color: #5f5a55; font-size: 0.8rem; }
+  .rc-top .rc-no { font-weight: 700; color: #1a1a1a; letter-spacing: 0.04em; }
+  .rc-block { padding: 0.8rem 0; border-bottom: 1px dashed #c9c3ba; }
+  .rc-head { margin: 0 0 0.4rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #5f5a55; }
+  .rc-line { display: flex; justify-content: space-between; gap: 1rem; padding: 0.18rem 0; }
+  .rc-amt { flex: none; font-variant-numeric: tabular-nums; }
+  .rc-strong { font-weight: 700; margin-top: 0.25rem; }
+  .rc-due { color: #c81e3a; }
+  .rc-thanks { margin: 0.9rem 0 0; text-align: center; color: #5f5a55; font-size: 0.8rem; }
+  @media print {
+    body * { visibility: hidden !important; }
+    .receipt-print, .receipt-print * { visibility: visible !important; }
+    .receipt-print { position: fixed; left: 0; top: 0; width: 100%; border: 0; border-radius: 0; padding: 0; }
+  }
 </style>
 @endsection
 
@@ -126,6 +144,8 @@
 @section('scripts')
 <script>
   window.HMS_FRONTDESK_URL = @json(route('students.dashboard', ['section' => 'tasks']));
+  // The name printed at the top of the guest's receipt: the team's approved hotel.
+  window.HMS_HOTEL_NAME = @json(\App\Support\HotelTemplateBuilder::hotelDefaults($groupName ?? null, isset($facultyId) ? (int) $facultyId : null)['name']);
 </script>
 @verbatim
 <script type="text/babel">
@@ -279,6 +299,105 @@ function useNow(intervalMs) {
 }
 
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Card', 'Other'];
+
+/* The guest's receipt, shown once the stay is checked out. Built from the closed
+   stay's final bill, so it lists the payment just taken with the earlier ones.
+   Print prints the receipt alone (see .receipt-print in the styles). */
+function ReceiptModal({ receipt, onClose }) {
+  useEffect(() => {
+    if (!receipt) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [receipt, onClose]);
+
+  if (!receipt) return null;
+  const bill = receipt.bill;
+  const issued = bill.checkedOutAt ? new Date(bill.checkedOutAt) : new Date();
+  const ymd = issued.getFullYear() + String(issued.getMonth() + 1).padStart(2, '0') + String(issued.getDate()).padStart(2, '0');
+  const number = 'OR-' + ymd + '-' + String(bill.bookingId || '').padStart(5, '0');
+  const service = bill.roomService || { orders: [], subtotal: 0 };
+  const addons = bill.addons || { items: [], subtotal: 0 };
+  const extras = bill.otherCharges || { items: [], subtotal: 0 };
+  const balance = Number(bill.balance) || 0;
+  const line = (label, amount, key, cls) => (
+    <div className={'rc-line' + (cls ? ' ' + cls : '')} key={key}>
+      <span>{label}</span><span className="rc-amt">{amount}</span>
+    </div>
+  );
+
+  return (
+    <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Receipt">
+      <div className="bill-modal" onClick={e => e.stopPropagation()}>
+        <div className="bill-head">
+          <div>
+            <p style={{ color: 'var(--success, #4ade80)', fontSize: '0.72rem', fontWeight: 700, margin: '0 0 0.35rem' }}>
+              <i className="fa-solid fa-circle-check" style={{ marginRight: 6 }}></i>Checked out
+            </p>
+            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>Receipt</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close"
+            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div className="bill-body">
+          <div className="receipt-print">
+            <div className="rc-top">
+              <h3>{window.HMS_HOTEL_NAME || 'Hotel'}</h3>
+              <p>Official Receipt</p>
+              <p className="rc-no">{number}</p>
+              <p>{issued.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}, {issued.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
+            </div>
+
+            <div className="rc-block">
+              {line('Guest', bill.guestName || '—', 'g')}
+              {line('Room', bill.roomName || '—', 'r')}
+              {line('Check-in', formatBillDateTime(bill.checkIn, bill.checkInTime), 'ci')}
+              {line('Check-out', formatBillStamp(bill.checkedOutAt) || formatBillDate(bill.checkOut) || '—', 'co')}
+            </div>
+
+            <div className="rc-block">
+              <p className="rc-head">Charges</p>
+              {line(`Room — ${bill.room.blocks} × ${bill.room.blockHours} hrs × ${formatPeso(bill.room.rate)}`, formatPeso(bill.room.subtotal), 'room')}
+              {service.orders.map(order => order.items.map((item, i) => (
+                line(`Room service — ${item.name} × ${item.qty}`, formatPeso(item.line), 'rs' + order.orderId + '-' + i)
+              )))}
+              {addons.items.map(a => line(`Add-on — ${a.name} × ${a.qty}`, formatPeso(a.line), 'ad' + a.id))}
+              {extras.items.map(c => line(c.description, formatPeso(c.amount), 'ex' + c.id))}
+              {line('Total', formatPeso(bill.total), 'total', 'rc-strong')}
+            </div>
+
+            <div className="rc-block">
+              <p className="rc-head">Payments</p>
+              {bill.payments.length === 0
+                ? line('None', formatPeso(0), 'none')
+                : bill.payments.map(pay => line(
+                    `${pay.type} — ${[pay.method, formatBillStamp(pay.paidAt)].filter(Boolean).join(', ')}`,
+                    formatPeso(pay.amountPaid),
+                    'p' + pay.id
+                  ))}
+              {line('Total paid', formatPeso(bill.amountPaid), 'paid', 'rc-strong')}
+              {balance > 0
+                ? line('Unpaid balance', formatPeso(balance), 'bal', 'rc-strong rc-due')
+                : line('Balance', formatPeso(0), 'bal', 'rc-strong')}
+            </div>
+
+            <p className="rc-thanks">Thank you for staying with us.</p>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.2rem' }}>
+            <button type="button" className="btn-outline" onClick={() => window.print()}>
+              <i className="fa-solid fa-print" style={{ marginRight: 6 }}></i>Print
+            </button>
+            <button type="button" className="btn-solid" onClick={onClose}>Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /*
  * The final bill, and the one screen that closes a stay.
@@ -740,14 +859,23 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
     Promise.resolve(promise).then(data => { if (data) setBill(data); return data; })
   );
 
-  const settleAndCheckOut = (payment) => (
-    Promise.resolve(onSettleAndCheckOut(billFor.reservation.bookingId, payment)).then(() => {
+  // After check-out the bill window gives way to the guest's receipt, read back
+  // from the closed stay so it carries the payment just taken.
+  const [receipt, setReceipt] = useState(null);
+
+  const settleAndCheckOut = (payment) => {
+    const bookingId = billFor.reservation.bookingId;
+    const lastBill = bill;
+    return Promise.resolve(onSettleAndCheckOut(bookingId, payment)).then(() => {
       if (onToast) {
         onToast(`${billFor.reservation.fullName || 'Guest'} checked out of ${billFor.room.name}.`);
       }
       closeBill();
-    })
-  );
+      return Promise.resolve(onFetchBill(bookingId))
+        .then(finalBill => setReceipt({ bill: finalBill || lastBill }))
+        .catch(() => { if (lastBill) setReceipt({ bill: lastBill }); });
+    });
+  };
 
   const allReservations = (rooms || []).reduce((acc, room) => {
     if (room && room.reservation) acc.push({ room, reservation: room.reservation });
@@ -975,6 +1103,8 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
         onSettle={settleAndCheckOut}
         onToast={onToast}
       />
+
+      <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
 
       {detailsFor && (
         <GuestDetailsModal
