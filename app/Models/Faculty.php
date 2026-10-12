@@ -68,7 +68,11 @@ class Faculty extends UserInformation
             return [];
         }
 
+        // toBase(): with no classes yet (a faculty the dean has just created) map()
+        // keeps the Eloquent collection, and unique() on it then calls getKey() on
+        // the pushed letter - a 500 on every page that lists blocks.
         return $this->classes
+            ->toBase()
             ->map(fn (FacultyClass $class) => $class->setRelation('faculty', $this)->block_letter)
             ->push($own)
             ->unique()
