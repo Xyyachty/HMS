@@ -164,7 +164,7 @@
                         </div>
                         <p class="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5">
                             {{ $team['done'] }}/{{ $team['total'] }} approved ·
-                            <span class="{{ $team['unlocked'] ? 'text-emerald-600' : '' }}">Simulation {{ $team['unlocked'] ? 'unlocked' : 'locked' }}</span>
+                            <span class="text-emerald-600">Simulation open</span>
                         </p>
                     </div>
                     <div class="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">

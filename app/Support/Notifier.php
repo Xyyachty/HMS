@@ -404,7 +404,7 @@ class Notifier
      *
      * @param  array<int|string, string>  $seatByStudentId  student id => Simulation seat
      */
-    public static function simulationRolesConfirmed(?User $actor, array $seatByStudentId, bool $canStart): void
+    public static function simulationRolesConfirmed(?User $actor, array $seatByStudentId): void
     {
         try {
             $userIds = Student::whereIn('user_information_id', array_keys($seatByStudentId))
@@ -418,9 +418,7 @@ class Notifier
                     UserNotification::SIMULATION_ROLES,
                     'Your simulation role: ' . $label,
                     "Your faculty confirmed your team's simulation roles. You run the " . $label . ' desk. '
-                        . ($canStart
-                            ? 'You are ready to simulate: press Start Simulation on your Tasks page.'
-                            : 'The Hotel Simulation opens once every customization task is approved.'),
+                        . 'Press Start Simulation on your Tasks page whenever you are ready.',
                     route('students.dashboard', ['section' => 'tasks']),
                     $actor
                 );

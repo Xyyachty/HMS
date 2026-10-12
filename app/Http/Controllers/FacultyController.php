@@ -1706,7 +1706,7 @@ class FacultyController extends Controller
         $approval = $this->approvalSummary($groupName, (int) $facultyId);
 
         // Each student hears their own desk, and whether they can start now.
-        Notifier::simulationRolesConfirmed($facultyUser, $roles->all(), $approval['can_start']);
+        Notifier::simulationRolesConfirmed($facultyUser, $roles->all());
 
         return response()->json([
             'success' => true,

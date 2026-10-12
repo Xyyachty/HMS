@@ -17,7 +17,7 @@
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
                 <p class="text-[10px] font-bold uppercase tracking-wider text-[#8A817A]">
-                    {{ $simPhase['unlocked'] ? 'Phase 2 · Hotel Simulation' : 'Phase 1 · Hotel Customization' }}
+                    Hotel Customization &middot; Hotel Simulation
                 </p>
                 <h3 class="text-base font-bold text-[#181818]">Team {{ $groupMembership->group_name }} — Hotel Customization</h3>
             </div>
@@ -53,44 +53,32 @@
             </div>
         </div>
 
-        @if(!$simPhase['unlocked'])
-            <div class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-[#E7E1DD] bg-[#F5F2EF] p-4">
-                <span class="iconify text-2xl text-slate-500 shrink-0" data-icon="mdi:lock-outline"></span>
-                <div class="flex-1">
-                    <p class="text-sm font-bold text-[#181818]">Hotel Simulation Locked</p>
-                    <p class="text-[12px] text-slate-600">Complete all required customization tasks and get Faculty approval before starting your hotel simulation.</p>
-                </div>
-                <button type="button" onclick="document.getElementById('tasksLiveContainer')?.scrollIntoView({ behavior: 'smooth' })"
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#E7E1DD] bg-white text-xs font-bold text-slate-700 hover:border-[#8A817A] hover:text-[#181818] transition">
-                    <span class="iconify text-base" data-icon="mdi:format-list-checks"></span>
-                    Back to Customization Tasks
-                </button>
+        {{-- The Simulation is open at any time; the approvals above still run
+             alongside it until every customization task is approved. --}}
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] p-4">
+            <span class="iconify text-2xl status-text-completed shrink-0" data-icon="mdi:lock-open-variant-outline"></span>
+            <div class="flex-1">
+                <p class="text-sm font-bold text-[#181818]">Hotel Simulation Open</p>
+                <p class="text-[12px] text-slate-600">
+                    @if($simPhase['unlocked'])
+                        All required customization tasks have been approved.
+                    @else
+                        You can run the Hotel Simulation now. Keep working on your customization tasks and submit them for Faculty approval.
+                    @endif
+                </p>
             </div>
-        @else
-            <div class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] p-4">
-                <span class="iconify text-2xl status-text-completed shrink-0" data-icon="mdi:lock-open-variant-outline"></span>
-                <div class="flex-1">
-                    <p class="text-sm font-bold text-[#181818]">Hotel Simulation Unlocked!</p>
-                    <p class="text-[12px] text-slate-600">
-                        All required customization tasks have been approved. Your team can now begin the Hotel Simulation.
-                        @unless($simPhase['roles_confirmed'])
-                            Your faculty still has to confirm the simulation roles before you can start.
-                        @endunless
-                    </p>
-                </div>
-                @if($simPhase['can_start'] && $simEntry)
-                    <a href="{{ $simEntry['simulation_url'] }}"
-                       class="inline-flex items-center gap-2 px-4 py-2 rounded-xl brand-gradient text-white text-xs font-bold shadow-lg shadow-brand/20 hover:opacity-90 active:scale-[0.98] transition">
-                        <span class="iconify text-base" data-icon="mdi:play-circle-outline"></span>
-                        Start Simulation
-                    </a>
-                @else
-                    <span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#E7E1DD] bg-white text-xs font-bold text-slate-400 cursor-not-allowed">
-                        <span class="iconify text-base" data-icon="mdi:account-clock-outline"></span>
-                        {{ $simPhase['roles_confirmed'] ? 'No simulation role assigned' : 'Waiting for role confirmation' }}
-                    </span>
-                @endif
-            </div>
-        @endif
+            @if($simPhase['can_start'] && $simEntry)
+                <a href="{{ $simEntry['simulation_url'] }}"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl brand-gradient text-white text-xs font-bold shadow-lg shadow-brand/20 hover:opacity-90 active:scale-[0.98] transition">
+                    <span class="iconify text-base" data-icon="mdi:play-circle-outline"></span>
+                    Start Simulation
+                </a>
+            @else
+                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#E7E1DD] bg-white text-xs font-bold text-slate-400 cursor-not-allowed">
+                    <span class="iconify text-base" data-icon="mdi:account-clock-outline"></span>
+                    No simulation role assigned
+                </span>
+            @endif
+        </div>
     </div>
 @endif

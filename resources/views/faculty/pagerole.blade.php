@@ -779,13 +779,13 @@
                                 </div>
                             </div>
 
-                            {{-- Simulation Indicator: opens only once every required
-                                 customization task carries your approval. --}}
+                            {{-- Approval Indicator. The Simulation is open to every team at
+                                 any time; this tracks the customization approvals alongside it. --}}
                             @php $cardApproval = ($teamApprovalByGroup ?? [])[$groupName] ?? null; @endphp
                             @if($cardApproval)
                                 <div class="mt-3 rounded-xl border px-3 py-2 {{ $cardApproval['unlocked'] ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500' }}">
                                     <div class="flex items-center justify-between gap-2">
-                                        <p class="text-[12px] font-extrabold">Simulation: {{ $cardApproval['unlocked'] ? 'Unlocked' : 'Locked' }}</p>
+                                        <p class="text-[12px] font-extrabold">{{ $cardApproval['unlocked'] ? 'All tasks approved' : 'Approval in progress' }} &middot; Simulation open</p>
                                         <span class="text-[10px] font-bold uppercase tracking-wide">{{ $cardApproval['approved'] }}/{{ $cardApproval['required'] }} approved &middot; {{ $cardApproval['percent'] }}%</span>
                                     </div>
                                 </div>
@@ -4966,10 +4966,10 @@ function renderTeamApproval() {
     if (!a || !a.required) { box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
 
+    // The Simulation is open to every team; the badge says how far approval is.
     const lock = a.unlocked
-        ? '<span class="tm-badge status-badge-completed"><span class="tm-dot status-fill-completed"></span>Simulation unlocked'
-            + (a.roles_confirmed ? '' : ' · confirm the roles') + '</span>'
-        : '<span class="tm-badge status-badge-not_started"><span class="tm-dot status-fill-not_started"></span>Simulation locked</span>';
+        ? '<span class="tm-badge status-badge-completed"><span class="tm-dot status-fill-completed"></span>All tasks approved · Simulation open</span>'
+        : '<span class="tm-badge status-badge-in_progress"><span class="tm-dot status-fill-in_progress"></span>Approval in progress · Simulation open</span>';
     const count = (label, n, key) => '<span style="margin-right:1rem;">' + label + ': <b class="status-text-' + key + '">' + n + '</b></span>';
 
     box.innerHTML = '<div class="flex items-center justify-between gap-2 flex-wrap">'
@@ -5070,10 +5070,8 @@ function saveTeamSimRoles() {
                     + '<span style="color:#5F5A55;">' + escHtml(SIM_SEAT_LABELS[seats[String(m.student_id)]] || 'None') + '</span>'
                 + '</li>'
             ).join('');
-            const ready = d.approval && d.approval.can_start
-                ? 'Every task is approved, so the team is ready to simulate.'
-                : 'The simulation opens once every customization task is approved ('
-                    + Number((d.approval && d.approval.percent) || 0) + '% so far).';
+            const ready = 'The team can run the simulation now; customization approval is at '
+                + Number((d.approval && d.approval.percent) || 0) + '%.';
 
             Swal.fire({
                 icon: 'success',

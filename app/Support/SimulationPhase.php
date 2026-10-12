@@ -113,7 +113,10 @@ class SimulationPhase
             'percent' => $required ? (int) floor($counts['approved'] / $required * 100) : 0,
             'unlocked' => $unlocked,
             'roles_confirmed' => $confirmed,
-            'can_start' => $unlocked && $confirmed,
+            // The Simulation is open to every team at any time. 'unlocked' still
+            // says whether faculty approved every customization task - progress
+            // and the review hints read it - but it no longer gates anything.
+            'can_start' => (bool) ($groupName && $facultyId),
             'items' => $items,
         ];
     }

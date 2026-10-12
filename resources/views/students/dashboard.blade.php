@@ -1068,8 +1068,8 @@
                         $studentRoles ?? [],
                         array_filter([\App\Support\SimulationPhase::seatFor($groupMembership)])
                     );
-                    // The Simulation door stays shut until faculty has approved every
-                    // required task and confirmed the roles — the panel below says why.
+                    // The Simulation is open whenever the student is on a team; the
+                    // customization tasks still go to faculty for approval alongside it.
                     $simulationOpen = \App\Support\SimulationPhase::canStart($groupMembership);
                 @endphp
                 @if(session('simulation_locked'))
