@@ -1046,13 +1046,20 @@
     return lines.length ? lines : null;
   }
 
+  /* A line of a lined heading can itself break (Enter). '\n' already separates
+     the lines in the saved text, so a break inside one is saved as U+2028. */
+  const LINE_BREAK = '\u2028';
+
   /** Read the editable text of an element, including multi-child ones. */
   function readEditableText(el) {
     const lines = textLines(el);
-    if (lines) return lines.map((line) => line.textContent.replace(/\s+/g, ' ').trim()).join('\n');
+    if (lines) {
+      return lines.map((line) => line.textContent.replace(/\u200B/g, '').split('\n')
+        .map((part) => part.replace(/\s+/g, ' ').trim()).join(LINE_BREAK)).join('\n');
+    }
     const slot = textSlot(el);
     if (!slot || isBrandLocked(slot)) return null;
-    return slot === el ? el.innerText : slot.nodeValue;
+    return (slot === el ? el.innerText : slot.nodeValue).replace(/\u200B/g, '');
   }
 
   /** Write text back into the same slot readEditableText took it from. */
@@ -1064,13 +1071,18 @@
       // the first line, so the others keep the template's words.
       const count = parts.length === 1 ? 1 : lines.length;
       for (let i = 0; i < count; i++) {
-        const value = i === lines.length - 1 ? parts.slice(i).join(' ') : (parts[i] || '');
+        const value = (i === lines.length - 1 ? parts.slice(i).join(' ') : (parts[i] || '')).split(LINE_BREAK).join('\n');
         if (lines[i].textContent !== value) lines[i].textContent = value;
+        if (value.indexOf('\n') !== -1) lines[i].style.whiteSpace = 'pre-line';
       }
       return;
     }
     const slot = textSlot(el);
     if (!slot || isBrandLocked(slot)) return;
+    // A saved line break only shows where white-space keeps it.
+    if (String(text).indexOf('\n') !== -1 && !/^pre/.test(window.getComputedStyle(el).whiteSpace)) {
+      setPosImportant(el, 'white-space', 'pre-line');
+    }
     if (slot === el) {
       el.textContent = text;
       return;
@@ -1921,7 +1933,7 @@
         setPosImportant(el, 'height', 'auto');
         setPosImportant(el, 'max-width', 'none');
         setPosImportant(el, 'min-width', '0');
-        setPosImportant(el, 'white-space', 'nowrap');
+        setPosImportant(el, 'white-space', 'pre');
       } else if (resizeState.isText) {
         /* Text wraps to the new width and is never cut off: a side handle sets
            the width, a top or bottom handle the least height, and the box still
@@ -1932,7 +1944,7 @@
         setPosImportant(el, 'height', 'auto');
         setPosImportant(el, 'max-width', 'none');
         setPosImportant(el, 'min-width', '0');
-        setPosImportant(el, 'white-space', 'normal');
+        setPosImportant(el, 'white-space', 'pre-line');
         setPosImportant(el, 'overflow', 'visible');
       } else {
         setPosImportant(el, 'width', width + 'px');
@@ -2126,9 +2138,10 @@
     // Space is a button's own activation key, and Chrome drops it instead of
     // typing it: "New Label" was saved as "NewLabel".
     const onKeyDown = (ev) => {
-      // A new line inside a lined heading would split a line in two and shift
-      // every line after it; the lines are fixed, each edits in place.
-      if (ev.key === 'Enter' && textLines(el)) { ev.preventDefault(); return; }
+      // Enter breaks the line where the caret is. Left to the browser it added
+      // a <div> or <br> that the text is not saved from, and in a lined heading
+      // it split one line into two and shifted every line after it.
+      if (ev.key === 'Enter') { ev.preventDefault(); insertLineBreak(el); onInput(); return; }
       if (ev.key !== ' ' || el.tagName !== 'BUTTON') return;
       ev.preventDefault();
       document.execCommand('insertText', false, ' ');
@@ -2146,6 +2159,43 @@
     el.addEventListener('input', onInput);
     el.addEventListener('keydown', onKeyDown);
     el.addEventListener('blur', finish);
+  }
+
+  /* A '\n' at the caret, inside the line it is on, shown by pre-line. A break
+     at the very end gets a zero-width space after it, or the new empty line
+     would not show until something is typed on it; reading drops it again. */
+  function insertLineBreak(el) {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    if (!el.contains(range.startContainer)) return;
+    const lines = textLines(el);
+    const holder = lines ? lines.find((line) => line.contains(range.startContainer)) : el;
+    if (!holder) return;
+    range.deleteContents();
+    /* Written into the text node the caret is in rather than inserted as a node
+       of its own: splitting the node left the words after the caret outside the
+       one text node some elements are saved from. */
+    let node = range.startContainer;
+    let offset = range.startOffset;
+    if (node.nodeType !== 3) {
+      const text = document.createTextNode('');
+      node.insertBefore(text, node.childNodes[offset] || null);
+      node = text;
+      offset = 0;
+    }
+    node.nodeValue = node.nodeValue.slice(0, offset) + '\n' + node.nodeValue.slice(offset);
+    const rest = document.createRange();
+    rest.setStart(node, offset + 1);
+    rest.setEnd(holder, holder.childNodes.length);
+    if (!rest.toString().replace(/\u200B/g, '')) node.nodeValue += '\u200B';
+    if (lines) holder.style.whiteSpace = 'pre-line';
+    else if (!/^pre/.test(window.getComputedStyle(el).whiteSpace)) setPosImportant(el, 'white-space', 'pre-line');
+    const caret = document.createRange();
+    caret.setStart(node, offset + 1);
+    caret.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(caret);
   }
 
   function ensureFileInput() {
