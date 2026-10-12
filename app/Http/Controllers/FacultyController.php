@@ -1262,6 +1262,8 @@ class FacultyController extends Controller
             'results' => $results,
             'open_class' => $openClass?->letter,
             'classes_opened' => array_values(array_unique($classesOpened)),
+            // Students past a full block that went to the next block's faculty.
+            'handed_over' => array_sum(array_column($handedOver, 'count')),
         ]);
     }
 

@@ -1330,27 +1330,36 @@
             bulkSetStep(3);
 
             if (data.created > 0) {
+                /* Where students went past a full block - a new Block tab, or the
+                   faculty holding the next block - is in the server's message. A
+                   two-second toast of the count alone hid it, so a class of 42
+                   read as "nothing happened to Block B". That case waits for OK. */
+                const blockNews = (data.handed_over || 0) > 0 || (data.classes_opened || []).length > 0;
+                const escMsg = String(data.message || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
                 Swal.fire({
                     icon: 'success',
                     title: 'Import Successful',
-                    html: `<p class="text-sm text-slate-500">${data.created} student${data.created === 1 ? '' : 's'} imported.</p>`,
-                    timer: 2000,
-                    showConfirmButton: false,
+                    html: blockNews
+                        ? `<p class="text-sm text-slate-500">${escMsg}</p>`
+                        : `<p class="text-sm text-slate-500">${data.created} student${data.created === 1 ? '' : 's'} imported.</p>`,
+                    timer: blockNews ? undefined : 2000,
+                    showConfirmButton: blockNews,
+                    confirmButtonText: 'OK',
                     backdrop: 'rgba(42,17,24, 0.35)',
                     iconColor: '#C9A45C',
                     customClass: {
                         popup: 'rounded-2xl p-6 bg-white shadow-2xl',
                         title: 'text-lg font-bold text-slate-800',
                         htmlContainer: 'mt-1',
+                        confirmButton: 'mt-4 bg-brand text-white px-4 py-2 rounded-lg font-semibold hover:bg-brand-dark',
                     },
                     buttonsStyling: false,
-                });
-                setTimeout(() => {
+                }).then(() => {
                     const letter = data.open_class || '';
                     window.location.href = letter
                         ? @json(route('faculty.students')) + '?class=' + encodeURIComponent(letter)
                         : window.location.href;
-                }, 1000);
+                });
             }
 
         } catch (err) {
