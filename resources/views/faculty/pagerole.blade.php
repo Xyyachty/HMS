@@ -673,9 +673,13 @@
                     <div class="team-card rounded-2xl border border-slate-100 bg-white overflow-hidden flex flex-col"
                          data-team-name="{{ $groupName }}">
                         <div class="px-5 pt-5 pb-5 flex-1 flex flex-col">
-                            <h3 class="text-lg font-extrabold text-slate-900 leading-tight truncate" title="{{ $groupName }}">
-                                Team {{ str_pad($cardIndex, 2, '0', STR_PAD_LEFT) }} &ndash; {{ $groupName }}
-                            </h3>
+                            <div class="flex items-center gap-2 min-w-0">
+                                <h3 class="text-lg font-extrabold text-slate-900 leading-tight truncate" title="{{ $groupName }}">
+                                    Team {{ str_pad($cardIndex, 2, '0', STR_PAD_LEFT) }} &ndash; {{ $groupName }}
+                                </h3>
+                                @php $cardPhase = \App\Support\SimulationPhase::progress($groupName, (int) $groupMembers->first()->faculty_id); @endphp
+                                <span class="shrink-0">@include('partials.team-completion', ['done' => $cardPhase['approved'], 'total' => $cardPhase['required']])</span>
+                            </div>
                             <p class="tm-card-concept text-[13px] text-slate-500 mt-1 leading-snug">{{ $cardConceptText }}</p>
 
                             {{-- Task Submission Indicator. Hidden outright rather than shown
