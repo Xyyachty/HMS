@@ -35,9 +35,14 @@
                             <p style="margin:0 0 16px; font-size:17px; color:#9f1239; font-weight:bold;">Hi {{ $studentName }},</p>
 
                             <p style="margin:0 0 22px; font-size:14px; line-height:22px; color:#4b5563;">
+                                @if($accountType === 'faculty')
+                                Welcome to HMS. The dean has created your faculty account.
+                                Sign in with the details below to manage your students and teams.
+                                @else
                                 Welcome to HMS. Your student account has been created
                                 @if($className) and you have been enrolled in <strong style="color:#be123c;">{{ $className }}</strong>@endif.
                                 You can sign in with the details below.
+                                @endif
                             </p>
 
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fff1f2; border:1px solid #fecdd3; border-radius:12px; margin-bottom:22px;">
@@ -93,7 +98,7 @@
                         <td style="background-color:#fff1f2; padding:18px 28px; border-top:1px solid #fecdd3;">
                             <p style="margin:0; font-size:12px; color:#9ca3af; line-height:18px;">
                                 This message was sent automatically by HMS because an account was created for you.
-                                If you were not expecting it, please contact your instructor.
+                                If you were not expecting it, please contact {{ $accountType === 'faculty' ? 'the dean' : 'your instructor' }}.
                             </p>
                         </td>
                     </tr>

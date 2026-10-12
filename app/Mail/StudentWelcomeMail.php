@@ -27,6 +27,8 @@ class StudentWelcomeMail extends Mailable
         public string $loginUrl,
         public ?string $className = null,
         public ?string $studentNumber = null,
+        // 'faculty' when the dean opens a faculty account; changes only the wording.
+        public string $accountType = 'student',
     ) {
     }
 

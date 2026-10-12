@@ -14,6 +14,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Rules\PhilippineMobile;
 use App\Support\Notifier;
+use App\Support\StudentWelcomeMailer;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class DeanController extends Controller
@@ -500,16 +501,50 @@ class DeanController extends Controller
         return view('dean.task-review', compact('review'));
     }
 
+    /**
+     * A faculty account opens on a real Gmail address, never an @hms.edu one: the
+     * welcome email with the sign-in details goes there, and nothing reaches a
+     * placeholder. Lowercased first so Jane@Gmail.com cannot sit beside
+     * jane@gmail.com as a second account.
+     */
+    private function facultyEmailRules(Request $request): array
+    {
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+
+        return ['required', 'email', 'max:255', 'regex:/^[a-z0-9][a-z0-9.+]*@gmail\.com$/', 'unique:users,email'];
+    }
+
+    private const FACULTY_EMAIL_MESSAGES = [
+        'email.regex'  => 'Enter a valid Gmail address (ending in @gmail.com).',
+        'email.unique' => 'This Gmail address is already registered to another account.',
+    ];
+
+    /**
+     * Sends the new faculty member the same welcome email students get, and says
+     * on the dean's screen whether it went out. Runs only after the account
+     * exists. Returns [flash key, message].
+     */
+    private function welcomeFaculty(User $user, string $plainPassword): array
+    {
+        $mailResult = StudentWelcomeMailer::send($user, $plainPassword, null, null, 'faculty');
+
+        return $mailResult['sent']
+            ? ['success', 'Faculty account created. A welcome email with the sign-in details was sent to ' . $user->email . '.']
+            // The cause is in the log; the dean only needs to know to hand over the password.
+            : ['warning', 'Faculty account created, but the welcome email to ' . $user->email
+                . ' could not be sent. Give them the password you set.'];
+    }
+
     public function storeFaculty(Request $request)
     {
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email' => $this->facultyEmailRules($request),
             'phone_number' => ['nullable', 'string', new PhilippineMobile()],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
+        ], self::FACULTY_EMAIL_MESSAGES);
 
         /* Active, whatever arrives. An account created switched off is one
            nobody can sign in to; deactivating is done to an account that
@@ -553,8 +588,10 @@ class DeanController extends Controller
 
         Notifier::accountCreated(auth()->user(), $user, 'faculty');
 
+        [$flash, $message] = $this->welcomeFaculty($user, $validated['password']);
+
         return redirect()->route('dean.faculties')
-            ->with('success', 'Faculty account created successfully — assigned ' . Faculty::blockLabel($block) . '.');
+            ->with($flash, $message . ' Assigned ' . Faculty::blockLabel($block) . '.');
     }
 
     public function storeUser(Request $request)
@@ -563,11 +600,14 @@ class DeanController extends Controller
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            // Students keep the plain rule; only a faculty account needs Gmail.
+            'email' => $request->input('role') === 'faculty'
+                ? $this->facultyEmailRules($request)
+                : ['required', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', new PhilippineMobile()],
             'role' => ['required', 'in:faculty,student'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
+        ], self::FACULTY_EMAIL_MESSAGES);
 
         // Active, whatever arrives - see storeFaculty().
         $status = 'active';
@@ -604,10 +644,6 @@ class DeanController extends Controller
             ]);
         }
 
-        $message = $validated['role'] === 'faculty'
-            ? 'Faculty account created successfully.'
-            : 'Student account created successfully.';
-
         ActivityLog::recordFor(
             ActivityLog::ACCOUNT_CREATED,
             'Created ' . $validated['role'] . ' account for ' . $fullName . ' (' . $validated['email'] . ').'
@@ -615,7 +651,11 @@ class DeanController extends Controller
 
         Notifier::accountCreated(auth()->user(), $user, $validated['role']);
 
-        return redirect()->route('dean.users')->with('success', $message);
+        [$flash, $message] = $validated['role'] === 'faculty'
+            ? $this->welcomeFaculty($user, $validated['password'])
+            : ['success', 'Student account created successfully.'];
+
+        return redirect()->route('dean.users')->with($flash, $message);
     }
 
     public function updateUser(Request $request, User $user)

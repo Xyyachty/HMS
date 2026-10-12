@@ -230,6 +230,11 @@
             {{ session('success') }}
         </div>
     @endif
+    @if (session('warning'))
+        <div class="mx-6 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            {{ session('warning') }}
+        </div>
+    @endif
 
     <!-- DataTable -->
     <div class="p-4 md:p-6">
@@ -395,7 +400,7 @@
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
-                <input name="email" type="email" placeholder="user@hms.edu" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <input name="email" type="email" placeholder="name@gmail.com" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
@@ -552,6 +557,14 @@
             text: '{{ session('success') }}',
             timer: 2500,
             showConfirmButton: false,
+        });
+        @endif
+
+        @if (session('warning'))
+        Swal.fire({
+            icon: 'warning',
+            title: 'Email Not Sent',
+            text: @json(session('warning')),
         });
         @endif
 
