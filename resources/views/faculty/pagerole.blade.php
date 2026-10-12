@@ -1264,8 +1264,8 @@
                 <div class="p-5 space-y-4">
                     <div>
                         <label class="ts-label">1. Name the team</label>
-                        <input name="group_name" type="text" placeholder="e.g. Team 11"
-                            value="{{ old('_form_source') === 'create_team' ? old('group_name') : '' }}"
+                        <input name="group_name" type="text" placeholder="{{ $nextTeamNames[0] ?? 'e.g. Team 1' }}"
+                            value="{{ old('_form_source') === 'create_team' ? old('group_name') : ($nextTeamNames[0] ?? '') }}"
                             @disabled($unassignedStudentCount === 0)
                             class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition disabled:opacity-60 disabled:cursor-not-allowed">
                     </div>
@@ -3695,6 +3695,9 @@ function enforceSingleRoleCheckbox(checkbox) {
 
 // ── Bulk multi-team creation (exactly 4 members per team) ──
 const BULK_TEAM_SIZE = 4;
+// Lowest unused "Team N" names, gaps first; the server re-checks on save.
+const NEXT_TEAM_NAMES = @json($nextTeamNames ?? []);
+const defaultBulkTeamName = (index) => NEXT_TEAM_NAMES[index] || `Team ${index + 1}`;
 
 function availableBulkStudentCount() {
     return document.querySelectorAll('.bulk-student-row').length;
@@ -3720,7 +3723,7 @@ function rebuildBulkTeamSlots(forcedCount = null) {
 
     const names = [];
     for (let i = 0; i < count; i++) {
-        names.push(previousNames[i] || `Team ${i + 1}`);
+        names.push(previousNames[i] || defaultBulkTeamName(i));
     }
 
     if (count === 0) {
@@ -3776,7 +3779,7 @@ function getBulkTeamNames() {
     return Array.from(document.querySelectorAll('.bulk-team-name-input'))
         .map((input, index) => {
             const value = input.value.trim();
-            return value !== '' ? value : `Team ${index + 1}`;
+            return value !== '' ? value : defaultBulkTeamName(index);
         });
 }
 

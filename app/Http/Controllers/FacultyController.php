@@ -143,7 +143,8 @@ class FacultyController extends Controller
         }
 
         $validated = $request->validate([
-            'group_name' => ['required', 'string', 'max:255'],
+            // Blank on Create Team means "next free Team N" — see claimTeamNames().
+            'group_name' => [$formSource === 'insert_student' ? 'required' : 'nullable', 'string', 'max:255'],
             'members' => ['required', 'array', 'min:1', 'max:4'],
             'members.*' => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'member_roles' => ['nullable', 'array'],
@@ -182,14 +183,6 @@ class FacultyController extends Controller
                     'members' => "This team already has " . count($existingMembers) . " member(s). You can add at most {$slotsLeft} more (max 4 per team).",
                 ])->withInput();
             }
-        } elseif ($formSource === 'create_team') {
-            // Single team create: max 4 members
-            $nameTaken = StudentGroup::where('group_name', $validated['group_name'])
-                ->where('faculty_id', $facultyId)
-                ->exists();
-            if ($nameTaken) {
-                return back()->withErrors(['group_name' => 'A team with this name already exists.'])->withInput();
-            }
         }
 
         $allowedRoles = $this->teamRoleKeys();
@@ -216,41 +209,51 @@ class FacultyController extends Controller
         }
         $rolesByMember = $roleResult['roles'];
 
-        $group = Group::firstOrCreate([
-            'group_name' => $validated['group_name'],
-            'faculty_id' => $facultyId,
-        ]);
+        DB::transaction(function () use (&$validated, $formSource, $facultyId, $memberIds, $rolesByMember) {
+            if ($formSource !== 'insert_student') {
+                $validated['group_name'] = $this->claimTeamNames(
+                    (int) $facultyId,
+                    [$validated['group_name'] ?? null],
+                    fn () => 'group_name'
+                )[0];
+            }
 
-        foreach ($memberIds as $studentId) {
-            $roles = $rolesByMember[$studentId];
-
-            $studentGroup = StudentGroup::create([
+            $group = Group::firstOrCreate([
                 'group_name' => $validated['group_name'],
                 'faculty_id' => $facultyId,
-                'group_id' => $group->group_id,
-                'student_id' => $studentId,
-                // Legacy column; the real roles live in student_group_roles. Null
-                // when every role is already held by a teammate — see
-                // resolveMemberRoles().
-                'role' => $roles[0] ?? null,
             ]);
 
-            foreach ($roles as $role) {
-                StudentGroupRole::create([
-                    'student_group_id' => $studentGroup->student_group_id,
-                    'role' => $role,
+            foreach ($memberIds as $studentId) {
+                $roles = $rolesByMember[$studentId];
+
+                $studentGroup = StudentGroup::create([
+                    'group_name' => $validated['group_name'],
+                    'faculty_id' => $facultyId,
+                    'group_id' => $group->group_id,
+                    'student_id' => $studentId,
+                    // Legacy column; the real roles live in student_group_roles. Null
+                    // when every role is already held by a teammate — see
+                    // resolveMemberRoles().
+                    'role' => $roles[0] ?? null,
                 ]);
+
+                foreach ($roles as $role) {
+                    StudentGroupRole::create([
+                        'student_group_id' => $studentGroup->student_group_id,
+                        'role' => $role,
+                    ]);
+                }
             }
-        }
 
-        // Every team starts with the same first task, so it is not on the faculty
-        // checklist — it is assigned the moment the team exists.
-        HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
+            // Every team starts with the same first task, so it is not on the faculty
+            // checklist — it is assigned the moment the team exists.
+            HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
 
-        // And with the five facilities every hotel has, for the same reason: the
-        // preview and the team's public site read the table straight, so waiting
-        // for a student to open Housekeeping left both showing no amenities.
-        \App\Support\HotelAmenityAccess::seedDefaultsForTeam($validated['group_name'], (int) $facultyId);
+            // And with the five facilities every hotel has, for the same reason: the
+            // preview and the team's public site read the table straight, so waiting
+            // for a student to open Housekeeping left both showing no amenities.
+            \App\Support\HotelAmenityAccess::seedDefaultsForTeam($validated['group_name'], (int) $facultyId);
+        });
 
         $memberCount = count($memberIds);
         $assignedRoles = collect($rolesByMember)->flatten()->unique()->values()->all();
@@ -291,8 +294,87 @@ class FacultyController extends Controller
             'class' => $request->input('class_letter') ?: null,
         ]))->with('success', $formSource === 'insert_student'
             ? 'Students added to the team.'
-            : 'Team created successfully.')
+            : 'Team "' . $validated['group_name'] . '" created successfully.')
           ->with('success_title', $formSource === 'insert_student' ? 'Students Added' : 'Team Created');
+    }
+
+    /**
+     * The lowest unused "Team N" names for a faculty, gaps first: with Team 1, 2
+     * and 4 taken, the next is Team 3. Names compare case-insensitively, the same
+     * way the citext group_name column does.
+     *
+     * @param  array<string, true>  $taken  lowercased names already used
+     * @return array<int, string>
+     */
+    private function nextTeamNames(int $facultyId, int $count, ?array $taken = null): array
+    {
+        $taken ??= $this->takenTeamNames($facultyId);
+
+        $names = [];
+        for ($n = 1; count($names) < $count; $n++) {
+            if (!isset($taken["team {$n}"])) {
+                $names[] = "Team {$n}";
+            }
+        }
+
+        return $names;
+    }
+
+    /** @return array<string, true> lowercased team names this faculty already uses */
+    private function takenTeamNames(int $facultyId): array
+    {
+        return StudentGroup::where('faculty_id', $facultyId)
+            ->pluck('group_name')
+            ->mapWithKeys(fn ($name) => [mb_strtolower(trim((string) $name)) => true])
+            ->all();
+    }
+
+    /**
+     * Settles the name of every team about to be created. Runs inside the
+     * creating transaction and first locks the faculty's row, so two saves at
+     * once queue up here instead of both taking the same number.
+     *
+     * A blank name, or a "Team N" someone already has, becomes the lowest free
+     * "Team N". Any other name already in use is refused — renaming a team the
+     * faculty named on purpose would be a surprise.
+     *
+     * @param  array<int, ?string>  $requested
+     * @param  callable(int): string  $errorKey  field to report a clash against
+     * @return array<int, string>  same keys as $requested
+     */
+    private function claimTeamNames(int $facultyId, array $requested, callable $errorKey): array
+    {
+        UserInformation::whereKey($facultyId)->lockForUpdate()->first();
+
+        $taken = $this->takenTeamNames($facultyId);
+        $names = [];
+        $pending = [];
+
+        // Typed names first, so an auto number never lands on one later in the list.
+        foreach ($requested as $index => $name) {
+            $name = trim((string) $name);
+            $key = mb_strtolower($name);
+
+            if ($name !== '' && !isset($taken[$key])) {
+                $names[$index] = $name;
+                $taken[$key] = true;
+            } elseif ($name === '' || preg_match('/^team \d+$/i', $name)) {
+                $pending[] = $index;
+            } else {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    $errorKey($index) => "Team name \"{$name}\" is already used.",
+                ]);
+            }
+        }
+
+        foreach ($pending as $index) {
+            $names[$index] = $this->nextTeamNames($facultyId, 1, $taken)[0];
+            $taken[mb_strtolower($names[$index])] = true;
+        }
+
+        ksort($names);
+
+        return $names;
     }
 
     /**
@@ -302,18 +384,13 @@ class FacultyController extends Controller
     {
         $validated = $request->validate([
             'teams' => ['required', 'array', 'min:1'],
-            'teams.*.group_name' => ['required', 'string', 'max:255'],
+            'teams.*.group_name' => ['nullable', 'string', 'max:255'],
             'teams.*.members' => ['required', 'array', 'size:4'],
             'teams.*.members.*' => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'teams.*.member_roles' => ['nullable', 'array'],
         ]);
 
         $allowedRoles = $this->teamRoleKeys();
-        $existingNames = StudentGroup::where('faculty_id', $facultyId)
-            ->pluck('group_name')
-            ->map(fn ($n) => strtolower(trim((string) $n)))
-            ->unique()
-            ->all();
 
         $assignedStudentIds = StudentGroup::where('faculty_id', $facultyId)
             ->pluck('student_id')
@@ -326,22 +403,13 @@ class FacultyController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $seenNames = [];
         $seenMembers = [];
         $normalizedTeams = [];
 
         foreach ($validated['teams'] as $index => $team) {
-            $name = trim((string) $team['group_name']);
-            $nameKey = strtolower($name);
-            $row = $index + 1;
-
-            if ($name === '') {
-                return back()->withErrors(["teams.{$index}.group_name" => "Team #{$row} needs a name."])->withInput();
-            }
-
-            if (in_array($nameKey, $seenNames, true) || in_array($nameKey, $existingNames, true)) {
-                return back()->withErrors(["teams.{$index}.group_name" => "Team name \"{$name}\" is already used."])->withInput();
-            }
+            // Blank and clashing names are settled in claimTeamNames(), under the lock.
+            $name = trim((string) ($team['group_name'] ?? ''));
+            $name = $name !== '' ? $name : 'Team #' . ($index + 1);
 
             $memberIds = array_values(array_unique(array_map('intval', $team['members'] ?? [])));
             if (count($memberIds) !== 4) {
@@ -373,15 +441,23 @@ class FacultyController extends Controller
                 return back()->withErrors(["teams.{$index}.member_roles" => "Team \"{$name}\": {$roleResult['error']}"])->withInput();
             }
 
-            $seenNames[] = $nameKey;
             $normalizedTeams[] = [
-                'group_name' => $name,
+                'group_name' => $team['group_name'] ?? null,
                 'members' => $memberIds,
                 'roles_by_member' => $roleResult['roles'],
             ];
         }
 
-        DB::transaction(function () use ($normalizedTeams, $facultyId) {
+        DB::transaction(function () use (&$normalizedTeams, $facultyId) {
+            $names = $this->claimTeamNames(
+                $facultyId,
+                array_column($normalizedTeams, 'group_name'),
+                fn (int $index) => "teams.{$index}.group_name"
+            );
+            foreach ($names as $index => $name) {
+                $normalizedTeams[$index]['group_name'] = $name;
+            }
+
             foreach ($normalizedTeams as $team) {
                 $group = Group::firstOrCreate([
                     'group_name' => $team['group_name'],
@@ -1517,7 +1593,11 @@ class FacultyController extends Controller
             ->pluck('selected_template', 'group_name')
             ->all();
 
+        // Prefilled into Create Team; up to 40 since that is the bulk form's cap.
+        $nextTeamNames = $this->nextTeamNames((int) $facultyId, 40);
+
         return view('faculty.pagerole', compact(
+            'nextTeamNames',
             'students',
             'allStudents',
             'studentTeamMap',
