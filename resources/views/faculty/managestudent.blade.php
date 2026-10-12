@@ -517,7 +517,7 @@
 
 <!-- ==================== BULK UPLOAD MODAL ==================== -->
 <div id="bulkUploadModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('bulkUploadModal')"></div>
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeBulkModal()"></div>
     <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100" style="width: 820px; max-width: 94vw; max-height: 92vh; overflow-y: auto;">
 
         <!-- Modal Header -->
@@ -948,8 +948,16 @@
     // ===================== BULK UPLOAD LOGIC =====================
     let bulkSelectedFile = null;
     const bulkExcelUrl = "{{ route('faculty.students.bulk') }}";
+    // Set once an import adds students. The roster behind the modal is stale
+    // until the page reloads, but the Imported / Failed results stay open until
+    // the faculty closes the modal themselves, so the reload waits for that.
+    let bulkReloadUrl = null;
 
     function closeBulkModal() {
+        if (bulkReloadUrl) {
+            window.location.href = bulkReloadUrl;
+            return;
+        }
         closeModal('bulkUploadModal');
         setTimeout(bulkResetToStep1, 300);
     }
@@ -1355,12 +1363,12 @@
                         confirmButton: 'mt-4 bg-brand text-white px-4 py-2 rounded-lg font-semibold hover:bg-brand-dark',
                     },
                     buttonsStyling: false,
-                }).then(() => {
-                    const letter = data.open_class || '';
-                    window.location.href = letter
-                        ? @json(route('faculty.students')) + '?class=' + encodeURIComponent(letter)
-                        : window.location.href;
                 });
+
+                const letter = data.open_class || '';
+                bulkReloadUrl = letter
+                    ? @json(route('faculty.students')) + '?class=' + encodeURIComponent(letter)
+                    : window.location.href;
             }
 
         } catch (err) {
