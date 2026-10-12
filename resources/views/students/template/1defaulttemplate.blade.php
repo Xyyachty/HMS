@@ -3727,7 +3727,7 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
         <div className="hero-overlay" data-hms-no-move="1"></div>
         <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 1.5rem', maxWidth: 760 }}>
           <p data-hms-content-kind="hotelInfo" data-hms-content-id="tagline" data-hms-stock={untouched.tagline} style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '1.25rem' }}>{tagline}</p>
-          <h1 className="font-display hero-title" data-hms-move-root="1" data-hms-stock="Where Elegance Meets Comfort" style={{ fontSize: '4.2rem', fontWeight: 900, lineHeight: 1.08, marginBottom: '1.25rem', textAlign: 'center' }}>
+          <h1 className="font-display hero-title" data-hms-move-root="1" data-hms-lines="1" data-hms-stock="Where Elegance Meets Comfort" style={{ fontSize: '4.2rem', fontWeight: 900, lineHeight: 1.08, marginBottom: '1.25rem', textAlign: 'center' }}>
             <span style={{ display: 'block' }}>Where Elegance</span>
             <span style={{ display: 'block', color: 'var(--accent)', fontStyle: 'italic', fontWeight: 400 }}>Meets Comfort</span>
           </h1>

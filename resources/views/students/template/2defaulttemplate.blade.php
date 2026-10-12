@@ -4507,7 +4507,7 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
         </div>
         <div className="hero-content">
           <span className="section-num" data-hms-content-kind="hotelInfo" data-hms-content-id="tagline" data-hms-stock={untouched.tagline}>{tagline}</span>
-          <h1 className="font-display" data-hms-move-root="1" data-hms-stock="A Sanctuary of Timeless Luxury" style={{ fontSize: '3.2rem', fontWeight: 600, lineHeight: 1.1, marginBottom: '1.25rem' }}>
+          <h1 className="font-display" data-hms-move-root="1" data-hms-lines="1" data-hms-stock="A Sanctuary of Timeless Luxury" style={{ fontSize: '3.2rem', fontWeight: 600, lineHeight: 1.1, marginBottom: '1.25rem' }}>
             <span style={{ display: 'block' }}>A Sanctuary of</span>
             <em style={{ display: 'block', color: 'var(--warm)' }}>Timeless Luxury</em>
           </h1>

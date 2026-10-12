@@ -1030,8 +1030,20 @@
     return textIsWholeElement(el) ? el : firstTextNode(el);
   }
 
+  /* A heading set as separate lines (the hero titles: "A Sanctuary of" over
+     "Timeless Luxury"), marked data-hms-lines. Each child element is one line,
+     read and written on its own. Through textSlot() only the first line was
+     ever saved, so whatever was typed into the second was gone on reload. */
+  function textLines(el) {
+    if (!el || el.getAttribute('data-hms-lines') !== '1') return null;
+    const lines = Array.from(el.children);
+    return lines.length ? lines : null;
+  }
+
   /** Read the editable text of an element, including multi-child ones. */
   function readEditableText(el) {
+    const lines = textLines(el);
+    if (lines) return lines.map((line) => line.textContent.replace(/\s+/g, ' ').trim()).join('\n');
     const slot = textSlot(el);
     if (!slot || isBrandLocked(slot)) return null;
     return slot === el ? el.innerText : slot.nodeValue;
@@ -1039,6 +1051,18 @@
 
   /** Write text back into the same slot readEditableText took it from. */
   function writeEditableText(el, text) {
+    const lines = textLines(el);
+    if (lines) {
+      const parts = String(text == null ? '' : text).split('\n');
+      // One part is an edit saved before lines were tracked: it only ever held
+      // the first line, so the others keep the template's words.
+      const count = parts.length === 1 ? 1 : lines.length;
+      for (let i = 0; i < count; i++) {
+        const value = i === lines.length - 1 ? parts.slice(i).join(' ') : (parts[i] || '');
+        if (lines[i].textContent !== value) lines[i].textContent = value;
+      }
+      return;
+    }
     const slot = textSlot(el);
     if (!slot || isBrandLocked(slot)) return;
     if (slot === el) {
@@ -2074,6 +2098,9 @@
     // Space is a button's own activation key, and Chrome drops it instead of
     // typing it: "New Label" was saved as "NewLabel".
     const onKeyDown = (ev) => {
+      // A new line inside a lined heading would split a line in two and shift
+      // every line after it; the lines are fixed, each edits in place.
+      if (ev.key === 'Enter' && textLines(el)) { ev.preventDefault(); return; }
       if (ev.key !== ' ' || el.tagName !== 'BUTTON') return;
       ev.preventDefault();
       document.execCommand('insertText', false, ' ');
