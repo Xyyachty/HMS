@@ -3429,8 +3429,9 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
             $data['room_number'] = $booking?->room?->name;
         } else {
             // Room service is charged to a stay, so it has to resolve to one. The room
-            // is identified by name (that is all the ordering screen has), and only a
-            // guest who has actually checked in can order to their room.
+            // is identified by name (that is all the ordering screen has). Any guest
+            // booked into it - booked, arrived or checked in - can have the desk order
+            // for them; the order is billed to that stay.
             $room = HotelRoom::with('activeBooking')
                 ->where('group_name', $membership->group_name)
                 ->where('faculty_id', $membership->faculty_id)
@@ -3438,9 +3439,9 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
                 ->first();
 
             $booking = $room?->activeBooking;
-            if (!$booking || $booking->status !== 'Checked In') {
+            if (!$booking || !$booking->isOpen()) {
                 return response()->json([
-                    'message' => 'That room has no checked-in guest to bill this order to.',
+                    'message' => 'That room has no booked guest to bill this order to.',
                 ], 422);
             }
         }

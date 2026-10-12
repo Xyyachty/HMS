@@ -125,6 +125,30 @@
     .rs { padding: 1.1rem 1rem 2.5rem; }
     .rs-views { width: 100%; border-radius: 14px; }
   }
+
+  /* New order: the desk orders for a booked guest; the kitchen takes it from there. */
+  .rs-btn-solid { background: var(--accent); color: var(--bg); }
+  .rs-btn-solid:hover { background: var(--accent-light, var(--accent)); }
+  .rs-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .rs-modal-back { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .rs-modal { width: min(640px, 100%); max-height: calc(100vh - 2rem); overflow: auto; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.4rem; color: var(--fg); }
+  .rs-modal h2 { margin: 0 0 0.3rem; font-size: 1.3rem; }
+  .rs-modal .rs-sub { margin: 0 0 1.1rem; color: var(--fg-muted); font-size: 0.85rem; line-height: 1.5; }
+  .rs-label { display: block; margin: 0 0 0.4rem; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
+  .rs-select { width: 100%; padding: 0.7rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); font: inherit; margin-bottom: 1rem; }
+  .rs-menu { display: grid; gap: 0.45rem; margin-bottom: 1rem; }
+  .rs-menu-cat { margin: 0.6rem 0 0.1rem; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+  .rs-dish { display: flex; align-items: center; gap: 0.75rem; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 10px; }
+  .rs-dish-name { flex: 1; min-width: 0; }
+  .rs-dish-name b { display: block; font-size: 0.9rem; }
+  .rs-dish-name span { font-size: 0.75rem; color: var(--fg-muted); }
+  .rs-qty { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .rs-qty button { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--fg); cursor: pointer; }
+  .rs-qty button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .rs-qty output { min-width: 1.4rem; text-align: center; font-variant-numeric: tabular-nums; }
+  .rs-total { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding-top: 0.9rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .rs-error { margin: 0 0 0.8rem; color: #f87171; font-size: 0.85rem; }
+  .rs-notice { margin: 0 0 1rem; padding: 0.7rem 0.9rem; border-radius: 10px; border: 1px solid var(--rs-ok); color: var(--fg); font-size: 0.86rem; }
 </style>
 @endsection
 
@@ -136,7 +160,11 @@
 <script>
   window.HMS_ROOM_SERVICE = {
     backUrl: @json(route('students.dashboard', ['section' => 'tasks'])),
-    ordersUrl: @json(route('students.hotel.orders.index')),
+    ordersUrl: @json(route('students.hotel.orders.index', [], false)),
+    // Root-relative: placing an order and listing who can be ordered for.
+    storeUrl: @json(route('students.hotel.orders.store', [], false)),
+    roomsUrl: @json(route('students.hotel.rooms.index', [], false)),
+    menusUrl: @json(route('students.hotel.menus.index', [], false)),
   };
 </script>
 @verbatim
@@ -252,7 +280,122 @@ function OrderCard({ order }) {
   );
 }
 
-function RoomServicePage({ orders, onBack }) {
+/* The desk orders food for a guest booked into a room. The order goes straight
+   to Restaurant Services' kitchen queue (status Preparing) and is billed to the
+   guest's stay; this page then follows it like any other. */
+function NewOrderModal({ onClose, onPlaced }) {
+  const [rooms, setRooms] = useState(null);
+  const [menu, setMenu] = useState(null);
+  const [roomName, setRoomName] = useState('');
+  const [qty, setQty] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const get = (url) => fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } }).then(r => r.json());
+    get(CFG.roomsUrl).then(d => setRooms(Array.isArray(d.rooms) ? d.rooms : [])).catch(() => setRooms([]));
+    get(CFG.menusUrl).then(d => setMenu(Array.isArray(d.items) ? d.items : [])).catch(() => setMenu([]));
+  }, []);
+
+  const OPEN = ['Booked', 'Arrived', 'Checked In'];
+  const guests = (rooms || []).filter(r => r.reservation && OPEN.indexOf(r.reservation.status) !== -1);
+  const chosen = guests.find(r => r.name === roomName) || null;
+  const categories = [];
+  (menu || []).forEach(m => { if (categories.indexOf(m.category) === -1) categories.push(m.category); });
+  const lines = (menu || []).filter(m => (qty[m.dbId] || 0) > 0);
+  const total = lines.reduce((sum, m) => sum + m.price * qty[m.dbId], 0);
+
+  const step = (item, delta) => setQty(prev => {
+    const next = Math.max(0, Math.min(item.stock, (prev[item.dbId] || 0) + delta));
+    return Object.assign({}, prev, { [item.dbId]: next });
+  });
+
+  const place = () => {
+    if (!chosen || !lines.length || saving) return;
+    setSaving(true);
+    setError('');
+    fetch(CFG.storeUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json', 'Accept': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+      },
+      body: JSON.stringify({
+        order_type: 'room_service',
+        room_number: chosen.name,
+        guest_name: chosen.reservation.fullName || 'Guest',
+        items: lines.map(m => ({ name: m.name, menu_item_id: m.dbId, price: m.price, qty: qty[m.dbId] })),
+      }),
+    })
+      .then(r => r.json().then(d => (r.ok ? d : Promise.reject(d))))
+      .then(() => onPlaced(chosen))
+      .catch(err => setError((err && err.message) || 'The order could not be placed. Try again.'))
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <div className="rs-modal-back" onClick={onClose}>
+      <div className="rs-modal" role="dialog" aria-modal="true" aria-label="New room-service order" onClick={e => e.stopPropagation()}>
+        <h2 className="font-display">New Room Service Order</h2>
+        <p className="rs-sub">Order for a guest booked into a room. It goes straight to the Restaurant kitchen and is added to the guest&rsquo;s bill.</p>
+
+        <label className="rs-label" htmlFor="rs-guest">Guest</label>
+        {rooms === null ? <p className="rs-sub">Loading guests&hellip;</p> : guests.length === 0 ? (
+          <p className="rs-sub">No guest is booked into a room right now. Book one on Walk-in Guests or the website first.</p>
+        ) : (
+          <select id="rs-guest" className="rs-select" value={roomName} onChange={e => setRoomName(e.target.value)}>
+            <option value="">Choose a guest&hellip;</option>
+            {guests.map(r => (
+              <option key={r.id} value={r.name}>{r.name} — {r.reservation.fullName || 'Guest'} ({r.reservation.status})</option>
+            ))}
+          </select>
+        )}
+
+        <span className="rs-label">Food</span>
+        {menu === null ? <p className="rs-sub">Loading the menu&hellip;</p> : menu.length === 0 ? (
+          <p className="rs-sub">The restaurant has no dishes on its menu yet.</p>
+        ) : (
+          <div className="rs-menu">
+            {categories.map(cat => (
+              <React.Fragment key={cat}>
+                <p className="rs-menu-cat">{cat}</p>
+                {menu.filter(m => m.category === cat).map(m => (
+                  <div className="rs-dish" key={m.dbId}>
+                    <div className="rs-dish-name">
+                      <b>{m.name}</b>
+                      <span>{formatPeso(m.price)} · {m.stock > 0 ? m.stock + ' left' : 'Sold out'}</span>
+                    </div>
+                    <div className="rs-qty">
+                      <button type="button" aria-label={'One less ' + m.name} disabled={!(qty[m.dbId] > 0)} onClick={() => step(m, -1)}>&minus;</button>
+                      <output>{qty[m.dbId] || 0}</output>
+                      <button type="button" aria-label={'One more ' + m.name} disabled={(qty[m.dbId] || 0) >= m.stock} onClick={() => step(m, 1)}>+</button>
+                    </div>
+                  </div>
+                ))}
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+
+        {error ? <p className="rs-error">{error}</p> : null}
+        <div className="rs-total">
+          <strong>Total {formatPeso(total)}</strong>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button type="button" className="rs-btn" onClick={onClose}>Cancel</button>
+            <button type="button" className="rs-btn rs-btn-solid" disabled={!chosen || !lines.length || saving} onClick={place}>
+              <i className="fa-solid fa-paper-plane"></i> {saving ? 'Sending…' : 'Send to Kitchen'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoomServicePage({ orders, onBack, onOrdered }) {
+  const [ordering, setOrdering] = useState(false);
+  const [notice, setNotice] = useState('');
   const [tab, setTab] = useState('all');
 
   const roomServiceOrders = (orders || [])
@@ -267,7 +410,7 @@ function RoomServicePage({ orders, onBack }) {
   let emptyText = 'Pick another tab to see the rest of the orders.';
   if (roomServiceOrders.length === 0) {
     emptyTitle = 'No room-service orders yet';
-    emptyText = 'When a checked-in guest orders food to their room from the hotel website’s Restaurant page, the order will appear here.';
+    emptyText = 'Press New Order to order for a booked guest, or wait for a guest to order from the hotel website’s Restaurant page.';
   } else if (tab === 'Completed') {
     emptyTitle = 'Nothing delivered yet';
     emptyText = 'Orders move here once the kitchen has brought them to the guest’s room.';
@@ -280,12 +423,26 @@ function RoomServicePage({ orders, onBack }) {
           <p className="rs-eyebrow">Front Desk</p>
           <h1 className="font-display">Room Service</h1>
           <p className="rs-lead">
-            Food that checked-in guests have ordered to their rooms. The kitchen moves each
-            order along, so there is nothing to press here. Use this page to see where an
-            order is if a guest calls the desk.
+            Food ordered to guests&rsquo; rooms. Order for a booked guest here and it goes
+            straight to the Restaurant kitchen; the kitchen moves each order along. Use this
+            page to see where an order is if a guest calls the desk.
           </p>
         </div>
+        <button type="button" className="rs-btn rs-btn-solid" onClick={() => { setNotice(''); setOrdering(true); }}>
+          <i className="fa-solid fa-plus"></i> New Order
+        </button>
       </header>
+      {notice ? <p className="rs-notice" role="status">{notice}</p> : null}
+      {ordering ? (
+        <NewOrderModal
+          onClose={() => setOrdering(false)}
+          onPlaced={(room) => {
+            setOrdering(false);
+            setNotice(`Order for ${room.reservation.fullName || 'the guest'} in ${room.name} sent to the Restaurant kitchen.`);
+            if (onOrdered) onOrdered();
+          }}
+        />
+      ) : null}
 
       <section className="rs-panel">
         <div className="rs-toolbar">
@@ -329,8 +486,8 @@ function RoomServicePage({ orders, onBack }) {
 function App() {
   const [orders, setOrders] = useState([]);
 
-  // Nothing on this page writes, so the poll never has to worry about racing an
-  // in-flight update of its own — whatever the kitchen last saved is the truth.
+  // The only write here is a new order, after which the list is fetched again;
+  // the kitchen owns every status change, so whatever it last saved is the truth.
   const fetchOrders = useCallback(() => {
     fetch(CFG.ordersUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
@@ -351,6 +508,7 @@ function App() {
     <RoomServicePage
       orders={orders}
       onBack={() => { window.location.href = CFG.backUrl; }}
+      onOrdered={fetchOrders}
     />
   );
 }
