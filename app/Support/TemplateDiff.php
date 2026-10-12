@@ -82,6 +82,7 @@ class TemplateDiff
         'cardImages' => 'Card image',
         'heroSlides' => 'Hero slide',
         'experiences' => 'Highlight',
+        'guestAuth' => 'Sign in text',
     ];
 
     /** Header link key => the label it ships with. Kept in step with DEFAULT_NAV in hms-site-content.js. */
@@ -449,6 +450,9 @@ class TemplateDiff
                 return '[data-hms-content-kind="socialLinks"]';
             case 'hotelInfo':
                 return '[data-hms-content-kind="hotelInfo"]';
+            case 'guestAuth':
+                // The header button; the dialog's own words only show once it is open.
+                return '[data-hms-guest-signin]';
             case 'siteColors':
             case 'typography':
                 // Site-wide by nature — every page carries them, so there is no

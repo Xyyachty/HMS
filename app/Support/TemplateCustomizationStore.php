@@ -35,6 +35,7 @@ class TemplateCustomizationStore
         HotelTemplateBuilder::HOTEL_INFO_KEY => 'hotelInfo',
         HotelTemplateBuilder::SOCIAL_LINKS_KEY => 'socialLinks',
         HotelTemplateBuilder::TYPOGRAPHY_KEY => 'typography',
+        HotelTemplateBuilder::GUEST_AUTH_KEY => 'guestAuth',
     ];
 
     /** Editor customization key => DB column on template_elements */
@@ -677,6 +678,7 @@ class TemplateCustomizationStore
             'hotelInfo' => HotelTemplateBuilder::HOTEL_INFO_KEY,
             'socialLinks' => HotelTemplateBuilder::SOCIAL_LINKS_KEY,
             'typography' => HotelTemplateBuilder::TYPOGRAPHY_KEY,
+            'guestAuth' => HotelTemplateBuilder::GUEST_AUTH_KEY,
         ] as $collection => $jsonKey) {
             $meta = $byCollection->get($collection . '_meta', collect())->first();
             $payload = $meta ? self::fieldsMap($meta) : [];

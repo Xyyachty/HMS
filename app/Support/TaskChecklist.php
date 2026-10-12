@@ -174,6 +174,12 @@ class TaskChecklist
                 'title' => 'Customize Hotel Highlights',
                 'description' => 'Customize the Hotel Highlights section to showcase the best features, attractions, and special things your hotel offers.',
             ],
+            [
+                // Last, not beside Branding: taskNumber() counts by position, so
+                // an entry slotted in earlier would renumber every task after it.
+                'title' => 'Customize the Sign In',
+                'description' => 'Customize the Sign in button in the header and the words guests read inside the sign-in window, so your hotel welcomes its guests in its own words.',
+            ],
         ],
 
         'room_management' => [
@@ -291,6 +297,7 @@ class TaskChecklist
         'Customize Our Team' => 'Every team member shows their own photo, their correct name and the position they hold.',
         'Customize the Footer' => 'The footer\'s description, links and contact details are all correct for your hotel.',
         'Customize Hotel Highlights' => 'Every highlight is one your hotel really offers, with its own photo and title, and no sample highlights remain.',
+        'Customize the Sign In' => 'The Sign in button and the words inside the sign-in and sign-up windows are your hotel\'s own.',
     ];
 
     /**
@@ -447,6 +454,13 @@ class TaskChecklist
             'Add new highlights that showcase the best features of your hotel.',
             'Remove unnecessary highlights and review the section to make sure everything matches your hotel.',
         ],
+        'Customize the Sign In' => [
+            'Open the Sign In Editor: in Design mode, click the Sign in button in the header.',
+            'Rename the Header Button: change the Sign in button text, such as "Guest Login" or "Member Sign In."',
+            'Edit the Sign In Window: change the title, the welcome message, and the button guests click to sign in.',
+            'Edit the Sign Up Window: change the title, the message, and the button new guests click to create an account.',
+            'Check Your Changes: click View Live, click the Sign in button, and make sure every word matches your hotel.',
+        ],
     ];
 
     /**
@@ -592,6 +606,7 @@ class TaskChecklist
         'introduce your team' => ['page' => 'home', 'section' => 'team'],
         'customize hotel experiences' => ['page' => 'home', 'section' => 'highlights'],
         'customize the footer' => ['page' => 'home', 'section' => 'footer'],
+        'customize the sign in' => ['page' => 'home', 'section' => 'header'],
         // The highlights are added, photographed and renamed on the Highlights
         // page; the Home page only previews the first three.
         'customize hotel highlights' => ['page' => 'experience', 'section' => null],

@@ -85,6 +85,7 @@
     __heroSlides: 'the hero photos',
     __navLinks: 'the menu links',
     __brandName: 'the hotel name',
+    __guestAuth: 'the sign-in text',
     __socialLinks: 'the social links',
     __typography: 'the fonts',
     __roomCardStyle: 'the room card style',

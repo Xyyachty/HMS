@@ -170,6 +170,14 @@ class HotelTemplateBuilder
     public const AMENITY_SLIDER_KEY = '__amenitySlider';
 
     /**
+     * The words on the header's Sign in button and inside the guest sign-in
+     * dialog. Front Desk's, like the hotel name, and page-scoped to 'home' so
+     * page ownership keeps every other role out — the same footing as
+     * __partners. Empty fields fall back to the template's own words.
+     */
+    public const GUEST_AUTH_KEY = '__guestAuth';
+
+    /**
      * The hotel's own words: tagline, description and the contact block the
      * landing page and every footer show. One entry for the whole site, like the
      * brand name it sits beside — the same hotel cannot have a different phone
@@ -732,6 +740,7 @@ class HotelTemplateBuilder
             self::HOTEL_INFO_KEY,
             self::SOCIAL_LINKS_KEY,
             self::TYPOGRAPHY_KEY,
+            self::GUEST_AUTH_KEY,
         ];
         $out = [];
         foreach ($keepKeys as $key) {

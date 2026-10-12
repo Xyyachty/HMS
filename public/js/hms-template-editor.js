@@ -18,7 +18,7 @@
 
   const USER_KEY = '__userElements';
   const DELETED_KEY = '__deleted';
-  const SITE_CONTENT_KEYS = ['__navLinks', '__brandName', '__roomCardStyle', '__menuCardStyle', '__siteColors', '__rooms', '__menus', '__cardImages', '__heroSlides', '__hotelInfo', '__socialLinks', '__typography'];
+  const SITE_CONTENT_KEYS = ['__navLinks', '__brandName', '__roomCardStyle', '__menuCardStyle', '__siteColors', '__rooms', '__menus', '__cardImages', '__heroSlides', '__hotelInfo', '__socialLinks', '__typography', '__guestAuth'];
 
   let designMode = false;
   let selectedEl = null;

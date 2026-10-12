@@ -23,7 +23,8 @@
   const PARTNERS_KEY = '__partners';
   const EXPERIENCES_KEY = '__experiences';
   const AMENITY_SLIDER_KEY = '__amenitySlider';
-  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, PARTNERS_KEY, EXPERIENCES_KEY, AMENITY_SLIDER_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const GUEST_AUTH_KEY = '__guestAuth';
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, PARTNERS_KEY, EXPERIENCES_KEY, AMENITY_SLIDER_KEY, GUEST_AUTH_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   /**
    * The hotel name shown in the header and the footer.
@@ -528,6 +529,54 @@
       page: 'home',
       items: [{ id: BRAND_NAME_ID, label: clean }],
     });
+    return true;
+  }
+
+  /* ── Guest sign in ──────────────────────────────────────────────────────
+     The words on the header's Sign in button and inside the guest sign-in /
+     sign-up dialog. Front Desk's, like the hotel name: the front door of the
+     hotel is the front desk's job. Same one-item collection shape as the hotel
+     information, for the same save/reload reason. A field left empty means
+     "use the template's own words", so getGuestAuth() hands back only what the
+     team typed and each template keeps its defaults. */
+
+  const GUEST_AUTH_ID = 'guest-auth';
+  const GUEST_AUTH_MAX = {
+    buttonLabel: 24,
+    signinTitle: 60,
+    signinIntro: 200,
+    signinSubmit: 24,
+    signupTitle: 60,
+    signupIntro: 200,
+    signupSubmit: 24,
+  };
+  const GUEST_AUTH_FIELDS = Object.keys(GUEST_AUTH_MAX);
+
+  function canEditGuestAuth() {
+    return canEditBrandName();
+  }
+
+  function getGuestAuth() {
+    const c = getCustomizations();
+    const entry = c[GUEST_AUTH_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    const out = {};
+    GUEST_AUTH_FIELDS.forEach((field) => {
+      out[field] = item && typeof item[field] === 'string' ? item[field].trim() : '';
+    });
+    return out;
+  }
+
+  function setGuestAuth(fields) {
+    if (!canEditGuestAuth()) return false;
+    if (!fields || typeof fields !== 'object') return false;
+    const current = getGuestAuth();
+    const next = { id: GUEST_AUTH_ID };
+    GUEST_AUTH_FIELDS.forEach((field) => {
+      const incoming = Object.prototype.hasOwnProperty.call(fields, field) ? fields[field] : current[field];
+      next[field] = String(incoming == null ? '' : incoming).trim().slice(0, GUEST_AUTH_MAX[field]);
+    });
+    patch(GUEST_AUTH_KEY, { page: 'home', items: [next] });
     return true;
   }
 
@@ -1472,6 +1521,11 @@
     getBrandName,
     hasStoredBrandName,
     setBrandName,
+    GUEST_AUTH_KEY,
+    GUEST_AUTH_MAX,
+    getGuestAuth,
+    setGuestAuth,
+    canEditGuestAuth,
     HOTEL_INFO_KEY,
     SOCIAL_LINKS_KEY,
     TYPOGRAPHY_KEY,

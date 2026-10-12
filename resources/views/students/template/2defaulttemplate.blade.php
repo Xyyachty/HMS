@@ -2854,7 +2854,22 @@ function Toast({ message, visible }) {
 
    The two forms are one dialog because they are one decision: nobody wants to be
    told to go somewhere else because they picked the wrong one. */
-function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
+/* The guest sign-in words Front Desk may change, with the template's own words
+   each falls back to. Stored under __guestAuth by HMSSiteContent.setGuestAuth();
+   an empty field means "use the default". Shared by the dialog that edits them
+   and the dialog that shows them, so the two can never disagree. */
+const GUEST_AUTH_TEXT = [
+  { key: 'buttonLabel', label: 'Header button', fallback: 'Sign in', maxLength: 24 },
+  { key: 'signinTitle', label: 'Sign in title', fallback: 'Sign in', maxLength: 60 },
+  { key: 'signinIntro', label: 'Sign in message', fallback: 'Sign in to book a room and manage your stay.', maxLength: 200 },
+  { key: 'signinSubmit', label: 'Sign in button', fallback: 'Sign in', maxLength: 24 },
+  { key: 'signupTitle', label: 'Sign up title', fallback: 'Create your account', maxLength: 60 },
+  { key: 'signupIntro', label: 'Sign up message', fallback: 'Your details and a photo of your ID - the rest we take when you book.', maxLength: 200 },
+  { key: 'signupSubmit', label: 'Sign up button', fallback: 'Create account', maxLength: 24 },
+];
+const guestText = (texts, key) => (texts && texts[key]) || GUEST_AUTH_TEXT.find((f) => f.key === key).fallback;
+
+function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice, texts }) {
   const [form, setForm] = useState({
     email: '', password: '', remember: false,
     fullName: '', contact: '', confirm: '', agreed: false,
@@ -2950,12 +2965,10 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
       <div className="room-modal" style={{ width: 'min(420px, 100%)', padding: '1.6rem', maxHeight: '90vh', overflowY: 'auto' }}
            onClick={(e) => e.stopPropagation()}>
         <h3 className="font-display" style={{ fontSize: '1.4rem', margin: '0 0 0.3rem' }}>
-          {signingIn ? 'Sign in' : 'Create your account'}
+          {guestText(texts, signingIn ? 'signinTitle' : 'signupTitle')}
         </h3>
         <p style={{ color: 'var(--fg-muted)', fontSize: '0.8rem', margin: '0 0 1.2rem', lineHeight: 1.55 }}>
-          {notice || (signingIn
-            ? 'Sign in to book a room and manage your stay.'
-            : 'Your details and a photo of your ID - the rest we take when you book.')}
+          {notice || guestText(texts, signingIn ? 'signinIntro' : 'signupIntro')}
         </p>
 
         {signingIn ? (
@@ -3058,7 +3071,7 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
 
         <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
                 onClick={submit} disabled={busy}>
-          {busy ? 'Please wait...' : (signingIn ? 'Sign in' : 'Create account')}
+          {busy ? 'Please wait...' : guestText(texts, signingIn ? 'signinSubmit' : 'signupSubmit')}
         </button>
 
         <p style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--fg-muted)', margin: '1rem 0 0' }}>
@@ -3076,6 +3089,7 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
 
 function HeaderEditModal({ edit, openedFor, onSave, onCancel }) {
   const [value, setValue] = React.useState('');
+  const [fieldValues, setFieldValues] = React.useState({});
 
   /* Seed the field only when the dialog opens or switches target. `edit` is
      rebuilt on every App render, so keying on it let any background re-render
@@ -3083,11 +3097,15 @@ function HeaderEditModal({ edit, openedFor, onSave, onCancel }) {
      unsaved typing. `openedFor` is App's headerEdit state, stable while open. */
   React.useEffect(() => {
     setValue(edit && edit.mode === 'text' ? (edit.value || '') : '');
+    const seeded = {};
+    if (edit && edit.mode === 'fields') edit.fields.forEach((f) => { seeded[f.key] = f.value || ''; });
+    setFieldValues(seeded);
   }, [openedFor]);
 
   if (!edit) return null;
 
   const submit = () => {
+    if (edit.mode === 'fields') { onSave(fieldValues); return; }
     if (edit.mode !== 'text') return;
     if (!value.trim()) return;
     onSave(value);
@@ -3128,6 +3146,44 @@ function HeaderEditModal({ edit, openedFor, onSave, onCancel }) {
             />
             <p className="header-modal-hint">{edit.hint}</p>
           </React.Fragment>
+        ) : edit.mode === 'fields' ? (
+          <React.Fragment>
+            <div style={{ maxHeight: '55vh', overflowY: 'auto', paddingRight: '0.25rem' }}>
+              {edit.fields.map((f, i) => (
+                <div key={f.key} style={{ marginBottom: '0.85rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>
+                    {f.label}
+                  </label>
+                  {f.maxLength > 60 ? (
+                    <textarea
+                      className="header-modal-field"
+                      rows={2}
+                      value={fieldValues[f.key] || ''}
+                      maxLength={f.maxLength}
+                      placeholder={f.fallback}
+                      onChange={(e) => { const v = e.target.value; setFieldValues((prev) => Object.assign({}, prev, { [f.key]: v })); }}
+                      style={{ resize: 'vertical' }}
+                    />
+                  ) : (
+                    <input
+                      className="header-modal-field"
+                      type="text"
+                      value={fieldValues[f.key] || ''}
+                      maxLength={f.maxLength}
+                      placeholder={f.fallback}
+                      autoFocus={i === 0}
+                      onChange={(e) => { const v = e.target.value; setFieldValues((prev) => Object.assign({}, prev, { [f.key]: v })); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+                        if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="header-modal-hint">{edit.hint}</p>
+          </React.Fragment>
         ) : (
           <React.Fragment>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0 1.2rem' }}>
@@ -3141,6 +3197,8 @@ function HeaderEditModal({ edit, openedFor, onSave, onCancel }) {
           <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
           {edit.mode === 'text' ? (
             <button type="button" className="btn-primary" disabled={!value.trim()} onClick={submit}>Save</button>
+          ) : edit.mode === 'fields' ? (
+            <button type="button" className="btn-primary" onClick={submit}>Save</button>
           ) : (
             <button type="button" className="btn-primary" onClick={() => onSave(null)}>Choose image</button>
           )}
@@ -3506,7 +3564,7 @@ function MobileMenu({ open, onClose, onNav, links, cardImages, brandName }) {
    run at all in Design mode. Because the editor no longer swallows the click,
    each handler has to check isSiteInteractive() itself and decide between
    navigating (Preview) and opening a dialog (Design). */
-function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, canEditSiteColors, onHeaderEdit, cardImages, guest, onGuestSignIn, onGuestSignOut }) {
+function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, canEditSiteColors, onHeaderEdit, cardImages, guest, onGuestSignIn, onGuestSignOut, guestTexts, canEditGuestAuth }) {
   // Passed only so the navigation re-renders when the shared logo changes.
   void cardImages;
 
@@ -3588,9 +3646,12 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, ed
                     onClick={onGuestSignOut}>Sign out</button>
           </div>
         ) : (
-          <button type="button" className="btn-outline" data-hms-no-edit="1"
+          <button type="button" className={`btn-outline${editing && canEditGuestAuth ? ' hms-header-edit' : ''}`} data-hms-no-edit="1"
+                  data-hms-guest-signin="1"
+                  data-hms-edit-label="Edit sign in"
+                  title={editing && canEditGuestAuth ? 'Click to change the sign in text' : undefined}
                   style={{ fontSize: '0.66rem', padding: '0.45rem 0.9rem' }}
-                  onClick={onGuestSignIn}>Sign in</button>
+                  onClick={editing && canEditGuestAuth ? (e) => openEdit(e, { kind: 'signin' }) : onGuestSignIn}>{guestText(guestTexts, 'buttonLabel')}</button>
         )}
         <button className={`hamburger${mobileOpen ? ' active' : ''}`} onClick={onToggle} aria-label="Toggle menu" data-hms-no-edit="1">
           <span></span><span></span><span></span>
@@ -7325,6 +7386,9 @@ function App() {
     window.HMSSiteContent && window.HMSSiteContent.getBrandName ? window.HMSSiteContent.getBrandName() : 'SPC HOTEL'
   ));
   const [canEditBrandName, setCanEditBrandName] = useState(false);
+  const [guestTexts, setGuestTextsState] = useState(() => (
+    window.HMSSiteContent && window.HMSSiteContent.getGuestAuth ? window.HMSSiteContent.getGuestAuth() : {}
+  ));
   // Read through state, not inline in NavBar: hotel auth resolves after the
   // first render, so an inline canEditLogo() read shows a stale answer.
   const [canEditLogo, setCanEditLogo] = useState(false);
@@ -7590,6 +7654,7 @@ function App() {
     if (window.HMSSiteContent.getSocialLinks) setSocialLinksState(window.HMSSiteContent.getSocialLinks());
     if (window.HMSSiteContent.getTypography) setTypographyState(window.HMSSiteContent.getTypography());
     if (window.HMSSiteContent.getBrandName) setBrandNameState(window.HMSSiteContent.getBrandName());
+    if (window.HMSSiteContent.getGuestAuth) setGuestTextsState(window.HMSSiteContent.getGuestAuth());
     setCanEditBrandName(
       typeof window.HMSSiteContent.canEditBrandName === 'function'
         ? window.HMSSiteContent.canEditBrandName()
@@ -8322,6 +8387,13 @@ function App() {
           maxLength: 60,
           hint: 'Shown in the header and the footer of every page.',
         }
+      : headerEdit.kind === 'signin'
+        ? {
+            mode: 'fields',
+            title: 'Customize Sign In',
+            fields: GUEST_AUTH_TEXT.map((f) => Object.assign({}, f, { value: guestTexts[f.key] || f.fallback })),
+            hint: 'The Sign in button in the header and the words inside the guest sign-in window. Leave a box empty to use the original words.',
+          }
       : headerEdit.kind === 'partner'
         ? {
             mode: 'text',
@@ -8365,6 +8437,14 @@ function App() {
       setHeaderEdit(null);
       return;
     }
+    if (headerEdit.kind === 'signin') {
+      if (content.setGuestAuth && content.setGuestAuth(value)) {
+        setGuestTextsState(content.getGuestAuth());
+        showToast('Sign in text updated');
+      }
+      setHeaderEdit(null);
+      return;
+    }
     if (headerEdit.kind === 'brand') {
       if (content.setBrandName(value)) showToast('Hotel name updated across the whole site');
     } else if (headerEdit.kind === 'nav') {
@@ -8394,6 +8474,8 @@ function App() {
         guest={guestAuth}
         onGuestSignIn={() => setGuestAuthModal({ mode: 'signin', notice: null })}
         onGuestSignOut={guestSignOut}
+        guestTexts={guestTexts}
+        canEditGuestAuth={canEditBrandName}
       />
       <MobileMenu
         open={mobileOpen}
@@ -8413,6 +8495,7 @@ function App() {
         onMode={(mode) => setGuestAuthModal((prev) => Object.assign({}, prev, { mode: mode }))}
         onClose={() => { pendingGuestAction.current = null; setGuestAuthModal(null); }}
         onSignedIn={onGuestSignedIn}
+        texts={guestTexts}
       />
       <SiteTheme colors={siteColors} type={typography} />
       <SiteColorsModal
