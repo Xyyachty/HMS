@@ -422,7 +422,7 @@
                      account is what the update form below is for. --}}
                 <input type="hidden" name="status" value="active">
                 <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                    <span class="w-1.5 h-1.5 rounded-full" style="background:#16A34A"></span> Active
                 </div>
             </div>
             <div>
