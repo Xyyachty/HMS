@@ -2232,12 +2232,16 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice }) {
   );
 }
 
-function HeaderEditModal({ edit, onSave, onCancel }) {
+function HeaderEditModal({ edit, openedFor, onSave, onCancel }) {
   const [value, setValue] = React.useState('');
 
+  /* Seed the field only when the dialog opens or switches target. `edit` is
+     rebuilt on every App render, so keying on it let any background re-render
+     (polling, site-content sync) put the saved name back over the student's
+     unsaved typing. `openedFor` is App's headerEdit state, stable while open. */
   React.useEffect(() => {
     setValue(edit && edit.mode === 'text' ? (edit.value || '') : '');
-  }, [edit]);
+  }, [openedFor]);
 
   if (!edit) return null;
 
@@ -9400,7 +9404,7 @@ function App() {
         />
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
       <Footer onNavigate={navigateTo} cardImages={cardImages} page={page} brandName={brandName} hotelInfo={hotelInfo} socialLinks={socialLinks} />
-      <HeaderEditModal edit={headerEditDialog} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />
+      <HeaderEditModal edit={headerEditDialog} openedFor={headerEdit} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />
       <GuestAuthModal
         open={!!guestAuthModal}
         mode={guestAuthModal ? guestAuthModal.mode : 'signin'}
