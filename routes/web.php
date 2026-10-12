@@ -1714,7 +1714,10 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
             // The guest is here now, so the stay starts today and the room has to be
             // one they can walk into. A room still being cleaned is fine to sell for
             // next week, not to hand a key for this afternoon.
-            if (\Carbon\Carbon::parse($data['check_in'])->toDateString() !== now()->toDateString()) {
+            // Today at the hotel, not on the server's UTC clock: the page sends the
+            // student's own date, and from midnight to 8 AM in Manila UTC is still
+            // on yesterday, which refused every walk-in in those hours.
+            if (\Carbon\Carbon::parse($data['check_in'])->toDateString() !== now('Asia/Manila')->toDateString()) {
                 return response()->json(['message' => 'A walk-in guest checks in today. Set the check-in date to today.'], 422);
             }
             if ($room->status !== 'Available') {
