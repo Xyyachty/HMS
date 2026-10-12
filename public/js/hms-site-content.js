@@ -549,8 +549,14 @@
     signupTitle: 60,
     signupIntro: 200,
     signupSubmit: 24,
+    buttonColor: 7,
   };
   const GUEST_AUTH_FIELDS = Object.keys(GUEST_AUTH_MAX);
+  // The button colour goes into a style attribute, so only a plain #rrggbb is kept.
+  const cleanGuestAuthField = (field, value) => {
+    const clean = String(value == null ? '' : value).trim().slice(0, GUEST_AUTH_MAX[field]);
+    return field === 'buttonColor' && !/^#[0-9a-f]{6}$/i.test(clean) ? '' : clean;
+  };
 
   function canEditGuestAuth() {
     return canEditBrandName();
@@ -562,7 +568,7 @@
     const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
     const out = {};
     GUEST_AUTH_FIELDS.forEach((field) => {
-      out[field] = item && typeof item[field] === 'string' ? item[field].trim() : '';
+      out[field] = item && typeof item[field] === 'string' ? cleanGuestAuthField(field, item[field]) : '';
     });
     return out;
   }
@@ -574,7 +580,7 @@
     const next = { id: GUEST_AUTH_ID };
     GUEST_AUTH_FIELDS.forEach((field) => {
       const incoming = Object.prototype.hasOwnProperty.call(fields, field) ? fields[field] : current[field];
-      next[field] = String(incoming == null ? '' : incoming).trim().slice(0, GUEST_AUTH_MAX[field]);
+      next[field] = cleanGuestAuthField(field, incoming);
     });
     patch(GUEST_AUTH_KEY, { page: 'home', items: [next] });
     return true;

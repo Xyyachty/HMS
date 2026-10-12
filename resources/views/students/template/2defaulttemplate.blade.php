@@ -2860,6 +2860,7 @@ function Toast({ message, visible }) {
    and the dialog that shows them, so the two can never disagree. */
 const GUEST_AUTH_TEXT = [
   { key: 'buttonLabel', section: 'button', label: 'Button text', help: 'Example: Guest Login', fallback: 'Sign in', maxLength: 24 },
+  { key: 'buttonColor', section: 'button', type: 'color', label: 'Button colour', help: 'Pick a colour that matches your hotel. It is used for the Sign in button and for the buttons inside the two windows.', fallback: '', maxLength: 7 },
   { key: 'signinTitle', section: 'signin', label: 'Heading', help: 'The big words at the top. Example: Welcome Back', fallback: 'Sign in', maxLength: 60 },
   { key: 'signinIntro', section: 'signin', label: 'Message', help: 'One or two short sentences under the heading.', fallback: 'Sign in to book a room and manage your stay.', maxLength: 200 },
   { key: 'signinSubmit', section: 'signin', label: 'Button text', help: 'The button guests press to sign in. Example: Log In', fallback: 'Sign in', maxLength: 24 },
@@ -2888,7 +2889,7 @@ function GuestAuthPreview({ section, values }) {
       <div style={box}>
         <p style={caption}>Preview</p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.4rem' }}>
-          <span style={{ border: '1px solid var(--fg-muted)', borderRadius: 6, padding: '0.3rem 0.8rem', fontSize: '0.7rem', color: 'var(--fg)' }}>{text('buttonLabel')}</span>
+          <span style={Object.assign({ border: '1px solid var(--fg-muted)', borderRadius: 6, padding: '0.3rem 0.8rem', fontSize: '0.7rem', color: 'var(--fg)' }, guestButtonStyle(values))}>{text('buttonLabel')}</span>
         </div>
       </div>
     );
@@ -2904,11 +2905,36 @@ function GuestAuthPreview({ section, values }) {
         {(section === 'signin' ? ['Email address', 'Password'] : ['Full name', 'Email address']).map((label) => (
           <div key={label} style={fieldBox}>{label}</div>
         ))}
-        <div style={{ marginTop: '0.55rem' }}><span style={button}>{text(prefix + 'Submit')}</span></div>
+        <div style={{ marginTop: '0.55rem' }}><span style={Object.assign({}, button, guestButtonStyle(values))}>{text(prefix + 'Submit')}</span></div>
       </div>
     </div>
   );
 }
+/* The colour the team picked, or '' for the template's own look. Only a plain
+   #rrggbb is trusted, since it goes straight into a style. */
+const guestColor = (texts) => (texts && /^#[0-9a-f]{6}$/i.test(texts.buttonColor || '') ? texts.buttonColor : '');
+// Dark words on a light colour, white words on a dark one, so the label stays readable.
+const readableOn = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return lum > 0.6 ? '#1a1a1a' : '#ffffff';
+};
+const guestButtonStyle = (texts) => {
+  const hex = guestColor(texts);
+  return hex ? { background: hex, borderColor: hex, color: readableOn(hex) } : {};
+};
+// The colour picker needs a real colour to start from: the site's accent, as rendered.
+const currentAccentHex = () => {
+  try {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--accent)';
+    document.body.appendChild(probe);
+    const m = getComputedStyle(probe).color.match(/\d+/g);
+    probe.remove();
+    if (m && m.length >= 3) return '#' + m.slice(0, 3).map((v) => (+v).toString(16).padStart(2, '0')).join('');
+  } catch (e) { /* fall through */ }
+  return '#b8864b';
+};
 const guestText = (texts, key) => (texts && texts[key]) || GUEST_AUTH_TEXT.find((f) => f.key === key).fallback;
 
 function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice, texts }) {
@@ -3111,7 +3137,7 @@ function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice, texts
           <p style={{ color: '#f08a99', fontSize: '0.78rem', margin: '0 0 0.9rem' }}>{error}</p>
         )}
 
-        <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
+        <button type="button" className="btn-primary" style={Object.assign({ width: '100%', justifyContent: 'center' }, guestButtonStyle(texts))}
                 onClick={submit} disabled={busy}>
           {busy ? 'Please wait...' : guestText(texts, signingIn ? 'signinSubmit' : 'signupSubmit')}
         </button>
@@ -3207,7 +3233,26 @@ function HeaderEditModal({ edit, openedFor, onSave, onCancel }) {
                       <label style={{ display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.3rem' }}>
                         {f.label}
                       </label>
-                      {f.maxLength > 60 ? (
+                      {f.type === 'color' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                          <input
+                            type="color"
+                            aria-label={f.label}
+                            value={fieldValues[f.key] || currentAccentHex()}
+                            onChange={(e) => { const v = e.target.value; setFieldValues((prev) => Object.assign({}, prev, { [f.key]: v })); }}
+                            style={{ width: 52, height: 38, padding: 2, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>
+                            {fieldValues[f.key] ? 'Your colour' : 'Original colour - click the box to choose a new one'}
+                          </span>
+                          {fieldValues[f.key] && (
+                            <button type="button" className="btn-outline" style={{ fontSize: '0.7rem', padding: '0.3rem 0.7rem' }}
+                                    onClick={() => setFieldValues((prev) => Object.assign({}, prev, { [f.key]: '' }))}>
+                              Use original colour
+                            </button>
+                          )}
+                        </div>
+                      ) : f.maxLength > 60 ? (
                         <textarea
                           className="header-modal-field"
                           rows={2}
@@ -3709,7 +3754,7 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, ed
                   data-hms-guest-signin="1"
                   data-hms-edit-label="Edit sign in"
                   title={editing && canEditGuestAuth ? 'Click to change the sign in text' : undefined}
-                  style={{ fontSize: '0.66rem', padding: '0.45rem 0.9rem' }}
+                  style={Object.assign({ fontSize: '0.66rem', padding: '0.45rem 0.9rem' }, guestButtonStyle(guestTexts))}
                   onClick={editing && canEditGuestAuth ? (e) => openEdit(e, { kind: 'signin' }) : onGuestSignIn}>{guestText(guestTexts, 'buttonLabel')}</button>
         )}
         <button className={`hamburger${mobileOpen ? ' active' : ''}`} onClick={onToggle} aria-label="Toggle menu" data-hms-no-edit="1">
@@ -8450,7 +8495,7 @@ function App() {
         ? {
             mode: 'fields',
             title: 'Customize Sign In',
-            intro: 'Change the words guests see when they sign in to your hotel website. Type in the boxes and the Preview under each step shows how it will look. Nothing changes on your website until you click Save.',
+            intro: 'Change the words and the button colour guests see when they sign in to your hotel website. Type in the boxes and the Preview under each step shows how it will look. Nothing changes on your website until you click Save.',
             sections: GUEST_AUTH_SECTIONS,
             fields: GUEST_AUTH_TEXT.map((f) => Object.assign({}, f, { value: guestTexts[f.key] || f.fallback })),
             renderPreview: (section, values) => <GuestAuthPreview section={section} values={values} />,
