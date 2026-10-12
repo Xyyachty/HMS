@@ -3978,6 +3978,21 @@ function RoomTabBar({ tabs, active, onChange, items, getKey, allKey, extra, onRe
     return map;
   }, [tabs, items, keyFn, allKey]);
 
+  /* For the faculty review: how many dishes under each tab the team added or
+     changed (the faculty feed's reviewState). A tab that is not open draws none
+     of its dishes, so the review flags the tab instead. Rooms carry an object
+     there, not a string, and are left out. */
+  const tabChanges = useMemo(() => {
+    const map = {};
+    items.forEach(it => {
+      if (typeof it.reviewState !== 'string') return;
+      const k = keyFn(it);
+      map[k] = map[k] || { added: 0, changed: 0 };
+      if (it.reviewState === 'added') map[k].added++; else map[k].changed++;
+    });
+    return map;
+  }, [items, keyFn]);
+
   return (
     <div className="tab-bar" role="tablist" data-hms-cats-removed={removed}>
       {tabs.map(tab => (
@@ -3987,6 +4002,8 @@ function RoomTabBar({ tabs, active, onChange, items, getKey, allKey, extra, onRe
           data-hms-cat-renamed={review && review[tab] && review[tab].renamed ? '1' : undefined}
           data-hms-cat-details={review && review[tab] && review[tab].details ? '1' : undefined}
           data-hms-cat-photos={review && review[tab] && review[tab].photos ? '1' : undefined}
+          data-hms-tab-added={tabChanges[tab] && tabChanges[tab].added ? tabChanges[tab].added : undefined}
+          data-hms-tab-changed={tabChanges[tab] && tabChanges[tab].changed ? tabChanges[tab].changed : undefined}
           type="button"
           className={`tab-btn${active === tab ? ' active' : ''}`}
           onClick={() => onChange(tab)}

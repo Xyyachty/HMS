@@ -483,6 +483,17 @@
       }).map(function (el) {
         return { el: el, count: 1, type: cardType(el) };
       }));
+      /* Only the open course's dishes are drawn. A course tab that is not open
+         stands in for its own added and changed dishes - the tab for the added,
+         its count chip for the changed - so a dish filed under a new course is
+         not missed. The open tab's dishes are the cards above. */
+      queryAll('.tab-btn[data-hms-tab-added], .tab-btn[data-hms-tab-changed]').forEach(function (tab) {
+        if (tab.classList.contains('active')) return;
+        const addedHere = parseInt(tab.getAttribute('data-hms-tab-added'), 10) || 0;
+        const changedHere = parseInt(tab.getAttribute('data-hms-tab-changed'), 10) || 0;
+        if (addedHere) out.push({ el: tab, count: addedHere, type: 'added' });
+        if (changedHere) out.push({ el: tab.querySelector('.tab-count') || tab, count: changedHere, type: 'modified' });
+      });
     }
     removedCount = removed;
     return out;
@@ -641,7 +652,23 @@
     run();
     // The templates paint through React after first paint, and images resize the
     // boxes as they load, so the overlay is redrawn on anything that moves.
-    new MutationObserver(onMutations).observe(document.body, { childList: true, subtree: true });
+    /* The review markers too. The faculty feed often arrives after the cards are
+       drawn, and React then sets data-hms-menu-state (and the others) on the
+       same elements rather than adding new ones - with childList alone nothing
+       re-ran, and a page of new dishes and courses read "No changes". */
+    new MutationObserver(onMutations).observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: [
+        'data-hms-menu-state', 'data-hms-best-picked',
+        'data-hms-cat-added', 'data-hms-cat-renamed', 'data-hms-cat-details', 'data-hms-cat-photos', 'data-hms-cats-removed',
+        'data-hms-room-added', 'data-hms-room-photos',
+        'data-hms-amenity-state', 'data-hms-exp-state', 'data-hms-exps-removed',
+        'data-hms-img-changed', 'data-hms-shape-changed',
+        'data-hms-tab-added', 'data-hms-tab-changed',
+      ],
+    });
     // Capture phase: the hero and the page body scroll in their own containers,
     // and a scroll event on those does not bubble to window.
     window.addEventListener('scroll', scheduleRun, { passive: true, capture: true });
