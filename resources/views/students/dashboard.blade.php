@@ -172,6 +172,24 @@
         :is(#hotelConceptModal, #conceptTeamCard) :is(.hover\:bg-brand\/10, .hover\:bg-slate-100):hover { background-color: #E5E5E5; }
         :is(#hotelConceptModal, #conceptTeamCard) .iconify:not(.text-white) { color: #374151; }
         #hotelConceptModal .bg-slate-900\/60 { background-color: rgba(17, 17, 17, .6); }
+        /* My Profile: neutral grays only. The palette above warms slate toward
+           wine and folds red, rose and emerald into wine and gold, so every text,
+           fill, border, focus and button colour the page uses is re-pointed. */
+        #profile-section :is(.text-slate-900, .text-slate-800, .text-slate-700) { color: #111827; }
+        #profile-section :is(.text-slate-600, .text-slate-500) { color: #4B5563; }
+        #profile-section .text-slate-400 { color: #6B7280; }
+        #profile-section .text-slate-300 { color: #9CA3AF; }
+        #profile-section :is(.bg-slate-50, .bg-slate-50\/60, .hover\:bg-slate-50:hover) { background-color: #F9FAFB; }
+        #profile-section :is(.border-slate-100, .border-slate-200) { border-color: #E5E7EB; }
+        #profile-section .divide-slate-50 > :not([hidden]) ~ :not([hidden]) { border-color: #F3F4F6; }
+        #profile-section input:focus { border-color: #374151; --tw-ring-color: rgba(55, 65, 81, .2); }
+        #profile-section input[type="checkbox"] { accent-color: #374151; }
+        #profile-section .bg-brand { background-color: #374151; }
+        #profile-section .bg-brand-soft { background-color: #F3F4F6; color: #374151; }
+        #profile-section .text-rose-600 { color: #374151; }
+        #profile-section .bg-emerald-50 { background-color: #F3F4F6; }
+        #profile-section .border-emerald-200 { border-color: #E5E7EB; }
+        #profile-section :is(.text-emerald-600, .text-emerald-800) { color: #374151; }
         #hotelConceptModal :is(input, select, textarea):focus { border-color: #9CA3AF; --tw-ring-color: rgba(156, 163, 175, .3); }
         :is(#conceptTeamCard, #conceptPanelCard) .status-badge-revision { color: #111; background-color: #E5E5E5; border-color: #D4D4D4; }
         /* "Online" reads as green, not the remapped gold. */
@@ -1641,7 +1659,8 @@
 
                         <div class="p-5 space-y-4">
                             <div class="flex items-center gap-4">
-                                <img src="{{ $pUser?->avatar_url }}" alt="{{ $studentDisplayName }}"
+                                {{-- The generated initials avatar is pink by default; gray here. --}}
+                                <img src="{{ str_replace('background=DB2777', 'background=374151', $pUser?->avatar_url ?? '') }}" alt="{{ $studentDisplayName }}"
                                      class="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0">
                                 <div class="min-w-0">
                                     <label for="studentAvatar" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer">
@@ -1916,11 +1935,6 @@
             // Update breadcrumb
             const labels = { home: 'Dashboard', group: 'Team Overview', tasks: 'Tasks', activity: 'Activity Logs', reports: 'Reports', profile: 'My Profile' };
             document.getElementById('breadcrumb-current').textContent = labels[section] || 'Dashboard';
-            // Black like the page under it on the five main pages, not on My Profile.
-            document.getElementById('breadcrumb').classList.toggle('ink-all', section !== 'profile');
-
-            // Grey behind the five main pages; My Profile keeps the cream.
-            document.getElementById('studentMain').style.backgroundColor = section === 'profile' ? '#FDF6F3' : '#dadada';
 
             try {
                 const url = new URL(window.location.href);
