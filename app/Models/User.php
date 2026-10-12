@@ -138,7 +138,7 @@ class User extends Authenticatable
             $this->last_name,
         ]))) ?: ($this->name ?? 'User');
 
-        return 'https://ui-avatars.com/api/?name=' . urlencode($label) . '&background=DB2777&color=fff&size=128&font-size=0.4';
+        return 'https://ui-avatars.com/api/?name=' . urlencode($label) . '&background=4A4643&color=fff&size=128&font-size=0.4';
     }
 
     /**

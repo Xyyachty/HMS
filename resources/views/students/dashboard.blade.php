@@ -128,20 +128,20 @@
            editing every call site. Solid accents (icon circles, bars, progress
            rings, your own avatar) are dark gray; soft fills and borders a light
            warm gray. Text stays black (.ink-all). */
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) :is(.bg-amber-500, .bg-orange-500, .bg-brand, .bg-violet-500, .bg-teal-500) { background: #4A4643; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) :is(.bg-amber-500, .bg-orange-500, .bg-brand, .bg-violet-500, .bg-teal-500) { background: #4A4643; }
         /* Buttons (Proceed, the area buttons, your avatar) are a lighter dark gray
            than the bars and rings, and go a shade darker on hover. */
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) .brand-gradient { background: #5F5A55; }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) .brand-gradient:is(a, button):hover { background: #4A4643; opacity: 1; }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) :is(.bg-amber-50, .bg-brand-soft, .bg-red-50, .bg-emerald-50, .bg-blue-50, .bg-slate-50, .bg-slate-100) { background-color: #F3F2F1; }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) :is(.border-pink-100, .border-brand-light, .border-slate-100, .border-slate-200, .border-red-200, .border-emerald-200, .border-brand\/10) { border-color: #E4E2E0; }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) :is(.text-amber-500, .text-brand, .text-brand-dark, .text-red-500, .text-emerald-500, .text-blue-600):is(.iconify, svg) { color: #4A4643; }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) :is(.shadow-brand\/20) { --tw-shadow-color: rgba(24, 24, 24, 0.15); }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) .ring-brand { --tw-ring-color: #4A4643; }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) .hover\:bg-brand:hover { background-color: #5F5A55; }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) .hover\:border-brand\/40:hover { border-color: #8A817A; }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) circle[stroke="#7B1730"] { stroke: #4A4643; }
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) circle[stroke="#F2E9E7"] { stroke: #E4E2E0; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .brand-gradient { background: #5F5A55; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .brand-gradient:is(a, button):hover { background: #4A4643; opacity: 1; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) :is(.bg-amber-50, .bg-brand-soft, .bg-red-50, .bg-emerald-50, .bg-blue-50, .bg-slate-50, .bg-slate-100) { background-color: #F3F2F1; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) :is(.border-pink-100, .border-brand-light, .border-slate-100, .border-slate-200, .border-red-200, .border-emerald-200, .border-brand\/10) { border-color: #E4E2E0; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) :is(.text-amber-500, .text-brand, .text-brand-dark, .text-red-500, .text-emerald-500, .text-blue-600):is(.iconify, svg) { color: #4A4643; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) :is(.shadow-brand\/20) { --tw-shadow-color: rgba(24, 24, 24, 0.15); }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .ring-brand { --tw-ring-color: #4A4643; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .hover\:bg-brand:hover { background-color: #5F5A55; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .hover\:border-brand\/40:hover { border-color: #8A817A; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) circle[stroke="#7B1730"] { stroke: #4A4643; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) circle[stroke="#F2E9E7"] { stroke: #E4E2E0; }
         /* Every role chip in Team Overview looks the same: one neutral style, not
            a colour per department. */
         #group-section :is(.role-badge-room, .role-badge-frontdesk, .role-badge-restaurant, .role-badge-maintenance, .role-badge-housekeeping) {
@@ -149,10 +149,15 @@
         }
         /* Icons still tinted with the remapped slate (mauve, pink) are dark gray too,
            so every icon on these pages is the same gray. */
-        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section) .iconify:is(.text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500, .text-slate-600) { color: #4A4643; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .iconify:is(.text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500, .text-slate-600) { color: #4A4643; }
         /* Reports: the check-mark icons sit in gray circles like Activity Logs, the
            team's role bars are dark gray, and the active Individual/Team tab is the
            same lighter dark gray as the other buttons. */
+        /* My Profile, and the sidebar avatar that opens it: gray, not wine. */
+        #profile-section .focus\:border-brand:focus { border-color: #8A817A; }
+        #profile-section .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(138, 129, 122, 0.3); }
+        #studentProfileMenu .brand-gradient { background: #4A4643; }
+        #profile-section .bg-slate-50\/60 { background-color: rgba(243, 242, 241, 0.6); }
         #reports-section .bg-emerald-50 { background-color: #EFEFEF; color: #4A4643; }
         #reports-section .bg-plum-accent { background-color: #4A4643; }
         #reports-section .srp-tab { color: #181818; border-color: #DADADA; }
@@ -1609,7 +1614,7 @@
                  What the student may change is what describes them. Their student
                  number, block, adviser, class, team and roles are the school's
                  record and their faculty's to set, so they are shown read-only. --}}
-            <div id="profile-section" class="section-content hidden fade-in space-y-4">
+            <div id="profile-section" class="ink-all section-content hidden fade-in space-y-4">
                 @php
                     $pUser = auth()->user();
                     $pAdviser = $student?->faculty?->user;
@@ -1638,8 +1643,7 @@
 
                         <div class="p-5 space-y-4">
                             <div class="flex items-center gap-4">
-                                {{-- The generated initials avatar is pink by default; gray here. --}}
-                                <img src="{{ str_replace('background=DB2777', 'background=374151', $pUser?->avatar_url ?? '') }}" alt="{{ $studentDisplayName }}"
+                                <img src="{{ $pUser?->avatar_url }}" alt="{{ $studentDisplayName }}"
                                      class="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0">
                                 <div class="min-w-0">
                                     <label for="studentAvatar" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer">

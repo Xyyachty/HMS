@@ -109,6 +109,7 @@
     @stack('styles')
     @include('partials.gray-scheme-styles')
     @include('partials.status-badge-styles')
+    @include('partials.ink-all-styles')
 </head>
 <body class="bg-slate-50 antialiased">
 
@@ -164,12 +165,11 @@
                         $deanUser?->first_name,
                         $deanUser?->last_name,
                     ]))) ?: ($deanUser?->name ?? 'Dean');
-                    $deanAvatarName = urlencode($deanDisplayName);
                     $deanEmail = $deanUser?->email ?? 'dean@hms.edu';
                 @endphp
                 <div class="bg-white/5 rounded-2xl p-4">
                     <div class="flex items-center gap-3 mb-3">
-                        <img src="{{ $deanUser?->avatar ? $deanUser->avatar_url : 'https://ui-avatars.com/api/?name=' . $deanAvatarName . '&background=7B1730&color=fff&size=40&font-size=0.4' }}" class="w-10 h-10 rounded-xl border-2 border-white/20 object-cover" alt="{{ $deanDisplayName }}">
+                        <img src="{{ $deanUser?->avatar_url }}" class="w-10 h-10 rounded-xl border-2 border-white/20 object-cover" alt="{{ $deanDisplayName }}">
                         <div class="min-w-0">
                             <p class="text-sm font-bold text-white truncate">{{ $deanDisplayName }}</p>
                             <p class="text-[10px] text-white">Dean Admin</p>

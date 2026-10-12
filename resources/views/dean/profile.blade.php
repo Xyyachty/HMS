@@ -13,7 +13,7 @@
     $phoneValue = old('phone_number', \App\Models\User::normalizePhone($user->phone_number));
 @endphp
 
-<div class="max-w-4xl mx-auto space-y-6">
+<div class="ink-all max-w-4xl mx-auto space-y-6">
     @if (session('success'))
         <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700 flex items-center gap-3">
             <span class="iconify text-lg" data-icon="mdi:check-circle"></span>
@@ -56,7 +56,7 @@
                     <img id="profileAvatarThumb" src="{{ $avatarSrc }}" alt="Avatar" class="w-16 h-16 rounded-2xl object-cover border border-slate-200 bg-white shrink-0">
                     <div class="flex-1 min-w-0 space-y-3">
                         <input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif"
-                            class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-brand file:text-white file:text-xs file:font-bold hover:file:bg-brand-dark file:cursor-pointer">
+                            class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-[#5F5A55] file:text-white file:text-xs file:font-bold hover:file:bg-[#4A4643] file:cursor-pointer">
                         @if($user->avatar)
                             <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 cursor-pointer">
                                 <input type="checkbox" name="remove_avatar" value="1" class="rounded border-slate-300 text-brand focus:ring-brand/30">
