@@ -351,10 +351,10 @@
        frozen build, so a utility colour may resolve to nothing. Orange so it
        reads as "needs work", apart from the green Approve beside it. */
     .btn-sendback {
-        background:#EA580C; color:#fff; border:1px solid #C2410C;
-        box-shadow:0 4px 12px -2px rgba(234,88,12,.35);
+        background:#F97316; color:#fff; border:1px solid #EA580C;
+        box-shadow:0 4px 12px -2px rgba(249,115,22,.35);
     }
-    .btn-sendback:hover { background:#C2410C; }
+    .btn-sendback:hover { background:#EA580C; }
 
     /* ── Review Submission (Task Submission Indicator) ──
        Navy, spelled out for the same reason: the frozen build has no such colour. */
