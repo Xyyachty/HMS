@@ -261,6 +261,20 @@ class Task extends Model
     }
 
     /**
+     * A team's deadline, out of its task rows: the nearest due date still owed
+     * (an active row), else the latest one faculty set on work already handed in.
+     * Null only when faculty never set a due date — reading active rows alone
+     * said "None set" as soon as the team submitted its dated work.
+     */
+    public static function teamDeadline($tasks): ?\Illuminate\Support\Carbon
+    {
+        $dated = collect($tasks)->filter(fn ($task) => $task->due_date !== null);
+
+        return $dated->where('status', 'active')->sortBy('due_date')->first()?->due_date
+            ?? $dated->sortByDesc('due_date')->first()?->due_date;
+    }
+
+    /**
      * Human-readable role label.
      */
     public function getRoleLabelAttribute(): string

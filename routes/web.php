@@ -534,7 +534,11 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
             in_array(HotelConceptController::OWNING_ROLE, $studentRoles, true)
         );
 
+        // Team Overview's Deadline figure; tasks/live repaints it from the same helper.
+        $teamDeadline = Task::teamDeadline($teamTasks);
+
         return view('students.dashboard', compact(
+            'teamDeadline',
             'membersByRole', 'group', 'groupMembers',
             'tasksByRole', 'taskCounts', 'totalTasks',
             'studentRoles', 'myRoleTasks', 'completedTasksCount',
@@ -616,8 +620,21 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
             $groupMembership ? (int) $groupMembership->faculty_id : null
         );
 
+        // Team Overview's Deadline figure, so a due date faculty set shows up live.
+        $teamDeadline = $facultyId
+            ? Task::teamDeadline(Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
+                ->whereIn('status', ['active', 'archived'])
+                ->withoutSimulation()
+                ->whereNotNull('due_date')
+                ->get(['status', 'due_date']))
+            : null;
+
         return response()->json([
             'signature'    => $signature,
+            'deadline'     => $teamDeadline
+                ? ['date' => $teamDeadline->format('M j, Y'), 'time' => $teamDeadline->format('g:i A')]
+                : null,
             'phase_signature' => md5(json_encode([
                 \Illuminate\Support\Arr::except($phase, 'items'),
                 \App\Support\SimulationPhase::seatFor($groupMembership),

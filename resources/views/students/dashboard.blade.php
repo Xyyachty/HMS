@@ -768,7 +768,6 @@
             @php
                 $teamMemberCount  = ($groupMembers ?? collect())->count();
                 $teamTaskTotal    = ($completedTasksCount ?? 0) + ($pendingTasksCount ?? 0);
-                $teamNextDeadline = ($upcomingDeadlines ?? collect())->first()?->due_date;
                 $teamPercent      = (int) ($completionRate ?? 0);
                 // Donut geometry for the Overall Progress ring in the team header.
                 $ringRadius = 26;
@@ -860,8 +859,8 @@
                             <div class="flex items-center gap-3 shrink-0">
                                 <span class="iconify text-slate-300 text-[26px]" data-icon="mdi:calendar-outline"></span>
                                 <div>
-                                    <p class="text-xl font-extrabold text-slate-900 leading-none whitespace-nowrap">{{ $teamNextDeadline ? $teamNextDeadline->format('M j, Y') : 'None set' }}</p>
-                                    <p class="text-[12px] text-slate-400 font-semibold mt-1">Deadline</p>
+                                    <p id="teamDeadlineDate" class="text-xl font-extrabold text-slate-900 leading-none whitespace-nowrap">{{ $teamDeadline ? $teamDeadline->format('M j, Y') : 'None set' }}</p>
+                                    <p id="teamDeadlineLabel" class="text-[12px] text-slate-400 font-semibold mt-1 whitespace-nowrap">Deadline{{ $teamDeadline ? ' · ' . $teamDeadline->format('g:i A') : '' }}</p>
                                 </div>
                             </div>
                         </div>
@@ -3028,6 +3027,14 @@
                     }
                 }
                 simulationPhaseSignature = data.phase_signature;
+
+                // Team Overview's Deadline figure, in step with whatever faculty set.
+                const deadlineDate = document.getElementById('teamDeadlineDate');
+                const deadlineLabel = document.getElementById('teamDeadlineLabel');
+                if (deadlineDate && deadlineLabel) {
+                    deadlineDate.textContent = data.deadline ? data.deadline.date : 'None set';
+                    deadlineLabel.textContent = data.deadline ? 'Deadline · ' + data.deadline.time : 'Deadline';
+                }
 
                 if (tasksLiveSignature === null) {
                     tasksLiveSignature = data.signature;
