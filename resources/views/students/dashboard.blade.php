@@ -1039,7 +1039,8 @@
                             {{ session('success') }}
                         </div>
                     @endif
-                    @if ($errors->any())
+                    {{-- A task's Mark as done answers in a pop-up on Tasks instead. --}}
+                    @if ($errors->any() && !$errors->has('task'))
                         <div class="mx-5 mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                             {{ $errors->first() }}
                         </div>
@@ -2006,6 +2007,22 @@
             @endphp
             @if ($profileHasErrors)
                 section = 'profile';
+            @elseif ($errors->has('task') || session('task_success'))
+                // Mark as done: back to Tasks, where the button was pressed, and
+                // say what happened there - it used to land on My Team with the
+                // message in the concept panel, so nothing seemed to happen.
+                section = 'tasks';
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (!window.Swal) return;
+                    Swal.fire({
+                        icon: @json($errors->has('task') ? 'warning' : 'success'),
+                        title: @json($errors->has('task') ? 'Not submitted' : 'Submitted'),
+                        text: @json($errors->has('task') ? $errors->first('task') : session('task_success')),
+                        confirmButtonColor: '#7B1730',
+                        // heightAuto would let the page grow behind the dialog.
+                        heightAuto: false,
+                    });
+                });
             @elseif (session('success') || $errors->any())
                 // Only when the URL did not already name one — the profile save
                 // redirects with ?section=profile and must keep it.

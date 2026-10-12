@@ -782,7 +782,7 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
 
         \App\Support\Notifier::taskSubmitted($authUser, $task, $authUser->name, $groupMembership->group_name);
 
-        return back()->with('success', 'Task submitted. It is pending until your faculty approves it.');
+        return back()->with('task_success', 'Task submitted. It is pending until your faculty approves it.');
     })->name('tasks.complete');
 
     /*
