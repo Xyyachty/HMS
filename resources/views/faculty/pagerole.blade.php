@@ -4784,9 +4784,14 @@ window.addEventListener('load', function () {
         icon: 'success',
         title: @json(session('success_title', 'Success')),
         text: @json(session('success')),
+        @if (session('success_confirm'))
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#374151',
+        @else
         timer: 2500,
         timerProgressBar: true,
         showConfirmButton: false,
+        @endif
         iconColor: '#C9A45C',
         width: '22rem',
     });

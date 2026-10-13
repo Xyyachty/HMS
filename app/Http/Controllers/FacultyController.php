@@ -2304,7 +2304,10 @@ class FacultyController extends Controller
             'tab' => 'create_task',
             'class' => $request->input('class'),
         ]))->with('success', $tasksCreated . ' task(s) assigned to ' . $teamLabel . '.'
-            . ($alreadyHeld !== [] ? ' ' . $this->alreadyHeldMessage($alreadyHeld) : ''));
+            . ($alreadyHeld !== [] ? ' ' . $this->alreadyHeldMessage($alreadyHeld) : ''))
+          ->with('success_title', $tasksCreated === 1 ? 'Task Assigned' : 'Tasks Assigned')
+          // Stays up until OK: the message can name tasks that were skipped.
+          ->with('success_confirm', true);
     }
 
     /**
