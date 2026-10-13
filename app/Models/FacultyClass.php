@@ -268,6 +268,90 @@ class FacultyClass extends Model
         ]);
     }
 
+    /**
+     * Hand this block, with its students and their teams, to another faculty. Used
+     * when a faculty ran the next block only because nobody held it, and the dean
+     * has since made a faculty for it.
+     *
+     * The receiving faculty must have no students yet: their own block letter
+     * becomes this block's, and this row becomes their first tab. Every team-owned
+     * row (each table carrying faculty_id and group_name) follows its team.
+     *
+     * @throws \RuntimeException with a message fit for the dean when it cannot move.
+     */
+    public function handOverTo(Faculty $to): void
+    {
+        $fromId = (int) $this->faculty_id;
+        $toId = (int) $to->user_information_id;
+        $block = $this->block_letter;
+
+        if ($fromId === $toId) {
+            throw new \RuntimeException('Block ' . $block . ' is already theirs.');
+        }
+        if ($to->students()->exists()) {
+            throw new \RuntimeException('Block ' . $block . ' can only go to a faculty with no students yet.');
+        }
+
+        DB::transaction(function () use ($fromId, $toId, $to, $block) {
+            $studentIds = $this->students()->pluck('user_information_id')->all();
+
+            $teams = DB::table('student_groups')
+                ->where('faculty_id', $fromId)
+                ->whereIn('student_id', $studentIds)
+                ->distinct()
+                ->pluck('group_name')
+                ->all();
+
+            // A team is moved whole, so it must sit entirely inside this block.
+            $mixed = DB::table('student_groups')
+                ->where('faculty_id', $fromId)
+                ->whereIn('group_name', $teams)
+                ->whereNotIn('student_id', $studentIds)
+                ->value('group_name');
+            if ($mixed !== null) {
+                throw new \RuntimeException('Team "' . $mixed . '" has students in Block ' . $block
+                    . ' and in another block. Move them into one block first.');
+            }
+
+            $clash = DB::table('groups')->where('faculty_id', $toId)->whereIn('group_name', $teams)->value('group_name');
+            if ($clash !== null) {
+                throw new \RuntimeException('The receiving faculty already has a team named "' . $clash . '".');
+            }
+
+            // Their empty tabs give way; this block becomes their first tab.
+            static::where('faculty_id', $toId)->delete();
+            $this->update(['faculty_id' => $toId, 'letter' => 'A', 'sort_order' => 1, 'name' => 'Block ' . $block]);
+
+            Student::whereIn('user_information_id', $studentIds)->update(['faculty_id' => $toId]);
+
+            if ($teams !== []) {
+                // On PostgreSQL getTables() lists every schema (Supabase's auth and
+                // storage too); only the app's own tables are team-owned.
+                $schema = DB::getDriverName() === 'pgsql' ? DB::scalar('select current_schema()') : null;
+                foreach (\Illuminate\Support\Facades\Schema::getTables() as $table) {
+                    if ($schema !== null && ($table['schema'] ?? null) !== $schema) {
+                        continue;
+                    }
+                    $name = $table['name'];
+                    $columns = \Illuminate\Support\Facades\Schema::getColumnListing($name);
+                    if (in_array('faculty_id', $columns, true) && in_array('group_name', $columns, true)) {
+                        DB::table($name)->where('faculty_id', $fromId)->whereIn('group_name', $teams)
+                            ->update(['faculty_id' => $toId]);
+                    }
+                }
+            }
+
+            // A student's own tasks outside any team follow them too.
+            DB::table('tasks')->where('faculty_id', $fromId)->whereNull('group_name')
+                ->whereIn('student_id', $studentIds)->update(['faculty_id' => $toId]);
+
+            $to->update(['block' => $block]);
+
+            static::reconcileForFaculty($fromId);
+            static::reconcileForFaculty($toId);
+        });
+    }
+
     public static function nextLetter(string $letter): string
     {
         $letter = strtoupper($letter);

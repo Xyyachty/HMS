@@ -221,6 +221,38 @@ class Faculty extends UserInformation
         return $faculty;
     }
 
+    /**
+     * Extra blocks a faculty runs past their own (Block B in Block A's tabs, opened
+     * because no faculty held it) that hold students, keyed by block letter. The
+     * dean can hand one to another faculty; see FacultyClass::handOverTo().
+     *
+     * @return array<string, array{class_id:int, from_id:int, from_user_id:int, from_name:string, students:int}>
+     */
+    public static function handOverBlocks(): array
+    {
+        $blocks = [];
+        foreach (static::with(['classes', 'user'])->get() as $faculty) {
+            $own = strtoupper(trim((string) $faculty->block));
+            foreach ($faculty->classes as $class) {
+                $letter = $class->setRelation('faculty', $faculty)->block_letter;
+                $students = $class->students()->count();
+                if ($letter === $own || $students === 0) {
+                    continue;
+                }
+                $blocks[$letter] = [
+                    'class_id' => (int) $class->faculty_class_id,
+                    'from_id' => (int) $faculty->user_information_id,
+                    'from_user_id' => (int) $faculty->user_id,
+                    'from_name' => (string) ($faculty->user?->name ?? 'another faculty'),
+                    'students' => $students,
+                ];
+            }
+        }
+        ksort($blocks);
+
+        return $blocks;
+    }
+
     /** Options for a faculty update dropdown: available class letters + their current block. */
     public static function selectableBlocksForFaculty(?int $facultyId = null, ?string $currentBlock = null): array
     {

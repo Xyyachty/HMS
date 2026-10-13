@@ -570,6 +570,8 @@
     const liveUsersUrl = "{{ route('dean.users.live') }}";
     const availableBlocks = @json($availableBlocks);
     const systemBlocks = @json($systemBlocks);
+    // Blocks another faculty runs past their own, which can be handed to this one.
+    const handOverBlocks = @json((object) $handOverBlocks);
     let currentTab = 'faculty';
     let currentBlock = ''; // '' = all blocks, '__none__' = students with no block
     const BLOCK_COLUMN_INDEX = 2;
@@ -1044,6 +1046,15 @@
                 opt.textContent = letter === block ? blockLabel : `Block ${letter}`;
                 if (letter === block) opt.selected = true;
                 blockSelect.appendChild(opt);
+            });
+            Object.entries(handOverBlocks).forEach(([letter, from]) => {
+                if (String(from.from_user_id) === String(userId) || options.includes(letter)) return;
+                const opt = document.createElement('option');
+                opt.value = letter;
+                opt.textContent = `Block ${letter} - take over from ${from.from_name} (${from.students} student${from.students === 1 ? '' : 's'})`;
+                blockSelect.appendChild(opt);
+                placeholder.textContent = 'Select block';
+                placeholder.disabled = false;
             });
             if (block && systemBlocks.includes(block)) {
                 blockSelect.value = block;

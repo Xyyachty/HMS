@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Events\StudentApproved;
 use App\Models\ActivityLog;
 use App\Models\Faculty;
+use App\Models\FacultyClass;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\Task;
@@ -209,8 +210,9 @@ class DeanController extends Controller
         $users = User::with(['faculty.classes', 'student.facultyClass.faculty'])->latest()->get();
         $availableBlocks = Faculty::availableBlocks();
         $systemBlocks = Faculty::existingClassLetters();
+        $handOverBlocks = Faculty::handOverBlocks();
 
-        return view('dean.usermanagement', compact('users', 'availableBlocks', 'systemBlocks'));
+        return view('dean.usermanagement', compact('users', 'availableBlocks', 'systemBlocks', 'handOverBlocks'));
     }
 
     public function usersLive()
@@ -673,11 +675,18 @@ class DeanController extends Controller
             'status' => ['required', 'in:active,inactive'],
         ];
 
+        $handOver = [];
         if ($user->role === 'faculty') {
             $selectable = Faculty::selectableBlocksForFaculty(
                 $user->faculty?->user_information_id,
                 $user->faculty?->block
             );
+            // Another faculty's extra block can be handed to this one.
+            $handOver = array_filter(
+                Faculty::handOverBlocks(),
+                fn ($b) => $b['from_id'] !== (int) $user->faculty?->user_information_id
+            );
+            $selectable = array_merge($selectable, array_keys($handOver));
             $rules['block'] = [
                 'required',
                 'string',
@@ -694,6 +703,26 @@ class DeanController extends Controller
         if ($user->role === 'faculty' && $user->faculty) {
             $user->faculty->status = $validated['status'];
             $block = strtoupper($validated['block']);
+
+            if (isset($handOver[$block])) {
+                $user->faculty->save();
+                $from = $handOver[$block];
+                try {
+                    FacultyClass::findOrFail($from['class_id'])->handOverTo($user->faculty);
+                } catch (\RuntimeException $e) {
+                    return redirect()->route('dean.users')->withErrors(['block' => $e->getMessage()]);
+                }
+
+                ActivityLog::recordFor(
+                    ActivityLog::ACCOUNT_UPDATED,
+                    'Moved Block ' . $block . ' (' . $from['students'] . ' students) from ' . $from['from_name']
+                        . ' to ' . ($user->name ?? $user->email) . '.'
+                );
+
+                return redirect()->route('dean.users')->with('success', 'Block ' . $block . ' and its '
+                    . $from['students'] . ' students now belong to ' . ($user->name ?? $user->email) . '.');
+            }
+
             if (!Faculty::isValidBlock($block)) {
                 return redirect()->route('dean.users')->withErrors(['block' => 'Invalid block selected.']);
             }
