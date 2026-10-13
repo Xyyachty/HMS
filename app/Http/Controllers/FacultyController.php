@@ -2298,11 +2298,24 @@ class FacultyController extends Controller
 
         Notifier::tasksAssigned(auth()->user(), $assignedCounts);
 
-        // Keep the block the faculty was working in; the redirect used to drop it and
-        // bounce them back to the first one.
+        /* Land on the block the team belongs to - the block most of its members
+           sit in, as role() places teams. The posted block was the tab the form
+           was opened from, which can be the open Block B while the team is in
+           Block A; a second redirect from there would also eat the success flash. */
+        $teamClassId = $membersByTeam->first()
+            ->map(fn ($member) => $member->student?->faculty_class_id)
+            ->filter()
+            ->countBy()
+            ->sortDesc()
+            ->keys()
+            ->first();
+        $teamClassLetter = $teamClassId
+            ? FacultyClass::where('faculty_id', $facultyId)->whereKey($teamClassId)->value('letter')
+            : null;
+
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'create_task',
-            'class' => $request->input('class'),
+            'class' => $teamClassLetter ?: $request->input('class'),
         ]))->with('success', $tasksCreated . ' task(s) assigned to ' . $teamLabel . '.'
             . ($alreadyHeld !== [] ? ' ' . $this->alreadyHeldMessage($alreadyHeld) : ''))
           ->with('success_title', $tasksCreated === 1 ? 'Task Assigned' : 'Tasks Assigned')
