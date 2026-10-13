@@ -68,10 +68,11 @@
     .tm-toolbar .tm-search { flex: 1 1 auto; min-width: 0; }
     .tm-toolbar .tm-select { width: 11rem; flex: 0 0 auto; }
 
-    /* As many 15rem-wide cards as fit: four on a wide screen, one on a phone. */
+    /* Four cards a row, lined up under the four stat tiles; steps down to
+       three, two, then one as the screen narrows (breakpoints below). */
     .tm-card-grid {
         display: grid; gap: 1rem;
-        grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         align-items: stretch;
     }
     .tm-card-empty { grid-column: 1 / -1; }
@@ -81,8 +82,8 @@
        buttons pinned to the bottom. Everything else about a team is in View
        Team's Overview. Written out because app.css is a frozen build. */
     .tc {
-        height: 100%; display: flex; flex-direction: column; gap: .9rem;
-        padding: 1.1rem 1.1rem 1rem; border-radius: 1.1rem; background: #fff;
+        height: 100%; display: flex; flex-direction: column; gap: 1rem;
+        padding: 1.25rem; border-radius: 1.1rem; background: #fff;
         border: 1px solid #E4E2E0; box-shadow: 0 1px 2px rgba(24, 24, 24, .04);
         transition: transform .3s cubic-bezier(.16, 1, .3, 1), box-shadow .3s cubic-bezier(.16, 1, .3, 1), border-color .2s;
         animation: tc-in .45s cubic-bezier(.16, 1, .3, 1) both;
@@ -121,9 +122,9 @@
 
     .tc-meter-top, .ov-meter-top { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
     .tc-meter-top span, .ov-meter-top span { font-size: 12px; font-weight: 700; color: #5F5A55; }
-    .tc-meter-top b { font-size: 22px; font-weight: 800; color: #181818; line-height: 1; font-variant-numeric: tabular-nums; }
+    .tc-meter-top b { font-size: 26px; font-weight: 800; color: #181818; line-height: 1; font-variant-numeric: tabular-nums; }
     .ov-meter-top b { font-size: 14px; font-weight: 800; color: #181818; font-variant-numeric: tabular-nums; }
-    .tc-bar { height: 6px; margin-top: .5rem; border-radius: 999px; background: #F3F2F1; overflow: hidden; }
+    .tc-bar { height: 8px; margin-top: .5rem; border-radius: 999px; background: #F3F2F1; overflow: hidden; }
     .tc-bar > span { display: block; height: 100%; border-radius: 999px; background: #4A4643; transition: width .6s cubic-bezier(.16, 1, .3, 1); }
     .tc-meter-sub { margin-top: .4rem; font-size: 11.5px; color: #8A817A; }
 
@@ -345,6 +346,7 @@
 
     @media (max-width: 1279px) {
         .tm-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .tm-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .tm-toolbar { flex-wrap: wrap; }
         .tm-toolbar .tm-search { flex-basis: 100%; }
         .tm-toolbar .tm-select { flex: 1 1 10rem; width: auto; }
@@ -354,9 +356,11 @@
     @media (max-width: 1023px) {
         .setup-field-grid { grid-template-columns: minmax(0, 1fr); }
         .manage-grid { grid-template-columns: minmax(0, 1fr); }
+        .tm-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 767px) {
         .tm-stat-grid { grid-template-columns: minmax(0, 1fr); }
+        .tm-card-grid { grid-template-columns: minmax(0, 1fr); }
         .setup-role-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
