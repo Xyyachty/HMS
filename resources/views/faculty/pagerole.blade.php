@@ -485,8 +485,9 @@
         $activeTab = 'team_setup';
     }
 
-    // If there are validation errors, keep the correct tab open
-    if ($errors->has('title') || $errors->has('role')) {
+    // A refused Set Task comes back via back(), whose URL has no tab, so it would
+    // land on Teams with the error drawn on a hidden panel.
+    if ($errors->has('title') || $errors->has('role') || ($errors->any() && old('_form_source') === 'create_task')) {
         $activeTab = 'create_task';
     }
 @endphp
@@ -2172,6 +2173,7 @@
 
         <form method="POST" action="{{ route('faculty.tasks.store') }}" id="taskAssignForm">
             @csrf
+            <input type="hidden" name="_form_source" value="create_task">
             {{-- Rides along so the redirect lands back on the block being worked in. --}}
             <input type="hidden" name="class" value="{{ request('class', $activeClass->letter ?? '') }}">
 

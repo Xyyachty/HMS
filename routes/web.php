@@ -200,7 +200,10 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     Route::put('/role/groups/{groupName}', [FacultyController::class, 'updateGroup'])->name('role.groups.update');
     // The old Tasks page is gone; links already sent in notifications land on
     // Manage Teams instead of a 404.
-    Route::redirect('/tasks', '/faculty/role')->name('tasks');
+    // GET only. Route::redirect answers every verb, and with routes cached it
+    // took Set Task's POST below too: tasks were never saved, the faculty just
+    // landed on Teams.
+    Route::get('/tasks', fn () => redirect('/faculty/role'))->name('tasks');
     Route::post('/tasks', [FacultyController::class, 'storeTask'])->name('tasks.store');
     // Review one submission: the student's actual work, plus feedback back to them.
     Route::get('/tasks/{task}/review', [FacultyController::class, 'reviewTask'])->name('tasks.review');
