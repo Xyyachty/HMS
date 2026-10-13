@@ -1158,8 +1158,8 @@
         </div>
 
         @php
-            // The four seats every team is built from. Each member holds exactly
-            // one; Housekeeping and Maintenance are one seat here because the
+            // The four seats every team is built from. A member of a full team
+            // holds one; a team short of members shares all four out. Housekeeping and Maintenance are one seat here because the
             // same student does both during website Customization — Simulation
             // splits them back out (Room Management picks up Housekeeping,
             // Maintenance runs on its own). See HotelTemplateBuilder::SEATS.
@@ -1178,9 +1178,19 @@
             $groupRolesMap = ($groups ?? collect())->mapWithKeys(fn ($members, $groupName) => [
                 $groupName => $members->flatMap(fn ($m) => $m->roles->pluck('role'))->unique()->values(),
             ]);
+            // Headcount per team, so the Insert tab knows whether the team is still
+            // short and a new member may take more than one seat.
+            $groupSizeMap = ($groups ?? collect())->map(fn ($members) => $members->count());
+            // Each member's first seat. The rest are extras a short team handed out,
+            // and a new member may take one over (storeGroup releases it).
+            $groupLockedRolesMap = ($groups ?? collect())->map(fn ($members) => $members
+                ->map(fn ($m) => $m->roles->sortBy('student_group_role_id')->first()?->role)
+                ->filter()->unique()->values());
         @endphp
         <script>
             window.EXISTING_TEAM_ROLES = @json($groupRolesMap);
+            window.EXISTING_TEAM_SIZES = @json($groupSizeMap);
+            window.EXISTING_TEAM_LOCKED_ROLES = @json($groupLockedRolesMap);
             // Role keys are all JS had (TEAM_DEFAULT_ROLES); the labels live in PHP.
             window.TEAM_ROLE_LABELS = @json($teamRoleOptions);
         </script>
@@ -1716,7 +1726,7 @@
                             <div class="px-4 pt-3 pb-2.5 flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="text-[15px] font-bold text-slate-800">Who is in this team</p>
-                                    <p class="text-[12px] text-slate-400">Each student plays one role. Use "Edit team" to rename the team or swap roles.</p>
+                                    <p class="text-[12px] text-slate-400">Each student plays one role; with fewer than 4 members, a student covers more than one. Use "Edit team" to rename the team or swap roles.</p>
                                 </div>
                                 @if($team['members']->count() >= 4)
                                     {{-- A full team cannot take a fifth student; say so rather than
@@ -1918,7 +1928,7 @@
                 <!-- Right: the role(s) each ticked student will hold -->
                 <div class="min-w-0">
                     <p class="text-[15px] font-bold text-slate-800">Assign Role(s)</p>
-                    <p class="text-[12px] text-slate-400 mb-3">A student can be assigned to more than one role.</p>
+                    <p class="text-[12px] text-slate-400 mb-3">While the team has fewer than 4 members, a student can hold more than one role.</p>
 
                     <p id="addStudentRolesHint" class="text-[12px] text-slate-400 rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center">
                         Tick a student on the left to choose their role(s).
@@ -3654,14 +3664,34 @@ const TEAM_DEFAULT_ROLES = [
     'housekeeping',
 ];
 
-// A role checkbox is one seat, not a multi-select: ticking one clears any other
-// checked box for the same member. Bulk's checkboxes carry no name (they are read
-// straight off the DOM at submit time), so they are scoped by their shared
-// .bulk-role-grid container instead; create/insert/update all name theirs
-// member_roles[{id}][], identically for every seat option of that one member.
+// How many members the team behind a role checkbox has right now. Bulk teams are
+// always 4, so they are not counted here.
+function roleTeamSize(checkbox) {
+    if (checkbox.classList.contains('create-role-checkbox')) {
+        return document.querySelectorAll('.create-student-checkbox:checked').length;
+    }
+    if (checkbox.classList.contains('update-role-checkbox')) {
+        return document.querySelectorAll('.update-student-checkbox:checked').length;
+    }
+    if (checkbox.classList.contains('insert-role-checkbox')) {
+        const select = document.querySelector('#insertStudentForm [name="group_name"]');
+        const existing = (window.EXISTING_TEAM_SIZES || {})[select ? select.value : ''] || 0;
+        return existing + document.querySelectorAll('.insert-student-checkbox:checked').length;
+    }
+    return TEAM_MEMBER_MAX;
+}
+
+// A role checkbox on a full team is one seat, not a multi-select: ticking one
+// clears any other checked box for the same member. A team short of members still
+// has all four seats to cover, so there a member may tick several. Bulk's
+// checkboxes carry no name (they are read straight off the DOM at submit time),
+// so they are scoped by their shared .bulk-role-grid container instead;
+// create/insert/update all name theirs member_roles[{id}][], identically for
+// every seat option of that one member.
 function enforceSingleRoleCheckbox(checkbox) {
     if (!checkbox.checked) return;
     const grid = checkbox.closest('.bulk-role-grid');
+    if (!grid && roleTeamSize(checkbox) < TEAM_MEMBER_MAX) return;
     const siblings = grid
         ? grid.querySelectorAll('input[type="checkbox"]')
         : (checkbox.name ? document.querySelectorAll('input[type="checkbox"][name="' + CSS.escape(checkbox.name) + '"]') : []);
@@ -4088,7 +4118,27 @@ function nextDefaultRoleIndex(mode) {
     for (let i = 0; i < TEAM_DEFAULT_ROLES.length; i++) {
         if (!used.has(TEAM_DEFAULT_ROLES[i])) return i;
     }
+    // Every seat is held, some only as a teammate's extra: take one of those.
+    if (mode === 'insert') {
+        const taken = insertTakenRoles();
+        for (let i = 0; i < TEAM_DEFAULT_ROLES.length; i++) {
+            if (!taken.has(TEAM_DEFAULT_ROLES[i])) return i;
+        }
+    }
     return checked.length % TEAM_DEFAULT_ROLES.length;
+}
+
+// Seats a new member cannot have on the Insert tab: each current member's first
+// seat, and whatever the other new members ticked. A current member's extra
+// seats stay open - storeGroup hands them over.
+function insertTakenRoles() {
+    const select = document.querySelector('#insertStudentForm [name="group_name"]');
+    const taken = new Set((window.EXISTING_TEAM_LOCKED_ROLES || {})[select ? select.value : ''] || []);
+    document.querySelectorAll('.insert-student-checkbox:checked').forEach(cb => {
+        studentRoleContainer(cb)?.querySelectorAll('input[type="checkbox"][name^="member_roles"]:checked')
+            .forEach(r => taken.add(r.value));
+    });
+    return taken;
 }
 
 // A role may be held by at most one member. Scans whichever list is active (create,
@@ -4107,7 +4157,7 @@ function refreshRoleAvailability(mode) {
 
     if (mode === 'insert') {
         const select = document.querySelector('#insertStudentForm [name="group_name"]');
-        const existing = (window.EXISTING_TEAM_ROLES || {})[select ? select.value : ''] || [];
+        const existing = (window.EXISTING_TEAM_LOCKED_ROLES || {})[select ? select.value : ''] || [];
         existing.forEach(r => used.add(r));
     }
 
@@ -4152,13 +4202,42 @@ function onTeamMemberToggle(checkbox, mode) {
         clearStudentRoles(checkbox);
     } else if (card) {
         const anyRole = card.querySelector('input[type="checkbox"][name^="member_roles"]:checked');
-        if (!anyRole) {
+        if (!anyRole && !takeSpareSeat(mode, card)) {
             const idx = nextDefaultRoleIndex(mode);
             assignDefaultRoleToCard(card, TEAM_DEFAULT_ROLES[idx]);
         }
     }
     updateTeamSelectedCount(mode);
     refreshRoleAvailability(mode);
+}
+
+/* A member joining a team whose four seats are all held - because a short team
+   gave someone two - takes one of that member's extra seats instead of doubling
+   up on a seat. Returns whether a seat was handed over. */
+function takeSpareSeat(mode, card) {
+    const memberSelector = mode === 'insert' ? '.insert-student-checkbox' : '.create-student-checkbox';
+    const holders = Array.from(document.querySelectorAll(memberSelector + ':checked'))
+        .map(cb => studentRoleContainer(cb))
+        .filter(other => other && other !== card);
+
+    const used = new Set();
+    holders.forEach(other => other.querySelectorAll('input[type="checkbox"][name^="member_roles"]:checked')
+        .forEach(r => used.add(r.value)));
+    if (mode === 'insert') {
+        const select = document.querySelector('#insertStudentForm [name="group_name"]');
+        ((window.EXISTING_TEAM_ROLES || {})[select ? select.value : ''] || []).forEach(r => used.add(r));
+    }
+    if (TEAM_DEFAULT_ROLES.some(r => !used.has(r))) return false;
+
+    const donor = holders.slice().reverse().find(other =>
+        other.querySelectorAll('input[type="checkbox"][name^="member_roles"]:checked').length > 1);
+    if (!donor) return false;
+
+    const spare = Array.from(donor.querySelectorAll('input[type="checkbox"][name^="member_roles"]:checked')).pop();
+    spare.checked = false;
+    spare.disabled = false;
+    assignDefaultRoleToCard(card, spare.value);
+    return true;
 }
 
 function onSingleTeamMemberToggle(checkbox) {
@@ -4242,7 +4321,11 @@ function randomizeSingleTeamMembers() {
     pick.forEach((cb, index) => {
         cb.checked = true;
         const card = cb.closest('.team-student-card');
-        assignDefaultRoleToCard(card, TEAM_DEFAULT_ROLES[index % TEAM_DEFAULT_ROLES.length]);
+        // Fewer than 4 picked: the seats left over go round the members again,
+        // so every seat is still covered.
+        for (let seat = index; seat < TEAM_DEFAULT_ROLES.length; seat += pick.length) {
+            assignDefaultRoleToCard(card, TEAM_DEFAULT_ROLES[seat]);
+        }
         // Lock roles Randomize assigned — faculty reroll instead of hand-editing them.
         if (card) {
             card.dataset.randomized = 'true';
@@ -4346,11 +4429,10 @@ function openUpdateModal(groupName, memberData) {
     // Members at the top of the list
     rows.filter(r => r.dataset.isTeamMember === '1').forEach(row => list.appendChild(row));
 
-    // A team built before the one-seat rule can have a member holding several
-    // roles; only the first still-valid one survives a save now, so only the
-    // first is left checked here — showing two ticks that collapse to one on
-    // submit would be confusing.
-    rows.filter(r => r.dataset.isTeamMember === '1').forEach(row => {
+    // A full team is one seat each, so a member of a full team built before
+    // that rule keeps only their first tick — the save would refuse more. A
+    // short team keeps every seat its members hold.
+    rows.filter(r => r.dataset.isTeamMember === '1' && memberCount >= TEAM_MEMBER_MAX).forEach(row => {
         const checked = Array.from(row.querySelectorAll('.update-role-checkbox:checked'));
         checked.slice(1).forEach(cb => { cb.checked = false; });
     });

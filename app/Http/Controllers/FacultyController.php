@@ -187,20 +187,48 @@ class FacultyController extends Controller
         $allowedRoles = $this->teamRoleKeys();
 
         // Inserting into a team that already holds seats: those seats are off
-        // limits to the new members, same as if they'd been picked in this save.
-        $existingRoles = $formSource === 'insert_student'
-            ? StudentGroupRole::whereIn('student_group_id', StudentGroup::where('group_name', $validated['group_name'])
+        // limits to the new members, same as if they'd been picked in this save -
+        // except a member's extra seats, held only because the team was short.
+        $existingRoles = [];
+        $releasedSeatIds = [];
+        if ($formSource === 'insert_student') {
+            $seatsByMember = StudentGroupRole::whereIn('student_group_id', StudentGroup::where('group_name', $validated['group_name'])
                 ->where('faculty_id', $facultyId)
                 ->pluck('student_group_id'))
-                ->pluck('role')
-                ->all()
-            : [];
+                ->orderBy('student_group_role_id')
+                ->get()
+                ->groupBy('student_group_id');
+
+            // Each member keeps their first seat.
+            $kept = $seatsByMember->flatMap(fn ($seats) => $seats->take(1))->pluck('role');
+            $spares = $seatsByMember->flatMap(fn ($seats) => $seats->slice(1))->values();
+
+            $newPicks = collect($memberIds)
+                ->mapWithKeys(fn ($id) => [$id => array_filter((array) (($validated['member_roles'] ?? [])[$id] ?? []))]);
+            $picked = $newPicks->flatten()->unique();
+            $blankCount = $newPicks->filter(fn ($roles) => $roles === [])->count();
+
+            // A team that becomes full is one seat each, so every extra seat is
+            // given up. Otherwise only the extras a new member picked, plus as many
+            // as the new members left blank need to have a seat at all.
+            $becomesFull = count($existingMembers) + count($memberIds) >= count($allowedRoles);
+            $release = $becomesFull ? $spares : $spares->filter(fn ($seat) => $picked->contains($seat->role))->values();
+            $remaining = $spares->reject(fn ($seat) => $release->contains('student_group_role_id', $seat->student_group_role_id))->values();
+            $freeCount = fn () => count(array_diff($allowedRoles, $kept->all(), $remaining->pluck('role')->all(), $picked->all()));
+            while ($freeCount() < $blankCount && $remaining->isNotEmpty()) {
+                $release->push($remaining->pop());
+            }
+
+            $existingRoles = $kept->merge($remaining->pluck('role'))->all();
+            $releasedSeatIds = $release->pluck('student_group_role_id')->all();
+        }
 
         $roleResult = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
             $allowedRoles,
-            $existingRoles
+            $existingRoles,
+            count($existingMembers ?? [])
         );
 
         if ($roleResult['error'] !== null) {
@@ -208,7 +236,9 @@ class FacultyController extends Controller
         }
         $rolesByMember = $roleResult['roles'];
 
-        DB::transaction(function () use (&$validated, $formSource, $facultyId, $memberIds, $rolesByMember) {
+        DB::transaction(function () use (&$validated, $formSource, $facultyId, $memberIds, $rolesByMember, $releasedSeatIds) {
+            StudentGroupRole::whereKey($releasedSeatIds)->delete();
+
             if ($formSource !== 'insert_student') {
                 $validated['group_name'] = $this->claimTeamNames(
                     (int) $facultyId,
@@ -524,38 +554,50 @@ class FacultyController extends Controller
     }
 
     /**
-     * Build per-member seats for one team. Each member holds exactly one of the
-     * four seats (Front Desk, Room Management, Restaurant Management, Housekeeping
-     * / Maintenance) — a duplicate pick returns a message naming the seat. A
-     * member left blank gets the next seat nobody has claimed yet, in
+     * Build per-member seats for one team from the four seats (Front Desk, Room
+     * Management, Restaurant Management, Housekeeping / Maintenance). A seat is
+     * held by one member at most — a duplicate pick returns a message naming it.
+     *
+     * A full team (4 members) is one seat each. A team short of members still has
+     * all four seats to cover, so there a member may hold more than one.
+     *
+     * A member left blank gets one seat nobody has claimed yet, in
      * HotelTemplateBuilder::SEATS order, so Create Team / Randomize / Auto-Group
-     * fill all four without faculty having to pick manually.
+     * fill the team without faculty having to pick manually. Blanks are settled
+     * after every explicit pick, so a blank member never takes a seat a later
+     * member asked for.
      *
      * @param  list<int|string>  $memberIds
-     * @param  array<int|string, mixed>  $memberRoles  one seat key per member id (a
-     *   leftover array from an older form post is read as its first value)
+     * @param  array<int|string, mixed>  $memberRoles  seat key(s) per member id
      * @param  list<string>  $allowedRoles  the four seats
      * @param  list<string>  $existingRoles  seats already held by teammates not in
      *   $memberIds — e.g. the rest of the team when inserting new members
+     * @param  int  $existingMemberCount  how many teammates those are
      * @return array{roles: array<int, list<string>>|null, error: string|null}
      */
-    private function resolveMemberRoles(array $memberIds, array $memberRoles, array $allowedRoles, array $existingRoles = []): array
+    private function resolveMemberRoles(array $memberIds, array $memberRoles, array $allowedRoles, array $existingRoles = [], int $existingMemberCount = 0): array
     {
         $labels = $this->teamRoleLabels();
-        $resolved = [];
         $usedRoles = array_fill_keys(array_values(array_intersect($existingRoles, $allowedRoles)), true);
-        $index = 0;
+        $multiSeat = count($memberIds) + $existingMemberCount < count($allowedRoles);
+        $picked = [];
+        $blank = [];
 
         foreach ($memberIds as $studentId) {
-            $role = $memberRoles[$studentId] ?? null;
-            if (is_array($role)) {
-                $role = $role[0] ?? null;
+            $roles = array_values(array_unique(array_filter(
+                (array) ($memberRoles[$studentId] ?? []),
+                fn ($role) => $role !== null && $role !== ''
+            )));
+
+            if ($roles === []) {
+                $blank[] = (int) $studentId;
+                continue;
             }
-            if ($role === '') {
-                $role = null;
+            if (count($roles) > 1 && !$multiSeat) {
+                return ['roles' => null, 'error' => 'A team of 4 gives each member one role. Only a team with fewer members can give a member more than one.'];
             }
 
-            if ($role !== null) {
+            foreach ($roles as $role) {
                 if (!in_array($role, $allowedRoles, true)) {
                     return ['roles' => null, 'error' => 'Please select a valid role for each member.'];
                 }
@@ -563,21 +605,26 @@ class FacultyController extends Controller
                     $label = $labels[$role] ?? $role;
                     return ['roles' => null, 'error' => "\"{$label}\" is already assigned to another member on this team."];
                 }
-            } else {
-                // Somebody has to hold the seat, so a member left blank is given
-                // one of the seats nobody has claimed yet rather than joining
-                // with none. Counting from $index spreads them across the free
-                // seats instead of stacking everyone on the first.
-                $free = array_values(array_diff($allowedRoles, array_keys($usedRoles)));
-                if ($free === []) {
-                    return ['roles' => null, 'error' => 'All 4 roles are already assigned on this team.'];
-                }
-                $role = $free[$index % count($free)];
+                $usedRoles[$role] = true;
             }
+            $picked[(int) $studentId] = $roles;
+        }
 
-            $usedRoles[$role] = true;
-            $resolved[(int) $studentId] = [$role];
-            $index++;
+        // Somebody has to hold the seat, so a member left blank is given one of
+        // the seats nobody has claimed yet rather than joining with none.
+        foreach ($blank as $studentId) {
+            $free = array_values(array_diff($allowedRoles, array_keys($usedRoles)));
+            if ($free === []) {
+                return ['roles' => null, 'error' => 'Every role is already held by another member. Untick one so each member has a role.'];
+            }
+            $usedRoles[$free[0]] = true;
+            $picked[$studentId] = [$free[0]];
+        }
+
+        // Back in the order the members were given.
+        $resolved = [];
+        foreach ($memberIds as $studentId) {
+            $resolved[(int) $studentId] = $picked[(int) $studentId];
         }
 
         return ['roles' => $resolved, 'error' => null];
