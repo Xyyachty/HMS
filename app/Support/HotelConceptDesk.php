@@ -228,6 +228,24 @@ class HotelConceptDesk
     }
 
     /**
+     * Whether Front Desk has handed a concept in - under review, sent back,
+     * or decided. Only a draft has never been submitted.
+     *
+     * This is what lets faculty set the rest of the customization tasks, so
+     * work can be lined up while the concept is reviewed. Starting that work
+     * still waits for the approval (hasApprovedConcept).
+     */
+    public static function isSubmitted(Collection $concepts): bool
+    {
+        return $concepts->contains(fn ($concept) => self::status($concept) !== self::STATUS_DRAFT);
+    }
+
+    public static function hasSubmittedConcept(?string $groupName, ?int $facultyId): bool
+    {
+        return self::isSubmitted(self::conceptsFor($groupName, $facultyId));
+    }
+
+    /**
      * The concepts a portal should show.
      *
      * Before a decision, both — the point is to weigh them against each other.

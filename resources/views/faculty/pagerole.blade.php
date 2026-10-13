@@ -2232,16 +2232,16 @@
                                     $teamAssignedRoles = $members->flatMap(fn ($m) => $m->roles->pluck('role'))->filter()->unique();
                                     $teamMissingRoleCount = count($roleLabels) - $teamAssignedRoles->count();
 
-                                    /* Task 01 gates the rest. Read off the concepts already
-                                       loaded for the cards rather than asking the database
-                                       again per team — visibleConcepts() leaves only the
-                                       approved one once faculty has chosen. */
-                                    $teamConceptApproved = \App\Support\HotelConceptDesk::isDecided(
+                                    /* Task 01 gates the rest: they open once Front Desk has
+                                       submitted the concept (storeTask checks the same).
+                                       Read off the concepts already loaded for the cards
+                                       rather than asking the database again per team. */
+                                    $teamConceptSubmitted = \App\Support\HotelConceptDesk::isSubmitted(
                                         ($conceptsByGroup ?? collect())->get($groupName, collect())
                                     );
                                 @endphp
                                 <label data-team="{{ $groupName }}"
-                                    data-concept-approved="{{ $teamConceptApproved ? '1' : '0' }}"
+                                    data-concept-submitted="{{ $teamConceptSubmitted ? '1' : '0' }}"
                                     @if(!$hasStudents) title="No students are assigned to {{ $groupName }} yet." @endif
                                     class="task-team-btn group p-4 rounded-xl border-2 transition-all flex items-start gap-3 text-left
                                     {{ $hasStudents
@@ -2266,9 +2266,9 @@
                                                 This team still has an unassigned role. Assign all required roles before setting role-specific tasks.
                                             </span>
                                         @endif
-                                        @if($hasStudents && !$teamConceptApproved)
+                                        @if($hasStudents && !$teamConceptSubmitted)
                                             <span class="block text-[10px] mt-1 text-amber-600 font-semibold leading-snug">
-                                                {{ \App\Support\HotelConceptDesk::TASK_TITLE }} only &mdash; the rest of the customization unlocks once you approve this team's hotel concept.
+                                                {{ \App\Support\HotelConceptDesk::TASK_TITLE }} only &mdash; the rest of the customization unlocks once Front Desk submits this team's hotel concept.
                                             </span>
                                         @endif
                                     </span>
@@ -4681,7 +4681,7 @@ function selectAllVisibleTasks() {
 function lockedTeamNames() {
     return Array.from(document.querySelectorAll('#taskTeamSelector input[name="group_names[]"]:checked'))
         .map((box) => box.closest('[data-team]'))
-        .filter((label) => label && label.dataset.conceptApproved !== '1')
+        .filter((label) => label && label.dataset.conceptSubmitted !== '1')
         .map((label) => label.dataset.team);
 }
 
@@ -4707,7 +4707,7 @@ function applyStepLocks() {
 
     if (locked.length) {
         reasons.push('Customization is locked: ' + locked.join(', ')
-            + (locked.length === 1 ? ' has' : ' have') + ' no approved hotel concept yet.');
+            + (locked.length === 1 ? ' has' : ' have') + ' not submitted a hotel concept yet.');
     }
 
     const isLocked = (box) => (locked.length > 0 && box.dataset.concept !== '1') || heldByEverySelectedTeam(box.dataset.title);

@@ -2155,14 +2155,15 @@ class FacultyController extends Controller
             ])->withInput();
         }
 
-        /* The hotel concept gates every other activity: a team cannot so much as
-           pick a Default Template until faculty approves one of its two proposals
-           (HotelConceptDesk::hasApprovedConcept), and the approved concept is the
-           brief every customization follows. So anything other than the concept
-           itself — including the rest of TASK 01 — hands out work that cannot be
-           started yet. Refused for the whole post rather than quietly dropped per
-           team — a Set Task that reports success and creates nothing is exactly
-           the failure this screen has already been fixed for once. */
+        /* The hotel concept comes first: until Front Desk has handed one in, the
+           rest of the customization has no brief, so anything other than the
+           concept itself - including the rest of TASK 01 - is refused. Once it is
+           submitted, faculty may line the work up while reviewing it; students
+           still cannot start it until a concept is approved
+           (HotelConceptDesk::hasApprovedConcept). Refused for the whole post
+           rather than quietly dropped per team - a Set Task that reports success
+           and creates nothing is exactly the failure this screen has already
+           been fixed for once. */
         $setsCustomization = collect($validated['tasks'] ?? [])
             ->filter(fn ($indices) => is_array($indices))
             ->contains(function ($indices, $role) use ($validated) {
@@ -2178,14 +2179,13 @@ class FacultyController extends Controller
 
         if ($setsCustomization) {
             $lockedTeams = $membersByTeam->keys()->reject(
-                fn ($groupName) => HotelConceptDesk::hasApprovedConcept((string) $groupName, (int) $facultyId)
+                fn ($groupName) => HotelConceptDesk::hasSubmittedConcept((string) $groupName, (int) $facultyId)
             );
 
             if ($lockedTeams->isNotEmpty()) {
                 return back()->withErrors([
-                    'group_name' => 'Customization tasks stay locked until a hotel concept is approved for '
-                        . $lockedTeams->implode(', ')
-                        . '. Assign ' . HotelConceptDesk::TASK_TITLE . ' first, then approve one of that team\'s two proposals.',
+                    'group_name' => 'Customization tasks stay locked until Front Desk submits the hotel concept for '
+                        . $lockedTeams->implode(', ') . '.',
                 ])->withInput();
             }
         }
