@@ -1313,13 +1313,13 @@
          * browser dialog only if the bundle failed to load: a question that never
          * appears is worse than an ugly one.
          */
-        async function askConfirm(title, text, confirmText, cancelText) {
+        async function askConfirm(title, text, confirmText, cancelText, icon) {
             if (!window.Swal) return window.confirm(title + '\n\n' + text);
 
             const result = await window.Swal.fire({
                 title: title,
                 text: text,
-                icon: 'question',
+                icon: icon || 'question',
                 iconColor: '#22d3ee',
                 background: '#18181b',
                 color: '#fafafa',
@@ -1353,7 +1353,9 @@
                 'Submit this work for review?',
                 'Your open tasks for this module will be handed in as they look right now. '
                 + 'You can keep editing afterwards, but faculty reviews what you submit now.',
-                'Submit for review'
+                'Submit for review',
+                undefined,
+                'info' // hms-swal-theme paints info blue; a question would come out orange
             );
             if (!ok) return;
 
