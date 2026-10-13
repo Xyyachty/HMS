@@ -15,6 +15,10 @@
         $classQuery['class'] = $activeClass->letter;
     }
 
+    // The controller may point Set Task at another block when this one has no team yet.
+    if (!empty($setTaskClassLetter)) {
+        $classQuery['class'] = $setTaskClassLetter;
+    }
     $setTaskHref = route('faculty.role', array_merge($classQuery, ['tab' => 'create_task']));
 
     /* Why Set Task cannot be pressed, if it cannot. Worked out on the server -

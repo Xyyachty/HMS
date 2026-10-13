@@ -1382,12 +1382,39 @@ class FacultyController extends Controller
             fn ($members) => $members->contains(fn ($member) => $member->student !== null)
         );
 
+        /* Set Task is per block, but a block with nothing to set work on must not
+           lock out the faculty's other blocks. Block A filling up opens Block B,
+           and the page lands on the open block - so a faculty whose new Block B
+           students have no team yet was told "No teams are available" while
+           Team 1 in Block A sat ready. Set Task goes to the first block that has
+           a team instead. */
+        $setTaskClass = $activeClass;
+        if ($teamsWithStudents->isEmpty()) {
+            $staffedClassIds = $allGroups
+                ->filter(fn ($members) => $members->contains(fn ($member) => $member->student !== null))
+                ->keys()
+                ->map(fn ($groupName) => $teamClassIdByName[$groupName] ?? null)
+                ->filter()
+                ->all();
+            $setTaskClass = $classes->first(
+                fn ($class) => in_array($class->faculty_class_id, $staffedClassIds, true)
+            ) ?? $activeClass;
+        }
+        $setTaskClassLetter = $setTaskClass?->letter;
+
+        if ($setTaskClass !== $activeClass && request('tab') === 'create_task') {
+            return redirect()->route('faculty.role', ['class' => $setTaskClassLetter, 'tab' => 'create_task']);
+        }
+
         $intakeLock = $this->intakeLockReason();
         $setTaskBlockReason = null;
-        if ($classStudentCount === 0) {
-            $setTaskBlockReason = 'No students are available. Please add students before setting tasks.';
-        } elseif ($teamsWithStudents->isEmpty()) {
-            $setTaskBlockReason = 'No teams are available. Please create a team and assign students before setting tasks.';
+        // Blocked only when no block at all has a team to set work on.
+        if ($setTaskClass === $activeClass) {
+            if ($classStudentCount === 0) {
+                $setTaskBlockReason = 'No students are available. Please add students before setting tasks.';
+            } elseif ($teamsWithStudents->isEmpty()) {
+                $setTaskBlockReason = 'No teams are available. Please create a team and assign students before setting tasks.';
+            }
         }
 
         /* Typing the address of the Set Task tab is not a way around the above.
@@ -1602,6 +1629,7 @@ class FacultyController extends Controller
             'classCapacity',
             'teamCountsByClass',
             'setTaskBlockReason',
+            'setTaskClassLetter',
             'intakeLock',
             'rolesMeta',
             'tasksByRole',
