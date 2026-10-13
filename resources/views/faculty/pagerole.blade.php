@@ -68,25 +68,118 @@
     .tm-toolbar .tm-search { flex: 1 1 auto; min-width: 0; }
     .tm-toolbar .tm-select { width: 11rem; flex: 0 0 auto; }
 
+    /* As many 15rem-wide cards as fit: four on a wide screen, one on a phone. */
     .tm-card-grid {
         display: grid; gap: 1rem;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
         align-items: stretch;
     }
     .tm-card-empty { grid-column: 1 / -1; }
 
-    /* ── Team card: equal height, consistent bands ──
-       The card grid stretches every card to the tallest one in its row
-       (.tm-card-grid below). Inside the card, the concept text and role
-       badges reserve fixed space so those bands line up across cards, and
-       View Team / Update sit on mt-auto so they still pin to the bottom
-       of a stretched card. */
-    .team-card { height: 100%; }
-    .tm-card-concept {
-        display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
-        overflow: hidden; min-height: 2.75em;
+    /* ── Team card: compact, every card the same bands ──
+       Name and headcount, approval status, approval percentage, then the two
+       buttons pinned to the bottom. Everything else about a team is in View
+       Team's Overview. Written out because app.css is a frozen build. */
+    .tc {
+        height: 100%; display: flex; flex-direction: column; gap: .9rem;
+        padding: 1.1rem 1.1rem 1rem; border-radius: 1.1rem; background: #fff;
+        border: 1px solid #E4E2E0; box-shadow: 0 1px 2px rgba(24, 24, 24, .04);
+        transition: transform .3s cubic-bezier(.16, 1, .3, 1), box-shadow .3s cubic-bezier(.16, 1, .3, 1), border-color .2s;
+        animation: tc-in .45s cubic-bezier(.16, 1, .3, 1) both;
+        animation-delay: calc(var(--i, 0) * 45ms);
     }
-    .tm-card-roles { min-height: 3.25rem; }
+    .tc:hover { transform: translateY(-2px); border-color: #D6D3D1; box-shadow: 0 14px 28px -18px rgba(74, 70, 67, .45); }
+    @keyframes tc-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .tc { animation: none; transition: none; } .tc:hover { transform: none; } }
+
+    .tc-head { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+    .tc-mark {
+        width: 2.25rem; height: 2.25rem; flex-shrink: 0; border-radius: .75rem;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #F3F2F1; color: #4A4643; font-size: 1.15rem;
+    }
+    .tc-name { flex: 1; min-width: 0; font-size: 16px; font-weight: 800; color: #181818; line-height: 1.25; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tc-members {
+        flex-shrink: 0; display: inline-flex; align-items: center; gap: .3rem;
+        padding: .2rem .55rem; border-radius: 999px; border: 1px solid #E4E2E0; background: #fff;
+        font-size: 12px; font-weight: 800; color: #4A4643; font-variant-numeric: tabular-nums;
+    }
+    .tc-members.is-full { background: #4A4643; border-color: #4A4643; color: #fff; }
+
+    .tc-status-row { display: flex; align-items: center; gap: .5rem; min-height: 1.6rem; }
+    .tc-status {
+        display: inline-flex; align-items: center; gap: .4rem; padding: .22rem .65rem; border-radius: 999px;
+        font-size: 11.5px; font-weight: 800; letter-spacing: .01em; border: 1px solid;
+    }
+    .tc-status-dot { width: .45rem; height: .45rem; border-radius: 999px; background: currentColor; }
+    .tc-status.is-idle { background: #F3F2F1; border-color: #E4E2E0; color: #5F5A55; }
+    .tc-status.is-progress { background: #FFFBEB; border-color: #FDE68A; color: #B45309; }
+    .tc-status.is-progress .tc-status-dot { animation: tc-breathe 2.4s ease-in-out infinite; }
+    .tc-status.is-completed { background: #F0FDF4; border-color: #BBF7D0; color: #15803D; }
+    @keyframes tc-breathe { 50% { opacity: .35; } }
+    @media (prefers-reduced-motion: reduce) { .tc-status.is-progress .tc-status-dot { animation: none; } }
+
+    .tc-meter-top, .ov-meter-top { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+    .tc-meter-top span, .ov-meter-top span { font-size: 12px; font-weight: 700; color: #5F5A55; }
+    .tc-meter-top b { font-size: 22px; font-weight: 800; color: #181818; line-height: 1; font-variant-numeric: tabular-nums; }
+    .ov-meter-top b { font-size: 14px; font-weight: 800; color: #181818; font-variant-numeric: tabular-nums; }
+    .tc-bar { height: 6px; margin-top: .5rem; border-radius: 999px; background: #F3F2F1; overflow: hidden; }
+    .tc-bar > span { display: block; height: 100%; border-radius: 999px; background: #4A4643; transition: width .6s cubic-bezier(.16, 1, .3, 1); }
+    .tc-meter-sub { margin-top: .4rem; font-size: 11.5px; color: #8A817A; }
+
+    .tc-actions { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .tc-btn {
+        position: relative; height: 2.5rem; border-radius: .75rem; border: 1px solid #E4E2E0; background: #fff;
+        display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+        font-size: 13px; font-weight: 700; color: #181818;
+        transition: background-color .15s, border-color .15s, transform .15s;
+    }
+    .tc-btn:hover { background: #F3F2F1; border-color: #D6D3D1; }
+    .tc-btn:active { transform: scale(.98); }
+    .tc-btn-primary { background: #4A4643; border-color: #4A4643; color: #fff; }
+    .tc-btn-primary:hover { background: #2F2C2A; border-color: #2F2C2A; }
+    .tc-btn .iconify { font-size: 1rem; }
+    /* Submissions waiting: the review notices moved into View Team, so the card
+       keeps only this dot. Driven by the notices' own hidden class, which the
+       live poll already toggles. */
+    .tc-alert-dot {
+        display: none; position: absolute; top: -.3rem; right: -.3rem; width: .75rem; height: .75rem;
+        border-radius: 999px; background: #D97706; box-shadow: 0 0 0 2px #fff;
+    }
+    .tc:has([data-pending-review-badge]:not(.hidden), [data-concept-pending-badge]:not(.hidden)) .tc-alert-dot { display: block; }
+
+    /* ── View Team › Overview ── */
+    .ov-attn { display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1rem; }
+    .ov-notice {
+        display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+        padding: .75rem .9rem; border-radius: .9rem; border: 1px solid #FDE68A; background: #FFFBEB;
+    }
+    .ov-notice-icon {
+        width: 2.1rem; height: 2.1rem; flex-shrink: 0; border-radius: .65rem;
+        display: inline-flex; align-items: center; justify-content: center; background: #fff; color: #B45309; font-size: 1.1rem;
+    }
+    .ov-notice-title { font-size: 13px; font-weight: 800; color: #181818; }
+    .ov-notice-text { font-size: 12px; color: #5F5A55; margin-top: .1rem; line-height: 1.45; }
+    .ov-clear { display: none; align-items: center; gap: .4rem; font-size: 13px; font-weight: 700; color: #15803D; }
+    .ov-attn:not(:has(.ov-notice:not(.hidden))) .ov-clear { display: flex; }
+    .ov-grid { display: grid; gap: .75rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ov-tile { display: flex; flex-direction: column; padding: .95rem 1rem; border-radius: 1rem; border: 1px solid #E4E2E0; background: #fff; min-width: 0; }
+    .ov-label { display: flex; align-items: center; gap: .35rem; font-size: 12px; font-weight: 800; color: #5F5A55; margin-bottom: .45rem; }
+    .ov-label .iconify { color: #4A4643; font-size: 1rem; }
+    .ov-value { font-size: 15px; font-weight: 800; color: #181818; line-height: 1.3; overflow-wrap: anywhere; }
+    .ov-tag {
+        align-self: flex-start; margin-top: .35rem; padding: .12rem .55rem; border-radius: 999px;
+        font-size: 11px; font-weight: 800; background: #F3F2F1; color: #4A4643; border: 1px solid #E4E2E0;
+    }
+    .ov-tag.is-good { background: #F0FDF4; color: #15803D; border-color: #BBF7D0; }
+    .ov-text { font-size: 12.5px; color: #5F5A55; line-height: 1.5; margin-top: .4rem; }
+    .ov-link {
+        margin-top: auto; padding-top: .75rem; align-self: flex-start; display: inline-flex; align-items: center; gap: .3rem;
+        font-size: 12.5px; font-weight: 800; color: #181818; background: none; border: 0; cursor: pointer;
+    }
+    .ov-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+    @media (max-width: 1100px) { .ov-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 640px) { .ov-grid { grid-template-columns: minmax(0, 1fr); } }
 
     /* Team Setup modal */
     .setup-modal { max-width: 72rem; max-height: 92vh; }
@@ -252,7 +345,6 @@
 
     @media (max-width: 1279px) {
         .tm-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .tm-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .tm-toolbar { flex-wrap: wrap; }
         .tm-toolbar .tm-search { flex-basis: 100%; }
         .tm-toolbar .tm-select { flex: 1 1 10rem; width: auto; }
@@ -265,7 +357,6 @@
     }
     @media (max-width: 767px) {
         .tm-stat-grid { grid-template-columns: minmax(0, 1fr); }
-        .tm-card-grid { grid-template-columns: minmax(0, 1fr); }
         .setup-role-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
@@ -373,11 +464,6 @@
         box-shadow:0 4px 12px -2px rgba(249,115,22,.35);
     }
     .btn-sendback:hover { background:#EA580C; }
-
-    /* ── Review Submission (Task Submission Indicator) ──
-       Navy, spelled out for the same reason: the frozen build has no such colour. */
-    .btn-review-submission { background:#1F3A5F; color:#FFFFFF; }
-    .btn-review-submission:hover { background:#162C49; }
 
     /* ── Task review verdict: Revise amber, Approve green ──
        Spelled out for the same reason: the frozen build has no hover shade for
@@ -686,168 +772,183 @@
                            activity in it has handed theirs in. */
                         $cardSteps = \App\Support\TaskStepProgress::forRows($cardTaskRows);
                     @endphp
-                    <div class="team-card rounded-2xl border border-slate-100 bg-white overflow-hidden flex flex-col"
-                         data-team-name="{{ $groupName }}">
-                        <div class="px-5 pt-5 pb-5 flex-1 flex flex-col">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <h3 class="text-lg font-extrabold text-slate-900 leading-tight truncate" title="{{ $groupName }}">
-                                    {{ $groupName }}
-                                </h3>
-                                @php $cardPhase = \App\Support\SimulationPhase::progress($groupName, (int) $groupMembers->first()->faculty_id); @endphp
-                                <span class="shrink-0">@include('partials.team-completion', ['done' => $cardPhase['approved'], 'total' => $cardPhase['required']])</span>
-                            </div>
-                            <p class="tm-card-concept text-[13px] text-slate-500 mt-1 leading-snug">{{ $cardConceptText }}</p>
+                    @php
+                        // Faculty approvals over the required customization tasks: the
+                        // one figure the compact card reports. Everything else about the
+                        // team lives in View Team's Overview, rendered just below.
+                        $cardPhase = \App\Support\SimulationPhase::progress($groupName, (int) $groupMembers->first()->faculty_id);
+                        $cardApprovalState = $cardPhase['required'] > 0 && $cardPhase['approved'] >= $cardPhase['required']
+                            ? 'completed'
+                            : ($cardPhase['approved'] > 0 ? 'progress' : 'idle');
+                        $cardApprovalLabel = ['completed' => 'Completed', 'progress' => 'In Progress', 'idle' => 'Not Started'][$cardApprovalState];
+                        $cardApproval = ($teamApprovalByGroup ?? [])[$groupName] ?? null;
+                    @endphp
+                    <article class="team-card tc" data-team-name="{{ $groupName }}" style="--i: {{ $loop->index }}">
+                        <div class="tc-head">
+                            <span class="tc-mark" aria-hidden="true"><span class="iconify" data-icon="mdi:account-group-outline"></span></span>
+                            <h3 class="tc-name" title="{{ $groupName }}">{{ $groupName }}</h3>
+                            <span class="tc-members {{ $groupMembers->count() >= 4 ? 'is-full' : '' }}" title="{{ $groupMembers->count() }} of 4 members">
+                                <span class="iconify" data-icon="mdi:account-multiple-outline"></span>
+                                {{ $groupMembers->count() }}/4
+                            </span>
+                        </div>
 
-                            {{-- Task Submission Indicator. Hidden outright rather than shown
-                                 empty when nothing is waiting — updatePendingReviewBadge() below
-                                 keeps this in step with every poll, so a new submission appears
-                                 and a reviewed one disappears without a page reload. --}}
-                            <div data-pending-review-badge
-                                 class="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 {{ !$cardPendingReview ? 'hidden' : '' }}">
-                                <div class="flex items-start justify-between gap-2">
-                                    <div class="flex items-start gap-2 min-w-0">
-                                        <span class="iconify text-blue-500 text-lg shrink-0 mt-0.5" data-icon="mdi:inbox-arrow-down-outline"></span>
-                                        <div class="min-w-0">
-                                            <p class="text-[12px] font-extrabold text-blue-700" data-pending-review-headline>
+                        <div class="tc-status-row">
+                            <span class="tc-status is-{{ $cardApprovalState }}">
+                                <span class="tc-status-dot"></span>{{ $cardApprovalLabel }}
+                            </span>
+                        </div>
+
+                        <div class="tc-meter">
+                            <div class="tc-meter-top">
+                                <span>Task approval</span>
+                                <b>{{ $cardPhase['percent'] }}%</b>
+                            </div>
+                            <div class="tc-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $cardPhase['percent'] }}" aria-label="Task approval">
+                                <span style="width: {{ $cardPhase['percent'] }}%"></span>
+                            </div>
+                            <p class="tc-meter-sub">{{ $cardPhase['approved'] }} of {{ $cardPhase['required'] }} required task{{ $cardPhase['required'] === 1 ? '' : 's' }} approved</p>
+                        </div>
+
+                        <div class="tc-actions">
+                            <button type="button"
+                                    onclick='openTeamModal({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
+                                    class="tc-btn tc-btn-primary">
+                                <span class="iconify" data-icon="mdi:eye-outline"></span>
+                                View Team
+                                {{-- Lit by CSS while either review notice in the Overview below is showing. --}}
+                                <span class="tc-alert-dot" title="Submissions awaiting your review"></span>
+                            </button>
+                            <button type="button"
+                                    onclick='openUpdateModal(@json($groupName), @json($memberData))'
+                                    class="tc-btn">
+                                <span class="iconify" data-icon="mdi:pencil-outline"></span>
+                                Update
+                            </button>
+                        </div>
+
+                        {{-- View Team's Overview for this team. Never shown on the card:
+                             openTeamModal() copies it into the dialog. The two review
+                             notices stay in here so the live poll (updatePendingReviewBadges)
+                             keeps finding them inside .team-card. --}}
+                        <div class="hidden" data-team-overview>
+                            <div class="ov">
+                                <div class="ov-attn">
+                                    {{-- Task Submission Indicator. --}}
+                                    <div data-pending-review-badge class="ov-notice {{ !$cardPendingReview ? 'hidden' : '' }}">
+                                        <span class="ov-notice-icon"><span class="iconify" data-icon="mdi:inbox-arrow-down-outline"></span></span>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="ov-notice-title" data-pending-review-headline>
                                                 @if($cardPendingReview)
                                                     New Submission &mdash; {{ $cardPendingReview['count'] }} Awaiting Review
                                                 @endif
                                             </p>
-                                            <p class="text-[11px] text-blue-600 leading-snug mt-0.5" data-pending-review-detail>
+                                            <p class="ov-notice-text" data-pending-review-detail>
                                                 @if($cardPendingReview && $cardPendingReview['latest'])
                                                     {{ $cardPendingReview['latest']['student_name'] }} &middot; {{ $cardPendingReview['latest']['role_label'] }} &middot;
                                                     "{{ $cardPendingReview['latest']['title'] }}" &middot; {{ $cardPendingReview['latest']['submitted_human'] }}
                                                 @endif
                                             </p>
                                         </div>
+                                        <button type="button" data-review-submission
+                                                onclick='openTeamModalAwaitingReview({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
+                                                class="tm-btn tm-btn-sm tm-btn-dark">
+                                            <span class="iconify" data-icon="mdi:eye-check-outline"></span> Review Submission
+                                        </button>
                                     </div>
-                                    <button type="button"
-                                            onclick='openTeamModalAwaitingReview({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
-                                            class="btn-review-submission shrink-0 h-8 px-2.5 rounded-lg text-white text-[11px] font-bold transition inline-flex items-center gap-1">
-                                        <span class="iconify text-xs" data-icon="mdi:eye-check-outline"></span> Review Submission
-                                    </button>
-                                </div>
-                            </div>
 
-                            {{-- Hotel Concept Submission Indicator. Same live-update contract
-                                 as the one above, over the concept's own submitted state rather
-                                 than a task row's. --}}
-                            <div data-concept-pending-badge
-                                 class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 {{ !$cardConceptPending ? 'hidden' : '' }}">
-                                <div class="flex items-start justify-between gap-2">
-                                    <div class="flex items-start gap-2 min-w-0">
-                                        <span class="iconify text-slate-600 text-lg shrink-0 mt-0.5" data-icon="mdi:lightbulb-on-outline"></span>
-                                        <div class="min-w-0">
-                                            <p class="text-[12px] font-extrabold text-slate-800" data-concept-pending-headline>
+                                    {{-- Hotel Concept Submission Indicator. --}}
+                                    <div data-concept-pending-badge class="ov-notice {{ !$cardConceptPending ? 'hidden' : '' }}">
+                                        <span class="ov-notice-icon"><span class="iconify" data-icon="mdi:lightbulb-on-outline"></span></span>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="ov-notice-title" data-concept-pending-headline>
                                                 @if($cardConceptPending)
                                                     Hotel Concept Submitted{{ $cardConceptPending['count'] > 1 ? ' — Both Proposals' : '' }}
                                                 @endif
                                             </p>
-                                            <p class="text-[11px] text-slate-600 leading-snug mt-0.5" data-concept-pending-detail>
+                                            <p class="ov-notice-text" data-concept-pending-detail>
                                                 @if($cardConceptPending && $cardConceptPending['latest'])
                                                     {{ $cardConceptPending['latest']['submitted_by'] }} &middot; {{ $cardConceptPending['latest']['slot_label'] }} &middot;
                                                     "{{ $cardConceptPending['latest']['title'] }}" &middot; {{ $cardConceptPending['latest']['submitted_human'] }}
                                                 @endif
                                             </p>
                                         </div>
+                                        <button type="button"
+                                                onclick='openTeamModalConceptReview({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
+                                                class="tm-btn tm-btn-sm tm-btn-dark">
+                                            <span class="iconify" data-icon="mdi:eye-check-outline"></span> Review Concept
+                                        </button>
                                     </div>
-                                    <button type="button"
-                                            onclick='openTeamModalConceptReview({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
-                                            class="shrink-0 h-8 px-2.5 rounded-lg bg-brand text-white text-[11px] font-bold hover:opacity-95 transition inline-flex items-center gap-1">
-                                        <span class="iconify text-xs" data-icon="mdi:eye-check-outline"></span> Review Concept
-                                    </button>
-                                </div>
-                            </div>
 
-                            <div class="mt-4 space-y-3">
-                                <div class="flex items-center gap-2.5">
-                                    <span class="iconify text-slate-300 text-lg shrink-0" data-icon="mdi:account-multiple-outline"></span>
-                                    <p class="text-[13px] font-semibold text-slate-700">{{ $groupMembers->count() }} Member{{ $groupMembers->count() === 1 ? '' : 's' }}</p>
+                                    <p class="ov-clear"><span class="iconify" data-icon="mdi:check-circle-outline"></span> Nothing is waiting for your review.</p>
                                 </div>
-                                <div class="flex items-start gap-2.5">
-                                    <span class="iconify text-slate-300 text-lg shrink-0 mt-0.5" data-icon="mdi:lightbulb-outline"></span>
-                                    <div class="min-w-0">
-                                        <p class="text-[13px] font-semibold text-slate-700 truncate">{{ $cardConcept->title ?? 'No concept yet' }}</p>
-                                        <p class="text-[11px] text-slate-400">
-                                            {{ $cardConcept ? \App\Support\HotelConceptDesk::statusLabel($cardConcept) : 'Front Desk proposes this' }}
+
+                                <div class="ov-grid">
+                                    <section class="ov-tile">
+                                        <p class="ov-label"><span class="iconify" data-icon="mdi:lightbulb-outline"></span> Hotel Concept</p>
+                                        <p class="ov-value">{{ $cardConcept->title ?? 'No concept yet' }}</p>
+                                        <p class="ov-tag">{{ $cardConcept ? \App\Support\HotelConceptDesk::statusLabel($cardConcept) : 'Front Desk proposes this' }}</p>
+                                        <p class="ov-text">{{ $cardConceptText }}</p>
+                                        <button type="button" class="ov-link" onclick="switchTeamModalTab('concept')">Open Hotel Concept <span class="iconify" data-icon="mdi:arrow-right"></span></button>
+                                    </section>
+
+                                    <section class="ov-tile">
+                                        <p class="ov-label"><span class="iconify" data-icon="mdi:palette-outline"></span> Selected Hotel Template</p>
+                                        <p class="ov-value">{{ $cardTemplate['name'] ?? 'Not chosen yet' }}</p>
+                                        <p class="ov-tag {{ $cardTemplate ? 'is-good' : '' }}">{{ $cardTemplate['style'] ?? 'Front Desk picks this' }}</p>
+                                    </section>
+
+                                    <section class="ov-tile">
+                                        <p class="ov-label"><span class="iconify" data-icon="mdi:progress-wrench"></span> Customization Task Progress</p>
+                                        <div class="ov-meter-top"><span>Activities handed in</span><b>{{ $cardPercent }}%</b></div>
+                                        <div class="tc-bar"><span style="width: {{ $cardPercent }}%"></span></div>
+                                        <p class="ov-text">{{ $cardTaskDone }} of {{ $cardTaskTotal }} activit{{ $cardTaskTotal === 1 ? 'y' : 'ies' }} handed in</p>
+                                        <p class="ov-text">
+                                            @if($cardSteps['total'] > 0)
+                                                {{ $cardSteps['finished'] }} of {{ $cardSteps['total'] }} task{{ $cardSteps['total'] === 1 ? '' : 's' }} complete
+                                            @else
+                                                No tasks assigned yet.
+                                            @endif
                                         </p>
-                                    </div>
-                                </div>
-                                <div class="flex items-start gap-2.5">
-                                    <span class="iconify text-slate-300 text-lg shrink-0 mt-0.5" data-icon="mdi:clipboard-text-outline"></span>
-                                    <div class="min-w-0">
-                                        <p class="text-[13px] font-semibold text-slate-700">{{ $cardRoles->count() }} Role{{ $cardRoles->count() === 1 ? '' : 's' }} Assigned</p>
-                                        <div class="tm-card-roles flex flex-wrap gap-1.5 mt-1.5">
+                                        <button type="button" class="ov-link" onclick="switchTeamModalTab('tasks')">Open Task Activity <span class="iconify" data-icon="mdi:arrow-right"></span></button>
+                                    </section>
+
+                                    <section class="ov-tile">
+                                        <p class="ov-label"><span class="iconify" data-icon="mdi:check-decagram-outline"></span> Faculty Approval</p>
+                                        <div class="ov-meter-top"><span>Required tasks approved</span><b>{{ $cardPhase['percent'] }}%</b></div>
+                                        <div class="tc-bar"><span style="width: {{ $cardPhase['percent'] }}%"></span></div>
+                                        <p class="ov-text">{{ $cardPhase['approved'] }} of {{ $cardPhase['required'] }} approved</p>
+                                        <div class="mt-2">@include('partials.team-completion', ['done' => $cardPhase['approved'], 'total' => $cardPhase['required']])</div>
+                                    </section>
+
+                                    <section class="ov-tile">
+                                        <p class="ov-label"><span class="iconify" data-icon="mdi:briefcase-outline"></span> Roles Assigned</p>
+                                        <p class="ov-value">{{ $cardRoles->count() }} of 4 role{{ $cardRoles->count() === 1 ? '' : 's' }}</p>
+                                        <div class="flex flex-wrap gap-1.5 mt-2">
                                             @forelse($cardRoles as $cardRole)
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold {{ $roleCardTints[$cardRole] ?? 'bg-slate-100 text-slate-500' }}">
                                                     {{ $roleLabels[$cardRole] ?? $cardRole }}
                                                 </span>
                                             @empty
-                                                <span class="text-[11px] text-slate-400">No roles assigned yet</span>
+                                                <span class="ov-text">No roles assigned yet</span>
                                             @endforelse
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
+                                        <button type="button" class="ov-link" onclick="switchTeamModalTab('members')">Open Members &amp; Roles <span class="iconify" data-icon="mdi:arrow-right"></span></button>
+                                    </section>
 
-                            {{-- Template Indicator: which site template the team chose. --}}
-                            <div class="mt-3 rounded-xl border px-3 py-2 {{ $cardTemplate ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500' }}">
-                                <div class="flex items-center justify-between gap-2">
-                                    <p class="text-[12px] font-extrabold">Template: {{ $cardTemplate['name'] ?? 'Not chosen yet' }}</p>
-                                    <span class="text-[10px] font-bold uppercase tracking-wide">{{ $cardTemplate['style'] ?? 'Front Desk picks this' }}</span>
+                                    <section class="ov-tile">
+                                        <p class="ov-label"><span class="iconify" data-icon="mdi:storefront-outline"></span> Simulation</p>
+                                        <p class="ov-value">Open</p>
+                                        <p class="ov-tag {{ ($cardApproval['unlocked'] ?? false) ? 'is-good' : '' }}">
+                                            {{ ($cardApproval['unlocked'] ?? false) ? 'All tasks approved' : 'Approval in progress' }}
+                                        </p>
+                                        <p class="ov-text">The Hotel Simulation is open to every team at any time. Desk assignments are under Members &amp; Roles.</p>
+                                        <button type="button" class="ov-link" onclick="switchTeamModalTab('members')">Open Desk Assignments <span class="iconify" data-icon="mdi:arrow-right"></span></button>
+                                    </section>
                                 </div>
-                            </div>
-
-                            {{-- Approval Indicator. The Simulation is open to every team at
-                                 any time; this tracks the customization approvals alongside it. --}}
-                            @php $cardApproval = ($teamApprovalByGroup ?? [])[$groupName] ?? null; @endphp
-                            @if($cardApproval)
-                                <div class="mt-3 rounded-xl border px-3 py-2 {{ $cardApproval['unlocked'] ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500' }}">
-                                    <div class="flex items-center justify-between gap-2">
-                                        <p class="text-[12px] font-extrabold">{{ $cardApproval['unlocked'] ? 'All tasks approved' : 'Approval in progress' }} &middot; Simulation open</p>
-                                        <span class="text-[10px] font-bold uppercase tracking-wide">{{ $cardApproval['approved'] }}/{{ $cardApproval['required'] }} approved &middot; {{ $cardApproval['percent'] }}%</span>
-                                    </div>
-                                </div>
-                            @endif
-
-                            <div class="mt-5">
-                                <div class="flex items-center justify-between gap-2">
-                                    <p class="text-[13px] font-semibold text-slate-600">Team Progress</p>
-                                    <p class="text-[13px] font-extrabold text-slate-800">{{ $cardPercent }}%</p>
-                                </div>
-                                <div class="h-2 mt-2 rounded-full bg-slate-100 overflow-hidden">
-                                    <div class="h-full rounded-full brand-gradient" style="width: {{ $cardPercent }}%"></div>
-                                </div>
-                                <p class="text-[11px] text-slate-400 mt-1.5">{{ $cardTaskDone }} of {{ $cardTaskTotal }} activit{{ $cardTaskTotal === 1 ? 'y' : 'ies' }} handed in</p>
-                                {{-- And the same rows read by task: a task is finished only
-                                     when every role given an activity in it has handed theirs
-                                     in, which is not the same as most activities being done.
-                                     A placeholder stands in when the team has no tasks yet, so
-                                     this row still reserves its line and every card's buttons
-                                     stay on the same row. --}}
-                                @if($cardSteps['total'] > 0)
-                                    <p class="text-[11px] text-slate-400">{{ $cardSteps['finished'] }} of {{ $cardSteps['total'] }} task{{ $cardSteps['total'] === 1 ? '' : 's' }} complete</p>
-                                @else
-                                    <p class="text-[11px] text-slate-400">No tasks assigned yet.</p>
-                                @endif
-                            </div>
-
-                            <div class="mt-auto pt-5 flex items-center gap-2.5">
-                                <button type="button"
-                                        onclick='openTeamModal({{ json_encode($groupName) }}, {{ $memberJson }}, {{ json_encode($createdAt) }}, {{ json_encode($teamActivityByGroup[$groupName] ?? []) }})'
-                                        class="flex-1 h-11 rounded-xl brand-gradient text-white text-[13px] font-bold inline-flex items-center justify-center gap-2 shadow-md shadow-brand/20 hover:opacity-95 transition">
-                                    <span class="iconify text-base" data-icon="mdi:eye-outline"></span>
-                                    View Team
-                                </button>
-                                <button type="button"
-                                        onclick='openUpdateModal(@json($groupName), @json($memberData))'
-                                        class="flex-1 h-11 rounded-xl bg-white border border-slate-200 text-slate-700 text-[13px] font-bold inline-flex items-center justify-center gap-2 hover:border-brand/40 hover:text-brand transition">
-                                    <span class="iconify text-base" data-icon="mdi:pencil-outline"></span>
-                                    Update
-                                </button>
                             </div>
                         </div>
-                    </div>
+                    </article>
                 @empty
                     <div class="tm-card-empty px-5 py-12 text-center">
                         <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -891,6 +992,14 @@
 
         <div class="tm-body">
             <nav class="tm-nav" aria-label="Team details sections">
+                <button type="button" onclick="switchTeamModalTab('overview')" id="team-tab-overview" class="tm-tab">
+                    <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:view-dashboard-outline"></span></span>
+                    <span class="tm-tab-copy">
+                        <span class="tm-tab-title">Overview</span>
+                        <span class="tm-tab-desc">Concept, template, progress, approvals and simulation at a glance</span>
+                        <span id="teamTabCountOverview" class="tm-tab-count is-alert"></span>
+                    </span>
+                </button>
                 <button type="button" onclick="switchTeamModalTab('members')" id="team-tab-members" class="tm-tab">
                     <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:account-group-outline"></span></span>
                     <span class="tm-tab-copy">
@@ -917,8 +1026,17 @@
             </nav>
 
             <div class="tm-content">
+                <!-- Overview: copied from the team's card by openTeamModal() -->
+                <div id="team-panel-overview">
+                    <div class="tm-panel-head">
+                        <h4 class="tm-panel-title">Overview</h4>
+                        <p class="tm-panel-note">Everything about this team in one place. Open a section for the full details.</p>
+                    </div>
+                    <div id="teamModalOverviewBody"></div>
+                </div>
+
                 <!-- Members -->
-                <div id="team-panel-members">
+                <div id="team-panel-members" class="hidden">
                     <div class="tm-panel-head">
                         <h4 class="tm-panel-title">Team Members &amp; Roles</h4>
                         <p class="tm-panel-note">Each card shows a student and the part of the hotel they handle. Choose See activity to read everything that student has done.</p>
@@ -3090,8 +3208,8 @@ function postTaskFeedback(body, decision, approvedTitle, onSuccess, taskId, onEr
 
 /* Team Details modal: Members & Roles / Team Task Activity */
 function switchTeamModalTab(tabId) {
-    const tabs = ['members', 'concept', 'tasks'];
-    const current = tabs.includes(tabId) ? tabId : 'members';
+    const tabs = ['overview', 'members', 'concept', 'tasks'];
+    const current = tabs.includes(tabId) ? tabId : 'overview';
 
     tabs.forEach(function (tab) {
         document.getElementById('team-panel-' + tab)?.classList.toggle('hidden', tab !== current);
@@ -5035,7 +5153,9 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
     const logs = (Array.isArray(activityLogs) ? activityLogs : [])
         .filter((l) => !options.onlyAwaitingReview || l.awaiting_review);
 
-    document.getElementById('modalTeamName').textContent = groupName ? 'Team ' + groupName : 'Team';
+    // Most names already read "Team 3"; only a bare name gets the prefix.
+    document.getElementById('modalTeamName').textContent = !groupName ? 'Team'
+        : (/^team\s/i.test(groupName) ? groupName : 'Team ' + groupName);
     document.getElementById('modalTeamSummary').textContent = [
         members.length + (members.length === 1 ? ' member' : ' members'),
         createdAt ? 'Created ' + createdAt : '',
@@ -5075,6 +5195,7 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
         }).join('');
     }
 
+    renderTeamOverview(groupName);
     closeMemberActivityPanel();
     renderTeamSimRoles();
     renderTeamApproval();
@@ -5083,13 +5204,32 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
     teamModalActivityPage = 1;
     renderTeamModalActivityPage();
 
-    // Members by default, so the modal never reappears on the other tab; Review
+    // Overview by default, so the modal never reappears on the other tab; Review
     // Submission asks for Tasks instead, already filtered above.
-    switchTeamModalTab(options.tab || 'members');
+    switchTeamModalTab(options.tab || 'overview');
     loadTeamHotelConcept(groupName);
 
     document.getElementById('teamInfoModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+}
+
+/* The Overview tab is the team card's hidden [data-team-overview] block, copied
+   as it stands now - the live poll keeps that block current, so a copy taken
+   on open shows the latest review notices. */
+function renderTeamOverview(groupName) {
+    const body = document.getElementById('teamModalOverviewBody');
+    if (!body) return;
+    const want = String(groupName || '').toLowerCase();
+    const card = Array.from(document.querySelectorAll('.team-card[data-team-name]'))
+        .find((c) => (c.dataset.teamName || '').toLowerCase() === want);
+    const source = card && card.querySelector('[data-team-overview]');
+    body.innerHTML = source
+        ? source.innerHTML
+        : '<div class="tm-empty">No overview for this team.</div>';
+
+    const waiting = body.querySelectorAll('.ov-notice:not(.hidden)').length;
+    const count = document.getElementById('teamTabCountOverview');
+    if (count) count.textContent = waiting ? waiting + ' to review' : '';
 }
 
 /* Task Submission Indicator's Review Submission button: the same team modal,
