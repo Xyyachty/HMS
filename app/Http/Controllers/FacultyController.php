@@ -143,7 +143,7 @@ class FacultyController extends Controller
 
         $validated = $request->validate([
             // Blank on Create Team means "next free Team N" — see claimTeamNames().
-            'group_name' => [$formSource === 'insert_student' ? 'required' : 'nullable', 'string', 'max:255'],
+            'group_name' => ['nullable', 'string', 'max:255'],
             'members' => ['required', 'array', 'min:1', 'max:4'],
             'members.*' => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'member_roles' => ['nullable', 'array'],
@@ -154,81 +154,17 @@ class FacultyController extends Controller
             return back()->withErrors(['members' => 'A team cannot have more than 4 members.'])->withInput();
         }
 
-        // If inserting into existing team, validate that the team already exists
-        if ($formSource === 'insert_student') {
-            $teamExists = StudentGroup::where('group_name', $validated['group_name'])
-                ->where('faculty_id', $facultyId)
-                ->exists();
-
-            if (!$teamExists) {
-                return back()->withErrors(['group_name' => 'The selected team does not exist.'])->withInput();
-            }
-
-            // Check that selected students are not already in this team
-            $existingMembers = StudentGroup::where('group_name', $validated['group_name'])
-                ->where('faculty_id', $facultyId)
-                ->pluck('student_id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
-
-            $overlap = array_intersect($memberIds, $existingMembers);
-            if (!empty($overlap)) {
-                return back()->withErrors(['members' => 'Some selected students are already in this team.'])->withInput();
-            }
-
-            if (count($existingMembers) + count($memberIds) > 4) {
-                $slotsLeft = max(0, 4 - count($existingMembers));
-                return back()->withErrors([
-                    'members' => "This team already has " . count($existingMembers) . " member(s). You can add at most {$slotsLeft} more (max 4 per team).",
-                ])->withInput();
-            }
-        }
-
-        $allowedRoles = $this->teamRoleKeys();
-
-        // Inserting into a team that already holds seats: those seats are off
-        // limits to the new members, same as if they'd been picked in this save -
-        // except a member's extra seats, held only because the team was short.
-        $existingRoles = [];
-        $releasedSeatIds = [];
-        if ($formSource === 'insert_student') {
-            $seatsByMember = StudentGroupRole::whereIn('student_group_id', StudentGroup::where('group_name', $validated['group_name'])
-                ->where('faculty_id', $facultyId)
-                ->pluck('student_group_id'))
-                ->orderBy('student_group_role_id')
-                ->get()
-                ->groupBy('student_group_id');
-
-            // Each member keeps their first seat.
-            $kept = $seatsByMember->flatMap(fn ($seats) => $seats->take(1))->pluck('role');
-            $spares = $seatsByMember->flatMap(fn ($seats) => $seats->slice(1))->values();
-
-            $newPicks = collect($memberIds)
-                ->mapWithKeys(fn ($id) => [$id => array_filter((array) (($validated['member_roles'] ?? [])[$id] ?? []))]);
-            $picked = $newPicks->flatten()->unique();
-            $blankCount = $newPicks->filter(fn ($roles) => $roles === [])->count();
-
-            // A team that becomes full is one seat each, so every extra seat is
-            // given up. Otherwise only the extras a new member picked, plus as many
-            // as the new members left blank need to have a seat at all.
-            $becomesFull = count($existingMembers) + count($memberIds) >= count($allowedRoles);
-            $release = $becomesFull ? $spares : $spares->filter(fn ($seat) => $picked->contains($seat->role))->values();
-            $remaining = $spares->reject(fn ($seat) => $release->contains('student_group_role_id', $seat->student_group_role_id))->values();
-            $freeCount = fn () => count(array_diff($allowedRoles, $kept->all(), $remaining->pluck('role')->all(), $picked->all()));
-            while ($freeCount() < $blankCount && $remaining->isNotEmpty()) {
-                $release->push($remaining->pop());
-            }
-
-            $existingRoles = $kept->merge($remaining->pluck('role'))->all();
-            $releasedSeatIds = $release->pluck('student_group_role_id')->all();
+        // Create Teams only builds new teams, so every member has to be one of
+        // this faculty's students who is not on a team yet. Adding to an existing
+        // team is Update Team's job.
+        if ($error = $this->newMemberError($memberIds, (int) $facultyId)) {
+            return back()->withErrors(['members' => $error])->withInput();
         }
 
         $roleResult = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
-            $allowedRoles,
-            $existingRoles,
-            count($existingMembers ?? [])
+            $this->teamRoleKeys()
         );
 
         if ($roleResult['error'] !== null) {
@@ -236,16 +172,12 @@ class FacultyController extends Controller
         }
         $rolesByMember = $roleResult['roles'];
 
-        DB::transaction(function () use (&$validated, $formSource, $facultyId, $memberIds, $rolesByMember, $releasedSeatIds) {
-            StudentGroupRole::whereKey($releasedSeatIds)->delete();
-
-            if ($formSource !== 'insert_student') {
-                $validated['group_name'] = $this->claimTeamNames(
-                    (int) $facultyId,
-                    [$validated['group_name'] ?? null],
-                    fn () => 'group_name'
-                )[0];
-            }
+        DB::transaction(function () use (&$validated, $facultyId, $memberIds, $rolesByMember) {
+            $validated['group_name'] = $this->claimTeamNames(
+                (int) $facultyId,
+                [$validated['group_name'] ?? null],
+                fn () => 'group_name'
+            )[0];
 
             $group = Group::firstOrCreate([
                 'group_name' => $validated['group_name'],
@@ -287,31 +219,17 @@ class FacultyController extends Controller
         $memberCount = count($memberIds);
         $assignedRoles = collect($rolesByMember)->flatten()->unique()->values()->all();
 
-        if ($formSource === 'insert_student') {
-            ActivityLog::recordFor(
-                ActivityLog::STUDENT_ASSIGNED,
-                'Assigned ' . $memberCount . ' student(s) to team "' . $validated['group_name'] . '".'
-            );
+        ActivityLog::recordFor(
+            ActivityLog::TEAM_CREATED,
+            'Created team "' . $validated['group_name'] . '" with ' . $memberCount . ' member(s).'
+        );
 
-            Notifier::teamMembersAdded(
-                auth()->user(),
-                $validated['group_name'],
-                $facultyId,
-                $memberIds
-            );
-        } else {
-            ActivityLog::recordFor(
-                ActivityLog::TEAM_CREATED,
-                'Created team "' . $validated['group_name'] . '" with ' . $memberCount . ' member(s).'
-            );
-
-            Notifier::teamCreated(
-                auth()->user(),
-                $validated['group_name'],
-                $facultyId,
-                $memberIds
-            );
-        }
+        Notifier::teamCreated(
+            auth()->user(),
+            $validated['group_name'],
+            $facultyId,
+            $memberIds
+        );
 
         ActivityLog::recordFor(
             ActivityLog::ROLE_ASSIGNED,
@@ -321,10 +239,8 @@ class FacultyController extends Controller
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'teams',
             'class' => $request->input('class_letter') ?: null,
-        ]))->with('success', $formSource === 'insert_student'
-            ? 'Students added to the team.'
-            : 'Team "' . $validated['group_name'] . '" created successfully.')
-          ->with('success_title', $formSource === 'insert_student' ? 'Students Added' : 'Team Created');
+        ]))->with('success', 'Team "' . $validated['group_name'] . '" created successfully.')
+          ->with('success_title', 'Team Created');
     }
 
     /**
@@ -570,16 +486,13 @@ class FacultyController extends Controller
      * @param  list<int|string>  $memberIds
      * @param  array<int|string, mixed>  $memberRoles  seat key(s) per member id
      * @param  list<string>  $allowedRoles  the four seats
-     * @param  list<string>  $existingRoles  seats already held by teammates not in
-     *   $memberIds — e.g. the rest of the team when inserting new members
-     * @param  int  $existingMemberCount  how many teammates those are
      * @return array{roles: array<int, list<string>>|null, error: string|null}
      */
-    private function resolveMemberRoles(array $memberIds, array $memberRoles, array $allowedRoles, array $existingRoles = [], int $existingMemberCount = 0): array
+    private function resolveMemberRoles(array $memberIds, array $memberRoles, array $allowedRoles): array
     {
         $labels = $this->teamRoleLabels();
-        $usedRoles = array_fill_keys(array_values(array_intersect($existingRoles, $allowedRoles)), true);
-        $multiSeat = count($memberIds) + $existingMemberCount < count($allowedRoles);
+        $usedRoles = [];
+        $multiSeat = count($memberIds) < count($allowedRoles);
         $picked = [];
         $blank = [];
 
@@ -628,6 +541,42 @@ class FacultyController extends Controller
         }
 
         return ['roles' => $resolved, 'error' => null];
+    }
+
+    /**
+     * Why these students cannot join a team, or null when they all can.
+     *
+     * A student is on one team at a time: each one joining has to be this
+     * faculty's own student and not already on any of this faculty's teams.
+     *
+     * @param  list<int>  $studentIds
+     */
+    private function newMemberError(array $studentIds, int $facultyId): ?string
+    {
+        if ($studentIds === []) {
+            return null;
+        }
+
+        $owned = Student::where('faculty_id', $facultyId)
+            ->whereIn('user_information_id', $studentIds)
+            ->count();
+        if ($owned !== count($studentIds)) {
+            return 'Some selected students are not in your class.';
+        }
+
+        $taken = StudentGroup::with('student.user')
+            ->where('faculty_id', $facultyId)
+            ->whereIn('student_id', $studentIds)
+            ->get();
+        if ($taken->isNotEmpty()) {
+            $first = $taken->first();
+            $user = $first->student?->user;
+            $name = trim(($user?->first_name ?? '') . ' ' . ($user?->last_name ?? '')) ?: ($user?->name ?? 'A selected student');
+
+            return $name . ' is already on team "' . $first->group_name . '". A student can only be on one team.';
+        }
+
+        return null;
     }
 
     /**
@@ -2006,13 +1955,32 @@ class FacultyController extends Controller
             'members'       => ['required', 'array', 'min:1', 'max:4'],
             'members.*'     => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'member_roles'  => ['nullable', 'array'],
+        ], [
+            'members.max' => 'This team is already full. Maximum of 4 members allowed.',
         ]);
 
         $allowedRoles = $this->teamRoleKeys();
-        $memberIds    = array_values(array_unique($validated['members']));
+        $memberIds    = array_values(array_unique(array_map('intval', $validated['members'])));
         if (count($memberIds) > 4) {
-            return back()->withErrors(['members' => 'A team cannot have more than 4 members.'])->withInput();
+            return back()->withErrors(['members' => 'This team is already full. Maximum of 4 members allowed.'])->withInput();
         }
+
+        $currentMemberIds = StudentGroup::where('faculty_id', $facultyId)
+            ->where('group_name', $groupName)
+            ->pluck('student_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        if ($currentMemberIds === []) {
+            return back()->withErrors(['group_name' => 'The selected team does not exist.'])->withInput();
+        }
+
+        // Students joining in this save. Update Team is the one place a student is
+        // added to an existing team, and only one who has no team yet.
+        $addedIds = array_values(array_diff($memberIds, $currentMemberIds));
+        if ($error = $this->newMemberError($addedIds, (int) $facultyId)) {
+            return back()->withErrors(['members' => $error])->withInput();
+        }
+
         $roleResult = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
@@ -2040,17 +2008,6 @@ class FacultyController extends Controller
         foreach ($oldGroups as $oldGroup) {
             StudentGroupRole::where('student_group_id', $oldGroup->student_group_id)->delete();
             $oldGroup->delete();
-        }
-
-        // If a student is moved onto this team, drop them from any other team first
-        $otherMemberships = StudentGroup::where('faculty_id', $facultyId)
-            ->whereIn('student_id', $memberIds)
-            ->where('group_name', '!=', $validated['group_name'])
-            ->get();
-
-        foreach ($otherMemberships as $other) {
-            StudentGroupRole::where('student_group_id', $other->student_group_id)->delete();
-            $other->delete();
         }
 
         foreach ($memberIds as $studentId) {
@@ -2100,10 +2057,21 @@ class FacultyController extends Controller
                 . ' — ' . count($memberIds) . ' member(s) and their roles reassigned.'
         );
 
+        if ($addedIds !== []) {
+            ActivityLog::recordFor(
+                ActivityLog::STUDENT_ASSIGNED,
+                'Assigned ' . count($addedIds) . ' student(s) to team "' . $validated['group_name'] . '".'
+            );
+
+            Notifier::teamMembersAdded(auth()->user(), $validated['group_name'], (int) $facultyId, $addedIds);
+        }
+
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'teams',
             'class' => $request->input('class_letter') ?: null,
-        ]))->with('success', 'Team updated successfully.')
+        ]))->with('success', $addedIds !== []
+            ? count($addedIds) . ' student(s) added and team updated successfully.'
+            : 'Team updated successfully.')
           ->with('success_title', 'Team Updated');
     }
 

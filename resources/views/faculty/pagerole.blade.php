@@ -197,22 +197,40 @@
     /* Update Team and Add Student dialogs: neutral grays, none of the warm
        wine/gold tint the palette and .gray-accents give their fills, borders,
        icons and the On this team badge. Ids outrank both. */
-    :is(#updateTeamModal, #addStudentModal) :is(.bg-slate-50, .bg-slate-100, .bg-amber-50, .bg-blue-50, .bg-brand-soft, .bg-red-50) { background-color: #F5F5F5; }
-    :is(#updateTeamModal, #addStudentModal) :is(.hover\:bg-slate-50, .hover\:bg-slate-200, .hover\:bg-brand-soft\/50):hover { background-color: #EEEEEE; }
-    :is(#updateTeamModal, #addStudentModal) :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-amber-100, .border-amber-200, .border-blue-100, .border-red-200) { border-color: #E5E5E5; }
-    :is(#updateTeamModal, #addStudentModal) .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #E5E5E5; }
-    :is(#updateTeamModal, #addStudentModal) .hover\:border-brand\/40:hover { border-color: #9CA3AF; }
-    :is(#updateTeamModal, #addStudentModal) :is(input, select, textarea):focus { border-color: #9CA3AF; --tw-ring-color: rgba(156, 163, 175, .3); }
-    :is(#updateTeamModal, #addStudentModal) label:has(:checked):is(.has-\[\:checked\]\:border-brand) { border-color: #374151; background-color: #F3F4F6; }
-    :is(#updateTeamModal, #addStudentModal) :is(.brand-gradient, .bg-amber-500) { background: #374151; }
-    :is(#updateTeamModal, #addStudentModal) :is(.brand-gradient, .bg-amber-500):hover { background: #1F2937; }
-    :is(#updateTeamModal, #addStudentModal) :is(.shadow-brand\/20, .shadow-amber-400\/30) { --tw-shadow-color: rgba(17, 17, 17, .15); }
-    :is(#updateTeamModal, #addStudentModal) .bg-slate-900\/60 { background-color: rgba(17, 17, 17, .6); }
-    :is(#updateTeamModal, #addStudentModal) :is(.iconify, svg):not(:is(.brand-gradient, .bg-amber-500, .text-white) *) { color: #4B5563; }
-    :is(#updateTeamModal, #addStudentModal) :is(.text-amber-500, .text-amber-600, .text-amber-700, .text-brand, .text-slate-700, .text-slate-800, .text-slate-900, .text-red-700) { color: #111827; }
-    :is(#updateTeamModal, #addStudentModal) :is(.text-slate-500, .text-slate-600) { color: #4B5563; }
-    :is(#updateTeamModal, #addStudentModal) :is(.text-slate-300, .text-slate-400, .text-red-400) { color: #9CA3AF; }
-    :is(#updateTeamModal, #addStudentModal) .update-on-team-badge { background: #F3F4F6; border-color: #D1D5DB; color: #374151; }
+    #updateTeamModal :is(.bg-slate-50, .bg-slate-100, .bg-amber-50, .bg-blue-50, .bg-brand-soft, .bg-red-50) { background-color: #F5F5F5; }
+    #updateTeamModal :is(.hover\:bg-slate-50, .hover\:bg-slate-200, .hover\:bg-brand-soft\/50):hover { background-color: #EEEEEE; }
+    #updateTeamModal :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-amber-100, .border-amber-200, .border-blue-100, .border-red-200) { border-color: #E5E5E5; }
+    #updateTeamModal .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #E5E5E5; }
+    #updateTeamModal .hover\:border-brand\/40:hover { border-color: #9CA3AF; }
+    #updateTeamModal :is(input, select, textarea):focus { border-color: #9CA3AF; --tw-ring-color: rgba(156, 163, 175, .3); }
+    #updateTeamModal label:has(:checked):is(.has-\[\:checked\]\:border-brand) { border-color: #374151; background-color: #F3F4F6; }
+    #updateTeamModal :is(.brand-gradient, .bg-amber-500) { background: #374151; }
+    #updateTeamModal :is(.brand-gradient, .bg-amber-500):hover { background: #1F2937; }
+    #updateTeamModal :is(.shadow-brand\/20, .shadow-amber-400\/30) { --tw-shadow-color: rgba(17, 17, 17, .15); }
+    #updateTeamModal .bg-slate-900\/60 { background-color: rgba(17, 17, 17, .6); }
+    #updateTeamModal :is(.iconify, svg):not(:is(.brand-gradient, .bg-amber-500, .text-white) *) { color: #4B5563; }
+    #updateTeamModal :is(.text-amber-500, .text-amber-600, .text-amber-700, .text-brand, .text-slate-700, .text-slate-800, .text-slate-900, .text-red-700) { color: #111827; }
+    #updateTeamModal :is(.text-slate-500, .text-slate-600) { color: #4B5563; }
+    #updateTeamModal :is(.text-slate-300, .text-slate-400, .text-red-400) { color: #9CA3AF; }
+    #updateTeamModal .update-on-team-badge { background: #F3F4F6; border-color: #D1D5DB; color: #374151; }
+    /* Add Students: unassigned students of this block, up to the 4-member cap. */
+    #updateTeamModal .ut-add { border: 1px solid #E5E5E5; border-radius: 1rem; background: #fff; padding: 1rem; }
+    #updateTeamModal .ut-add-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .5rem .75rem; }
+    #updateTeamModal .ut-add-title { display: flex; align-items: center; gap: .4rem; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #374151; }
+    #updateTeamModal .ut-add-sub { font-size: 11.5px; color: #6B7280; margin-top: .2rem; line-height: 1.45; }
+    #updateTeamModal .ut-cap { font-size: 11.5px; font-weight: 800; padding: .3rem .75rem; border-radius: 999px; background: #F3F4F6; color: #374151; white-space: nowrap; }
+    #updateTeamModal .ut-cap.is-full { background: #111827; color: #fff; }
+    #updateTeamModal .ut-bar { height: 6px; margin-top: .75rem; border-radius: 999px; background: #F3F4F6; overflow: hidden; }
+    #updateTeamModal .ut-bar > span { display: block; height: 100%; width: 0; border-radius: 999px; background: #374151; transition: width .25s ease; }
+    #updateTeamModal .ut-full { display: flex; align-items: center; gap: .5rem; margin-top: .75rem; padding: .7rem .85rem; border-radius: .75rem; border: 1px solid #D1D5DB; background: #F9FAFB; font-size: 12.5px; font-weight: 700; color: #111827; }
+    #updateTeamModal .ut-add-list { margin-top: .75rem; display: flex; flex-direction: column; gap: .5rem; max-height: 18rem; overflow-y: auto; }
+    #updateTeamModal .ut-add-row.is-locked { opacity: .5; }
+    #updateTeamModal .ut-add-row.is-locked input { cursor: not-allowed; }
+    /* A candidate's roles only matter once they are ticked to join. */
+    #updateTeamModal .ut-add-row:not(:has(.update-student-checkbox:checked)) .update-role-row { display: none; }
+    #updateTeamModal .ut-empty { margin-top: .75rem; padding: 1.25rem; text-align: center; font-size: 12px; color: #9CA3AF; border: 1px dashed #E5E5E5; border-radius: .75rem; }
+    #updateTeamModal :is(.ut-full, .ut-empty).hidden { display: none; }
+    #updateTeamModal .update-new-badge { background: #111827; border-color: #111827; color: #fff; }
 
     @media (max-width: 640px) {
         #panel-team_setup .ts-tabs,
@@ -479,9 +497,9 @@
     $validTabs = ['teams', 'create_task', 'team_setup'];
     if (!in_array($activeTab, $validTabs)) $activeTab = 'teams';
 
-    // A failed create/insert re-renders the page; land back on the setup screen
+    // A failed create re-renders the page; land back on the setup screen
     // rather than on the teams list the faculty had already left.
-    if ($errors->any() && in_array(old('_form_source'), ['create_team', 'create_teams_bulk', 'insert_student'], true)) {
+    if ($errors->any() && in_array(old('_form_source'), ['create_team', 'create_teams_bulk'], true)) {
         $activeTab = 'team_setup';
     }
 
@@ -1153,7 +1171,7 @@
                 <span class="ts-tab-icon"><span class="iconify" data-icon="mdi:account-edit-outline"></span></span>
                 <span class="ts-tab-copy">
                     <span class="ts-tab-title">Edit Existing Teams</span>
-                    <span class="ts-tab-sub">View team members, add a student, or change a role</span>
+                    <span class="ts-tab-sub">View team members or change a role</span>
                 </span>
             </button>
         </div>
@@ -1173,25 +1191,8 @@
                 'room_management'       => 'Room assignment and guest room operations',
                 'housekeeping'          => 'Room cleaning, facility upkeep and repairs',
             ];
-            // Roles each existing team already has assigned, used by the Insert tab so a
-            // role already taken on the target team is disabled before the faculty even
-            // picks it for the new member.
-            $groupRolesMap = ($groups ?? collect())->mapWithKeys(fn ($members, $groupName) => [
-                $groupName => $members->flatMap(fn ($m) => $m->roles->pluck('role'))->unique()->values(),
-            ]);
-            // Headcount per team, so the Insert tab knows whether the team is still
-            // short and a new member may take more than one seat.
-            $groupSizeMap = ($groups ?? collect())->map(fn ($members) => $members->count());
-            // Each member's first seat. The rest are extras a short team handed out,
-            // and a new member may take one over (storeGroup releases it).
-            $groupLockedRolesMap = ($groups ?? collect())->map(fn ($members) => $members
-                ->map(fn ($m) => $m->roles->sortBy('student_group_role_id')->first()?->role)
-                ->filter()->unique()->values());
         @endphp
         <script>
-            window.EXISTING_TEAM_ROLES = @json($groupRolesMap);
-            window.EXISTING_TEAM_SIZES = @json($groupSizeMap);
-            window.EXISTING_TEAM_LOCKED_ROLES = @json($groupLockedRolesMap);
             // Role keys are all JS had (TEAM_DEFAULT_ROLES); the labels live in PHP.
             window.TEAM_ROLE_LABELS = @json($teamRoleOptions);
         </script>
@@ -1209,7 +1210,7 @@
                 <div class="ts-done">
                     <span class="ts-done-icon"><span class="iconify" data-icon="mdi:check-circle-outline"></span></span>
                     <p class="ts-done-title">Every student{{ $activeClass ? ' in ' . $activeClass->name : '' }} already has a team</p>
-                    <p class="ts-done-sub">All students are already in a team. To move a student, add a student, or change a role, go to Edit Existing Teams.</p>
+                    <p class="ts-done-sub">All students are already in a team. To change a role, go to Edit Existing Teams. To add a student to a team, use that team's Update button.</p>
                     <button type="button" onclick="switchCreateModalTab('insert')" class="ts-btn-dark">
                         <span class="iconify" data-icon="mdi:account-edit-outline"></span> Edit Existing Teams
                     </button>
@@ -1585,7 +1586,7 @@
 
                     <div class="ts-tip">
                         <span class="iconify" data-icon="mdi:lightbulb-on-outline"></span>
-                        <p>Made a mistake? You can move students or change their roles later in <b>Edit Existing Teams</b>.</p>
+                        <p>Made a mistake? You can change roles later in <b>Edit Existing Teams</b>, and add students to a team that is not full with <b>Update Team</b>.</p>
                     </div>
                 </aside>
             </div>
@@ -1730,14 +1731,7 @@
                                     <p class="text-[12px] text-slate-400">Each student plays one role; with fewer than 4 members, a student covers more than one. Use "Edit team" to rename the team or swap roles.</p>
                                 </div>
                                 @if($team['members']->count() >= 4)
-                                    {{-- A full team cannot take a fifth student; say so rather than
-                                         open a dialog that can only fail. --}}
                                     <span class="ts-full-note"><span class="iconify" data-icon="mdi:lock-outline"></span> Team is full</span>
-                                @else
-                                <button type="button" onclick='openAddStudentModal(@json($teamName))'
-                                        class="h-10 px-4 rounded-xl brand-gradient text-white text-[12px] font-bold inline-flex items-center gap-1.5 shadow-md shadow-brand/20 hover:opacity-95 transition shrink-0">
-                                    <span class="iconify text-base" data-icon="mdi:account-plus-outline"></span> Add a student
-                                </button>
                                 @endif
                             </div>
 
@@ -1834,161 +1828,6 @@
 
 
 
-<!-- ═══════ ADD STUDENT TO TEAM ═══════
-     Carries the insert form: the students are ticked on the left, the role(s)
-     each of them will hold are ticked on the right. The team comes from
-     whichever row Manage Members has picked. -->
-<div id="addStudentModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAddStudentModal()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full add-student-modal flex flex-col overflow-hidden">
-        <form method="POST" id="insertStudentForm" action="{{ route('faculty.role.groups.store') }}" class="flex flex-col min-h-0">
-            @csrf
-            <input type="hidden" name="_form_source" value="insert_student">
-            <input type="hidden" name="class_letter" value="{{ $activeClass->letter ?? '' }}">
-            <input type="hidden" name="group_name" id="insertTeamName" value="{{ old('group_name', $manageFirstTeam ?? '') }}">
-
-            <div class="px-6 py-4 border-b border-slate-200 flex items-start justify-between gap-3">
-                <div class="flex items-start gap-3 min-w-0">
-                    <span class="w-11 h-11 rounded-full bg-brand-soft text-brand flex items-center justify-center shrink-0">
-                        <span class="iconify text-xl" data-icon="mdi:account-plus-outline"></span>
-                    </span>
-                    <div class="min-w-0">
-                        <h4 class="font-extrabold text-slate-900 text-lg leading-tight">Insert Student into Team</h4>
-                        <p class="text-[12px] text-slate-500 mt-0.5">Pick a student already enrolled in your class and assign their role(s).</p>
-                    </div>
-                </div>
-                <button type="button" onclick="closeAddStudentModal()"
-                    class="text-slate-400 hover:text-brand w-8 h-8 rounded-full transition flex items-center justify-center shrink-0">
-                    <span class="iconify text-xl" data-icon="mdi:close"></span>
-                </button>
-            </div>
-
-            @if($errors->any() && old('_form_source') === 'insert_student')
-                <div class="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
-                    <span class="iconify flex-shrink-0" data-icon="mdi:alert-circle-outline"></span>
-                    {{ $errors->first() }}
-                </div>
-            @endif
-
-            <div class="add-student-body p-6">
-                <!-- Left: the team, then who to add -->
-                <div class="min-w-0">
-                    <label class="block text-[12px] font-bold text-slate-600 mb-1.5">Team</label>
-                    <input type="text" id="addStudentTeamLabel" readonly value="{{ $manageFirstTeam ?? '' }}"
-                        class="w-full h-11 px-4 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 cursor-not-allowed">
-
-                    <label class="block text-[12px] font-bold text-slate-600 mt-4 mb-1.5">Search Student</label>
-                    <div class="relative">
-                        <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
-                        <input type="text" id="insertStudentSearch" placeholder="Search student name or ID..."
-                            oninput="filterTeamStudentList('insert')"
-                            class="w-full h-11 pl-10 pr-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                    </div>
-
-                    <div class="mt-3 rounded-2xl border border-slate-200 overflow-hidden">
-                        <div id="insertStudentList" class="max-h-[18rem] overflow-y-auto divide-y divide-slate-100">
-                            @forelse($students ?? [] as $student)
-                                @php
-                                    $u = $student->user;
-                                    $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
-                                    $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
-                                    $sk = $student->user_information_id;
-                                    $selectedMembers = array_map('intval', old('members', []));
-                                    $searchBlob = strtolower($dn . ' ' . $student->student_number);
-                                @endphp
-                                <label class="insert-student-card team-student-card flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-slate-50 transition"
-                                       data-search="{{ $searchBlob }}">
-                                    <input type="checkbox" name="members[]" value="{{ $sk }}"
-                                        class="insert-student-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 shrink-0"
-                                        {{ in_array($sk, $selectedMembers, true) ? 'checked' : '' }}
-                                        onchange="onTeamMemberToggle(this, 'insert')">
-                                    @include('partials.user-avatar', [
-                                        'user'         => $u,
-                                        'name'         => $dn,
-                                        'size'         => 'w-9 h-9',
-                                        'rounded'      => 'rounded-full',
-                                        'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold',
-                                    ])
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block text-[13px] font-semibold text-slate-800 truncate">{{ $dn }}</span>
-                                    </span>
-                                    <span class="text-[12px] text-slate-400 font-mono whitespace-nowrap shrink-0">{{ $student->student_number }}</span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 shrink-0">Unassigned</span>
-                                </label>
-                            @empty
-                                <div class="flex flex-col items-center gap-2 py-10 text-slate-400">
-                                    <span class="iconify text-3xl text-slate-200" data-icon="mdi:account-check-outline"></span>
-                                    <p class="text-sm font-semibold">No ungrouped students</p>
-                                    <p class="text-xs text-slate-300">All of your students are already on a team.</p>
-                                </div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right: the role(s) each ticked student will hold -->
-                <div class="min-w-0">
-                    <p class="text-[15px] font-bold text-slate-800">Assign Role(s)</p>
-                    <p class="text-[12px] text-slate-400 mb-3">While the team has fewer than 4 members, a student can hold more than one role.</p>
-
-                    <p id="addStudentRolesHint" class="text-[12px] text-slate-400 rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center">
-                        Tick a student on the left to choose their role(s).
-                    </p>
-
-                    <div class="space-y-3">
-                        @foreach($students ?? [] as $student)
-                            @php
-                                $u = $student->user;
-                                $dn = trim(implode(' ', array_filter([$u->last_name ?? null, $u->first_name ?? null, $u->middle_name ?? null])));
-                                $dn = $dn !== '' ? $dn : ($u->name ?? 'Student');
-                                $sk = $student->user_information_id;
-                                $selectedMembers = array_map('intval', old('members', []));
-                                $selectedRoles = old('member_roles.' . $sk, []);
-                                if (!is_array($selectedRoles)) $selectedRoles = [$selectedRoles];
-                            @endphp
-                            <div class="insert-role-block rounded-2xl border border-slate-200 p-3{{ in_array($sk, $selectedMembers, true) ? '' : ' hidden' }}"
-                                 data-role-block="{{ $sk }}">
-                                <p class="text-[12px] font-bold text-slate-700 mb-2 truncate">{{ $dn }}</p>
-                                <div class="space-y-1.5">
-                                    @foreach($teamRoleOptions as $rk => $rl)
-                                        <label class="flex items-start gap-2.5 px-3 py-2 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-brand/40 transition">
-                                            <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
-                                                class="insert-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 mt-0.5 shrink-0"
-                                                {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}
-                                                onchange="enforceSingleRoleCheckbox(this); refreshRoleAvailability('insert')">
-                                            <span class="min-w-0">
-                                                <span class="flex items-center gap-1.5 text-[13px] font-bold text-slate-700">
-                                                    <span class="w-2 h-2 rounded-full role-dot-{{ $rk }}"></span>{{ $rl }}
-                                                </span>
-                                                <span class="block text-[11px] text-slate-400 leading-snug">{{ $roleBlurbs[$rk] ?? 'Hotel simulation role' }}</span>
-                                            </span>
-                                        </label>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-
-            <div class="px-6 py-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
-                <button type="button" onclick="closeAddStudentModal()"
-                    class="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition">Cancel</button>
-                <div class="flex items-center gap-3">
-                    <span class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] text-blue-700 leading-snug">
-                        Each team must have exactly 4 members. You can insert a student while the team is not yet full.
-                    </span>
-                    <button type="submit"
-                        class="px-6 py-2.5 brand-gradient text-white rounded-xl font-bold text-sm hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2">
-                        <span id="insertSelectedCount" class="hidden">0 selected</span>
-                        Insert to Team
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
 <!-- Update Team Modal -->
 <div id="updateTeamModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeUpdateModal()"></div>
@@ -2048,7 +1887,7 @@
                     <div>
                         <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                             <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Members & Roles <span class="text-red-400">*</span></label>
-                            <span class="text-[11px] text-slate-400 sm:ml-auto">Only students already on this team. Use Insert to Team to add more.</span>
+                            <span class="text-[11px] text-slate-400 sm:ml-auto">Current members of this team. Add more under Add Students below.</span>
                         </div>
                         <div class="relative mb-2">
                             <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
@@ -2059,6 +1898,10 @@
                         <p class="text-xs text-slate-400 mb-2">Uncheck to remove a member, or change their roles. Save to apply.</p>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 max-h-[22rem] overflow-y-auto">
                             <div class="p-3 space-y-2" id="updateMemberList">
+                                @php
+                                    // Unassigned students of this block: the only ones Add Students offers.
+                                    $updateAddableIds = ($students ?? collect())->pluck('user_information_id')->map(fn ($id) => (int) $id)->all();
+                                @endphp
                                 @forelse($allStudents ?? [] as $student)
                                     @php
                                         $u = $student->user;
@@ -2072,7 +1915,8 @@
                                          data-student-id="{{ $sk }}"
                                          data-student-name="{{ $dn }}"
                                          data-search="{{ $searchBlob }}"
-                                         data-teams="{{ e(implode('|', $teamNames)) }}">
+                                         data-teams="{{ e(implode('|', $teamNames)) }}"
+                                         data-addable="{{ in_array((int) $sk, $updateAddableIds, true) ? '1' : '0' }}">
                                         {{-- Student info row --}}
                                         <div class="flex items-center gap-3">
                                             <input type="checkbox" name="members[]" value="{{ $sk }}"
@@ -2082,6 +1926,7 @@
                                                 <div class="flex items-center gap-2 flex-wrap">
                                                     <div class="text-sm font-semibold text-slate-700 truncate">{{ $dn }}</div>
                                                     <span class="update-on-team-badge hidden text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">On this team</span>
+                                                    <span class="update-new-badge hidden text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border">Joining</span>
                                                 </div>
                                                 <div class="text-[11px] text-slate-400 font-mono">
                                                     #{{ $student->student_number }}
@@ -2092,7 +1937,7 @@
                                             </div>
                                         </div>
                                         {{-- Role checkboxes row --}}
-                                        <div class="flex flex-wrap gap-1.5 mt-2 ml-8">
+                                        <div class="update-role-row flex flex-wrap gap-1.5 mt-2 ml-8">
                                             @foreach(['front_desk' => 'Front Desk', 'restaurant_management' => 'Rest. Mgmt', 'room_management' => 'Room Mgmt', 'housekeeping' => 'Housekeeping/Maint.'] as $rk => $rl)
                                                 <label class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
@@ -2116,10 +1961,30 @@
                                 <div id="updateNoMembersNote" class="hidden flex flex-col items-center gap-2 py-10 text-slate-400">
                                     <span class="iconify text-3xl text-slate-200" data-icon="mdi:account-group-outline"></span>
                                     <p class="text-sm font-semibold">No members on this team</p>
-                                    <p class="text-xs text-slate-300">Use Insert to Team to put students on it.</p>
+                                    <p class="text-xs text-slate-300">Add students under Add Students below.</p>
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    {{-- Add Students. The one place a student joins an existing team:
+                         openUpdateModal() moves this block's unassigned students in here,
+                         and refreshUpdateCapacity() locks the list at 4 members. --}}
+                    <div class="ut-add" id="updateAddSection">
+                        <div class="ut-add-head">
+                            <div class="min-w-0">
+                                <p class="ut-add-title"><span class="iconify text-base" data-icon="mdi:account-plus-outline"></span> Add Students</p>
+                                <p class="ut-add-sub">Students in this block who are not on a team yet. Tick one to add them, then choose their role.</p>
+                            </div>
+                            <span class="ut-cap" id="updateCapacityBadge">0 of 4 members</span>
+                        </div>
+                        <div class="ut-bar" aria-hidden="true"><span id="updateCapacityBar"></span></div>
+                        <div class="ut-full hidden" id="updateFullNote" role="status">
+                            <span class="iconify text-base shrink-0" data-icon="mdi:lock-outline"></span>
+                            This team is already full. Maximum of 4 members allowed.
+                        </div>
+                        <div class="ut-add-list" id="updateAddList"></div>
+                        <p class="ut-empty hidden" id="updateNoAddableNote">Every student in this block is already on a team. New students are enrolled under Manage Students.</p>
                     </div>
                 </div>
             </form>
@@ -2628,8 +2493,7 @@ function confirmLeaveSetTaskForBlockSwitch() {
 /* Everything opening the screen used to do, run on load instead. */
 function initTeamSetupScreen() {
     const firstTeam = document.querySelector('.insert-team-pick')?.dataset.teamPick;
-    const chosen = document.getElementById('insertTeamName')?.value || firstTeam;
-    if (chosen) pickInsertTeam(chosen);
+    if (firstTeam) pickInsertTeam(firstTeam);
 
     switchCreateTeamMode(currentCreateTeamMode);
     if (currentCreateTeamMode === 'multiple') {
@@ -3542,12 +3406,6 @@ function resetBulkAssignment() {
 function pickInsertTeam(groupName) {
     if (!groupName) return;
 
-    const hidden = document.getElementById('insertTeamName');
-    if (hidden) hidden.value = groupName;
-
-    const label = document.getElementById('addStudentTeamLabel');
-    if (label) label.value = groupName;
-
     const filter = document.getElementById('manageTeamFilter');
     if (filter && filter.value !== groupName) filter.value = groupName;
 
@@ -3562,7 +3420,6 @@ function pickInsertTeam(groupName) {
         panel.classList.toggle('hidden', panel.dataset.teamPanel !== groupName);
     });
     filterManageMembers();
-    if (typeof refreshRoleAvailability === 'function') refreshRoleAvailability('insert');
 }
 
 /* Narrows the visible team's roster; every row is already rendered. */
@@ -3580,22 +3437,6 @@ function filterManageMembers() {
     });
 }
 
-/* ── Insert a student into a team ──
-   Enrolling a student into the class is a different act, done on Manage Students;
-   this only takes one who is already enrolled and puts them on a team. */
-function openAddStudentModal(groupName) {
-    if (groupName) pickInsertTeam(groupName);
-    document.getElementById('addStudentModal')?.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    updateTeamSelectedCount('insert');
-    refreshRoleAvailability('insert');
-}
-
-function closeAddStudentModal() {
-    document.getElementById('addStudentModal')?.classList.add('hidden');
-    document.body.style.overflow = '';
-}
-
 function switchCreateModalTab(tabId) {
     currentModalTab = tabId;
 
@@ -3607,9 +3448,8 @@ function switchCreateModalTab(tabId) {
     const addTeamBtn = document.getElementById('modal-tab-add_team');
     const insertBtn = document.getElementById('modal-tab-insert');
 
-    // The footer button is Create Teams' submit. Manage Members already has its
-    // own Insert to Team, once per team panel and again on the Add Student
-    // dialog itself — a third copy down here was one button too many.
+    // The footer button is Create Teams' submit; Edit Existing Teams has nothing
+    // to save here, its changes go through Update Team.
     const submitBtn = document.getElementById('createModalSubmitBtn');
     if (submitBtn) submitBtn.classList.toggle('hidden', tabId !== 'add_team');
 
@@ -3646,15 +3486,6 @@ function submitActiveModalTab() {
             return;
         }
         document.getElementById('createTeamFormSingle').submit();
-    } else {
-        // Adding a student happens in its own dialog, so the footer opens it
-        // rather than posting an empty form behind it.
-        const dialog = document.getElementById('addStudentModal');
-        if (dialog && dialog.classList.contains('hidden')) {
-            openAddStudentModal(document.getElementById('insertTeamName')?.value);
-            return;
-        }
-        document.getElementById('insertStudentForm').submit();
     }
 }
 
@@ -3675,11 +3506,6 @@ function roleTeamSize(checkbox) {
     if (checkbox.classList.contains('update-role-checkbox')) {
         return document.querySelectorAll('.update-student-checkbox:checked').length;
     }
-    if (checkbox.classList.contains('insert-role-checkbox')) {
-        const select = document.querySelector('#insertStudentForm [name="group_name"]');
-        const existing = (window.EXISTING_TEAM_SIZES || {})[select ? select.value : ''] || 0;
-        return existing + document.querySelectorAll('.insert-student-checkbox:checked').length;
-    }
     return TEAM_MEMBER_MAX;
 }
 
@@ -3688,7 +3514,7 @@ function roleTeamSize(checkbox) {
 // has all four seats to cover, so there a member may tick several. Bulk's
 // checkboxes carry no name (they are read straight off the DOM at submit time),
 // so they are scoped by their shared .bulk-role-grid container instead;
-// create/insert/update all name theirs member_roles[{id}][], identically for
+// create/update both name theirs member_roles[{id}][], identically for
 // every seat option of that one member.
 function enforceSingleRoleCheckbox(checkbox) {
     if (!checkbox.checked) return;
@@ -4071,17 +3897,9 @@ function buildBulkTeamsHiddenInputs() {
     return true;
 }
 
-/* Manage Members ticks the student on the left and their role(s) on the right,
-   so an insert checkbox's roles are not inside its own card. Create Team lists
-   the same students, so the lookup is scoped to the insert form — a page-wide
-   match handed Create Team's checkboxes the hidden insert block, and Randomize
-   stacked a new role on top of the old ones every click. */
+// The card holding a ticked student's role checkboxes.
 function studentRoleContainer(memberCheckbox) {
-    if (!memberCheckbox) return null;
-    if (memberCheckbox.classList.contains('insert-student-checkbox')) {
-        return document.querySelector('#insertStudentForm [data-role-block="' + memberCheckbox.value + '"]');
-    }
-    return memberCheckbox.closest('.team-student-card');
+    return memberCheckbox ? memberCheckbox.closest('.team-student-card') : null;
 }
 
 function clearStudentRoles(memberCheckbox) {
@@ -4101,15 +3919,8 @@ function assignDefaultRoleToCard(card, roleKey) {
 }
 
 function nextDefaultRoleIndex(mode) {
-    const checked = document.querySelectorAll(
-        (mode === 'insert' ? '.insert-student-checkbox' : '.create-student-checkbox') + ':checked'
-    );
+    const checked = document.querySelectorAll(teamMemberSelector(mode) + ':checked');
     const used = new Set();
-    if (mode === 'insert') {
-        const select = document.querySelector('#insertStudentForm [name="group_name"]');
-        const existing = (window.EXISTING_TEAM_ROLES || {})[select ? select.value : ''] || [];
-        existing.forEach(r => used.add(r));
-    }
     checked.forEach(cb => {
         const card = studentRoleContainer(cb);
         if (!card) return;
@@ -4120,48 +3931,26 @@ function nextDefaultRoleIndex(mode) {
     for (let i = 0; i < TEAM_DEFAULT_ROLES.length; i++) {
         if (!used.has(TEAM_DEFAULT_ROLES[i])) return i;
     }
-    // Every seat is held, some only as a teammate's extra: take one of those.
-    if (mode === 'insert') {
-        const taken = insertTakenRoles();
-        for (let i = 0; i < TEAM_DEFAULT_ROLES.length; i++) {
-            if (!taken.has(TEAM_DEFAULT_ROLES[i])) return i;
-        }
-    }
     return checked.length % TEAM_DEFAULT_ROLES.length;
 }
 
-// Seats a new member cannot have on the Insert tab: each current member's first
-// seat, and whatever the other new members ticked. A current member's extra
-// seats stay open - storeGroup hands them over.
-function insertTakenRoles() {
-    const select = document.querySelector('#insertStudentForm [name="group_name"]');
-    const taken = new Set((window.EXISTING_TEAM_LOCKED_ROLES || {})[select ? select.value : ''] || []);
-    document.querySelectorAll('.insert-student-checkbox:checked').forEach(cb => {
-        studentRoleContainer(cb)?.querySelectorAll('input[type="checkbox"][name^="member_roles"]:checked')
-            .forEach(r => taken.add(r.value));
-    });
-    return taken;
+// The member checkboxes of the create list or the Update Team dialog.
+function teamMemberSelector(mode) {
+    return mode === 'update' ? '.update-student-checkbox' : '.create-student-checkbox';
 }
 
 // A role may be held by at most one member. Scans whichever list is active (create,
-// insert, or update) and disables any role checkbox already checked on another member
+// or update) and disables any role checkbox already checked on another member
 // of the same team, so the faculty sees it grey out instead of discovering the clash
 // on submit. Checked boxes stay enabled so their own owner can still uncheck them.
 function refreshRoleAvailability(mode) {
     const config = {
         create: { checkbox: '.create-student-checkbox', card: '.create-student-card' },
-        insert: { checkbox: '.insert-student-checkbox', card: '.insert-role-block' },
         update: { checkbox: '.update-student-checkbox', card: '.update-student-row' },
     }[mode];
     if (!config) return;
 
     const used = new Set();
-
-    if (mode === 'insert') {
-        const select = document.querySelector('#insertStudentForm [name="group_name"]');
-        const existing = (window.EXISTING_TEAM_LOCKED_ROLES || {})[select ? select.value : ''] || [];
-        existing.forEach(r => used.add(r));
-    }
 
     document.querySelectorAll(config.checkbox + ':checked').forEach(memberCb => {
         const card = studentRoleContainer(memberCb) || memberCb.closest(config.card);
@@ -4194,12 +3983,6 @@ function refreshRoleAvailability(mode) {
 function onTeamMemberToggle(checkbox, mode) {
     const card = studentRoleContainer(checkbox);
 
-    // The role block only belongs on screen while its student is ticked.
-    const block = document.querySelector('[data-role-block="' + checkbox.value + '"]');
-    if (block) block.classList.toggle('hidden', !checkbox.checked);
-    document.getElementById('addStudentRolesHint')
-        ?.classList.toggle('hidden', document.querySelectorAll('.insert-student-checkbox:checked').length > 0);
-
     if (!checkbox.checked) {
         clearStudentRoles(checkbox);
     } else if (card) {
@@ -4217,18 +4000,13 @@ function onTeamMemberToggle(checkbox, mode) {
    gave someone two - takes one of that member's extra seats instead of doubling
    up on a seat. Returns whether a seat was handed over. */
 function takeSpareSeat(mode, card) {
-    const memberSelector = mode === 'insert' ? '.insert-student-checkbox' : '.create-student-checkbox';
-    const holders = Array.from(document.querySelectorAll(memberSelector + ':checked'))
+    const holders = Array.from(document.querySelectorAll(teamMemberSelector(mode) + ':checked'))
         .map(cb => studentRoleContainer(cb))
         .filter(other => other && other !== card);
 
     const used = new Set();
     holders.forEach(other => other.querySelectorAll('input[type="checkbox"][name^="member_roles"]:checked')
         .forEach(r => used.add(r.value)));
-    if (mode === 'insert') {
-        const select = document.querySelector('#insertStudentForm [name="group_name"]');
-        ((window.EXISTING_TEAM_ROLES || {})[select ? select.value : ''] || []).forEach(r => used.add(r));
-    }
     if (TEAM_DEFAULT_ROLES.some(r => !used.has(r))) return false;
 
     const donor = holders.slice().reverse().find(other =>
@@ -4345,8 +4123,8 @@ function randomizeSingleTeamMembers() {
 }
 
 function filterTeamStudentList(mode) {
-    const input = document.getElementById(mode === 'insert' ? 'insertStudentSearch' : 'createStudentSearch');
-    const cards = document.querySelectorAll(mode === 'insert' ? '.insert-student-card' : '.create-student-card');
+    const input = document.getElementById('createStudentSearch');
+    const cards = document.querySelectorAll('.create-student-card');
     const q = (input?.value || '').trim().toLowerCase();
     cards.forEach(card => {
         const hay = card.getAttribute('data-search') || '';
@@ -4355,8 +4133,8 @@ function filterTeamStudentList(mode) {
 }
 
 function updateTeamSelectedCount(mode) {
-    const selector = mode === 'insert' ? '.insert-student-checkbox' : '.create-student-checkbox';
-    const el = document.getElementById(mode === 'insert' ? 'insertSelectedCount' : 'createSelectedCount');
+    const selector = '.create-student-checkbox';
+    const el = document.getElementById('createSelectedCount');
     const count = document.querySelectorAll(selector + ':checked').length;
     if (!el) return;
     el.textContent = mode === 'create'
@@ -4364,12 +4142,7 @@ function updateTeamSelectedCount(mode) {
         : (count + ' selected');
 }
 
-document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeAddStudentModal();
-});
-
 document.addEventListener('DOMContentLoaded', function () {
-    updateTeamSelectedCount('insert');
     updateTeamSelectedCount('create');
     renderCreateTeamSummary();
     rebuildBulkTeamSlots(maxCompleteBulkTeams());
@@ -4377,7 +4150,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (randomizeBtn) randomizeBtn.addEventListener('click', randomizeSingleTeamMembers);
 });
 
-// ── Open Update Team modal (members of this team only) ──────────
+// ── Open Update Team modal: this team's members, plus unassigned students to add ──
 function openUpdateModal(groupName, memberData) {
     const form = document.getElementById('updateTeamForm');
     form.action = '/faculty/role/groups/' + encodeURIComponent(groupName);
@@ -4399,22 +4172,32 @@ function openUpdateModal(groupName, memberData) {
     document.querySelectorAll('.update-role-warning').forEach(w => w.classList.add('hidden'));
 
     const list = document.getElementById('updateMemberList');
+    const addList = document.getElementById('updateAddList');
     const rows = Array.from(document.querySelectorAll('.update-student-row'));
     let memberCount = 0;
+    let candidateCount = 0;
 
     rows.forEach(row => {
         const sid = String(row.dataset.studentId || '');
         const isMember = Object.prototype.hasOwnProperty.call(rolesMap, sid);
+        // A student with no team yet, in this block, can be added here.
+        const isCandidate = !isMember && row.dataset.addable === '1';
         const cb = row.querySelector('.update-student-checkbox');
         const onBadge = row.querySelector('.update-on-team-badge');
 
-        // Only this team's members appear in Update Team
-        row.classList.toggle('hidden', !isMember);
+        row.classList.toggle('hidden', !isMember && !isCandidate);
+        row.classList.toggle('ut-add-row', isCandidate);
         row.dataset.isTeamMember = isMember ? '1' : '0';
+        row.dataset.isCandidate = isCandidate ? '1' : '0';
+        row.querySelector('.update-new-badge')?.classList.add('hidden');
 
         if (!isMember) {
             if (cb) cb.checked = false;
             if (onBadge) onBadge.classList.add('hidden');
+            if (isCandidate) {
+                candidateCount++;
+                addList.appendChild(row);
+            }
             return;
         }
 
@@ -4441,8 +4224,10 @@ function openUpdateModal(groupName, memberData) {
 
     const emptyNote = document.getElementById('updateNoMembersNote');
     if (emptyNote) emptyNote.classList.toggle('hidden', memberCount > 0);
+    document.getElementById('updateNoAddableNote')?.classList.toggle('hidden', candidateCount > 0);
 
     refreshRoleAvailability('update');
+    refreshUpdateCapacity();
 
     document.getElementById('updateTeamModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -4456,8 +4241,8 @@ function closeUpdateModal() {
 function filterUpdateStudentList() {
     const q = (document.getElementById('updateStudentSearch')?.value || '').trim().toLowerCase();
     document.querySelectorAll('.update-student-row').forEach(row => {
-        // Never reveal students who are not on this team
-        if (row.dataset.isTeamMember !== '1') {
+        // Only this team's members and the students who may join it
+        if (row.dataset.isTeamMember !== '1' && row.dataset.isCandidate !== '1') {
             row.classList.add('hidden');
             return;
         }
@@ -4500,13 +4285,56 @@ function onUpdateRoleToggle(roleCb) {
 function onUpdateMemberToggle(checkbox) {
     const card = checkbox.closest('.update-student-row');
     if (!card) return;
-    const onBadge = card.querySelector('.update-on-team-badge');
-    if (onBadge) onBadge.classList.toggle('hidden', !checkbox.checked);
+    const isCandidate = card.dataset.isCandidate === '1';
+
+    // A fifth member is never let in; refreshUpdateCapacity() normally has the
+    // box disabled before it can be ticked.
+    if (checkbox.checked && document.querySelectorAll('.update-student-checkbox:checked').length > TEAM_MEMBER_MAX) {
+        checkbox.checked = false;
+        refreshUpdateCapacity();
+        return;
+    }
+
+    const badge = card.querySelector(isCandidate ? '.update-new-badge' : '.update-on-team-badge');
+    if (badge) badge.classList.toggle('hidden', !checkbox.checked);
 
     if (!checkbox.checked) {
         card.querySelectorAll('.update-role-checkbox').forEach(cb => { cb.checked = false; });
+    } else if (isCandidate && !card.querySelector('.update-role-checkbox:checked')) {
+        // Joining with a role already picked: a seat nobody holds, or one of the
+        // extra seats a short team handed a member.
+        if (!takeSpareSeat('update', card)) {
+            assignDefaultRoleToCard(card, TEAM_DEFAULT_ROLES[nextDefaultRoleIndex('update')]);
+        }
     }
     refreshRoleAvailability('update');
+    refreshUpdateCapacity();
+}
+
+/* Headcount against the 4-member cap. At 4, every student not yet on the team is
+   locked out of Add Students and the full-team notice shows. */
+function refreshUpdateCapacity() {
+    const count = document.querySelectorAll('.update-student-checkbox:checked').length;
+    const full = count >= TEAM_MEMBER_MAX;
+    const left = Math.max(0, TEAM_MEMBER_MAX - count);
+
+    const badge = document.getElementById('updateCapacityBadge');
+    if (badge) {
+        badge.textContent = count + ' of ' + TEAM_MEMBER_MAX + ' members'
+            + (full ? ' · Full' : ' · ' + left + ' slot' + (left === 1 ? '' : 's') + ' left');
+        badge.classList.toggle('is-full', full);
+    }
+    const bar = document.getElementById('updateCapacityBar');
+    if (bar) bar.style.width = Math.min(100, (count / TEAM_MEMBER_MAX) * 100) + '%';
+    document.getElementById('updateFullNote')?.classList.toggle('hidden', !full);
+
+    document.querySelectorAll('.update-student-row[data-is-candidate="1"]').forEach(row => {
+        const cb = row.querySelector('.update-student-checkbox');
+        const locked = full && cb && !cb.checked;
+        if (cb) cb.disabled = locked;
+        row.classList.toggle('is-locked', !!locked);
+        row.title = locked ? 'This team is already full. Maximum of 4 members allowed.' : '';
+    });
 }
 
 // ── Task Assignment Form ───────────────────────
@@ -4837,12 +4665,8 @@ document.addEventListener('change', function(e) {
             currentCreateTeamMode = 'single';
         @endif
         initTeamSetupScreen();
-        @if($errors->any() && old('_form_source') === 'insert_student')
-            switchCreateModalTab('insert');
-        @endif
         // Reflect the roles old() restored into the form as already-taken.
         refreshRoleAvailability('create');
-        refreshRoleAvailability('insert');
     }
     // "Team Setup" from Activity Logs still arrives as ?create=1
     @if(request()->boolean('create'))
