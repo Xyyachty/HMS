@@ -2075,6 +2075,16 @@ class FacultyController extends Controller
             }
         }
 
+        // Everything else the team owns — concepts, tasks, site, bookings — is keyed
+        // by name, so it follows the rename. Left behind, a submitted concept read as
+        // never submitted and Set Task stayed locked for the team.
+        if ($groupName !== $validated['group_name']) {
+            foreach (Group::teamOwnedTables() as $table) {
+                DB::table($table)->where('faculty_id', $facultyId)->where('group_name', $groupName)
+                    ->update(['group_name' => $validated['group_name']]);
+            }
+        }
+
         // A reshuffle can hand Front Desk to somebody new, and they need the task.
         // Existing rows are left alone, so a submitted concept stays submitted.
         HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);

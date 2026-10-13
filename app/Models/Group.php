@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class Group extends Model
@@ -72,6 +74,34 @@ class Group extends Model
         }
 
         return $slug;
+    }
+
+    /**
+     * Every table that owns rows by team: the ones carrying faculty_id and group_name.
+     *
+     * Read from the schema rather than listed, so a table added later follows a team
+     * through a rename or a handover without anyone remembering to add it here.
+     *
+     * @return array<int, string>
+     */
+    public static function teamOwnedTables(): array
+    {
+        // On PostgreSQL getTables() lists every schema (Supabase's auth and
+        // storage too); only the app's own tables are team-owned.
+        $schema = DB::getDriverName() === 'pgsql' ? DB::scalar('select current_schema()') : null;
+        $tables = [];
+
+        foreach (Schema::getTables() as $table) {
+            if ($schema !== null && ($table['schema'] ?? null) !== $schema) {
+                continue;
+            }
+            $columns = Schema::getColumnListing($table['name']);
+            if (in_array('faculty_id', $columns, true) && in_array('group_name', $columns, true)) {
+                $tables[] = $table['name'];
+            }
+        }
+
+        return $tables;
     }
 
     /** The team's slug, minting one on first ask if the row predates the column. */

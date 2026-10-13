@@ -325,19 +325,9 @@ class FacultyClass extends Model
             Student::whereIn('user_information_id', $studentIds)->update(['faculty_id' => $toId]);
 
             if ($teams !== []) {
-                // On PostgreSQL getTables() lists every schema (Supabase's auth and
-                // storage too); only the app's own tables are team-owned.
-                $schema = DB::getDriverName() === 'pgsql' ? DB::scalar('select current_schema()') : null;
-                foreach (\Illuminate\Support\Facades\Schema::getTables() as $table) {
-                    if ($schema !== null && ($table['schema'] ?? null) !== $schema) {
-                        continue;
-                    }
-                    $name = $table['name'];
-                    $columns = \Illuminate\Support\Facades\Schema::getColumnListing($name);
-                    if (in_array('faculty_id', $columns, true) && in_array('group_name', $columns, true)) {
-                        DB::table($name)->where('faculty_id', $fromId)->whereIn('group_name', $teams)
-                            ->update(['faculty_id' => $toId]);
-                    }
+                foreach (Group::teamOwnedTables() as $name) {
+                    DB::table($name)->where('faculty_id', $fromId)->whereIn('group_name', $teams)
+                        ->update(['faculty_id' => $toId]);
                 }
             }
 
