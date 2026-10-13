@@ -2221,6 +2221,8 @@ class FacultyController extends Controller
         // (team, title) pairs the post asked for that the team already has, so the
         // faculty is told what was left alone rather than it vanishing quietly.
         $alreadyHeld = [];
+        // (team, title) pairs already held whose due date this post moved.
+        $dueUpdated = [];
 
         // Check if any tasks were selected
         $tasksCreated = 0;
@@ -2253,13 +2255,26 @@ class FacultyController extends Controller
                         $description = $validated['task_descriptions'][$role][$index] ?? null;
 
                         if ($title) {
-                            /* Already given to this team: left exactly as it stands.
-                               Re-sending it would either write a second copy of the
-                               same work beside the first, or quietly do nothing —
-                               and a student halfway through a task must not have a
-                               fresh empty one appear next to it. */
+                            /* Already given to this team: no second copy - a student
+                               halfway through a task must not have a fresh empty one
+                               appear next to it. A due date posted with it does move
+                               the deadline on the copies still being worked on, so
+                               setting a task again is how faculty changes when it is
+                               due; before this the new date was silently dropped. */
                             if (in_array(mb_strtolower($title), $heldTitlesByTeam[$groupName] ?? [], true)) {
-                                $alreadyHeld[$groupName][$title] = true;
+                                $moved = !empty($validated['due_date'])
+                                    ? Task::where('faculty_id', $facultyId)
+                                        ->where('group_name', $groupName)
+                                        ->whereRaw('LOWER(title) = ?', [mb_strtolower($title)])
+                                        ->where('status', 'active')
+                                        ->update(['due_date' => $validated['due_date']])
+                                    : 0;
+
+                                if ($moved > 0) {
+                                    $dueUpdated[$groupName][$title] = true;
+                                } else {
+                                    $alreadyHeld[$groupName][$title] = true;
+                                }
                                 continue;
                             }
 
@@ -2346,13 +2361,13 @@ class FacultyController extends Controller
         /* "Nothing was created" has two very different causes, and telling them
            apart is the whole point: an empty tick list is a mistake to correct,
            work the team already holds is the guard doing its job. */
-        if ($tasksCreated === 0 && $alreadyHeld !== []) {
+        if ($tasksCreated === 0 && $dueUpdated === [] && $alreadyHeld !== []) {
             return back()->withErrors([
                 'tasks' => $this->alreadyHeldMessage($alreadyHeld) . ' Nothing was assigned twice.',
             ])->withInput();
         }
 
-        if ($tasksCreated === 0) {
+        if ($tasksCreated === 0 && $dueUpdated === []) {
             return back()->withErrors(['tasks' => 'Please select at least one task from the checklist.'])->withInput();
         }
 
@@ -2360,10 +2375,19 @@ class FacultyController extends Controller
             ? $teamNames[0]
             : count($teamNames) . ' teams';
 
-        ActivityLog::recordFor(
-            ActivityLog::TASK_CREATED,
-            'Created ' . $tasksCreated . ' task assignment(s) for ' . $teamLabel . '.'
-        );
+        if ($tasksCreated > 0) {
+            ActivityLog::recordFor(
+                ActivityLog::TASK_CREATED,
+                'Created ' . $tasksCreated . ' task assignment(s) for ' . $teamLabel . '.'
+            );
+        }
+        $dueMessage = $dueUpdated === [] ? '' : collect($dueUpdated)
+            ->map(fn ($titles, $team) => $team . ': ' . collect(array_keys($titles))->map(fn ($t) => '"' . $t . '"')->join(', ', ' and '))
+            ->prepend('Due date updated for')
+            ->join(' ') . '.';
+        if ($dueUpdated !== []) {
+            ActivityLog::recordFor(ActivityLog::TASK_CREATED, $dueMessage);
+        }
 
         Notifier::tasksAssigned(auth()->user(), $assignedCounts);
 
@@ -2385,9 +2409,12 @@ class FacultyController extends Controller
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'create_task',
             'class' => $teamClassLetter ?: $request->input('class'),
-        ]))->with('success', $tasksCreated . ' task(s) assigned to ' . $teamLabel . '.'
-            . ($alreadyHeld !== [] ? ' ' . $this->alreadyHeldMessage($alreadyHeld) : ''))
-          ->with('success_title', $tasksCreated === 1 ? 'Task Assigned' : 'Tasks Assigned')
+        ]))->with('success', trim(
+                ($tasksCreated > 0 ? $tasksCreated . ' task(s) assigned to ' . $teamLabel . '. ' : '')
+                . $dueMessage
+                . ($alreadyHeld !== [] ? ' ' . $this->alreadyHeldMessage($alreadyHeld) : '')
+            ))
+          ->with('success_title', $tasksCreated === 0 ? 'Due Date Updated' : ($tasksCreated === 1 ? 'Task Assigned' : 'Tasks Assigned'))
           // Stays up until OK: the message can name tasks that were skipped.
           ->with('success_confirm', true);
     }

@@ -4710,7 +4710,9 @@ function applyStepLocks() {
             + (locked.length === 1 ? ' has' : ' have') + ' not submitted a hotel concept yet.');
     }
 
-    const isLocked = (box) => (locked.length > 0 && box.dataset.concept !== '1') || heldByEverySelectedTeam(box.dataset.title);
+    // A task the team already holds stays tickable: setting it again sends no
+    // second copy, but moves its due date to the one on this form.
+    const isLocked = (box) => locked.length > 0 && box.dataset.concept !== '1';
 
     const held = new Set();
     document.querySelectorAll('.task-step-check').forEach((box) => {
@@ -4719,7 +4721,7 @@ function applyStepLocks() {
         // A box that just locked must not stay ticked, or the form would post
         // what the server is about to refuse.
         if (lockedBox && box.checked) box.checked = false;
-        if (lockedBox && heldByEverySelectedTeam(box.dataset.title)) held.add(box.dataset.title);
+        if (!lockedBox && box.checked && heldByEverySelectedTeam(box.dataset.title)) held.add(box.dataset.title);
     });
 
     // A card dims only once every activity in it is locked — TASK 01 keeps its
@@ -4738,7 +4740,7 @@ function applyStepLocks() {
     if (held.size) {
         reasons.push(Array.from(held).join(', ') + (held.size === 1 ? ' is' : ' are')
             + ' already assigned' + (selectedTeams.length === 1 ? ' to ' + selectedTeams[0] : ' to every team picked')
-            + ' and cannot be sent again.');
+            + '. No second copy is sent; set a due date below to change ' + (held.size === 1 ? 'its' : 'their') + ' deadline.');
     }
 
     if (note) {
