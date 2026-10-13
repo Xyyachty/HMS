@@ -189,7 +189,7 @@ class HotelSimulationAuth
             'roles' => $roleKeys,
             // Their Simulation seat, which faculty may have set apart from the
             // seat above. The Simulation access checks expand this one.
-            'simulation_roles' => array_values(array_filter([SimulationPhase::seatFor($membership)])),
+            'simulation_roles' => SimulationPhase::seatsFor($membership),
             'role_label' => $roleLabels ? implode(', ', $roleLabels) : 'Staff',
             'group_name' => $ctx['group_name'],
             'faculty_id' => $ctx['faculty_id'],

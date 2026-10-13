@@ -161,24 +161,34 @@ class SimulationPhase
     }
 
     /**
-     * The one Simulation seat this member holds: what faculty set, or else the
-     * key of their Customization seat — the Housekeeping & Maintenance seat
-     * defaults to Housekeeping, Room Management to Room & Maintenance.
+     * The Simulation seats this member holds: what faculty set, or else the keys
+     * of their Customization seats — the Housekeeping & Maintenance seat defaults
+     * to Housekeeping, Room Management to Room & Maintenance.
+     *
+     * One seat on a full team. A member of a team short of students can run
+     * several desks, stored comma-separated in simulation_role.
+     *
+     * @return list<string>
      */
-    public static function seatFor(?StudentGroup $membership): ?string
+    public static function seatsFor(?StudentGroup $membership): array
     {
         if (!$membership) {
-            return null;
+            return [];
         }
 
-        $set = self::supported() ? $membership->simulation_role : null;
-        if ($set && isset(HotelTemplateBuilder::SIMULATION_ROLES[$set])) {
+        $valid = fn (array $keys) => array_values(array_unique(array_filter(
+            $keys,
+            fn ($key) => isset(HotelTemplateBuilder::SIMULATION_ROLES[$key])
+        )));
+
+        $set = $valid(explode(',', (string) (self::supported() ? $membership->simulation_role : '')));
+        if ($set !== []) {
             return $set;
         }
 
-        $seats = $membership->roles->pluck('role')->filter()->values()->all();
-
-        return $seats[0] ?? null;
+        // Unfiltered: a team built before seats can hold e.g. "maintenance", and
+        // rolesForPhase passes such keys through so those teams keep working.
+        return $membership->roles->sortBy('student_group_role_id')->pluck('role')->filter()->unique()->values()->all();
     }
 
     public static function rolesConfirmed(?string $groupName, ?int $facultyId): bool

@@ -1711,7 +1711,7 @@ class FacultyController extends Controller
 
         return \Illuminate\Support\Arr::except($phase, 'items') + [
             'simulation_roles' => $members
-                ->mapWithKeys(fn (StudentGroup $m) => [(string) $m->student_id => \App\Support\SimulationPhase::seatFor($m)])
+                ->mapWithKeys(fn (StudentGroup $m) => [(string) $m->student_id => \App\Support\SimulationPhase::seatsFor($m)])
                 ->all(),
         ];
     }
@@ -1719,8 +1719,9 @@ class FacultyController extends Controller
     /**
      * Faculty confirms who runs which Simulation desk. Saving is the
      * confirmation: the team's simulation does not open before it, even with
-     * every task approved. Each member gets exactly one desk and no desk goes
-     * to two members, so nobody is handed two simulation roles. The Customization
+     * every task approved. No desk goes to two members. On a full team each
+     * member gets exactly one desk; a team short of students still has four
+     * desks to run, so there a member may take several. The Customization
      * seats in student_group_roles are left exactly as they were.
      */
     public function storeSimulationRoles(Request $request, string $groupName)
@@ -1739,9 +1740,10 @@ class FacultyController extends Controller
             return response()->json(['error' => 'These simulation roles are already confirmed.'], 422);
         }
 
+        // One desk key per member, or a list of them (a member of a short team).
         $data = $request->validate([
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['required', 'string', Rule::in(array_keys(\App\Support\HotelTemplateBuilder::SIMULATION_ROLES))],
+            'roles.*' => ['required'],
         ]);
 
         $members = StudentGroup::where('group_name', $groupName)
@@ -1753,18 +1755,28 @@ class FacultyController extends Controller
             return response()->json(['error' => 'Team not found.'], 404);
         }
 
-        $roles = collect($data['roles'])->mapWithKeys(fn ($seat, $studentId) => [(string) $studentId => $seat]);
+        $deskKeys = array_keys(\App\Support\HotelTemplateBuilder::SIMULATION_ROLES);
+        $roles = collect($data['roles'])->mapWithKeys(fn ($seats, $studentId) => [
+            (string) $studentId => array_values(array_unique(array_filter((array) $seats, 'is_string'))),
+        ]);
 
-        if ($roles->keys()->sort()->values()->all() !== $members->keys()->sort()->values()->all()) {
-            return response()->json(['error' => 'Give every member of the team one simulation role.'], 422);
+        if ($roles->keys()->sort()->values()->all() !== $members->keys()->sort()->values()->all()
+            || $roles->contains(fn ($seats) => $seats === [])) {
+            return response()->json(['error' => 'Give every member of the team a simulation role.'], 422);
         }
-        if ($roles->unique()->count() !== $roles->count()) {
+        if ($roles->flatten()->diff($deskKeys)->isNotEmpty()) {
+            return response()->json(['error' => 'Pick a valid simulation role for each member.'], 422);
+        }
+        if ($roles->flatten()->unique()->count() !== $roles->flatten()->count()) {
             return response()->json(['error' => 'Each simulation role can go to one student only.'], 422);
+        }
+        if ($members->count() >= count($deskKeys) && $roles->contains(fn ($seats) => count($seats) > 1)) {
+            return response()->json(['error' => 'A team of 4 gives each student one simulation role. Only a team with fewer members can give a student more than one.'], 422);
         }
 
         DB::transaction(function () use ($members, $roles, $groupName, $facultyId) {
             foreach ($members as $studentId => $member) {
-                $member->forceFill(['simulation_role' => $roles[$studentId]])->save();
+                $member->forceFill(['simulation_role' => implode(',', $roles[$studentId])])->save();
             }
 
             Group::firstOrCreate(['group_name' => $groupName, 'faculty_id' => $facultyId])

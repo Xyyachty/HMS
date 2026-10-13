@@ -51,7 +51,7 @@ class HotelTemplateBuilder
     /**
      * Simulation: four desks. Room Management runs Maintenance as one desk, and
      * Housekeeping stands alone. Keyed by the Simulation seat, which is stored
-     * apart from the Customization seat — see SimulationPhase::seatFor().
+     * apart from the Customization seat — see SimulationPhase::seatsFor().
      */
     public const SIMULATION_ROLES = [
         'front_desk' => ['front_desk'],
@@ -449,7 +449,7 @@ class HotelTemplateBuilder
     /** @return list<string> */
     public static function simulationRoleKeys(StudentGroup $membership): array
     {
-        return self::rolesForPhase(array_filter([SimulationPhase::seatFor($membership)]), self::PHASE_SIMULATION);
+        return self::rolesForPhase(SimulationPhase::seatsFor($membership), self::PHASE_SIMULATION);
     }
 
     /** Label for a stored seat in a phase, falling back to the plain role name. */

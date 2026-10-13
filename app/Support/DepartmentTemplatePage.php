@@ -141,7 +141,7 @@ class DepartmentTemplatePage
         ) + [
             'builderRole' => $role,
             // The Simulation seat, kept apart from the Customization seats above.
-            'simulationSeats' => array_values(array_filter([SimulationPhase::seatFor($groupMembership)])),
+            'simulationSeats' => SimulationPhase::seatsFor($groupMembership),
         ];
     }
 }

@@ -7,11 +7,12 @@
         $groupMembership?->group_name,
         $groupMembership ? (int) $groupMembership->faculty_id : null
     );
-    $simSeat = \App\Support\SimulationPhase::seatFor($groupMembership);
+    // Several seats for a member of a team short of students.
+    $simSeats = \App\Support\SimulationPhase::seatsFor($groupMembership);
     // A seat can cover more than one role (Room & Maintenance), so Start
     // Simulation becomes a menu when there is more than one page to open.
-    $simEntries = $simSeat
-        ? collect(\App\Support\HotelTemplateBuilder::modulesForRoles([], [$simSeat]))->filter(fn ($m) => !empty($m['simulation_url']))->values()
+    $simEntries = $simSeats
+        ? collect(\App\Support\HotelTemplateBuilder::modulesForRoles([], $simSeats))->filter(fn ($m) => !empty($m['simulation_url']))->values()
         : collect();
 @endphp
 @if($groupMembership && $simPhase['required'] > 0)
@@ -23,10 +24,10 @@
                 </p>
                 <h3 class="text-base font-bold text-[#181818]">Team {{ $groupMembership->group_name }} — Hotel Customization</h3>
             </div>
-            @if($simSeat)
+            @if($simSeats)
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-[#E7E1DD] bg-[#F5F2EF] text-[11px] font-bold text-slate-600">
                     <span class="iconify text-sm" data-icon="mdi:bell-ring-outline"></span>
-                    Simulation role: {{ \App\Support\HotelTemplateBuilder::seatLabel($simSeat, \App\Support\HotelTemplateBuilder::PHASE_SIMULATION) }}
+                    {{ count($simSeats) > 1 ? 'Simulation roles' : 'Simulation role' }}: {{ collect($simSeats)->map(fn ($seat) => \App\Support\HotelTemplateBuilder::seatLabel($seat, \App\Support\HotelTemplateBuilder::PHASE_SIMULATION))->implode(', ') }}
                 </span>
             @endif
         </div>

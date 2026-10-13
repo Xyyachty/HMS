@@ -402,7 +402,7 @@ class Notifier
      * own desk, and whether the team can start now or is still waiting on
      * approvals, so nobody has to open the dashboard to find out.
      *
-     * @param  array<int|string, string>  $seatByStudentId  student id => Simulation seat
+     * @param  array<int|string, list<string>>  $seatByStudentId  student id => Simulation seat(s)
      */
     public static function simulationRolesConfirmed(?User $actor, array $seatByStudentId): void
     {
@@ -410,14 +410,19 @@ class Notifier
             $userIds = Student::whereIn('user_information_id', array_keys($seatByStudentId))
                 ->pluck('user_id', 'user_information_id');
 
-            foreach ($seatByStudentId as $studentId => $seat) {
-                $label = HotelTemplateBuilder::seatLabel($seat, HotelTemplateBuilder::PHASE_SIMULATION);
+            foreach ($seatByStudentId as $studentId => $seats) {
+                // A member of a team short of students can run several desks.
+                $seats = (array) $seats;
+                $label = collect($seats)
+                    ->map(fn ($seat) => HotelTemplateBuilder::seatLabel($seat, HotelTemplateBuilder::PHASE_SIMULATION))
+                    ->join(', ', ' and ');
+                $plural = count($seats) > 1;
 
                 static::push(
                     array_filter([$userIds[$studentId] ?? null]),
                     UserNotification::SIMULATION_ROLES,
-                    'Your simulation role: ' . $label,
-                    "Your faculty confirmed your team's simulation roles. You run the " . $label . ' desk. '
+                    ($plural ? 'Your simulation roles: ' : 'Your simulation role: ') . $label,
+                    "Your faculty confirmed your team's simulation roles. You run the " . $label . ($plural ? ' desks. ' : ' desk. ')
                         . 'Press Start Simulation on your Tasks page whenever you are ready.',
                     route('students.dashboard', ['section' => 'tasks']),
                     $actor

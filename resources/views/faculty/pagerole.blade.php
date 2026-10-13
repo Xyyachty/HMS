@@ -5064,8 +5064,10 @@ function renderTeamApproval() {
         + '</div>';
 }
 
-/* One Simulation desk per student. Their Customization role is not touched;
-   saving is faculty's confirmation, which the simulation waits for. */
+/* Simulation desks per student: one each on a full team, several on a team
+   short of students, and never one desk for two students. Their Customization
+   role is not touched; saving is faculty's confirmation, which the simulation
+   waits for. */
 function renderTeamSimRoles() {
     const box = document.getElementById('teamModalSimRoles');
     if (!box) return;
@@ -5076,25 +5078,34 @@ function renderTeamSimRoles() {
     const current = a.simulation_roles || {};
     // Confirmed is final: the students were told their desks, so nothing here moves.
     const locked = !!a.roles_confirmed;
-    const options = (selected) => Object.keys(SIM_SEAT_LABELS).map((key) =>
-        '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>' + escHtml(SIM_SEAT_LABELS[key]) + '</option>'
+    const shortTeam = teamModalMembers.length < Object.keys(SIM_SEAT_LABELS).length;
+    const seatsOf = (m) => [].concat(current[String(m.student_id)] || []);
+    const desks = (m) => Object.keys(SIM_SEAT_LABELS).map((key) =>
+        '<label style="display:inline-flex; align-items:center; gap:.35rem; padding:.3rem .55rem; border:1px solid #E4E2E0; border-radius:.6rem; font-size:12px; font-weight:600; color:#4A4643; background:' + (locked ? '#F3F2F1; cursor:not-allowed;' : '#fff; cursor:pointer;') + '">'
+            + '<input type="checkbox" data-sim-role="' + Number(m.student_id) + '" value="' + key + '"'
+                + (seatsOf(m).includes(key) ? ' checked' : '') + (locked ? ' disabled' : '')
+                + ' onchange="onSimDeskToggle(this)" style="accent-color:#374151;">'
+            + escHtml(SIM_SEAT_LABELS[key])
+        + '</label>'
     ).join('');
 
     box.innerHTML = '<p class="tm-section-title"><span class="iconify" data-icon="mdi:bell-ring-outline"></span>Simulation Roles</p>'
-        + '<p class="tm-muted mt-1">Each student runs one desk in the Hotel Simulation. Their customization role stays as it is. '
+        + '<p class="tm-muted mt-1">'
+            + (shortTeam
+                ? 'This team has fewer than 4 students, so a student can run more than one desk. Each desk goes to one student. '
+                : 'Each student runs one desk in the Hotel Simulation. ')
+            + 'Their customization role stays as it is. '
             + (a.roles_confirmed
                 ? 'You have confirmed these roles.'
                 : 'Not confirmed yet: the team cannot start the simulation until you confirm them.')
         + '</p>'
-        + '<div style="display:grid; gap:.6rem; margin-top:.75rem;">'
+        + '<div style="display:grid; gap:.75rem; margin-top:.75rem;">'
         + teamModalMembers.map((m) =>
-            '<label style="display:flex; align-items:center; justify-content:space-between; gap:.75rem;">'
-                + '<span class="tm-ellipsis" style="font-size:13px; font-weight:700; color:#181818;">' + escHtml(m.name)
-                    + ' <span class="tm-muted">(' + escHtml((m.role_labels || []).join(', ') || 'No role yet') + ')</span></span>'
-                + '<select data-sim-role="' + Number(m.student_id) + '"' + (locked ? ' disabled' : '')
-                    + ' style="height:2.1rem; border:1px solid #E4E2E0; border-radius:.6rem; padding:0 .5rem; font-size:13px; background:' + (locked ? '#F3F2F1; cursor:not-allowed;' : '#fff;') + '">'
-                    + options(current[String(m.student_id)]) + '</select>'
-            + '</label>'
+            '<div>'
+                + '<p class="tm-ellipsis" style="font-size:13px; font-weight:700; color:#181818; margin-bottom:.35rem;">' + escHtml(m.name)
+                    + ' <span class="tm-muted">(' + escHtml((m.role_labels || []).join(', ') || 'No role yet') + ')</span></p>'
+                + '<div style="display:flex; flex-wrap:wrap; gap:.4rem;">' + desks(m) + '</div>'
+            + '</div>'
         ).join('')
         + '</div>'
         + '<div id="teamSimRolesError" class="tm-alert hidden" style="margin-top:.75rem;"></div>'
@@ -5107,10 +5118,25 @@ function renderTeamSimRoles() {
         + '</div>';
 }
 
+/* A desk belongs to one student, so ticking it takes it off whoever had it.
+   On a full team a student runs one desk, so their other tick goes too. */
+function onSimDeskToggle(box) {
+    if (!box.checked) return;
+    const all = Array.from(document.querySelectorAll('#teamModalSimRoles input[data-sim-role]'));
+    const fullTeam = teamModalMembers.length >= Object.keys(SIM_SEAT_LABELS).length;
+    all.forEach((other) => {
+        if (other === box) return;
+        const sameDesk = other.value === box.value && other.dataset.simRole !== box.dataset.simRole;
+        const sameStudent = fullTeam && other.dataset.simRole === box.dataset.simRole;
+        if (sameDesk || sameStudent) other.checked = false;
+    });
+}
+
 function saveTeamSimRoles() {
     const roles = {};
-    document.querySelectorAll('#teamModalSimRoles [data-sim-role]').forEach((select) => {
-        roles[select.dataset.simRole] = select.value;
+    teamModalMembers.forEach((m) => { roles[String(m.student_id)] = []; });
+    document.querySelectorAll('#teamModalSimRoles input[data-sim-role]:checked').forEach((box) => {
+        (roles[box.dataset.simRole] = roles[box.dataset.simRole] || []).push(box.value);
     });
     const err = document.getElementById('teamSimRolesError');
     const btn = document.getElementById('teamSimRolesSave');
@@ -5144,7 +5170,7 @@ function saveTeamSimRoles() {
             const rows = teamModalMembers.map((m) =>
                 '<li style="display:flex; justify-content:space-between; gap:1rem; padding:.35rem 0; border-top:1px solid #EFEFEF;">'
                     + '<span style="font-weight:700; color:#181818;">' + escHtml(m.name) + '</span>'
-                    + '<span style="color:#5F5A55;">' + escHtml(SIM_SEAT_LABELS[seats[String(m.student_id)]] || 'None') + '</span>'
+                    + '<span style="color:#5F5A55;">' + escHtml([].concat(seats[String(m.student_id)] || []).map((k) => SIM_SEAT_LABELS[k] || k).join(', ') || 'None') + '</span>'
                 + '</li>'
             ).join('');
             const ready = 'The team can run the simulation now; customization approval is at '

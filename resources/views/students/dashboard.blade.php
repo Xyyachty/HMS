@@ -1054,7 +1054,7 @@
                     // Simulation reads the member's own Simulation seat, not the seats above.
                     $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles(
                         $studentRoles ?? [],
-                        array_filter([\App\Support\SimulationPhase::seatFor($groupMembership)])
+                        \App\Support\SimulationPhase::seatsFor($groupMembership)
                     );
                 @endphp
                 @if(session('simulation_locked'))

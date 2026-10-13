@@ -641,7 +641,7 @@ Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('st
                 : null,
             'phase_signature' => md5(json_encode([
                 \Illuminate\Support\Arr::except($phase, 'items'),
-                \App\Support\SimulationPhase::seatFor($groupMembership),
+                \App\Support\SimulationPhase::seatsFor($groupMembership),
             ])),
             'phase_html'   => view('students.partials.simulation-phase', [
                 'groupMembership' => $groupMembership,
