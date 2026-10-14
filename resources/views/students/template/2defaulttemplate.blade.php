@@ -3984,12 +3984,16 @@ function EmptyState({ text }) {
 /* Five-slide hero. Front Desk owns Home, so these follow the exact __navLinks
    pattern — page:'home', fixed count, per-slide image replace only. */
 const DEFAULT_HERO_SLIDES = [
-  { id: 'hero-slide-1', img: 'https://picsum.photos/seed/resortlux/1200/900.jpg' },
-  { id: 'hero-slide-2', img: 'https://picsum.photos/seed/resortlobby/1200/900.jpg' },
-  { id: 'hero-slide-3', img: 'https://picsum.photos/seed/resortpool/1200/900.jpg' },
-  { id: 'hero-slide-4', img: 'https://picsum.photos/seed/resortsuite/1200/900.jpg' },
-  { id: 'hero-slide-5', img: 'https://picsum.photos/seed/resortdining/1200/900.jpg' },
+  { id: 'hero-slide-1', img: 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1600&q=80' },
+  { id: 'hero-slide-2', img: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=80' },
+  { id: 'hero-slide-3', img: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=1600&q=80' },
+  { id: 'hero-slide-4', img: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1600&q=80' },
+  { id: 'hero-slide-5', img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1600&q=80' },
 ];
+// The first edit to any slide saves all five, so a team that replaced one
+// before these photos existed still has the old random picsum shots stored
+// for the rest. Those fall back to the defaults above.
+const isOldDefaultSlideImg = (url) => /^https:\/\/picsum\.photos\/seed\/resort/.test(url || '');
 
 /* Every slide at once. The old "Change image" button replaced whichever slide
    the carousel happened to be showing, so replacing a particular photograph
@@ -4480,7 +4484,9 @@ function HeroSlider({ slides, canEdit, brandName }) {
     const saved = Array.isArray(slides)
       ? (slides.find((slide) => slide && slide.id === defaultSlide.id) || slides[index])
       : null;
-    return Object.assign({}, defaultSlide, saved || {}, { id: defaultSlide.id });
+    const merged = Object.assign({}, defaultSlide, saved || {}, { id: defaultSlide.id });
+    if (isOldDefaultSlideImg(merged.img)) merged.img = defaultSlide.img;
+    return merged;
   });
   const [active, setActive] = useState(0);
   const [picking, setPicking] = useState(false);
