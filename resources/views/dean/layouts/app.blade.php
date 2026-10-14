@@ -167,26 +167,12 @@
                     ]))) ?: ($deanUser?->name ?? 'Dean');
                     $deanEmail = $deanUser?->email ?? 'dean@hms.edu';
                 @endphp
-                <div class="bg-white/5 rounded-2xl p-4">
-                    <div class="flex items-center gap-3 mb-3">
-                        <img src="{{ $deanUser?->avatar_url }}" class="w-10 h-10 rounded-xl border-2 border-white/20 object-cover" alt="{{ $deanDisplayName }}">
-                        <div class="min-w-0">
-                            <p class="text-sm font-bold text-white truncate">{{ $deanDisplayName }}</p>
-                            <p class="text-[10px] text-white">Dean Admin</p>
-                        </div>
-                    </div>
-                    <a href="{{ route('dean.profile') }}" class="mb-2 flex items-center gap-2 text-xs font-semibold text-white hover:text-white/80 transition-colors">
-                        <span class="iconify" data-icon="mdi:account-outline"></span>
-                        My Profile
-                    </a>
-                    <form method="POST" action="{{ route('logout') }}" id="logoutForm">
-                        @csrf
-                        <button type="submit" class="flex items-center gap-2 text-xs font-semibold text-white hover:text-white/80 transition-colors">
-                            <span class="iconify" data-icon="mdi:logout"></span>
-                            Sign Out
-                        </button>
-                    </form>
-                </div>
+                @include('partials.sidebar-profile-card', [
+                    'user'        => $deanUser,
+                    'name'        => $deanDisplayName,
+                    'role'        => 'Dean Admin',
+                    'profileHref' => route('dean.profile'),
+                ])
             </div>
         </aside>
 

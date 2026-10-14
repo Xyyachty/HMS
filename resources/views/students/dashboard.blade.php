@@ -325,39 +325,13 @@
                     ?: ($authUser?->name ?? 'Student'));
         @endphp
         <div class="px-3 pb-4 border-t border-white/[0.06] pt-4">
-            <div class="relative" id="studentProfileMenu">
-                <button type="button"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.06] transition-colors"
-                        aria-haspopup="true" aria-expanded="false"
-                        onclick="toggleStudentProfileMenu()">
-                    @include('partials.user-avatar', [
-                        'user'        => $authUser,
-                        'name'        => $profileName,
-                        'size'        => 'w-9 h-9',
-                        'currentUser' => true,
-                        'extraClasses' => 'shadow-lg shadow-brand/20',
-                    ])
-                    <div class="flex-1 text-left min-w-0">
-                        <p class="text-sm font-semibold text-white truncate">{{ $profileName }}</p>
-                        <p class="text-[10px] text-white">Student</p>
-                    </div>
-                    <span class="iconify text-white text-sm transition-transform" data-icon="mdi:chevron-up" id="profileChevron"></span>
-                </button>
-                <div class="absolute bottom-full left-0 mb-2 w-full rounded-xl border border-white/10 bg-sidebar-hover shadow-2xl p-1.5 hidden" id="studentProfileDropdown" role="menu">
-                    <a href="#profile" onclick="showSection('profile'); closeStudentProfileMenu(); closeMobileSidebar();" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-white hover:bg-white/[0.06] transition-colors" role="menuitem">
-                        <span class="iconify text-base" data-icon="mdi:account-outline"></span>
-                        My Profile
-                    </a>
-                    <div class="h-px bg-white/[0.06] my-1"></div>
-                    <form method="POST" action="{{ route('logout') }}" id="logoutForm">
-                        @csrf
-                        <button type="submit" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-colors" role="menuitem">
-                            <span class="iconify text-base" data-icon="mdi:logout-variant"></span>
-                            Sign Out
-                        </button>
-                    </form>
-                </div>
-            </div>
+            @include('partials.sidebar-profile-card', [
+                'user'           => $authUser,
+                'name'           => $profileName,
+                'role'           => 'Student',
+                'profileHref'    => '#profile',
+                'profileOnclick' => "showSection('profile'); closeMobileSidebar();",
+            ])
         </div>
     </aside>
 
@@ -2693,23 +2667,6 @@
             selfPanel.classList.toggle('hidden', !isSelf);
             teamPanel.classList.toggle('hidden', isSelf);
         }
-
-        // ── Profile dropdown ──
-        function toggleStudentProfileMenu() {
-            const dd = document.getElementById('studentProfileDropdown');
-            const chevron = document.getElementById('profileChevron');
-            dd.classList.toggle('hidden');
-            chevron.style.transform = dd.classList.contains('hidden') ? '' : 'rotate(180deg)';
-        }
-        function closeStudentProfileMenu() {
-            document.getElementById('studentProfileDropdown').classList.add('hidden');
-            document.getElementById('profileChevron').style.transform = '';
-        }
-        // Close on outside click
-        document.addEventListener('click', (e) => {
-            const menu = document.getElementById('studentProfileMenu');
-            if (!menu.contains(e.target)) closeStudentProfileMenu();
-        });
 
         // ── Mobile sidebar ──
         function openMobileSidebar() {

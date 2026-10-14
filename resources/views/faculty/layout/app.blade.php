@@ -145,30 +145,14 @@
                     $authUser->first_name ?? null,
                     $authUser->last_name ?? null,
                 ]))) ?: ($authUser->name ?? 'Faculty');
-                $avatarUrl = $authUser?->avatar_url
-                    ?? ('https://ui-avatars.com/api/?name=' . urlencode($displayName) . '&background=7B1730&color=fff&size=40&font-size=0.4');
             @endphp
             <div class="p-4 border-t border-white/10 shrink-0">
-                <div class="bg-white/5 rounded-2xl p-4">
-                    <div class="flex items-center gap-3 mb-3">
-                        <img src="{{ $avatarUrl }}" alt="{{ $displayName }}" class="w-10 h-10 rounded-xl border-2 border-white/20 object-cover">
-                        <div class="min-w-0">
-                            <p class="text-sm font-bold text-white truncate">{{ $displayName }}</p>
-                            <p class="text-[10px] text-white">Faculty</p>
-                        </div>
-                    </div>
-                    <a href="{{ route('faculty.profile') }}" class="mb-2 flex items-center gap-2 text-xs font-semibold text-white hover:text-white/80 transition-colors">
-                        <span class="iconify" data-icon="mdi:account-outline"></span>
-                        My Profile
-                    </a>
-                    <form method="POST" action="{{ route('logout') }}" id="logoutForm">
-                        @csrf
-                        <button type="submit" class="flex items-center gap-2 text-xs font-semibold text-white hover:text-white/80 transition-colors">
-                            <span class="iconify" data-icon="mdi:logout"></span>
-                            Sign Out
-                        </button>
-                    </form>
-                </div>
+                @include('partials.sidebar-profile-card', [
+                    'user'        => $authUser,
+                    'name'        => $displayName,
+                    'role'        => 'Faculty',
+                    'profileHref' => route('faculty.profile'),
+                ])
             </div>
         </aside>
 
