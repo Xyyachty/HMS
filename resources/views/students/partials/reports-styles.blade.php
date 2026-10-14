@@ -14,14 +14,14 @@
     background: transparent; color: var(--accent);
     font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
     font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
+    padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 0.375rem;
     cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
     text-decoration: none;
   }
   .btn-outline:hover { background: var(--accent); color: var(--bg); transform: translateY(-1px); }
   .booking-input {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
+    border-radius: 0.375rem; padding: 0.7rem 0.9rem; color: var(--fg);
     font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; width: 100%;
   }
@@ -29,7 +29,7 @@
   .booking-input::placeholder { color: var(--fg-muted); opacity: 0.5; }
   .rp-tile {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 12px; padding: 0.9rem 1.05rem;
+    border-radius: 0.75rem; padding: 0.9rem 1.05rem;
   }
   .rp-tile-label {
     display: block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em;
@@ -92,7 +92,7 @@
   }
 
   .rp-badge {
-    display: inline-block; padding: 0.25rem 0.7rem; border-radius: 4px;
+    display: inline-block; padding: 0.25rem 0.7rem; border-radius: 0.25rem;
     font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
     border: 1px solid transparent;
   }

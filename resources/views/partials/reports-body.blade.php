@@ -38,14 +38,14 @@
     .rp-filter {
         height: 2.5rem; min-width: 11rem; max-width: 100%; padding: 0 .75rem;
         border-radius: .75rem; border: 1px solid #E4E2E0; background: #fff;
-        font-size: 12px; font-weight: 600; color: #5A3941;
+        font-size: 0.75rem; font-weight: 600; color: #5A3941;
     }
     .rp-filter:focus { outline: none; border-color: #8A817A; box-shadow: 0 0 0 3px rgba(138,129,122,.2); }
     .rp-filter.is-set { border-color: #8A817A; color: #181818; background: #F3F2F1; }
     .rp-filter-clear {
         display: inline-flex; align-items: center; gap: .375rem; height: 2.5rem; padding: 0 .875rem;
         border-radius: .75rem; border: 1px solid #E4E2E0; background: #fff;
-        font-size: 12px; font-weight: 700; color: #6B4A54;
+        font-size: 0.75rem; font-weight: 700; color: #6B4A54;
     }
     .rp-filter-clear:hover { color: #181818; border-color: #8A817A; }
 
@@ -65,13 +65,13 @@
     }
 
     /* Utilities the frozen build never emitted. */
-    .text-\[10px\] { font-size: 10px; line-height: 1.35; }
-    .text-\[11px\] { font-size: 11px; line-height: 1.4; }
-    .text-\[12px\] { font-size: 12px; line-height: 1.45; }
-    .text-\[13px\] { font-size: 13px; line-height: 1.45; }
-    .text-\[15px\] { font-size: 15px; line-height: 1.5; }
-    .text-\[28px\] { font-size: 28px; line-height: 1.1; }
-    .text-\[30px\] { font-size: 30px; line-height: 1.15; }
+    .text-\[10px\], .text-\[0\.625rem\] { font-size: 0.625rem; line-height: 1.35; }
+    .text-\[11px\], .text-\[0\.6875rem\] { font-size: 0.6875rem; line-height: 1.4; }
+    .text-\[12px\], .text-\[0\.75rem\] { font-size: 0.75rem; line-height: 1.45; }
+    .text-\[13px\], .text-\[0\.8125rem\] { font-size: 0.8125rem; line-height: 1.45; }
+    .text-\[15px\], .text-\[0\.9375rem\] { font-size: 0.9375rem; line-height: 1.5; }
+    .text-\[28px\], .text-\[1\.75rem\] { font-size: 1.75rem; line-height: 1.1; }
+    .text-\[30px\], .text-\[1\.875rem\] { font-size: 1.875rem; line-height: 1.15; }
     .gap-1\.5 { gap: .375rem; }
     .gap-2\.5 { gap: .625rem; }
     .mt-0\.5 { margin-top: .125rem; }
@@ -139,12 +139,12 @@
 
     <div class="flex items-center gap-3 rp-no-print">
         {{-- The period the rows on screen cover, after the filters below. --}}
-        <span class="inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 bg-white text-[13px] font-semibold text-slate-600 whitespace-nowrap">
+        <span class="inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 bg-white text-[0.8125rem] font-semibold text-slate-600 whitespace-nowrap">
             <span class="iconify text-base text-slate-400" data-icon="mdi:calendar-range-outline"></span>
             {{ $reportFrom ? $reportFrom->format('M j, Y') : '—' }} – {{ $reportTo ? $reportTo->format('M j, Y') : '—' }}
         </span>
         <button type="button" onclick="window.print()"
-                class="inline-flex items-center gap-2 h-11 px-5 rounded-xl brand-gradient text-white text-[13px] font-bold shadow-md shadow-brand/20 hover:opacity-95 transition">
+                class="inline-flex items-center gap-2 h-11 px-5 rounded-xl brand-gradient text-white text-[0.8125rem] font-bold shadow-md shadow-brand/20 hover:opacity-95 transition">
             <span class="iconify text-base" data-icon="mdi:download-outline"></span>
             Export Report
         </button>
@@ -157,7 +157,7 @@
      tab rides along in "tab" and is reopened after the reload. --}}
 <form method="GET" action="{{ url()->current() }}" id="reportFilters" class="rp-filters rp-no-print mb-5">
     <input type="hidden" name="tab" id="reportFilterTab" value="{{ request('tab', 'overview') }}">
-    <span class="inline-flex items-center gap-1.5 text-[12px] font-bold text-slate-500">
+    <span class="inline-flex items-center gap-1.5 text-[0.75rem] font-bold text-slate-500">
         <span class="iconify text-base" data-icon="mdi:filter-variant"></span> Filter by
     </span>
     <select name="team" class="rp-filter {{ $filters['team'] ? 'is-set' : '' }}" onchange="this.form.submit()" aria-label="Filter by team">
@@ -193,8 +193,8 @@
                 <span class="iconify text-brand text-2xl" data-icon="mdi:account-multiple-outline"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[13px] text-slate-500 font-semibold">Total Students</p>
-                <p class="text-[28px] font-extrabold text-slate-900 leading-none mt-1">{{ $totalStudents }}</p>
+                <p class="text-[0.8125rem] text-slate-500 font-semibold">Total Students</p>
+                <p class="text-[1.75rem] font-extrabold text-slate-900 leading-none mt-1">{{ $totalStudents }}</p>
             </div>
         </div>
         <div class="rounded-2xl border border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
@@ -202,8 +202,8 @@
                 <span class="iconify text-blue-500 text-2xl" data-icon="mdi:account-group-outline"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[13px] text-slate-500 font-semibold">Total Teams</p>
-                <p class="text-[28px] font-extrabold text-slate-900 leading-none mt-1">{{ $totalTeams }}</p>
+                <p class="text-[0.8125rem] text-slate-500 font-semibold">Total Teams</p>
+                <p class="text-[1.75rem] font-extrabold text-slate-900 leading-none mt-1">{{ $totalTeams }}</p>
             </div>
         </div>
         <div class="rounded-2xl border border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
@@ -211,8 +211,8 @@
                 <span class="iconify text-violet-500 text-2xl" data-icon="mdi:clipboard-check-outline"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[13px] text-slate-500 font-semibold">Total Activities</p>
-                <p class="text-[28px] font-extrabold text-slate-900 leading-none mt-1">{{ $totalActivities }}</p>
+                <p class="text-[0.8125rem] text-slate-500 font-semibold">Total Activities</p>
+                <p class="text-[1.75rem] font-extrabold text-slate-900 leading-none mt-1">{{ $totalActivities }}</p>
             </div>
         </div>
         <div class="rounded-2xl border border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
@@ -220,8 +220,8 @@
                 <span class="iconify text-amber-500 text-2xl" data-icon="mdi:star-outline"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[13px] text-slate-500 font-semibold">Overall Completion Rate</p>
-                <p class="text-[28px] font-extrabold text-slate-900 leading-none mt-1">{{ $overallRate }}%</p>
+                <p class="text-[0.8125rem] text-slate-500 font-semibold">Overall Completion Rate</p>
+                <p class="text-[1.75rem] font-extrabold text-slate-900 leading-none mt-1">{{ $overallRate }}%</p>
             </div>
         </div>
     </div>
@@ -231,26 +231,26 @@
         <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
             <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <p class="text-[15px] font-bold text-slate-800">Top Performing Students</p>
-                    <p class="text-[12px] text-slate-400">Students with the highest activity completion rate.</p>
+                    <p class="text-[0.9375rem] font-bold text-slate-800">Top Performing Students</p>
+                    <p class="text-[0.75rem] text-slate-400">Students with the highest activity completion rate.</p>
                 </div>
                 <button type="button" onclick="switchReportTab('students')"
-                        class="h-9 px-3.5 rounded-xl border border-slate-200 text-[12px] font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition shrink-0 rp-no-print">View All</button>
+                        class="h-9 px-3.5 rounded-xl border border-slate-200 text-[0.75rem] font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition shrink-0 rp-no-print">View All</button>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
                     <thead>
                         <tr class="border-b border-slate-100 bg-slate-50/60">
-                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500 w-10">#</th>
-                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Student Name</th>
-                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Team</th>
-                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Completion Rate</th>
+                            <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500 w-10">#</th>
+                            <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Student Name</th>
+                            <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Team</th>
+                            <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Completion Rate</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($rpTopStudents as $row)
                             <tr class="border-b border-slate-100">
-                                <td class="px-4 py-3 text-[13px] font-semibold text-slate-400">{{ $loop->iteration }}</td>
+                                <td class="px-4 py-3 text-[0.8125rem] font-semibold text-slate-400">{{ $loop->iteration }}</td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2.5 min-w-0">
                                         @include('partials.user-avatar', [
@@ -258,23 +258,23 @@
                                             'name'         => $row['name'],
                                             'size'         => 'w-8 h-8',
                                             'rounded'      => 'rounded-full',
-                                            'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold',
+                                            'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold',
                                         ])
-                                        <span class="text-[13px] font-semibold text-slate-700 truncate">{{ $row['name'] }}</span>
+                                        <span class="text-[0.8125rem] font-semibold text-slate-700 truncate">{{ $row['name'] }}</span>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 text-[13px] text-slate-500 truncate">{{ $row['team'] }}</td>
+                                <td class="px-4 py-3 text-[0.8125rem] text-slate-500 truncate">{{ $row['team'] }}</td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2.5">
                                         <span class="rp-track" style="flex: 1 1 auto">
                                             <span style="width: {{ $row['percent'] }}%; background: {{ $rpBarColor }}"></span>
                                         </span>
-                                        <span class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $row['percent'] }}%</span>
+                                        <span class="text-[0.8125rem] font-extrabold text-slate-700 shrink-0">{{ $row['percent'] }}%</span>
                                     </div>
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="px-4 py-10 text-center text-[13px] text-slate-400 font-semibold">No students on a team yet.</td></tr>
+                            <tr><td colspan="4" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No students on a team yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -285,29 +285,29 @@
         <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
             <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <p class="text-[15px] font-bold text-slate-800">Recent Activities</p>
-                    <p class="text-[12px] text-slate-400">Latest completed activities from all teams.</p>
+                    <p class="text-[0.9375rem] font-bold text-slate-800">Recent Activities</p>
+                    <p class="text-[0.75rem] text-slate-400">Latest completed activities from all teams.</p>
                 </div>
                 <button type="button" onclick="switchReportTab('activity')"
-                        class="h-9 px-3.5 rounded-xl border border-slate-200 text-[12px] font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition shrink-0 rp-no-print">View All</button>
+                        class="h-9 px-3.5 rounded-xl border border-slate-200 text-[0.75rem] font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition shrink-0 rp-no-print">View All</button>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
                     <thead>
                         <tr class="border-b border-slate-100 bg-slate-50/60">
-                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Date</th>
-                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Student</th>
-                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Team</th>
-                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Activity</th>
-                            <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Status</th>
+                            <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Date</th>
+                            <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Student</th>
+                            <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Team</th>
+                            <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Activity</th>
+                            <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($recentActivities as $row)
                             <tr class="border-b border-slate-100">
                                 <td class="px-4 py-3">
-                                    <p class="text-[12px] font-semibold text-slate-600 whitespace-nowrap">{{ $row['date'] }}</p>
-                                    <p class="text-[11px] text-slate-400 whitespace-nowrap">{{ $row['time'] }}</p>
+                                    <p class="text-[0.75rem] font-semibold text-slate-600 whitespace-nowrap">{{ $row['date'] }}</p>
+                                    <p class="text-[0.6875rem] text-slate-400 whitespace-nowrap">{{ $row['time'] }}</p>
                                 </td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2.5 min-w-0">
@@ -316,25 +316,25 @@
                                             'name'         => $row['student'],
                                             'size'         => 'w-8 h-8',
                                             'rounded'      => 'rounded-full',
-                                            'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold',
+                                            'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold',
                                         ])
-                                        <span class="text-[13px] font-semibold text-slate-700 truncate">{{ $row['student'] }}</span>
+                                        <span class="text-[0.8125rem] font-semibold text-slate-700 truncate">{{ $row['student'] }}</span>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 text-[13px] text-slate-500 truncate">{{ $row['team'] }}</td>
+                                <td class="px-4 py-3 text-[0.8125rem] text-slate-500 truncate">{{ $row['team'] }}</td>
                                 <td class="px-4 py-3">
-                                    <p class="text-[13px] font-semibold text-slate-700 leading-snug">{{ $row['activity'] }}</p>
-                                    <p class="text-[11px] text-slate-400">{{ $row['role_label'] }}</p>
+                                    <p class="text-[0.8125rem] font-semibold text-slate-700 leading-snug">{{ $row['activity'] }}</p>
+                                    <p class="text-[0.6875rem] text-slate-400">{{ $row['role_label'] }}</p>
                                 </td>
                                 <td class="px-4 py-3">
                                     {{-- Only handed-in work reaches this table, so the badge has one colour. --}}
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap bg-emerald-50 text-emerald-600">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold whitespace-nowrap bg-emerald-50 text-emerald-600">
                                         {{ $row['status'] }}
                                     </span>
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="px-4 py-10 text-center text-[13px] text-slate-400 font-semibold">No activity recorded yet.</td></tr>
+                            <tr><td colspan="5" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No activity recorded yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -348,26 +348,26 @@
     <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
         <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
             <div class="min-w-0">
-                <p class="text-[15px] font-bold text-slate-800">Student Reports</p>
-                <p class="text-[12px] text-slate-400">Every student on a team, with the activities counted toward them.</p>
+                <p class="text-[0.9375rem] font-bold text-slate-800">Student Reports</p>
+                <p class="text-[0.75rem] text-slate-400">Every student on a team, with the activities counted toward them.</p>
             </div>
-            <span class="text-[12px] font-bold text-brand shrink-0">{{ collect($studentPerformance)->count() }} students</span>
+            <span class="text-[0.75rem] font-bold text-brand shrink-0">{{ collect($studentPerformance)->count() }} students</span>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">
                 <thead>
                     <tr class="border-b border-slate-100 bg-slate-50/60">
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500 w-10">#</th>
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Student Name</th>
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Team</th>
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Activities</th>
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Completion Rate</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500 w-10">#</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Student Name</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Team</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Activities</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Completion Rate</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($studentPerformance as $row)
                         <tr class="border-b border-slate-100">
-                            <td class="px-4 py-3 text-[13px] font-semibold text-slate-400">{{ $loop->iteration }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] font-semibold text-slate-400">{{ $loop->iteration }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5 min-w-0">
                                     @include('partials.user-avatar', [
@@ -375,24 +375,24 @@
                                         'name'         => $row['name'],
                                         'size'         => 'w-8 h-8',
                                         'rounded'      => 'rounded-full',
-                                        'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold',
+                                        'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold',
                                     ])
-                                    <span class="text-[13px] font-semibold text-slate-700 truncate">{{ $row['name'] }}</span>
+                                    <span class="text-[0.8125rem] font-semibold text-slate-700 truncate">{{ $row['name'] }}</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-[13px] text-slate-500 truncate">{{ $row['team'] }}</td>
-                            <td class="px-4 py-3 text-[13px] text-slate-600 whitespace-nowrap">{{ $row['done'] }} / {{ $row['total'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] text-slate-500 truncate">{{ $row['team'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] text-slate-600 whitespace-nowrap">{{ $row['done'] }} / {{ $row['total'] }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5">
                                     <span class="rp-track" style="flex: 1 1 auto; max-width: 12rem">
                                         <span style="width: {{ $row['percent'] }}%; background: {{ $rpBarColor }}"></span>
                                     </span>
-                                    <span class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $row['percent'] }}%</span>
+                                    <span class="text-[0.8125rem] font-extrabold text-slate-700 shrink-0">{{ $row['percent'] }}%</span>
                                 </div>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-10 text-center text-[13px] text-slate-400 font-semibold">No students on a team yet.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No students on a team yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -405,17 +405,17 @@
 <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
     <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
         <h3 class="text-sm font-bold text-slate-800">Completed Tasks by Team</h3>
-        <span class="text-[11px] font-semibold text-slate-400">{{ $teamReports->count() }} team{{ $teamReports->count() === 1 ? '' : 's' }}</span>
+        <span class="text-[0.6875rem] font-semibold text-slate-400">{{ $teamReports->count() }} team{{ $teamReports->count() === 1 ? '' : 's' }}</span>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-sm" style="table-layout:fixed">
             <thead>
                 <tr class="bg-slate-50 border-b border-slate-200">
-                    <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Team Name</th>
-                    <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:24%">Page Name</th>
-                    <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Assigned Date</th>
-                    <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Date Completed</th>
-                    <th class="text-center px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Action</th>
+                    <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Team Name</th>
+                    <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:24%">Page Name</th>
+                    <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Assigned Date</th>
+                    <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Date Completed</th>
+                    <th class="text-center px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Action</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -423,7 +423,7 @@
                     <tr class="hover:bg-slate-50/80">
                         <td class="px-4 py-3">
                             <p class="font-semibold text-slate-800 truncate" title="{{ $report['team_name'] }}">{{ $report['team_name'] }}</p>
-                            <p class="text-[11px] text-slate-400">{{ $report['task_count'] }} completed task{{ $report['task_count'] === 1 ? '' : 's' }}@if($showFaculty && $report['faculty_name']) &middot; {{ $report['faculty_name'] }}@endif</p>
+                            <p class="text-[0.6875rem] text-slate-400">{{ $report['task_count'] }} completed task{{ $report['task_count'] === 1 ? '' : 's' }}@if($showFaculty && $report['faculty_name']) &middot; {{ $report['faculty_name'] }}@endif</p>
                         </td>
                         <td class="px-4 py-3 text-xs font-semibold text-slate-600">
                             <span class="line-clamp-2" title="{{ $report['page_name'] }}">{{ $report['page_name'] }}</span>
@@ -458,18 +458,18 @@
     <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
         <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
             <div class="min-w-0">
-                <p class="text-[15px] font-bold text-slate-800">Activity Reports</p>
-                <p class="text-[12px] text-slate-400">Completed against pending work, by role.</p>
+                <p class="text-[0.9375rem] font-bold text-slate-800">Activity Reports</p>
+                <p class="text-[0.75rem] text-slate-400">Completed against pending work, by role.</p>
             </div>
-            <span class="text-[12px] font-bold text-brand shrink-0">{{ $doneActivities }} of {{ $totalActivities }} done</span>
+            <span class="text-[0.75rem] font-bold text-brand shrink-0">{{ $doneActivities }} of {{ $totalActivities }} done</span>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">
                 <thead>
                     <tr class="border-b border-slate-100 bg-slate-50/60">
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Role</th>
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Students Assigned</th>
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Share of Assignments</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Role</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Students Assigned</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Share of Assignments</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -477,18 +477,18 @@
                         @php $share = $rpRoleTotal > 0 ? (int) round(($slice['count'] / $rpRoleTotal) * 100) : 0; @endphp
                         <tr class="border-b border-slate-100">
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center gap-2 text-[13px] font-bold text-slate-700">
+                                <span class="inline-flex items-center gap-2 text-[0.8125rem] font-bold text-slate-700">
                                     <span class="rp-legend-dot" style="background: {{ $rpRoleColors[$slice['role']] ?? '#E4E2E0' }}"></span>
                                     {{ $slice['label'] }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 text-[13px] text-slate-600">{{ $slice['count'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] text-slate-600">{{ $slice['count'] }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5">
                                     <span class="rp-track" style="flex: 1 1 auto; max-width: 16rem">
                                         <span style="width: {{ $share }}%; background: {{ $rpRoleColors[$slice['role']] ?? '#E4E2E0' }}"></span>
                                     </span>
-                                    <span class="text-[13px] font-extrabold text-slate-700 shrink-0">{{ $share }}%</span>
+                                    <span class="text-[0.8125rem] font-extrabold text-slate-700 shrink-0">{{ $share }}%</span>
                                 </div>
                             </td>
                         </tr>
@@ -498,42 +498,42 @@
         </div>
 
         <div class="px-5 pt-4 pb-3 border-t border-slate-100">
-            <p class="text-[15px] font-bold text-slate-800">Latest Completed</p>
-            <p class="text-[12px] text-slate-400">The most recent rows across every team.</p>
+            <p class="text-[0.9375rem] font-bold text-slate-800">Latest Completed</p>
+            <p class="text-[0.75rem] text-slate-400">The most recent rows across every team.</p>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">
                 <thead>
                     <tr class="border-b border-slate-100 bg-slate-50/60">
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Date</th>
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Student</th>
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Team</th>
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Activity</th>
-                        <th class="px-4 py-2.5 text-[12px] font-bold text-slate-500">Status</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Date</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Student</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Team</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Activity</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($recentActivities as $row)
                         <tr class="border-b border-slate-100">
                             <td class="px-4 py-3">
-                                <p class="text-[12px] font-semibold text-slate-600 whitespace-nowrap">{{ $row['date'] }}</p>
-                                <p class="text-[11px] text-slate-400 whitespace-nowrap">{{ $row['time'] }}</p>
+                                <p class="text-[0.75rem] font-semibold text-slate-600 whitespace-nowrap">{{ $row['date'] }}</p>
+                                <p class="text-[0.6875rem] text-slate-400 whitespace-nowrap">{{ $row['time'] }}</p>
                             </td>
-                            <td class="px-4 py-3 text-[13px] font-semibold text-slate-700 truncate">{{ $row['student'] }}</td>
-                            <td class="px-4 py-3 text-[13px] text-slate-500 truncate">{{ $row['team'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] font-semibold text-slate-700 truncate">{{ $row['student'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] text-slate-500 truncate">{{ $row['team'] }}</td>
                             <td class="px-4 py-3">
-                                <p class="text-[13px] font-semibold text-slate-700 leading-snug">{{ $row['activity'] }}</p>
-                                <p class="text-[11px] text-slate-400">{{ $row['role_label'] }}</p>
+                                <p class="text-[0.8125rem] font-semibold text-slate-700 leading-snug">{{ $row['activity'] }}</p>
+                                <p class="text-[0.6875rem] text-slate-400">{{ $row['role_label'] }}</p>
                             </td>
                             <td class="px-4 py-3">
                                 {{-- Only handed-in work reaches this table, so the badge has one colour. --}}
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap bg-emerald-50 text-emerald-600">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold whitespace-nowrap bg-emerald-50 text-emerald-600">
                                     {{ $row['status'] }}
                                 </span>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-10 text-center text-[13px] text-slate-400 font-semibold">No activity recorded yet.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No activity recorded yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -548,7 +548,7 @@
         <div class="bg-brand-soft px-4 py-3 border-b border-brand/10 flex justify-between items-center rounded-t-2xl flex-shrink-0">
             <div class="min-w-0">
                 <h4 id="teamReportModalTitle" class="font-bold text-brand text-sm truncate">Team Details</h4>
-                <p id="teamReportModalSubtitle" class="text-[11px] text-slate-500 truncate"></p>
+                <p id="teamReportModalSubtitle" class="text-[0.6875rem] text-slate-500 truncate"></p>
             </div>
             <button type="button" onclick="closeTeamReportModal()" class="text-slate-400 hover:text-brand hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0" aria-label="Close">
                 <span class="iconify text-lg" data-icon="mdi:close"></span>
@@ -558,28 +558,28 @@
         <div class="overflow-y-auto flex-1 p-4 space-y-4">
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
                     <p id="teamReportAssigned" class="text-sm font-semibold text-slate-700 mt-0.5">—</p>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed</p>
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completed</p>
                     <p id="teamReportCompleted" class="text-sm font-semibold text-slate-700 mt-0.5">—</p>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tasks</p>
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Tasks</p>
                     <p id="teamReportTaskCount" class="text-sm font-semibold text-slate-700 mt-0.5">0</p>
                 </div>
             </div>
 
             <div>
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Team Members</p>
+                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Team Members</p>
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Member</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                                <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">#</th>
+                                <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Member</th>
+                                <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Role</th>
                             </tr>
                         </thead>
                         <tbody id="teamReportMembersBody" class="divide-y divide-slate-100"></tbody>
@@ -588,16 +588,16 @@
             </div>
 
             <div>
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Completed Tasks</p>
+                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Completed Tasks</p>
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Task</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Student</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Page / Role</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Due</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Completed</th>
+                                <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Task</th>
+                                <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Student</th>
+                                <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Page / Role</th>
+                                <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Due</th>
+                                <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Completed</th>
                             </tr>
                         </thead>
                         <tbody id="teamReportTasksBody" class="divide-y divide-slate-100"></tbody>
@@ -672,11 +672,11 @@
                 <tr>
                     <td class="px-3 py-2">
                         <p class="text-sm font-semibold text-slate-700">${escapeHtml(task.title || '—')}</p>
-                        ${task.description ? `<p class="text-[11px] text-slate-400 mt-0.5 line-clamp-2">${escapeHtml(task.description)}</p>` : ''}
+                        ${task.description ? `<p class="text-[0.6875rem] text-slate-400 mt-0.5 line-clamp-2">${escapeHtml(task.description)}</p>` : ''}
                     </td>
                     <td class="px-3 py-2 text-xs font-semibold text-slate-600 whitespace-nowrap">${escapeHtml(task.student_name || '—')}</td>
                     <td class="px-3 py-2">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[0.625rem] font-bold bg-brand-soft text-brand border border-brand/10">
                             ${escapeHtml(task.role_label || task.role || '—')}
                         </span>
                     </td>

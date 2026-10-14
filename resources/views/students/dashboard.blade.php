@@ -66,7 +66,7 @@
         ::selection { background: #7B1730; color: #fff; }
         body { font-family: 'Manrope', sans-serif; }
 
-        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar { width: 0.3125rem; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #BDBDBD; border-radius: 99px; }
         ::-webkit-scrollbar-thumb:hover { background: #8A8A8A; }
@@ -259,6 +259,7 @@
     </style>
     @include('partials.ink-all-styles')
     @include('partials.status-badge-styles')
+    @include('partials.portal-scale')
 </head>
 <body class="bg-surface min-h-screen flex">
 
@@ -277,7 +278,7 @@
                         ? implode(' & ', array_map(fn ($r) => \App\Support\HotelTemplateBuilder::seatLabel($r), $studentRoles))
                         : 'Student';
                 @endphp
-                <p class="text-[10px] text-white font-medium uppercase tracking-widest">{{ $sidebarRoleLabel }}</p>
+                <p class="text-[0.625rem] text-white font-medium uppercase tracking-widest">{{ $sidebarRoleLabel }}</p>
             </div>
         </div>
 
@@ -301,7 +302,7 @@
                      the page is open, and a badge that only exists server-side could
                      not then be taken away. --}}
                 @if(!empty($studentRoles))
-                    <span id="navTasksBadge" class="ml-auto bg-white/25 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md{{ $myRoleTasks->count() > 0 ? '' : ' hidden' }}"><span data-task-count="active">{{ $myRoleTasks->count() }}</span></span>
+                    <span id="navTasksBadge" class="ml-auto bg-white/25 text-white text-[0.625rem] font-bold px-1.5 py-0.5 rounded-md{{ $myRoleTasks->count() > 0 ? '' : ' hidden' }}"><span data-task-count="active">{{ $myRoleTasks->count() }}</span></span>
                 @endif
             </button>
             <button onclick="showSection('activity'); closeMobileSidebar();"
@@ -450,7 +451,7 @@
                 <!-- Welcome -->
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <h2 class="text-2xl sm:text-[32px] font-extrabold tracking-tight text-slate-900 leading-tight">
+                        <h2 class="text-2xl sm:text-[2rem] font-extrabold tracking-tight text-slate-900 leading-tight">
                             {{-- refreshHomeGreeting() rewrites this text on a timer, so the
                                  greeting turns over on its own when the Manila hour crosses
                                  5am/12pm/6pm without the student refreshing. --}}
@@ -472,11 +473,11 @@
                                 <span class="iconify text-white text-2xl" data-icon="mdi:account-group-outline"></span>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="text-[15px] font-bold text-slate-800 leading-tight">Team Members</p>
-                                <p class="text-[34px] font-extrabold text-slate-900 leading-none mt-1">{{ $homeMemberCount }}</p>
-                                <p class="text-[12px] text-slate-400 font-medium mt-1.5 truncate">{{ $studentClass->name ?? $group->name ?? 'No team yet' }}</p>
+                                <p class="text-[0.9375rem] font-bold text-slate-800 leading-tight">Team Members</p>
+                                <p class="text-[2.125rem] font-extrabold text-slate-900 leading-none mt-1">{{ $homeMemberCount }}</p>
+                                <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">{{ $studentClass->name ?? $group->name ?? 'No team yet' }}</p>
                                 <button type="button" onclick="showSection('group')" aria-label="Open My Team"
-                                        class="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
                                     View Team <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
                                 </button>
                             </div>
@@ -490,11 +491,11 @@
                                 <span class="iconify text-amber-500 text-2xl" data-icon="mdi:clipboard-text-outline"></span>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="text-[15px] font-bold text-slate-800 leading-tight">Assigned Tasks</p>
-                                <p class="text-[34px] font-extrabold text-slate-900 leading-none mt-1">{{ $homeActiveTasks }}</p>
-                                <p class="text-[12px] text-slate-400 font-medium mt-1.5 truncate">{{ $homeMyPending }} assigned to your role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
+                                <p class="text-[0.9375rem] font-bold text-slate-800 leading-tight">Assigned Tasks</p>
+                                <p class="text-[2.125rem] font-extrabold text-slate-900 leading-none mt-1">{{ $homeActiveTasks }}</p>
+                                <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">{{ $homeMyPending }} assigned to your role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
                                 <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
-                                        class="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
                                     View Tasks <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
                                 </button>
                             </div>
@@ -508,15 +509,15 @@
                                 <span class="iconify text-amber-500 text-2xl" data-icon="mdi:clock-outline"></span>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="text-[15px] font-bold text-slate-800 leading-tight">Pending Tasks</p>
-                                <p class="text-[34px] font-extrabold text-slate-900 leading-none mt-1"><span data-task-count="active">{{ $homeMyPending }}</span></p>
+                                <p class="text-[0.9375rem] font-bold text-slate-800 leading-tight">Pending Tasks</p>
+                                <p class="text-[2.125rem] font-extrabold text-slate-900 leading-none mt-1"><span data-task-count="active">{{ $homeMyPending }}</span></p>
                                 @if($homeOverdueCount > 0)
-                                    <p class="text-[12px] font-semibold text-red-500 mt-1.5 truncate">{{ $homeOverdueCount }} past due date</p>
+                                    <p class="text-[0.75rem] font-semibold text-red-500 mt-1.5 truncate">{{ $homeOverdueCount }} past due date</p>
                                 @else
-                                    <p class="text-[12px] text-slate-400 font-medium mt-1.5 truncate">Waiting for Approval</p>
+                                    <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">Waiting for Approval</p>
                                 @endif
                                 <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
-                                        class="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
                                     View Pending <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
                                 </button>
                             </div>
@@ -527,22 +528,22 @@
                          shows, read at a glance. --}}
                     <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
-                            <div class="relative w-[86px] h-[86px] shrink-0">
-                                <svg class="w-[86px] h-[86px] -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
+                            <div class="relative w-[5.375rem] h-[5.375rem] shrink-0">
+                                <svg class="w-[5.375rem] h-[5.375rem] -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
                                     <circle cx="32" cy="32" r="28" fill="none" stroke="#F2E9E7" stroke-width="7"></circle>
                                     <circle cx="32" cy="32" r="28" fill="none" stroke="#7B1730" stroke-width="7" stroke-linecap="round"
                                             stroke-dasharray="{{ $homeRingLength }}" stroke-dashoffset="{{ $homeRingOffset }}"></circle>
                                 </svg>
-                                <span class="absolute inset-0 flex items-center justify-center text-[20px] font-extrabold text-slate-900">{{ $homeRate }}%</span>
+                                <span class="absolute inset-0 flex items-center justify-center text-[1.25rem] font-extrabold text-slate-900">{{ $homeRate }}%</span>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="text-[15px] font-bold text-slate-800 leading-tight">Overall Progress</p>
-                                <p class="text-[12px] text-slate-400 font-medium mt-1.5 leading-snug">
+                                <p class="text-[0.9375rem] font-bold text-slate-800 leading-tight">Overall Progress</p>
+                                <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 leading-snug">
                                     <span data-task-count="completed">{{ $completedTasksCount ?? 0 }}</span> of {{ $homeTotalTasks }} team tasks done.<br>
                                     {{ $homeRate >= 70 ? "You're on the right track!" : 'Keep completing tasks.' }}
                                 </p>
                                 <button type="button" onclick="showSection('reports')" aria-label="Open Reports"
-                                        class="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
                                     View Progress <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
                                 </button>
                             </div>
@@ -559,10 +560,10 @@
                         <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
                             <div class="min-w-0">
                                 <p class="text-lg font-bold text-slate-800">Tasks in Progress</p>
-                                <p class="text-[11px] text-slate-400 truncate">Started, not yet submitted</p>
+                                <p class="text-[0.6875rem] text-slate-400 truncate">Started, not yet submitted</p>
                             </div>
                             <button type="button" onclick="showSection('tasks')"
-                                    class="text-[12px] font-bold text-brand hover:text-brand-dark transition-colors shrink-0">View All</button>
+                                    class="text-[0.75rem] font-bold text-brand hover:text-brand-dark transition-colors shrink-0">View All</button>
                         </div>
                         <div class="divide-y divide-slate-100">
                             @forelse($homeInProgress as $task)
@@ -579,20 +580,20 @@
                                             {{-- The task's own number on the checklist, not its position in
                                                  this list, so it matches the faculty's Set Task screen. --}}
                                             @if($homeTaskStep !== null)
-                                                <p class="text-[13px] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($homeTaskStep + 1, 2, '0', STR_PAD_LEFT) }}</p>
+                                                <p class="text-[0.8125rem] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($homeTaskStep + 1, 2, '0', STR_PAD_LEFT) }}</p>
                                             @endif
-                                            <p class="text-[13px] text-slate-500 leading-snug line-clamp-2">{{ $task->title }}</p>
+                                            <p class="text-[0.8125rem] text-slate-500 leading-snug line-clamp-2">{{ $task->title }}</p>
                                             <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.625rem] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
                                                     {{ $homeRoleLabels[$task->role] ?? $task->role }}
                                                 </span>
                                                 @if($isRevision)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold status-badge-revision">Revision Required</span>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.625rem] font-bold status-badge-revision">Revision Required</span>
                                                 @endif
                                             </div>
                                         </div>
                                     </div>
-                                    <p class="mt-3 text-[12px] text-slate-400 font-medium truncate">
+                                    <p class="mt-3 text-[0.75rem] text-slate-400 font-medium truncate">
                                         {{ $task->started_at ? 'Started ' . $task->started_at->diffForHumans() . ' · ' : '' }}edited {{ optional($task->updated_at)->diffForHumans() }}
                                     </p>
                                 </div>
@@ -615,10 +616,10 @@
                         <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
                             <div class="min-w-0">
                                 <p class="text-lg font-bold text-slate-800">My Progress Overview</p>
-                                <p class="text-[11px] text-slate-400 truncate">{{ $group->name ?? 'Your team' }}</p>
+                                <p class="text-[0.6875rem] text-slate-400 truncate">{{ $group->name ?? 'Your team' }}</p>
                             </div>
                             <button type="button" onclick="showSection('reports')"
-                                    class="text-[12px] font-bold text-brand hover:text-brand-dark transition-colors shrink-0">View Report</button>
+                                    class="text-[0.75rem] font-bold text-brand hover:text-brand-dark transition-colors shrink-0">View Report</button>
                         </div>
                         <div class="px-5 pb-5 space-y-4">
                             @forelse($homeTeamProgress as $row)
@@ -627,14 +628,14 @@
                                         <span class="iconify text-xl" data-icon="{{ $roleIcons[$row['role']] ?? 'mdi:account-outline' }}"></span>
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <p class="text-[14px] font-bold text-slate-800 truncate">{{ $homeRoleLabels[$row['role']] ?? $row['role'] }}</p>
+                                        <p class="text-[0.875rem] font-bold text-slate-800 truncate">{{ $homeRoleLabels[$row['role']] ?? $row['role'] }}</p>
                                         <div class="mt-1.5 flex items-center gap-2.5">
                                             <div class="h-2 rounded-full bg-slate-100 overflow-hidden flex-1">
                                                 <div class="h-full rounded-full {{ $homeTint($row['role'], 'bar') }}" style="width: {{ $row['percent'] }}%"></div>
                                             </div>
-                                            <p class="text-[14px] font-extrabold text-slate-700 shrink-0 w-10 text-right">{{ $row['percent'] }}%</p>
+                                            <p class="text-[0.875rem] font-extrabold text-slate-700 shrink-0 w-10 text-right">{{ $row['percent'] }}%</p>
                                         </div>
-                                        <p class="text-[11px] text-slate-400 mt-1 text-right">{{ $row['done'] }} / {{ $row['total'] }} tasks</p>
+                                        <p class="text-[0.6875rem] text-slate-400 mt-1 text-right">{{ $row['done'] }} / {{ $row['total'] }} tasks</p>
                                     </div>
                                 </div>
                             @empty
@@ -651,10 +652,10 @@
                                 <div class="rounded-2xl bg-brand-soft border border-pink-100 px-4 py-3 flex items-start gap-3">
                                     <span class="iconify text-brand text-xl shrink-0" data-icon="mdi:trophy-outline"></span>
                                     <div class="min-w-0">
-                                        <p class="text-[13px] font-bold text-brand-dark">
+                                        <p class="text-[0.8125rem] font-bold text-brand-dark">
                                             {{ $homeRate >= 70 ? "You're on the right track!" : ($homeRate > 0 ? 'Good start — keep going!' : 'Time to get started!') }}
                                         </p>
-                                        <p class="text-[11px] text-brand-dark/70 mt-0.5">Keep completing tasks to improve your progress.</p>
+                                        <p class="text-[0.6875rem] text-brand-dark/70 mt-0.5">Keep completing tasks to improve your progress.</p>
                                     </div>
                                 </div>
                             @endif
@@ -666,7 +667,7 @@
                         <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
                             <p class="text-lg font-bold text-slate-800">Recent Activity</p>
                             <button type="button" onclick="showSection('activity')"
-                                    class="text-[12px] font-bold text-brand hover:text-brand-dark transition-colors">View All</button>
+                                    class="text-[0.75rem] font-bold text-brand hover:text-brand-dark transition-colors">View All</button>
                         </div>
                         <div class="px-5 pb-5 space-y-4">
                             @forelse($homeRecentActivities as $task)
@@ -687,13 +688,13 @@
                                         <span class="iconify text-lg" data-icon="{{ $actionIcon }}"></span>
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <p class="text-[12px] text-slate-500">{{ $actionLabel }}</p>
-                                        <p class="text-[13px] font-bold text-slate-800 leading-snug line-clamp-2">{{ $task->title }}</p>
-                                        <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ $homeRoleLabels[$task->role] ?? $task->role }}</p>
+                                        <p class="text-[0.75rem] text-slate-500">{{ $actionLabel }}</p>
+                                        <p class="text-[0.8125rem] font-bold text-slate-800 leading-snug line-clamp-2">{{ $task->title }}</p>
+                                        <p class="text-[0.6875rem] text-slate-400 mt-0.5 truncate">{{ $homeRoleLabels[$task->role] ?? $task->role }}</p>
                                     </div>
                                     <div class="text-right shrink-0">
-                                        <p class="text-[11px] text-slate-400 font-medium whitespace-nowrap">{{ $stampDay }}</p>
-                                        <p class="text-[11px] text-slate-300 font-medium whitespace-nowrap mt-0.5">{{ optional($stamp)->format('g:i A') }}</p>
+                                        <p class="text-[0.6875rem] text-slate-400 font-medium whitespace-nowrap">{{ $stampDay }}</p>
+                                        <p class="text-[0.6875rem] text-slate-300 font-medium whitespace-nowrap mt-0.5">{{ optional($stamp)->format('g:i A') }}</p>
                                     </div>
                                 </div>
                             @empty
@@ -734,7 +735,7 @@
 
             <div id="group-section" class="ink-all section-content hidden fade-in space-y-4">
                 <div>
-                    <h2 class="text-2xl sm:text-[30px] font-extrabold tracking-tight text-slate-900 leading-tight">My Team</h2>
+                    <h2 class="text-2xl sm:text-[1.875rem] font-extrabold tracking-tight text-slate-900 leading-tight">My Team</h2>
                     <p class="text-sm text-slate-500 mt-1">View your team details, members, tasks and progress.</p>
                 </div>
 
@@ -744,8 +745,8 @@
                 <div class="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 sm:px-7 py-6">
                     <div class="flex flex-col lg:flex-row lg:items-center gap-6">
                         <div class="flex items-start gap-5 flex-1 min-w-0">
-                            <div class="w-[88px] h-[88px] rounded-full bg-brand-soft flex items-center justify-center shrink-0">
-                                <span class="iconify text-brand text-[42px]" data-icon="mdi:account-group"></span>
+                            <div class="w-[5.5rem] h-[5.5rem] rounded-full bg-brand-soft flex items-center justify-center shrink-0">
+                                <span class="iconify text-brand text-[2.625rem]" data-icon="mdi:account-group"></span>
                             </div>
                             <div class="flex-1 min-w-0">
                                 @if($group)
@@ -753,18 +754,18 @@
                                         <h3 id="teamHeaderName" class="text-2xl font-extrabold text-slate-900 leading-tight"
                                             data-team-name="{{ $group->name }}">{{ $group->name }}</h3>
                                         @if(!empty($studentClass))
-                                            <span class="px-2.5 py-1 rounded-lg bg-brand-soft text-brand text-[11px] font-bold uppercase tracking-wider">{{ $studentClass->name }}</span>
+                                            <span class="px-2.5 py-1 rounded-lg bg-brand-soft text-brand text-[0.6875rem] font-bold uppercase tracking-wider">{{ $studentClass->name }}</span>
                                         @endif
                                         @if($groupMembership)
                                             @php $teamCompletionPhase = \App\Support\SimulationPhase::progress($groupMembership->group_name, (int) $groupMembership->faculty_id); @endphp
                                             @include('partials.team-completion', ['done' => $teamCompletionPhase['approved'], 'total' => $teamCompletionPhase['required']])
                                         @endif
                                     </div>
-                                    <p id="teamHeaderEyebrow" class="text-slate-400 text-[13px] font-semibold mt-1">Hotel Management Simulation</p>
-                                    <p id="teamHeaderType" class="hidden text-[12px] font-bold text-slate-500 mt-0.5"></p>
+                                    <p id="teamHeaderEyebrow" class="text-slate-400 text-[0.8125rem] font-semibold mt-1">Hotel Management Simulation</p>
+                                    <p id="teamHeaderType" class="hidden text-[0.75rem] font-bold text-slate-500 mt-0.5"></p>
                                 @else
                                     <h3 class="text-2xl font-extrabold text-slate-900 leading-tight">Not assigned yet</h3>
-                                    <p class="text-slate-400 text-[13px] font-semibold mt-1">Team</p>
+                                    <p class="text-slate-400 text-[0.8125rem] font-semibold mt-1">Team</p>
                                 @endif
 
                                 {{-- The approved concept's description. Painted from the same
@@ -777,38 +778,38 @@
                         <!-- Team figures -->
                         <div class="flex items-center gap-4 sm:gap-7 shrink-0 lg:border-l lg:border-slate-100 lg:pl-7 overflow-x-auto">
                             <div class="flex items-center gap-3 shrink-0">
-                                <span class="iconify text-slate-300 text-[26px]" data-icon="mdi:account-multiple-outline"></span>
+                                <span class="iconify text-slate-300 text-[1.625rem]" data-icon="mdi:account-multiple-outline"></span>
                                 <div>
                                     <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamMemberCount }}</p>
-                                    <p class="text-[12px] text-slate-400 font-semibold mt-1">Members</p>
+                                    <p class="text-[0.75rem] text-slate-400 font-semibold mt-1">Members</p>
                                 </div>
                             </div>
                             <div class="w-px h-11 bg-slate-100 shrink-0"></div>
                             <div class="flex items-center gap-3 shrink-0">
-                                <span class="iconify text-slate-300 text-[26px]" data-icon="mdi:clipboard-text-outline"></span>
+                                <span class="iconify text-slate-300 text-[1.625rem]" data-icon="mdi:clipboard-text-outline"></span>
                                 <div>
                                     <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamTaskTotal }}</p>
-                                    <p class="text-[12px] text-slate-400 font-semibold mt-1">Assigned Tasks</p>
+                                    <p class="text-[0.75rem] text-slate-400 font-semibold mt-1">Assigned Tasks</p>
                                 </div>
                             </div>
                             <div class="w-px h-11 bg-slate-100 shrink-0"></div>
                             <div class="flex items-center gap-3 shrink-0">
-                                <svg class="w-[60px] h-[60px] -rotate-90 shrink-0" viewBox="0 0 60 60" aria-hidden="true">
+                                <svg class="w-[3.75rem] h-[3.75rem] -rotate-90 shrink-0" viewBox="0 0 60 60" aria-hidden="true">
                                     <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#F2E9E7" stroke-width="7"></circle>
                                     <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#7B1730" stroke-width="7" stroke-linecap="round"
                                             stroke-dasharray="{{ round($ringFilled, 2) }} {{ round($ringLength, 2) }}"></circle>
                                 </svg>
                                 <div>
                                     <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamPercent }}%</p>
-                                    <p class="text-[12px] text-slate-400 font-semibold mt-1">Overall Progress</p>
+                                    <p class="text-[0.75rem] text-slate-400 font-semibold mt-1">Overall Progress</p>
                                 </div>
                             </div>
                             <div class="w-px h-11 bg-slate-100 shrink-0"></div>
                             <div class="flex items-center gap-3 shrink-0">
-                                <span class="iconify text-slate-300 text-[26px]" data-icon="mdi:calendar-outline"></span>
+                                <span class="iconify text-slate-300 text-[1.625rem]" data-icon="mdi:calendar-outline"></span>
                                 <div>
                                     <p id="teamDeadlineDate" class="text-xl font-extrabold text-slate-900 leading-none whitespace-nowrap">{{ $teamDeadline ? $teamDeadline->format('M j, Y') : 'None set' }}</p>
-                                    <p id="teamDeadlineLabel" class="text-[12px] text-slate-400 font-semibold mt-1 whitespace-nowrap">Deadline{{ $teamDeadline ? ' · ' . $teamDeadline->format('g:i A') : '' }}</p>
+                                    <p id="teamDeadlineLabel" class="text-[0.75rem] text-slate-400 font-semibold mt-1 whitespace-nowrap">Deadline{{ $teamDeadline ? ' · ' . $teamDeadline->format('g:i A') : '' }}</p>
                                 </div>
                             </div>
                         </div>
@@ -821,24 +822,24 @@
                     <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2">
                             <p class="text-lg font-bold text-slate-800">Team Members</p>
-                            <span class="text-[13px] font-bold text-brand">{{ $teamMemberCount }}</span>
+                            <span class="text-[0.8125rem] font-bold text-brand">{{ $teamMemberCount }}</span>
                         </div>
                         <button type="button" onclick="showSection('tasks')"
-                                class="text-[12px] font-bold text-brand hover:text-brand-dark transition-colors">View All Tasks</button>
+                                class="text-[0.75rem] font-bold text-brand hover:text-brand-dark transition-colors">View All Tasks</button>
                     </div>
 
                     @if(isset($groupMembers) && $groupMembers->count() > 0)
                         <div class="overflow-x-auto">
-                            <table class="w-full min-w-[860px] text-left">
+                            <table class="w-full min-w-[53.75rem] text-left">
                                 <thead>
                                     <tr class="border-b border-slate-100">
-                                        <th class="px-4 py-3 text-[12px] font-bold text-slate-500">Team</th>
-                                        <th class="px-4 py-3 text-[12px] font-bold text-slate-500">Members</th>
-                                        <th class="px-4 py-3 text-[12px] font-bold text-slate-500">Role</th>
-                                        <th class="px-4 py-3 text-[12px] font-bold text-slate-500 text-center">Assigned Task</th>
-                                        <th class="px-4 py-3 text-[12px] font-bold text-slate-500 w-36">Task Progress</th>
-                                        <th class="px-4 py-3 text-[12px] font-bold text-slate-500">Last Active</th>
-                                        <th class="px-4 py-3 text-[12px] font-bold text-slate-500 text-right">Activity</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Team</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Members</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Role</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500 text-center">Assigned Task</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500 w-36">Task Progress</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Last Active</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500 text-right">Activity</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -859,7 +860,7 @@
                                         @endphp
                                         <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors" data-member-row data-member-id="{{ $memberUserId }}">
                                             <!-- Team -->
-                                            <td class="px-4 py-3.5 text-[13px] font-semibold text-slate-600 whitespace-nowrap">{{ $group->name ?? '—' }}</td>
+                                            <td class="px-4 py-3.5 text-[0.8125rem] font-semibold text-slate-600 whitespace-nowrap">{{ $group->name ?? '—' }}</td>
 
                                             <!-- Members -->
                                             <td class="px-4 py-3.5">
@@ -871,15 +872,15 @@
                                                         'currentUser' => $isCurrentUser,
                                                     ])
                                                     <div class="min-w-0">
-                                                        <p class="text-[13px] font-bold text-slate-800 truncate">
+                                                        <p class="text-[0.8125rem] font-bold text-slate-800 truncate">
                                                             {{ $memberName }}
                                                             @if($isCurrentUser)
-                                                                <span class="ml-1 px-1.5 py-0.5 bg-brand-soft text-brand text-[8px] font-bold rounded-md uppercase">You</span>
+                                                                <span class="ml-1 px-1.5 py-0.5 bg-brand-soft text-brand text-[0.5rem] font-bold rounded-md uppercase">You</span>
                                                             @endif
                                                         </p>
                                                         <div class="flex items-center gap-1.5" data-presence-user="{{ $memberUserId }}">
                                                             <span class="w-1.5 h-1.5 rounded-full member-online-dot {{ $isCurrentUser ? 'bg-emerald-400 pulse-dot' : 'bg-slate-200' }}"></span>
-                                                            <span class="text-[10px] member-online-label {{ $isCurrentUser ? 'text-emerald-600 font-semibold' : 'text-slate-400' }}">{{ $isCurrentUser ? 'Online' : 'Offline' }}</span>
+                                                            <span class="text-[0.625rem] member-online-label {{ $isCurrentUser ? 'text-emerald-600 font-semibold' : 'text-slate-400' }}">{{ $isCurrentUser ? 'Online' : 'Offline' }}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -892,27 +893,27 @@
                                                         $displayRole    = $roleLabels[$primaryRole] ?? ucfirst(str_replace('_', ' ', $primaryRole));
                                                         $roleBadgeClass = $roleBadgeClasses[$primaryRole] ?? 'role-badge-room';
                                                     @endphp
-                                                    <span class="inline-flex items-center {{ $roleBadgeClass }} px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap">
+                                                    <span class="inline-flex items-center {{ $roleBadgeClass }} px-2.5 py-1 rounded-lg text-[0.6875rem] font-semibold whitespace-nowrap">
                                                         {{ $displayRole }}
                                                     </span>
                                                     @if(count($mRoles) > 1)
-                                                        <span class="ml-1 text-[10px] font-bold text-slate-400">+{{ count($mRoles) - 1 }}</span>
+                                                        <span class="ml-1 text-[0.625rem] font-bold text-slate-400">+{{ count($mRoles) - 1 }}</span>
                                                     @endif
                                                 @else
-                                                    <span class="inline-flex items-center bg-slate-100 text-slate-400 px-2.5 py-1 rounded-lg text-[11px] font-semibold">No role</span>
+                                                    <span class="inline-flex items-center bg-slate-100 text-slate-400 px-2.5 py-1 rounded-lg text-[0.6875rem] font-semibold">No role</span>
                                                 @endif
                                             </td>
 
                                             <!-- Assigned task -->
                                             <td class="px-4 py-3.5 text-center">
-                                                <p class="text-[13px] font-bold text-slate-700">{{ $stats['total'] }}</p>
-                                                <p class="text-[11px] text-slate-400 whitespace-nowrap">{{ $stats['done'] }} done</p>
+                                                <p class="text-[0.8125rem] font-bold text-slate-700">{{ $stats['total'] }}</p>
+                                                <p class="text-[0.6875rem] text-slate-400 whitespace-nowrap">{{ $stats['done'] }} done</p>
                                             </td>
 
                                             <!-- Task progress -->
                                             <td class="px-4 py-3.5">
                                                 <div class="flex items-center gap-2">
-                                                    <span class="text-[12px] font-bold text-slate-600 w-9 shrink-0">{{ $stats['percent'] }}%</span>
+                                                    <span class="text-[0.75rem] font-bold text-slate-600 w-9 shrink-0">{{ $stats['percent'] }}%</span>
                                                     <span class="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                                                         <span class="block h-full rounded-full {{ $groupTint($primaryRole, 'bar') }}" style="width: {{ $stats['percent'] }}%"></span>
                                                     </span>
@@ -922,10 +923,10 @@
                                             <!-- Last active -->
                                             <td class="px-4 py-3.5">
                                                 @if($lastSeen)
-                                                    <p class="text-[12px] font-semibold text-slate-600 whitespace-nowrap">{{ $lastSeen->format('M j, Y') }}</p>
-                                                    <p class="text-[11px] text-slate-400 whitespace-nowrap">{{ $lastSeen->format('g:i A') }}</p>
+                                                    <p class="text-[0.75rem] font-semibold text-slate-600 whitespace-nowrap">{{ $lastSeen->format('M j, Y') }}</p>
+                                                    <p class="text-[0.6875rem] text-slate-400 whitespace-nowrap">{{ $lastSeen->format('g:i A') }}</p>
                                                 @else
-                                                    <span class="text-[12px] text-slate-300">—</span>
+                                                    <span class="text-[0.75rem] text-slate-300">—</span>
                                                 @endif
                                             </td>
 
@@ -934,12 +935,12 @@
                                                 @if(!$isCurrentUser && $memberUserId)
                                                     <button type="button"
                                                         onclick="openMemberActivityModal({{ (int) $memberUserId }}, {{ json_encode($memberName) }})"
-                                                        class="inline-flex items-center px-3.5 py-1.5 rounded-lg border border-slate-200 text-[12px] font-bold text-slate-600 hover:text-brand hover:border-brand/40 transition"
+                                                        class="inline-flex items-center px-3.5 py-1.5 rounded-lg border border-slate-200 text-[0.75rem] font-bold text-slate-600 hover:text-brand hover:border-brand/40 transition"
                                                         title="View {{ $memberName }}'s activity logs">View</button>
                                                 @else
                                                     <button type="button"
                                                         onclick="showSection('activity')"
-                                                        class="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-brand-soft text-[12px] font-bold text-brand hover:bg-brand hover:text-white transition"
+                                                        class="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-brand-soft text-[0.75rem] font-bold text-brand hover:bg-brand hover:text-white transition"
                                                         title="View your activity logs">View</button>
                                                 @endif
                                             </td>
@@ -983,15 +984,15 @@
                     <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
                         <div class="min-w-0">
                             <h3 class="text-sm font-bold text-slate-800">Hotel Concepts</h3>
-                            <p class="text-[11px] text-slate-400">Name the hotel and describe it — two proposals for your faculty to review.</p>
+                            <p class="text-[0.6875rem] text-slate-400">Name the hotel and describe it — two proposals for your faculty to review.</p>
                         </div>
                         {{-- One button for the pair. Hidden until both slots are filled;
                              paintHotelConcepts() toggles it off conceptState.can_submit and
                              relabels it Resubmit whenever a slot is coming back from
                              revision rather than going in for the first time. --}}
                         <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
-                            class="hidden shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white shadow-md hover:opacity-90 transition disabled:opacity-60" style="background:#404040">
-                            <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
+                            class="hidden shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.6875rem] font-bold text-white shadow-md hover:opacity-90 transition disabled:opacity-60" style="background:#404040">
+                            <span class="iconify text-[0.8125rem]" data-icon="mdi:send-outline"></span>
                             <span id="conceptSubmitAllLabel">Submit both to Faculty</span>
                         </button>
                     </div>
@@ -1014,7 +1015,7 @@
 
                 <div class="flex justify-center pt-1">
                     <button type="button" onclick="showSection('tasks')"
-                            class="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl bg-white border border-slate-200 text-[14px] font-bold text-slate-700 hover:bg-slate-50 hover:text-brand transition-colors shadow-sm">
+                            class="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl bg-white border border-slate-200 text-[0.875rem] font-bold text-slate-700 hover:bg-slate-50 hover:text-brand transition-colors shadow-sm">
                         <span class="iconify text-lg" data-icon="mdi:format-list-checks"></span>
                         View All Team Tasks
                     </button>
@@ -1032,7 +1033,7 @@
                     );
                 @endphp
                 @if(session('simulation_locked'))
-                    <div class="rounded-xl border border-[#FDE68A] bg-[#FEF3C7] px-4 py-3 text-[13px] font-semibold text-[#92400E]">
+                    <div class="rounded-xl border border-[#FDE68A] bg-[#FEF3C7] px-4 py-3 text-[0.8125rem] font-semibold text-[#92400E]">
                         The Hotel Simulation is not open for your team yet.
                     </div>
                 @endif
@@ -1090,10 +1091,10 @@
                                         </button>
                                         <div id="{{ $area['id'] }}" hidden
                                              class="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-[#E7E1DD] shadow-xl py-1.5 z-30">
-                                            <p class="px-3 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Choose a role</p>
+                                            <p class="px-3 pt-1 pb-1.5 text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Choose a role</p>
                                             @foreach($area['modules'] as $module)
                                                 <a href="{{ $module[$area['urlKey']] }}"
-                                                   class="flex items-center gap-2 px-3 py-2 text-[13px] font-semibold text-slate-600 hover:bg-[#F5F2EF] hover:text-[#181818]">
+                                                   class="flex items-center gap-2 px-3 py-2 text-[0.8125rem] font-semibold text-slate-600 hover:bg-[#F5F2EF] hover:text-[#181818]">
                                                     <span class="iconify text-base" data-icon="{{ $roleIcons[$module['role']] ?? 'mdi:clipboard-text-outline' }}"></span>
                                                     {{ $module['label'] }}
                                                 </a>
@@ -1181,18 +1182,18 @@
                      icon on the left, the figure large on the right. --}}
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="bg-white rounded-2xl border border-[#E7E1DD] px-5 py-4 flex items-center justify-between gap-4 min-w-0">
-                        <div class="flex items-center gap-3 min-w-0"><span class="w-12 h-12 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-2xl text-[#4A4643]" data-icon="mdi:format-list-bulleted"></span></span><span class="text-[15px] font-semibold text-slate-700">All entries</span></div>
+                        <div class="flex items-center gap-3 min-w-0"><span class="w-12 h-12 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-2xl text-[#4A4643]" data-icon="mdi:format-list-bulleted"></span></span><span class="text-[0.9375rem] font-semibold text-slate-700">All entries</span></div>
                         <span class="text-4xl font-extrabold text-slate-900 leading-none">{{ $actRows->count() }}</span>
                     </div>
                     <div class="bg-white rounded-2xl border border-[#E7E1DD] px-5 py-4 flex items-center justify-between gap-4 min-w-0">
-                        <div class="flex items-center gap-3 min-w-0"><span class="w-12 h-12 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-2xl text-[#4A4643]" data-icon="mdi:calendar-today-outline"></span></span><span class="text-[15px] font-semibold text-slate-700">Today</span></div>
+                        <div class="flex items-center gap-3 min-w-0"><span class="w-12 h-12 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-2xl text-[#4A4643]" data-icon="mdi:calendar-today-outline"></span></span><span class="text-[0.9375rem] font-semibold text-slate-700">Today</span></div>
                         <span class="text-4xl font-extrabold text-slate-900 leading-none">{{ $actTodayCount }}</span>
                     </div>
                     <div class="bg-white rounded-2xl border border-[#E7E1DD] px-5 py-4 flex items-center justify-between gap-4 min-w-0">
-                        <div class="flex items-center gap-3 min-w-0"><span class="w-12 h-12 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-2xl text-[#4A4643]" data-icon="mdi:clock-outline"></span></span><span class="text-[15px] font-semibold text-slate-700">Last activity</span></div>
+                        <div class="flex items-center gap-3 min-w-0"><span class="w-12 h-12 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-2xl text-[#4A4643]" data-icon="mdi:clock-outline"></span></span><span class="text-[0.9375rem] font-semibold text-slate-700">Last activity</span></div>
                         <div class="text-right min-w-0">
                             <p class="text-xl font-extrabold text-slate-900 leading-tight truncate">{{ $actLast ? ($actLast['activity_label'] ?? 'Activity') : 'None yet' }}</p>
-                            @if($actLast)<p class="text-[13px] text-slate-500 truncate">{{ $actLast['created_at_human'] }}</p>@endif
+                            @if($actLast)<p class="text-[0.8125rem] text-slate-500 truncate">{{ $actLast['created_at_human'] }}</p>@endif
                         </div>
                     </div>
                 </div>
@@ -1200,16 +1201,16 @@
                 <div class="act-panel flex flex-col gap-3">
                     {{-- What to show --}}
                     <div class="px-4 sm:px-5 py-3 rounded-2xl border border-[#DADADA] bg-[#EFEFEF]">
-                        <p class="text-[11px] font-semibold text-slate-500 mb-2">Show</p>
+                        <p class="text-[0.6875rem] font-semibold text-slate-500 mb-2">Show</p>
                         <div class="flex flex-wrap gap-2" role="group" aria-label="Show activity by kind">
                             @foreach($actGroups as $actKey => $actGroup)
                                 @php $actN = $actKey === 'all' ? $actRows->count() : ($actCounts[$actKey] ?? 0); @endphp
                                 @continue($actKey !== 'all' && $actN === 0)
                                 <button type="button" data-act-filter="{{ $actKey }}" aria-pressed="{{ $actKey === 'all' ? 'true' : 'false' }}"
-                                        class="act-chip {{ $actKey === 'all' ? 'is-on' : '' }} inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[12px] font-semibold transition">
+                                        class="act-chip {{ $actKey === 'all' ? 'is-on' : '' }} inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[0.75rem] font-semibold transition">
                                     <span class="iconify text-sm" data-icon="{{ $actGroup['icon'] }}"></span>
                                     {{ $actGroup['label'] }}
-                                    <span class="act-count px-1.5 py-0.5 rounded-full text-[10px] font-bold">{{ $actN }}</span>
+                                    <span class="act-count px-1.5 py-0.5 rounded-full text-[0.625rem] font-bold">{{ $actN }}</span>
                                 </button>
                             @endforeach
                         </div>
@@ -1233,31 +1234,31 @@
                                 @php $actColRows = $actRows->where('recent', $actColKey === 'recent')->values(); @endphp
                                 <section data-act-col class="act-col flex flex-col min-h-0 min-w-0 bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
                                     <div class="flex-none px-4 sm:px-5 pt-3 pb-2.5 flex items-center justify-between gap-3 border-b border-[#EFEFEF]">
-                                        <h3 class="flex items-center gap-2 text-[15px] font-extrabold text-slate-900">
+                                        <h3 class="flex items-center gap-2 text-[0.9375rem] font-extrabold text-slate-900">
                                             <span class="iconify text-lg text-[#4A4643]" data-icon="{{ $actCol['icon'] }}"></span>{{ $actCol['title'] }}
                                         </h3>
-                                        <span class="text-[12px] font-semibold text-slate-500">{{ $actCol['hint'] }} · <span data-act-col-count>{{ $actColRows->count() }}</span></span>
+                                        <span class="text-[0.75rem] font-semibold text-slate-500">{{ $actCol['hint'] }} · <span data-act-col-count>{{ $actColRows->count() }}</span></span>
                                     </div>
                                     <div class="act-timeline max-h-[60vh] overflow-y-auto px-4 sm:px-5 py-3">
                                     @forelse($actColRows->groupBy('day') as $actDay => $actDayRows)
                                         <div data-act-day class="mb-3 last:mb-0">
-                                            <p class="sticky top-0 z-[1] bg-white py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{{ $actDay }}</p>
+                                            <p class="sticky top-0 z-[1] bg-white py-1.5 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500">{{ $actDay }}</p>
                                             <ol class="relative ml-4 border-l border-[#DADADA]">
                                                 @foreach($actDayRows as $actLog)
-                                                    <li data-act-group="{{ $actLog['group'] }}" class="relative flex items-center min-h-[56px] pl-7 py-2.5">
-                                                        <span class="absolute -left-[17px] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#EFEFEF] border border-[#DADADA] flex items-center justify-center">
+                                                    <li data-act-group="{{ $actLog['group'] }}" class="relative flex items-center min-h-[3.5rem] pl-7 py-2.5">
+                                                        <span class="absolute -left-[1.0625rem] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#EFEFEF] border border-[#DADADA] flex items-center justify-center">
                                                             <span class="iconify text-base text-[#4A4643]" data-icon="{{ $actLog['icon'] }}"></span>
                                                         </span>
                                                         <div class="flex-1 min-w-0 flex items-start justify-between gap-3">
                                                             <div class="min-w-0">
                                                                 <p class="text-sm font-bold text-slate-900">{{ $actLog['activity_label'] ?? $actLog['activity'] ?? 'Activity' }}</p>
                                                                 @if(!empty($actLog['description']))
-                                                                    <p class="text-[13px] text-slate-600 mt-0.5 break-words">{{ $actLog['description'] }}</p>
+                                                                    <p class="text-[0.8125rem] text-slate-600 mt-0.5 break-words">{{ $actLog['description'] }}</p>
                                                                 @endif
                                                             </div>
                                                             <div class="text-right shrink-0">
-                                                                <p class="text-[12px] font-semibold text-slate-800">{{ $actLog['time'] }}</p>
-                                                                <p class="text-[11px] text-slate-500">{{ $actLog['created_at_human'] }}</p>
+                                                                <p class="text-[0.75rem] font-semibold text-slate-800">{{ $actLog['time'] }}</p>
+                                                                <p class="text-[0.6875rem] text-slate-500">{{ $actLog['created_at_human'] }}</p>
                                                             </div>
                                                         </div>
                                                     </li>
@@ -1287,7 +1288,7 @@
                         #activity-section .act-timeline { flex: 1; min-height: 0; max-height: none; }
                     }
                     #activity-section .act-timeline { scrollbar-width: thin; scrollbar-color: #9E9E9E #F3F2F1; }
-                    #activity-section .act-timeline::-webkit-scrollbar { width: 8px; }
+                    #activity-section .act-timeline::-webkit-scrollbar { width: 0.5rem; }
                     #activity-section .act-timeline::-webkit-scrollbar-track { background: #F3F2F1; border-radius: 99px; }
                     #activity-section .act-timeline::-webkit-scrollbar-thumb { background: #9E9E9E; border-radius: 99px; }
                     #activity-section .act-timeline::-webkit-scrollbar-thumb:hover { background: #6B6B6B; }
@@ -1395,7 +1396,7 @@
                         #reports-section .rp-scroll { flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
                     }
                     #reports-section .rp-scroll { scrollbar-width: thin; scrollbar-color: #9E9E9E #F3F2F1; }
-                    #reports-section .rp-scroll::-webkit-scrollbar { width: 8px; }
+                    #reports-section .rp-scroll::-webkit-scrollbar { width: 0.5rem; }
                     #reports-section .rp-scroll::-webkit-scrollbar-track { background: #F3F2F1; border-radius: 99px; }
                     #reports-section .rp-scroll::-webkit-scrollbar-thumb { background: #9E9E9E; border-radius: 99px; }
                     #reports-section .rp-scroll::-webkit-scrollbar-thumb:hover { background: #6B6B6B; }
@@ -1418,19 +1419,19 @@
                 <div id="report-panel-self" class="rp-panel space-y-4">
                     <div class="rp-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed</p>
+                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completed</p>
                             <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfCompleted->count() }}</p>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
+                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
                             <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfAssigned->count() }}</p>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</p>
+                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Total</p>
                             <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfTotal }}</p>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
+                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
                             <p class="text-2xl font-extrabold text-brand mt-1">{{ $selfRate }}%</p>
                             <div class="h-2 mt-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar"
                                  aria-valuenow="{{ $selfRate }}" aria-valuemin="0" aria-valuemax="100" aria-label="Completion rate">
@@ -1463,7 +1464,7 @@
                         <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]">
                             <h3 class="text-sm font-bold text-slate-800">Tasks I finished</h3>
                         </div>
-                        <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[420px] overflow-y-auto">
+                        <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[26.25rem] overflow-y-auto">
                             @forelse($selfCompleted as $task)
                                 <div class="px-5 py-3.5 flex items-start gap-3">
                                     <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
@@ -1485,19 +1486,19 @@
                 <div id="report-panel-team" class="rp-panel space-y-4 hidden">
                     <div class="rp-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed</p>
+                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completed</p>
                             <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamCompleted->count() }}</p>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
+                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
                             <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamAssigned->count() }}</p>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</p>
+                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Total</p>
                             <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamTotal }}</p>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
+                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
                             <p class="text-2xl font-extrabold text-brand mt-1">{{ $teamRate }}%</p>
                             <div class="h-2 mt-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar"
                                  aria-valuenow="{{ $teamRate }}" aria-valuemin="0" aria-valuemax="100" aria-label="Completion rate">
@@ -1527,7 +1528,7 @@
                                         <div class="h-full rounded-full bg-plum-accent" style="width: {{ round(($count / $maxTeamRole) * 100) }}%"></div>
                                     </div>
                                     @if($lastTask)
-                                        <p class="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1 min-w-0">
+                                        <p class="text-[0.6875rem] text-slate-400 mt-1.5 flex items-center gap-1 min-w-0">
                                             <span class="iconify text-amber-500 shrink-0" data-icon="mdi:history"></span>
                                             <span class="truncate">
                                                 Last completed: <span class="font-semibold text-slate-600">{{ $lastTask->title }}</span>
@@ -1547,7 +1548,7 @@
                         <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]">
                             <h3 class="text-sm font-bold text-slate-800">Tasks my team finished</h3>
                         </div>
-                        <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[420px] overflow-y-auto">
+                        <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[26.25rem] overflow-y-auto">
                             @forelse($teamCompleted as $task)
                                 <div class="px-5 py-3.5 flex items-start gap-3">
                                     <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
@@ -1595,7 +1596,7 @@
 
                         <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
                             <h3 class="text-sm font-bold text-slate-800">Account Details</h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">This is how your name appears to your team and your faculty.</p>
+                            <p class="text-[0.6875rem] text-slate-400 mt-0.5">This is how your name appears to your team and your faculty.</p>
                         </div>
 
                         <div class="p-5 space-y-4">
@@ -1607,14 +1608,14 @@
                                         <span class="iconify text-sm" data-icon="mdi:camera-outline"></span> Change photo
                                     </label>
                                     <input id="studentAvatar" type="file" name="avatar" accept="image/*" class="hidden">
-                                    <p class="text-[11px] text-slate-400 mt-1">JPG, PNG, WEBP or GIF · up to 2 MB</p>
+                                    <p class="text-[0.6875rem] text-slate-400 mt-1">JPG, PNG, WEBP or GIF · up to 2 MB</p>
                                     @if ($pUser?->avatar)
-                                        <label class="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-600 cursor-pointer">
+                                        <label class="mt-1.5 inline-flex items-center gap-1.5 text-[0.6875rem] font-semibold text-rose-600 cursor-pointer">
                                             <input type="checkbox" name="remove_avatar" value="1" class="rounded border-slate-300 text-rose-500">
                                             Remove current photo
                                         </label>
                                     @endif
-                                    @error('avatar')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                    @error('avatar')<p class="text-[0.6875rem] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
                                 </div>
                             </div>
 
@@ -1625,30 +1626,30 @@
                                     ['last_name', 'Last name', $pUser?->last_name, true],
                                 ] as [$field, $label, $value, $required])
                                     <div>
-                                        <label for="student_{{ $field }}" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        <label for="student_{{ $field }}" class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                                             {{ $label }} @if(!$required)<span class="text-slate-300 normal-case font-semibold">(optional)</span>@endif
                                         </label>
                                         <input id="student_{{ $field }}" type="text" name="{{ $field }}" value="{{ old($field, $value) }}" @if($required) required @endif
                                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                                        @error($field)<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                        @error($field)<p class="text-[0.6875rem] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
                                     </div>
                                 @endforeach
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label for="student_email" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
+                                    <label for="student_email" class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
                                     <input id="student_email" type="email" name="email" value="{{ old('email', $pUser?->email) }}" required
                                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                                    @error('email')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                    @error('email')<p class="text-[0.6875rem] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
                                 </div>
                                 <div>
-                                    <label for="student_phone" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                    <label for="student_phone" class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                                         Phone <span class="text-slate-300 normal-case font-semibold">(optional)</span>
                                     </label>
                                     <input id="student_phone" type="text" name="phone_number" value="{{ old('phone_number', $pUser?->phone_number ?? $student?->phone_number) }}"
                                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                                    @error('phone_number')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
+                                    @error('phone_number')<p class="text-[0.6875rem] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
                                 </div>
                             </div>
                         </div>
@@ -1664,7 +1665,7 @@
                     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden self-start">
                         <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
                             <h3 class="text-sm font-bold text-slate-800">School Record</h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Set by your faculty — ask them if something is wrong.</p>
+                            <p class="text-[0.6875rem] text-slate-400 mt-0.5">Set by your faculty — ask them if something is wrong.</p>
                         </div>
                         <dl class="divide-y divide-slate-50">
                             @foreach ([
@@ -1679,15 +1680,15 @@
                                 ['Team', $group?->name],
                             ] as [$label, $value])
                                 <div class="px-5 py-2.5 flex items-center justify-between gap-3">
-                                    <dt class="text-[11px] font-semibold text-slate-400">{{ $label }}</dt>
+                                    <dt class="text-[0.6875rem] font-semibold text-slate-400">{{ $label }}</dt>
                                     <dd class="text-xs font-bold text-slate-700 text-right truncate">{{ $value ?: '—' }}</dd>
                                 </div>
                             @endforeach
                             <div class="px-5 py-2.5">
-                                <dt class="text-[11px] font-semibold text-slate-400 mb-1.5">Roles</dt>
+                                <dt class="text-[0.6875rem] font-semibold text-slate-400 mb-1.5">Roles</dt>
                                 <dd class="flex flex-wrap gap-1.5">
                                     @forelse ($studentRoles ?? [] as $role)
-                                        <span class="px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[10px] font-bold">
+                                        <span class="px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[0.625rem] font-bold">
                                             {{ \App\Support\HotelTemplateBuilder::ROLES[$role] ?? $role }}
                                         </span>
                                     @empty
@@ -1723,7 +1724,7 @@
             <div class="relative top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100 w-[92vw] max-w-xl max-h-[90vh] overflow-y-auto">
                 <div class="brand-gradient px-5 py-4 flex items-center justify-between gap-3 sticky top-0 z-10">
                     <div class="min-w-0">
-                        <p class="text-white/60 text-[9px] font-bold uppercase tracking-[0.15em]">Hotel Concepts · Your Task</p>
+                        <p class="text-white/60 text-[0.5625rem] font-bold uppercase tracking-[0.15em]">Hotel Concepts · Your Task</p>
                         <h4 id="hotelConceptModalTitle" class="text-base font-extrabold text-white">Hotel Concept</h4>
                     </div>
                     <button type="button" onclick="closeHotelConceptModal()"
@@ -1740,7 +1741,7 @@
                     <div id="hotelConceptFormError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"></div>
 
                     <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Concept Title</label>
+                        <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Concept Title</label>
                         <input name="title" type="text" required maxlength="150"
                             placeholder="e.g. Seaside Serenity Resort"
                             class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
@@ -1749,16 +1750,16 @@
                         {{-- The line the hotel introduces itself with. It is printed
                              above the headline on the landing page and inside every
                              footer, so it is a line and not a paragraph. --}}
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                             Tagline <span class="text-slate-300 font-semibold normal-case tracking-normal">— optional</span>
                         </label>
                         <input name="tagline" type="text" maxlength="120"
                             placeholder="e.g. Where the sea meets stillness"
                             class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                        <p class="text-[10px] text-slate-400 mt-1">Shown above the headline on your hotel's landing page and in its footer.</p>
+                        <p class="text-[0.625rem] text-slate-400 mt-1">Shown above the headline on your hotel's landing page and in its footer.</p>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Type</label>
+                        <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Type</label>
                         <select name="hotel_type" required
                             class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
                             <option value="">Select hotel type</option>
@@ -1768,7 +1769,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
+                        <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
                         <textarea name="description" required rows="5" maxlength="5000"
                             placeholder="What the hotel is, who it serves, what makes it different."
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
@@ -1794,7 +1795,7 @@
             <div class="bg-brand-soft px-4 py-3 border-b border-brand/10 flex justify-between items-center rounded-t-2xl flex-shrink-0">
                 <div class="min-w-0">
                     <h4 id="memberActivityModalTitle" class="font-bold text-brand text-sm truncate">Activity Logs</h4>
-                    <p id="memberActivityModalSubtitle" class="text-[11px] text-slate-500 truncate"></p>
+                    <p id="memberActivityModalSubtitle" class="text-[0.6875rem] text-slate-500 truncate"></p>
                 </div>
                 <button type="button" onclick="closeMemberActivityModal()" class="text-slate-400 hover:text-brand hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0" aria-label="Close">
                     <span class="iconify text-lg" data-icon="mdi:close"></span>
@@ -1818,7 +1819,7 @@
         <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 34rem;">
             <div class="bg-[#F5F2EF] px-4 py-3 border-b border-[#E7E1DD] flex justify-between items-start gap-3 rounded-t-2xl flex-shrink-0">
                 <div class="min-w-0">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-[#8A817A]">Task Instructions</p>
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-[#8A817A]">Task Instructions</p>
                     <h4 id="taskInstructionsName" class="font-bold text-[#181818] text-sm truncate">Task</h4>
                 </div>
                 <button type="button" onclick="closeTaskInstructions()" class="text-[#5F5A55] hover:text-[#181818] hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0" aria-label="Close">
@@ -1827,20 +1828,20 @@
             </div>
             <div class="px-4 py-3 border-b border-slate-100 grid grid-cols-2 gap-x-4 gap-y-2.5 flex-shrink-0">
                 <div class="min-w-0">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Task Code</p>
-                    <p id="taskInstructionsCode" class="text-[12px] font-bold text-slate-700 truncate"></p>
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Task Code</p>
+                    <p id="taskInstructionsCode" class="text-[0.75rem] font-bold text-slate-700 truncate"></p>
                 </div>
                 <div class="min-w-0">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Role</p>
-                    <p id="taskInstructionsRole" class="text-[12px] font-bold text-slate-700 truncate"></p>
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Role</p>
+                    <p id="taskInstructionsRole" class="text-[0.75rem] font-bold text-slate-700 truncate"></p>
                 </div>
                 <div class="min-w-0">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</p>
-                    <p id="taskInstructionsStatus" class="text-[12px] font-bold text-slate-700 truncate"></p>
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Status</p>
+                    <p id="taskInstructionsStatus" class="text-[0.75rem] font-bold text-slate-700 truncate"></p>
                 </div>
                 <div class="min-w-0">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Due Date</p>
-                    <p id="taskInstructionsDue" class="text-[12px] font-bold text-slate-700 truncate"></p>
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Due Date</p>
+                    <p id="taskInstructionsDue" class="text-[0.75rem] font-bold text-slate-700 truncate"></p>
                 </div>
             </div>
             {{-- The card's own .task-detail node is moved in here while the dialog is
@@ -2168,18 +2169,18 @@
                 done.dataset.taskStatus = 'completed';
                 done.innerHTML =
                     '<div class="flex flex-wrap items-start gap-3 px-4 sm:px-5 pt-4 pb-3">'
-                        + '<div class="min-w-0 flex-1 basis-[140px]">'
-                            + '<p class="text-[14px] font-bold leading-snug text-slate-400">' + conceptEscape(title) + '</p>'
-                            + '<p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">' + conceptEscape(code) + '</p>'
+                        + '<div class="min-w-0 flex-1 basis-[8.75rem]">'
+                            + '<p class="text-[0.875rem] font-bold leading-snug text-slate-400">' + conceptEscape(title) + '</p>'
+                            + '<p class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mt-1">' + conceptEscape(code) + '</p>'
                         + '</div>'
                         + '<div class="flex items-center gap-2 shrink-0 ml-auto">'
-                            + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap status-badge-completed">Approved</span>'
+                            + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold whitespace-nowrap status-badge-completed">Approved</span>'
                         + '</div>'
                     + '</div>'
                     + '<div class="flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">'
                         + '<div class="flex items-center gap-1.5 min-w-0">'
                             + '<span class="iconify text-[#8A817A] text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>'
-                            + '<p class="text-[11px] font-semibold text-slate-300">No due date</p>'
+                            + '<p class="text-[0.6875rem] font-semibold text-slate-300">No due date</p>'
                         + '</div>'
                         + '<div class="flex items-center gap-2 shrink-0">'
                             + '<span class="w-8 h-8 rounded-full bg-[#F5F2EF] text-[#5F5A55] flex items-center justify-center">'
@@ -2338,11 +2339,11 @@
             const isLong = description.length > 180;
 
             container.innerHTML =
-                '<p class="text-slate-400 text-[9px] font-bold uppercase tracking-[0.15em]">Concept Description</p>'
-                + '<p id="teamHeaderConceptDesc" class="text-[11px] text-slate-500 leading-relaxed mt-1 whitespace-pre-line' + (isLong ? ' line-clamp-3' : '') + '">'
+                '<p class="text-slate-400 text-[0.5625rem] font-bold uppercase tracking-[0.15em]">Concept Description</p>'
+                + '<p id="teamHeaderConceptDesc" class="text-[0.6875rem] text-slate-500 leading-relaxed mt-1 whitespace-pre-line' + (isLong ? ' line-clamp-3' : '') + '">'
                     + conceptEscape(description) + '</p>'
                 + (isLong
-                    ? '<button type="button" onclick="toggleTeamHeaderConceptDesc(this)" class="mt-1.5 text-[10px] font-bold text-brand hover:text-brand-dark underline underline-offset-2">Show more</button>'
+                    ? '<button type="button" onclick="toggleTeamHeaderConceptDesc(this)" class="mt-1.5 text-[0.625rem] font-bold text-brand hover:text-brand-dark underline underline-offset-2">Show more</button>'
                     : '');
 
             container.classList.remove('hidden');
@@ -2362,37 +2363,37 @@
             const status = concept ? (concept.status || 'draft') : 'draft';
 
             const badge = concept
-                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider '
+                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[0.5625rem] font-bold uppercase tracking-wider '
                     + (CONCEPT_BADGE_CLASSES[status] || CONCEPT_BADGE_CLASSES.draft) + '">'
                     + conceptEscape(concept.status_label) + '</span>'
-                : '<span class="inline-flex items-center px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-400 text-[9px] font-bold uppercase tracking-wider">Empty</span>';
+                : '<span class="inline-flex items-center px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-400 text-[0.5625rem] font-bold uppercase tracking-wider">Empty</span>';
 
             const rounds = concept ? Number(concept.revision_count || 0) : 0;
             const revisionBadge = rounds > 0
-                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold uppercase tracking-wider">Revision '
+                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[0.5625rem] font-bold uppercase tracking-wider">Revision '
                     + rounds + '</span>'
                 : '';
 
             const editButton = entry.can_edit
                 ? '<button type="button" onclick="openHotelConceptModal(' + Number(entry.slot) + ')"'
-                    + ' class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">'
-                    + '<span class="iconify text-[13px]" data-icon="mdi:pencil-outline"></span>'
+                    + ' class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[0.6875rem] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">'
+                    + '<span class="iconify text-[0.8125rem]" data-icon="mdi:pencil-outline"></span>'
                     + (concept ? 'Edit' : 'Propose')
                   + '</button>'
                 : '';
 
             const officialRibbon = concept && status === 'approved'
-                ? '<p class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.15em] text-emerald-600 mt-1.5">'
-                    + '<span class="iconify text-[12px]" data-icon="mdi:star-circle"></span> Official Hotel Concept</p>'
+                ? '<p class="inline-flex items-center gap-1 text-[0.5625rem] font-bold uppercase tracking-[0.15em] text-emerald-600 mt-1.5">'
+                    + '<span class="iconify text-[0.75rem]" data-icon="mdi:star-circle"></span> Official Hotel Concept</p>'
                 : '';
 
             const body = concept
                 ? officialRibbon
                     + '<h4 class="text-sm font-extrabold text-slate-800 mt-1">' + conceptEscape(concept.title) + '</h4>'
                     + (concept.tagline
-                        ? '<p class="text-[11px] italic text-brand">' + conceptEscape(concept.tagline) + '</p>'
+                        ? '<p class="text-[0.6875rem] italic text-brand">' + conceptEscape(concept.tagline) + '</p>'
                         : '')
-                    + '<p class="text-[11px] font-bold text-slate-500">' + conceptEscape(concept.hotel_type_label) + '</p>'
+                    + '<p class="text-[0.6875rem] font-bold text-slate-500">' + conceptEscape(concept.hotel_type_label) + '</p>'
                     + '<p class="text-xs text-slate-500 leading-relaxed mt-1.5 whitespace-pre-line">' + conceptEscape(concept.description) + '</p>'
                 : '<p class="text-sm font-bold text-slate-400 mt-1">Not proposed yet</p>'
                     + '<p class="text-xs text-slate-400 mt-1">'
@@ -2416,7 +2417,7 @@
                 '<div class="flex items-start justify-between gap-2">' +
                     '<div class="min-w-0">' +
                         '<div class="flex items-center gap-1.5 flex-wrap">' +
-                            '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">' + conceptEscape(entry.slot_label) + '</p>' +
+                            '<p class="text-[0.5625rem] font-bold uppercase tracking-[0.15em] text-brand">' + conceptEscape(entry.slot_label) + '</p>' +
                             badge + revisionBadge +
                         '</div>' +
                         body +
@@ -2425,7 +2426,7 @@
                 '</div>' +
                 notice +
                 '<div class="mt-3">' +
-                    '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Edit History · '
+                    '<p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Edit History · '
                         + history.length + ' ' + (history.length === 1 ? 'entry' : 'entries') + '</p>' +
                     '<div class="rounded-xl border border-slate-100 bg-white divide-y divide-slate-100 max-h-56 overflow-y-auto">'
                         + renderConceptHistory(history) +
@@ -2441,7 +2442,7 @@
 
             return history.map(function (entry) {
                 const changes = (entry.changes || []).map(function (change) {
-                    return '<li class="text-[11px] text-slate-500">' +
+                    return '<li class="text-[0.6875rem] text-slate-500">' +
                         '<span class="font-semibold text-slate-600">' + conceptEscape(change.label) + ':</span> ' +
                         '<span class="line-through text-slate-400">' + (conceptEscape(change.from) || '—') + '</span> ' +
                         '<span class="text-slate-400">to</span> ' +
@@ -2453,12 +2454,12 @@
                     '<div class="flex items-start justify-between gap-2 flex-wrap">' +
                         '<p class="text-xs font-bold text-slate-700">' + conceptEscape(entry.editor) +
                             ' <span class="font-semibold text-slate-400">— ' + conceptEscape(entry.action_label) + '</span></p>' +
-                        '<span class="text-[10px] text-slate-400 shrink-0">' + conceptEscape(entry.created_at) +
+                        '<span class="text-[0.625rem] text-slate-400 shrink-0">' + conceptEscape(entry.created_at) +
                             ' · ' + conceptEscape(entry.created_at_human) + '</span>' +
                     '</div>' +
                     (changes
                         ? '<ul class="mt-1.5 space-y-1">' + changes + '</ul>'
-                        : '<p class="mt-1.5 text-[11px] text-slate-500"><span class="font-semibold text-slate-600">'
+                        : '<p class="mt-1.5 text-[0.6875rem] text-slate-500"><span class="font-semibold text-slate-600">'
                             + conceptEscape(entry.title) + '</span> · ' + conceptEscape(entry.hotel_type_label) + '</p>') +
                 '</div>';
             }).join('');
@@ -2628,7 +2629,7 @@
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-bold text-slate-800">${escapeMemberHtml(log.activity_label || log.activity || '—')}</p>
                         <p class="text-xs text-slate-500 mt-0.5">${escapeMemberHtml(log.description || '—')}</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5">${escapeMemberHtml(log.created_at || '')}${log.created_at_human ? ' · ' + escapeMemberHtml(log.created_at_human) : ''}</p>
+                        <p class="text-[0.6875rem] text-slate-400 mt-0.5">${escapeMemberHtml(log.created_at || '')}${log.created_at_human ? ' · ' + escapeMemberHtml(log.created_at_human) : ''}</p>
                     </div>
                 </div>
             `).join('');
@@ -2757,7 +2758,7 @@
 
             const statusEl = groupEl.querySelector('[data-summary-status]');
             if (statusEl) {
-                statusEl.className = 'inline-flex items-center gap-1.5 mt-2 w-fit px-3 py-1.5 rounded-lg text-[12px] font-bold ' + meta.badge;
+                statusEl.className = 'inline-flex items-center gap-1.5 mt-2 w-fit px-3 py-1.5 rounded-lg text-[0.75rem] font-bold ' + meta.badge;
                 statusEl.innerHTML = '<span class="iconify text-sm" data-icon="' + meta.icon + '"></span> ' + meta.label;
                 if (window.Iconify && typeof window.Iconify.scan === 'function') window.Iconify.scan(statusEl);
             }
@@ -2798,7 +2799,7 @@
             set('taskInstructionsStatus', detail.dataset.detailStatus);
             const statusKey = detail.closest('[data-task-card]')?.dataset.taskStatus;
             const statusEl = document.getElementById('taskInstructionsStatus');
-            if (statusEl) statusEl.className = 'text-[12px] font-bold truncate ' + (statusKey ? 'status-text-' + statusKey : 'text-slate-700');
+            if (statusEl) statusEl.className = 'text-[0.75rem] font-bold truncate ' + (statusKey ? 'status-text-' + statusKey : 'text-slate-700');
             set('taskInstructionsDue',    detail.dataset.detailDue);
 
             body.appendChild(detail);

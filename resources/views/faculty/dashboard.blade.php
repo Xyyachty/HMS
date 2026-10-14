@@ -38,14 +38,14 @@
                 <span class="iconify text-white text-xl" data-icon="mdi:account-group-outline"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Students</p>
+                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Total Students</p>
                 <p class="text-3xl font-extrabold text-slate-900 leading-tight">{{ number_format($totalStudents) }}</p>
-                <p class="text-[11px] text-slate-400 font-medium truncate">Enrolled learners</p>
+                <p class="text-[0.6875rem] text-slate-400 font-medium truncate">Enrolled learners</p>
             </div>
         </div>
         <div class="mt-3 pt-2 border-t border-slate-100 flex items-center gap-1.5">
             <span class="iconify text-slate-300 text-sm" data-icon="mdi:account-multiple-outline"></span>
-            <span class="text-[11px] font-semibold text-slate-500 truncate">Across {{ number_format($totalTeams) }} team{{ $totalTeams === 1 ? '' : 's' }}</span>
+            <span class="text-[0.6875rem] font-semibold text-slate-500 truncate">Across {{ number_format($totalTeams) }} team{{ $totalTeams === 1 ? '' : 's' }}</span>
         </div>
     </a>
 
@@ -55,18 +55,18 @@
                 <span class="iconify text-white text-xl" data-icon="mdi:clipboard-text-outline"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Tasks</p>
+                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Active Tasks</p>
                 <p class="text-3xl font-extrabold text-slate-900 leading-tight">{{ number_format($assignedTasks) }}</p>
-                <p class="text-[11px] text-slate-400 font-medium truncate">Currently in progress</p>
+                <p class="text-[0.6875rem] text-slate-400 font-medium truncate">Currently in progress</p>
             </div>
         </div>
         <div class="mt-3 pt-2 border-t border-slate-100 flex items-center gap-1.5">
             @if($overdueTasks > 0)
                 <span class="iconify text-red-400 text-sm" data-icon="mdi:alert-circle-outline"></span>
-                <span class="text-[11px] font-semibold text-red-500 truncate">{{ number_format($overdueTasks) }} past due date</span>
+                <span class="text-[0.6875rem] font-semibold text-red-500 truncate">{{ number_format($overdueTasks) }} past due date</span>
             @else
                 <span class="iconify text-emerald-500 text-sm" data-icon="mdi:check-circle-outline"></span>
-                <span class="text-[11px] font-semibold text-emerald-600 truncate">All tasks on schedule</span>
+                <span class="text-[0.6875rem] font-semibold text-emerald-600 truncate">All tasks on schedule</span>
             @endif
         </div>
     </a>
@@ -77,14 +77,14 @@
                 <span class="iconify text-white text-xl" data-icon="mdi:trending-up"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
+                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
                 <p class="text-3xl font-extrabold text-slate-900 leading-tight">{{ $completionRate }}%</p>
-                <p class="text-[11px] text-slate-400 font-medium truncate">Average completion</p>
+                <p class="text-[0.6875rem] text-slate-400 font-medium truncate">Average completion</p>
             </div>
         </div>
         <div class="mt-3 pt-2 border-t border-slate-100 flex items-center gap-1.5">
             <span class="iconify text-slate-300 text-sm" data-icon="mdi:check-all"></span>
-            <span class="text-[11px] font-semibold text-slate-500 truncate">{{ number_format($completedTasks) }} task{{ $completedTasks === 1 ? '' : 's' }} completed</span>
+            <span class="text-[0.6875rem] font-semibold text-slate-500 truncate">{{ number_format($completedTasks) }} task{{ $completedTasks === 1 ? '' : 's' }} completed</span>
         </div>
     </a>
 
@@ -97,7 +97,7 @@
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
             <p class="text-sm font-bold text-slate-800">Task Overview</p>
-            <a href="{{ route('faculty.activity') }}" class="text-[11px] font-bold text-rose-600 hover:underline">View All</a>
+            <a href="{{ route('faculty.activity') }}" class="text-[0.6875rem] font-bold text-rose-600 hover:underline">View All</a>
         </div>
             <div class="divide-y divide-slate-100">
                 @forelse(($recentActivity ?? collect()) as $task)
@@ -114,8 +114,8 @@
                             <span class="iconify text-lg" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
                         </div>
                         <div class="min-w-0 flex-1">
-                            <p class="text-[13px] font-bold text-slate-800 line-clamp-2">{{ $task->title }}</p>
-                            <p class="text-[11px] text-slate-400 mt-0.5 truncate">
+                            <p class="text-[0.8125rem] font-bold text-slate-800 line-clamp-2">{{ $task->title }}</p>
+                            <p class="text-[0.6875rem] text-slate-400 mt-0.5 truncate">
                                 {{ $roleLabels[$task->role] ?? $task->role }}
                                 @if($task->group_name)
                                     · {{ $task->group_name }}
@@ -125,8 +125,8 @@
                             </p>
                         </div>
                         <div class="text-right shrink-0">
-                            <p class="text-[10px] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
-                            <p class="text-[10px] font-bold mt-1 flex items-center justify-end gap-1 {{ $isPending ? 'status-text-pending' : ($isDone ? 'status-text-completed' : 'text-slate-900') }}">
+                            <p class="text-[0.625rem] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
+                            <p class="text-[0.625rem] font-bold mt-1 flex items-center justify-end gap-1 {{ $isPending ? 'status-text-pending' : ($isDone ? 'status-text-completed' : 'text-slate-900') }}">
                                 <span class="w-1.5 h-1.5 rounded-full {{ $isPending ? 'status-fill-pending' : ($isDone ? 'status-fill-completed' : 'bg-slate-900') }}"></span>
                                 {{ $isPending ? 'Pending' : ($isDone ? 'Completed' : 'Assigned') }}
                             </p>
@@ -149,9 +149,9 @@
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
             <p class="text-sm font-bold text-slate-800">Customization Approval Progress</p>
-            <a href="{{ route('faculty.role') }}" class="text-[11px] font-bold text-rose-600 hover:underline">View Report</a>
+            <a href="{{ route('faculty.role') }}" class="text-[0.6875rem] font-bold text-rose-600 hover:underline">View Report</a>
         </div>
-        <div class="divide-y divide-slate-100 overflow-y-auto" style="max-height: 340px">
+        <div class="divide-y divide-slate-100 overflow-y-auto" style="max-height: 21.25rem">
             @forelse(($teamProgress ?? collect()) as $i => $team)
                 <div class="px-5 py-3 flex items-center gap-3">
                     <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $teamTints[$i % count($teamTints)] }}">
@@ -159,10 +159,10 @@
                     </div>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 min-w-0">
-                            <p class="text-[13px] font-bold text-slate-800 truncate">{{ $team['name'] }}</p>
+                            <p class="text-[0.8125rem] font-bold text-slate-800 truncate">{{ $team['name'] }}</p>
                             <span class="shrink-0">@include('partials.team-completion', ['done' => $team['done'], 'total' => $team['total']])</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5">
+                        <p class="text-[0.625rem] text-slate-400 font-bold tracking-wider mt-0.5">
                             {{ $team['done'] }}/{{ $team['total'] }} approved ·
                             <span class="text-emerald-600">Simulation open</span>
                         </p>
@@ -170,7 +170,7 @@
                     <div class="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
                         <div class="h-full rounded-full {{ $teamBars[$i % count($teamBars)] }}" style="width: {{ $team['percent'] }}%"></div>
                     </div>
-                    <p class="text-[13px] font-extrabold text-slate-700 w-10 text-right shrink-0">{{ $team['percent'] }}%</p>
+                    <p class="text-[0.8125rem] font-extrabold text-slate-700 w-10 text-right shrink-0">{{ $team['percent'] }}%</p>
                 </div>
             @empty
                 <div class="px-5 py-12 text-center">
@@ -188,7 +188,7 @@
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
             <p class="text-sm font-bold text-slate-800">Task</p>
-            <a href="{{ route('faculty.activity') }}" class="text-[11px] font-bold text-rose-600 hover:underline">View All</a>
+            <a href="{{ route('faculty.activity') }}" class="text-[0.6875rem] font-bold text-rose-600 hover:underline">View All</a>
         </div>
         <div class="divide-y divide-slate-100">
             @forelse(($upcomingTasks ?? collect()) as $task)
@@ -197,8 +197,8 @@
                         <span class="iconify text-lg" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <p class="text-[13px] font-bold text-slate-800 truncate">{{ $task->title }}</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ $task->group_name ?: ($roleLabels[$task->role] ?? $task->role) }}</p>
+                        <p class="text-[0.8125rem] font-bold text-slate-800 truncate">{{ $task->title }}</p>
+                        <p class="text-[0.6875rem] text-slate-400 mt-0.5 truncate">{{ $task->group_name ?: ($roleLabels[$task->role] ?? $task->role) }}</p>
                     </div>
                 </div>
             @empty

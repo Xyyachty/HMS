@@ -93,7 +93,7 @@
                                             'extraClasses' => 'bg-brand text-white text-xs font-bold',
                                         ])
                                         <span class="font-bold text-slate-800 text-sm">{{ $displayName }}</span>
-                                        <span class="text-[11px] font-semibold text-slate-400">&middot; {{ $facultyGroups->count() }} {{ Str::plural('team', $facultyGroups->count()) }}</span>
+                                        <span class="text-[0.6875rem] font-semibold text-slate-400">&middot; {{ $facultyGroups->count() }} {{ Str::plural('team', $facultyGroups->count()) }}</span>
                                     </div>
                                 </td>
                             </tr>
@@ -132,7 +132,7 @@
                                             <p class="font-semibold text-slate-700 text-sm">
                                                 {{ \App\Support\HotelConceptDesk::slotLabel($concept->slot) }}: {{ $concept->title }}
                                             </p>
-                                            <p class="text-[11px] text-slate-400">
+                                            <p class="text-[0.6875rem] text-slate-400">
                                                 {{ $concept->hotel_type_label }} · {{ \App\Support\HotelConceptDesk::statusLabel($concept) }}
                                             </p>
                                         </div>
@@ -405,7 +405,7 @@
 <!-- Create Faculty Modal -->
 <div id="createFacultyModal" class="ink-all fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('createFacultyModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 47.5rem; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
         <div class="bg-rose-50 px-6 py-4 border-b border-rose-100 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-rose-600 text-lg">Add Faculty Account</h4>
             <button onclick="closeModal('createFacultyModal')" class="text-slate-400 hover:text-rose-500 hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
@@ -520,21 +520,21 @@
        team keeps the page short; a team opens to one line per task. */
     .cp-wrap { padding: 1rem 1.5rem 1.5rem; }
     .cp-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
-    .cp-sub { font-size: 12.5px; color: #4A4643; line-height: 1.5; max-width: 72ch; }
+    .cp-sub { font-size: 0.7812rem; color: #4A4643; line-height: 1.5; max-width: 72ch; }
     .cp-sub b { font-weight: 800; }
     .cp-sub .is-approved, .cp-strip .is-approved { color: #15803D; }
     .cp-sub .is-waiting, .cp-strip .is-waiting { color: #B45309; }
-    .cp-strip { display: flex; gap: 1rem; font-size: 12.5px; color: #4A4643; white-space: nowrap; }
+    .cp-strip { display: flex; gap: 1rem; font-size: 0.7812rem; color: #4A4643; white-space: nowrap; }
     .cp-strip > span { display: inline-flex; align-items: center; gap: .25rem; }
-    .cp-strip b { font-size: 15px; font-weight: 800; color: inherit; }
+    .cp-strip b { font-size: 0.9375rem; font-weight: 800; color: inherit; }
     .cp-strip > span:first-child b { color: #181818; }
     .cp-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .75rem; }
     .cp-chips { display: flex; flex-wrap: wrap; gap: .375rem; }
-    .cp-chip { padding: .3rem .8rem; border-radius: 999px; border: 1px solid #E4E2E0; background: #fff; font-size: 12px; font-weight: 700; color: #4A4643; transition: background .2s, color .2s; }
+    .cp-chip { padding: .3rem .8rem; border-radius: 999px; border: 1px solid #E4E2E0; background: #fff; font-size: 0.75rem; font-weight: 700; color: #4A4643; transition: background .2s, color .2s; }
     .cp-chip:hover { background: #F3F2F1; }
     .cp-chip.is-on { background: #4A4643; border-color: #4A4643; color: #fff; }
     .cp-search { display: flex; align-items: center; gap: .5rem; height: 2.25rem; padding: 0 .75rem; border: 1px solid #E4E2E0; border-radius: .75rem; background: #fff; min-width: 15rem; color: #8A817A; }
-    .cp-search input { border: 0; outline: 0; background: transparent; font-size: 13px; color: #181818; width: 100%; }
+    .cp-search input { border: 0; outline: 0; background: transparent; font-size: 0.8125rem; color: #181818; width: 100%; }
     .cp-list { margin-top: .75rem; border: 1px solid #E4E2E0; border-radius: .875rem; overflow: hidden; background: #fff; }
     .cp-team + .cp-team { border-top: 1px solid #E4E2E0; }
     .cp-team.hidden { display: none; }
@@ -545,39 +545,39 @@
     .cp-caret { color: #8A817A; transition: transform .2s; }
     .cp-team[open] .cp-caret { transform: rotate(90deg); }
     .cp-team-id { min-width: 0; display: flex; align-items: baseline; gap: .5rem; }
-    .cp-team-name { font-size: 13.5px; font-weight: 800; color: #181818; white-space: nowrap; }
-    .cp-team-meta { font-size: 12px; color: #8A817A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .cp-team-count { display: flex; gap: .375rem; justify-content: flex-end; font-size: 11px; font-weight: 800; white-space: nowrap; }
-    .cp-team-count span { padding: 1px 8px; border-radius: 999px; }
+    .cp-team-name { font-size: 0.8438rem; font-weight: 800; color: #181818; white-space: nowrap; }
+    .cp-team-meta { font-size: 0.75rem; color: #8A817A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-team-count { display: flex; gap: .375rem; justify-content: flex-end; font-size: 0.6875rem; font-weight: 800; white-space: nowrap; }
+    .cp-team-count span { padding: 1px 0.5rem; border-radius: 999px; }
     .cp-team-count .is-approved { background: #F0FDF4; color: #15803D; }
     .cp-team-count .is-waiting { background: #FFFBEB; color: #B45309; }
     .cp-rows { list-style: none; margin: 0; padding: 0 0 .25rem; max-height: 22rem; overflow-y: auto; }
-    .cp-row, .cp-rows-head { display: grid; grid-template-columns: 1.25rem minmax(0, 1.6fr) minmax(0, 1fr) 11.5rem minmax(0, 1.3fr); gap: .75rem; align-items: center; padding: .45rem 1rem .45rem 2.75rem; font-size: 12.5px; color: #4A4643; }
-    .cp-rows-head { padding-top: .5rem; padding-bottom: .25rem; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #8A817A; }
+    .cp-row, .cp-rows-head { display: grid; grid-template-columns: 1.25rem minmax(0, 1.6fr) minmax(0, 1fr) 11.5rem minmax(0, 1.3fr); gap: .75rem; align-items: center; padding: .45rem 1rem .45rem 2.75rem; font-size: 0.7812rem; color: #4A4643; }
+    .cp-rows-head { padding-top: .5rem; padding-bottom: .25rem; font-size: 0.6562rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #8A817A; }
     .cp-row:hover { background: #FAFAF9; }
     .cp-row.hidden { display: none; } /* .cp-row's grid would otherwise outrank .hidden */
     .cp-dot { display: flex; font-size: 1rem; }
     .cp-dot.is-approved { color: #15803D; }
     .cp-dot.is-waiting { color: #B45309; }
     .cp-task { font-weight: 700; color: #181818; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .cp-dept { margin-left: .25rem; padding: 0 6px; border-radius: 999px; background: #F3F2F1; color: #4A4643; font-size: 10.5px; font-weight: 700; }
+    .cp-dept { margin-left: .25rem; padding: 0 0.375rem; border-radius: 999px; background: #F3F2F1; color: #4A4643; font-size: 0.6562rem; font-weight: 700; }
     .cp-who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .cp-when { white-space: nowrap; font-size: 12px; }
-    .cp-late { margin-left: .25rem; padding: 0 6px; border-radius: 6px; background: #FFFBEB; color: #B45309; font-size: 10.5px; font-weight: 800; }
-    .cp-verdict { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-when { white-space: nowrap; font-size: 0.75rem; }
+    .cp-late { margin-left: .25rem; padding: 0 0.375rem; border-radius: 0.375rem; background: #FFFBEB; color: #B45309; font-size: 0.6562rem; font-weight: 800; }
+    .cp-verdict { font-size: 0.75rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .cp-verdict.is-approved { color: #15803D; }
     .cp-verdict.is-waiting { color: #B45309; }
-    .cp-verdict-at { display: block; font-weight: 500; color: #8A817A; font-size: 11px; }
+    .cp-verdict-at { display: block; font-weight: 500; color: #8A817A; font-size: 0.6875rem; }
     .cp-empty { text-align: center; padding: 2rem 1rem; color: #8A817A; }
     .cp-empty > .iconify { font-size: 1.75rem; }
-    .cp-empty-title { font-size: 14px; font-weight: 700; color: #4A4643; margin-top: .25rem; }
-    .cp-empty-sub { font-size: 12.5px; margin-top: .125rem; }
+    .cp-empty-title { font-size: 0.875rem; font-weight: 700; color: #4A4643; margin-top: .25rem; }
+    .cp-empty-sub { font-size: 0.7812rem; margin-top: .125rem; }
     @media (max-width: 1023px) {
         /* One task per small block: name, then who, when and the check under it. */
         .cp-row { grid-template-columns: 1.25rem minmax(0, 1fr); gap: .125rem .625rem; align-items: start; padding: .625rem 1rem; }
         .cp-rows-head { display: none; }
         .cp-task, .cp-who, .cp-when, .cp-verdict { grid-column: 2; white-space: normal; }
-        .cp-who, .cp-when { font-size: 12px; }
+        .cp-who, .cp-when { font-size: 0.75rem; }
         .cp-who::before { content: 'By '; color: #8A817A; }
         .cp-when::before { content: 'On '; color: #8A817A; }
         .cp-verdict-at { display: inline; margin-left: .25rem; }

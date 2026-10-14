@@ -141,14 +141,14 @@
                     <div class="flex items-center lg:pr-6">
                         <div class="min-w-0">
                             <p class="text-lg font-extrabold text-slate-900 tracking-wide">{{ $groupLabel }}</p>
-                            <span class="inline-flex items-center px-2.5 py-1 mt-1 rounded-lg text-[11px] font-bold bg-[#F5F2EF] text-[#5F5A55]">
+                            <span class="inline-flex items-center px-2.5 py-1 mt-1 rounded-lg text-[0.6875rem] font-bold bg-[#F5F2EF] text-[#5F5A55]">
                                 {{ $groupRoleLabel }}
                             </span>
-                            <p class="text-[12px] text-slate-500 mt-2">Complete all the tasks below to fulfill the requirements for {{ $groupLabel }}.</p>
+                            <p class="text-[0.75rem] text-slate-500 mt-2">Complete all the tasks below to fulfill the requirements for {{ $groupLabel }}.</p>
                         </div>
                     </div>
                     <div class="lg:border-l lg:border-[#E7E1DD] lg:pl-6 flex flex-col justify-center">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Progress %</p>
+                        <p class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Progress %</p>
                         <div class="flex items-center gap-3 mt-1.5">
                             <svg width="56" height="56" viewBox="0 0 60 60" class="shrink-0 -rotate-90">
                                 <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#F2E9E7" stroke-width="6"></circle>
@@ -157,26 +157,26 @@
                             </svg>
                             <div>
                                 <p class="text-2xl font-extrabold text-slate-900 leading-none" data-summary-percent>{{ $groupPercent }}%</p>
-                                <p class="text-[12px] text-slate-500 mt-1" data-summary-count>{{ $groupDone }} of {{ $groupTotal }} tasks completed</p>
+                                <p class="text-[0.75rem] text-slate-500 mt-1" data-summary-count>{{ $groupDone }} of {{ $groupTotal }} tasks completed</p>
                             </div>
                         </div>
                     </div>
                     <div class="lg:border-l lg:border-[#E7E1DD] lg:pl-6 flex flex-col justify-center">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</p>
+                        <p class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Status</p>
                         <span data-summary-status
-                              class="inline-flex items-center gap-1.5 mt-2 w-fit px-3 py-1.5 rounded-lg text-[12px] font-bold {{ $groupMeta['badge'] }}">
+                              class="inline-flex items-center gap-1.5 mt-2 w-fit px-3 py-1.5 rounded-lg text-[0.75rem] font-bold {{ $groupMeta['badge'] }}">
                             <span class="iconify text-sm" data-icon="{{ $groupMeta['icon'] }}"></span>
                             {{ $groupMeta['label'] }}
                         </span>
                     </div>
                     <div class="lg:border-l lg:border-[#E7E1DD] lg:pl-6 flex flex-col justify-center">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Due Date</p>
+                        <p class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Due Date</p>
                         <div class="flex items-center gap-2 mt-2">
                             <span class="iconify text-[#8A817A] text-base" data-icon="mdi:calendar-blank-outline"></span>
                             @if($groupDue)
-                                <p class="text-[13px] font-semibold text-slate-700">{{ $groupDue->format('M j, Y') }}</p>
+                                <p class="text-[0.8125rem] font-semibold text-slate-700">{{ $groupDue->format('M j, Y') }}</p>
                             @else
-                                <p class="text-[13px] text-slate-400">No due date set</p>
+                                <p class="text-[0.8125rem] text-slate-400">No due date set</p>
                             @endif
                         </div>
                     </div>
@@ -240,12 +240,12 @@
                              data-task-role="{{ $task->role }}"
                              class="task-card bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
                             <div class="flex flex-wrap items-start gap-3 px-4 sm:px-5 pt-4 pb-3">
-                                <div class="min-w-0 flex-1 basis-[140px]">
-                                    <p class="text-[14px] font-bold leading-snug {{ $isCompleted ? 'text-slate-400' : 'text-slate-800' }}">{{ $task->title }}</p>
-                                    <p data-task-code class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">{{ $rowCode }}</p>
+                                <div class="min-w-0 flex-1 basis-[8.75rem]">
+                                    <p class="text-[0.875rem] font-bold leading-snug {{ $isCompleted ? 'text-slate-400' : 'text-slate-800' }}">{{ $task->title }}</p>
+                                    <p data-task-code class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mt-1">{{ $rowCode }}</p>
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0 ml-auto">
-                                    <span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap {{ $rowMeta['badge'] }}">
+                                    <span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold whitespace-nowrap {{ $rowMeta['badge'] }}">
                                         {{ $rowMeta['label'] }}
                                     </span>
                                     {{-- Proceed opens the task itself: a website task opens the
@@ -258,7 +258,7 @@
                                     @elseif($task->is_hotel_concept)
                                         <button type="button" onclick="showSection('group')"
                                                 title="Write the concepts in My Team"
-                                                class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl brand-gradient text-white text-[12px] font-bold shadow-md shadow-brand/20 hover:opacity-90 transition whitespace-nowrap">
+                                                class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl brand-gradient text-white text-[0.75rem] font-bold shadow-md shadow-brand/20 hover:opacity-90 transition whitespace-nowrap">
                                             Proceed
                                             <span class="iconify text-sm" data-icon="mdi:arrow-right"></span>
                                         </button>
@@ -267,7 +267,7 @@
                                              what moves it to In Progress once a change is saved. --}}
                                         <a href="{{ $rowModule['editable'] ? $rowModule['customize_url'] . '?focus=' . $task->task_id : $rowModule['simulation_url'] }}"
                                            title="Open {{ $rowModule['label'] }}"
-                                           class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl brand-gradient text-white text-[12px] font-bold shadow-md shadow-brand/20 hover:opacity-90 transition whitespace-nowrap">
+                                           class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl brand-gradient text-white text-[0.75rem] font-bold shadow-md shadow-brand/20 hover:opacity-90 transition whitespace-nowrap">
                                             Proceed
                                             <span class="iconify text-sm" data-icon="mdi:arrow-right"></span>
                                         </a>
@@ -276,7 +276,7 @@
                                              the same instructions dialog as the eye. --}}
                                         <button type="button" onclick="openTaskInstructions('{{ $rowDetailId }}')"
                                                 title="Open {{ $task->title }}"
-                                                class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl brand-gradient text-white text-[12px] font-bold shadow-md shadow-brand/20 hover:opacity-90 transition whitespace-nowrap">
+                                                class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl brand-gradient text-white text-[0.75rem] font-bold shadow-md shadow-brand/20 hover:opacity-90 transition whitespace-nowrap">
                                             Proceed
                                             <span class="iconify text-sm" data-icon="mdi:arrow-right"></span>
                                         </button>
@@ -292,11 +292,11 @@
                                 <div class="flex items-center gap-1.5 min-w-0">
                                     <span class="iconify text-[#8A817A] text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>
                                     @if($task->due_date)
-                                        <p class="text-[11px] font-semibold truncate {{ $isOverdue && !$isCompleted && !$isPending ? 'text-[#181818]' : 'text-slate-500' }}">
+                                        <p class="text-[0.6875rem] font-semibold truncate {{ $isOverdue && !$isCompleted && !$isPending ? 'text-[#181818]' : 'text-slate-500' }}">
                                             {{ $task->due_date->format('M j, Y') }} &middot; {{ $task->due_date->format('g:i A') }}
                                         </p>
                                     @else
-                                        <p class="text-[11px] font-semibold text-slate-300">No due date</p>
+                                        <p class="text-[0.6875rem] font-semibold text-slate-300">No due date</p>
                                     @endif
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0">
@@ -334,7 +334,7 @@
                                             </button>
                                         </form>
                                     @else
-                                        <span class="text-[10px] font-semibold text-slate-300 whitespace-nowrap"
+                                        <span class="text-[0.625rem] font-semibold text-slate-300 whitespace-nowrap"
                                               title="Assigned to {{ $task->assignedTo?->name ?? 'a teammate' }}">{{ $task->assignedTo?->first_name ?? "Teammate's" }}</span>
                                     @endif
                                 </div>
@@ -356,7 +356,7 @@
                                     @if($task->description)
                                         {{-- pre-line: the description carries the task's four activities as numbered
                                              lines, and they have to survive as lines. --}}
-                                        <p class="text-[13px] text-slate-500 leading-relaxed whitespace-pre-line">{{ $task->description }}</p>
+                                        <p class="text-[0.8125rem] text-slate-500 leading-relaxed whitespace-pre-line">{{ $task->description }}</p>
                                     @endif
                                     @php $activities = $task->activityList(); @endphp
                                     @if($activities)
@@ -364,13 +364,13 @@
                                              tick: saving a change in the editor is what moves the task to
                                              In Progress (Task::is_started). --}}
                                         <div class="rounded-xl border border-[#E7E1DD] bg-white px-3 py-2.5">
-                                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
                                                 <span class="iconify text-xs" data-icon="mdi:format-list-numbered"></span>
                                                 Steps
                                             </p>
                                             <ol class="mt-2 space-y-1.5">
                                                 @foreach($activities as $i => $activity)
-                                                    <li class="text-[13px] leading-relaxed text-slate-600">{{ $i + 1 }}. {{ $activity['text'] }}</li>
+                                                    <li class="text-[0.8125rem] leading-relaxed text-slate-600">{{ $i + 1 }}. {{ $activity['text'] }}</li>
                                                 @endforeach
                                             </ol>
                                         </div>
@@ -378,13 +378,13 @@
                                     @if($needsRevision)
                                         {{-- Sent back by faculty: active again, but carrying feedback. --}}
                                         <div class="rounded-xl border border-[#E7E1DD] bg-[#F5F2EF] px-3 py-2">
-                                            <p class="text-[10px] font-bold uppercase tracking-wider text-[#5F5A55] flex items-center gap-1">
+                                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-[#5F5A55] flex items-center gap-1">
                                                 <span class="iconify text-xs" data-icon="mdi:message-alert-outline"></span>
                                                 Faculty feedback{{ $task->revision_count > 1 ? ' · revision ' . $task->revision_count : '' }}
                                             </p>
                                             <p class="text-xs text-[#181818] mt-1 whitespace-pre-line">{{ $task->feedback }}</p>
                                             @if($task->feedback_at)
-                                                <p class="text-[10px] text-[#8A817A] mt-1">{{ $task->feedback_at->diffForHumans() }}</p>
+                                                <p class="text-[0.625rem] text-[#8A817A] mt-1">{{ $task->feedback_at->diffForHumans() }}</p>
                                             @endif
                                         </div>
                                     @endif
@@ -394,12 +394,12 @@
                                              paintHotelConcepts() painting only whichever the browser
                                              matched first. --}}
                                         <button type="button" onclick="showSection('group')"
-                                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E7E1DD] text-[13px] font-bold text-slate-700 hover:bg-[#F5F2EF] hover:text-[#181818] transition-colors">
+                                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E7E1DD] text-[0.8125rem] font-bold text-slate-700 hover:bg-[#F5F2EF] hover:text-[#181818] transition-colors">
                                             <span class="iconify text-base" data-icon="mdi:lightbulb-outline"></span>
                                             Write the concepts in My Team
                                         </button>
                                     @elseif(!$task->description && !$needsRevision)
-                                        <p class="text-[13px] text-slate-400">No extra details on this task.</p>
+                                        <p class="text-[0.8125rem] text-slate-400">No extra details on this task.</p>
                                     @endif
                                 </div>
                             </div>
@@ -407,7 +407,7 @@
                     @endforeach
                 </div>
 
-                <p class="text-[13px] text-slate-500 mt-4">
+                <p class="text-[0.8125rem] text-slate-500 mt-4">
                     Showing <span data-group-visible>{{ $groupTotal }}</span> of {{ $groupTotal }} tasks under {{ $groupLabel }}
                 </p>
             </div>

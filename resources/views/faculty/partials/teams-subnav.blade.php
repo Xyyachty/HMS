@@ -50,15 +50,15 @@
                     ? 'bg-white text-brand border-slate-200 -mb-px relative z-10'
                     : 'bg-slate-50 text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-100' }}">
                 <span>{{ $classTab->name }}</span>
-                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                <span class="text-[0.6875rem] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
                     {{ $teamCount }} {{ \Illuminate\Support\Str::plural('team', $teamCount) }}
                 </span>
-                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full
+                <span class="text-[0.6875rem] font-semibold px-2 py-0.5 rounded-full
                     {{ $isClosed ? 'bg-slate-200 text-slate-600' : 'bg-brand-soft text-brand' }}">
                     {{ $taken }}/{{ $cap }}
                 </span>
                 @if(!$isClosed)
-                    <span class="text-[10px] uppercase tracking-wide text-emerald-600">Open</span>
+                    <span class="text-[0.625rem] uppercase tracking-wide text-emerald-600">Open</span>
                 @endif
             </a>
         @empty

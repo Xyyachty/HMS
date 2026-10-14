@@ -20,7 +20,7 @@
         .sm\:min-w-\[7rem\] { min-width: 7rem; }
         .sm\:ml-auto { margin-left: auto; }
         .sm\:px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
-        .sm\:text-\[30px\] { font-size: 30px; line-height: 1.15; }
+        .sm\:text-\[30px\], .sm\:text-\[1\.875rem\] { font-size: 1.875rem; line-height: 1.15; }
         .sm\:w-40 { width: 10rem; }
         .sm\:w-44 { width: 11rem; }
         .sm\:w-auto { width: auto; }
@@ -99,18 +99,18 @@
         display: inline-flex; align-items: center; justify-content: center;
         background: #F3F2F1; color: #4A4643; font-size: 1.15rem;
     }
-    .tc-name { flex: 1; min-width: 0; font-size: 16px; font-weight: 800; color: #181818; line-height: 1.25; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tc-name { flex: 1; min-width: 0; font-size: 1rem; font-weight: 800; color: #181818; line-height: 1.25; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tc-members {
         flex-shrink: 0; display: inline-flex; align-items: center; gap: .3rem;
         padding: .2rem .55rem; border-radius: 999px; border: 1px solid #E4E2E0; background: #fff;
-        font-size: 12px; font-weight: 800; color: #4A4643; font-variant-numeric: tabular-nums;
+        font-size: 0.75rem; font-weight: 800; color: #4A4643; font-variant-numeric: tabular-nums;
     }
     .tc-members.is-full { background: #4A4643; border-color: #4A4643; color: #fff; }
 
     .tc-status-row { display: flex; align-items: center; gap: .5rem; min-height: 1.6rem; }
     .tc-status {
         display: inline-flex; align-items: center; gap: .4rem; padding: .22rem .65rem; border-radius: 999px;
-        font-size: 11.5px; font-weight: 800; letter-spacing: .01em; border: 1px solid;
+        font-size: 0.7188rem; font-weight: 800; letter-spacing: .01em; border: 1px solid;
     }
     .tc-status-dot { width: .45rem; height: .45rem; border-radius: 999px; background: currentColor; }
     .tc-status.is-progress .tc-status-dot { animation: tc-breathe 2.4s ease-in-out infinite; }
@@ -118,18 +118,18 @@
     @media (prefers-reduced-motion: reduce) { .tc-status.is-progress .tc-status-dot { animation: none; } }
 
     .tc-meter-top, .ov-meter-top { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
-    .tc-meter-top span, .ov-meter-top span { font-size: 12px; font-weight: 700; color: #5F5A55; }
-    .tc-meter-top b { font-size: 26px; font-weight: 800; color: #181818; line-height: 1; font-variant-numeric: tabular-nums; }
-    .ov-meter-top b { font-size: 14px; font-weight: 800; color: #181818; font-variant-numeric: tabular-nums; }
-    .tc-bar { height: 8px; margin-top: .5rem; border-radius: 999px; background: #F3F2F1; overflow: hidden; }
+    .tc-meter-top span, .ov-meter-top span { font-size: 0.75rem; font-weight: 700; color: #5F5A55; }
+    .tc-meter-top b { font-size: 1.625rem; font-weight: 800; color: #181818; line-height: 1; font-variant-numeric: tabular-nums; }
+    .ov-meter-top b { font-size: 0.875rem; font-weight: 800; color: #181818; font-variant-numeric: tabular-nums; }
+    .tc-bar { height: 0.5rem; margin-top: .5rem; border-radius: 999px; background: #F3F2F1; overflow: hidden; }
     .tc-bar > span { display: block; height: 100%; border-radius: 999px; background: #4A4643; transition: width .6s cubic-bezier(.16, 1, .3, 1); }
-    .tc-meter-sub { margin-top: .4rem; font-size: 11.5px; color: #8A817A; }
+    .tc-meter-sub { margin-top: .4rem; font-size: 0.7188rem; color: #8A817A; }
 
     .tc-actions { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
     .tc-btn {
         position: relative; height: 2.5rem; border-radius: .75rem; border: 1px solid #E4E2E0; background: #fff;
         display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
-        font-size: 13px; font-weight: 700; color: #181818;
+        font-size: 0.8125rem; font-weight: 700; color: #181818;
         transition: background-color .15s, border-color .15s, transform .15s;
     }
     .tc-btn:hover { background: #F3F2F1; border-color: #D6D3D1; }
@@ -156,24 +156,24 @@
         width: 2.1rem; height: 2.1rem; flex-shrink: 0; border-radius: .65rem;
         display: inline-flex; align-items: center; justify-content: center; background: #fff; color: #B45309; font-size: 1.1rem;
     }
-    .ov-notice-title { font-size: 13px; font-weight: 800; color: #181818; }
-    .ov-notice-text { font-size: 12px; color: #5F5A55; margin-top: .1rem; line-height: 1.45; }
-    .ov-clear { display: none; align-items: center; gap: .4rem; font-size: 13px; font-weight: 700; color: #15803D; }
+    .ov-notice-title { font-size: 0.8125rem; font-weight: 800; color: #181818; }
+    .ov-notice-text { font-size: 0.75rem; color: #5F5A55; margin-top: .1rem; line-height: 1.45; }
+    .ov-clear { display: none; align-items: center; gap: .4rem; font-size: 0.8125rem; font-weight: 700; color: #15803D; }
     .ov-attn:not(:has(.ov-notice:not(.hidden))) .ov-clear { display: flex; }
     .ov-grid { display: grid; gap: .75rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .ov-tile { display: flex; flex-direction: column; padding: .95rem 1rem; border-radius: 1rem; border: 1px solid #E4E2E0; background: #fff; min-width: 0; }
-    .ov-label { display: flex; align-items: center; gap: .35rem; font-size: 12px; font-weight: 800; color: #5F5A55; margin-bottom: .45rem; }
+    .ov-label { display: flex; align-items: center; gap: .35rem; font-size: 0.75rem; font-weight: 800; color: #5F5A55; margin-bottom: .45rem; }
     .ov-label .iconify { color: #4A4643; font-size: 1rem; }
-    .ov-value { font-size: 15px; font-weight: 800; color: #181818; line-height: 1.3; overflow-wrap: anywhere; }
+    .ov-value { font-size: 0.9375rem; font-weight: 800; color: #181818; line-height: 1.3; overflow-wrap: anywhere; }
     .ov-tag {
         align-self: flex-start; margin-top: .35rem; padding: .12rem .55rem; border-radius: 999px;
-        font-size: 11px; font-weight: 800; background: #F3F2F1; color: #4A4643; border: 1px solid #E4E2E0;
+        font-size: 0.6875rem; font-weight: 800; background: #F3F2F1; color: #4A4643; border: 1px solid #E4E2E0;
     }
     .ov-tag.is-good { background: #F0FDF4; color: #15803D; border-color: #BBF7D0; }
-    .ov-text { font-size: 12.5px; color: #5F5A55; line-height: 1.5; margin-top: .4rem; }
+    .ov-text { font-size: 0.7812rem; color: #5F5A55; line-height: 1.5; margin-top: .4rem; }
     .ov-link {
         margin-top: auto; padding-top: .75rem; align-self: flex-start; display: inline-flex; align-items: center; gap: .3rem;
-        font-size: 12.5px; font-weight: 800; color: #181818; background: none; border: 0; cursor: pointer;
+        font-size: 0.7812rem; font-weight: 800; color: #181818; background: none; border: 0; cursor: pointer;
     }
     .ov-link:hover { text-decoration: underline; text-underline-offset: 3px; }
     @media (max-width: 1100px) { .ov-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -226,15 +226,15 @@
     #panel-team_setup .ts-mode-icon { flex-shrink: 0; font-size: 1.35rem; color: #6B7280; }
     #panel-team_setup .ts-mode.shadow-sm .ts-mode-icon { color: #111827; }
     #panel-team_setup :is(.ts-tab-copy, .ts-mode-copy) { min-width: 0; display: flex; flex-direction: column; }
-    #panel-team_setup :is(.ts-tab-title, .ts-mode-title) { font-size: 14.5px; font-weight: 800; color: #111827; }
-    #panel-team_setup :is(.ts-tab-sub, .ts-mode-sub) { font-size: 12.5px; font-weight: 500; color: #6B7280; line-height: 1.4; margin-top: .1rem; }
+    #panel-team_setup :is(.ts-tab-title, .ts-mode-title) { font-size: 0.9062rem; font-weight: 800; color: #111827; }
+    #panel-team_setup :is(.ts-tab-sub, .ts-mode-sub) { font-size: 0.7812rem; font-weight: 500; color: #6B7280; line-height: 1.4; margin-top: .1rem; }
     #panel-team_setup .ts-tab:not(.border-brand) .ts-tab-title { color: #4B5563; }
 
-    #panel-team_setup .ts-lead { font-size: 14px; color: #374151; line-height: 1.55; }
+    #panel-team_setup .ts-lead { font-size: 0.875rem; color: #374151; line-height: 1.55; }
     #panel-team_setup .ts-lead b { color: #111827; }
     #panel-team_setup .ts-link { background: none; border: 0; padding: 0; font-weight: 700; color: #111827; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
-    #panel-team_setup .ts-label { display: block; font-size: 13.5px; font-weight: 800; color: #111827; margin-bottom: .35rem; }
-    #panel-team_setup .ts-help { font-size: 12.5px; color: #6B7280; margin-top: -.15rem; }
+    #panel-team_setup .ts-label { display: block; font-size: 0.8438rem; font-weight: 800; color: #111827; margin-bottom: .35rem; }
+    #panel-team_setup .ts-help { font-size: 0.7812rem; color: #6B7280; margin-top: -.15rem; }
 
     #panel-team_setup .ts-done {
         border: 1.5px dashed #D1D5DB; border-radius: 1rem; background: #fff;
@@ -246,42 +246,42 @@
         display: flex; align-items: center; justify-content: center;
         background: #DCFCE7; color: #15803D; font-size: 1.5rem;
     }
-    #panel-team_setup .ts-done-title { font-size: 16px; font-weight: 800; color: #111827; }
-    #panel-team_setup .ts-done-sub { font-size: 13px; color: #6B7280; max-width: 34rem; margin: .35rem 0 1.1rem; line-height: 1.55; }
+    #panel-team_setup .ts-done-title { font-size: 1rem; font-weight: 800; color: #111827; }
+    #panel-team_setup .ts-done-sub { font-size: 0.8125rem; color: #6B7280; max-width: 34rem; margin: .35rem 0 1.1rem; line-height: 1.55; }
     #panel-team_setup .ts-btn-dark {
         display: inline-flex; align-items: center; gap: .45rem;
         padding: .65rem 1.1rem; border-radius: .75rem; border: 0; cursor: pointer;
-        background: #374151; color: #fff; font-size: 13px; font-weight: 700;
+        background: #374151; color: #fff; font-size: 0.8125rem; font-weight: 700;
         transition: background-color .2s ease;
     }
     #panel-team_setup .ts-btn-dark:hover { background: #1F2937; }
     #panel-team_setup .ts-btn-dark:active { transform: translateY(1px); }
 
     #panel-team_setup .ts-glance { border: 1px solid #E5E7EB; border-radius: 1rem; background: #fff; padding: 1rem; }
-    #panel-team_setup .ts-glance-title { font-size: 14px; font-weight: 800; color: #111827; margin-bottom: .35rem; }
+    #panel-team_setup .ts-glance-title { font-size: 0.875rem; font-weight: 800; color: #111827; margin-bottom: .35rem; }
     #panel-team_setup .ts-glance-row {
         display: flex; align-items: center; justify-content: space-between; gap: .75rem;
-        padding: .55rem 0; border-top: 1px solid #F3F4F6; font-size: 13px; color: #4B5563;
+        padding: .55rem 0; border-top: 1px solid #F3F4F6; font-size: 0.8125rem; color: #4B5563;
     }
     #panel-team_setup .ts-glance-row:first-of-type { border-top: 0; }
-    #panel-team_setup .ts-glance-row b { font-size: 15px; font-weight: 800; color: #111827; }
+    #panel-team_setup .ts-glance-row b { font-size: 0.9375rem; font-weight: 800; color: #111827; }
     #panel-team_setup .ts-tip {
         display: flex; align-items: flex-start; gap: .6rem;
         border: 1px solid #E5E7EB; border-radius: 1rem; background: #F9FAFB; padding: .85rem;
-        font-size: 12.5px; color: #4B5563; line-height: 1.5;
+        font-size: 0.7812rem; color: #4B5563; line-height: 1.5;
     }
     #panel-team_setup .ts-tip .iconify { flex-shrink: 0; font-size: 1.1rem; color: #6B7280; margin-top: .05rem; }
     #panel-team_setup .ts-tip b { color: #111827; }
 
     #panel-team_setup .ts-count {
         display: inline-flex; align-items: center; padding: .35rem .75rem; border-radius: .6rem;
-        background: #F3F4F6; color: #374151; font-size: 12px; font-weight: 700; white-space: nowrap;
+        background: #F3F4F6; color: #374151; font-size: 0.75rem; font-weight: 700; white-space: nowrap;
     }
     #panel-team_setup .ts-full-note {
         display: inline-flex; align-items: center; gap: .35rem; flex-shrink: 0;
-        font-size: 12px; font-weight: 600; color: #6B7280;
+        font-size: 0.75rem; font-weight: 600; color: #6B7280;
     }
-    #panel-team_setup .ts-footer-note { margin-right: auto; font-size: 12px; color: #6B7280; }
+    #panel-team_setup .ts-footer-note { margin-right: auto; font-size: 0.75rem; color: #6B7280; }
     /* Change existing teams hides the save button; the empty bar goes with it. */
     #panel-team_setup .ts-footer:not(:has(#createModalSubmitBtn:not(.hidden))) { display: none; }
 
@@ -307,19 +307,19 @@
     /* Add Students: unassigned students of this block, up to the 4-member cap. */
     #updateTeamModal .ut-add { border: 1px solid #E5E5E5; border-radius: 1rem; background: #fff; padding: 1rem; }
     #updateTeamModal .ut-add-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .5rem .75rem; }
-    #updateTeamModal .ut-add-title { display: flex; align-items: center; gap: .4rem; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #374151; }
-    #updateTeamModal .ut-add-sub { font-size: 11.5px; color: #6B7280; margin-top: .2rem; line-height: 1.45; }
-    #updateTeamModal .ut-cap { font-size: 11.5px; font-weight: 800; padding: .3rem .75rem; border-radius: 999px; background: #F3F4F6; color: #374151; white-space: nowrap; }
+    #updateTeamModal .ut-add-title { display: flex; align-items: center; gap: .4rem; font-size: 0.75rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #374151; }
+    #updateTeamModal .ut-add-sub { font-size: 0.7188rem; color: #6B7280; margin-top: .2rem; line-height: 1.45; }
+    #updateTeamModal .ut-cap { font-size: 0.7188rem; font-weight: 800; padding: .3rem .75rem; border-radius: 999px; background: #F3F4F6; color: #374151; white-space: nowrap; }
     #updateTeamModal .ut-cap.is-full { background: #111827; color: #fff; }
-    #updateTeamModal .ut-bar { height: 6px; margin-top: .75rem; border-radius: 999px; background: #F3F4F6; overflow: hidden; }
+    #updateTeamModal .ut-bar { height: 0.375rem; margin-top: .75rem; border-radius: 999px; background: #F3F4F6; overflow: hidden; }
     #updateTeamModal .ut-bar > span { display: block; height: 100%; width: 0; border-radius: 999px; background: #374151; transition: width .25s ease; }
-    #updateTeamModal .ut-full { display: flex; align-items: center; gap: .5rem; margin-top: .75rem; padding: .7rem .85rem; border-radius: .75rem; border: 1px solid #D1D5DB; background: #F9FAFB; font-size: 12.5px; font-weight: 700; color: #111827; }
+    #updateTeamModal .ut-full { display: flex; align-items: center; gap: .5rem; margin-top: .75rem; padding: .7rem .85rem; border-radius: .75rem; border: 1px solid #D1D5DB; background: #F9FAFB; font-size: 0.7812rem; font-weight: 700; color: #111827; }
     #updateTeamModal .ut-add-list { margin-top: .75rem; display: flex; flex-direction: column; gap: .5rem; max-height: 18rem; overflow-y: auto; }
     #updateTeamModal .ut-add-row.is-locked { opacity: .5; }
     #updateTeamModal .ut-add-row.is-locked input { cursor: not-allowed; }
     /* A candidate's roles only matter once they are ticked to join. */
     #updateTeamModal .ut-add-row:not(:has(.update-student-checkbox:checked)) .update-role-row { display: none; }
-    #updateTeamModal .ut-empty { margin-top: .75rem; padding: 1.25rem; text-align: center; font-size: 12px; color: #9CA3AF; border: 1px dashed #E5E5E5; border-radius: .75rem; }
+    #updateTeamModal .ut-empty { margin-top: .75rem; padding: 1.25rem; text-align: center; font-size: 0.75rem; color: #9CA3AF; border: 1px dashed #E5E5E5; border-radius: .75rem; }
     #updateTeamModal :is(.ut-full, .ut-empty).hidden { display: none; }
     #updateTeamModal .update-new-badge { background: #111827; border-color: #111827; color: #fff; }
 
@@ -362,15 +362,15 @@
     }
 
     /* ── Utilities the frozen build never emitted ── */
-    .text-\[9px\]  { font-size: 9px; line-height: 1.3; }
-    .text-\[10px\] { font-size: 10px; line-height: 1.35; }
-    .text-\[11px\] { font-size: 11px; line-height: 1.4; }
-    .text-\[12px\] { font-size: 12px; line-height: 1.45; }
-    .text-\[13px\] { font-size: 13px; line-height: 1.45; }
-    .text-\[14px\] { font-size: 14px; line-height: 1.5; }
-    .text-\[15px\] { font-size: 15px; line-height: 1.5; }
-    .text-\[28px\] { font-size: 28px; line-height: 1.1; }
-    .text-\[30px\] { font-size: 30px; line-height: 1.15; }
+    .text-\[9px\], .text-\[0\.5625rem\]  { font-size: 0.5625rem; line-height: 1.3; }
+    .text-\[10px\], .text-\[0\.625rem\] { font-size: 0.625rem; line-height: 1.35; }
+    .text-\[11px\], .text-\[0\.6875rem\] { font-size: 0.6875rem; line-height: 1.4; }
+    .text-\[12px\], .text-\[0\.75rem\] { font-size: 0.75rem; line-height: 1.45; }
+    .text-\[13px\], .text-\[0\.8125rem\] { font-size: 0.8125rem; line-height: 1.45; }
+    .text-\[14px\], .text-\[0\.875rem\] { font-size: 0.875rem; line-height: 1.5; }
+    .text-\[15px\], .text-\[0\.9375rem\] { font-size: 0.9375rem; line-height: 1.5; }
+    .text-\[28px\], .text-\[1\.75rem\] { font-size: 1.75rem; line-height: 1.1; }
+    .text-\[30px\], .text-\[1\.875rem\] { font-size: 1.875rem; line-height: 1.15; }
 
     .gap-1\.5 { gap: .375rem; }
     .gap-2\.5 { gap: .625rem; }
@@ -488,8 +488,8 @@
         border:1px solid #BBF7D0; background:#F0FDF4; color:#15803D;
     }
     #reviewApprovedState .iconify { font-size:1.375rem; flex-shrink:0; }
-    #reviewApprovedState .rv-approved-title { font-size:13px; font-weight:800; }
-    #reviewApprovedState .rv-approved-meta { font-size:11px; color:#4A4643; margin-top:1px; }
+    #reviewApprovedState .rv-approved-title { font-size:0.8125rem; font-weight:800; }
+    #reviewApprovedState .rv-approved-meta { font-size:0.6875rem; color:#4A4643; margin-top:1px; }
 
     /* ── Student list in form ── */
     .student-row { transition:all .2s ease; }
@@ -528,12 +528,12 @@
     #teamsTable .member-chip {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 0.25rem;
         max-width: 100%;
-        padding: 2px 8px;
+        padding: 2px 0.5rem;
         border-radius: 9999px;
         background: #F3F2F1;
-        font-size: 11px;
+        font-size: 0.6875rem;
         font-weight: 600;
         color: #5A3941;
         line-height: 1.35;
@@ -547,7 +547,7 @@
     #teamsTable .role-mini {
         display: inline-flex;
         align-items: center;
-        gap: 3px;
+        gap: 0.1875rem;
         color: #7A6068;
         font-weight: 500;
         white-space: nowrap;
@@ -662,7 +662,7 @@
 
         <div class="px-4 sm:px-6 py-5">
             <div class="mb-5">
-                <h2 class="text-2xl sm:text-[30px] font-extrabold tracking-tight text-slate-900 leading-tight">Manage Teams</h2>
+                <h2 class="text-2xl sm:text-[1.875rem] font-extrabold tracking-tight text-slate-900 leading-tight">Manage Teams</h2>
                 <p class="text-sm text-slate-500 mt-1">View, monitor, and manage all teams in the hotel simulation.</p>
             </div>
 
@@ -673,8 +673,8 @@
                         <span class="iconify text-brand text-2xl" data-icon="mdi:account-group-outline"></span>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-[28px] font-extrabold text-slate-900 leading-none">{{ $overviewTeamCount }}</p>
-                        <p class="text-[13px] text-slate-500 font-semibold mt-1">Total Teams</p>
+                        <p class="text-[1.75rem] font-extrabold text-slate-900 leading-none">{{ $overviewTeamCount }}</p>
+                        <p class="text-[0.8125rem] text-slate-500 font-semibold mt-1">Total Teams</p>
                     </div>
                 </div>
                 <div class="rounded-2xl border border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
@@ -682,8 +682,8 @@
                         <span class="iconify text-blue-500 text-2xl" data-icon="mdi:account-outline"></span>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-[28px] font-extrabold text-slate-900 leading-none">{{ $overviewStudentCount }}</p>
-                        <p class="text-[13px] text-slate-500 font-semibold mt-1">Total Students</p>
+                        <p class="text-[1.75rem] font-extrabold text-slate-900 leading-none">{{ $overviewStudentCount }}</p>
+                        <p class="text-[0.8125rem] text-slate-500 font-semibold mt-1">Total Students</p>
                     </div>
                 </div>
                 <div class="rounded-2xl border border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
@@ -691,8 +691,8 @@
                         <span class="iconify text-violet-500 text-2xl" data-icon="mdi:clipboard-check-outline"></span>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-[28px] font-extrabold text-slate-900 leading-none">{{ $overviewTaskTotal }}</p>
-                        <p class="text-[13px] text-slate-500 font-semibold mt-1">Total Tasks Assigned</p>
+                        <p class="text-[1.75rem] font-extrabold text-slate-900 leading-none">{{ $overviewTaskTotal }}</p>
+                        <p class="text-[0.8125rem] text-slate-500 font-semibold mt-1">Total Tasks Assigned</p>
                     </div>
                 </div>
                 <div class="rounded-2xl border border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
@@ -700,8 +700,8 @@
                         <span class="iconify text-amber-500 text-2xl" data-icon="mdi:chart-box-outline"></span>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-[28px] font-extrabold text-slate-900 leading-none">{{ $overviewRate }}%</p>
-                        <p class="text-[13px] text-slate-500 font-semibold mt-1">Overall Completion Rate</p>
+                        <p class="text-[1.75rem] font-extrabold text-slate-900 leading-none">{{ $overviewRate }}%</p>
+                        <p class="text-[0.8125rem] text-slate-500 font-semibold mt-1">Overall Completion Rate</p>
                     </div>
                 </div>
             </div>
@@ -927,7 +927,7 @@
                                         <p class="ov-value">{{ $cardRoles->count() }} of 4 role{{ $cardRoles->count() === 1 ? '' : 's' }}</p>
                                         <div class="flex flex-wrap gap-1.5 mt-2">
                                             @forelse($cardRoles as $cardRole)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold {{ $roleCardTints[$cardRole] ?? 'bg-slate-100 text-slate-500' }}">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.625rem] font-bold {{ $roleCardTints[$cardRole] ?? 'bg-slate-100 text-slate-500' }}">
                                                     {{ $roleLabels[$cardRole] ?? $cardRole }}
                                                 </span>
                                             @empty
@@ -1264,7 +1264,7 @@
         <div class="bg-white px-5 py-3 border-b border-slate-200 flex justify-between items-start gap-3">
             <div class="min-w-0">
                 <h4 class="font-extrabold text-slate-900 text-2xl leading-tight">Create Student Teams</h4>
-                <p class="text-[13px] text-slate-500 mt-0.5">Group your students into teams of 4 and give each student one role.</p>
+                <p class="text-[0.8125rem] text-slate-500 mt-0.5">Group your students into teams of 4 and give each student one role.</p>
             </div>
             <button type="button" onclick="closeCreateTeamModal()"
                 class="h-10 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition inline-flex items-center gap-2 shrink-0">
@@ -1382,20 +1382,20 @@
                         </button>
                         <span id="createSelectedCount" class="text-xs font-bold text-slate-500 whitespace-nowrap sm:min-w-[7rem] text-right">0 of 4 Students Selected</span>
                     </div>
-                    <p id="createRandomizeNote" class="text-[11px] text-slate-400 -mt-3"></p>
+                    <p id="createRandomizeNote" class="text-[0.6875rem] text-slate-400 -mt-3"></p>
 
                     {{-- Who is on the team right now, without scrolling the list below to
                          hunt for ticked boxes. Rendered from the checkboxes themselves, so
                          it follows a hand-made change as closely as it follows Randomize. --}}
                     <div id="createTeamSummary" class="hidden rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Your team so far</p>
+                        <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mb-2">Your team so far</p>
                         <div id="createTeamSummaryChips" class="flex flex-wrap gap-1.5"></div>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-[11px] font-semibold text-slate-500 mr-1">Each team needs one student for each role:</span>
+                        <span class="text-[0.6875rem] font-semibold text-slate-500 mr-1">Each team needs one student for each role:</span>
                         @foreach($teamRoleOptions as $rk => $rl)
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[0.6875rem] font-semibold text-slate-600">
                                 <span class="w-2 h-2 rounded-full role-dot-{{ $rk }}"></span>{{ $rl }}
                             </span>
                         @endforeach
@@ -1407,7 +1407,7 @@
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <label class="text-xs font-bold text-slate-600">Students Not Yet Assigned</label>
-                            <span class="text-[11px] text-slate-400">{{ ($students ?? collect())->count() }} to choose from</span>
+                            <span class="text-[0.6875rem] text-slate-400">{{ ($students ?? collect())->count() }} to choose from</span>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 max-h-[22rem] overflow-y-auto">
                             <div class="p-3 space-y-2" id="createStudentList">
@@ -1439,7 +1439,7 @@
                                             ])
                                             <div class="min-w-0 flex-1">
                                                 <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
-                                                <p class="text-[11px] text-slate-400 font-mono">
+                                                <p class="text-[0.6875rem] text-slate-400 font-mono">
                                                     #{{ $student->student_number }}
                                                     @if($student->facultyClass)
                                                         · {{ $student->facultyClass->name }}
@@ -1449,7 +1449,7 @@
                                         </label>
                                         <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                                             @foreach($teamRoleOptions as $rk => $rl)
-                                                <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
+                                                <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[0.625rem] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="create-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
                                                         {{ in_array($rk, $selectedRoles, true) ? 'checked' : '' }}
@@ -1496,8 +1496,8 @@
                         <div class="flex items-start gap-3 mb-4">
                             <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">1</span>
                             <div class="min-w-0">
-                                <p class="text-[15px] font-bold text-slate-800">Number of Teams</p>
-                                <p class="text-[12px] text-slate-400">Counted for you from the students not yet assigned to a team.</p>
+                                <p class="text-[0.9375rem] font-bold text-slate-800">Number of Teams</p>
+                                <p class="text-[0.75rem] text-slate-400">Counted for you from the students not yet assigned to a team.</p>
                             </div>
                         </div>
                         <div class="setup-field-grid">
@@ -1506,26 +1506,26 @@
                                 <input type="number" id="bulkTeamCount" min="0" max="40" readonly
                                     value="{{ (int) floor($availableStudentCount / 4) }}"
                                     class="w-full h-11 px-4 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none cursor-not-allowed">
-                                <p class="text-[11px] text-slate-400 mt-1.5">You don't need to change this.</p>
+                                <p class="text-[0.6875rem] text-slate-400 mt-1.5">You don't need to change this.</p>
                             </div>
                             <div>
                                 <label class="ts-label">Students per Team</label>
                                 <input type="text" value="4" readonly
                                     class="w-full h-11 px-4 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none cursor-not-allowed">
-                                <p class="text-[11px] text-slate-400 mt-1.5">Always 4: one for each role.</p>
+                                <p class="text-[0.6875rem] text-slate-400 mt-1.5">Always 4: one for each role.</p>
                             </div>
                             <div class="rounded-xl border border-brand/15 bg-brand-soft/40 px-4 py-3 flex items-center gap-3">
                                 <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center shrink-0">
                                     <span class="iconify text-brand text-xl" data-icon="mdi:account-multiple-outline"></span>
                                 </div>
                                 <div class="min-w-0">
-                                    <p class="text-[12px] font-bold text-slate-600">Students Not Yet Assigned</p>
+                                    <p class="text-[0.75rem] font-bold text-slate-600">Students Not Yet Assigned</p>
                                     <p class="text-2xl font-extrabold text-slate-900 leading-none mt-0.5">{{ $availableStudentCount }}</p>
-                                    <p class="text-[11px] text-slate-400">ready to be put into teams</p>
+                                    <p class="text-[0.6875rem] text-slate-400">ready to be put into teams</p>
                                 </div>
                             </div>
                         </div>
-                        <p id="bulkTeamHint" class="text-[11px] text-slate-400 mt-3">
+                        <p id="bulkTeamHint" class="text-[0.6875rem] text-slate-400 mt-3">
                             {{ $availableStudentCount }} {{ Str::plural('student', $availableStudentCount) }} not yet assigned{{ $activeClass ? ' in ' . $activeClass->name : '' }}, 4 in each team.
                             @if($availableStudentCount > 0 && $availableStudentCount % 4 !== 0)
                                 {{ $availableStudentCount % 4 }} {{ Str::plural('student', $availableStudentCount % 4) }} will be left over until more students join.
@@ -1539,8 +1539,8 @@
                         <div class="flex items-start gap-3 mb-4">
                             <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">2</span>
                             <div class="min-w-0">
-                                <p class="text-[15px] font-bold text-slate-800">The 4 roles in every team</p>
-                                <p class="text-[12px] text-slate-400">Each student in a team gets one of these roles. Nothing to choose here.</p>
+                                <p class="text-[0.9375rem] font-bold text-slate-800">The 4 roles in every team</p>
+                                <p class="text-[0.75rem] text-slate-400">Each student in a team gets one of these roles. Nothing to choose here.</p>
                             </div>
                         </div>
                         <div class="setup-role-grid">
@@ -1548,9 +1548,9 @@
                                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
                                     <div class="flex items-center gap-2">
                                         <span class="w-2.5 h-2.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
-                                        <p class="text-[13px] font-bold text-slate-700 truncate">{{ $rl }}</p>
+                                        <p class="text-[0.8125rem] font-bold text-slate-700 truncate">{{ $rl }}</p>
                                     </div>
-                                    <p class="text-[11px] text-slate-400 mt-1 leading-snug">{{ $roleBlurbs[$rk] ?? 'Hotel simulation role' }}</p>
+                                    <p class="text-[0.6875rem] text-slate-400 mt-1 leading-snug">{{ $roleBlurbs[$rk] ?? 'Hotel simulation role' }}</p>
                                 </div>
                             @endforeach
                         </div>
@@ -1563,8 +1563,8 @@
                             <div class="flex items-start gap-3 min-w-0">
                                 <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">3</span>
                                 <div class="min-w-0">
-                                    <p class="text-[15px] font-bold text-slate-800">Assign Students to Teams</p>
-                                    <p class="text-[12px] text-slate-400">Press "Automatically Create Teams", then check the list. You can move any student to another team or change their role.</p>
+                                    <p class="text-[0.9375rem] font-bold text-slate-800">Assign Students to Teams</p>
+                                    <p class="text-[0.75rem] text-slate-400">Press "Automatically Create Teams", then check the list. You can move any student to another team or change their role.</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
@@ -1616,7 +1616,7 @@
                                                     ])
                                                     <div class="min-w-0 flex-1">
                                                         <p class="text-sm font-semibold text-slate-800 truncate">{{ $dn }}</p>
-                                                        <p class="text-[11px] text-slate-400 font-mono">
+                                                        <p class="text-[0.6875rem] text-slate-400 font-mono">
                                                             #{{ $student->student_number }}
                                                             @if($student->facultyClass)
                                                                 · {{ $student->facultyClass->name }}
@@ -1631,7 +1631,7 @@
                                             </div>
                                             <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-1.5 bulk-role-grid">
                                                 @foreach($teamRoleOptions as $rk => $rl)
-                                                    <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
+                                                    <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[0.625rem] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                         <input type="checkbox" value="{{ $rk }}"
                                                             class="bulk-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
                                                             onchange="enforceSingleRoleCheckbox(this); refreshBulkTeamPreviews()">
@@ -1741,7 +1741,7 @@
                         <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 flex items-center gap-3">
                             <span class="iconify text-amber-500 text-xl" data-icon="mdi:information-outline"></span>
                             <div>
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-amber-600">Editing</p>
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-amber-600">Editing</p>
                                 <p id="updateTeamEditingLabel" class="text-sm font-bold text-amber-700 truncate">—</p>
                             </div>
                         </div>
@@ -1753,7 +1753,7 @@
                             <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Legend:</p>
                             <div class="flex flex-wrap gap-3">
                                 @foreach($teamRoleOptions as $rk => $rl)
-                                    <div class="flex items-center gap-1.5 text-[11px] text-slate-600">
+                                    <div class="flex items-center gap-1.5 text-[0.6875rem] text-slate-600">
                                         <span class="w-2 h-2 rounded-full role-dot-{{ $rk }} flex-shrink-0"></span>{{ $rl }}
                                     </div>
                                 @endforeach
@@ -1765,7 +1765,7 @@
                     <div>
                         <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                             <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Members & Roles <span class="text-red-400">*</span></label>
-                            <span class="text-[11px] text-slate-400 sm:ml-auto">Current members of this team. Add more under Add Students below.</span>
+                            <span class="text-[0.6875rem] text-slate-400 sm:ml-auto">Current members of this team. Add more under Add Students below.</span>
                         </div>
                         <div class="relative mb-2">
                             <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
@@ -1803,10 +1803,10 @@
                                             <div class="min-w-0 flex-1">
                                                 <div class="flex items-center gap-2 flex-wrap">
                                                     <div class="text-sm font-semibold text-slate-700 truncate">{{ $dn }}</div>
-                                                    <span class="update-on-team-badge hidden text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">On this team</span>
-                                                    <span class="update-new-badge hidden text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border">Joining</span>
+                                                    <span class="update-on-team-badge hidden text-[0.625rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">On this team</span>
+                                                    <span class="update-new-badge hidden text-[0.625rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border">Joining</span>
                                                 </div>
-                                                <div class="text-[11px] text-slate-400 font-mono">
+                                                <div class="text-[0.6875rem] text-slate-400 font-mono">
                                                     #{{ $student->student_number }}
                                                     @if($student->facultyClass)
                                                         · {{ $student->facultyClass->name }}
@@ -1817,7 +1817,7 @@
                                         {{-- Role checkboxes row --}}
                                         <div class="update-role-row flex flex-wrap gap-1.5 mt-2 ml-8">
                                             @foreach(['front_desk' => 'Front Desk', 'restaurant_management' => 'Rest. Mgmt', 'room_management' => 'Room Mgmt', 'housekeeping' => 'Housekeeping/Maint.'] as $rk => $rl)
-                                                <label class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
+                                                <label class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[0.625rem] font-semibold text-slate-600 cursor-pointer hover:border-brand/40 hover:bg-brand-soft/50 transition has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
                                                     <input type="checkbox" name="member_roles[{{ $sk }}][]" value="{{ $rk }}"
                                                         class="update-role-checkbox rounded border-slate-300 text-brand focus:ring-brand/30 w-3 h-3"
                                                         data-student-id="{{ $sk }}"
@@ -1827,7 +1827,7 @@
                                             @endforeach
                                         </div>
                                         {{-- Filled by onUpdateRoleToggle() when the picked role is someone else's. --}}
-                                        <p class="update-role-warning hidden mt-2 ml-8 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700 leading-snug" role="alert"></p>
+                                        <p class="update-role-warning hidden mt-2 ml-8 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.6875rem] font-semibold text-amber-700 leading-snug" role="alert"></p>
                                     </div>
                                 @empty
                                     <div class="flex flex-col items-center gap-2 py-10 text-slate-400">
@@ -1940,13 +1940,13 @@
                      reaches the server as the tasks[] key. --}}
                 <div>
                     <div class="flex items-center gap-2 mb-3">
-                        <span class="w-6 h-6 rounded-lg bg-brand text-white text-[11px] font-bold flex items-center justify-center shrink-0">1</span>
+                        <span class="w-6 h-6 rounded-lg bg-brand text-white text-[0.6875rem] font-bold flex items-center justify-center shrink-0">1</span>
                         <div class="min-w-0">
                             <h4 class="text-sm font-bold text-slate-700">Which teams is this task for?</h4>
                             <p class="text-xs text-slate-400">Pick one, several, or every team in this block</p>
                         </div>
                         @unless(($groups ?? collect())->isEmpty())
-                            <label class="ml-auto shrink-0 inline-flex items-center gap-2 h-9 px-3 rounded-xl border border-slate-200 bg-white text-[12px] font-bold text-slate-600 hover:border-brand/40 cursor-pointer transition">
+                            <label class="ml-auto shrink-0 inline-flex items-center gap-2 h-9 px-3 rounded-xl border border-slate-200 bg-white text-[0.75rem] font-bold text-slate-600 hover:border-brand/40 cursor-pointer transition">
                                 <input type="checkbox" id="taskAllTeams" onchange="toggleAllTeams(this.checked)"
                                        class="rounded border-slate-300 text-brand focus:ring-brand/30">
                                 All teams
@@ -1999,7 +1999,7 @@
                                         class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand/30 task-team-radio disabled:cursor-not-allowed">
                                     <span class="min-w-0">
                                         <span class="block text-sm font-bold truncate {{ $hasStudents ? 'text-slate-700' : 'text-slate-400' }}">{{ $groupName }}</span>
-                                        <span class="block text-[10px] mt-0.5 {{ $hasStudents ? 'text-slate-400' : 'text-amber-600 font-semibold' }}">
+                                        <span class="block text-[0.625rem] mt-0.5 {{ $hasStudents ? 'text-slate-400' : 'text-amber-600 font-semibold' }}">
                                             @if($hasStudents)
                                                 {{ $liveMembers->count() }} {{ Str::plural('member', $liveMembers->count()) }}
                                             @else
@@ -2007,12 +2007,12 @@
                                             @endif
                                         </span>
                                         @if($hasStudents && $teamMissingRoleCount > 0)
-                                            <span class="block text-[10px] mt-1 text-amber-600 font-semibold leading-snug">
+                                            <span class="block text-[0.625rem] mt-1 text-amber-600 font-semibold leading-snug">
                                                 This team still has an unassigned role. Assign all required roles before setting role-specific tasks.
                                             </span>
                                         @endif
                                         @if($hasStudents && !$teamConceptSubmitted)
-                                            <span class="block text-[10px] mt-1 text-amber-600 font-semibold leading-snug">
+                                            <span class="block text-[0.625rem] mt-1 text-amber-600 font-semibold leading-snug">
                                                 {{ \App\Support\HotelConceptDesk::TASK_TITLE }} only &mdash; the rest of the customization unlocks once Front Desk submits this team's hotel concept.
                                             </span>
                                         @endif
@@ -2034,7 +2034,7 @@
                 <div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-lg bg-brand text-white text-[11px] font-bold flex items-center justify-center shrink-0">2</span>
+                            <span class="w-6 h-6 rounded-lg bg-brand text-white text-[0.6875rem] font-bold flex items-center justify-center shrink-0">2</span>
                             <div>
                                 <h4 class="text-sm font-bold text-slate-700">Which tasks are you setting?</h4>
                                 <p class="text-xs text-slate-400">Tick a task to give that department all of its website customization</p>
@@ -2049,11 +2049,11 @@
                          gating Task 02+, or work the picked teams already hold. Filled
                          by applyStepLocks() as teams are ticked. --}}
                     <p id="taskConceptLockNote"
-                       class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700 leading-snug"></p>
+                       class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[0.6875rem] font-semibold text-amber-700 leading-snug"></p>
 
                     {{-- Search + category filter, purely client-side over the cards below. --}}
                     <div class="flex flex-wrap items-center gap-2 mb-3">
-                        <div class="relative flex-1 min-w-[180px]">
+                        <div class="relative flex-1 min-w-[11.25rem]">
                             <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" data-icon="mdi:magnify"></span>
                             <input type="text" id="taskSearchInput" oninput="filterTaskCards()" placeholder="Search tasks..."
                                 class="w-full h-10 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
@@ -2071,7 +2071,7 @@
                     {{-- One card per numbered task, one department each. Ticking a card's
                          own box hands every activity in it to the team; View Details opens
                          the modal below to tick or read them one at a time. --}}
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-1" id="taskCardGrid">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[25rem] overflow-y-auto pr-1" id="taskCardGrid">
                         @foreach($taskSteps ?? [] as $step => $stepData)
                             @php
                                 $stepRole = $stepData['role'];
@@ -2093,8 +2093,8 @@
                                 </div>
                                 <div>
                                     <p class="text-sm font-bold text-slate-800">TASK {{ str_pad($step + 1, 2, '0', STR_PAD_LEFT) }}</p>
-                                    <p class="text-[11px] font-semibold text-slate-600 leading-snug">{{ $stepData['label'] }}</p>
-                                    <p class="text-[11px] text-slate-400 mt-0.5">{{ count($stepTasks) }} {{ Str::plural('Activity', count($stepTasks)) }}</p>
+                                    <p class="text-[0.6875rem] font-semibold text-slate-600 leading-snug">{{ $stepData['label'] }}</p>
+                                    <p class="text-[0.6875rem] text-slate-400 mt-0.5">{{ count($stepTasks) }} {{ Str::plural('Activity', count($stepTasks)) }}</p>
                                 </div>
                                 <button type="button" onclick="openTaskDetailsModal({{ $step }})"
                                     class="text-xs font-semibold text-brand hover:underline text-left flex items-center gap-1">
@@ -2118,7 +2118,7 @@
                         <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 32rem;">
                             <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center rounded-t-2xl flex-shrink-0">
                                 <div class="min-w-0">
-                                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">TASK {{ str_pad($step + 1, 2, '0', STR_PAD_LEFT) }} &middot; {{ count($stepTasks) }} {{ Str::plural('Activity', count($stepTasks)) }}</p>
+                                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">TASK {{ str_pad($step + 1, 2, '0', STR_PAD_LEFT) }} &middot; {{ count($stepTasks) }} {{ Str::plural('Activity', count($stepTasks)) }}</p>
                                     <h4 class="font-bold text-brand text-base truncate">{{ $stepData['label'] }}</h4>
                                 </div>
                                 <button type="button" onclick="closeTaskDetailsModal({{ $step }})"
@@ -2144,7 +2144,7 @@
                                                 <span class="text-sm font-bold text-slate-800">{{ $task['title'] }}</span>
                                                 @if($isConceptTask)
                                                     {{-- The brief the rest of the customization follows. --}}
-                                                    <span class="shrink-0 px-1.5 py-0.5 rounded-full border border-slate-200 text-[9px] font-bold uppercase tracking-wide bg-amber-50 text-amber-700">
+                                                    <span class="shrink-0 px-1.5 py-0.5 rounded-full border border-slate-200 text-[0.5625rem] font-bold uppercase tracking-wide bg-amber-50 text-amber-700">
                                                         Hotel Concept
                                                     </span>
                                                 @endif
@@ -2155,22 +2155,22 @@
                                                      steps the student holding it works through, and the line
                                                      under them is what the work has to show before it is
                                                      handed in. --}}
-                                                <p class="text-[9px] font-bold uppercase tracking-wider text-slate-400 mt-2">Steps</p>
+                                                <p class="text-[0.5625rem] font-bold uppercase tracking-wider text-slate-400 mt-2">Steps</p>
                                                 <ol class="mt-1 space-y-1 list-decimal list-inside">
                                                     @foreach($task['activities'] as $activity)
-                                                        <li class="text-[11px] text-slate-500 leading-relaxed">{{ $activity }}</li>
+                                                        <li class="text-[0.6875rem] text-slate-500 leading-relaxed">{{ $activity }}</li>
                                                     @endforeach
                                                 </ol>
                                             @endif
                                             @if(!empty($task['completion']))
-                                                <p class="text-[11px] text-slate-500 mt-2">
-                                                    <span class="font-bold uppercase tracking-wider text-[9px] text-slate-400">Done when</span>
+                                                <p class="text-[0.6875rem] text-slate-500 mt-2">
+                                                    <span class="font-bold uppercase tracking-wider text-[0.5625rem] text-slate-400">Done when</span>
                                                     <span class="block mt-0.5">{{ $task['completion'] }}</span>
                                                 </p>
                                             @endif
                                             {{-- The headcount hint the department step used to carry. Filled by
                                                  updateRoleMemberCounts() once a team is picked. --}}
-                                            <p class="text-[11px] font-semibold text-slate-400 mt-1">
+                                            <p class="text-[0.6875rem] font-semibold text-slate-400 mt-1">
                                                 {{ $rMeta['label'] }}<span data-role-count="{{ $rKey }}"></span>
                                             </p>
                                         </div>
@@ -2181,7 +2181,7 @@
                             </div>
 
                             <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between rounded-b-2xl flex-shrink-0">
-                                <p class="text-[11px] text-slate-400">Total Activities <span class="font-bold text-slate-600">{{ count($stepTasks) }}</span></p>
+                                <p class="text-[0.6875rem] text-slate-400">Total Activities <span class="font-bold text-slate-600">{{ count($stepTasks) }}</span></p>
                                 <button type="button" onclick="closeTaskDetailsModal({{ $step }})"
                                     class="px-4 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-white transition">Close</button>
                             </div>
@@ -2192,7 +2192,7 @@
                 {{-- ═══════ DUE DATE ═══════ --}}
                 <div>
                     <div class="flex items-center gap-2 mb-3">
-                        <span class="w-6 h-6 rounded-lg bg-slate-200 text-slate-500 text-[11px] font-bold flex items-center justify-center shrink-0">3</span>
+                        <span class="w-6 h-6 rounded-lg bg-slate-200 text-slate-500 text-[0.6875rem] font-bold flex items-center justify-center shrink-0">3</span>
                         <div>
                             <h4 class="text-sm font-bold text-slate-700">Due date and time</h4>
                             <p class="text-xs text-slate-400">Optional - leave blank for no deadline</p>
@@ -2205,7 +2205,7 @@
                             <input name="due_date" type="datetime-local" value="{{ old('due_date') }}"
                                 class="w-full h-12 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-1.5">Students see this deadline in their own task list.</p>
+                        <p class="text-[0.6875rem] text-slate-400 mt-1.5">Students see this deadline in their own task list.</p>
                     </div>
                 </div>
 
@@ -2239,12 +2239,12 @@
 
                 {{-- ═══════ ACTIVE TASKS OVERVIEW ═══════ --}}
                 <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Active Tasks</p>
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mb-2">Active Tasks</p>
                     <div class="flex flex-wrap gap-2">
                         @foreach($rolesMeta ?? [] as $rKey => $rMeta)
                             <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-100">
                                 <span class="iconify text-xs {{ $rMeta['color'] }}" data-icon="{{ $rMeta['icon'] }}"></span>
-                                <span class="text-[10px] font-bold text-slate-600">{{ $taskCounts[$rKey] ?? 0 }}</span>
+                                <span class="text-[0.625rem] font-bold text-slate-600">{{ $taskCounts[$rKey] ?? 0 }}</span>
                             </div>
                         @endforeach
                     </div>
@@ -2444,7 +2444,7 @@ function renderReviewChanges(changes) {
 
     let html = '';
     Object.keys(byPage).forEach(function (page) {
-        html += '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-3 mb-1.5 first:mt-0">' + escHtml(page) + '</p>';
+        html += '<p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mt-3 mb-1.5 first:mt-0">' + escHtml(page) + '</p>';
         byPage[page].forEach(function (c) {
             const style = REVIEW_CHANGE_STYLES[c.type] || REVIEW_CHANGE_STYLES.modified;
             const clickableAttr = c.key ? ' data-review-change-key="' + escHtml(c.key) + '"' : '';
@@ -2452,10 +2452,10 @@ function renderReviewChanges(changes) {
             html += '<div class="border-l-2 ' + style.border + ' rounded-r-lg bg-white px-2.5 py-2 mb-1.5' + clickableClass + '"' + clickableAttr + '>'
                 + '<div class="flex items-center justify-between gap-2">'
                 + '<span class="text-xs font-semibold text-slate-700 truncate">' + escHtml(c.label || '') + '</span>'
-                + '<span class="shrink-0 px-1.5 py-0.5 rounded-full border text-[9px] font-bold ' + style.chip + '">' + style.label + '</span>'
+                + '<span class="shrink-0 px-1.5 py-0.5 rounded-full border text-[0.5625rem] font-bold ' + style.chip + '">' + style.label + '</span>'
                 + '</div>';
             (c.fields || []).forEach(function (f) {
-                html += '<p class="text-[11px] text-slate-500 mt-1"><span class="font-semibold text-slate-600">' + escHtml(f.label) + ':</span> ';
+                html += '<p class="text-[0.6875rem] text-slate-500 mt-1"><span class="font-semibold text-slate-600">' + escHtml(f.label) + ':</span> ';
                 if (f.from != null && f.to != null) {
                     html += '<span class="line-through text-slate-400">' + escHtml(f.from) + '</span> <span class="text-slate-400">to</span> <span class="text-slate-700">' + escHtml(f.to) + '</span>';
                 } else if (f.to != null) {
@@ -3401,17 +3401,17 @@ function rebuildBulkTeamSlots(forcedCount = null) {
         <div class="rounded-xl border border-slate-200 bg-white p-4 bulk-team-slot" data-team-index="${index}">
             <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div class="flex-1">
-                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Team ${index + 1} Name</label>
+                    <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mb-1">Team ${index + 1} Name</label>
                     <input type="text" value="${escapeBulkAttr(name)}"
                         class="bulk-team-name-input w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
                         oninput="syncBulkTeamSelectOptions()">
                 </div>
                 <div class="sm:w-40">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Members</p>
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mb-1">Members</p>
                     <p class="bulk-team-count h-10 px-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-600 flex items-center">0 / ${BULK_TEAM_SIZE}</p>
                 </div>
             </div>
-            <div class="bulk-team-preview mt-3 flex flex-wrap gap-1.5 text-[11px] text-slate-400">No students assigned yet.</div>
+            <div class="bulk-team-preview mt-3 flex flex-wrap gap-1.5 text-[0.6875rem] text-slate-400">No students assigned yet.</div>
         </div>
     `).join('');
 
@@ -3901,7 +3901,7 @@ function renderCreateTeamSummary() {
             : '<span class="text-amber-700">No role yet</span>';
 
         return `
-            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px]">
+            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white border border-slate-200 text-[0.6875rem]">
                 <span class="font-semibold text-slate-700">${escapeBulkHtml(name)}</span>
                 <span class="text-slate-300">·</span>
                 ${roleMarkup}
@@ -4718,7 +4718,7 @@ function renderTeamApproval() {
         + '<div class="flex items-center gap-3 mt-2">'
             + '<div style="flex:1; height:.5rem; border-radius:999px; background:#F0ECE8; overflow:hidden;">'
                 + '<div class="status-fill-completed" style="height:100%; width:' + Number(a.percent) + '%;"></div></div>'
-            + '<b style="font-size:13px;">Approval Progress ' + Number(a.percent) + '%</b>'
+            + '<b style="font-size:0.8125rem;">Approval Progress ' + Number(a.percent) + '%</b>'
         + '</div>';
 }
 
@@ -4739,7 +4739,7 @@ function renderTeamSimRoles() {
     const shortTeam = teamModalMembers.length < Object.keys(SIM_SEAT_LABELS).length;
     const seatsOf = (m) => [].concat(current[String(m.student_id)] || []);
     const desks = (m) => Object.keys(SIM_SEAT_LABELS).map((key) =>
-        '<label style="display:inline-flex; align-items:center; gap:.35rem; padding:.3rem .55rem; border:1px solid #E4E2E0; border-radius:.6rem; font-size:12px; font-weight:600; color:#4A4643; background:' + (locked ? '#F3F2F1; cursor:not-allowed;' : '#fff; cursor:pointer;') + '">'
+        '<label style="display:inline-flex; align-items:center; gap:.35rem; padding:.3rem .55rem; border:1px solid #E4E2E0; border-radius:.6rem; font-size:0.75rem; font-weight:600; color:#4A4643; background:' + (locked ? '#F3F2F1; cursor:not-allowed;' : '#fff; cursor:pointer;') + '">'
             + '<input type="checkbox" data-sim-role="' + Number(m.student_id) + '" value="' + key + '"'
                 + (seatsOf(m).includes(key) ? ' checked' : '') + (locked ? ' disabled' : '')
                 + ' onchange="onSimDeskToggle(this)" style="accent-color:#374151;">'
@@ -4760,7 +4760,7 @@ function renderTeamSimRoles() {
         + '<div style="display:grid; gap:.75rem; margin-top:.75rem;">'
         + teamModalMembers.map((m) =>
             '<div>'
-                + '<p class="tm-ellipsis" style="font-size:13px; font-weight:700; color:#181818; margin-bottom:.35rem;">' + escHtml(m.name)
+                + '<p class="tm-ellipsis" style="font-size:0.8125rem; font-weight:700; color:#181818; margin-bottom:.35rem;">' + escHtml(m.name)
                     + ' <span class="tm-muted">(' + escHtml((m.role_labels || []).join(', ') || 'No role yet') + ')</span></p>'
                 + '<div style="display:flex; flex-wrap:wrap; gap:.4rem;">' + desks(m) + '</div>'
             + '</div>'
@@ -4837,7 +4837,7 @@ function saveTeamSimRoles() {
             Swal.fire({
                 icon: 'success',
                 title: 'Simulation roles confirmed',
-                html: '<ul style="list-style:none; margin:0 0 .75rem; padding:0; text-align:left; font-size:13px;">' + rows + '</ul>'
+                html: '<ul style="list-style:none; margin:0 0 .75rem; padding:0; text-align:left; font-size:0.8125rem;">' + rows + '</ul>'
                     + '<p class="text-sm text-slate-500">Each student has been notified of their role. ' + ready + '</p>',
                 confirmButtonText: 'Done',
                 iconColor: '#B8873C',

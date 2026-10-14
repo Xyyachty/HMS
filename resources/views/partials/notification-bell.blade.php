@@ -13,7 +13,7 @@
     this file rather than by its utility classes. The dean and student portals
     load Tailwind from the CDN, which generates whatever it sees, but the
     faculty portal is served a stylesheet that was built before this partial
-    existed — so w-[22rem], max-h-96, min-w-[18px], ring-slate-900/5 and
+    existed — so w-[22rem], max-h-96, min-w-[1.125rem], ring-slate-900/5 and
     bg-sky-50/60 simply had no rules there and the bell rendered unstyled. The
     utility classes are kept for readability; these rules are what make the
     three portals agree.
@@ -27,8 +27,8 @@
             class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
         <span class="iconify text-xl text-slate-500" data-icon="mdi:bell-outline"></span>
         <span data-notify-badge
-              class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center
-                     rounded-full bg-slate-700 text-white text-[10px] font-bold leading-none shadow-sm">0</span>
+              class="hidden absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-1 flex items-center justify-center
+                     rounded-full bg-slate-700 text-white text-[0.625rem] font-bold leading-none shadow-sm">0</span>
     </button>
 
     <div data-notify-panel
@@ -39,7 +39,7 @@
             <div class="flex items-center gap-2">
                 <h3 class="text-sm font-bold text-slate-900">Notifications</h3>
                 <span data-notify-unread-pill
-                      class="hidden px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">0 new</span>
+                      class="hidden px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[0.625rem] font-bold">0 new</span>
             </div>
             <button type="button"
                     data-notify-mark-all
@@ -73,10 +73,10 @@
 
     .hms-notify [data-notify-badge] {
         position: absolute; top: -0.125rem; right: -0.125rem;
-        min-width: 18px; height: 18px; padding: 0 0.25rem;
+        min-width: 1.125rem; height: 1.125rem; padding: 0 0.25rem;
         display: flex; align-items: center; justify-content: center;
         border-radius: 9999px; background: #334155; color: #fff;
-        font-size: 10px; font-weight: 700; line-height: 1;
+        font-size: 0.625rem; font-weight: 700; line-height: 1;
         box-shadow: 0 1px 2px 0 rgb(0 0 0 / .05);
     }
 
@@ -102,7 +102,7 @@
     }
     .hms-notify [data-notify-unread-pill] {
         padding: 0.125rem 0.375rem; border-radius: 9999px;
-        background: #f1f5f9; color: #334155; font-size: 10px; font-weight: 700;
+        background: #f1f5f9; color: #334155; font-size: 0.625rem; font-weight: 700;
     }
     .hms-notify [data-notify-mark-all] {
         background: none; border: 0; cursor: pointer;
@@ -225,7 +225,7 @@
                             '<span class="iconify text-lg" data-icon="' + escapeHtml(n.icon) + '"></span>' +
                         '</span>' +
                         '<span class="min-w-0 flex-1">' +
-                            '<span class="block text-[13px] font-semibold text-slate-900 leading-snug">' +
+                            '<span class="block text-[0.8125rem] font-semibold text-slate-900 leading-snug">' +
                                 escapeHtml(n.title) +
                             '</span>' +
                             (n.body
@@ -233,7 +233,7 @@
                                     ' style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' +
                                     escapeHtml(n.body) + '</span>'
                                 : '') +
-                            '<span class="block mt-1 text-[11px] text-slate-400">' +
+                            '<span class="block mt-1 text-[0.6875rem] text-slate-400">' +
                                 escapeHtml(n.created_at_human) +
                             '</span>' +
                         '</span>' +

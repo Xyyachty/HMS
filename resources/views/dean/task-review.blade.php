@@ -11,19 +11,19 @@
     @media (max-width: 1023px) { .dtr-grid { grid-template-columns: minmax(0, 1fr); } }
     .dtr-card { background: #fff; border: 1px solid #E4E2E0; border-radius: 1rem; padding: 1.25rem; }
     .dtr-card + .dtr-card { margin-top: .75rem; }
-    .dtr-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8A817A; }
-    .dtr-value { font-size: 14px; font-weight: 600; color: #181818; margin-top: .125rem; }
+    .dtr-label { font-size: 0.625rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8A817A; }
+    .dtr-value { font-size: 0.875rem; font-weight: 600; color: #181818; margin-top: .125rem; }
     .dtr-facts { display: grid; gap: .875rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 1rem; }
-    .dtr-pill { display: inline-flex; align-items: center; gap: .375rem; padding: .25rem .625rem; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid #E4E2E0; color: #4A4643; background: #F3F2F1; }
+    .dtr-pill { display: inline-flex; align-items: center; gap: .375rem; padding: .25rem .625rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 700; border: 1px solid #E4E2E0; color: #4A4643; background: #F3F2F1; }
     .dtr-list { list-style: none; margin: .75rem 0 0; padding: 0; }
-    .dtr-list li { display: flex; gap: .5rem; align-items: flex-start; padding: .5rem 0; border-top: 1px solid #F3F2F1; font-size: 13px; color: #4A4643; }
+    .dtr-list li { display: flex; gap: .5rem; align-items: flex-start; padding: .5rem 0; border-top: 1px solid #F3F2F1; font-size: 0.8125rem; color: #4A4643; }
     .dtr-list li:first-child { border-top: 0; }
     .dtr-list .iconify { flex-shrink: 0; margin-top: 2px; }
     .dtr-toggle { display: inline-flex; border: 1px solid #E4E2E0; border-radius: .75rem; overflow: hidden; }
-    .dtr-toggle button { padding: .375rem .875rem; font-size: 12px; font-weight: 700; color: #4A4643; background: #fff; }
+    .dtr-toggle button { padding: .375rem .875rem; font-size: 0.75rem; font-weight: 700; color: #4A4643; background: #fff; }
     .dtr-toggle button.is-on { background: #4A4643; color: #fff; }
     .dtr-frame { width: 100%; height: 70vh; border: 1px solid #E4E2E0; border-radius: .75rem; margin-top: .75rem; background: #fff; }
-    .dtr-empty { font-size: 13px; color: #8A817A; margin-top: .75rem; }
+    .dtr-empty { font-size: 0.8125rem; color: #8A817A; margin-top: .75rem; }
 </style>
 @endpush
 

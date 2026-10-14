@@ -15,29 +15,29 @@
     table.dataTable#usersTable { border-collapse: collapse !important; width: 100% !important; margin: 0 !important; }
     table.dataTable#usersTable thead th {
         background: #fff; color: #181818; border-bottom: 0 !important;
-        font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+        font-size: 0.6562rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
         padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
     table.dataTable#usersTable tbody tr { background: #fff; transition: background-color .15s ease, box-shadow .15s ease; }
     table.dataTable#usersTable tbody tr.even { background: #fff; }
     table.dataTable#usersTable tbody tr:hover { background: #dadada !important; }
     table.dataTable#usersTable tbody td {
-        padding: .8rem .9rem; vertical-align: middle; font-size: 13px;
+        padding: .8rem .9rem; vertical-align: middle; font-size: 0.8125rem;
         border-top: 1px solid #E4E2E0 !important; box-shadow: none !important;
     }
     table.dataTable#usersTable.no-footer { border-bottom: 0 !important; }
 
-    .st-name { font-size: 13.5px; font-weight: 800; color: #111; }
-    .st-email { font-size: 11.5px; color: #111; margin-top: .1rem; }
-    .st-muted { font-size: 12px; color: #111; font-weight: 600; }
+    .st-name { font-size: 0.8438rem; font-weight: 800; color: #111; }
+    .st-email { font-size: 0.7188rem; color: #111; margin-top: .1rem; }
+    .st-muted { font-size: 0.75rem; color: #111; font-weight: 600; }
     .st-dim { color: #111; }
     .st-block {
-        display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 800; color: #111;
+        display: inline-block; white-space: nowrap; font-size: 0.6875rem; font-weight: 800; color: #111;
     }
 
     .st-status {
         display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
-        font-size: 11px; font-weight: 800;
+        font-size: 0.6875rem; font-weight: 800;
     }
     .st-status .dot { width: .45rem; height: .45rem; border-radius: 9999px; }
     .st-status.is-active   { color: #15803D; }
@@ -49,7 +49,7 @@
 
     .st-update, .st-approve {
         display: inline-flex; align-items: center; justify-content: center; gap: .35rem; white-space: nowrap;
-        min-width: 6rem; border-radius: .6rem; padding: .4rem .8rem; font-size: 11.5px; font-weight: 800;
+        min-width: 6rem; border-radius: .6rem; padding: .4rem .8rem; font-size: 0.7188rem; font-weight: 800;
         border: 1px solid; transition: all .15s ease;
     }
     .st-update { color: #111; background: #fff; border-color: #111; }
@@ -87,13 +87,13 @@
     #userSearchWrap.is-open #userSearchInput::placeholder { color: #8C8C8C; }
 
     /* Info line and pager under the table */
-    #usersTable_wrapper .dataTables_info { padding-top: 1.25rem; font-size: 13px; color: #111; }
+    #usersTable_wrapper .dataTables_info { padding-top: 1.25rem; font-size: 0.8125rem; color: #111; }
     #usersTable_wrapper .dataTables_info b { color: #111; }
     #usersTable_wrapper .dataTables_paginate { padding-top: 1rem; display: flex; gap: .375rem; flex-wrap: wrap; justify-content: flex-end; }
     #usersTable_wrapper .dataTables_paginate .paginate_button {
         min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem !important; margin: 0 !important; border-radius: .7rem !important;
         display: inline-flex !important; align-items: center; justify-content: center;
-        font-size: 13px; font-weight: 700; color: #111 !important; background: #fff !important;
+        font-size: 0.8125rem; font-weight: 700; color: #111 !important; background: #fff !important;
         border: 1px solid #E4E2E0 !important; box-shadow: none !important; transition: all .15s ease;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button:hover {
@@ -290,7 +290,7 @@
                                     'name'         => $displayName,
                                     'size'         => 'w-9 h-9',
                                     'rounded'      => 'rounded-full',
-                                    'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold border border-amber-200',
+                                    'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold border border-amber-200',
                                 ])
                                 <div class="min-w-0">
                                     <p class="st-name truncate">{{ $displayName }}</p>
@@ -371,7 +371,7 @@
 <!-- Create User Modal -->
 <div id="createUserModal" class="um-page fixed inset-0 hidden" style="z-index: 9999;">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('createUserModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 47.5rem; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
         <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-brand text-lg">Add Faculty Details</h4>
             <button onclick="closeModal('createUserModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
@@ -450,7 +450,7 @@
 <!-- Update User Modal -->
 <div id="updateUserModal" class="um-page fixed inset-0 hidden" style="z-index: 9999;">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('updateUserModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 47.5rem; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
         <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-brand text-lg">Update User</h4>
             <button onclick="closeModal('updateUserModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">

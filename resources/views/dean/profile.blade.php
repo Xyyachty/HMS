@@ -39,7 +39,7 @@
                 <div class="text-center sm:text-left text-white">
                     <h3 class="text-2xl font-bold tracking-tight">{{ $avatarLabel }}</h3>
                     <p class="text-sm text-white/80 mt-1">{{ $user->email }}</p>
-                    <p class="text-[11px] uppercase tracking-widest text-white/60 mt-2">Dean Account</p>
+                    <p class="text-[0.6875rem] uppercase tracking-widest text-white/60 mt-2">Dean Account</p>
                 </div>
             </div>
         </div>

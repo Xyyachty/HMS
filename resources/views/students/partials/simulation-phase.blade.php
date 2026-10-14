@@ -19,13 +19,13 @@
     <div class="bg-white rounded-2xl border border-[#E7E1DD] shadow-sm p-5 space-y-4">
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-                <p class="text-[10px] font-bold uppercase tracking-wider text-[#8A817A]">
+                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-[#8A817A]">
                     Hotel Customization &middot; Hotel Simulation
                 </p>
                 <h3 class="text-base font-bold text-[#181818]">Team {{ $groupMembership->group_name }} — Hotel Customization</h3>
             </div>
             @if($simSeats)
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-[#E7E1DD] bg-[#F5F2EF] text-[11px] font-bold text-slate-600">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-[#E7E1DD] bg-[#F5F2EF] text-[0.6875rem] font-bold text-slate-600">
                     <span class="iconify text-sm" data-icon="mdi:bell-ring-outline"></span>
                     {{ count($simSeats) > 1 ? 'Simulation roles' : 'Simulation role' }}: {{ collect($simSeats)->map(fn ($seat) => \App\Support\HotelTemplateBuilder::seatLabel($seat, \App\Support\HotelTemplateBuilder::PHASE_SIMULATION))->implode(', ') }}
                 </span>
@@ -41,13 +41,13 @@
             ] as [$label, $count, $key])
                 <div class="rounded-xl border border-[#E7E1DD] px-3 py-2.5">
                     <p class="text-xl font-extrabold status-text-{{ $key }}">{{ $count }}</p>
-                    <p class="text-[11px] font-semibold text-slate-500">{{ $label }}</p>
+                    <p class="text-[0.6875rem] font-semibold text-slate-500">{{ $label }}</p>
                 </div>
             @endforeach
         </div>
 
         <div>
-            <div class="flex items-center justify-between text-[12px] font-bold text-slate-600 mb-1.5">
+            <div class="flex items-center justify-between text-[0.75rem] font-bold text-slate-600 mb-1.5">
                 <span>Approval Progress</span>
                 <span>{{ $simPhase['percent'] }}%</span>
             </div>
@@ -62,7 +62,7 @@
             <span class="iconify text-2xl status-text-completed shrink-0" data-icon="mdi:lock-open-variant-outline"></span>
             <div class="flex-1">
                 <p class="text-sm font-bold text-[#181818]">Hotel Simulation Open</p>
-                <p class="text-[12px] text-slate-600">
+                <p class="text-[0.75rem] text-slate-600">
                     @if($simPhase['unlocked'])
                         All required customization tasks have been approved.
                     @else
@@ -88,10 +88,10 @@
                     </button>
                     <div id="simulationStartMenu" hidden
                          class="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-[#E7E1DD] shadow-xl py-1.5 z-30">
-                        <p class="px-3 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Choose a role</p>
+                        <p class="px-3 pt-1 pb-1.5 text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Choose a role</p>
                         @foreach($simEntries as $module)
                             <a href="{{ $module['simulation_url'] }}"
-                               class="flex items-center gap-2 px-3 py-2 text-[13px] font-semibold text-slate-600 hover:bg-[#F5F2EF] hover:text-[#181818]">
+                               class="flex items-center gap-2 px-3 py-2 text-[0.8125rem] font-semibold text-slate-600 hover:bg-[#F5F2EF] hover:text-[#181818]">
                                 {{ $module['label'] }}
                             </a>
                         @endforeach

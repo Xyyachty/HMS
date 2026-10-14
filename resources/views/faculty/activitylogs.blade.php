@@ -67,11 +67,11 @@
             <table class="w-full text-sm" style="table-layout:fixed">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200">
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:36%">Task</th>
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Role</th>
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:16%">Status</th>
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:16%">Due</th>
-                        <th class="text-left px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Updated</th>
+                        <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:36%">Task</th>
+                        <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Role</th>
+                        <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:16%">Status</th>
+                        <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:16%">Due</th>
+                        <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Updated</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -80,7 +80,7 @@
                             <td class="px-4 py-3">
                                 <p class="font-semibold text-slate-800 truncate" title="{{ $task->title }}">{{ $task->title }}</p>
                                 @if($task->description)
-                                    <p class="text-[11px] text-slate-400 truncate">{{ $task->description }}</p>
+                                    <p class="text-[0.6875rem] text-slate-400 truncate">{{ $task->description }}</p>
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-xs font-semibold text-slate-600 whitespace-nowrap">
@@ -88,12 +88,12 @@
                             </td>
                             <td class="px-4 py-3">
                                 @if($task->status === 'archived')
-                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full status-badge-completed border text-[11px] font-bold">
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full status-badge-completed border text-[0.6875rem] font-bold">
                                         <span class="w-1.5 h-1.5 rounded-full status-fill-completed"></span>
                                         Completed
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[11px] font-bold">
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[0.6875rem] font-bold">
                                         <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                                         Assigned
                                     </span>

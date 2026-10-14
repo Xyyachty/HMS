@@ -75,9 +75,9 @@
         , #4A0D1C 72%, #2A1118 100%);
         }
 
-        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar { width: 0.3125rem; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 0.625rem; }
 
         .glass-header {
             background: rgba(255, 255, 255, 0.85);
@@ -110,6 +110,7 @@
     @include('partials.gray-scheme-styles')
     @include('partials.status-badge-styles')
     @include('partials.ink-all-styles')
+    @include('partials.portal-scale')
 </head>
 <body class="bg-slate-50 antialiased">
 
@@ -124,7 +125,7 @@
                     <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300" />
                     <div>
                         <span class="text-sm font-bold tracking-tight text-white block leading-tight">Hotel Management System</span>
-                        <span class="text-[10px] text-white uppercase tracking-widest">Dean Portal</span>
+                        <span class="text-[0.625rem] text-white uppercase tracking-widest">Dean Portal</span>
                     </div>
                 </a>
             </div>
@@ -217,7 +218,7 @@
                 <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm" />
                 <div>
                     <span class="text-sm font-bold tracking-tight text-white block leading-tight">Hotel Management System</span>
-                    <span class="text-[10px] text-white uppercase tracking-widest">Dean Portal</span>
+                    <span class="text-[0.625rem] text-white uppercase tracking-widest">Dean Portal</span>
                 </div>
             </a>
         </div>

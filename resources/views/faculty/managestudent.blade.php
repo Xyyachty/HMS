@@ -9,7 +9,7 @@
        Neutral cards on the maroon palette. Written out because the frozen build
        has no grid breakpoints, and the palette file turns blue and amber into the
        wine and gold that made this read as a warning. */
-    .bu-lead { font-size: 12.5px; color: #111; margin-bottom: .75rem; }
+    .bu-lead { font-size: 0.7812rem; color: #111; margin-bottom: .75rem; }
     .bu-grid { display: grid; gap: .875rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     @media (max-width: 700px) { .bu-grid { grid-template-columns: minmax(0, 1fr); } }
     .bu-card { border: 1px solid #E4E2E0; border-radius: 1rem; background: #fff; padding: 1rem; display: flex; flex-direction: column; }
@@ -19,25 +19,25 @@
         display: inline-flex; align-items: center; justify-content: center;
         background: #F3F2F1; color: #4A4643; font-size: 1.15rem;
     }
-    .bu-card-title { font-size: 13.5px; font-weight: 800; color: #111; line-height: 1.25; }
-    .bu-card-sub { font-size: 11.5px; color: #6B6B6B; margin-top: .1rem; }
-    .bu-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #6B6B6B; margin: .25rem 0 .35rem; }
+    .bu-card-title { font-size: 0.8438rem; font-weight: 800; color: #111; line-height: 1.25; }
+    .bu-card-sub { font-size: 0.7188rem; color: #6B6B6B; margin-top: .1rem; }
+    .bu-label { font-size: 0.625rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #6B6B6B; margin: .25rem 0 .35rem; }
     .bu-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
     .bu-chip {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; font-weight: 700;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.6875rem; font-weight: 700;
         color: #181818; background: #F3F2F1; border: 1px solid #E4E2E0; border-radius: .4rem; padding: .1rem .4rem;
     }
     .bu-chip.is-soft { color: #6B6B6B; background: #fff; border-style: dashed; }
-    .bu-text { font-size: 11.5px; line-height: 1.55; color: #111; margin-top: .25rem; }
+    .bu-text { font-size: 0.7188rem; line-height: 1.55; color: #111; margin-top: .25rem; }
     .bu-download {
         margin-top: auto; align-self: flex-start;
         display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .85rem; border-radius: .7rem;
-        font-size: 12px; font-weight: 800; color: #181818; background: #fff; border: 1px solid #DADADA;
+        font-size: 0.75rem; font-weight: 800; color: #181818; background: #fff; border: 1px solid #DADADA;
         transition: all .15s ease;
     }
     .bu-download:hover { background: #5F5A55; border-color: #5F5A55; color: #fff; }
     .bu-notes { margin-top: .875rem; display: grid; gap: .45rem; }
-    .bu-notes li { display: flex; align-items: flex-start; gap: .5rem; font-size: 11.5px; line-height: 1.5; color: #111; }
+    .bu-notes li { display: flex; align-items: flex-start; gap: .5rem; font-size: 0.7188rem; line-height: 1.5; color: #111; }
     .bu-notes li .iconify { flex: 0 0 auto; font-size: .95rem; color: #4A4643; margin-top: .1rem; }
     .bu-drop {
         margin-top: 1rem; border: 2px dashed #D4D0CD; border-radius: 1.1rem; background: #fff;
@@ -50,11 +50,11 @@
         display: inline-flex; align-items: center; justify-content: center;
         background: #fff; color: #4A4643; font-size: 1.6rem; box-shadow: 0 6px 16px -8px rgba(24,24,24,.35);
     }
-    .bu-drop-title { font-size: 13.5px; font-weight: 800; color: #111; }
-    .bu-drop-sub { font-size: 11.5px; color: #6B6B6B; }
+    .bu-drop-title { font-size: 0.8438rem; font-weight: 800; color: #111; }
+    .bu-drop-sub { font-size: 0.7188rem; color: #6B6B6B; }
     .bu-browse {
         margin-top: .35rem; display: inline-flex; align-items: center; padding: .45rem .95rem; border-radius: .7rem;
-        font-size: 12px; font-weight: 800; color: #fff; background: #5F5A55;
+        font-size: 0.75rem; font-weight: 800; color: #fff; background: #5F5A55;
     }
     #bulkDropZone.drag-over { border-color: #8A817A; background-color: #F3F2F1; }
     #bulkImportBtn:disabled {
@@ -72,7 +72,7 @@
     #studentsTable th, #studentsTable td { vertical-align: middle; }
     #studentsTable thead th {
         background: #EFEFEF; color: #181818;
-        font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+        font-size: 0.6562rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
         padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
     #studentsTable thead th.text-center { text-align: center; }
@@ -90,17 +90,17 @@
 
     .st-id {
         display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; font-weight: 700;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.7188rem; font-weight: 700;
         color: #111;
     }
-    .st-name { font-size: 13.5px; font-weight: 800; color: #111; }
-    .st-email { font-size: 11.5px; color: #111; margin-top: .1rem; }
-    .st-muted { font-size: 12px; color: #111; font-weight: 600; }
+    .st-name { font-size: 0.8438rem; font-weight: 800; color: #111; }
+    .st-email { font-size: 0.7188rem; color: #111; margin-top: .1rem; }
+    .st-muted { font-size: 0.75rem; color: #111; font-weight: 600; }
     .st-dim { color: #111; }
 
     .st-status {
         display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
-        font-size: 11px; font-weight: 800;
+        font-size: 0.6875rem; font-weight: 800;
     }
     .st-status .dot { width: .45rem; height: .45rem; border-radius: 9999px; }
     .st-status.is-active   { color: #15803D; }
@@ -112,7 +112,7 @@
 
     .st-update {
         display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap;
-        border-radius: .6rem; padding: .4rem .8rem; font-size: 11.5px; font-weight: 800;
+        border-radius: .6rem; padding: .4rem .8rem; font-size: 0.7188rem; font-weight: 800;
         color: #111; background: #fff; border: 1px solid #111; transition: all .15s ease;
     }
     .st-update:hover,
@@ -124,7 +124,7 @@
     .st-page {
         min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem; border-radius: .7rem;
         display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
-        font-size: 13px; font-weight: 700; color: #404040; background: #fff; border: 1px solid #E4E2E0;
+        font-size: 0.8125rem; font-weight: 700; color: #404040; background: #fff; border: 1px solid #E4E2E0;
         transition: all .15s ease;
     }
     a.st-page:hover { color: #404040; border-color: #dadada; background: #dadada; }
@@ -266,12 +266,12 @@
                         ? 'bg-white ms-ink border-slate-200 -mb-px relative z-10'
                         : 'bg-slate-50 ms-ink border-transparent hover:bg-slate-100' }}">
                     <span class="ms-wine">{{ $classTab->name }}</span>
-                    <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full
+                    <span class="text-[0.6875rem] font-semibold px-2 py-0.5 rounded-full
                         {{ $isClosed ? 'bg-slate-200' : 'bg-brand-soft' }} ms-ink">
                         {{ $taken }}/{{ $cap }}
                     </span>
                     @if(!$isClosed)
-                        <span class="text-[10px] uppercase tracking-wide ms-ink">Open</span>
+                        <span class="text-[0.625rem] uppercase tracking-wide ms-ink">Open</span>
                     @endif
                 </a>
             @empty
@@ -343,7 +343,7 @@
     <!-- DataTable -->
     <div class="ms-table-wrap p-4 md:p-6">
         <div class="st-card overflow-x-auto">
-            <table id="studentsTable" style="min-width: 760px">
+            <table id="studentsTable" style="min-width: 47.5rem">
                 <thead>
                     <tr>
                         <th class="col-student">Student</th>
@@ -395,7 +395,7 @@
                                     'name'         => $displayName,
                                     'size'         => 'w-9 h-9',
                                     'rounded'      => 'rounded-full',
-                                    'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold border border-amber-200',
+                                    'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold border border-amber-200',
                                 ])
                                 <div class="min-w-0 flex-1">
                                     <p class="st-name cell-truncate" title="{{ $displayName }}">
@@ -484,7 +484,7 @@
         <!-- Pagination -->
         @if($students->total() > 0)
         <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <p class="text-[13px] ms-ink">
+            <p class="text-[0.8125rem] ms-ink">
                 Showing <span class="font-bold">{{ $students->firstItem() }}</span>–<span class="font-bold">{{ $students->lastItem() }}</span>
                 of <span class="font-bold">{{ $students->total() }}</span> students
             </p>
@@ -518,7 +518,7 @@
 <!-- ==================== BULK UPLOAD MODAL ==================== -->
 <div id="bulkUploadModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeBulkModal()"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100" style="width: 820px; max-width: 94vw; max-height: 92vh; overflow-y: auto;">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100" style="width: 51.25rem; max-width: 94vw; max-height: 92vh; overflow-y: auto;">
 
         <!-- Modal Header -->
         <div class="bg-emerald-50 px-6 py-4 border-b border-emerald-100 flex justify-between items-center sticky top-0 z-10">
@@ -541,17 +541,17 @@
             <!-- Step indicator -->
             <div class="flex items-center gap-2 text-xs" id="bulkStepIndicator">
                 <span class="flex items-center gap-1.5 font-semibold text-emerald-700" id="stepBadge1">
-                    <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                    <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[0.625rem] font-bold">1</span>
                     Upload Excel
                 </span>
                 <span class="text-slate-300 font-bold">›</span>
                 <span class="flex items-center gap-1.5 font-semibold text-slate-400" id="stepBadge2">
-                    <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-bold">2</span>
+                    <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[0.625rem] font-bold">2</span>
                     Preview
                 </span>
                 <span class="text-slate-300 font-bold">›</span>
                 <span class="flex items-center gap-1.5 font-semibold text-slate-400" id="stepBadge3">
-                    <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-bold">3</span>
+                    <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[0.625rem] font-bold">3</span>
                     Results
                 </span>
             </div>
@@ -743,7 +743,7 @@
 <!-- ==================== CREATE STUDENT MODAL ==================== -->
 <div id="createStudentModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('createStudentModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 47.5rem; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
         <div class="bg-brand-soft px-6 py-4 border-b border-amber-100 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-brand text-lg">Add Student</h4>
             <button onclick="closeModal('createStudentModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
@@ -777,7 +777,7 @@
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email <span class="text-emerald-600 normal-case tracking-normal font-semibold">(real address — the welcome is sent here)</span></label>
                     <input name="email" type="email" placeholder="e.g. student@gmail.com" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                    <p class="mt-1 text-[11px] text-slate-400">Their sign-in details are emailed here as soon as the account is created.</p>
+                    <p class="mt-1 text-[0.6875rem] text-slate-400">Their sign-in details are emailed here as soon as the account is created.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
@@ -804,7 +804,7 @@
 <!-- ==================== UPDATE STUDENT MODAL ==================== -->
 <div id="updateStudentModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('updateStudentModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 47.5rem; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
         <div class="bg-brand-soft px-6 py-4 border-b border-amber-100 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-brand text-lg">Update Student</h4>
             <button onclick="closeModal('updateStudentModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
@@ -834,7 +834,7 @@
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
                     <input id="updateEmail" name="email" type="email" required placeholder="student@example.com" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                    <p class="mt-1 text-[11px] text-slate-400">Editable so a typo from the Excel import can be corrected. Fixing it re-sends the account email to the new address.</p>
+                    <p class="mt-1 text-[0.6875rem] text-slate-400">Editable so a typo from the Excel import can be corrected. Fixing it re-sends the account email to the new address.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
@@ -851,7 +851,7 @@
                             <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
                         </button>
                     </div>
-                    <p id="updatePasswordHelp" class="mt-1 text-[11px] text-red-500 hidden">Password must be at least 8 characters.</p>
+                    <p id="updatePasswordHelp" class="mt-1 text-[0.6875rem] text-red-500 hidden">Password must be at least 8 characters.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm Password</label>
@@ -861,7 +861,7 @@
                             <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
                         </button>
                     </div>
-                    <p id="updatePasswordMatch" class="mt-1 text-[11px] text-red-500 hidden">Passwords do not match.</p>
+                    <p id="updatePasswordMatch" class="mt-1 text-[0.6875rem] text-red-500 hidden">Passwords do not match.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
@@ -1313,11 +1313,11 @@
                     // email did not go, and not created at all.
                     let statusCell;
                     if (!ok) {
-                        statusCell = '<span class="inline-flex items-center gap-1 text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✗ Failed</span>';
+                        statusCell = '<span class="inline-flex items-center gap-1 text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[0.625rem] font-bold">✗ Failed</span>';
                     } else if (r.emailed) {
-                        statusCell = '<span class="inline-flex items-center gap-1 text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✓ Added &amp; emailed</span>';
+                        statusCell = '<span class="inline-flex items-center gap-1 text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full text-[0.625rem] font-bold">✓ Added &amp; emailed</span>';
                     } else {
-                        statusCell = '<span class="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-bold">! Added, no email</span>';
+                        statusCell = '<span class="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[0.625rem] font-bold">! Added, no email</span>';
                     }
 
                     const note = ok ? (r.emailed ? (r.email || '') : (r.reason || '')) : (r.reason || '');
