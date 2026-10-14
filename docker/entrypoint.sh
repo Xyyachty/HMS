@@ -66,10 +66,8 @@ fi
 # ---------------------------------------------------------------------------
 # Seeders
 #
-# Creates the dean and faculty accounts the app cannot be administered without.
-# Every seeder is updateOrCreate, so this is a no-op on every start after the
-# first — but it does rewrite the seeded passwords back to their defaults, so a
-# password changed by hand will not survive the next deploy.
+# Creates the dean account the app cannot be administered without. The seeder
+# only creates it when no dean exists, so profile edits survive every deploy.
 #
 # Non-fatal for the same reason as the migrations above: a database that is
 # briefly unreachable should leave the site up, not dead.
