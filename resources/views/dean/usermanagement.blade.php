@@ -754,10 +754,9 @@
     }
 
     function buildUserRow(user) {
-        const initials = String(user.name || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase();
         const nameCell = `
             <div class="flex items-center gap-3 min-w-0">
-                <span class="w-9 h-9 rounded-full bg-brand-soft text-brand text-[11px] font-bold border border-amber-200 inline-flex items-center justify-center shrink-0">${escapeCell(initials)}</span>
+                <img src="{{ asset('images/default-avatar.svg') }}" alt="" class="w-9 h-9 rounded-full object-cover shrink-0">
                 <div class="min-w-0">
                     <p class="st-name truncate">${escapeCell(user.name)}</p>
                     <p class="st-email truncate">${escapeCell(user.email ?? '')}</p>

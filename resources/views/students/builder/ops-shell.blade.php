@@ -346,12 +346,6 @@
                 </a>
             @endif
             <div class="relative" id="profileWrapper">
-                <?php
-                    $authUser = auth()->user();
-                    // Single source of truth: User::initials reads first_name + last_name
-                    // so a profile update is reflected here without re-derivation.
-                    $initials = strtoupper((string) ($authUser?->initials ?? 'S'));
-                ?>
                 <div class="profile-dropdown" id="profileDropdown">
                     <div class="dd-item" onclick="toast('Opening profile...')"><i class="fas fa-user-circle"></i> My Profile</div>
                     <div class="dd-item" onclick="toast('Opening settings...')"><i class="fas fa-cog"></i> Settings</div>

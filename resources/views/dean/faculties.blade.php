@@ -679,7 +679,7 @@
                 + '<span class="tm-dot status-fill-' + key + '"></span>' + escHtml(log.status_label) + '</span>';
             const student = log.student
                 ? '<div class="flex items-center gap-2 min-w-0">'
-                    + '<span class="tm-avatar tm-avatar-sm">' + escHtml(String(log.student).charAt(0).toUpperCase()) + '</span>'
+                    + '<img src="{{ asset('images/default-avatar.svg') }}" alt="" class="tm-avatar tm-avatar-sm">'
                     + '<span class="tm-ellipsis" title="' + escHtml(log.student) + '">' + escHtml(log.student) + '</span>'
                   + '</div>'
                 : '<span class="tm-muted">Not taken yet</span>';
@@ -743,7 +743,7 @@
                     : '';
                 return '<div class="tm-member" data-member-card="' + Number(m.user_id || 0) + '">'
                     + '<div class="tm-member-top">'
-                        + '<span class="tm-avatar">' + escHtml(String(m.name || '?').charAt(0).toUpperCase()) + '</span>'
+                        + '<img src="{{ asset('images/default-avatar.svg') }}" alt="" class="tm-avatar">'
                         + '<div class="min-w-0">'
                             + '<p class="tm-member-name" title="' + escHtml(m.name) + '">' + escHtml(m.name) + '</p>'
                             + '<p class="tm-member-no">Member ' + (i + 1) + '</p>'

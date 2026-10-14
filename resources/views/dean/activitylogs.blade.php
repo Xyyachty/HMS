@@ -33,8 +33,6 @@
                 $facultyUser?->first_name,
                 $facultyUser?->last_name,
             ]))) ?: ($facultyUser?->name ?? 'Faculty');
-            $initials = collect(explode(' ', $facultyName))
-                ->filter()->map(fn ($part) => mb_substr($part, 0, 1))->take(2)->implode('');
             $teamCount = $facultyTasks->pluck('group_name')->filter()->unique()->count();
             $lastDone = $facultyTasks->first()->updated_at;
         @endphp
@@ -43,11 +41,7 @@
              starts open so the page never looks empty. --}}
         <details class="al-faculty" @if($loop->first) open @endif>
             <summary>
-                @if($facultyUser?->avatar)
-                    <img src="{{ $facultyUser->avatar_url }}" alt="" class="al-avatar">
-                @else
-                    <span class="al-avatar">{{ $initials }}</span>
-                @endif
+                <img src="{{ $facultyUser?->avatar_url ?? asset('images/default-avatar.svg') }}" alt="" class="al-avatar">
                 <span class="al-who">
                     <span class="al-name">{{ $facultyName }}</span>
                     <span class="al-meta">
