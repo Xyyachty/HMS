@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * One device per account, and a five-minute inactivity limit, for every role.
+ * One device per account, and a fifteen-minute inactivity limit, for every role.
  *
  * Single device: each sign-in writes a fresh token to users.remember_token and
  * keeps a copy in that session (AuthController::authenticate). A session whose
@@ -22,12 +22,18 @@ use Symfony\Component\HttpFoundation\Response;
  * (the bell, team presence, review pulses) never extend the session, or a page
  * left open would stay signed in forever.
  *
+ * At IDLE_SECONDS the page warns for WARNING_SECONDS, then signs out. The server
+ * ends the session itself once both have passed, plus GRACE_SECONDS so a "Stay
+ * Logged In" click in the last second still lands.
+ *
  * Ending a session uses logoutCurrentDevice(), not logout(): logout() cycles
  * remember_token, which would end the newer session too.
  */
 class EnforceSessionRules
 {
-    public const IDLE_SECONDS = 300;
+    public const IDLE_SECONDS = 900;
+    public const WARNING_SECONDS = 10;
+    private const GRACE_SECONDS = 5;
 
     public const TOKEN_KEY = 'login_token';
     public const ACTIVITY_KEY = 'last_activity_at';
@@ -70,7 +76,7 @@ class EnforceSessionRules
         }
 
         $last = $session->get(self::ACTIVITY_KEY);
-        if ($last !== null && now()->timestamp - (int) $last >= self::IDLE_SECONDS) {
+        if ($last !== null && now()->timestamp - (int) $last >= self::IDLE_SECONDS + self::WARNING_SECONDS + self::GRACE_SECONDS) {
             return self::end($request, 'idle');
         }
 

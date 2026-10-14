@@ -6,8 +6,11 @@
      - Tells the server about it with /session/ping?active=1, at most every 15
        seconds plus once after the last burst. The server then never sees less
        recent activity than this page does, so it never ends the session first.
-     - At five idle minutes it saves any open builder draft (never submits it),
-       then goes to /session-ended, which signs out and says why.
+     - At fifteen idle minutes it saves any open builder draft (never submits
+       it) and shows a ten-second "Stay Logged In" warning. Only that button
+       keeps the session; when the countdown ends it goes to /session-ended,
+       which signs out and says why. Every open tab shows the same countdown,
+       and pressing the button in one closes it in all of them.
      - Asks once a minute, and on coming back to the tab, whether the session is
        still the account's live one, so a sign-in on another device shows here
        without waiting for a click. --}}
@@ -18,7 +21,7 @@
     window.__hmsSessionGuard = true;
 
     var IDLE_MS = {{ \App\Http\Middleware\EnforceSessionRules::IDLE_SECONDS * 1000 }};
-    var SAVE_LEAD_MS = 8000;
+    var WARN_MS = {{ \App\Http\Middleware\EnforceSessionRules::WARNING_SECONDS * 1000 }};
     var PING_EVERY_MS = 15000;
     var PING_URL = @json(route('session.ping', [], false));
     var ENDED_URL = @json(route('session.ended', [], false));
@@ -28,6 +31,7 @@
     var sentAt = 0;
     var trailing = null;
     var leaving = false;
+    var warning = false;
 
     function store(t) { try { localStorage.setItem(KEY, String(t)); } catch (e) {} }
     function lastShared() {
@@ -54,6 +58,7 @@
     }
 
     function onActivity() {
+        if (warning) return; // only the Stay Logged In button counts now
         var now = Date.now();
         if (now - last < 1000 && sentAt) return; // pointer moves fire constantly
         last = now;
@@ -80,29 +85,77 @@
     store(last);
     sentAt = last;
 
-    var saving = false;
-    function saveThenLeave() {
-        if (saving) return;
-        saving = true;
+    var saved = null;
+    function saveDraft() {
         var builder = window.hmsBuilder;
-        var save = builder && typeof builder.autosave === 'function'
+        return builder && typeof builder.autosave === 'function'
             ? Promise.resolve().then(function () { return builder.autosave(); }).catch(function () {})
             : Promise.resolve();
-        var cap = new Promise(function (resolve) { setTimeout(resolve, SAVE_LEAD_MS - 1000); });
-        Promise.race([save, cap]).then(function () {
-            var left = IDLE_MS - (Date.now() - lastShared());
-            if (left > SAVE_LEAD_MS) { saving = false; return; } // another tab saw activity meanwhile
-            setTimeout(function () {
-                if (Date.now() - lastShared() >= IDLE_MS - 500) leave('idle');
-                else saving = false;
-            }, Math.max(0, left));
+    }
+
+    function secondsLeft() {
+        return Math.max(0, Math.ceil((lastShared() + IDLE_MS + WARN_MS - Date.now()) / 1000));
+    }
+
+    function countdownText(n) {
+        return 'Your session is about to expire due to inactivity. You will be logged out in '
+            + n + (n === 1 ? ' second.' : ' seconds.');
+    }
+
+    function stay() {
+        warning = false;
+        saved = null;
+        last = sentAt = Date.now();
+        store(last);
+        clearTimeout(trailing);
+        trailing = null;
+        ping(true);
+    }
+
+    function warn() {
+        warning = true;
+        saved = saveDraft();
+        if (!window.Swal) return;
+        Swal.fire({
+            icon: 'warning',
+            title: 'Session Expiring',
+            text: countdownText(secondsLeft()),
+            confirmButtonText: 'Stay Logged In',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            heightAuto: false,
+        }).then(function (r) {
+            if (r.isConfirmed && warning && !leaving) stay();
         });
     }
 
-    setInterval(function () {
-        if (leaving) return;
-        if (Date.now() - lastShared() >= IDLE_MS - SAVE_LEAD_MS) saveThenLeave();
-    }, 2000);
+    function closeWarning() {
+        warning = false;
+        saved = null;
+        if (window.Swal && Swal.isVisible()) Swal.close();
+    }
+
+    var ending = false;
+    function tick() {
+        if (leaving || ending) return;
+        var idle = Date.now() - lastShared();
+        if (idle >= IDLE_MS + WARN_MS) {
+            // Give a draft save already on its way a moment to land.
+            ending = true;
+            Promise.race([saved || saveDraft(), new Promise(function (r) { setTimeout(r, 1500); })])
+                .then(function () { leave('idle'); });
+            return;
+        }
+        if (idle >= IDLE_MS) {
+            if (!warning) warn();
+            var box = window.Swal && Swal.getHtmlContainer();
+            if (box) box.textContent = countdownText(secondsLeft());
+        } else if (warning) {
+            closeWarning(); // Stay Logged In was pressed in another tab
+        }
+    }
+
+    setInterval(tick, 1000);
 
     setInterval(function () {
         if (!document.hidden && !leaving) ping(false);
@@ -110,8 +163,8 @@
 
     document.addEventListener('visibilitychange', function () {
         if (document.hidden || leaving) return;
-        if (Date.now() - lastShared() >= IDLE_MS) { leave('idle'); return; }
-        ping(false);
+        tick();
+        if (!leaving) ping(false);
     });
 })();
 </script>

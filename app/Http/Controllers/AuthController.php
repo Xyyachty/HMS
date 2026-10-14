@@ -32,7 +32,7 @@ class AuthController extends Controller
         $credentials['email'] = strtolower(trim($credentials['email']));
 
         // No remember-me cookie: it would sign a user back in after the
-        // five-minute inactivity limit (EnforceSessionRules) had ended them.
+        // fifteen-minute inactivity limit (EnforceSessionRules) had ended them.
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
