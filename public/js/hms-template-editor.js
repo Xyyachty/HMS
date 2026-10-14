@@ -1043,6 +1043,9 @@
   function textLines(el) {
     if (!el || el.getAttribute('data-hms-lines') !== '1') return null;
     const lines = Array.from(el.children);
+    // How many lines the heading was drawn with. Clearing a line in the editor
+    // can delete its element outright, and the text then read as one line.
+    el._hmsLineCount = Math.max(el._hmsLineCount || 0, lines.length);
     return lines.length ? lines : null;
   }
 
@@ -1054,8 +1057,11 @@
   function readEditableText(el) {
     const lines = textLines(el);
     if (lines) {
-      return lines.map((line) => line.textContent.replace(/\u200B/g, '').split('\n')
-        .map((part) => part.replace(/\s+/g, ' ').trim()).join(LINE_BREAK)).join('\n');
+      const parts = lines.map((line) => line.textContent.replace(/\u200B/g, '').split('\n')
+        .map((part) => part.replace(/\s+/g, ' ').trim()).join(LINE_BREAK));
+      // A deleted line is saved as an empty one, never left to the template.
+      while (parts.length < el._hmsLineCount) parts.push('');
+      return parts.join('\n');
     }
     const slot = textSlot(el);
     if (!slot || isBrandLocked(slot)) return null;
@@ -2116,6 +2122,7 @@
     e.stopPropagation();
     selectElement(el);
     beginHistoryStep();
+    textLines(el); // count a lined heading's lines before any can be deleted
     el.contentEditable = 'true';
     el.focus();
     /* A button takes focus without a caret, so what was typed went nowhere, or
