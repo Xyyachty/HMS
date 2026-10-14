@@ -149,6 +149,8 @@
             </div>
         </form>
     </div>
+
+    @include('partials.change-password')
 </div>
 @endsection
 

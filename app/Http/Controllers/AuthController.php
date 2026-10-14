@@ -150,6 +150,30 @@ class AuthController extends Controller
         return back()->with('password_reset', true);
     }
 
+    /**
+     * Change the signed-in user's own password from their profile page. Dean,
+     * faculty and students share this one form, so errors go in their own bag
+     * and never mix with the profile form's.
+     */
+    public function updatePassword(Request $request)
+    {
+        $data = $request->validateWithBag('password', [
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'different:current_password'],
+        ], [
+            'current_password.current_password' => 'Your current password is incorrect.',
+            'password.different' => 'The new password must be different from your current password.',
+        ]);
+
+        $user = $request->user();
+        $user->password = Hash::make($data['password']);
+        $user->save();
+
+        ActivityLog::recordFor(ActivityLog::ACCOUNT_UPDATED, 'Changed their own password.');
+
+        return back()->with('password_success', 'Password changed successfully.');
+    }
+
     public function checkForgotPasswordEmail(Request $request): JsonResponse
     {
         $request->validate([

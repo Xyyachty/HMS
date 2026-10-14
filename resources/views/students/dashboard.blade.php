@@ -1698,6 +1698,8 @@
                         </dl>
                     </div>
                 </div>
+
+                @include('partials.change-password')
             </div>
 
         </main>
@@ -1955,7 +1957,7 @@
                 $profileFields = ['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'avatar'];
                 $profileHasErrors = collect($profileFields)->contains(fn ($f) => $errors->has($f));
             @endphp
-            @if ($profileHasErrors)
+            @if ($profileHasErrors || $errors->getBag('password')->any() || session('password_success'))
                 section = 'profile';
             @elseif ($errors->has('task') || session('task_success'))
                 // Mark as done: back to Tasks, where the button was pressed, and
