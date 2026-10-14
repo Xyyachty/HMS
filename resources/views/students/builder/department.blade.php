@@ -1349,9 +1349,24 @@
                 return;
             }
 
+            // Only the task picked in the left sidebar is handed in; the module's
+            // other tasks wait for their own Submit, changed or not.
+            const task = assignedTasks.find(function (t) { return t.id === activeAssignedTaskId; });
+            const hasOwnTasks = assignedTasks.some(function (t) { return !t.is_concept && t.role === @json($builderRole); });
+            if (hasOwnTasks && !task) {
+                warnNotice('Pick the task you want to submit in the left sidebar first.');
+                return;
+            }
+            // Nothing saved on it yet and nothing waiting to save: stop here rather
+            // than ask. A sent-back task cannot be judged here; the server does.
+            if (task && task.status === 'not_started' && !(window.hmsBuilder && (window.hmsBuilder.isDirty() || window.hmsBuilder.isSaving() || window.hmsBuilder._layoutEdited))) {
+                warnNotice(@json(\App\Models\Task::NO_CHANGES_MESSAGE));
+                return;
+            }
+
             const ok = await askConfirm(
-                'Submit this work for review?',
-                'Your open tasks for this module will be handed in as they look right now. '
+                task ? 'Submit “' + task.title + '” for review?' : 'Submit this work for review?',
+                (task ? 'Only this task is handed in, as it looks right now. Your other tasks are not submitted. ' : '')
                 + 'You can keep editing afterwards, but faculty reviews what you submit now.',
                 'Submit for review',
                 undefined,
@@ -1380,7 +1395,7 @@
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
-                    body: '{}',
+                    body: JSON.stringify({ task_id: task ? task.id : null }),
                 });
                 let data = {};
                 try { data = await res.json(); } catch (e) { /* not JSON: a proxy error page */ }
@@ -1390,13 +1405,32 @@
                 setSaveState('submitted');
                 toast(data.message || 'Submitted for faculty review');
                 if (typeof renderHbVersions === 'function') renderHbVersions();
+                syncAssignedTasks();
             } catch (err) {
                 console.error(err);
                 setSaveState('dirty', 'Not submitted \u2014 ' + (err.message || 'try again'));
-                toast(err.message || 'Could not submit your changes');
+                warnNotice(err.message || 'Could not submit your changes');
             } finally {
                 if (btn) btn.disabled = false;
             }
+        }
+
+        // A warning that stays long enough to read, in the corner rather than as
+        // a dialog. Falls back to the plain toast if SweetAlert did not load.
+        function warnNotice(message) {
+            if (!window.Swal) { toast(message); return; }
+            window.Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: message,
+                background: '#18181b',
+                color: '#fafafa',
+                showConfirmButton: false,
+                timer: 5000,
+                timerProgressBar: true,
+                width: '24rem',
+            });
         }
 
         function setSaveDraftUnsaved(dirty) {

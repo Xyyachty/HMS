@@ -214,6 +214,7 @@ class HotelTemplateController extends Controller
             'customizations' => ['sometimes', 'array'],
             'layout' => ['sometimes', 'array'],
             'base_revision' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'task_id' => ['sometimes', 'nullable', 'integer'],
         ]);
 
         $template = HotelTemplateBuilder::ensureTemplate($membership, $role);
@@ -224,11 +225,30 @@ class HotelTemplateController extends Controller
 
         $tasks = $this->openTasksToSubmit($membership, $user, $role);
 
-        // Only tasks a change was saved on are handed in. With open tasks and none
-        // of them changed, nothing is submitted and the student is told why.
-        $unchanged = $tasks->reject(fn (Task $task) => $task->is_started);
+        // Only the task picked in the editor's sidebar is handed in. A
+        // department's tasks share one page, so changes on the others are left
+        // for their own submission. Set Task fans a task out into a copy per
+        // member, so the pick is matched by title, as /tasks/{task}/started does.
+        $pickedTitle = null;
+        if ($tasks->isNotEmpty()) {
+            $picked = empty($data['task_id']) ? null : $tasks->firstWhere('task_id', (int) $data['task_id'])
+                ?? Task::where('faculty_id', $membership->faculty_id)->forTeam($membership->group_name)->find((int) $data['task_id']);
+            $pickedTitle = $picked ? mb_strtolower(trim((string) $picked->title)) : null;
+            $tasks = $tasks->filter(fn (Task $task) => mb_strtolower(trim((string) $task->title)) === $pickedTitle)->values();
+            if ($tasks->isEmpty()) {
+                return response()->json([
+                    'error' => $picked
+                        ? 'This task is not open for you to submit here.'
+                        : 'Pick the task you want to submit in the left sidebar first.',
+                    'template' => HotelTemplateBuilder::payload($saved, true),
+                ], 422);
+            }
+        }
+
+        // Handed in only if a change was saved on it since it was assigned (or
+        // sent back); otherwise nothing is submitted and the student is told why.
         $tasks = $tasks->filter(fn (Task $task) => $task->is_started)->values();
-        if ($tasks->isEmpty() && $unchanged->isNotEmpty()) {
+        if ($pickedTitle !== null && $tasks->isEmpty()) {
             return response()->json([
                 'error' => Task::NO_CHANGES_MESSAGE,
                 'template' => HotelTemplateBuilder::payload($saved, true),
@@ -238,7 +258,9 @@ class HotelTemplateController extends Controller
         $snapshotId = HotelTemplateBuilder::snapshotForReview(
             $saved,
             $user,
-            'Submitted: ' . (HotelTemplateBuilder::ROLES[$role] ?? $role) . ' website'
+            $tasks->isNotEmpty()
+                ? 'Submitted: ' . $tasks->first()->title
+                : 'Submitted: ' . (HotelTemplateBuilder::ROLES[$role] ?? $role) . ' website'
         );
 
         // Every task is handed in or none is: a failure halfway used to leave
@@ -293,11 +315,7 @@ class HotelTemplateController extends Controller
             // Nothing open to hand in is not a failure: the work is still frozen
             // and saved, so say what happened rather than reporting an error.
             'message' => $submitted > 0
-                ? $submitted . ' task' . ($submitted === 1 ? '' : 's') . ' submitted for faculty review.'
-                    . ($unchanged->isNotEmpty()
-                        ? ' ' . $unchanged->count() . ' not submitted — no changes made to '
-                            . ($unchanged->count() === 1 ? 'it' : 'them') . ' yet.'
-                        : '')
+                ? '"' . $tasks->first()->title . '" submitted for faculty review.'
                 : 'Your work is saved and frozen for review. You have no open task for this role right now.',
             'template' => HotelTemplateBuilder::payload($saved, true),
         ]);
