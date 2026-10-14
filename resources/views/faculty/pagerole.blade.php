@@ -4598,7 +4598,10 @@ function renderTeamModalActivityPage() {
     const pageLabel = document.getElementById('teamModalActivityPageLabel');
     const prevBtn = document.getElementById('teamModalActivityPrev');
     const nextBtn = document.getElementById('teamModalActivityNext');
-    const logs = teamModalActivityLogs;
+    // Approved tasks sink to the end, so what still needs faculty stays on top.
+    // Stable sort: the rest keep their order. Runs on every render, so a task
+    // approved in place moves down at once.
+    const logs = teamModalActivityLogs.sort((a, b) => (a.state === 'approved') - (b.state === 'approved'));
     const total = logs.length;
     const totalPages = Math.max(1, Math.ceil(total / TEAM_MODAL_ACTIVITY_PER_PAGE));
 
