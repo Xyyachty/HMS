@@ -467,7 +467,7 @@
                      breadcrumb and the ?section= URL all follow along for free. --}}
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <!-- Team members -->
-                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
+                    <div class="stat-card relative bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
                             <div class="w-14 h-14 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
                                 <span class="iconify text-white text-2xl" data-icon="mdi:account-group-outline"></span>
@@ -477,7 +477,7 @@
                                 <p class="text-[2.125rem] font-extrabold text-slate-900 leading-none mt-1">{{ $homeMemberCount }}</p>
                                 <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">{{ $studentClass->name ?? $group->name ?? 'No team yet' }}</p>
                                 <button type="button" onclick="showSection('group')" aria-label="Open My Team"
-                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded after:absolute after:inset-0 after:rounded-2xl after:content-['']">
                                     View Team <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
                                 </button>
                             </div>
@@ -485,7 +485,7 @@
                     </div>
 
                     <!-- Assigned tasks (team) -->
-                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
+                    <div class="stat-card relative bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
                             <div class="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
                                 <span class="iconify text-amber-500 text-2xl" data-icon="mdi:clipboard-text-outline"></span>
@@ -495,7 +495,7 @@
                                 <p class="text-[2.125rem] font-extrabold text-slate-900 leading-none mt-1">{{ $homeActiveTasks }}</p>
                                 <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">{{ $homeMyPending }} assigned to your role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
                                 <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
-                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded after:absolute after:inset-0 after:rounded-2xl after:content-['']">
                                     View Tasks <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
                                 </button>
                             </div>
@@ -503,7 +503,7 @@
                     </div>
 
                     <!-- Pending tasks (mine) -->
-                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
+                    <div class="stat-card relative bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
                             <div class="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
                                 <span class="iconify text-amber-500 text-2xl" data-icon="mdi:clock-outline"></span>
@@ -517,7 +517,7 @@
                                     <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">Waiting for Approval</p>
                                 @endif
                                 <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
-                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded after:absolute after:inset-0 after:rounded-2xl after:content-['']">
                                     View Pending <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
                                 </button>
                             </div>
@@ -526,7 +526,7 @@
 
                     {{-- Completion rate, drawn as a ring: the same number the reports page
                          shows, read at a glance. --}}
-                    <div class="stat-card bg-white rounded-2xl p-5 border border-slate-100">
+                    <div class="stat-card relative bg-white rounded-2xl p-5 border border-slate-100">
                         <div class="flex items-start gap-4">
                             <div class="relative w-[5.375rem] h-[5.375rem] shrink-0">
                                 <svg class="w-[5.375rem] h-[5.375rem] -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
@@ -543,7 +543,7 @@
                                     {{ $homeRate >= 70 ? "You're on the right track!" : 'Keep completing tasks.' }}
                                 </p>
                                 <button type="button" onclick="showSection('reports')" aria-label="Open Reports"
-                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded">
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded after:absolute after:inset-0 after:rounded-2xl after:content-['']">
                                     View Progress <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
                                 </button>
                             </div>
