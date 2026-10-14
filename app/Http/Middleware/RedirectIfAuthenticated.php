@@ -34,7 +34,9 @@ class RedirectIfAuthenticated
                     return redirect()->route('students.dashboard');
                 }
 
-                return redirect('/');
+                // No portal to send them to. Not redirect('/'): the landing page
+                // runs this middleware too, so that would loop.
+                return $next($request);
             }
         }
 

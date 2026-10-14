@@ -34,9 +34,12 @@ use Illuminate\Validation\Rule;
 |
 */
 
+// Back from a dashboard lands here. 'guest' sends a signed-in user straight back
+// to their dashboard instead of the sign-in page, and no-store stops the browser
+// showing its saved copy of this page without asking the server first.
 Route::get('/', function () {
-    return view('landingpage');
-});
+    return response()->view('landingpage')->header('Cache-Control', 'no-store, private');
+})->middleware('guest');
 
 // Auth Routes
 Route::get('/login', [AuthController::class, 'login'])->middleware('guest')->name('login');

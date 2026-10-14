@@ -1273,5 +1273,10 @@
       if (el) sectionObserver.observe(el);
     });
   </script>
+  <script>
+    // Back from a dashboard can restore this page from memory without asking the
+    // server. Reload it, so a signed-in user is sent on to their dashboard.
+    window.addEventListener('pageshow', function (e) { if (e.persisted) location.reload(); });
+  </script>
 </body>
 </html>
