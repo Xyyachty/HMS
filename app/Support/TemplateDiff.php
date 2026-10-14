@@ -82,6 +82,7 @@ class TemplateDiff
         'cardImages' => 'Card image',
         'heroSlides' => 'Hero slide',
         'experiences' => 'Highlight',
+        'homeHighlights' => 'Home page highlight',
         'guestAuth' => 'Sign in text',
     ];
 
@@ -453,6 +454,8 @@ class TemplateDiff
             case 'guestAuth':
                 // The header button; the dialog's own words only show once it is open.
                 return '[data-hms-guest-signin]';
+            case 'homeHighlights':
+                return '.home-highlights';
             case 'siteColors':
             case 'typography':
                 // Site-wide by nature — every page carries them, so there is no

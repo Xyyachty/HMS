@@ -3692,6 +3692,16 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
   const partnerList = partners && partners.length ? partners : DEFAULT_PARTNERS;
   // The room whose photo dialog is open, by id, or null when it is closed.
   const [photoRoomId, setPhotoRoomId] = useState(null);
+  const [pickingHighlights, setPickingHighlights] = useState(false);
+  const saveHighlightPicks = (list) => {
+    setPickingHighlights(false);
+    const content = window.HMSSiteContent;
+    if (!content || !content.setHomeHighlights || !content.setHomeHighlights(list)) {
+      if (onToast) onToast('Only the role that owns the Home page can choose its highlights.');
+      return;
+    }
+    if (onToast) onToast('Selected Highlights updated');
+  };
   const photoRoom = roomList.find(r => r.id === photoRoomId) || null;
   // Which brand's × has been pressed once. The second press is the confirmation.
   const [confirmingPartner, setConfirmingPartner] = useState(null);
@@ -3924,6 +3934,15 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
           <button className="btn-outline" onClick={() => onNavigate('experience')} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }} data-hms-stock="View all highlights">View all highlights</button>
         </div>
         <SelectedHighlights items={experiences} onOpen={() => onNavigate('experience')} />
+        {/* A <span>, the section's only one, so the template's own elements keep
+            the structural selectors their saved text edits are keyed by. */}
+        {canEditPartners && (
+          <span data-hms-no-edit="1" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <button type="button" className="btn-outline" onClick={() => setPickingHighlights(true)} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
+              <i className="fa-solid fa-list-check" style={{ marginRight: 6 }}></i>Choose highlights
+            </button>
+          </span>
+        )}
       </section>
 
       <section data-hms-section="team" data-hms-bg-target="1" style={{ padding: '2rem 1.5rem 5rem', maxWidth: 1200, margin: '0 auto' }}>
@@ -3959,6 +3978,9 @@ function HomePage({ onNavigate, onToast, rooms, menus, canEditRooms, canEditMenu
           onSave={(slots) => onEditRoomPhotos && onEditRoomPhotos(photoRoom.id, slots)}
           onClose={() => setPhotoRoomId(null)}
         />
+      ) : null}
+      {pickingHighlights ? (
+        <HomeHighlightsModal items={experiences} onClose={() => setPickingHighlights(false)} onSave={saveHighlightPicks} />
       ) : null}
     </>
   );
@@ -7039,11 +7061,18 @@ function ExperienceEditModal({ item, onSave, onClose }) {
   );
 }
 
-/* Selected Highlights on the Home page: the first four tiles of the team's own
-   Highlights gallery, with their photographs, so the home page shows what the
-   Highlights page holds. Read-only here; the gallery is edited on its own page. */
+/* Selected Highlights on the Home page: the tiles Front Desk picked from the
+   team's own Highlights gallery (the first four until it picks), with their
+   photographs. The gallery itself is edited on its own page. */
+function homeHighlightPicks(items) {
+  const content = window.HMSSiteContent;
+  return content && content.getHomeHighlights
+    ? content.getHomeHighlights(items)
+    : (items || []).slice(0, 4);
+}
+
 function SelectedHighlights({ items, onOpen }) {
-  const list = (items || []).slice(0, 4);
+  const list = homeHighlightPicks(items);
   if (!list.length) return null;
   return (
     <div data-hms-no-edit="1" data-hms-exps-removed={expRemovedCount(items)} className="home-highlights" style={{ '--hl-cols': list.length }}>
@@ -7079,6 +7108,69 @@ function SelectedHighlights({ items, onOpen }) {
           </div>
         </article>
       ))}
+    </div>
+  );
+}
+
+/* Front Desk's choice of which Highlights tiles the Home page shows, and in what
+   order. Up to four, the width the section is drawn for. */
+function HomeHighlightsModal({ items, onSave, onClose }) {
+  const max = (window.HMSSiteContent && window.HMSSiteContent.HOME_HIGHLIGHTS_MAX) || 4;
+  const [chosen, setChosen] = useState(() => homeHighlightPicks(items));
+  const rest = (items || []).filter(x => !chosen.some(c => c.id === x.id));
+  const full = chosen.length >= max;
+  const off = (disabled, kind) => Object.assign(toolBtnStyle(kind), disabled ? { opacity: 0.35, cursor: 'not-allowed' } : null);
+  const move = (i, step) => setChosen(list => {
+    const j = i + step;
+    if (j < 0 || j >= list.length) return list;
+    const next = list.slice();
+    next[i] = list[j];
+    next[j] = list[i];
+    return next;
+  });
+  const rowStyle = { display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.65rem', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.45rem' };
+  const labelStyle = { display: 'block', fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.5rem' };
+  const titleStyle = { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.9rem' };
+
+  return (
+    <div className="room-modal-overlay header-modal-overlay" data-hms-no-edit="1"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="room-modal" style={{ width: 'min(500px, 100%)', padding: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h3 className="font-display" style={{ fontSize: '1.3rem', margin: '0 0 1rem' }}>Selected Highlights</h3>
+        <span style={labelStyle}>Shown on the Home page ({chosen.length}/{max})</span>
+        {chosen.map((item, i) => (
+          <div key={item.id} style={rowStyle}>
+            <span style={{ width: 16, color: 'var(--fg-muted)', fontSize: '0.8rem' }}>{i + 1}</span>
+            <i className={'fa-solid ' + (item.icon || 'fa-star')} style={{ color: 'var(--accent)', width: 18, textAlign: 'center' }}></i>
+            <span style={titleStyle}>{item.title}</span>
+            <button type="button" title="Move up" aria-label={'Move ' + item.title + ' up'} disabled={i === 0}
+              onClick={() => move(i, -1)} style={off(i === 0)}><i className="fa-solid fa-arrow-up" style={{ fontSize: 11 }}></i></button>
+            <button type="button" title="Move down" aria-label={'Move ' + item.title + ' down'} disabled={i === chosen.length - 1}
+              onClick={() => move(i, 1)} style={off(i === chosen.length - 1)}><i className="fa-solid fa-arrow-down" style={{ fontSize: 11 }}></i></button>
+            <button type="button" title={chosen.length === 1 ? 'Keep at least one highlight' : 'Remove from Home'} aria-label={'Remove ' + item.title} disabled={chosen.length === 1}
+              onClick={() => setChosen(list => list.filter(x => x.id !== item.id))} style={off(chosen.length === 1, 'danger')}><i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i></button>
+          </div>
+        ))}
+        <span style={Object.assign({}, labelStyle, { marginTop: '1.1rem' })}>Add from Highlights</span>
+        {rest.length ? (
+          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            {rest.map(item => (
+              <div key={item.id} style={rowStyle}>
+                <i className={'fa-solid ' + (item.icon || 'fa-star')} style={{ color: 'var(--accent)', width: 18, textAlign: 'center' }}></i>
+                <span style={titleStyle}>{item.title}</span>
+                <button type="button" title={full ? 'Remove one first: the Home page shows up to ' + max : 'Add to Home'} aria-label={'Add ' + item.title} disabled={full}
+                  onClick={() => setChosen(list => (list.length >= max ? list : list.concat([item])))} style={off(full)}><i className="fa-solid fa-plus" style={{ fontSize: 11 }}></i></button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="header-modal-hint">Every highlight is already shown. Add more on the Highlights page.</p>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.25rem' }}>
+          <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn-primary" onClick={() => onSave(chosen)}>Save</button>
+        </div>
+      </div>
     </div>
   );
 }

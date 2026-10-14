@@ -22,9 +22,10 @@
   const TYPOGRAPHY_KEY = '__typography';
   const PARTNERS_KEY = '__partners';
   const EXPERIENCES_KEY = '__experiences';
+  const HOME_HIGHLIGHTS_KEY = '__homeHighlights';
   const AMENITY_SLIDER_KEY = '__amenitySlider';
   const GUEST_AUTH_KEY = '__guestAuth';
-  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, PARTNERS_KEY, EXPERIENCES_KEY, AMENITY_SLIDER_KEY, GUEST_AUTH_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, PARTNERS_KEY, EXPERIENCES_KEY, HOME_HIGHLIGHTS_KEY, AMENITY_SLIDER_KEY, GUEST_AUTH_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
 
   /**
    * The hotel name shown in the header and the footer.
@@ -898,6 +899,46 @@
     return setExperiences(list);
   }
 
+  /* ── Home page Selected Highlights ────────────────────────────────────────
+     Which Highlights tiles the Home page shows, and in what order: ids into
+     __experiences, each with the title it had when picked so the faculty review
+     names it. Front Desk's, like the rest of Home. A team that never picks shows
+     the gallery's first four, as the section always did; a picked tile later
+     removed from the gallery simply drops out. */
+  const HOME_HIGHLIGHTS_MAX = 4;
+
+  function getHomeHighlights(experiences) {
+    const list = experiences || [];
+    const entry = getCustomizations()[HOME_HIGHLIGHTS_KEY];
+    if (entry && Array.isArray(entry.items) && entry.items.length) {
+      const picked = entry.items
+        .map((pick) => list.find((item) => pick && item.id === pick.id))
+        .filter(Boolean);
+      if (picked.length) return picked.slice(0, HOME_HIGHLIGHTS_MAX);
+    }
+    return list.slice(0, HOME_HIGHLIGHTS_MAX);
+  }
+
+  function setHomeHighlights(items) {
+    if (!canEditPartners()) return false;
+    const seen = Object.create(null);
+    const clean = (items || []).filter((item) => {
+      if (!item || !item.id || seen[item.id]) return false;
+      seen[item.id] = true;
+      return true;
+    }).slice(0, HOME_HIGHLIGHTS_MAX);
+    // An empty section reads as a broken page, not as a choice.
+    if (!clean.length) return false;
+    patch(HOME_HIGHLIGHTS_KEY, {
+      page: 'home',
+      items: clean.map((item) => ({
+        id: String(item.id),
+        title: String(item.title || '').trim().slice(0, EXPERIENCE_TITLE_MAX),
+      })),
+    });
+    return true;
+  }
+
   /* ── Amenity slider speed ─────────────────────────────────────────────────
      How long an amenity card holds each photograph before it fades to the next.
      Housekeeping's, like the facilities themselves, and bounded to the three to
@@ -1602,6 +1643,9 @@
     addExperience,
     updateExperience,
     removeExperience,
+    HOME_HIGHLIGHTS_MAX,
+    getHomeHighlights,
+    setHomeHighlights,
     setPartners,
     addPartner,
     updatePartner,

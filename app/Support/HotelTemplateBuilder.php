@@ -164,6 +164,14 @@ class HotelTemplateBuilder
     public const EXPERIENCES_KEY = '__experiences';
 
     /**
+     * Which Highlights tiles the Home page's Selected Highlights shows, in
+     * order: ids into __experiences, each with the title it had when picked.
+     * Front Desk's, page-scoped to 'home' like __partners. Unset shows the
+     * gallery's first four.
+     */
+    public const HOME_HIGHLIGHTS_KEY = '__homeHighlights';
+
+    /**
      * How long an amenity card holds each of its photographs, in seconds.
      * Housekeeping's, page-scoped to 'amenities' like the rest of that page.
      */
