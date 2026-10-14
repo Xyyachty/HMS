@@ -113,10 +113,7 @@
         font-size: 11.5px; font-weight: 800; letter-spacing: .01em; border: 1px solid;
     }
     .tc-status-dot { width: .45rem; height: .45rem; border-radius: 999px; background: currentColor; }
-    .tc-status.is-idle { background: #F3F2F1; border-color: #E4E2E0; color: #5F5A55; }
-    .tc-status.is-progress { background: #FFFBEB; border-color: #FDE68A; color: #B45309; }
     .tc-status.is-progress .tc-status-dot { animation: tc-breathe 2.4s ease-in-out infinite; }
-    .tc-status.is-completed { background: #F0FDF4; border-color: #BBF7D0; color: #15803D; }
     @keyframes tc-breathe { 50% { opacity: .35; } }
     @media (prefers-reduced-motion: reduce) { .tc-status.is-progress .tc-status-dot { animation: none; } }
 
@@ -798,7 +795,7 @@
                         </div>
 
                         <div class="tc-status-row">
-                            <span class="tc-status is-{{ $cardApprovalState }}">
+                            <span class="tc-status is-{{ $cardApprovalState }} status-badge-{{ ['completed' => 'completed', 'progress' => 'in_progress', 'idle' => 'not_started'][$cardApprovalState] }}">
                                 <span class="tc-status-dot"></span>{{ $cardApprovalLabel }}
                             </span>
                         </div>
