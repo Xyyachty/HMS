@@ -8,7 +8,7 @@
     {{-- No Template Selected Screen --}}
     <div class="flex-1 flex flex-col items-center justify-center gap-8">
         <div class="text-center">
-            <p class="text-[10px] font-semibold tracking-widest text-amber-500 uppercase mb-2">Restaurant Management</p>
+            <p class="text-[0.625rem] font-semibold tracking-widest text-amber-500 uppercase mb-2">Restaurant Management</p>
             <h2 class="text-xl font-bold text-white mb-1">No Template Selected</h2>
             <p class="text-xs text-zinc-500">The Front Desk team hasn't selected a template yet.</p>
         </div>

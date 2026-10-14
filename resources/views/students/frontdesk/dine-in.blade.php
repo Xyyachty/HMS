@@ -11,7 +11,7 @@
   #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
   .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
   .dn-badge {
-    padding: 0.25rem 0.7rem; border-radius: 4px;
+    padding: 0.25rem 0.7rem; border-radius: 0.25rem;
     font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent; display: inline-block;
   }
@@ -24,7 +24,7 @@
     background: transparent; color: var(--accent);
     font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
     font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
+    padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 0.375rem;
     cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
     text-decoration: none;
   }
@@ -35,14 +35,14 @@
     background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
     font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 600;
     font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 0.55rem 1.1rem; border-radius: 6px; cursor: pointer;
+    padding: 0.55rem 1.1rem; border-radius: 0.375rem; cursor: pointer;
     transition: filter 0.2s;
   }
   .btn-solid:hover { filter: brightness(1.1); }
   .btn-solid:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
   .booking-input {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
+    border-radius: 0.375rem; padding: 0.7rem 0.9rem; color: var(--fg);
     font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; width: 100%;
   }
@@ -56,7 +56,7 @@
   }
   .dn-card {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 1.1rem 1.2rem 1.2rem;
+    border-radius: 0.875rem; padding: 1.1rem 1.2rem 1.2rem;
     display: flex; flex-direction: column; gap: 0.85rem;
     transition: border-color 0.15s;
   }
@@ -90,7 +90,7 @@
   .dn-stats { display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .dn-stat {
     display: inline-flex; align-items: baseline; gap: 0.4rem;
-    border: 1px solid var(--border); border-radius: 100px;
+    border: 1px solid var(--border); border-radius: 6.25rem;
     padding: 0.3rem 0.85rem; background: var(--card);
   }
   .dn-stat b { color: var(--fg); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
@@ -100,7 +100,7 @@
   .dn-filter {
     font-family: var(--font-body, 'Outfit', sans-serif);
     font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
-    padding: 0.42rem 0.9rem; border-radius: 100px; border: 1.5px solid var(--border);
+    padding: 0.42rem 0.9rem; border-radius: 6.25rem; border: 1.5px solid var(--border);
     background: transparent; color: var(--fg-muted); cursor: pointer; transition: all 0.15s;
   }
   .dn-filter:hover { border-color: var(--accent); color: var(--accent); }
@@ -110,7 +110,7 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem;
   }
-  .dn-search { position: relative; flex: 1 1 240px; max-width: 340px; }
+  .dn-search { position: relative; flex: 1 1 240px; max-width: 21.25rem; }
   .dn-search i {
     position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%);
     color: var(--fg-muted); font-size: 0.75rem; pointer-events: none;
@@ -118,7 +118,7 @@
   .dn-search .booking-input { padding-left: 2.2rem; }
 
   .dn-empty {
-    border: 1px dashed var(--border); border-radius: 14px;
+    border: 1px dashed var(--border); border-radius: 0.875rem;
     padding: 2.75rem 1.5rem; text-align: center;
   }
 
@@ -131,8 +131,8 @@
     padding: 2rem 1.5rem; z-index: 300; overflow-y: auto;
   }
   .dn-modal {
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    width: 100%; max-width: 460px; margin: auto;
+    background: var(--card); border: 1px solid var(--border); border-radius: 0.875rem;
+    width: 100%; max-width: 28.75rem; margin: auto;
   }
   .dn-modal-head {
     padding: 1.3rem 1.5rem 1rem; border-bottom: 1px solid var(--border);
@@ -140,7 +140,7 @@
   }
   .dn-modal-body { padding: 1.25rem 1.5rem 1.5rem; }
   .dn-modal-close {
-    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+    width: 2.125rem; height: 2.125rem; border-radius: 0.5rem; border: 1px solid var(--border);
     background: rgba(255,255,255,0.03); color: var(--fg); cursor: pointer; flex-shrink: 0;
   }
   /* Set here rather than inline so the Template 2 override below can win — the
@@ -154,17 +154,17 @@
     text-transform: uppercase; color: var(--fg-muted); margin-bottom: 0.35rem;
   }
   .dn-step {
-    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+    width: 2.125rem; height: 2.125rem; border-radius: 0.5rem; border: 1px solid var(--border);
     background: rgba(255,255,255,0.03); color: var(--fg); cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;
   }
   .dn-step:disabled { opacity: 0.35; cursor: not-allowed; }
   .dn-party {
     display: flex; align-items: center; gap: 0.6rem;
-    border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.45rem;
+    border: 1px solid var(--border); border-radius: 0.375rem; padding: 0.3rem 0.45rem;
     background: rgba(255,255,255,0.03); width: fit-content;
   }
-  .dn-party output { color: var(--fg); min-width: 28px; text-align: center; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  .dn-party output { color: var(--fg); min-width: 1.75rem; text-align: center; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
   @media (max-width: 420px) {
     .dn-form-row { grid-template-columns: 1fr; }
   }

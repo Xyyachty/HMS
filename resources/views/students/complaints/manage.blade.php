@@ -44,7 +44,7 @@
   .cx-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
     font: 600 0.88rem/1 var(--font-body, 'Outfit', sans-serif);
-    padding: 0.8rem 1.15rem; border-radius: 10px; cursor: pointer; text-decoration: none;
+    padding: 0.8rem 1.15rem; border-radius: 0.625rem; cursor: pointer; text-decoration: none;
     border: 1px solid var(--accent); transition: filter 0.15s, background 0.15s, transform 0.1s;
   }
   .cx-btn:active:not(:disabled) { transform: translateY(1px); }
@@ -57,7 +57,7 @@
   .cx-btn-sm {
     display: inline-flex; align-items: center; gap: 0.4rem;
     font: 600 0.8rem/1 var(--font-body, 'Outfit', sans-serif);
-    padding: 0.55rem 0.8rem; border-radius: 8px; cursor: pointer;
+    padding: 0.55rem 0.8rem; border-radius: 0.5rem; cursor: pointer;
     background: transparent; color: var(--fg); border: 1px solid var(--cx-line);
   }
   .cx-btn-sm:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
@@ -69,7 +69,7 @@
   /* Page layout: the form beside the list; one column on a narrow screen */
   .cx-layout { display: grid; grid-template-columns: clamp(380px, 34vw, 520px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
   .cx-layout.is-single { grid-template-columns: minmax(0, 1fr); }
-  .cx-panel { background: var(--card); border: 1px solid var(--cx-line); border-radius: 14px; padding: 1.05rem 1.25rem 1.15rem; min-width: 0; }
+  .cx-panel { background: var(--card); border: 1px solid var(--cx-line); border-radius: 0.875rem; padding: 1.05rem 1.25rem 1.15rem; min-width: 0; }
   .cx-panel-title { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--fg); }
   .cx-panel-sub { margin: 0.25rem 0 0; font-size: 0.82rem; color: var(--fg-muted); line-height: 1.45; }
 
@@ -77,7 +77,7 @@
   .cx-steps { display: grid; gap: 0.75rem; margin-top: 0.75rem; }
   .cx-step-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
   .cx-num {
-    flex: none; width: 24px; height: 24px; border-radius: 50%;
+    flex: none; width: 1.5rem; height: 1.5rem; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 0.75rem; font-weight: 700; border: 1.5px solid var(--cx-line); color: var(--fg-muted);
   }
@@ -87,7 +87,7 @@
 
   .cx-input {
     width: 100%; box-sizing: border-box;
-    background: var(--cx-soft); border: 1px solid var(--cx-line); border-radius: 10px;
+    background: var(--cx-soft); border: 1px solid var(--cx-line); border-radius: 0.625rem;
     padding: 0.65rem 0.85rem; color: var(--fg); outline: none;
     font: 400 0.92rem/1.35 var(--font-body, 'Outfit', sans-serif);
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -96,7 +96,7 @@
   .cx-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--cx-tint); }
   .cx-input:disabled { opacity: 0.6; cursor: not-allowed; }
   select.cx-input option { background: var(--card); color: var(--fg); }
-  textarea.cx-input { resize: vertical; min-height: 58px; }
+  textarea.cx-input { resize: vertical; min-height: 3.625rem; }
   .cx-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
 
   .cx-group-label { margin: 0.1rem 0 0.3rem; font-size: 0.72rem; font-weight: 600; color: var(--fg-muted); }
@@ -113,7 +113,7 @@
   .cx-teams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
   .cx-team {
     display: flex; align-items: center; gap: 0.6rem; text-align: left;
-    padding: 0.6rem 0.8rem; border-radius: 10px; cursor: pointer;
+    padding: 0.6rem 0.8rem; border-radius: 0.625rem; cursor: pointer;
     background: transparent; border: 1.5px solid var(--cx-line); color: var(--fg);
     font: 600 0.86rem/1.2 var(--font-body, 'Outfit', sans-serif);
   }
@@ -122,7 +122,7 @@
   .cx-team i { color: var(--accent); width: 1rem; text-align: center; }
   .cx-team small { display: block; font-size: 0.7rem; font-weight: 600; color: var(--accent); margin-top: 0.2rem; }
 
-  .cx-error { margin: 0; padding: 0.65rem 0.8rem; border-radius: 10px; font-size: 0.84rem; color: var(--fg);
+  .cx-error { margin: 0; padding: 0.65rem 0.8rem; border-radius: 0.625rem; font-size: 0.84rem; color: var(--fg);
     background: color-mix(in srgb, var(--cx-danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--cx-danger) 35%, transparent); }
 
   /* List toolbar */
@@ -151,7 +151,7 @@
 
   /* Complaint cards */
   .cx-list { display: grid; gap: 0.9rem; }
-  .cx-card { background: var(--card); border: 1px solid var(--cx-line); border-radius: 14px; padding: 1.05rem 1.15rem; display: grid; gap: 0.85rem; min-width: 0; }
+  .cx-card { background: var(--card); border: 1px solid var(--cx-line); border-radius: 0.875rem; padding: 1.05rem 1.15rem; display: grid; gap: 0.85rem; min-width: 0; }
   .cx-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
   .cx-room { display: block; font-size: 1.1rem; font-weight: 700; color: var(--fg); line-height: 1.2; }
   .cx-guest { display: block; font-size: 0.84rem; color: var(--fg-muted); margin-top: 0.2rem; }
@@ -161,31 +161,31 @@
     padding: 0.35rem 0.7rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600;
     background: var(--cx-soft); color: var(--fg); border: 1px solid var(--cx-line);
   }
-  .cx-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-muted); }
+  .cx-pill .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--fg-muted); }
   .cx-pill.is-Pending .dot { background: var(--cx-danger); }
   .cx-pill.is-In-Progress .dot { background: var(--cx-warn); }
   .cx-pill.is-Resolved .dot { background: var(--cx-ok); }
   .cx-pill.is-Closed .dot { background: var(--accent); }
   .cx-pill i { color: var(--accent); font-size: 0.75rem; }
 
-  .cx-what { margin: 0; padding: 0.75rem 0.85rem; border-radius: 10px; background: var(--cx-soft); border: 1px solid var(--cx-line); }
+  .cx-what { margin: 0; padding: 0.75rem 0.85rem; border-radius: 0.625rem; background: var(--cx-soft); border: 1px solid var(--cx-line); }
   .cx-what small { display: block; font-size: 0.72rem; font-weight: 600; color: var(--fg-muted); margin-bottom: 0.3rem; }
   .cx-what p { margin: 0; font-size: 0.9rem; line-height: 1.55; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; }
 
   /* Where the complaint is: four steps for a guest complaint, three for a staff report */
-  .cx-track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--cx-steps, 4), minmax(0, 1fr)); max-width: 520px; }
+  .cx-track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--cx-steps, 4), minmax(0, 1fr)); max-width: 32.5rem; }
   .cx-track li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; font-size: 0.72rem; color: var(--fg-muted); text-align: center; }
-  .cx-track li::before { content: ''; position: absolute; top: 6px; left: -50%; width: 100%; height: 2px; background: var(--cx-line); }
+  .cx-track li::before { content: ''; position: absolute; top: 0.375rem; left: -50%; width: 100%; height: 2px; background: var(--cx-line); }
   .cx-track li:first-child::before { display: none; }
   .cx-track li.is-done::before, .cx-track li.is-now::before { background: var(--accent); }
-  .cx-dot { position: relative; z-index: 1; width: 14px; height: 14px; border-radius: 50%; background: var(--card); border: 2px solid var(--cx-line); }
+  .cx-dot { position: relative; z-index: 1; width: 0.875rem; height: 0.875rem; border-radius: 50%; background: var(--card); border: 2px solid var(--cx-line); }
   .cx-track li.is-done .cx-dot { background: var(--accent); border-color: var(--accent); }
   .cx-track li.is-now .cx-dot { border-color: var(--accent); box-shadow: 0 0 0 4px var(--cx-tint); }
   .cx-track li.is-done, .cx-track li.is-now { color: var(--fg); }
   .cx-track li.is-now { font-weight: 700; }
 
   .cx-meta { margin: 0; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.5; }
-  .cx-fix { padding: 0.7rem 0.85rem; border-radius: 10px; background: color-mix(in srgb, var(--cx-ok) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cx-ok) 30%, transparent); }
+  .cx-fix { padding: 0.7rem 0.85rem; border-radius: 0.625rem; background: color-mix(in srgb, var(--cx-ok) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cx-ok) 30%, transparent); }
   .cx-fix small { display: block; font-size: 0.72rem; font-weight: 600; color: var(--fg); margin-bottom: 0.25rem; }
   .cx-fix span { font-size: 0.86rem; color: var(--fg); }
 
@@ -203,9 +203,9 @@
   .cx-history em { display: block; font-style: normal; color: var(--fg); overflow-wrap: anywhere; }
 
   /* Empty / loading */
-  .cx-empty { border: 1.5px dashed var(--cx-line); border-radius: 14px; padding: 2.4rem 1.5rem; text-align: center; }
+  .cx-empty { border: 1.5px dashed var(--cx-line); border-radius: 0.875rem; padding: 2.4rem 1.5rem; text-align: center; }
   .cx-empty-icon {
-    width: 56px; height: 56px; margin: 0 auto 0.9rem; border-radius: 16px;
+    width: 3.5rem; height: 3.5rem; margin: 0 auto 0.9rem; border-radius: 1rem;
     display: flex; align-items: center; justify-content: center; font-size: 1.35rem;
     background: var(--cx-tint); color: var(--accent);
   }
@@ -226,16 +226,16 @@
     .cx-list-col .cx-toolbar { flex: none; }
     .cx-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 0.35rem; }
   }
-  .cx-scroll::-webkit-scrollbar, .cx-layout > .cx-panel::-webkit-scrollbar { width: 6px; }
+  .cx-scroll::-webkit-scrollbar, .cx-layout > .cx-panel::-webkit-scrollbar { width: 0.375rem; }
   .cx-scroll::-webkit-scrollbar-track, .cx-layout > .cx-panel::-webkit-scrollbar-track { background: transparent; }
-  .cx-scroll::-webkit-scrollbar-thumb, .cx-layout > .cx-panel::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--fg) 25%, transparent); border-radius: 10px; }
+  .cx-scroll::-webkit-scrollbar-thumb, .cx-layout > .cx-panel::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--fg) 25%, transparent); border-radius: 0.625rem; }
 
   @media (max-width: 1100px) {
     .cx-layout { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-width: 560px) {
     .cx { padding: 1.1rem 1rem 2.5rem; }
-    .cx-tabs { width: 100%; border-radius: 14px; }
+    .cx-tabs { width: 100%; border-radius: 0.875rem; }
     .cx-teams { grid-template-columns: minmax(0, 1fr); }
   }
 

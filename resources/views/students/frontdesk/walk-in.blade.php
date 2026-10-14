@@ -38,7 +38,7 @@
   .wi-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
     font: 600 0.9rem/1 var(--font-body, 'Outfit', sans-serif);
-    padding: 0.85rem 1.2rem; border-radius: 10px; cursor: pointer; text-decoration: none;
+    padding: 0.85rem 1.2rem; border-radius: 0.625rem; cursor: pointer; text-decoration: none;
     border: 1px solid var(--accent); transition: filter 0.15s, background 0.15s, transform 0.1s;
   }
   .wi-btn:active { transform: translateY(1px); }
@@ -55,14 +55,14 @@
   .wi-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; margin-bottom: 1.5rem; }
   .wi-mode {
     display: flex; align-items: center; gap: 0.95rem; text-align: left;
-    padding: 1rem 1.1rem; border-radius: 14px; cursor: pointer;
+    padding: 1rem 1.1rem; border-radius: 0.875rem; cursor: pointer;
     background: var(--card); border: 1.5px solid var(--wi-line); color: var(--fg);
     font-family: var(--font-body, 'Outfit', sans-serif); transition: border-color 0.15s, background 0.15s;
   }
   .wi-mode:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--wi-line)); }
   .wi-mode.is-on { border-color: var(--accent); background: var(--wi-tint); }
   .wi-mode-icon {
-    flex: none; width: 46px; height: 46px; border-radius: 12px;
+    flex: none; width: 2.875rem; height: 2.875rem; border-radius: 0.75rem;
     display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
     background: var(--wi-soft); color: var(--accent);
   }
@@ -74,10 +74,10 @@
   .wi-layout { display: grid; grid-template-columns: minmax(0, 1fr) clamp(320px, 26vw, 400px); gap: 1.25rem; align-items: start; }
   .wi-steps { display: grid; gap: 1rem; min-width: 0; }
 
-  .wi-section { background: var(--card); border: 1px solid var(--wi-line); border-radius: 14px; padding: 1.2rem 1.3rem 1.35rem; }
+  .wi-section { background: var(--card); border: 1px solid var(--wi-line); border-radius: 0.875rem; padding: 1.2rem 1.3rem 1.35rem; }
   .wi-section-head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
   .wi-num {
-    flex: none; width: 30px; height: 30px; border-radius: 50%;
+    flex: none; width: 1.875rem; height: 1.875rem; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums;
     border: 1.5px solid var(--wi-line); color: var(--fg-muted);
@@ -96,7 +96,7 @@
 
   .wi-input {
     width: 100%; box-sizing: border-box;
-    background: var(--wi-soft); border: 1px solid var(--wi-line); border-radius: 10px;
+    background: var(--wi-soft); border: 1px solid var(--wi-line); border-radius: 0.625rem;
     padding: 0.8rem 0.9rem; color: var(--fg); outline: none;
     font: 400 0.95rem/1.3 var(--font-body, 'Outfit', sans-serif);
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -108,9 +108,9 @@
   input[type="date"].wi-input, input[type="time"].wi-input { color-scheme: dark; }
 
   /* Bigger + / - for touch */
-  .wi-stepper { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem; border-radius: 10px; background: var(--wi-soft); border: 1px solid var(--wi-line); }
+  .wi-stepper { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem; border-radius: 0.625rem; background: var(--wi-soft); border: 1px solid var(--wi-line); }
   .wi-step-btn {
-    width: 42px; height: 42px; border-radius: 8px; border: 0; cursor: pointer;
+    width: 2.625rem; height: 2.625rem; border-radius: 0.5rem; border: 0; cursor: pointer;
     background: var(--card); color: var(--fg); font-size: 0.95rem;
     display: inline-flex; align-items: center; justify-content: center;
   }
@@ -133,7 +133,7 @@
 
   .wi-dates {
     display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
-    padding: 0.75rem 0.9rem; border-radius: 10px; background: var(--wi-soft); font-size: 0.86rem;
+    padding: 0.75rem 0.9rem; border-radius: 0.625rem; background: var(--wi-soft); font-size: 0.86rem;
   }
   .wi-dates i { color: var(--accent); }
   .wi-dates b { color: var(--fg); font-weight: 600; }
@@ -143,7 +143,7 @@
   .wi-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 0.8rem; }
   .wi-card {
     position: relative; text-align: left; padding: 0; overflow: hidden; cursor: pointer;
-    background: var(--wi-soft); border: 1.5px solid var(--wi-line); border-radius: 14px; color: var(--fg);
+    background: var(--wi-soft); border: 1.5px solid var(--wi-line); border-radius: 0.875rem; color: var(--fg);
     font-family: var(--font-body, 'Outfit', sans-serif);
     display: flex; flex-direction: column; transition: border-color 0.15s, transform 0.15s;
   }
@@ -157,22 +157,22 @@
   .wi-card-price { color: var(--fg); font-size: 0.86rem; font-weight: 600; margin-top: 0.25rem; }
   .wi-card-price small { color: var(--fg-muted); font-weight: 400; }
   .wi-card-tick {
-    position: absolute; top: 0.55rem; right: 0.55rem; width: 26px; height: 26px; border-radius: 50%;
+    position: absolute; top: 0.55rem; right: 0.55rem; width: 1.625rem; height: 1.625rem; border-radius: 50%;
     background: var(--accent); color: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
   }
   .wi-table-icon { aspect-ratio: auto; padding: 1.1rem 0 0.4rem; background: transparent; color: var(--accent); }
 
   .wi-empty {
-    border: 1.5px dashed var(--wi-line); border-radius: 14px; padding: 2rem 1.25rem;
+    border: 1.5px dashed var(--wi-line); border-radius: 0.875rem; padding: 2rem 1.25rem;
     text-align: center; color: var(--fg-muted); font-size: 0.9rem; line-height: 1.5;
   }
   .wi-empty i { display: block; font-size: 1.4rem; margin-bottom: 0.6rem; color: var(--accent); }
-  .wi-skeleton { border-radius: 14px; background: var(--wi-soft); aspect-ratio: 16 / 13; animation: wi-pulse 1.4s ease-in-out infinite; }
+  .wi-skeleton { border-radius: 0.875rem; background: var(--wi-soft); aspect-ratio: 16 / 13; animation: wi-pulse 1.4s ease-in-out infinite; }
   @keyframes wi-pulse { 50% { opacity: 0.5; } }
   @media (prefers-reduced-motion: reduce) { .wi-skeleton { animation: none; } .wi-card:hover { transform: none; } }
 
   /* Summary: stays in view while the form scrolls */
-  .wi-summary { position: sticky; top: 1rem; background: var(--card); border: 1px solid var(--wi-line); border-radius: 14px; padding: 1.2rem 1.25rem 1.3rem; display: grid; gap: 1rem; }
+  .wi-summary { position: sticky; top: 1rem; background: var(--card); border: 1px solid var(--wi-line); border-radius: 0.875rem; padding: 1.2rem 1.25rem 1.3rem; display: grid; gap: 1rem; }
   .wi-summary h3 { margin: 0; font-size: 1rem; font-weight: 700; color: var(--fg); }
   .wi-sum-rows { display: grid; gap: 0.55rem; margin: 0; }
   .wi-sum-rows div { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.86rem; }
@@ -188,20 +188,20 @@
   .wi-todo li.is-ok i { color: var(--wi-ok); }
   .wi-alert {
     display: flex; gap: 0.6rem; align-items: flex-start; margin: 0;
-    padding: 0.75rem 0.85rem; border-radius: 10px; font-size: 0.84rem; line-height: 1.45;
+    padding: 0.75rem 0.85rem; border-radius: 0.625rem; font-size: 0.84rem; line-height: 1.45;
     color: var(--wi-danger); background: color-mix(in srgb, var(--wi-danger) 10%, transparent);
   }
   .wi-note { margin: 0; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.5; }
 
   /* Booked */
-  .wi-done { max-width: 560px; margin: 0 auto; background: var(--card); border: 1px solid var(--wi-line); border-radius: 14px; padding: 2rem 1.6rem 1.7rem; text-align: center; }
+  .wi-done { max-width: 35rem; margin: 0 auto; background: var(--card); border: 1px solid var(--wi-line); border-radius: 0.875rem; padding: 2rem 1.6rem 1.7rem; text-align: center; }
   .wi-done-icon {
-    width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 1rem;
+    width: 3.75rem; height: 3.75rem; border-radius: 50%; margin: 0 auto 1rem;
     display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
     background: color-mix(in srgb, var(--wi-ok) 16%, transparent); color: var(--wi-ok);
   }
   .wi-done h2 { margin: 0; font-size: 1.55rem; color: var(--fg); }
-  .wi-done dl { margin: 1.3rem 0; text-align: left; background: var(--wi-soft); border-radius: 10px; padding: 0.9rem 1rem; }
+  .wi-done dl { margin: 1.3rem 0; text-align: left; background: var(--wi-soft); border-radius: 0.625rem; padding: 0.9rem 1rem; }
   .wi-done-actions { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }
   .wi-done-actions .wi-btn-primary { width: auto; }
 

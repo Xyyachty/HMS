@@ -31,7 +31,7 @@
   .af-lead { margin: 0.45rem 0 0; color: var(--fg-muted); font-size: 0.92rem; max-width: 64ch; line-height: 1.5; }
   .af-readonly {
     display: flex; align-items: center; gap: 0.55rem; margin-top: 0.9rem; width: fit-content; max-width: 100%;
-    padding: 0.6rem 0.85rem; border-radius: 10px; font-size: 0.82rem;
+    padding: 0.6rem 0.85rem; border-radius: 0.625rem; font-size: 0.82rem;
     background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--fg);
     border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
   }
@@ -64,8 +64,8 @@
   .af-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 1.15rem; align-items: stretch; }
   /* Every card in a row is the same height, and its button sits on the bottom edge,
      so buttons and dividers line up across the row whatever each card holds. */
-  .af-card { min-width: 0; height: 100%; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--af-line); border-radius: 14px; overflow: hidden; }
-  .af-media { position: relative; flex: none; height: 160px; overflow: hidden; background: var(--af-soft); }
+  .af-card { min-width: 0; height: 100%; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--af-line); border-radius: 0.875rem; overflow: hidden; }
+  .af-media { position: relative; flex: none; height: 10rem; overflow: hidden; background: var(--af-soft); }
   .af-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .af-card.is-shut .af-media img { filter: grayscale(0.65); }
   /* One status on the photo, on a solid backing so it reads over any picture */
@@ -76,7 +76,7 @@
     background: var(--card); color: var(--fg); font-size: 0.76rem; font-weight: 600;
     box-shadow: 0 2px 10px rgba(0,0,0,0.18);
   }
-  .af-state .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-muted); }
+  .af-state .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--fg-muted); }
   .af-state.is-open .dot { background: var(--success); }
   .af-state.is-closed .dot { background: var(--warn); }
   .af-state.is-repair .dot { background: var(--danger); }
@@ -97,7 +97,7 @@
   .af-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; width: 100%;
     font: 600 0.88rem/1 'Outfit', sans-serif;
-    padding: 0.8rem 1rem; border-radius: 10px; cursor: pointer;
+    padding: 0.8rem 1rem; border-radius: 0.625rem; cursor: pointer;
     background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
     transition: filter 0.15s, transform 0.1s;
   }
@@ -110,7 +110,7 @@
   .af-btn-sm {
     flex: none; display: inline-flex; align-items: center; gap: 0.35rem;
     font: 600 0.78rem/1 'Outfit', sans-serif;
-    padding: 0.5rem 0.75rem; border-radius: 8px; cursor: pointer;
+    padding: 0.5rem 0.75rem; border-radius: 0.5rem; cursor: pointer;
     background: transparent; color: var(--fg); border: 1px solid var(--af-line);
   }
   .af-btn-sm:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
@@ -124,7 +124,7 @@
   /* How full a sign-in facility is */
   .af-meter-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.82rem; color: var(--fg-muted); }
   .af-meter-head b { color: var(--fg); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
-  .af-meter { height: 6px; border-radius: 999px; background: var(--af-soft); border: 1px solid var(--af-line); overflow: hidden; margin-top: 0.4rem; }
+  .af-meter { height: 0.375rem; border-radius: 999px; background: var(--af-soft); border: 1px solid var(--af-line); overflow: hidden; margin-top: 0.4rem; }
   .af-meter span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
   .af-meter.is-full span { background: var(--danger); }
 
@@ -133,7 +133,7 @@
   .af-list-title { margin: 0; font-size: 0.74rem; font-weight: 600; color: var(--fg-muted); letter-spacing: 0.04em; }
   .af-row {
     display: flex; align-items: center; gap: 0.65rem;
-    padding: 0.6rem 0.7rem; border-radius: 10px;
+    padding: 0.6rem 0.7rem; border-radius: 0.625rem;
     background: var(--af-soft); border: 1px solid var(--af-line);
   }
   .af-row-text { min-width: 0; flex: 1; }
@@ -142,9 +142,9 @@
   .af-more { margin: 0; font-size: 0.78rem; color: var(--fg-muted); }
 
   /* Empty / loading */
-  .af-empty { border: 1.5px dashed var(--af-line); border-radius: 14px; padding: 2.4rem 1.5rem; text-align: center; }
+  .af-empty { border: 1.5px dashed var(--af-line); border-radius: 0.875rem; padding: 2.4rem 1.5rem; text-align: center; }
   .af-empty-icon {
-    width: 56px; height: 56px; margin: 0 auto 0.9rem; border-radius: 16px;
+    width: 3.5rem; height: 3.5rem; margin: 0 auto 0.9rem; border-radius: 1rem;
     display: flex; align-items: center; justify-content: center; font-size: 1.35rem;
     background: var(--af-tint); color: var(--accent);
   }
@@ -153,12 +153,12 @@
 
   @media (max-width: 560px) {
     .af { padding: 1.1rem 1rem 2.5rem; }
-    .af-tabs { width: 100%; border-radius: 14px; }
+    .af-tabs { width: 100%; border-radius: 0.875rem; }
   }
 
   /* Still used by the booking dialog */
   .am-badge {
-    padding: 0.22rem 0.65rem; border-radius: 4px;
+    padding: 0.22rem 0.65rem; border-radius: 0.25rem;
     font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent; white-space: nowrap; display: inline-block;
   }
@@ -172,7 +172,7 @@
     background: var(--accent); color: var(--bg);
     font-family: 'Outfit', sans-serif; font-weight: 600;
     font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 0.8rem 1.8rem; border: none; border-radius: 6px;
+    padding: 0.8rem 1.8rem; border: none; border-radius: 0.375rem;
     cursor: pointer; transition: background 0.2s, transform 0.2s;
   }
   .btn-primary:hover:not(:disabled) { background: var(--accent-light); transform: translateY(-1px); }
@@ -182,7 +182,7 @@
     background: transparent; color: var(--accent);
     font-family: 'Outfit', sans-serif; font-weight: 500;
     font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 0.5rem 1rem; border: 1px solid var(--accent); border-radius: 6px;
+    padding: 0.5rem 1rem; border: 1px solid var(--accent); border-radius: 0.375rem;
     cursor: pointer; transition: background 0.2s, color 0.2s;
   }
   .btn-outline:hover:not(:disabled) { background: var(--accent); color: var(--bg); }
@@ -192,12 +192,12 @@
 
   .booking-input {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
+    border-radius: 0.375rem; padding: 0.7rem 0.9rem; color: var(--fg);
     font-family: 'Outfit', sans-serif; font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; width: 100%;
   }
   .booking-input:focus { border-color: var(--accent); }
-  textarea.booking-input { resize: vertical; min-height: 70px; line-height: 1.5; }
+  textarea.booking-input { resize: vertical; min-height: 4.375rem; line-height: 1.5; }
   select.booking-input { appearance: none; cursor: pointer; }
   select.booking-input option { background: var(--card); color: var(--fg); }
 
@@ -210,8 +210,8 @@
     display: flex; align-items: center; justify-content: center; padding: 1.5rem;
   }
   .room-modal {
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto;
+    background: var(--card); border: 1px solid var(--border); border-radius: 0.875rem;
+    width: 100%; max-width: 28.75rem; max-height: 90vh; overflow-y: auto;
   }
 
   /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──

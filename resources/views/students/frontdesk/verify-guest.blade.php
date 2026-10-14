@@ -11,7 +11,7 @@
   #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
   .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
   .room-status-badge {
-    padding: 0.25rem 0.7rem; border-radius: 4px;
+    padding: 0.25rem 0.7rem; border-radius: 0.25rem;
     font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent;
   }
@@ -25,14 +25,14 @@
     background: transparent; color: var(--accent);
     font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
     font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
+    padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 0.375rem;
     cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
     text-decoration: none;
   }
   .btn-outline:hover { background: var(--accent); color: var(--bg); transform: translateY(-1px); }
   .booking-input {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
+    border-radius: 0.375rem; padding: 0.7rem 0.9rem; color: var(--fg);
     font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; width: 100%;
   }
@@ -45,7 +45,7 @@
     background: var(--accent); color: var(--bg); border: 1px solid var(--accent);
     font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 600;
     font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 0.65rem 1.2rem; border-radius: 6px; cursor: pointer;
+    padding: 0.65rem 1.2rem; border-radius: 0.375rem; cursor: pointer;
     transition: filter 0.2s;
   }
   .btn-solid:hover { filter: brightness(1.1); }
@@ -59,8 +59,8 @@
     padding: 2rem 1.5rem; z-index: 300; overflow-y: auto;
   }
   .bill-modal {
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    width: 100%; max-width: 560px; margin: auto;
+    background: var(--card); border: 1px solid var(--border); border-radius: 0.875rem;
+    width: 100%; max-width: 35rem; margin: auto;
   }
   .bill-head {
     padding: 1.4rem 1.6rem 1rem; border-bottom: 1px solid var(--border);
@@ -117,7 +117,7 @@
   :root[data-ops-theme="2"] .room-status-badge.status-maintenance { background: #ffe4e6; color: #be123c; border-color: #fecdd3; }
   :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
   /* The guest's receipt: a paper slip inside the dialog, printed on its own. */
-  .receipt-print { background: #fff; color: #1a1a1a; border-radius: 10px; padding: 1.3rem 1.4rem; font-size: 0.86rem; border: 1px solid #e5e2dd; }
+  .receipt-print { background: #fff; color: #1a1a1a; border-radius: 0.625rem; padding: 1.3rem 1.4rem; font-size: 0.86rem; border: 1px solid #e5e2dd; }
   .rc-top { text-align: center; padding-bottom: 0.9rem; border-bottom: 1px dashed #c9c3ba; }
   .rc-top h3 { margin: 0 0 0.25rem; font-size: 1.25rem; font-family: var(--font-display, 'Playfair Display', serif); color: #1a1a1a; }
   .rc-top p { margin: 0.1rem 0; color: #5f5a55; font-size: 0.8rem; }

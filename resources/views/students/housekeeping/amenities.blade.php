@@ -49,7 +49,7 @@
   .am-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
     font: 600 0.88rem/1.15 var(--font-body, 'Outfit', sans-serif);
-    padding: 0.8rem 1.15rem; border-radius: 10px; cursor: pointer; text-decoration: none;
+    padding: 0.8rem 1.15rem; border-radius: 0.625rem; cursor: pointer; text-decoration: none;
     border: 1px solid var(--accent); background: transparent; color: var(--accent);
     transition: background 0.15s, transform 0.1s, filter 0.15s;
   }
@@ -71,7 +71,7 @@
   }
 
   /* Notices */
-  .am-notice { display: flex; gap: 0.6rem; align-items: flex-start; margin: 0; padding: 0.85rem 1rem; border-radius: 14px; font-size: 0.86rem; line-height: 1.5; color: var(--fg); border: 1px solid var(--am-line); background: var(--am-soft); }
+  .am-notice { display: flex; gap: 0.6rem; align-items: flex-start; margin: 0; padding: 0.85rem 1rem; border-radius: 0.875rem; font-size: 0.86rem; line-height: 1.5; color: var(--fg); border: 1px solid var(--am-line); background: var(--am-soft); }
   .am-notice i { margin-top: 0.2rem; }
   .am-notice.is-ok   { border-color: color-mix(in srgb, var(--am-ok) 40%, transparent);   background: color-mix(in srgb, var(--am-ok) 9%, transparent); }
   .am-notice.is-ok i { color: var(--am-ok); }
@@ -82,12 +82,12 @@
   .am-notice.is-muted i { color: var(--fg-muted); }
 
   /* Panels */
-  .am-panel { background: var(--card); border: 1px solid var(--am-line); border-radius: 14px; padding: 1.2rem 1.3rem 1.4rem; }
+  .am-panel { background: var(--card); border: 1px solid var(--am-line); border-radius: 0.875rem; padding: 1.2rem 1.3rem 1.4rem; }
   .am-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
   .am-panel-head h2 { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--fg); }
   .am-panel-head p { margin: 0.25rem 0 0; font-size: 0.84rem; color: var(--fg-muted); max-width: 70ch; line-height: 1.5; }
   .am-live { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--fg-muted); }
-  .am-live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--am-ok); }
+  .am-live::before { content: ''; width: 0.4375rem; height: 0.4375rem; border-radius: 50%; background: var(--am-ok); }
 
   /* Tones */
   .tone-ok    { background: color-mix(in srgb, var(--am-ok) 16%, transparent);   color: var(--am-ok); }
@@ -106,7 +106,7 @@
   .am-view i { font-size: 0.78rem; }
   .am-count { min-width: 1.45rem; padding: 0.2rem 0.4rem; border-radius: 999px; text-align: center; font-size: 0.74rem; font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--fg) 8%, transparent); }
   .am-view.is-on .am-count { background: color-mix(in srgb, var(--bg) 22%, transparent); }
-  .am-search { position: relative; flex: 1 1 220px; max-width: 320px; }
+  .am-search { position: relative; flex: 1 1 220px; max-width: 20rem; }
   .am-search i { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--fg-muted); font-size: 0.8rem; pointer-events: none; }
   .am-search .am-input { padding-left: 2.3rem; }
 
@@ -114,7 +114,7 @@
   .am-input {
     box-sizing: border-box; width: 100%;
     background: var(--am-soft); border: 1px solid var(--am-line);
-    border-radius: 10px; padding: 0.75rem 0.9rem; color: var(--fg);
+    border-radius: 0.625rem; padding: 0.75rem 0.9rem; color: var(--fg);
     font: 400 0.9rem/1.4 var(--font-body, 'Outfit', sans-serif);
     outline: none; transition: border-color 0.15s;
   }
@@ -131,18 +131,18 @@
 
   /* Facility cards */
   .am-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr)); gap: 1rem; align-items: stretch; }
-  .am-card { min-width: 0; border: 1px solid var(--am-line); border-radius: 14px; background: var(--am-soft); overflow: hidden; display: flex; flex-direction: column; }
+  .am-card { min-width: 0; border: 1px solid var(--am-line); border-radius: 0.875rem; background: var(--am-soft); overflow: hidden; display: flex; flex-direction: column; }
   .am-card.needs-you { border-color: color-mix(in srgb, var(--am-bad) 55%, transparent); }
   .am-card-img { position: relative; aspect-ratio: 16 / 9; background: var(--am-soft); overflow: hidden; }
   .am-card-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-  .am-card-img .am-pill { position: absolute; top: 10px; left: 10px; background: var(--card); box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+  .am-card-img .am-pill { position: absolute; top: 0.625rem; left: 0.625rem; background: var(--card); box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
   .am-card-body { padding: 0.95rem 1.05rem 1.05rem; display: flex; flex-direction: column; gap: 0.75rem; flex: 1; }
   .am-name { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--fg); line-height: 1.25; overflow-wrap: anywhere; }
   .am-how { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.3rem; font-size: 0.78rem; font-weight: 600; color: var(--accent); }
   .am-desc { margin: 0; font-size: 0.84rem; line-height: 1.5; color: var(--fg-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: 4.5em; }
   /* Same height in every card, so the facts and buttons line up across a row. */
   .am-desc.is-empty { font-style: italic; opacity: 0.7; }
-  .am-facts { list-style: none; margin: 0; padding: 0.65rem 0.75rem; border-radius: 10px; background: var(--card); border: 1px solid var(--am-line); display: grid; gap: 0.4rem; }
+  .am-facts { list-style: none; margin: 0; padding: 0.65rem 0.75rem; border-radius: 0.625rem; background: var(--card); border: 1px solid var(--am-line); display: grid; gap: 0.4rem; }
   .am-facts li { display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.84rem; color: var(--fg); }
   .am-facts li i { width: 1rem; text-align: center; color: var(--fg-muted); margin-top: 0.2rem; font-size: 0.8rem; }
   .am-facts li span.is-empty { color: var(--fg-muted); }
@@ -150,7 +150,7 @@
   .am-card-actions { display: flex; gap: 0.5rem; margin-top: auto; }
   .am-card-actions .am-btn { flex: 1 1 0; }
 
-  .am-repair { display: grid; gap: 0.6rem; padding: 0.8rem 0.85rem; border-radius: 10px; border: 1px solid var(--am-line); }
+  .am-repair { display: grid; gap: 0.6rem; padding: 0.8rem 0.85rem; border-radius: 0.625rem; border: 1px solid var(--am-line); }
   .am-repair p { margin: 0; font-size: 0.84rem; line-height: 1.5; color: var(--fg); }
   .am-repair small { display: block; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.45; }
   .am-repair-title { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.86rem; }
@@ -163,7 +163,7 @@
 
   /* Rows for services and events */
   .am-rows { display: grid; gap: 0.6rem; }
-  .am-rowcard { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.6rem 1rem; align-items: center; padding: 0.85rem 1rem; border-radius: 12px; background: var(--am-soft); border: 1px solid var(--am-line); }
+  .am-rowcard { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.6rem 1rem; align-items: center; padding: 0.85rem 1rem; border-radius: 0.75rem; background: var(--am-soft); border: 1px solid var(--am-line); }
   .am-rowcard b { display: block; font-size: 0.95rem; color: var(--fg); }
   .am-rowcard small { display: block; font-size: 0.8rem; color: var(--fg-muted); margin-top: 0.2rem; line-height: 1.45; }
   .am-rowcard .am-side { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; }
@@ -175,33 +175,33 @@
   /* Event set-up and clean-up steps */
   .am-track { list-style: none; margin: 0.2rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
   .am-track li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; font-size: 0.66rem; color: var(--fg-muted); text-align: center; line-height: 1.25; }
-  .am-track li::before { content: ''; position: absolute; top: 6px; left: -50%; width: 100%; height: 2px; background: var(--am-line); }
+  .am-track li::before { content: ''; position: absolute; top: 0.375rem; left: -50%; width: 100%; height: 2px; background: var(--am-line); }
   .am-track li:first-child::before { display: none; }
   .am-track li.is-done::before, .am-track li.is-now::before { background: var(--accent); }
-  .am-dot { position: relative; z-index: 1; width: 14px; height: 14px; border-radius: 50%; background: var(--card); border: 2px solid var(--am-line); }
+  .am-dot { position: relative; z-index: 1; width: 0.875rem; height: 0.875rem; border-radius: 50%; background: var(--card); border: 2px solid var(--am-line); }
   .am-track li.is-done .am-dot { background: var(--accent); border-color: var(--accent); }
   .am-track li.is-now .am-dot { background: var(--card); border-color: var(--accent); box-shadow: 0 0 0 4px var(--am-tint); }
   .am-track li.is-now, .am-track li.is-done { color: var(--fg); }
   .am-track li.is-now { font-weight: 700; }
 
   /* Empty / loading */
-  .am-empty { border: 1.5px dashed var(--am-line); border-radius: 14px; padding: 2.2rem 1.5rem; text-align: center; }
-  .am-empty-icon { width: 56px; height: 56px; margin: 0 auto 0.9rem; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; background: var(--am-tint); color: var(--accent); }
+  .am-empty { border: 1.5px dashed var(--am-line); border-radius: 0.875rem; padding: 2.2rem 1.5rem; text-align: center; }
+  .am-empty-icon { width: 3.5rem; height: 3.5rem; margin: 0 auto 0.9rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; background: var(--am-tint); color: var(--accent); }
   .am-empty h3 { margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--fg); }
   .am-empty p { margin: 0.4rem auto 0; max-width: 52ch; font-size: 0.86rem; line-height: 1.5; color: var(--fg-muted); }
   .am-empty .am-btn { margin-top: 1.1rem; }
-  .am-skel { height: 380px; border-radius: 14px; border: 1px solid var(--am-line); background: linear-gradient(90deg, var(--am-soft) 0%, color-mix(in srgb, var(--fg) 8%, transparent) 50%, var(--am-soft) 100%); background-size: 200% 100%; animation: am-shimmer 1.4s ease-in-out infinite; }
+  .am-skel { height: 23.75rem; border-radius: 0.875rem; border: 1px solid var(--am-line); background: linear-gradient(90deg, var(--am-soft) 0%, color-mix(in srgb, var(--fg) 8%, transparent) 50%, var(--am-soft) 100%); background-size: 200% 100%; animation: am-shimmer 1.4s ease-in-out infinite; }
   @keyframes am-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
   @media (prefers-reduced-motion: reduce) { .am-skel { animation: none; } }
 
   /* Dialogs */
   .am-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 1.25rem; z-index: 200; }
-  .am-modal { box-sizing: border-box; background: var(--card); color: var(--fg); border: 1px solid var(--am-line); border-radius: 14px; width: 100%; max-width: 600px; max-height: 92vh; overflow-y: auto; }
-  .am-modal.is-small { max-width: 480px; }
+  .am-modal { box-sizing: border-box; background: var(--card); color: var(--fg); border: 1px solid var(--am-line); border-radius: 0.875rem; width: 100%; max-width: 37.5rem; max-height: 92vh; overflow-y: auto; }
+  .am-modal.is-small { max-width: 30rem; }
   .am-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.35rem 0; }
   .am-modal-head h2 { margin: 0; font-size: 1.45rem; line-height: 1.2; color: var(--fg); }
   .am-modal-head p { margin: 0.35rem 0 0; font-size: 0.84rem; color: var(--fg-muted); line-height: 1.45; }
-  .am-close { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--am-line); background: transparent; color: var(--fg-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .am-close { flex: none; width: 2.125rem; height: 2.125rem; border-radius: 0.625rem; border: 1px solid var(--am-line); background: transparent; color: var(--fg-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .am-close:hover { color: var(--fg); background: var(--am-soft); }
   .am-form { padding: 1.1rem 1.35rem 1.35rem; display: grid; gap: 1.05rem; }
   .am-section-title { margin: 0.3rem 0 -0.35rem; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
@@ -217,10 +217,10 @@
 
   .am-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
   .am-choices.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .am-choice { position: relative; display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.7rem 0.75rem; border-radius: 10px; border: 1px solid var(--am-line); background: var(--card); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .am-choice { position: relative; display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.7rem 0.75rem; border-radius: 0.625rem; border: 1px solid var(--am-line); background: var(--card); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
   .am-choice:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
   .am-choice input { position: absolute; opacity: 0; pointer-events: none; }
-  .am-choice > i { flex: none; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
+  .am-choice > i { flex: none; width: 1.875rem; height: 1.875rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
   .am-choice b { display: block; font-size: 0.84rem; color: var(--fg); line-height: 1.25; }
   .am-choice span { display: block; font-size: 0.74rem; color: var(--fg-muted); margin-top: 0.15rem; line-height: 1.35; }
   .am-choice.is-on { border-color: var(--accent); background: var(--am-tint); }
@@ -231,22 +231,22 @@
   .am-chip:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
   .am-chip.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
 
-  .am-photo-pick { display: block; width: 100%; padding: 0; border: 1.5px dashed var(--am-line); border-radius: 10px; background: var(--am-soft); cursor: pointer; overflow: hidden; color: var(--fg-muted); font: inherit; }
+  .am-photo-pick { display: block; width: 100%; padding: 0; border: 1.5px dashed var(--am-line); border-radius: 0.625rem; background: var(--am-soft); cursor: pointer; overflow: hidden; color: var(--fg-muted); font: inherit; }
   .am-photo-pick:hover { border-color: var(--accent); }
-  .am-photo-pick img { width: 100%; height: 160px; object-fit: cover; display: block; }
-  .am-photo-empty { height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.45rem; font-size: 0.82rem; }
+  .am-photo-pick img { width: 100%; height: 10rem; object-fit: cover; display: block; }
+  .am-photo-empty { height: 6.875rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.45rem; font-size: 0.82rem; }
   .am-photo-empty i { font-size: 1.4rem; color: var(--accent); }
   .am-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; }
-  .am-shot { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--am-line); }
-  .am-shot img { width: 100%; height: 80px; object-fit: cover; display: block; }
-  .am-shot button { position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; border-radius: 8px; border: 0; background: rgba(12,11,9,0.8); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
-  .am-shot-add { height: 82px; border-radius: 10px; border: 1.5px dashed var(--am-line); background: transparent; color: var(--fg-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; font: 500 0.78rem/1.2 var(--font-body, 'Outfit', sans-serif); }
+  .am-shot { position: relative; border-radius: 0.625rem; overflow: hidden; border: 1px solid var(--am-line); }
+  .am-shot img { width: 100%; height: 5rem; object-fit: cover; display: block; }
+  .am-shot button { position: absolute; top: 0.3125rem; right: 0.3125rem; width: 1.625rem; height: 1.625rem; border-radius: 0.5rem; border: 0; background: rgba(12,11,9,0.8); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
+  .am-shot-add { height: 5.125rem; border-radius: 0.625rem; border: 1.5px dashed var(--am-line); background: transparent; color: var(--fg-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; font: 500 0.78rem/1.2 var(--font-body, 'Outfit', sans-serif); }
   .am-shot-add:hover { border-color: var(--accent); color: var(--fg); }
   .am-shot-add i { color: var(--accent); }
   .am-link { background: none; border: 0; padding: 0.2rem 0; cursor: pointer; color: var(--fg-muted); font: 500 0.78rem/1 var(--font-body, 'Outfit', sans-serif); justify-self: start; }
   .am-link:hover { color: var(--fg); text-decoration: underline; }
-  .am-check { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.75rem 0.85rem; border-radius: 10px; border: 1px solid var(--am-line); background: var(--am-soft); cursor: pointer; font-size: 0.84rem; line-height: 1.45; color: var(--fg); }
-  .am-check input { margin-top: 0.2rem; accent-color: var(--accent); width: 16px; height: 16px; }
+  .am-check { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.75rem 0.85rem; border-radius: 0.625rem; border: 1px solid var(--am-line); background: var(--am-soft); cursor: pointer; font-size: 0.84rem; line-height: 1.45; color: var(--fg); }
+  .am-check input { margin-top: 0.2rem; accent-color: var(--accent); width: 1rem; height: 1rem; }
   .am-check small { display: block; color: var(--fg-muted); font-size: 0.76rem; }
   .am-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .am-actions .am-btn { flex: 1 1 auto; }
@@ -259,7 +259,7 @@
     .am { padding: 1.1rem 1rem 2.5rem; }
     .am-row2, .am-choices, .am-choices.is-three { grid-template-columns: 1fr; }
     .am-head-actions, .am-head-actions .am-btn, .am-search { width: 100%; max-width: none; }
-    .am-views { width: 100%; border-radius: 14px; }
+    .am-views { width: 100%; border-radius: 0.875rem; }
     .am-rowcard { grid-template-columns: 1fr; }
     .am-rowcard .am-side { justify-content: flex-start; }
   }

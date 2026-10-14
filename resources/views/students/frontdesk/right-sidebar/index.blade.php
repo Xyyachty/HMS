@@ -44,7 +44,7 @@
                 @endphp
                 <div class="min-w-0">
                     <h2 class="text-sm font-bold text-white tracking-wide">Design Panel</h2>
-                    <p class="text-[11px] text-zinc-500 mt-0.5 truncate">
+                    <p class="text-[0.6875rem] text-zinc-500 mt-0.5 truncate">
                         {{ $panelScope !== '' ? 'Editing ' . $panelScope : 'Style & customize elements' }}
                     </p>
                 </div>
@@ -321,7 +321,7 @@
             </button>
             <div class="section-body" id="section-content">
                 <label class="field-label settings-label">Text</label>
-                <textarea id="elementText" rows="3" class="style-input resize-y min-h-[72px]" placeholder="Select text in the template, then edit here"
+                <textarea id="elementText" rows="3" class="style-input resize-y min-h-[4.5rem]" placeholder="Select text in the template, then edit here"
                     oninput="applyTextContent(this.value)"></textarea>
                 <p class="section-hint mt-1.5 mb-4">Tip: you can also double-click the text on the page and type straight into it.</p>
 
@@ -353,7 +353,7 @@
                         <span class="heading-btn-sub">Title</span>
                     </button>
                     <button onclick="applyHeading('h3')" class="heading-btn group" data-group="heading" title="Heading 3">
-                        <span class="text-[13px] font-bold text-white leading-none">H3</span>
+                        <span class="text-[0.8125rem] font-bold text-white leading-none">H3</span>
                         <span class="heading-btn-sub">Section</span>
                     </button>
                     <button onclick="applyHeading('h4')" class="heading-btn group" data-group="heading" title="Heading 4">
@@ -361,11 +361,11 @@
                         <span class="heading-btn-sub">Sub</span>
                     </button>
                     <button onclick="applyHeading('h5')" class="heading-btn group" data-group="heading" title="Heading 5">
-                        <span class="text-[11px] font-semibold text-zinc-300 leading-none">H5</span>
+                        <span class="text-[0.6875rem] font-semibold text-zinc-300 leading-none">H5</span>
                         <span class="heading-btn-sub">Label</span>
                     </button>
                     <button onclick="applyHeading('h6')" class="heading-btn group" data-group="heading" title="Heading 6">
-                        <span class="text-[10px] font-medium text-zinc-400 leading-none">H6</span>
+                        <span class="text-[0.625rem] font-medium text-zinc-400 leading-none">H6</span>
                         <span class="heading-btn-sub">Caption</span>
                     </button>
                 </div>
@@ -630,17 +630,17 @@
        ══════════════════════════════════════════════════════════ */
 
     /* ── Scrollbar ── */
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar { width: 0.25rem; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 0.625rem; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #52525b; }
 
     /* ── Header tools ── */
     .panel-tool-btn {
-        width: 28px; height: 28px; border-radius: 8px;
+        width: 1.75rem; height: 1.75rem; border-radius: 0.5rem;
         display: inline-flex; align-items: center; justify-content: center;
         background: transparent; border: 1px solid transparent;
-        color: #a1a1aa; font-size: 11px; cursor: pointer;
+        color: #a1a1aa; font-size: 0.6875rem; cursor: pointer;
         transition: all 0.15s ease;
     }
     .panel-tool-btn:hover:not(:disabled) { background: #3f3f46; color: #fff; }
@@ -649,7 +649,7 @@
     .panel-tool-btn--danger { border-color: #3f3f46; background: #27272a; }
     .panel-tool-btn--danger:hover { background: rgba(136, 19, 55, 0.6); border-color: rgba(244, 63, 94, 0.5); color: #fda4af; }
     .panel-undo-label {
-        font-size: 11px; font-weight: 600; color: #71717a;
+        font-size: 0.6875rem; font-weight: 600; color: #71717a;
         background: none; border: none; cursor: pointer; padding: 0 2px;
         transition: color 0.15s ease;
     }
@@ -660,56 +660,56 @@
        things below it act on, so the sections underneath do not have to
        repeat it one by one. */
     .zone-head {
-        display: flex; align-items: center; gap: 8px;
-        padding: 14px 20px 8px;
-        font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+        display: flex; align-items: center; gap: 0.5rem;
+        padding: 0.875rem 1.25rem 0.5rem;
+        font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
     }
-    .zone-dot { width: 6px; height: 6px; border-radius: 9999px; flex-shrink: 0; }
+    .zone-dot { width: 0.375rem; height: 0.375rem; border-radius: 9999px; flex-shrink: 0; }
     .zone-head--hotel .zone-dot { background: #f59e0b; }
     .zone-head--hotel .zone-title { color: #fbbf24; }
     .zone-head--element .zone-dot { background: #22d3ee; }
     .zone-head--element .zone-title { color: #67e8f9; }
     .zone-note {
-        margin-left: auto; font-size: 10px; font-weight: 500;
+        margin-left: auto; font-size: 0.625rem; font-weight: 500;
         letter-spacing: 0.02em; text-transform: none; color: #52525b;
     }
 
     /* ── Sections ── */
     .design-section { border-bottom: 1px solid rgba(39, 39, 42, 0.8); }
     .section-toggle {
-        width: 100%; display: flex; align-items: center; gap: 10px;
-        padding: 12px 20px; background: none; border: none;
+        width: 100%; display: flex; align-items: center; gap: 0.625rem;
+        padding: 0.75rem 1.25rem; background: none; border: none;
         text-align: left; cursor: pointer; user-select: none;
         transition: background 0.15s ease;
     }
     .section-toggle:hover { background: rgba(39, 39, 42, 0.5); }
     .section-toggle:active { background: rgba(39, 39, 42, 0.8); }
     .section-icon {
-        width: 28px; height: 28px; border-radius: 9px; flex-shrink: 0;
+        width: 1.75rem; height: 1.75rem; border-radius: 0.5625rem; flex-shrink: 0;
         display: inline-flex; align-items: center; justify-content: center;
-        background: rgba(6, 182, 212, 0.12); color: #22d3ee; font-size: 11px;
+        background: rgba(6, 182, 212, 0.12); color: #22d3ee; font-size: 0.6875rem;
     }
     .section-icon--hotel { background: rgba(245, 158, 11, 0.12); color: #fbbf24; }
     .section-label {
         flex: 1; min-width: 0; display: block;
-        font-size: 12.5px; font-weight: 600; color: #e4e4e7; line-height: 1.3;
+        font-size: 0.7812rem; font-weight: 600; color: #e4e4e7; line-height: 1.3;
     }
     .section-sub {
-        display: block; font-size: 10.5px; font-weight: 400;
+        display: block; font-size: 0.6562rem; font-weight: 400;
         color: #71717a; margin-top: 2px; line-height: 1.3;
     }
     .section-chevron {
-        font-size: 9px; color: #52525b; flex-shrink: 0;
+        font-size: 0.5625rem; color: #52525b; flex-shrink: 0;
         transition: transform 0.2s ease;
     }
-    .section-body { padding: 0 20px 16px; }
+    .section-body { padding: 0 1.25rem 1rem; }
     .section-hint {
-        font-size: 11px; line-height: 1.55; color: #71717a; margin-bottom: 10px;
+        font-size: 0.6875rem; line-height: 1.55; color: #71717a; margin-bottom: 0.625rem;
     }
     .hint-code {
         font-family: ui-monospace, 'SFMono-Regular', monospace;
         background: #27272a; color: #a1a1aa;
-        padding: 1px 5px; border-radius: 4px; font-size: 10.5px;
+        padding: 1px 0.3125rem; border-radius: 0.25rem; font-size: 0.6562rem;
     }
 
     /* Nothing is selected, so the controls that need one are muted. They
@@ -722,38 +722,38 @@
        Sticky, because every control below it acts on whatever it names. */
     .target-card-wrap {
         position: sticky; top: 0; z-index: 20;
-        padding: 4px 16px 12px; background: #18181b;
+        padding: 0.25rem 1rem 0.75rem; background: #18181b;
         border-bottom: 1px solid rgba(39, 39, 42, 0.8);
     }
     .target-card {
-        border-radius: 14px; padding: 12px;
+        border-radius: 0.875rem; padding: 0.75rem;
         background: linear-gradient(180deg, rgba(8, 145, 178, 0.10), rgba(24, 24, 27, 0.4));
         border: 1px solid rgba(34, 211, 238, 0.22);
     }
-    .target-row { display: flex; align-items: center; gap: 10px; }
+    .target-row { display: flex; align-items: center; gap: 0.625rem; }
     .target-icon {
-        width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0;
+        width: 1.875rem; height: 1.875rem; border-radius: 0.625rem; flex-shrink: 0;
         display: inline-flex; align-items: center; justify-content: center;
-        background: rgba(6, 182, 212, 0.18); color: #22d3ee; font-size: 11px;
+        background: rgba(6, 182, 212, 0.18); color: #22d3ee; font-size: 0.6875rem;
     }
     .target-eyebrow {
-        font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em;
+        font-size: 0.5938rem; font-weight: 700; letter-spacing: 0.1em;
         text-transform: uppercase; color: #52525b;
     }
     .target-name {
-        display: block; font-size: 12.5px; font-weight: 600; color: #e4e4e7;
+        display: block; font-size: 0.7812rem; font-weight: 600; color: #e4e4e7;
         line-height: 1.35; margin-top: 1px;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     #hmsDesignPanel.no-selection .target-name { color: #a1a1aa; font-weight: 500; }
-    .target-hint { font-size: 10.5px; line-height: 1.5; color: #71717a; margin-top: 8px; }
+    .target-hint { font-size: 0.6562rem; line-height: 1.5; color: #71717a; margin-top: 0.5rem; }
     #hmsDesignPanel:not(.no-selection) .target-hint { display: none; }
 
     .parent-btn {
-        width: 100%; margin-top: 8px; padding: 6px 8px; border-radius: 9px;
-        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        width: 100%; margin-top: 0.5rem; padding: 0.375rem 0.5rem; border-radius: 0.5625rem;
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
         background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.25);
-        color: #67e8f9; font-size: 11px; font-weight: 600; cursor: pointer;
+        color: #67e8f9; font-size: 0.6875rem; font-weight: 600; cursor: pointer;
         transition: background 0.15s ease;
     }
     .parent-btn:hover { background: rgba(6, 182, 212, 0.18); }
@@ -763,38 +763,38 @@
     .parent-btn.hidden, .move-box.hidden, .section-body.hidden { display: none; }
 
     .move-box {
-        margin-top: 8px; padding: 10px; border-radius: 10px;
+        margin-top: 0.5rem; padding: 0.625rem; border-radius: 0.625rem;
         background: rgba(24, 24, 27, 0.6); border: 1px solid rgba(63, 63, 70, 0.7);
     }
-    .move-icon { font-size: 10px; color: #22d3ee; margin-top: 2px; }
-    .move-title { font-size: 11px; font-weight: 600; color: #d4d4d8; }
-    .move-help { font-size: 10.5px; line-height: 1.5; color: #71717a; margin-top: 2px; }
+    .move-icon { font-size: 0.625rem; color: #22d3ee; margin-top: 2px; }
+    .move-title { font-size: 0.6875rem; font-weight: 600; color: #d4d4d8; }
+    .move-help { font-size: 0.6562rem; line-height: 1.5; color: #71717a; margin-top: 2px; }
 
     /* ── Labels ── */
     .field-label {
-        display: block; font-size: 10.5px; font-weight: 600; color: #a1a1aa;
-        letter-spacing: 0.03em; margin-bottom: 5px;
+        display: block; font-size: 0.6562rem; font-weight: 600; color: #a1a1aa;
+        letter-spacing: 0.03em; margin-bottom: 0.3125rem;
     }
     .field-group-label {
-        font-size: 10px; font-weight: 700; color: #71717a;
-        letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px;
+        font-size: 0.625rem; font-weight: 700; color: #71717a;
+        letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.375rem;
     }
     /* Kept for the builder shell's own theme rules, which target it by name. */
     .settings-label {
-        display: block; font-size: 10.5px; font-weight: 600; color: #a1a1aa;
-        letter-spacing: 0.03em; margin-bottom: 5px; text-transform: none;
+        display: block; font-size: 0.6562rem; font-weight: 600; color: #a1a1aa;
+        letter-spacing: 0.03em; margin-bottom: 0.3125rem; text-transform: none;
     }
     .value-pill {
-        min-width: 52px; text-align: center; padding: 3px 8px; border-radius: 7px;
+        min-width: 3.25rem; text-align: center; padding: 0.1875rem 0.5rem; border-radius: 0.4375rem;
         background: #27272a; border: 1px solid #3f3f46;
-        font-size: 10.5px; font-weight: 600; color: #d4d4d8;
+        font-size: 0.6562rem; font-weight: 600; color: #d4d4d8;
     }
 
     /* ── Inputs ── */
     .style-input {
-        width: 100%; padding: 8px 10px; border-radius: 9px;
+        width: 100%; padding: 0.5rem 0.625rem; border-radius: 0.5625rem;
         background: #18181b; border: 1px solid #3f3f46;
-        color: #e4e4e7; font-size: 11.5px; font-family: 'Inter', sans-serif;
+        color: #e4e4e7; font-size: 0.7188rem; font-family: 'Inter', sans-serif;
         transition: all 0.15s ease; outline: none;
     }
     .style-input::placeholder { color: #52525b; }
@@ -803,25 +803,25 @@
         border-color: #06b6d4; background: #1c1c1f;
         box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
     }
-    .style-input option { background: #18181b; color: #d4d4d8; padding: 6px; }
+    .style-input option { background: #18181b; color: #d4d4d8; padding: 0.375rem; }
     .style-input--hotel:focus {
         border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
     }
     .select-caret {
-        position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
-        font-size: 9px; color: #71717a; pointer-events: none;
+        position: absolute; right: 0.6875rem; top: 50%; transform: translateY(-50%);
+        font-size: 0.5625rem; color: #71717a; pointer-events: none;
     }
 
     /* ── Buttons ── */
     .ghost-btn {
-        width: 100%; padding: 7px 8px; border-radius: 9px;
-        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        width: 100%; padding: 0.4375rem 0.5rem; border-radius: 0.5625rem;
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
         background: #27272a; border: 1px solid #3f3f46;
-        color: #d4d4d8; font-size: 11px; font-weight: 600;
+        color: #d4d4d8; font-size: 0.6875rem; font-weight: 600;
         cursor: pointer; transition: all 0.15s ease;
     }
     .ghost-btn:hover { background: #3f3f46; color: #fff; border-color: #52525b; }
-    .ghost-btn i { font-size: 10px; }
+    .ghost-btn i { font-size: 0.625rem; }
     .ghost-btn--hotel:hover { border-color: rgba(245, 158, 11, 0.5); }
     .ghost-btn--danger { color: #fda4af; }
     .ghost-btn--danger:hover {
@@ -829,33 +829,33 @@
     }
 
     .feature-btn {
-        width: 100%; height: 38px; border-radius: 11px;
-        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        width: 100%; height: 2.375rem; border-radius: 0.6875rem;
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
         background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3);
-        color: #a5f3fc; font-size: 12px; font-weight: 600;
+        color: #a5f3fc; font-size: 0.75rem; font-weight: 600;
         cursor: pointer; transition: all 0.15s ease;
     }
     .feature-btn:hover { background: rgba(6, 182, 212, 0.18); color: #fff; }
-    .feature-btn i { font-size: 11px; }
+    .feature-btn i { font-size: 0.6875rem; }
     .feature-btn--hotel {
         background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: #fcd34d;
     }
     .feature-btn--hotel:hover { background: rgba(245, 158, 11, 0.18); color: #fff; }
 
     .add-el-btn {
-        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-        padding: 9px 6px; border-radius: 9px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
+        padding: 0.5625rem 0.375rem; border-radius: 0.5625rem;
         background: #18181b; border: 1px solid #3f3f46;
-        color: #d4d4d8; font-size: 11px; font-weight: 600;
+        color: #d4d4d8; font-size: 0.6875rem; font-weight: 600;
         cursor: pointer; transition: all 0.15s ease;
     }
     .add-el-btn:hover { border-color: rgba(6, 182, 212, 0.5); color: #fff; background: #27272a; }
-    .add-el-btn i { font-size: 10px; color: #22d3ee; }
+    .add-el-btn i { font-size: 0.625rem; color: #22d3ee; }
 
     /* ── Heading buttons ── */
     .heading-btn {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        padding: 8px 4px; border-radius: 9px; min-height: 46px;
+        padding: 0.5rem 0.25rem; border-radius: 0.5625rem; min-height: 2.875rem;
         background: #18181b; border: 1px solid #3f3f46;
         cursor: pointer; transition: all 0.15s ease;
     }
@@ -866,7 +866,7 @@
         box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.2);
     }
     .heading-btn-sub {
-        display: block; margin-top: 3px; font-size: 9.5px; color: #71717a;
+        display: block; margin-top: 0.1875rem; font-size: 0.5938rem; color: #71717a;
         transition: color 0.15s ease;
     }
     .heading-btn:hover .heading-btn-sub { color: #a1a1aa; }
@@ -874,9 +874,9 @@
     /* ── Toggle buttons (align, italic, underline, strikethrough) ── */
     .style-toggle-btn {
         display: inline-flex; align-items: center; justify-content: center;
-        width: 34px; height: 34px; border-radius: 9px;
+        width: 2.125rem; height: 2.125rem; border-radius: 0.5625rem;
         background: #18181b; border: 1px solid #3f3f46;
-        color: #a1a1aa; font-size: 11px;
+        color: #a1a1aa; font-size: 0.6875rem;
         cursor: pointer; transition: all 0.15s ease;
     }
     .style-toggle-btn:hover { background: #27272a; color: #fff; border-color: #52525b; }
@@ -887,9 +887,9 @@
     }
 
     /* ── Colour swatches ── */
-    .swatch-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+    .swatch-row { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.5625rem; }
     .color-preset-swatch {
-        width: 24px; height: 24px; border-radius: 7px; cursor: pointer;
+        width: 1.5rem; height: 1.5rem; border-radius: 0.4375rem; cursor: pointer;
         border: 2px solid transparent; flex-shrink: 0;
         transition: all 0.15s ease;
     }
@@ -901,27 +901,27 @@
 
     /* Kept for the builder shell's own theme rules, which target it by name. */
     .color-swatch {
-        width: 34px; height: 34px; border-radius: 9px; cursor: pointer;
+        width: 2.125rem; height: 2.125rem; border-radius: 0.5625rem; cursor: pointer;
         border: 1px solid #3f3f46; background: #18181b;
         padding: 0; flex-shrink: 0; transition: all 0.15s ease;
     }
     .color-swatch:hover { border-color: #52525b; transform: scale(1.06); }
-    .color-swatch::-webkit-color-swatch-wrapper { padding: 3px; }
-    .color-swatch::-webkit-color-swatch { border-radius: 6px; border: none; }
+    .color-swatch::-webkit-color-swatch-wrapper { padding: 0.1875rem; }
+    .color-swatch::-webkit-color-swatch { border-radius: 0.375rem; border: none; }
     .swatch-glyph {
         position: absolute; inset: 0; margin: auto;
-        width: 10px; height: 10px;
-        font-size: 8px; color: rgba(255, 255, 255, 0.75);
+        width: 0.625rem; height: 0.625rem;
+        font-size: 0.5rem; color: rgba(255, 255, 255, 0.75);
         pointer-events: none; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
     }
 
     /* ── Note box ── */
     .note-box {
-        display: flex; gap: 8px; padding: 10px; border-radius: 10px;
+        display: flex; gap: 0.5rem; padding: 0.625rem; border-radius: 0.625rem;
         background: rgba(24, 24, 27, 0.6); border: 1px solid rgba(63, 63, 70, 0.7);
     }
-    .note-box p { font-size: 10.5px; line-height: 1.6; color: #a1a1aa; }
-    .note-box-icon { font-size: 10px; color: #fbbf24; margin-top: 2px; flex-shrink: 0; }
+    .note-box p { font-size: 0.6562rem; line-height: 1.6; color: #a1a1aa; }
+    .note-box-icon { font-size: 0.625rem; color: #fbbf24; margin-top: 2px; flex-shrink: 0; }
 </style>
 
 <script>

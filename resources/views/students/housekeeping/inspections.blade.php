@@ -50,7 +50,7 @@
   .hk-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
     font: 600 0.88rem/1.15 var(--font-body, 'Outfit', sans-serif);
-    padding: 0.8rem 1.15rem; border-radius: 10px; cursor: pointer; text-decoration: none;
+    padding: 0.8rem 1.15rem; border-radius: 0.625rem; cursor: pointer; text-decoration: none;
     border: 1px solid var(--accent); background: transparent; color: var(--accent);
     transition: background 0.15s, transform 0.1s, filter 0.15s;
   }
@@ -68,28 +68,28 @@
 
   /* How it works */
   .hk-how { list-style: none; margin: 0 0 1.25rem; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
-  .hk-how li { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.85rem 0.95rem; border-radius: 14px; background: var(--hk-soft); border: 1px solid var(--hk-line); }
+  .hk-how li { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.85rem 0.95rem; border-radius: 0.875rem; background: var(--hk-soft); border: 1px solid var(--hk-line); }
   .hk-how-num {
-    flex: none; width: 28px; height: 28px; border-radius: 50%;
+    flex: none; width: 1.75rem; height: 1.75rem; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; font-size: 0.82rem; background: var(--hk-tint); color: var(--accent);
   }
   .hk-how div b { display: block; font-size: 0.86rem; color: var(--fg); margin-bottom: 0.15rem; }
   .hk-how div span { display: block; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.4; }
 
-  .hk-banner { display: flex; gap: 0.6rem; align-items: flex-start; margin: 0 0 1.25rem; padding: 0.85rem 1rem; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--hk-warn) 40%, transparent); background: color-mix(in srgb, var(--hk-warn) 10%, transparent); font-size: 0.86rem; color: var(--fg); }
+  .hk-banner { display: flex; gap: 0.6rem; align-items: flex-start; margin: 0 0 1.25rem; padding: 0.85rem 1rem; border-radius: 0.875rem; border: 1px solid color-mix(in srgb, var(--hk-warn) 40%, transparent); background: color-mix(in srgb, var(--hk-warn) 10%, transparent); font-size: 0.86rem; color: var(--fg); }
   .hk-banner i { color: var(--hk-warn); margin-top: 0.15rem; }
 
   /* Panels */
-  .hk-panel { background: var(--card); border: 1px solid var(--hk-line); border-radius: 14px; padding: 1.2rem 1.3rem 1.4rem; margin-bottom: 1.25rem; }
+  .hk-panel { background: var(--card); border: 1px solid var(--hk-line); border-radius: 0.875rem; padding: 1.2rem 1.3rem 1.4rem; margin-bottom: 1.25rem; }
   .hk-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
   .hk-panel-head h2 { margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--fg); }
   .hk-panel-head p { margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--fg-muted); }
 
   /* Rooms at a glance */
   .hk-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
-  .hk-stat { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 0.95rem; border-radius: 12px; border: 1px solid var(--hk-line); background: var(--hk-soft); }
-  .hk-stat-icon { flex: none; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; }
+  .hk-stat { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 0.95rem; border-radius: 0.75rem; border: 1px solid var(--hk-line); background: var(--hk-soft); }
+  .hk-stat-icon { flex: none; width: 2.375rem; height: 2.375rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; }
   .hk-stat div b { display: block; font-size: 1.35rem; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--fg); }
   .hk-stat div span { display: block; font-size: 0.78rem; color: var(--fg-muted); }
   .tone-ready  { background: color-mix(in srgb, var(--hk-ok) 16%, transparent);   color: var(--hk-ok); }
@@ -104,11 +104,11 @@
 
   .hk-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin: 1rem 0 0.9rem; font-size: 0.78rem; color: var(--fg-muted); }
   .hk-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
-  .hk-legend i { width: 10px; height: 10px; border-radius: 3px; background: currentColor; }
+  .hk-legend i { width: 0.625rem; height: 0.625rem; border-radius: 0.1875rem; background: currentColor; }
   .hk-floor { margin-top: 0.85rem; }
   .hk-floor h3 { margin: 0 0 0.45rem; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-muted); }
   .hk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 0.45rem; }
-  .hk-tile { min-width: 0; padding: 0.5rem 0.55rem; border-radius: 10px; border: 1px solid transparent; }
+  .hk-tile { min-width: 0; padding: 0.5rem 0.55rem; border-radius: 0.625rem; border: 1px solid transparent; }
   .hk-tile b { display: block; font-size: 0.86rem; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hk-tile small { display: block; font-size: 0.68rem; margin-top: 0.1rem; }
   .hk-tile.tone-ready { border-color: color-mix(in srgb, var(--hk-ok) 30%, transparent); }
@@ -136,7 +136,7 @@
   }
   .hk-view.is-on .hk-count { background: color-mix(in srgb, var(--bg) 22%, transparent); }
   .hk-live { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--fg-muted); }
-  .hk-live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--hk-ok); }
+  .hk-live::before { content: ''; width: 0.4375rem; height: 0.4375rem; border-radius: 50%; background: var(--hk-ok); }
 
   .hk-search { position: relative; margin-bottom: 1.1rem; }
   .hk-search i { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--fg-muted); font-size: 0.8rem; pointer-events: none; }
@@ -144,7 +144,7 @@
   .hk-input {
     box-sizing: border-box; width: 100%;
     background: var(--hk-soft); border: 1px solid var(--hk-line);
-    border-radius: 10px; padding: 0.75rem 0.9rem; color: var(--fg);
+    border-radius: 0.625rem; padding: 0.75rem 0.9rem; color: var(--fg);
     font: 400 0.9rem/1.4 var(--font-body, 'Outfit', sans-serif);
     outline: none; transition: border-color 0.15s;
   }
@@ -155,7 +155,7 @@
 
   /* Room cards */
   .hk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); gap: 1rem; align-items: start; }
-  .hk-card { min-width: 0; border: 1px solid var(--hk-line); border-radius: 14px; background: var(--hk-soft); padding: 1.05rem 1.1rem 1.1rem; display: flex; flex-direction: column; gap: 0.9rem; }
+  .hk-card { min-width: 0; border: 1px solid var(--hk-line); border-radius: 0.875rem; background: var(--hk-soft); padding: 1.05rem 1.1rem 1.1rem; display: flex; flex-direction: column; gap: 0.9rem; }
   .hk-card.is-mine { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
   .hk-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
   .hk-room { display: block; font-size: 1.15rem; font-weight: 700; color: var(--fg); line-height: 1.2; }
@@ -165,10 +165,10 @@
   /* The steps a room goes through, with this room's place on them */
   .hk-track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .hk-track li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; font-size: 0.68rem; color: var(--fg-muted); text-align: center; }
-  .hk-track li::before { content: ''; position: absolute; top: 6px; left: -50%; width: 100%; height: 2px; background: var(--hk-line); }
+  .hk-track li::before { content: ''; position: absolute; top: 0.375rem; left: -50%; width: 100%; height: 2px; background: var(--hk-line); }
   .hk-track li:first-child::before { display: none; }
   .hk-track li.is-done::before, .hk-track li.is-now::before { background: var(--accent); }
-  .hk-dot { position: relative; z-index: 1; width: 14px; height: 14px; border-radius: 50%; background: var(--card); border: 2px solid var(--hk-line); }
+  .hk-dot { position: relative; z-index: 1; width: 0.875rem; height: 0.875rem; border-radius: 50%; background: var(--card); border: 2px solid var(--hk-line); }
   .hk-track li.is-done .hk-dot { background: var(--accent); border-color: var(--accent); }
   .hk-track li.is-now .hk-dot { background: var(--card); border-color: var(--accent); box-shadow: 0 0 0 4px var(--hk-tint); }
   .hk-track li.is-skip .hk-dot { border-style: dashed; }
@@ -176,11 +176,11 @@
   .hk-track li.is-now, .hk-track li.is-done { color: var(--fg); }
   .hk-track li.is-now { font-weight: 700; }
 
-  .hk-found { margin: 0; padding: 0.7rem 0.8rem; border-radius: 10px; background: var(--card); border: 1px solid var(--hk-line); font-size: 0.85rem; color: var(--fg); line-height: 1.45; }
+  .hk-found { margin: 0; padding: 0.7rem 0.8rem; border-radius: 0.625rem; background: var(--card); border: 1px solid var(--hk-line); font-size: 0.85rem; color: var(--fg); line-height: 1.45; }
   .hk-found small { display: block; font-size: 0.7rem; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.2rem; }
 
   .hk-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-  .hk-issue { padding: 0.7rem 0.8rem; border-radius: 10px; background: var(--card); border: 1px solid var(--hk-line); }
+  .hk-issue { padding: 0.7rem 0.8rem; border-radius: 0.625rem; background: var(--card); border: 1px solid var(--hk-line); }
   .hk-issue-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.6rem; }
   .hk-issue b { font-size: 0.85rem; color: var(--fg); }
   .hk-issue p { margin: 0.25rem 0 0; font-size: 0.82rem; color: var(--fg-muted); line-height: 1.4; }
@@ -197,10 +197,10 @@
 
   /* What did you find? — four big choices */
   .hk-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
-  .hk-choice { position: relative; display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.7rem 0.75rem; border-radius: 10px; border: 1px solid var(--hk-line); background: var(--card); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .hk-choice { position: relative; display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.7rem 0.75rem; border-radius: 0.625rem; border: 1px solid var(--hk-line); background: var(--card); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
   .hk-choice:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
   .hk-choice input { position: absolute; opacity: 0; pointer-events: none; }
-  .hk-choice > i { flex: none; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
+  .hk-choice > i { flex: none; width: 1.875rem; height: 1.875rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
   .hk-choice b { display: block; font-size: 0.84rem; color: var(--fg); line-height: 1.25; }
   .hk-choice span { display: block; font-size: 0.74rem; color: var(--fg-muted); margin-top: 0.15rem; line-height: 1.35; }
   .hk-choice.is-on { border-color: var(--accent); background: var(--hk-tint); }
@@ -212,7 +212,7 @@
   .hk-chip-group + .hk-chip-group { margin-top: 0.6rem; }
   .hk-chip-group small { display: block; font-size: 0.72rem; color: var(--fg-muted); margin-bottom: 0.35rem; }
 
-  .hk-note { margin: 0; padding: 0.75rem 0.85rem; border-radius: 10px; font-size: 0.84rem; line-height: 1.45; display: flex; gap: 0.55rem; align-items: flex-start; }
+  .hk-note { margin: 0; padding: 0.75rem 0.85rem; border-radius: 0.625rem; font-size: 0.84rem; line-height: 1.45; display: flex; gap: 0.55rem; align-items: flex-start; }
   .hk-note i { margin-top: 0.15rem; }
   .hk-note.tone-fix, .hk-note.tone-done, .hk-note.tone-muted, .hk-note.tone-guest { color: var(--fg); }
   .hk-note.tone-fix i { color: var(--hk-fix); }
@@ -221,11 +221,11 @@
   .hk-meta { font-size: 0.76rem; color: var(--fg-muted); }
 
   /* Empty / loading */
-  .hk-empty { border: 1.5px dashed var(--hk-line); border-radius: 14px; padding: 2.4rem 1.5rem; text-align: center; }
-  .hk-empty-icon { width: 56px; height: 56px; margin: 0 auto 0.9rem; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; background: var(--hk-tint); color: var(--accent); }
+  .hk-empty { border: 1.5px dashed var(--hk-line); border-radius: 0.875rem; padding: 2.4rem 1.5rem; text-align: center; }
+  .hk-empty-icon { width: 3.5rem; height: 3.5rem; margin: 0 auto 0.9rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; background: var(--hk-tint); color: var(--accent); }
   .hk-empty h2 { margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--fg); }
   .hk-empty p { margin: 0.4rem auto 0; max-width: 50ch; font-size: 0.86rem; line-height: 1.5; color: var(--fg-muted); }
-  .hk-skel { height: 220px; border-radius: 14px; border: 1px solid var(--hk-line); background: linear-gradient(90deg, var(--hk-soft) 0%, color-mix(in srgb, var(--fg) 8%, transparent) 50%, var(--hk-soft) 100%); background-size: 200% 100%; animation: hk-shimmer 1.4s ease-in-out infinite; }
+  .hk-skel { height: 13.75rem; border-radius: 0.875rem; border: 1px solid var(--hk-line); background: linear-gradient(90deg, var(--hk-soft) 0%, color-mix(in srgb, var(--fg) 8%, transparent) 50%, var(--hk-soft) 100%); background-size: 200% 100%; animation: hk-shimmer 1.4s ease-in-out infinite; }
   @keyframes hk-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
   @media (prefers-reduced-motion: reduce) { .hk-skel { animation: none; } }
 
@@ -235,7 +235,7 @@
   @media (max-width: 560px) {
     .hk { padding: 1.1rem 1rem 2.5rem; }
     .hk-how, .hk-stats, .hk-choices { grid-template-columns: 1fr; }
-    .hk-views { width: 100%; border-radius: 14px; }
+    .hk-views { width: 100%; border-radius: 0.875rem; }
   }
 </style>
 @endsection

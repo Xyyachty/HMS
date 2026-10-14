@@ -37,7 +37,7 @@
   .rs-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
     font: 600 0.88rem/1 var(--font-body, 'Outfit', sans-serif);
-    padding: 0.8rem 1.15rem; border-radius: 10px; cursor: pointer; text-decoration: none;
+    padding: 0.8rem 1.15rem; border-radius: 0.625rem; cursor: pointer; text-decoration: none;
     border: 1px solid var(--accent); background: transparent; color: var(--accent);
     transition: background 0.15s, transform 0.1s;
   }
@@ -48,7 +48,7 @@
   }
 
   /* The list panel */
-  .rs-panel { background: var(--card); border: 1px solid var(--rs-line); border-radius: 14px; padding: 1.2rem 1.3rem 1.4rem; }
+  .rs-panel { background: var(--card); border: 1px solid var(--rs-line); border-radius: 0.875rem; padding: 1.2rem 1.3rem 1.4rem; }
   .rs-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
   .rs-views { box-sizing: border-box; max-width: 100%; display: inline-flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.3rem; border-radius: 999px; background: var(--rs-soft); border: 1px solid var(--rs-line); }
   .rs-view {
@@ -69,11 +69,11 @@
   .rs-view i { font-size: 0.8rem; }
   .rs-showing { margin: 0; color: var(--fg-muted); font-size: 0.8rem; display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
   .rs-live { display: inline-flex; align-items: center; gap: 0.35rem; }
-  .rs-live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--rs-ok); }
+  .rs-live::before { content: ''; width: 0.4375rem; height: 0.4375rem; border-radius: 50%; background: var(--rs-ok); }
 
   /* Order cards */
   .rs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 1rem; }
-  .rs-card { min-width: 0; border: 1px solid var(--rs-line); border-radius: 14px; background: var(--rs-soft); padding: 1.05rem 1.1rem 1rem; display: flex; flex-direction: column; gap: 0.85rem; }
+  .rs-card { min-width: 0; border: 1px solid var(--rs-line); border-radius: 0.875rem; background: var(--rs-soft); padding: 1.05rem 1.1rem 1rem; display: flex; flex-direction: column; gap: 0.85rem; }
   .rs-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
   .rs-room { display: block; font-size: 1.15rem; font-weight: 700; color: var(--fg); line-height: 1.2; }
   .rs-guest { display: block; font-size: 0.85rem; color: var(--fg-muted); margin-top: 0.2rem; }
@@ -89,18 +89,18 @@
   .rs-track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .rs-track li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; font-size: 0.68rem; color: var(--fg-muted); text-align: center; }
   .rs-track li::before {
-    content: ''; position: absolute; top: 6px; left: -50%; width: 100%; height: 2px;
+    content: ''; position: absolute; top: 0.375rem; left: -50%; width: 100%; height: 2px;
     background: var(--rs-line);
   }
   .rs-track li:first-child::before { display: none; }
   .rs-track li.is-done::before, .rs-track li.is-now::before { background: var(--accent); }
-  .rs-dot { position: relative; z-index: 1; width: 14px; height: 14px; border-radius: 50%; background: var(--card); border: 2px solid var(--rs-line); }
+  .rs-dot { position: relative; z-index: 1; width: 0.875rem; height: 0.875rem; border-radius: 50%; background: var(--card); border: 2px solid var(--rs-line); }
   .rs-track li.is-done .rs-dot { background: var(--accent); border-color: var(--accent); }
   .rs-track li.is-now .rs-dot { background: var(--card); border-color: var(--accent); box-shadow: 0 0 0 4px var(--rs-tint); }
   .rs-track li.is-now, .rs-track li.is-done { color: var(--fg); }
   .rs-track li.is-now { font-weight: 700; }
 
-  .rs-items { list-style: none; margin: 0; padding: 0.7rem 0.8rem; border-radius: 10px; background: var(--card); border: 1px solid var(--rs-line); display: grid; gap: 0.35rem; }
+  .rs-items { list-style: none; margin: 0; padding: 0.7rem 0.8rem; border-radius: 0.625rem; background: var(--card); border: 1px solid var(--rs-line); display: grid; gap: 0.35rem; }
   .rs-items li { display: flex; gap: 0.55rem; font-size: 0.86rem; color: var(--fg); }
   .rs-qty { flex: none; min-width: 1.9rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
   .rs-card-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.75rem; }
@@ -112,9 +112,9 @@
   .rs-note i { color: var(--accent); margin-top: 0.15rem; }
 
   /* Empty */
-  .rs-empty { border: 1.5px dashed var(--rs-line); border-radius: 14px; padding: 2.4rem 1.5rem; text-align: center; }
+  .rs-empty { border: 1.5px dashed var(--rs-line); border-radius: 0.875rem; padding: 2.4rem 1.5rem; text-align: center; }
   .rs-empty-icon {
-    width: 56px; height: 56px; margin: 0 auto 0.9rem; border-radius: 16px;
+    width: 3.5rem; height: 3.5rem; margin: 0 auto 0.9rem; border-radius: 1rem;
     display: flex; align-items: center; justify-content: center; font-size: 1.35rem;
     background: var(--rs-tint); color: var(--accent);
   }
@@ -123,7 +123,7 @@
 
   @media (max-width: 560px) {
     .rs { padding: 1.1rem 1rem 2.5rem; }
-    .rs-views { width: 100%; border-radius: 14px; }
+    .rs-views { width: 100%; border-radius: 0.875rem; }
   }
 
   /* Template 2 (cream / forest green / DM Sans + Cormorant Garamond), the same
@@ -146,7 +146,7 @@
   .rs-fit .rs-eyebrow { margin-bottom: 0.3rem; }
   .rs-fit .rs-head .rs-lead { font-size: 0.86rem; margin-top: 0.2rem; max-width: none; }
   .rs-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 1rem; }
-  .rs-col { min-height: 0; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--rs-line); border-radius: 14px; padding: 1.1rem 1.2rem; }
+  .rs-col { min-height: 0; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--rs-line); border-radius: 0.875rem; padding: 1.1rem 1.2rem; }
   .rs-col-title { margin: 0 0 0.7rem; font-size: 1.1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
   .rs-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 0.25rem; }
   @media (max-width: 1000px) {
@@ -163,7 +163,7 @@
 
   /* Step 1: guests as cards to tap, not a dropdown. */
   .rs-guests { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.5rem; max-height: 7.4rem; overflow-y: auto; margin-bottom: 0.8rem; }
-  .rs-guest-btn { text-align: left; padding: 0.5rem 0.7rem; border-radius: 10px; border: 1px solid var(--rs-line); background: var(--rs-soft); color: var(--fg); cursor: pointer; font: inherit; transition: border-color 0.15s, background 0.15s, transform 0.1s; }
+  .rs-guest-btn { text-align: left; padding: 0.5rem 0.7rem; border-radius: 0.625rem; border: 1px solid var(--rs-line); background: var(--rs-soft); color: var(--fg); cursor: pointer; font: inherit; transition: border-color 0.15s, background 0.15s, transform 0.1s; }
   .rs-guest-btn:hover { border-color: var(--accent); }
   .rs-guest-btn:active { transform: scale(0.98); }
   .rs-guest-btn.is-on { border-color: var(--accent); background: var(--rs-tint); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -176,13 +176,13 @@
   .rs-course { padding: 0.3rem 0.75rem; border-radius: 999px; border: 1px solid var(--rs-line); background: transparent; color: var(--fg-muted); cursor: pointer; font-family: inherit; font-size: 0.76rem; font-weight: 600; line-height: 1.2; white-space: nowrap; }
   .rs-course.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
   .rs-dishes { display: grid; gap: 0.35rem; }
-  .rs-dish { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0.7rem; border: 1px solid var(--rs-line); border-radius: 10px; }
+  .rs-dish { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0.7rem; border: 1px solid var(--rs-line); border-radius: 0.625rem; }
   .rs-dish.is-picked { border-color: var(--accent); background: var(--rs-tint); }
   .rs-dish-name { flex: 1; min-width: 0; }
   .rs-dish-name b { display: block; font-size: 0.9rem; }
   .rs-dish-name span { font-size: 0.75rem; color: var(--fg-muted); }
   .rs-stepper { display: inline-flex; align-items: center; gap: 0.45rem; }
-  .rs-stepper button { width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--rs-line); background: transparent; color: var(--fg); cursor: pointer; font-size: 1rem; line-height: 1; }
+  .rs-stepper button { width: 1.875rem; height: 1.875rem; border-radius: 0.5625rem; border: 1px solid var(--rs-line); background: transparent; color: var(--fg); cursor: pointer; font-size: 1rem; line-height: 1; }
   .rs-stepper button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
   .rs-stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
   .rs-stepper output { min-width: 1.4rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -198,12 +198,12 @@
   .rs-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .rs-btn-big { padding: 0.9rem 1.4rem; font-size: 0.95rem; }
   .rs-error { margin: 0; color: #f87171; font-size: 0.85rem; }
-  .rs-notice { margin: 0; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--rs-ok); font-size: 0.85rem; color: var(--fg); display: flex; gap: 0.5rem; align-items: center; }
+  .rs-notice { margin: 0; padding: 0.6rem 0.8rem; border-radius: 0.625rem; border: 1px solid var(--rs-ok); font-size: 0.85rem; color: var(--fg); display: flex; gap: 0.5rem; align-items: center; }
   .rs-notice i { color: var(--rs-ok); }
-  .rs-hint { margin: 0; padding: 0.8rem; border-radius: 10px; border: 1.5px dashed var(--rs-line); font-size: 0.85rem; color: var(--fg-muted); line-height: 1.5; }
+  .rs-hint { margin: 0; padding: 0.8rem; border-radius: 0.625rem; border: 1.5px dashed var(--rs-line); font-size: 0.85rem; color: var(--fg-muted); line-height: 1.5; }
 
   /* Orders column: the cards sit one under another in their own scroll. */
-  .rs-col .rs-views { margin-bottom: 0.75rem; flex-wrap: nowrap; overflow-x: auto; border-radius: 12px; flex: none; }
+  .rs-col .rs-views { margin-bottom: 0.75rem; flex-wrap: nowrap; overflow-x: auto; border-radius: 0.75rem; flex: none; }
   .rs-col .rs-view { white-space: nowrap; padding: 0.4rem 0.7rem; font-size: 0.78rem; }
   .rs-col .rs-grid { grid-template-columns: 1fr; gap: 0.75rem; }
   .rs-col .rs-card { padding: 0.85rem 0.95rem; gap: 0.65rem; }

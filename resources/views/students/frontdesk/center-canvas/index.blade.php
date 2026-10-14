@@ -29,7 +29,7 @@
             <p class="text-sm text-zinc-400">Select a starting template for your group. Teammates will see it only after you choose.</p>
         </div>
         <div class="flex gap-8 flex-wrap justify-center w-full">
-            <div class="group flex-1 min-w-[320px] max-w-[440px] bg-zinc-900 border border-zinc-700 rounded-2xl overflow-hidden {{ $accentBorder }} transition-all duration-200 text-left">
+            <div class="group flex-1 min-w-[20rem] max-w-[27.5rem] bg-zinc-900 border border-zinc-700 rounded-2xl overflow-hidden {{ $accentBorder }} transition-all duration-200 text-left">
                 <div class="h-64 bg-zinc-800 overflow-hidden relative">
                     <iframe src="{{ route('students.frontdesk.template.1', ['role' => $builderRole ?? 'front_desk']) }}" class="w-full h-full border-0 pointer-events-none scale-[0.5] origin-top-left" style="width:200%;height:200%;" tabindex="-1" aria-hidden="true"></iframe>
                     <div class="absolute inset-0 bg-zinc-900/20 group-hover:bg-transparent transition-colors"></div>
@@ -44,7 +44,7 @@
                 </div>
             </div>
 
-            <div class="group flex-1 min-w-[320px] max-w-[440px] bg-zinc-900 border border-zinc-700 rounded-2xl overflow-hidden {{ $accentBorder }} transition-all duration-200 text-left">
+            <div class="group flex-1 min-w-[20rem] max-w-[27.5rem] bg-zinc-900 border border-zinc-700 rounded-2xl overflow-hidden {{ $accentBorder }} transition-all duration-200 text-left">
                 <div class="h-64 bg-zinc-800 overflow-hidden relative">
                     <iframe src="{{ route('students.frontdesk.template.2', ['role' => $builderRole ?? 'front_desk']) }}" class="w-full h-full border-0 pointer-events-none scale-[0.5] origin-top-left" style="width:200%;height:200%;" tabindex="-1" aria-hidden="true"></iframe>
                     <div class="absolute inset-0 bg-zinc-900/20 group-hover:bg-transparent transition-colors"></div>
@@ -65,11 +65,11 @@
         <div class="flex-1 min-h-0 w-full max-w-6xl mx-auto flex flex-col bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden shadow-2xl">
             <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-700 shrink-0">
                 <div>
-                    <p class="text-[10px] font-semibold tracking-widest uppercase" style="color: {{ $accent }}">Default Design Preview</p>
+                    <p class="text-[0.625rem] font-semibold tracking-widest uppercase" style="color: {{ $accent }}">Default Design Preview</p>
                     <h3 id="templatePreviewTitle" class="text-sm font-bold text-white">Template</h3>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button type="button" id="templatePreviewSelectBtn" onclick="selectHotelTemplate(window.__previewingTemplate)" class="text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-md text-black transition-colors" style="background: {{ $accent }}">Select this template</button>
+                    <button type="button" id="templatePreviewSelectBtn" onclick="selectHotelTemplate(window.__previewingTemplate)" class="text-[0.6875rem] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-md text-black transition-colors" style="background: {{ $accent }}">Select this template</button>
                     <button type="button" onclick="closeTemplatePreview()" class="text-zinc-400 hover:text-white w-8 h-8 flex items-center justify-center rounded-md hover:bg-zinc-800 transition-colors" aria-label="Close preview">
                         <i class="fas fa-times"></i>
                     </button>
@@ -83,19 +83,19 @@
     @elseif($needsConceptApproval)
     <div class="flex-1 flex flex-col items-center justify-center gap-6">
         <div class="text-center max-w-sm">
-            <p class="text-[10px] font-semibold tracking-widest uppercase mb-2" style="color: {{ $accent }}">Front Desk Editor</p>
+            <p class="text-[0.625rem] font-semibold tracking-widest uppercase mb-2" style="color: {{ $accent }}">Front Desk Editor</p>
             <h2 class="text-xl font-bold text-white mb-1">Concept approval required</h2>
             <p class="text-xs text-zinc-500">Your faculty has not approved a hotel concept yet. Once they approve one of your team's two proposed concepts, you'll be able to preview and select a Default Template.</p>
         </div>
         <div class="w-16 h-16 rounded-full border-2 border-dashed border-zinc-700 flex items-center justify-center">
             <i class="fas fa-clipboard-check text-2xl text-zinc-600"></i>
         </div>
-        <a href="{{ route('students.dashboard') }}" class="text-[10px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-md border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition-colors">Check concept status</a>
+        <a href="{{ route('students.dashboard') }}" class="text-[0.625rem] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-md border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition-colors">Check concept status</a>
     </div>
     @elseif($waitingForFrontDesk)
     <div class="flex-1 flex flex-col items-center justify-center gap-6">
         <div class="text-center max-w-sm">
-            <p class="text-[10px] font-semibold tracking-widest uppercase mb-2" style="color: {{ $accent }}">{{ $moduleLabel }}</p>
+            <p class="text-[0.625rem] font-semibold tracking-widest uppercase mb-2" style="color: {{ $accent }}">{{ $moduleLabel }}</p>
             <h2 class="text-xl font-bold text-white mb-1">Waiting for Front Desk</h2>
             <p class="text-xs text-zinc-500">Your team will see the hotel template only after Front Desk chooses Template 1 or Template 2.</p>
         </div>

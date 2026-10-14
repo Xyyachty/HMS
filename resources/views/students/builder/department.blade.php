@@ -98,9 +98,9 @@
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #050507; color: #fff; }
 
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar { width: 0.25rem; height: 0.25rem; }
         ::-webkit-scrollbar-track { background: #0a0a0c; }
-        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 0.625rem; }
         ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
         /* ── TOPBAR ── */
@@ -120,7 +120,7 @@
         }
         
         .logo-icon {
-            width: 32px; height: 32px;
+            width: 2rem; height: 2rem;
             border-radius: 50%;
             object-fit: contain;
         }
@@ -129,9 +129,9 @@
             background: {{ $theme['badge_bg'] }};
             border: 1px solid {{ $theme['badge_border'] }};
             color: {{ $theme['badge_color'] }};
-            font-size: 10px;
-            padding: 4px 10px;
-            border-radius: 6px;
+            font-size: 0.625rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 0.375rem;
             font-weight: 600;
             text-transform: uppercase;
         }
@@ -139,25 +139,25 @@
         /* ── MODULE SWITCHER (only when a member holds more than one role) ── */
         .module-switcher { position: relative; flex-shrink: 0; }
         .module-switcher .module-badge {
-            display: inline-flex; align-items: center; gap: 6px;
+            display: inline-flex; align-items: center; gap: 0.375rem;
             cursor: pointer; transition: filter 0.15s;
         }
         .module-switcher .module-badge:hover { filter: brightness(1.25); }
         .module-menu {
-            position: absolute; top: calc(100% + 10px); left: 0; width: 230px;
-            background: #18181b; border: 1px solid #27272a; border-radius: 12px;
-            padding: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
+            position: absolute; top: calc(100% + 0.625rem); left: 0; width: 14.375rem;
+            background: #18181b; border: 1px solid #27272a; border-radius: 0.75rem;
+            padding: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
             display: none; animation: dropIn 0.2s ease-out;
         }
         .module-menu.show { display: block; }
         .module-menu-label {
-            padding: 4px 12px 8px; font-size: 10px; letter-spacing: 0.12em;
+            padding: 0.25rem 0.75rem 0.5rem; font-size: 0.625rem; letter-spacing: 0.12em;
             text-transform: uppercase; color: #52525b; font-weight: 700;
         }
         .module-menu a {
-            display: flex; align-items: center; gap: 10px;
-            padding: 9px 12px; border-radius: 6px;
-            color: #a1a1aa; font-size: 13px; text-decoration: none;
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.5625rem 0.75rem; border-radius: 0.375rem;
+            color: #a1a1aa; font-size: 0.8125rem; text-decoration: none;
             transition: all 0.15s;
         }
         .module-menu a:hover { background: #27272a; color: #fafafa; }
@@ -165,13 +165,13 @@
             background: {{ $theme['badge_bg'] }};
             color: {{ $theme['badge_color'] }};
         }
-        .module-menu a i { width: 16px; font-size: 13px; }
+        .module-menu a i { width: 1rem; font-size: 0.8125rem; }
         .module-menu .view-only-chip {
-            margin-left: auto; font-size: 9px; letter-spacing: 0.06em;
+            margin-left: auto; font-size: 0.5625rem; letter-spacing: 0.06em;
             text-transform: uppercase; font-weight: 700;
             color: #fbbf24; background: rgba(245,158,11,0.12);
             border: 1px solid rgba(245,158,11,0.25);
-            padding: 2px 6px; border-radius: 4px;
+            padding: 2px 0.375rem; border-radius: 0.25rem;
         }
 
         /* ── SIDEBARS ── */
@@ -181,12 +181,12 @@
         }
         
         .tool-card {
-            margin: 2px 12px;
-            padding: 12px;
-            border-radius: 8px;
+            margin: 2px 0.75rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
             border: 1px solid transparent;
             background: transparent;
-            display: flex; align-items: center; gap: 12px;
+            display: flex; align-items: center; gap: 0.75rem;
             cursor: grab; transition: all 0.2s;
         }
         .tool-card:hover { 
@@ -196,9 +196,9 @@
         .tool-card:active { cursor: grabbing; }
         
         .tool-icon {
-            width: 40px; height: 40px; border-radius: 8px;
+            width: 2.5rem; height: 2.5rem; border-radius: 0.5rem;
             display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; font-size: 16px;
+            flex-shrink: 0; font-size: 1rem;
             color: #fff;
             transition: transform 0.2s;
         }
@@ -219,7 +219,7 @@
         
         .canvas-frame {
             background: #ffffff;
-            border-radius: 12px;
+            border-radius: 0.75rem;
             overflow: hidden;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
             border: 1px solid #27272a;
@@ -232,29 +232,29 @@
         .browser-bar { 
             background: #f4f4f5; 
             border-bottom: 1px solid #e4e4e7; 
-            padding: 0 12px;
-            height: 40px;
-            min-height: 40px;
+            padding: 0 0.75rem;
+            height: 2.5rem;
+            min-height: 2.5rem;
         }
         .browser-btn {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 0.375rem;
             border: 1px solid #e4e4e7;
             background: #ffffff;
             color: #71717a;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 0.6875rem;
         }
         .url-pill { 
             background: #ffffff; 
             border: 1px solid #e4e4e7; 
             color: #71717a; 
-            font-size: 11px; 
-            border-radius: 4px; 
-            padding: 4px 12px;
+            font-size: 0.6875rem; 
+            border-radius: 0.25rem; 
+            padding: 0.25rem 0.75rem;
         }
 
         .dropzone {
@@ -276,10 +276,10 @@
         }
         
         .empty-icon-ring {
-            width: 80px; height: 80px; border-radius: 50%;
+            width: 5rem; height: 5rem; border-radius: 50%;
             border: 2px dashed #d4d4d8;
             display: flex; align-items: center; justify-content: center;
-            margin-bottom: 20px; color: #a1a1aa; font-size: 28px;
+            margin-bottom: 1.25rem; color: #a1a1aa; font-size: 1.75rem;
             animation: pulse-ring 3s ease-in-out infinite;
         }
         @keyframes pulse-ring { 0%,100%{border-color:#d4d4d8; color:#a1a1aa;} 50%{border-color:#06b6d4; color:#06b6d4;} }
@@ -293,20 +293,20 @@
         
         .dropped-block:hover { 
             border-color: #06b6d4; 
-            border-radius: 12px; 
+            border-radius: 0.75rem; 
             box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.1);
         }
         
         .block-toolbar {
-            position: absolute; top: -16px; right: 10px;
-            display: none; gap: 4px; z-index: 20;
+            position: absolute; top: -1rem; right: 0.625rem;
+            display: none; gap: 0.25rem; z-index: 20;
         }
         .dropped-block:hover .block-toolbar { display: flex; }
         
         .tb-btn {
-            height: 28px; padding: 0 10px; border-radius: 6px;
-            font-size: 10px; font-weight: 600; border: none; cursor: pointer;
-            display: flex; align-items: center; gap: 4px;
+            height: 1.75rem; padding: 0 0.625rem; border-radius: 0.375rem;
+            font-size: 0.625rem; font-weight: 600; border: none; cursor: pointer;
+            display: flex; align-items: center; gap: 0.25rem;
             font-family: 'Inter', sans-serif; transition: all 0.15s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
@@ -317,29 +317,29 @@
 
         /* ── UI COMPONENTS ── */
         .block-heading {
-            font-size: 14px; font-weight: 600; color: #18181b;
-            display: flex; align-items: center; gap: 8px;
-            margin-bottom: 16px;
+            font-size: 0.875rem; font-weight: 600; color: #18181b;
+            display: flex; align-items: center; gap: 0.5rem;
+            margin-bottom: 1rem;
         }
 
-        .hms-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .hms-table th { background: #f4f4f5; color: #52525b; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 14px; text-align: left; border-bottom: 1px solid #e4e4e7; }
-        .hms-table td { padding: 12px 14px; border-bottom: 1px solid #f4f4f5; color: #27272a; }
+        .hms-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        .hms-table th { background: #f4f4f5; color: #52525b; font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.625rem 0.875rem; text-align: left; border-bottom: 1px solid #e4e4e7; }
+        .hms-table td { padding: 0.75rem 0.875rem; border-bottom: 1px solid #f4f4f5; color: #27272a; }
         .hms-table tr:last-child td { border-bottom: none; }
         .hms-table tr:hover td { background: #fafafa; }
         
-        .status-pill { padding: 4px 10px; border-radius: 9999px; font-size: 10px; font-weight: 600; display: inline-block; }
+        .status-pill { padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.625rem; font-weight: 600; display: inline-block; }
 
         .stat-card {
-            background: #fff; border-radius: 12px; padding: 16px;
+            background: #fff; border-radius: 0.75rem; padding: 1rem;
             border-top: 3px solid;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
 
         .hk-row {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 14px; border-radius: 8px; background: #fafafa;
-            border: 1px solid #f4f4f5; font-size: 12px; transition: all 0.15s;
+            padding: 0.75rem 0.875rem; border-radius: 0.5rem; background: #fafafa;
+            border: 1px solid #f4f4f5; font-size: 0.75rem; transition: all 0.15s;
         }
         .hk-row:hover { border-color: #d4d4d8; background: #fff; }
 
@@ -347,33 +347,33 @@
         .settings-card {
             background: rgba(24, 24, 27, 0.5);
             border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 10px;
-            padding: 16px;
-            margin-bottom: 12px;
+            border-radius: 0.625rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
         }
         .settings-label {
-            font-size: 10px; font-weight: 600; color: #71717a;
-            letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; display: block;
+            font-size: 0.625rem; font-weight: 600; color: #71717a;
+            letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 0.5rem; display: block;
         }
         .settings-input, .settings-select {
-            width: 100%; padding: 8px 10px; border-radius: 6px;
+            width: 100%; padding: 0.5rem 0.625rem; border-radius: 0.375rem;
             background: #09090b; border: 1px solid #27272a;
-            color: #d4d4d8; font-size: 12px; font-family: 'Inter', sans-serif;
+            color: #d4d4d8; font-size: 0.75rem; font-family: 'Inter', sans-serif;
             transition: border-color 0.2s; outline: none;
         }
         .settings-input:focus, .settings-select:focus { border-color: #06b6d4; }
 
         .style-input {
-            width: 100%; padding: 8px 10px; border-radius: 6px;
+            width: 100%; padding: 0.5rem 0.625rem; border-radius: 0.375rem;
             background: #09090b; border: 1px solid #27272a;
-            color: #d4d4d8; font-size: 12px; font-family: 'Inter', sans-serif;
+            color: #d4d4d8; font-size: 0.75rem; font-family: 'Inter', sans-serif;
             transition: border-color 0.2s; outline: none;
         }
         .style-input:focus { border-color: #06b6d4; }
         .style-input option { background: #18181b; color: #d4d4d8; }
         
         .color-swatch {
-            width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+            width: 1.5rem; height: 1.5rem; border-radius: 0.375rem; cursor: pointer;
             border: 2px solid transparent; transition: all 0.15s;
         }
         .color-swatch:hover { transform: scale(1.15); }
@@ -382,39 +382,39 @@
         /* ── PROFILE DROPDOWN ── */
 
         .avatar {
-            width: 32px; height: 32px; border-radius: 6px;
+            width: 2rem; height: 2rem; border-radius: 0.375rem;
             background: linear-gradient(135deg, #06b6d4, #0891b2);
             display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700; color: #fff;
+            font-size: 0.75rem; font-weight: 700; color: #fff;
         }
         
         .profile-dropdown {
-            position: absolute; top: calc(100% + 12px); right: 0; width: 220px;
-            background: #18181b; border: 1px solid #27272a; border-radius: 12px;
-            padding: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
+            position: absolute; top: calc(100% + 0.75rem); right: 0; width: 13.75rem;
+            background: #18181b; border: 1px solid #27272a; border-radius: 0.75rem;
+            padding: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
             display: none; animation: dropIn 0.2s ease-out;
         }
         @keyframes dropIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         .profile-dropdown.show { display: block; }
         
         .dd-item {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px 12px; border-radius: 6px;
-            color: #a1a1aa; font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.625rem 0.75rem; border-radius: 0.375rem;
+            color: #a1a1aa; font-size: 0.8125rem; cursor: pointer;
             transition: all 0.15s;
         }
         .dd-item:hover { background: #27272a; color: #fafafa; }
-        .dd-item i { width: 16px; font-size: 14px; color: #71717a; }
-        .dd-divider { height: 1px; background: #27272a; margin: 6px 0; }
+        .dd-item i { width: 1rem; font-size: 0.875rem; color: #71717a; }
+        .dd-divider { height: 1px; background: #27272a; margin: 0.375rem 0; }
         .dd-logout { color: #ef4444 !important; }
         .dd-logout i { color: #ef4444 !important; }
 
         /* ── ACTION BUTTONS ── */
         .hdr-btn {
-            height: 36px; padding: 0 16px; border-radius: 8px;
-            font-size: 12px; font-weight: 600; cursor: pointer;
+            height: 2.25rem; padding: 0 1rem; border-radius: 0.5rem;
+            font-size: 0.75rem; font-weight: 600; cursor: pointer;
             font-family: 'Inter', sans-serif; border: none;
-            display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+            display: flex; align-items: center; gap: 0.375rem; transition: all 0.2s;
             text-decoration: none;
         }
         .btn-secondary { background: #18181b; color: #d4d4d8; border: 1px solid #27272a; }
@@ -438,16 +438,16 @@
 
         /* Toast */
         #toast {
-            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-            background: #18181b; border: 1px solid #27272a; color: #fafafa; padding: 12px 24px; border-radius: 8px;
-            font-size: 13px; font-family: 'Inter', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: #18181b; border: 1px solid #27272a; color: #fafafa; padding: 0.75rem 1.5rem; border-radius: 0.5rem;
+            font-size: 0.8125rem; font-family: 'Inter', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
             opacity: 0; z-index: 9999;
         }
         #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         /* ── Fullscreen Redesign Mode ── */
-        body.fs-redesign .topbar { height: 52px; }
-        body.fs-redesign .topbar-row { height: 52px; }
+        body.fs-redesign .topbar { height: 3.25rem; }
+        body.fs-redesign .topbar-row { height: 3.25rem; }
         body.fs-redesign #leftSidebar { display: none !important; }
         body.fs-redesign #mainLayout { position: relative; }
         body.fs-redesign #centerCanvasWrap {
@@ -474,10 +474,10 @@
         }
         body.fs-redesign #rightSidebar {
             position: fixed;
-            top: 52px;
+            top: 3.25rem;
             right: 0;
             bottom: 0;
-            width: 320px;
+            width: 20rem;
             max-width: 90vw;
             z-index: 60;
             transform: translateX(0);
@@ -495,38 +495,38 @@
         .fs-float-btn {
             position: fixed;
             z-index: 70;
-            right: 16px;
-            bottom: 20px;
-            height: 44px;
-            padding: 0 16px;
+            right: 1rem;
+            bottom: 1.25rem;
+            height: 2.75rem;
+            padding: 0 1rem;
             border-radius: 999px;
             background: linear-gradient(135deg, #06b6d4, #2563eb);
             color: #fff;
-            font-size: 12px;
+            font-size: 0.75rem;
             font-weight: 700;
             border: none;
             cursor: pointer;
             align-items: center;
-            gap: 8px;
+            gap: 0.5rem;
             box-shadow: 0 10px 28px rgba(6, 182, 212, 0.35);
             transition: transform 0.15s ease;
         }
         .fs-float-btn:hover { transform: scale(1.04); }
-        body.fs-redesign.fs-panel-collapsed .fs-float-btn { right: 16px; }
-        body.fs-redesign:not(.fs-panel-collapsed) .fs-float-btn { right: 336px; }
+        body.fs-redesign.fs-panel-collapsed .fs-float-btn { right: 1rem; }
+        body.fs-redesign:not(.fs-panel-collapsed) .fs-float-btn { right: 21rem; }
         .topbar-row {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 0.75rem;
             width: 100%;
-            height: 56px;
-            padding: 0 16px;
+            height: 3.5rem;
+            padding: 0 1rem;
             box-sizing: border-box;
         }
         .topbar-brand {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 0.625rem;
             flex-shrink: 0;
             min-width: 0;
         }
@@ -541,11 +541,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            padding: 0 8px;
+            gap: 0.625rem;
+            padding: 0 0.5rem;
         }
         .topbar-mid .save-hint {
-            font-size: 11px;
+            font-size: 0.6875rem;
             color: #71717a;
             white-space: nowrap;
             overflow: hidden;
@@ -556,27 +556,27 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            gap: 8px;
+            gap: 0.5rem;
             flex-shrink: 0;
             flex-wrap: nowrap;
         }
         .topbar-actions .hdr-btn {
             white-space: nowrap;
-            height: 34px;
-            padding: 0 12px;
+            height: 2.125rem;
+            padding: 0 0.75rem;
         }
         .topbar-actions #profileWrapper {
             margin-left: 2px;
             flex-shrink: 0;
         }
         .topbar-actions .avatar {
-            width: 26px;
-            height: 26px;
-            font-size: 10px;
+            width: 1.625rem;
+            height: 1.625rem;
+            font-size: 0.625rem;
         }
         @media (max-width: 1100px) {
             .topbar-mid .save-hint { display: none; }
-            .hms-logo-text { max-width: 140px; }
+            .hms-logo-text { max-width: 8.75rem; }
         }
         @media (max-width: 900px) {
             #fsToggleLabel { display: none; }
@@ -643,7 +643,7 @@
         html[data-ops-theme="2"] #hbVersionList .text-zinc-200 { color: #1a1a1a !important; }
         html[data-ops-theme="2"] #hbLayoutList p.text-zinc-600,
         html[data-ops-theme="2"] #hbVersionList p.text-zinc-600,
-        html[data-ops-theme="2"] #hbVersionList p.text-\[10px\] { color: #9a958e !important; }
+        html[data-ops-theme="2"] #hbVersionList p.text-\[0\.625rem\] { color: #9a958e !important; }
         html[data-ops-theme="2"] #hbLayoutList button.text-zinc-500,
         html[data-ops-theme="2"] #hbVersionList button.text-zinc-500 { color: #9a958e !important; }
         html[data-ops-theme="2"] #hbLayoutList button.hover\:text-white:hover { color: #1a1a1a !important; }
@@ -681,6 +681,7 @@
 @if($opsSitePalette)
     @include('students.builder.site-theme', ['p' => $opsSitePalette])
 @endif
+    @include('partials.portal-scale')
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
@@ -701,7 +702,7 @@
                 <div class="module-switcher" id="moduleSwitcher">
                     <span class="module-badge" onclick="toggleModuleMenu()" title="Switch module">
                         {{ $moduleLabel }}
-                        <i class="fas fa-chevron-down text-[8px]" id="moduleChevron"></i>
+                        <i class="fas fa-chevron-down text-[0.5rem]" id="moduleChevron"></i>
                     </span>
                     <div class="module-menu" id="moduleMenu">
                         <p class="module-menu-label">My Modules</p>
@@ -925,9 +926,9 @@
                 box.innerHTML = versions.map(function (v) {
                     return '<div class="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900/50">' +
                         '<div class="flex-1 min-w-0"><p class="text-zinc-200 font-semibold truncate">v' + v.version + ' · ' + (v.label || 'Snapshot') + '</p>' +
-                        '<p class="text-[10px] text-zinc-600">' + (v.created_at || '') + '</p></div>' +
+                        '<p class="text-[0.625rem] text-zinc-600">' + (v.created_at || '') + '</p></div>' +
                         (window.HMS_CAN_EDIT_TEMPLATE
-                            ? '<button type="button" class="text-[10px] text-cyan-400 hover:underline" data-hb-restore="' + v.version + '">Restore</button>'
+                            ? '<button type="button" class="text-[0.625rem] text-cyan-400 hover:underline" data-hb-restore="' + v.version + '">Restore</button>'
                             : '') +
                         '</div>';
                 }).join('');
@@ -1052,14 +1053,14 @@
                         <div class="hk-row">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs">J</div>
-                                <div><p class="font-bold text-zinc-800">John Doe</p><p class="text-[10px] text-zinc-400">Room 101</p></div>
+                                <div><p class="font-bold text-zinc-800">John Doe</p><p class="text-[0.625rem] text-zinc-400">Room 101</p></div>
                             </div>
                             <div class="text-right"><span class="text-xs font-bold text-orange-600">₱4,500 Balance</span></div>
                         </div>
                         <div class="hk-row">
                              <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-xs">A</div>
-                                <div><p class="font-bold text-zinc-800">Ana Reyes</p><p class="text-[10px] text-zinc-400">Room 204</p></div>
+                                <div><p class="font-bold text-zinc-800">Ana Reyes</p><p class="text-[0.625rem] text-zinc-400">Room 204</p></div>
                             </div>
                             <div class="text-right"><span class="text-xs font-bold text-green-600">Paid</span></div>
                         </div>
@@ -1099,11 +1100,11 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div class="p-3 bg-green-50 rounded-lg text-center border border-green-100">
                             <p class="text-2xl font-bold text-green-700">24</p>
-                            <p class="text-[10px] text-green-600 uppercase font-bold">Active</p>
+                            <p class="text-[0.625rem] text-green-600 uppercase font-bold">Active</p>
                         </div>
                         <div class="p-3 bg-zinc-50 rounded-lg text-center border border-zinc-100">
                             <p class="text-2xl font-bold text-zinc-700">8</p>
-                            <p class="text-[10px] text-zinc-500 uppercase font-bold">Expired</p>
+                            <p class="text-[0.625rem] text-zinc-500 uppercase font-bold">Expired</p>
                         </div>
                     </div>
                 </div>`;
@@ -1617,7 +1618,7 @@
 
             if (assignedTasks.length === 0) {
                 const empty = document.createElement('p');
-                empty.className = 'text-[11px] text-zinc-500';
+                empty.className = 'text-[0.6875rem] text-zinc-500';
                 empty.textContent = 'No assigned tasks yet.';
                 list.appendChild(empty);
                 if (pager) pager.classList.add('hidden');
@@ -1639,19 +1640,19 @@
                 const top = document.createElement('div');
                 top.className = 'flex items-center justify-between gap-2';
                 const step = document.createElement('span');
-                step.className = 'text-[10px] font-bold tracking-wider text-cyan-400';
+                step.className = 'text-[0.625rem] font-bold tracking-wider text-cyan-400';
                 step.textContent = task.step_label || 'TASK';
                 const pill = document.createElement('span');
-                pill.className = 'shrink-0 px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wide ' + assignedTaskStatusClasses(task.status);
+                pill.className = 'shrink-0 px-1.5 py-0.5 rounded border text-[0.5625rem] font-bold uppercase tracking-wide ' + assignedTaskStatusClasses(task.status);
                 pill.textContent = task.status_label;
                 top.append(step, pill);
 
                 const title = document.createElement('p');
-                title.className = 'text-[12px] font-bold text-white leading-snug mt-1';
+                title.className = 'text-[0.75rem] font-bold text-white leading-snug mt-1';
                 title.textContent = task.title;
 
                 const meta = document.createElement('p');
-                meta.className = 'text-[10px] text-zinc-500 mt-0.5';
+                meta.className = 'text-[0.625rem] text-zinc-500 mt-0.5';
                 meta.textContent = task.role_label + (task.due ? ' · Due: ' + task.due : '');
 
                 card.append(top, title, meta);
@@ -1674,19 +1675,19 @@
             prev.type = 'button';
             prev.title = 'Previous tasks';
             prev.className = btnBase;
-            prev.innerHTML = '<i class="fas fa-chevron-left text-[11px]"></i>';
+            prev.innerHTML = '<i class="fas fa-chevron-left text-[0.6875rem]"></i>';
             prev.disabled = assignedTaskPage === 0;
             prev.addEventListener('click', function () { goToAssignedTaskPage(assignedTaskPage - 1); });
 
             const label = document.createElement('span');
-            label.className = 'text-[11px] font-bold text-white tracking-wide';
+            label.className = 'text-[0.6875rem] font-bold text-white tracking-wide';
             label.textContent = 'Page ' + (assignedTaskPage + 1) + ' of ' + totalPages;
 
             const next = document.createElement('button');
             next.type = 'button';
             next.title = 'Next tasks';
             next.className = btnBase;
-            next.innerHTML = '<i class="fas fa-chevron-right text-[11px]"></i>';
+            next.innerHTML = '<i class="fas fa-chevron-right text-[0.6875rem]"></i>';
             next.disabled = assignedTaskPage >= totalPages - 1;
             next.addEventListener('click', function () { goToAssignedTaskPage(assignedTaskPage + 1); });
 

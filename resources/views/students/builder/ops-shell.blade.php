@@ -81,9 +81,9 @@
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #050507; color: #fff; }
 
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar { width: 0.25rem; height: 0.25rem; }
         ::-webkit-scrollbar-track { background: #0a0a0c; }
-        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 0.625rem; }
         ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
         .topbar {
@@ -102,7 +102,7 @@
         }
 
         .logo-icon {
-            width: 32px; height: 32px;
+            width: 2rem; height: 2rem;
             border-radius: 50%;
             object-fit: contain;
         }
@@ -111,34 +111,34 @@
             background: {{ $theme['badge_bg'] }};
             border: 1px solid {{ $theme['badge_border'] }};
             color: {{ $theme['badge_color'] }};
-            font-size: 10px;
-            padding: 4px 10px;
-            border-radius: 6px;
+            font-size: 0.625rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 0.375rem;
             font-weight: 600;
             text-transform: uppercase;
         }
 
         .module-switcher { position: relative; flex-shrink: 0; }
         .module-switcher .module-badge {
-            display: inline-flex; align-items: center; gap: 6px;
+            display: inline-flex; align-items: center; gap: 0.375rem;
             cursor: pointer; transition: filter 0.15s;
         }
         .module-switcher .module-badge:hover { filter: brightness(1.25); }
         .module-menu {
-            position: absolute; top: calc(100% + 10px); left: 0; width: 230px;
-            background: #18181b; border: 1px solid #27272a; border-radius: 12px;
-            padding: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
+            position: absolute; top: calc(100% + 0.625rem); left: 0; width: 14.375rem;
+            background: #18181b; border: 1px solid #27272a; border-radius: 0.75rem;
+            padding: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
             display: none; animation: dropIn 0.2s ease-out;
         }
         .module-menu.show { display: block; }
         .module-menu-label {
-            padding: 4px 12px 8px; font-size: 10px; letter-spacing: 0.12em;
+            padding: 0.25rem 0.75rem 0.5rem; font-size: 0.625rem; letter-spacing: 0.12em;
             text-transform: uppercase; color: #52525b; font-weight: 700;
         }
         .module-menu a {
-            display: flex; align-items: center; gap: 10px;
-            padding: 9px 12px; border-radius: 6px;
-            color: #a1a1aa; font-size: 13px; text-decoration: none;
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.5625rem 0.75rem; border-radius: 0.375rem;
+            color: #a1a1aa; font-size: 0.8125rem; text-decoration: none;
             transition: all 0.15s;
         }
         .module-menu a:hover { background: #27272a; color: #fafafa; }
@@ -146,13 +146,13 @@
             background: {{ $theme['badge_bg'] }};
             color: {{ $theme['badge_color'] }};
         }
-        .module-menu a i { width: 16px; font-size: 13px; }
+        .module-menu a i { width: 1rem; font-size: 0.8125rem; }
         .module-menu .view-only-chip {
-            margin-left: auto; font-size: 9px; letter-spacing: 0.06em;
+            margin-left: auto; font-size: 0.5625rem; letter-spacing: 0.06em;
             text-transform: uppercase; font-weight: 700;
             color: #fbbf24; background: rgba(245,158,11,0.12);
             border: 1px solid rgba(245,158,11,0.25);
-            padding: 2px 6px; border-radius: 4px;
+            padding: 2px 0.375rem; border-radius: 0.25rem;
         }
 
         .sidebar-base {
@@ -167,47 +167,47 @@
         }
 
         .avatar {
-            width: 32px; height: 32px; border-radius: 6px;
+            width: 2rem; height: 2rem; border-radius: 0.375rem;
             background: linear-gradient(135deg, #06b6d4, #0891b2);
             display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700; color: #fff;
+            font-size: 0.75rem; font-weight: 700; color: #fff;
         }
 
         .profile-dropdown {
-            position: absolute; top: calc(100% + 12px); right: 0; width: 220px;
-            background: #18181b; border: 1px solid #27272a; border-radius: 12px;
-            padding: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
+            position: absolute; top: calc(100% + 0.75rem); right: 0; width: 13.75rem;
+            background: #18181b; border: 1px solid #27272a; border-radius: 0.75rem;
+            padding: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
             display: none; animation: dropIn 0.2s ease-out;
         }
         @keyframes dropIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         .profile-dropdown.show { display: block; }
 
         .dd-item {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px 12px; border-radius: 6px;
-            color: #a1a1aa; font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.625rem 0.75rem; border-radius: 0.375rem;
+            color: #a1a1aa; font-size: 0.8125rem; cursor: pointer;
             transition: all 0.15s;
         }
         .dd-item:hover { background: #27272a; color: #fafafa; }
-        .dd-item i { width: 16px; font-size: 14px; color: #71717a; }
-        .dd-divider { height: 1px; background: #27272a; margin: 6px 0; }
+        .dd-item i { width: 1rem; font-size: 0.875rem; color: #71717a; }
+        .dd-divider { height: 1px; background: #27272a; margin: 0.375rem 0; }
         .dd-logout { color: #ef4444 !important; }
         .dd-logout i { color: #ef4444 !important; }
 
         .hdr-btn {
-            height: 36px; padding: 0 16px; border-radius: 8px;
-            font-size: 12px; font-weight: 600; cursor: pointer;
+            height: 2.25rem; padding: 0 1rem; border-radius: 0.5rem;
+            font-size: 0.75rem; font-weight: 600; cursor: pointer;
             font-family: 'Inter', sans-serif; border: none;
-            display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+            display: flex; align-items: center; gap: 0.375rem; transition: all 0.2s;
             text-decoration: none;
         }
         .btn-secondary { background: #18181b; color: #d4d4d8; border: 1px solid #27272a; }
         .btn-secondary:hover { background: #27272a; color: #fff; }
 
         #toast {
-            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-            background: #18181b; border: 1px solid #27272a; color: #fafafa; padding: 12px 24px; border-radius: 8px;
-            font-size: 13px; font-family: 'Inter', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: #18181b; border: 1px solid #27272a; color: #fafafa; padding: 0.75rem 1.5rem; border-radius: 0.5rem;
+            font-size: 0.8125rem; font-family: 'Inter', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
             opacity: 0; z-index: 9999;
         }
@@ -215,17 +215,17 @@
         .status-bar { background: #09090b; border-top: 1px solid #18181b; }
 
         .topbar-row {
-            display: flex; align-items: center; gap: 12px;
-            width: 100%; height: 56px; padding: 0 16px; box-sizing: border-box;
+            display: flex; align-items: center; gap: 0.75rem;
+            width: 100%; height: 3.5rem; padding: 0 1rem; box-sizing: border-box;
         }
-        .topbar-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0; }
+        .topbar-brand { display: flex; align-items: center; gap: 0.625rem; flex-shrink: 0; min-width: 0; }
         .topbar-mid { flex: 1 1 auto; min-width: 0; }
         .topbar-actions {
             display: flex; align-items: center; justify-content: flex-end;
-            gap: 8px; flex-shrink: 0; flex-wrap: nowrap;
+            gap: 0.5rem; flex-shrink: 0; flex-wrap: nowrap;
         }
         .topbar-actions #profileWrapper { margin-left: 2px; flex-shrink: 0; }
-        .topbar-actions .avatar { width: 26px; height: 26px; font-size: 10px; }
+        .topbar-actions .avatar { width: 1.625rem; height: 1.625rem; font-size: 0.625rem; }
 
         /* ── Template 2 shell theme (cream / forest green / Cormorant + DM Sans) ──
            Scoped entirely under the [data-ops-theme="2"] attribute set on <html>
@@ -294,6 +294,7 @@
 @if($opsSitePalette)
     @include('students.builder.site-theme', ['p' => $opsSitePalette])
 @endif
+    @include('partials.portal-scale')
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
@@ -312,7 +313,7 @@
                 <div class="module-switcher" id="moduleSwitcher">
                     <span class="module-badge" onclick="toggleModuleMenu()" title="Switch module">
                         {{ $moduleLabel }}
-                        <i class="fas fa-chevron-down text-[8px]" id="moduleChevron"></i>
+                        <i class="fas fa-chevron-down text-[0.5rem]" id="moduleChevron"></i>
                     </span>
                     <div class="module-menu" id="moduleMenu">
                         <p class="module-menu-label">My Modules</p>
@@ -369,7 +370,7 @@
         </div>
     </div>
 
-    <div class="status-bar h-8 flex items-center px-6 gap-4 shrink-0 text-[10px] text-zinc-600">
+    <div class="status-bar h-8 flex items-center px-6 gap-4 shrink-0 text-[0.625rem] text-zinc-600">
         <div class="flex items-center gap-2 text-green-500"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> <span>Online</span></div>
     </div>
 
