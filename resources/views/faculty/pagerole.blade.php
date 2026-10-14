@@ -1276,28 +1276,6 @@
             </button>
         </div>
 
-        {{-- Two plain choices instead of tabs: what the faculty wants to do.
-             switchCreateModalTab() still toggles border-brand / border-transparent
-             on these ids; .ts-tab reads those as on / off. --}}
-        <div class="ts-tabs px-5 pt-4">
-            <button type="button" onclick="switchCreateModalTab('add_team')" id="modal-tab-add_team"
-                class="ts-tab border-brand text-brand">
-                <span class="ts-tab-icon"><span class="iconify" data-icon="mdi:account-multiple-plus-outline"></span></span>
-                <span class="ts-tab-copy">
-                    <span class="ts-tab-title">Create New Teams</span>
-                    <span class="ts-tab-sub">Put students who have no team yet into new teams</span>
-                </span>
-            </button>
-            <button type="button" onclick="switchCreateModalTab('insert')" id="modal-tab-insert"
-                class="ts-tab border-transparent text-slate-400">
-                <span class="ts-tab-icon"><span class="iconify" data-icon="mdi:account-edit-outline"></span></span>
-                <span class="ts-tab-copy">
-                    <span class="ts-tab-title">Edit Existing Teams</span>
-                    <span class="ts-tab-sub">View team members or change a role</span>
-                </span>
-            </button>
-        </div>
-
         @php
             // The four seats every team is built from. A member of a full team
             // holds one; a team short of members shares all four out. Housekeeping and Maintenance are one seat here because the
@@ -1332,9 +1310,9 @@
                 <div class="ts-done">
                     <span class="ts-done-icon"><span class="iconify" data-icon="mdi:check-circle-outline"></span></span>
                     <p class="ts-done-title">Every student{{ $activeClass ? ' in ' . $activeClass->name : '' }} already has a team</p>
-                    <p class="ts-done-sub">All students are already in a team. To change a role, go to Edit Existing Teams. To add a student to a team, use that team's Update button.</p>
-                    <button type="button" onclick="switchCreateModalTab('insert')" class="ts-btn-dark">
-                        <span class="iconify" data-icon="mdi:account-edit-outline"></span> Edit Existing Teams
+                    <p class="ts-done-sub">All students are already in a team. To change a role or add a student, use that team's Update button.</p>
+                    <button type="button" onclick="closeCreateTeamModal()" class="ts-btn-dark">
+                        <span class="iconify" data-icon="mdi:arrow-left"></span> Back to Teams
                     </button>
                 </div>
             @else
@@ -1708,233 +1686,14 @@
 
                     <div class="ts-tip">
                         <span class="iconify" data-icon="mdi:lightbulb-on-outline"></span>
-                        <p>Made a mistake? You can change roles later in <b>Edit Existing Teams</b>, and add students to a team that is not full with <b>Update Team</b>.</p>
+                        <p>Made a mistake? You can change roles later, and add students to a team that is not full, with that team's <b>Update</b> button.</p>
                     </div>
                 </aside>
             </div>
         </div>
 
-        <!-- Tab Panel: Manage Members -->
-        <div id="modal-panel-insert" class="hidden">
-            @php
-                $manageTeamCount    = ($groups ?? collect())->count();
-                $manageStudentCount = ($groups ?? collect())->sum(fn ($members) => $members->count());
-                $manageUnassigned   = ($students ?? collect())->count();
-                $manageFirstTeam    = ($groups ?? collect())->keys()->first();
-
-                // One row per team, shaped once so the roster, the details rail and
-                // the Update modal all read the same values.
-                $manageTeams = ($groups ?? collect())->map(function ($members, $name) use ($roleLabels, $conceptsByGroup) {
-                    $rows = $members->map(function ($m) use ($roleLabels) {
-                        $u = $m->student?->user;
-                        $dn = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name, $u?->middle_name])));
-                        $dn = $dn !== '' ? $dn : ($u?->name ?? 'Student');
-                        $memberRoles = $m->roles->pluck('role')->filter()->values()->all();
-
-                        return [
-                            'student_id'     => $m->student_id,
-                            'student_number' => $m->student?->student_number,
-                            'name'           => $dn,
-                            'user'           => $u,
-                            'user_id'        => $u?->user_id,
-                            'roles'          => $memberRoles,
-                            'role_labels'    => array_map(fn ($r) => $roleLabels[$r] ?? $r, $memberRoles),
-                        ];
-                    })->values();
-
-                    return [
-                        'name'      => $name,
-                        'members'   => $rows,
-                        'roles'     => $rows->flatMap(fn ($r) => $r['roles'])->unique()->values(),
-                        'concept'   => ($conceptsByGroup ?? collect())->get($name, collect())->first(),
-                        'created_at'=> optional($members->first()->created_at)->format('M d, Y'),
-                    ];
-                });
-            @endphp
-
-            {{-- One sentence instead of four number tiles, then the search. The old
-                 team dropdown repeated the team list on the left, so it is gone;
-                 pickInsertTeam() already skips it when it is missing. --}}
-            <div class="manage-head p-4 pb-0">
-                <p class="ts-lead">
-                    You have <b>{{ $manageTeamCount }} {{ Str::plural('team', $manageTeamCount) }}</b>
-                    with <b>{{ $manageStudentCount }} {{ Str::plural('student', $manageStudentCount) }}</b>.
-                    @if($manageUnassigned > 0)
-                        <b>{{ $manageUnassigned }}</b> {{ Str::plural('student', $manageUnassigned) }} still {{ $manageUnassigned === 1 ? 'needs' : 'need' }} a team:
-                        <button type="button" onclick="switchCreateModalTab('add_team')" class="ts-link">create a new team</button>.
-                    @endif
-                    Choose a team to see who is in it.
-                </p>
-                <div class="manage-head-tools">
-                    <div class="relative flex-1 min-w-0">
-                        <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:magnify"></span>
-                        <input type="text" id="manageMemberSearch" oninput="filterManageMembers()" placeholder="Find a student in the chosen team"
-                            class="w-full h-11 pl-10 pr-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                    </div>
-                </div>
-            </div>
-
-            <div class="manage-grid p-4">
-                {{-- Left: the teams themselves. Picking one drives every other column
-                     and the hidden group_name the insert form posts. --}}
-                <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                    {{-- Same destination as the Create Multiple Teams tab above,
-                         so a second button down here to jump to it was one too many. --}}
-                    <p class="text-[15px] font-bold text-slate-800">Your teams</p>
-                    <p class="text-[12px] text-slate-400 mb-2.5">Click one to open it.</p>
-                    <div class="space-y-2">
-                        @forelse($manageTeams as $teamName => $team)
-                            <button type="button" data-team-pick="{{ $teamName }}"
-                                    {{-- The name is read off the element rather than written into the
-                                         handler: @json emits a quoted string, and a quoted string inside a
-                                         double-quoted attribute closes it — which is why every team but the
-                                         one the server rendered open refused to be clicked. --}}
-                                    onclick="pickInsertTeam(this.dataset.teamPick)"
-                                    class="insert-team-pick w-full text-left rounded-xl border border-slate-200 bg-white px-3 py-2.5 hover:border-brand/40 transition flex items-center gap-3">
-                                <span class="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center shrink-0">
-                                    <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
-                                </span>
-                                <span class="min-w-0 flex-1">
-                                    <span class="block text-[13px] font-bold text-slate-800 truncate">{{ $teamName }}</span>
-                                    <span class="block text-[11px] text-slate-400">
-                                        {{ $team['members']->count() }} of 4 students{{ $team['members']->count() >= 4 ? ' · full' : '' }}
-                                    </span>
-                                </span>
-                                <span class="iconify text-slate-300 text-base shrink-0" data-icon="mdi:chevron-right"></span>
-                            </button>
-                        @empty
-                            <p class="text-[12px] text-slate-400">No teams yet. Create one in <b>Create New Teams</b>.</p>
-                        @endforelse
-                    </div>
-                </div>
-
-                {{-- Centre: the roster of whichever team is picked. --}}
-                <div class="min-w-0">
-                    @forelse($manageTeams as $teamName => $team)
-                        @php
-                            $memberPayload = $team['members']->map(fn ($r) => [
-                                'student_id'  => $r['student_id'],
-                                'name'        => $r['name'],
-                                'user_id'     => $r['user_id'],
-                                'roles'       => $r['roles'],
-                                'role_labels' => $r['role_labels'],
-                            ])->values()->all();
-                        @endphp
-                        <div class="mm-team-panel rounded-2xl border border-slate-200 bg-white overflow-hidden{{ $teamName === $manageFirstTeam ? '' : ' hidden' }}"
-                             data-team-panel="{{ $teamName }}">
-                            <div class="px-4 pt-4 pb-3 flex flex-wrap items-start justify-between gap-3 border-b border-slate-100">
-                                <div class="flex items-start gap-3 min-w-0">
-                                    <span class="w-11 h-11 rounded-full bg-brand-soft text-brand flex items-center justify-center shrink-0">
-                                        <span class="iconify text-2xl" data-icon="mdi:account-group"></span>
-                                    </span>
-                                    <div class="min-w-0">
-                                        <p class="text-lg font-extrabold text-slate-900 leading-tight truncate">{{ $teamName }}</p>
-                                        <p class="text-[12px] text-slate-500 leading-snug">
-                                            {{ $team['concept']?->description
-                                                ? \Illuminate\Support\Str::limit($team['concept']->description, 110)
-                                                : "This team hasn't proposed its hotel idea yet." }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2 shrink-0">
-                                    <span class="ts-count">
-                                        {{ $team['members']->count() }} of 4 students
-                                    </span>
-                                    <button type="button" onclick='openUpdateModal(@json($teamName), @json($memberPayload))'
-                                            class="h-10 px-4 rounded-xl border border-slate-200 text-slate-600 text-[12px] font-bold hover:border-brand/40 hover:text-brand transition inline-flex items-center gap-1.5">
-                                        <span class="iconify text-base" data-icon="mdi:pencil-outline"></span> Edit team
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="px-4 pt-3 pb-2.5 flex flex-wrap items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="text-[15px] font-bold text-slate-800">Who is in this team</p>
-                                    <p class="text-[12px] text-slate-400">Each student plays one role; with fewer than 4 members, a student covers more than one. Use "Edit team" to rename the team or swap roles.</p>
-                                </div>
-                                @if($team['members']->count() >= 4)
-                                    <span class="ts-full-note"><span class="iconify" data-icon="mdi:lock-outline"></span> Team is full</span>
-                                @endif
-                            </div>
-
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left">
-                                    <thead>
-                                        <tr class="border-b border-slate-100 bg-slate-50/60">
-                                            <th class="px-4 py-2 text-[12px] font-bold text-slate-500 w-10">#</th>
-                                            <th class="px-4 py-2 text-[12px] font-bold text-slate-500">Student</th>
-                                            <th class="px-4 py-2 text-[12px] font-bold text-slate-500">ID number</th>
-                                            <th class="px-4 py-2 text-[12px] font-bold text-slate-500">Role</th>
-                                            <th class="px-4 py-2 text-[12px] font-bold text-slate-500 text-right"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($team['members'] as $member)
-                                            <tr class="mm-member-row border-b border-slate-100"
-                                                data-member-search="{{ strtolower($member['name'] . ' ' . $member['student_number']) }}">
-                                                <td class="px-4 py-2 text-[13px] font-semibold text-slate-400">{{ $loop->iteration }}</td>
-                                                <td class="px-4 py-2">
-                                                    <div class="flex items-center gap-2.5 min-w-0">
-                                                        @include('partials.user-avatar', [
-                                                            'user'         => $member['user'],
-                                                            'name'         => $member['name'],
-                                                            'size'         => 'w-9 h-9',
-                                                            'rounded'      => 'rounded-full',
-                                                            'extraClasses' => 'bg-brand-soft text-brand text-[11px] font-bold',
-                                                        ])
-                                                        <span class="text-[13px] font-semibold text-slate-700 truncate">{{ $member['name'] }}</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-4 py-2 text-[12px] text-slate-500 font-mono whitespace-nowrap">{{ $member['student_number'] ?? '—' }}</td>
-                                                <td class="px-4 py-2">
-                                                    <div class="flex flex-wrap gap-1.5">
-                                                        @forelse($member['roles'] as $mRole)
-                                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-50 border border-slate-200 text-slate-600 whitespace-nowrap">
-                                                                <span class="w-1.5 h-1.5 rounded-full role-dot-{{ $mRole }}"></span>
-                                                                {{ $teamRoleOptions[$mRole] ?? $mRole }}
-                                                            </span>
-                                                        @empty
-                                                            <span class="text-[11px] text-slate-400">No role yet</span>
-                                                        @endforelse
-                                                    </div>
-                                                </td>
-                                                <td class="px-4 py-2">
-                                                    <div class="flex items-center justify-end gap-2">
-                                                        <button type="button" onclick='openUpdateModal(@json($teamName), @json($memberPayload))'
-                                                                class="h-9 px-3.5 rounded-xl border border-slate-200 text-slate-600 text-[12px] font-bold hover:border-brand/40 hover:text-brand transition">
-                                                            Change role
-                                                        </button>
-                                                        @if($member['user_id'])
-                                                            <button type="button"
-                                                                    onclick='window.location.href=@json(route("faculty.activity.user", ["user" => 0])).replace(/0$/, "{{ $member["user_id"] }}")'
-                                                                    title="See what {{ $member['name'] }} has done"
-                                                                    class="h-9 px-3.5 rounded-xl border border-slate-200 text-slate-600 text-[12px] font-bold hover:border-brand/40 hover:text-brand transition inline-flex items-center gap-1.5 whitespace-nowrap">
-                                                                <span class="iconify text-base" data-icon="mdi:clipboard-text-clock-outline"></span> See work
-                                                            </button>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            <p class="mm-no-match hidden px-5 py-8 text-center text-[13px] text-slate-400 font-semibold">No student in this team matches that name or ID.</p>
-                        </div>
-                    @empty
-                        <div class="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center">
-                            <p class="text-sm font-bold text-slate-500">No teams yet</p>
-                            <p class="text-xs text-slate-400 mt-1">Create a team first in <b>Create New Teams</b>. It will show up here.</p>
-                        </div>
-                    @endforelse
-                </div>
-
-            </div>
-        </div>
-
         <!-- Screen Footer -->
-        {{-- Only when there is someone to put in a team; the bar hides itself on
-             Change existing teams, where switchCreateModalTab() hides the button. --}}
+        {{-- Only when there is someone to put in a team. --}}
         @if($unassignedStudentCount > 0)
         <div class="ts-footer px-5 py-3 bg-white border-t border-slate-200 flex items-center justify-end gap-3">
             <p class="ts-footer-note">Nothing is saved until you press this button.</p>
@@ -2614,9 +2373,6 @@ function confirmLeaveSetTaskForBlockSwitch() {
 
 /* Everything opening the screen used to do, run on load instead. */
 function initTeamSetupScreen() {
-    const firstTeam = document.querySelector('.insert-team-pick')?.dataset.teamPick;
-    if (firstTeam) pickInsertTeam(firstTeam);
-
     switchCreateTeamMode(currentCreateTeamMode);
     if (currentCreateTeamMode === 'multiple') {
         autoGroupStudentsIntoTeamsOfFour();
@@ -3520,72 +3276,6 @@ function resetBulkAssignment() {
         row.querySelectorAll('.bulk-role-checkbox').forEach((box) => { box.checked = false; });
     });
     if (typeof refreshBulkTeamPreviews === 'function') refreshBulkTeamPreviews();
-}
-
-/* Picking a team on Manage Members swaps the roster, the details rail and the
-   hidden group_name the insert form posts — one action, wherever it is picked
-   from. */
-function pickInsertTeam(groupName) {
-    if (!groupName) return;
-
-    const filter = document.getElementById('manageTeamFilter');
-    if (filter && filter.value !== groupName) filter.value = groupName;
-
-    document.querySelectorAll('.insert-team-pick').forEach((btn) => {
-        const on = btn.dataset.teamPick === groupName;
-        btn.classList.toggle('border-brand', on);
-        btn.classList.toggle('bg-brand-soft', on);
-        btn.classList.toggle('border-slate-200', !on);
-    });
-
-    document.querySelectorAll('.mm-team-panel').forEach((panel) => {
-        panel.classList.toggle('hidden', panel.dataset.teamPanel !== groupName);
-    });
-    filterManageMembers();
-}
-
-/* Narrows the visible team's roster; every row is already rendered. */
-function filterManageMembers() {
-    const term = (document.getElementById('manageMemberSearch')?.value || '').trim().toLowerCase();
-
-    document.querySelectorAll('.mm-team-panel').forEach((panel) => {
-        let shown = 0;
-        panel.querySelectorAll('.mm-member-row').forEach((row) => {
-            const hit = !term || (row.dataset.memberSearch || '').includes(term);
-            row.classList.toggle('hidden', !hit);
-            if (hit) shown++;
-        });
-        panel.querySelector('.mm-no-match')?.classList.toggle('hidden', shown > 0);
-    });
-}
-
-function switchCreateModalTab(tabId) {
-    currentModalTab = tabId;
-
-    // Toggle panels
-    document.getElementById('modal-panel-add_team').classList.toggle('hidden', tabId !== 'add_team');
-    document.getElementById('modal-panel-insert').classList.toggle('hidden', tabId !== 'insert');
-
-    // Toggle tab styles
-    const addTeamBtn = document.getElementById('modal-tab-add_team');
-    const insertBtn = document.getElementById('modal-tab-insert');
-
-    // The footer button is Create Teams' submit; Edit Existing Teams has nothing
-    // to save here, its changes go through Update Team.
-    const submitBtn = document.getElementById('createModalSubmitBtn');
-    if (submitBtn) submitBtn.classList.toggle('hidden', tabId !== 'add_team');
-
-    if (tabId === 'add_team') {
-        addTeamBtn.classList.add('border-brand', 'text-brand');
-        addTeamBtn.classList.remove('border-transparent', 'text-slate-400');
-        insertBtn.classList.remove('border-brand', 'text-brand');
-        insertBtn.classList.add('border-transparent', 'text-slate-400');
-    } else {
-        insertBtn.classList.add('border-brand', 'text-brand');
-        insertBtn.classList.remove('border-transparent', 'text-slate-400');
-        addTeamBtn.classList.remove('border-brand', 'text-brand');
-        addTeamBtn.classList.add('border-transparent', 'text-slate-400');
-    }
 }
 
 function submitActiveModalTab() {
