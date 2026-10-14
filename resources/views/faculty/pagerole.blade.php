@@ -3275,6 +3275,24 @@ function resetBulkAssignment() {
     if (typeof refreshBulkTeamPreviews === 'function') refreshBulkTeamPreviews();
 }
 
+/* A message in the corner instead of the browser's "site says" dialog. Raised
+   above the page's modals so it shows when fired from inside one. */
+function teamFormNotice(message) {
+    if (!window.Swal) return;
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'warning',
+        iconColor: '#7B1730',
+        title: message,
+        showConfirmButton: false,
+        timer: 4000,
+        timerProgressBar: true,
+        width: '24rem',
+        didOpen: (el) => { el.closest('.swal2-container').style.zIndex = '20000'; },
+    });
+}
+
 function submitActiveModalTab() {
     if (currentModalTab === 'add_team') {
         if (currentCreateTeamMode === 'multiple') {
@@ -3287,11 +3305,11 @@ function submitActiveModalTab() {
 
         const checked = document.querySelectorAll('.create-student-checkbox:checked').length;
         if (checked < 1) {
-            alert('Select at least 1 member for the team.');
+            teamFormNotice('Select at least 1 member for the team.');
             return;
         }
         if (checked > TEAM_MEMBER_MAX) {
-            alert('A team cannot have more than ' + TEAM_MEMBER_MAX + ' members.');
+            teamFormNotice('A team cannot have more than ' + TEAM_MEMBER_MAX + ' members.');
             return;
         }
         document.getElementById('createTeamFormSingle').submit();
@@ -3455,7 +3473,7 @@ function onBulkStudentTeamChange(selectEl) {
             if (s && parseInt(s.value, 10) === teamIndex) others++;
         });
         if (others >= BULK_TEAM_SIZE) {
-            alert(`Each team can only have ${BULK_TEAM_SIZE} members.`);
+            teamFormNotice(`Each team can only have ${BULK_TEAM_SIZE} members.`);
             selectEl.value = '';
         }
     }
@@ -3577,7 +3595,7 @@ function autoGroupStudentsIntoTeamsOfFour() {
     const teamCount = maxCompleteBulkTeams();
 
     if (teamCount < 1) {
-        alert(`You need at least ${BULK_TEAM_SIZE} unassigned students to create a team.`);
+        teamFormNotice(`You need at least ${BULK_TEAM_SIZE} unassigned students to create a team.`);
         rebuildBulkTeamSlots(0);
         return;
     }
@@ -3634,13 +3652,13 @@ function buildBulkTeamsHiddenInputs() {
 
     const names = getBulkTeamNames();
     if (!names.length) {
-        alert(`You need at least ${BULK_TEAM_SIZE} unassigned students to create a team.`);
+        teamFormNotice(`You need at least ${BULK_TEAM_SIZE} unassigned students to create a team.`);
         return false;
     }
 
     const uniqueNames = names.map((n) => n.trim().toLowerCase());
     if (new Set(uniqueNames).size !== uniqueNames.length) {
-        alert('Each team needs a unique name.');
+        teamFormNotice('Each team needs a unique name.');
         return false;
     }
 
@@ -3668,13 +3686,13 @@ function buildBulkTeamsHiddenInputs() {
     for (let i = 0; i < buckets.length; i++) {
         const count = buckets[i].members.length;
         if (count !== BULK_TEAM_SIZE) {
-            alert(`"${names[i]}" must have exactly ${BULK_TEAM_SIZE} members (currently ${count}). Use Auto-Group (4 each).`);
+            teamFormNotice(`"${names[i]}" must have exactly ${BULK_TEAM_SIZE} members (currently ${count}). Press Automatically Create Teams to fix it.`);
             return false;
         }
     }
 
     if (assignedCount === 0) {
-        alert('Assign students before saving.');
+        teamFormNotice('Assign students before saving.');
         return false;
     }
 
@@ -3834,7 +3852,7 @@ function onSingleTeamMemberToggle(checkbox) {
         const checked = document.querySelectorAll('.create-student-checkbox:checked').length;
         if (checked > TEAM_MEMBER_MAX) {
             checkbox.checked = false;
-            alert('A team cannot have more than ' + TEAM_MEMBER_MAX + ' members.');
+            teamFormNotice('A team cannot have more than ' + TEAM_MEMBER_MAX + ' members.');
             return;
         }
     }
