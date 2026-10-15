@@ -643,8 +643,12 @@ class FacultyController extends Controller
 
         $openClass = $classes->firstWhere('status', 'open') ?? $classes->last();
 
+        // A new block's tab stays hidden until its first student joins, so a
+        // freshly opened, empty Block B does not show next to a full Block A.
+        $classes = $classes->filter(fn ($class, $index) => $index === 0 || $class->seats_taken > 0)->values();
+
         $requestedLetter = strtoupper((string) request('class', $openClass?->letter ?? 'A'));
-        $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $openClass;
+        $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $classes->last();
 
         // Search runs on the server so it finds students on every page, not only the
         // five on screen. Each word must match the student number or a name, email
