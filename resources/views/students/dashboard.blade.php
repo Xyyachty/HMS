@@ -1921,30 +1921,6 @@
             setInterval(refreshHomeGreeting, 60000);
         });
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const logoutForm = document.getElementById('logoutForm');
-            if (!logoutForm) return;
-            logoutForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                Swal.fire({
-                    title: 'Log out?',
-                    text: 'You will need to sign in again to access your dashboard.',
-                    icon: 'warning',
-                    iconColor: '#7B1730',
-                    showCancelButton: true,
-                    confirmButtonText: 'Logout',
-                    cancelButtonText: 'Cancel',
-                    confirmButtonColor: '#7B1730',
-                    cancelButtonColor: '#6B4A54',
-                    reverseButtons: true
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        logoutForm.submit();
-                    }
-                });
-            });
-        });
-
         (function restoreSection() {
             let section = null;
             try {
@@ -3014,6 +2990,7 @@
     @endif
 
 
+@include('partials.logout-confirm')
 @include('partials.session-guard')
 </body>
 </html>

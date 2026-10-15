@@ -1854,6 +1854,7 @@
         let toastTimer;
         function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2000); }
     </script>
+@include('partials.logout-confirm')
 @include('partials.session-guard')
 </body>
 </html>

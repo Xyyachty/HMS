@@ -265,32 +265,10 @@
                 setTimeout(() => { bar.style.width = width; }, 300);
             });
         });
-
-        const logoutForm = document.getElementById('logoutForm');
-        if (logoutForm) {
-            logoutForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                Swal.fire({
-                    title: 'Log out?',
-                    text: 'You will need to sign in again to access the dashboard.',
-                    icon: 'warning',
-                    iconColor: '#7B1730',
-                    showCancelButton: true,
-                    confirmButtonText: 'Logout',
-                    cancelButtonText: 'Cancel',
-                    confirmButtonColor: '#7B1730',
-                    cancelButtonColor: '#6B4A54',
-                    reverseButtons: true
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        logoutForm.submit();
-                    }
-                });
-            });
-        }
     </script>
     @include('partials.ph-phone-input')
     @stack('scripts')
+@include('partials.logout-confirm')
 @include('partials.session-guard')
 </body>
 </html>
