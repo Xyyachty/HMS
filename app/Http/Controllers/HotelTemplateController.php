@@ -283,6 +283,9 @@ class HotelTemplateController extends Controller
 
                     $task->update([
                         'status' => 'archived',
+                        // A resubmission after "revise" is a new submission awaiting
+                        // review; the send-back's stamp would make it read as approved.
+                        'feedback_at' => null,
                         'student_id' => $membership->student_id,
                         'assigned_to' => $user->user_id,
                         'previous_version_id' => $previousVersionId,
