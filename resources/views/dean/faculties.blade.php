@@ -444,13 +444,11 @@
                      can be changed from User Management afterwards. --}}
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
-                    {{-- Active, and not a choice: an account created switched off is
-                         an account nobody can sign in to, which is a thing to do to an
-                         existing account rather than a way to open one. Deactivating
-                         is on the update form. --}}
-                    <input type="hidden" name="status" value="active">
+                    {{-- Not a choice: Pending Activation until the faculty member first
+                         signs in with the emailed password, which makes it Active. That
+                         sign-in is not blocked. Deactivating is on the update form. --}}
                     <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
-                        <span class="w-1.5 h-1.5 rounded-full" style="background:#16A34A"></span> Active
+                        <span class="w-1.5 h-1.5 rounded-full" style="background:#C9A45C"></span> Pending Activation
                     </div>
                 </div>
                 <div>

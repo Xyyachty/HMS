@@ -38,6 +38,7 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\EnsureStudentIsActive::class,
             \App\Http\Middleware\EnforceSessionRules::class,
+            \App\Http\Middleware\EnsurePasswordChanged::class,
         ],
 
         'api' => [

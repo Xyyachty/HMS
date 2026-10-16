@@ -552,10 +552,11 @@ class DeanController extends Controller
         // Generated, not typed by the dean. Readable only in the welcome email.
         $plainPassword = StudentWelcomeMailer::generatePassword();
 
-        /* Active, whatever arrives. An account created switched off is one
-           nobody can sign in to; deactivating is done to an account that
+        /* Pending Activation, whatever arrives, until the faculty member first
+           signs in with the emailed password (AuthController::authenticate). It
+           does not stop that sign-in. Deactivating is done to an account that
            exists, on the update form. */
-        $status = 'active';
+        $status = User::PENDING_ACTIVATION;
 
         /* The block is not asked for. It is always the next free class letter,
            so there was nothing for the dean to decide and picking the one
@@ -578,6 +579,10 @@ class DeanController extends Controller
             'password' => Hash::make($plainPassword),
             'role' => 'faculty',
             'email_verified_at' => now(),
+            // Until now the column default made this Active; the faculty row alone had it.
+            'status' => $status,
+            // The generated password is a temporary one; see EnsurePasswordChanged.
+            'must_change_password' => true,
         ]);
 
         Faculty::create([
@@ -620,8 +625,8 @@ class DeanController extends Controller
             ? StudentWelcomeMailer::generatePassword()
             : $validated['password'];
 
-        // Active, whatever arrives - see storeFaculty().
-        $status = 'active';
+        // Faculty: Pending Activation, whatever arrives - see storeFaculty().
+        $status = $validated['role'] === 'faculty' ? User::PENDING_ACTIVATION : 'active';
 
         $fullName = trim(implode(' ', array_filter([
             $validated['first_name'],
@@ -641,6 +646,8 @@ class DeanController extends Controller
         ];
 
         $userData['status'] = $status;
+        // The generated password is a temporary one; see EnsurePasswordChanged.
+        $userData['must_change_password'] = $validated['role'] === 'faculty';
         $userData['phone_number'] = User::normalizePhone($validated['phone_number'] ?? null);
 
         $user = User::create($userData);
@@ -671,8 +678,14 @@ class DeanController extends Controller
 
     public function updateUser(Request $request, User $user)
     {
+        // Pending Activation can be kept but not chosen: only a first sign-in, or
+        // the dean picking Active, moves an account off it.
+        $statuses = ['active', 'inactive'];
+        if ($user->status === User::PENDING_ACTIVATION) {
+            $statuses[] = User::PENDING_ACTIVATION;
+        }
         $rules = [
-            'status' => ['required', 'in:active,inactive'],
+            'status' => ['required', 'in:' . implode(',', $statuses)],
         ];
 
         $handOver = [];

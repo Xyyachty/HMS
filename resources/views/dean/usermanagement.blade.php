@@ -264,6 +264,7 @@
                         $statusChip = match ($status) {
                             'active'  => ['class' => 'is-active', 'label' => 'Active'],
                             'pending' => ['class' => 'is-pending', 'label' => 'Pending'],
+                            'pending_activation' => ['class' => 'is-pending', 'label' => 'Pending Activation'],
                             default   => ['class' => 'is-inactive', 'label' => 'Inactive'],
                         };
                         $username = $user->email ? explode('@', $user->email, 2)[0] : '';
@@ -419,11 +420,11 @@
                  update form below is for. --}}
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
-                {{-- Active, and not a choice - see the Faculties page. Deactivating an
-                     account is what the update form below is for. --}}
-                <input type="hidden" name="status" value="active">
+                {{-- Not a choice: a new faculty account is Pending Activation until its
+                     owner first signs in with the emailed password - see the Faculties
+                     page. Deactivating an account is what the update form below is for. --}}
                 <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full" style="background:#16A34A"></span> Active
+                    <span class="w-1.5 h-1.5 rounded-full" style="background:#C9A45C"></span> Pending Activation
                 </div>
             </div>
             <div>
@@ -503,6 +504,8 @@
                     <select id="updateStatus" name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
+                        {{-- Only offered while the account still has it; see openUpdateModal(). --}}
+                        <option value="pending_activation" hidden>Pending Activation</option>
                     </select>
                 </div>
             </div>
@@ -745,7 +748,8 @@
     function statusChip(status) {
         const chip = status === 'active'
             ? ['is-active', 'Active']
-            : status === 'pending' ? ['is-pending', 'Pending'] : ['is-inactive', 'Inactive'];
+            : status === 'pending' ? ['is-pending', 'Pending']
+            : status === 'pending_activation' ? ['is-pending', 'Pending Activation'] : ['is-inactive', 'Inactive'];
         return `<span class="st-status ${chip[0]}"><span class="dot"></span> ${chip[1]}</span>`;
     }
 
@@ -1004,6 +1008,8 @@
         document.getElementById('updateUsername').value = username;
         document.getElementById('updateEmailDomain').textContent = `@${emailDomain}`;
         document.getElementById('updatePhone').value = phoneNumber;
+        // A faculty account not yet signed in to can keep Pending Activation, never return to it.
+        document.querySelector('#updateStatus option[value="pending_activation"]').hidden = status !== 'pending_activation';
         document.getElementById('updateStatus').value = status;
         document.getElementById('updateStatus').dataset.original = status;
         document.getElementById('updateRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);

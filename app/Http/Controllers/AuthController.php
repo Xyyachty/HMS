@@ -59,6 +59,15 @@ class AuthController extends Controller
                     'email' => 'Your account has been deactivated. Contact your instructor or the dean.',
                 ])->with('error_title', 'Account Deactivated')->onlyInput('email');
             }
+
+            // The first sign-in on a faculty account the dean created, with the
+            // emailed temporary password, is what makes it Active. Manage Users
+            // picks the change up on its next poll.
+            if ($user && $user->status === User::PENDING_ACTIVATION) {
+                $user->activate();
+                ActivityLog::record($user, ActivityLog::ACCOUNT_UPDATED, 'Activated their account on first sign-in.');
+            }
+
             if ($user) {
                 // This sign-in becomes the account's only session: any other
                 // device holding the old token ends on its next request.
@@ -101,8 +110,9 @@ class AuthController extends Controller
 
     /* A password may only be reset onto an account that exists and is usable. Pending
        and deactivated accounts are excluded, or a student the faculty switched off
-       could reset their way back in. Both the live check and the submit run through
-       here so the two never disagree. */
+       could reset their way back in. Pending Activation counts as usable: it is a
+       faculty account that can already sign in, just not yet signed in to. Both
+       the live check and the submit run through here so the two never disagree. */
     private function resettableAccount(?string $email): ?User
     {
         if (!$email) {
@@ -111,7 +121,7 @@ class AuthController extends Controller
 
         $user = User::whereEmail($email)->first();
 
-        if (!$user || ($user->status ?? 'active') !== 'active') {
+        if (!$user || !in_array($user->status ?? 'active', ['active', User::PENDING_ACTIVATION], true)) {
             return null;
         }
 
@@ -134,6 +144,8 @@ class AuthController extends Controller
         }
 
         $user->password = Hash::make($data['password']);
+        // A password they chose themselves, so the temporary one no longer needs replacing.
+        $user->must_change_password = false;
         $user->setRememberToken(Str::random(60));
         $user->save();
 
@@ -157,6 +169,8 @@ class AuthController extends Controller
 
         $user = $request->user();
         $user->password = Hash::make($data['password']);
+        // Lifts EnsurePasswordChanged off a dean-created faculty account.
+        $user->must_change_password = false;
         $user->save();
 
         ActivityLog::recordFor(ActivityLog::ACCOUNT_UPDATED, 'Changed their own password.');

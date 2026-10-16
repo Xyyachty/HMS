@@ -42,6 +42,7 @@ class User extends Authenticatable
         'email_verified_at',
         'avatar',
         'last_seen_at',
+        'must_change_password',
     ];
 
     /**
@@ -122,6 +123,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'last_seen_at' => 'datetime',
+        'must_change_password' => 'boolean',
     ];
 
     /**
@@ -205,6 +207,20 @@ class User extends Authenticatable
         }
 
         return null;
+    }
+
+    /**
+     * A faculty account the dean has created but its owner has not yet signed in to.
+     * Unlike 'pending' (a student waiting for approval), it does not stop a sign-in:
+     * the first one, with the emailed temporary password, is what activates it.
+     */
+    public const PENDING_ACTIVATION = 'pending_activation';
+
+    /** First sign-in on a Pending Activation account: mark it, and its faculty row, Active. */
+    public function activate(): void
+    {
+        $this->forceFill(['status' => 'active'])->save();
+        $this->faculty?->forceFill(['status' => 'active'])->save();
     }
 
     /** Route name of this account's own dashboard, or null when it has no portal. */
