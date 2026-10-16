@@ -1035,7 +1035,11 @@
             const placeholder = document.createElement('option');
             placeholder.value = '';
             placeholder.textContent = options.length ? 'Select block' : 'No blocks available';
-            placeholder.disabled = options.length === 0;
+            // A prompt, not a choice: shown in the closed box when nothing is
+            // picked, but never listed in the dropdown.
+            placeholder.disabled = true;
+            placeholder.hidden = true;
+            placeholder.selected = true;
             blockSelect.appendChild(placeholder);
 
             options.forEach((letter) => {
@@ -1053,7 +1057,6 @@
                 opt.textContent = `Block ${letter} - take over from ${from.from_name} (${from.students} student${from.students === 1 ? '' : 's'})`;
                 blockSelect.appendChild(opt);
                 placeholder.textContent = 'Select block';
-                placeholder.disabled = false;
             });
             if (block && systemBlocks.includes(block)) {
                 blockSelect.value = block;
