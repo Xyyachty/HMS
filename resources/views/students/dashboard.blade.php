@@ -2162,7 +2162,7 @@
             const list = group?.querySelector('[data-completed-list]');
             if (list) {
                 const done = document.createElement('div');
-                done.className = 'task-card bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden';
+                done.className = 'task-card flex flex-col bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden';
                 done.dataset.taskCard = '';
                 done.dataset.taskStatus = 'completed';
                 done.innerHTML =
@@ -2175,7 +2175,7 @@
                             + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold whitespace-nowrap status-badge-completed">Approved</span>'
                         + '</div>'
                     + '</div>'
-                    + '<div class="flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">'
+                    + '<div class="mt-auto flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">'
                         + '<div class="flex items-center gap-1.5 min-w-0">'
                             + '<span class="iconify text-[#8A817A] text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>'
                             + '<p class="text-[0.6875rem] font-semibold text-slate-300">No due date</p>'

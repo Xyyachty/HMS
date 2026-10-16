@@ -194,7 +194,7 @@
             <div class="bg-white px-5 sm:px-7 py-5">
                 {{-- Also the drop target settleConceptTaskRow() appends the
                      settled concept card to, so it lands in the same grid. --}}
-                <div data-completed-list class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                <div data-completed-list class="grid grid-cols-1 lg:grid-cols-3 auto-rows-fr gap-4">
                     @foreach($groupRows as $row)
                         @php
                             $task = $row->task;
@@ -238,7 +238,7 @@
                              data-task-id="{{ $task->task_id }}"
                              data-task-status="{{ $row->status }}"
                              data-task-role="{{ $task->role }}"
-                             class="task-card bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
+                             class="task-card flex flex-col bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
                             <div class="flex flex-wrap items-start gap-3 px-4 sm:px-5 pt-4 pb-3">
                                 <div class="min-w-0 flex-1 basis-[8.75rem]">
                                     <p class="text-[0.875rem] font-bold leading-snug {{ $isCompleted ? 'text-slate-400' : 'text-slate-800' }}">{{ $task->title }}</p>
@@ -288,7 +288,7 @@
                                  the instructions button and the submit button. A per-task
                                  percent used to sit here too; the group summary card above
                                  is the only progress figure now. --}}
-                            <div class="flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">
+                            <div class="mt-auto flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">
                                 <div class="flex items-center gap-1.5 min-w-0">
                                     <span class="iconify text-[#8A817A] text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>
                                     @if($task->due_date)
