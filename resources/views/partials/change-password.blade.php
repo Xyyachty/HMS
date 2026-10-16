@@ -30,10 +30,20 @@
                                 {{ $pwLabel }}
                             </span>
                         </label>
-                        <input id="pw_{{ $pwField }}" name="{{ $pwField }}" type="password" autocomplete="{{ $pwAutocomplete }}"
-                            @if ($pwField !== 'current_password') minlength="8" @endif
-                            class="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 transition"
-                            required>
+                        <div class="relative">
+                            <input id="pw_{{ $pwField }}" name="{{ $pwField }}" type="password" autocomplete="{{ $pwAutocomplete }}"
+                                @if ($pwField !== 'current_password') minlength="8" @endif
+                                class="w-full h-11 pl-4 pr-11 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 transition"
+                                required>
+                            {{-- Show / hide this one field. The icons sit in wrappers because
+                                 Iconify swaps each span for an svg; the wrappers are what toggle. --}}
+                            <button type="button" aria-label="Show password" aria-controls="pw_{{ $pwField }}" aria-pressed="false"
+                                onclick="const i = this.previousElementSibling, show = i.type === 'password'; i.type = show ? 'text' : 'password'; this.setAttribute('aria-pressed', show); this.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); this.querySelectorAll('[data-pw-eye]').forEach(e => e.classList.toggle('hidden'));"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand/20 transition">
+                                <span data-pw-eye class="flex"><span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span></span>
+                                <span data-pw-eye class="hidden"><span class="iconify text-lg" data-icon="mdi:eye-outline"></span></span>
+                            </button>
+                        </div>
                         @if ($pwErrors->has($pwField))
                             <p class="text-xs text-red-600 mt-1">{{ $pwErrors->first($pwField) }}</p>
                         @endif
