@@ -1743,9 +1743,10 @@
 
                     <div>
                         <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Concept Title</label>
-                        <input name="title" type="text" required maxlength="150"
+                        <input name="title" type="text" required maxlength="{{ \App\Models\HotelConcept::LIMITS['title'] }}"
                             placeholder="e.g. Seaside Serenity Resort"
                             class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                        <p class="text-[0.625rem] text-slate-400 mt-1 text-right tabular-nums" data-concept-count="title"></p>
                     </div>
                     <div>
                         {{-- The line the hotel introduces itself with. It is printed
@@ -1754,10 +1755,13 @@
                         <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                             Tagline <span class="text-slate-300 font-semibold normal-case tracking-normal">— optional</span>
                         </label>
-                        <input name="tagline" type="text" maxlength="120"
+                        <input name="tagline" type="text" maxlength="{{ \App\Models\HotelConcept::LIMITS['tagline'] }}"
                             placeholder="e.g. Where the sea meets stillness"
                             class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                        <p class="text-[0.625rem] text-slate-400 mt-1">Shown above the headline on your hotel's landing page and in its footer.</p>
+                        <div class="flex items-start justify-between gap-3 mt-1">
+                            <p class="text-[0.625rem] text-slate-400">Shown above the headline on your hotel's landing page and in its footer.</p>
+                            <p class="text-[0.625rem] text-slate-400 shrink-0 tabular-nums" data-concept-count="tagline"></p>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Type</label>
@@ -1771,9 +1775,10 @@
                     </div>
                     <div>
                         <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
-                        <textarea name="description" required rows="5" maxlength="5000"
+                        <textarea name="description" required rows="5" maxlength="{{ \App\Models\HotelConcept::LIMITS['description'] }}"
                             placeholder="What the hotel is, who it serves, what makes it different."
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
+                        <p class="text-[0.625rem] text-slate-400 mt-1 text-right tabular-nums" data-concept-count="description"></p>
                     </div>
 
                     <div class="flex items-center justify-end gap-2 pt-1">
@@ -1988,6 +1993,21 @@
             return (conceptState?.slots || []).find((entry) => Number(entry.slot) === Number(slot)) || null;
         }
 
+        /* "12 / 60" under Title, Tagline and Description. maxlength stops typing past
+           the limit; a concept saved before the limits were lowered can still open
+           longer than that, so its counter turns red until it is cut down. */
+        function updateHotelConceptCounts(form) {
+            form.querySelectorAll('[data-concept-count]').forEach((counter) => {
+                const field = form.elements[counter.dataset.conceptCount];
+                if (!field) return;
+                const length = field.value.length;
+                counter.textContent = length + ' / ' + field.maxLength;
+                counter.classList.toggle('text-red-500', length > field.maxLength);
+                counter.classList.toggle('text-slate-400', length <= field.maxLength);
+            });
+        }
+        document.getElementById('hotelConceptForm')?.addEventListener('input', (e) => updateHotelConceptCounts(e.currentTarget));
+
         function openHotelConceptModal(slot) {
             const modal = document.getElementById('hotelConceptModal');
             const form = document.getElementById('hotelConceptForm');
@@ -2003,6 +2023,7 @@
             form.querySelector('input[name="tagline"]').value = concept?.tagline ?? '';
             form.querySelector('select[name="hotel_type"]').value = concept?.hotel_type ?? '';
             form.querySelector('textarea[name="description"]').value = concept?.description ?? '';
+            updateHotelConceptCounts(form);
 
             const title = document.getElementById('hotelConceptModalTitle');
             if (title) {

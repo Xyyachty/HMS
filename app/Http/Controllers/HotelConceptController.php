@@ -86,12 +86,12 @@ class HotelConceptController extends Controller
 
         $validated = $request->validate([
             'slot' => ['required', 'integer', Rule::in(HotelConceptDesk::SLOTS)],
-            'title' => ['required', 'string', 'max:150'],
+            'title' => ['required', 'string', 'max:' . HotelConcept::LIMITS['title']],
             // A line, not a paragraph — it is printed above a headline and inside a
             // footer, and a sentence that wraps there reads as a mistake. Optional
             // because a team may not have found its words yet.
-            'tagline' => ['nullable', 'string', 'max:120'],
-            'description' => ['required', 'string', 'max:5000'],
+            'tagline' => ['nullable', 'string', 'max:' . HotelConcept::LIMITS['tagline']],
+            'description' => ['required', 'string', 'max:' . HotelConcept::LIMITS['description']],
             'hotel_type' => ['required', Rule::in(array_keys(HotelConcept::HOTEL_TYPES))],
         ]);
 

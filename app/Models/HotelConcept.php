@@ -45,6 +45,18 @@ class HotelConcept extends Model
         'revision_count' => 'integer',
     ];
 
+    /**
+     * Longest each field may be, in characters. One list for the validation and
+     * the form's maxlength and counters. Sized to where the approved concept ends
+     * up: the title becomes the hotel's name, the tagline one line over the
+     * headline, the description the template's About copy.
+     */
+    public const LIMITS = [
+        'title' => 60,
+        'tagline' => 100,
+        'description' => 1000,
+    ];
+
     /** The dropdown on the student form, and the only accepted values. */
     public const HOTEL_TYPES = [
         'resort' => 'Resort',
