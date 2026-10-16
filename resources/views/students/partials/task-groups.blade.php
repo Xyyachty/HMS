@@ -232,8 +232,11 @@
                         {{-- The concept task is not a one-line tick: the whole proposal is
                              written on it, so its card keeps #conceptPanelCard —
                              paintTeamHeaderConcept() hides the card by that id once faculty
-                             has chosen, and settleConceptTaskRow() removes it outright. --}}
-                        <div @if($task->is_hotel_concept) id="conceptPanelCard" data-task-title="{{ $task->title }}" @endif
+                             has chosen, and settleConceptTaskRow() removes it outright.
+                             Only while it is still open: an already-approved concept card
+                             carrying the id got hidden by the next concept poll after every
+                             syncTasks() reprint, so it blinked out and the grid shifted. --}}
+                        <div @if($task->is_hotel_concept && !$isCompleted) id="conceptPanelCard" data-task-title="{{ $task->title }}" @endif
                              data-task-card
                              data-task-id="{{ $task->task_id }}"
                              data-task-status="{{ $row->status }}"
