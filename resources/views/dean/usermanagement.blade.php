@@ -409,15 +409,11 @@
                     <input name="phone_number" type="text" inputmode="numeric" autocomplete="tel-national" pattern="9[0-9]{9}" title="10 digits after +63, starting with 9 (e.g. 9123456789)" data-ph-phone placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
             </div>
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Role</label>
-                {{-- This modal only ever adds faculty (the Add Faculty button is hidden on the
-                     Students tab), so the role is fixed rather than chosen. --}}
-                <input type="hidden" name="role" id="createUserRole" value="faculty">
-                <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center text-slate-500 font-semibold">
-                    Faculty
-                </div>
-            </div>
+            {{-- This modal only ever adds faculty (the Add Faculty button is hidden on the
+                 Students tab), so the role is fixed and not shown — the title says it.
+                 Still posted: storeUser requires it, and old('role') reopens the modal on
+                 a validation error. --}}
+            <input type="hidden" name="role" value="faculty">
             {{-- No block to choose: it is always the next free class letter, so it
                  is assigned on save. Changing one is what the Block field on the
                  update form below is for. --}}
