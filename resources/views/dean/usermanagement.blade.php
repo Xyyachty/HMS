@@ -147,6 +147,18 @@
     :is(#createUserModal, #updateUserModal) .text-slate-600 { color: #4B5563; }
     :is(#createUserModal, #updateUserModal) .text-slate-500 { color: #6B7280; }
     :is(#createUserModal, #updateUserModal) .text-slate-400 { color: #9CA3AF; }
+
+    /* The selects carry appearance-none, which drops the native arrow and left
+       them looking like plain text boxes. A chevron puts the cue back. */
+    :is(#createUserModal, #updateUserModal) select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234B5563' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right .85rem center;
+        background-size: 1rem;
+        padding-right: 2.5rem;
+        cursor: pointer;
+    }
+    :is(#createUserModal, #updateUserModal) select:hover:not(:disabled) { border-color: #9CA3AF; }
 </style>
 @endpush
 
