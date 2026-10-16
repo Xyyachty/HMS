@@ -198,7 +198,12 @@
   }
   .booking-input:focus { border-color: var(--accent); }
   textarea.booking-input { resize: vertical; min-height: 4.375rem; line-height: 1.5; }
-  select.booking-input { appearance: none; cursor: pointer; }
+  /* appearance: none drops the native arrow, so the caret is drawn back in. */
+  select.booking-input {
+    appearance: none; cursor: pointer; padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.15rem;
+  }
   select.booking-input option { background: var(--card); color: var(--fg); }
 
   .rm-form-grid { display: grid; gap: 0.95rem; }
@@ -225,7 +230,7 @@
   :root[data-ops-theme="2"] #opsContentWrap { font-family: 'DM Sans', sans-serif; }
   :root[data-ops-theme="2"] .font-display { font-family: 'Cormorant Garamond', serif; }
   :root[data-ops-theme="2"] select.booking-input { color-scheme: light; }
-  :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
+  :root[data-ops-theme="2"] .booking-input { background-color: rgba(27,67,50,0.03); }
   :root[data-ops-theme="2"] .af-card { box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
   :root[data-ops-theme="2"] #opsContentWrap .af-tab, :root[data-ops-theme="2"] #opsContentWrap .af-btn, :root[data-ops-theme="2"] #opsContentWrap .af-btn-sm { font-family: 'DM Sans', sans-serif; }
 </style>

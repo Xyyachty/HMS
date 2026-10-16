@@ -261,6 +261,7 @@
     @include('partials.ink-all-styles')
     @include('partials.status-badge-styles')
     @include('partials.portal-scale')
+    @include('partials.select-caret-styles')
 </head>
 <body class="bg-surface min-h-screen flex">
 

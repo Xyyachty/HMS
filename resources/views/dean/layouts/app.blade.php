@@ -111,6 +111,7 @@
     @include('partials.status-badge-styles')
     @include('partials.ink-all-styles')
     @include('partials.portal-scale')
+    @include('partials.select-caret-styles')
 </head>
 <body class="bg-slate-50 antialiased">
 
