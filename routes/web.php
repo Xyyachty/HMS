@@ -153,7 +153,7 @@ Route::prefix('notifications')->middleware('auth')->name('notifications.')->grou
 });
 
 // Dean Routes
-Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
+Route::prefix('dean')->middleware(['auth', 'role:dean'])->name('dean.')->group(function () {
     Route::get('/dashboard', [DeanController::class, 'dashboard'])->name('dashboard');
     Route::get('/users', [DeanController::class, 'users'])->name('users');
     Route::get('/users/live', [DeanController::class, 'usersLive'])->name('users.live');
@@ -179,7 +179,7 @@ Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
 });
 
 // Faculty Routes
-Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function () {
+Route::prefix('faculty')->middleware(['auth', 'role:faculty'])->name('faculty.')->group(function () {
     Route::get('/dashboard', [FacultyController::class, 'dashboard'])->name('dashboard');
     Route::get('/profile', [FacultyController::class, 'profile'])->name('profile');
     Route::put('/profile', [FacultyController::class, 'updateProfile'])->name('profile.update');
@@ -215,6 +215,22 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     Route::post('/tasks/{task}/feedback', [FacultyController::class, 'storeTaskFeedback'])->name('tasks.feedback');
     // Who runs which desk once the team's simulation opens; saving confirms it.
     Route::post('/teams/{groupName}/simulation-roles', [FacultyController::class, 'storeSimulationRoles'])->name('teams.simulation-roles');
+    Route::get('/results', [FacultyController::class, 'results'])->name('results');
+    Route::get('/reports', [FacultyController::class, 'reports'])->name('reports');
+    Route::get('/activity', [FacultyController::class, 'activityLogs'])->name('activity');
+    // Same centralized log; faculty only sees students they manage
+    Route::get('/activity/user/{user}', [ActivityLogController::class, 'forUser'])->name('activity.user');
+
+    // Front Desk's hotel concept for one of this faculty's own teams, with its edit history.
+    Route::get('/teams/{groupName}/hotel-concept', [HotelConceptController::class, 'facultyHistory'])
+        ->name('teams.hotel-concept');
+});
+
+// Team site preview — the one corner of the faculty portal a dean also opens,
+// from Teams Overview, naming the faculty with ?faculty= (see
+// FacultyPreviewController::facultyIdFor). Kept out of the group above so that
+// group can stay faculty-only.
+Route::prefix('faculty')->middleware(['auth', 'role:faculty,dean'])->name('faculty.')->group(function () {
     // Read-only render of a team's live site so faculty can see the work itself.
     Route::get('/teams/preview', [FacultyController::class, 'previewTeamSite'])->name('teams.preview');
 
@@ -232,19 +248,10 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     Route::get('/teams/{group}/preview/menus', [\App\Http\Controllers\FacultyPreviewController::class, 'menus'])->name('teams.preview.menus');
     Route::get('/teams/{group}/preview/amenities', [\App\Http\Controllers\FacultyPreviewController::class, 'amenities'])->name('teams.preview.amenities');
     Route::get('/teams/{group}/preview/addons', [\App\Http\Controllers\FacultyPreviewController::class, 'addons'])->name('teams.preview.addons');
-    Route::get('/results', [FacultyController::class, 'results'])->name('results');
-    Route::get('/reports', [FacultyController::class, 'reports'])->name('reports');
-    Route::get('/activity', [FacultyController::class, 'activityLogs'])->name('activity');
-    // Same centralized log; faculty only sees students they manage
-    Route::get('/activity/user/{user}', [ActivityLogController::class, 'forUser'])->name('activity.user');
-
-    // Front Desk's hotel concept for one of this faculty's own teams, with its edit history.
-    Route::get('/teams/{groupName}/hotel-concept', [HotelConceptController::class, 'facultyHistory'])
-        ->name('teams.hotel-concept');
 });
 
 // Student Routes
-Route::prefix('students')->middleware(['auth', 'simulation.unlocked'])->name('students.')->group(function () {
+Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unlocked'])->name('students.')->group(function () {
     Route::get('/dashboard', function () {
         $authUser = auth()->user();
         $student  = $authUser?->student;

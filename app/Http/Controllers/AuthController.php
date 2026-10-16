@@ -84,19 +84,9 @@ class AuthController extends Controller
                 ]);
             }
 
-            if ($user && $user->role === 'dean') {
-                return redirect()->route('dean.dashboard');
-            }
+            $dashboard = $user?->dashboardRoute();
 
-            if ($user && ($user->role === 'faculty' || $user->faculty)) {
-                return redirect()->route('faculty.dashboard');
-            }
-
-            if ($user && ($user->role === 'student' || $user->student)) {
-                return redirect()->route('students.dashboard');
-            }
-
-            return redirect()->route('login');
+            return $dashboard ? redirect()->route($dashboard) : redirect()->route('login');
         }
 
         return back()->withErrors([

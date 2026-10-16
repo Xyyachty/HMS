@@ -20,18 +20,10 @@ class RedirectIfAuthenticated
 
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
-                $user = Auth::guard($guard)->user();
+                $dashboard = Auth::guard($guard)->user()?->dashboardRoute();
 
-                if ($user && $user->role === 'dean') {
-                    return redirect()->route('dean.dashboard');
-                }
-
-                if ($user && ($user->role === 'faculty' || $user->faculty)) {
-                    return redirect()->route('faculty.dashboard');
-                }
-
-                if ($user && ($user->role === 'student' || $user->student)) {
-                    return redirect()->route('students.dashboard');
+                if ($dashboard) {
+                    return redirect()->route($dashboard);
                 }
 
                 // No portal to send them to. Not redirect('/'): the landing page

@@ -186,4 +186,35 @@ class User extends Authenticatable
         return $this->hasMany(Task::class, 'assigned_to', 'user_id');
     }
 
+    /**
+     * Which portal this account belongs to — 'dean', 'faculty', 'student' — or null
+     * for none. Read from the account itself, never the URL: EnsureRole gates every
+     * portal's routes on it, and sign-in and the guest pages use it to pick the
+     * dashboard. Older rows without a role are known by their profile row.
+     */
+    public function portal(): ?string
+    {
+        if ($this->role === 'dean') {
+            return 'dean';
+        }
+        if ($this->role === 'faculty' || $this->faculty) {
+            return 'faculty';
+        }
+        if ($this->role === 'student' || $this->student) {
+            return 'student';
+        }
+
+        return null;
+    }
+
+    /** Route name of this account's own dashboard, or null when it has no portal. */
+    public function dashboardRoute(): ?string
+    {
+        return [
+            'dean' => 'dean.dashboard',
+            'faculty' => 'faculty.dashboard',
+            'student' => 'students.dashboard',
+        ][$this->portal()] ?? null;
+    }
+
 }
