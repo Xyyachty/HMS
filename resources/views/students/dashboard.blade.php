@@ -1776,8 +1776,10 @@
                     </div>
                     <div>
                         <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
-                        <textarea name="description" required rows="5" maxlength="{{ \App\Models\HotelConcept::LIMITS['description'] }}"
+                        {{-- One line while it holds 50 characters or fewer; grows from the 51st. See fitHotelConceptDescription(). --}}
+                        <textarea name="description" required rows="1" maxlength="{{ \App\Models\HotelConcept::LIMITS['description'] }}"
                             placeholder="What the hotel is, who it serves, what makes it different."
+                            style="resize: none; overflow: hidden;"
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
                         <p class="text-[0.625rem] text-slate-400 mt-1 text-right tabular-nums" data-concept-count="description"></p>
                     </div>
@@ -2007,7 +2009,20 @@
                 counter.classList.toggle('text-slate-400', length <= field.maxLength);
             });
         }
-        document.getElementById('hotelConceptForm')?.addEventListener('input', (e) => updateHotelConceptCounts(e.currentTarget));
+        /* The Description box previews 50 characters on one line. From the 51st it
+           takes a second line, and it grows further if the text wraps sooner, as it
+           does on a narrow screen, so nothing typed is ever out of view. */
+        function fitHotelConceptDescription(form) {
+            const field = form.elements.description;
+            if (!field) return;
+            field.rows = field.value.length > 50 ? 2 : 1;
+            field.style.height = 'auto';
+            field.style.height = Math.max(field.clientHeight, field.scrollHeight) + 2 + 'px';
+        }
+        document.getElementById('hotelConceptForm')?.addEventListener('input', (e) => {
+            updateHotelConceptCounts(e.currentTarget);
+            fitHotelConceptDescription(e.currentTarget);
+        });
 
         function openHotelConceptModal(slot) {
             const modal = document.getElementById('hotelConceptModal');
@@ -2033,6 +2048,8 @@
             hideHotelConceptError();
 
             modal.classList.remove('hidden');
+            // Measured once visible: a hidden textarea has no height to read.
+            fitHotelConceptDescription(form);
             document.body.style.overflow = 'hidden';
             setTimeout(() => form.querySelector('input[name="title"]')?.focus(), 50);
         }

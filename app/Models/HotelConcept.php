@@ -52,9 +52,9 @@ class HotelConcept extends Model
      * headline, the description the template's About copy.
      */
     public const LIMITS = [
-        'title' => 60,
+        'title' => 25,
         'tagline' => 100,
-        'description' => 1000,
+        'description' => 100,
     ];
 
     /** The dropdown on the student form, and the only accepted values. */
