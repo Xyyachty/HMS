@@ -1158,7 +1158,7 @@
         </div>
       </div>
       <p class="footer__meta">
-        &copy; {{ date('Y') }} SPC Hotel. All rights reserved.<br />
+        &copy; {{ date('Y') }} Southern de Oro Philippines College. All rights reserved.<br />
         Developed by: Jun Alexes Orao and Xyron Sandigan
       </p>
       <p class="footer__note">For educational purposes only</p>
