@@ -4829,7 +4829,11 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAd
         {sitePromos && !sitePromos.length ? (
           <p style={{ color: 'var(--fg-muted)', margin: 0 }} data-hms-no-edit="1">No promos or packages are running right now. Please check back soon.</p>
         ) : (
-          <PromoShowcase promos={sitePromos || DEFAULT_PROMOS} canEdit={canEditHeroSlides && !sitePromos} onToast={onToast} onBook={onBookNow} />
+          // Front Desk's promos are changed on their Simulation page, not here,
+          // so the editor leaves them alone.
+          <div data-hms-no-edit={sitePromos ? '1' : undefined}>
+            <PromoShowcase promos={sitePromos || DEFAULT_PROMOS} canEdit={canEditHeroSlides && !sitePromos} onToast={onToast} onBook={onBookNow} />
+          </div>
         )}
       </section>
 
@@ -8618,13 +8622,14 @@ function App() {
       .catch(() => {});
   }, []);
 
-  /* Front Desk's Simulation promos. null keeps the section's own starting cards:
-     the team has no promo yet, the feed is unreachable, or this is the editor or
-     a review of it, where those cards are the Customization work. Otherwise
-     only the active, unexpired ones, which can be none at all. */
+  /* Front Desk's Simulation promos, on the Home page wherever it is shown. null
+     keeps the section's own starting cards: the team has no promo yet, the feed
+     is unreachable, or this is a faculty review of the Customization task, which
+     compares those cards. Otherwise only the active, unexpired ones, which can
+     be none at all. */
   const fetchPromos = useCallback(() => {
     if (pendingWrites.current > 0) return;
-    if (window.__HMS_CAN_EDIT__ || window.__HMS_REVIEW_HIGHLIGHT__) return;
+    if (window.__HMS_REVIEW_HIGHLIGHT__) return;
     return fetch(hmsApi('promos', '/students/hotel/promos'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(data => {
