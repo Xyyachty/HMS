@@ -228,6 +228,26 @@
         .topbar-actions #profileWrapper { margin-left: 2px; flex-shrink: 0; }
         .topbar-actions .avatar { width: 1.625rem; height: 1.625rem; font-size: 0.625rem; }
 
+        /* Narrow screens: Staff Tools becomes a drawer behind a menu button, so
+           the page itself gets the full width. Every role's Simulation renders
+           through this shell, so this one block covers them all. */
+        .ops-nav-toggle, .ops-nav-backdrop { display: none; }
+        @media (max-width: 1023px) {
+            .ops-nav-toggle { display: flex; padding: 0 0.75rem; }
+            #leftSidebar {
+                position: fixed; top: 0; bottom: 0; left: 0; z-index: 70;
+                width: min(18rem, 85vw);
+                transform: translateX(-100%); transition: transform 0.25s ease;
+            }
+            body.ops-nav-open #leftSidebar { transform: none; box-shadow: 0 0 40px rgba(0,0,0,0.35); }
+            body.ops-nav-open .ops-nav-backdrop { display: block; position: fixed; inset: 0; z-index: 65; background: rgba(0,0,0,0.45); }
+        }
+        @media (max-width: 767px) {
+            .topbar-row { padding: 0 0.75rem; gap: 0.5rem; }
+            .hms-logo-text, .topbar-brand > .w-px, #opsPageTitleBadge, .hdr-btn .hdr-label { display: none; }
+            .topbar-actions .hdr-btn { padding: 0 0.75rem; }
+        }
+
         /* ── Template 2 shell theme (cream / forest green / Cormorant + DM Sans) ──
            Scoped entirely under the [data-ops-theme="2"] attribute set on <html>
            above, so a Template 1 team (or one that hasn't chosen yet) renders
@@ -301,6 +321,10 @@
 
     <header class="topbar topbar-row shrink-0 z-50">
         <div class="topbar-brand">
+            <button type="button" class="hdr-btn btn-secondary ops-nav-toggle" id="opsNavToggle"
+                    onclick="toggleOpsNav()" aria-label="Open Staff Tools" aria-controls="leftSidebar" aria-expanded="false">
+                <i class="fas fa-bars"></i>
+            </button>
             <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="logo-icon shrink-0">
             <span class="hms-logo-text text-sm truncate">Hotel Management System</span>
             <div class="w-px h-5 bg-zinc-800 shrink-0"></div>
@@ -339,12 +363,12 @@
             {{-- Simulation's own Back: this shell is operations, not the editor,
                  so it goes to Tasks rather than looping back into Customize. --}}
             <a href="{{ route('students.dashboard', ['section' => 'tasks']) }}" class="hdr-btn btn-secondary" title="Back to Tasks">
-                <i class="fas fa-arrow-left"></i> Back to Tasks
+                <i class="fas fa-arrow-left"></i> <span class="hdr-label">Back to Tasks</span>
             </a>
             @php $customizeRoute = \App\Support\HotelTemplateBuilder::routeNameForRole($builderRole); @endphp
             @if($customizeRoute && \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole) !== [])
                 <a href="{{ route($customizeRoute) }}" class="hdr-btn btn-secondary" title="Open Customize">
-                    <i class="fas fa-palette"></i> Customize
+                    <i class="fas fa-palette"></i> <span class="hdr-label">Customize</span>
                 </a>
             @endif
             <div class="relative" id="profileWrapper">
@@ -365,6 +389,7 @@
         <div id="leftSidebar" class="w-72 shrink-0 sidebar-base border-r overflow-y-auto">
             @include('students.frontdesk.left-sidebar.index')
         </div>
+        <div class="ops-nav-backdrop" onclick="toggleOpsNav(false)"></div>
 
         <div id="opsContentWrap" class="flex-1 min-w-0 content-bg overflow-y-auto">
             @yield('content')
@@ -395,6 +420,12 @@
             const chevron = document.getElementById('moduleChevron');
             if (chevron) chevron.style.transform = '';
         });
+
+        function toggleOpsNav(open) {
+            const isOpen = document.body.classList.toggle('ops-nav-open', open);
+            document.getElementById('opsNavToggle')?.setAttribute('aria-expanded', String(isOpen));
+        }
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') toggleOpsNav(false); });
 
         let toastTimer;
         function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2000); }
