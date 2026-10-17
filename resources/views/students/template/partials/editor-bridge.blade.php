@@ -24,6 +24,7 @@
         'addons'     => '/students/hotel/addons',
         'amenities'  => '/students/hotel/amenities',
         'menus'      => '/students/hotel/menus',
+        'promos'     => '/students/hotel/promos',
         'roomUpdate' => '/students/hotel/rooms',
         'bookings'   => '/students/hotel/bookings',
         'amenityReservations' => '/students/hotel/amenity-reservations',
@@ -39,6 +40,7 @@
         $hmsApiMap['menus']     = route('faculty.teams.preview.menus', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
         $hmsApiMap['amenities'] = route('faculty.teams.preview.amenities', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
         $hmsApiMap['addons']    = route('faculty.teams.preview.addons', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
+        $hmsApiMap['promos']    = route('faculty.teams.preview.promos', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
     }
 
     /* Whether the design task that opens the Amenities section is assigned to
@@ -111,6 +113,7 @@
         addons:    @json("/hotel/{$hmsPublicSlug}/api/addons"),
         amenities: @json("/hotel/{$hmsPublicSlug}/api/amenities"),
         menus:     @json("/hotel/{$hmsPublicSlug}/api/menus"),
+        promos:    @json("/hotel/{$hmsPublicSlug}/api/promos"),
         bookings:  @json("/hotel/{$hmsPublicSlug}/api/bookings"),
         amenityReservations: @json("/hotel/{$hmsPublicSlug}/api/amenity-reservations"),
         amenityVisits:       @json("/hotel/{$hmsPublicSlug}/api/amenity-visits"),

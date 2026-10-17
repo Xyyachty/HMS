@@ -97,6 +97,7 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
     Route::get('/{slug}/api/menus', [PublicSiteController::class, 'menus'])->name('.menus');
     Route::get('/{slug}/api/amenities', [PublicSiteController::class, 'amenities'])->name('.amenities');
     Route::get('/{slug}/api/addons', [PublicSiteController::class, 'addons'])->name('.addons');
+    Route::get('/{slug}/api/promos', [PublicSiteController::class, 'promos'])->name('.promos');
 
     // The one write a visitor can make. Throttled because it is the only unauthenticated
     // endpoint in the app that creates a row.
@@ -248,6 +249,7 @@ Route::prefix('faculty')->middleware(['auth', 'role:faculty,dean'])->name('facul
     Route::get('/teams/{group}/preview/menus', [\App\Http\Controllers\FacultyPreviewController::class, 'menus'])->name('teams.preview.menus');
     Route::get('/teams/{group}/preview/amenities', [\App\Http\Controllers\FacultyPreviewController::class, 'amenities'])->name('teams.preview.amenities');
     Route::get('/teams/{group}/preview/addons', [\App\Http\Controllers\FacultyPreviewController::class, 'addons'])->name('teams.preview.addons');
+    Route::get('/teams/{group}/preview/promos', [\App\Http\Controllers\FacultyPreviewController::class, 'promos'])->name('teams.preview.promos');
 });
 
 // Student Routes
@@ -4398,5 +4400,22 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
         return view('students.frontdesk.amenities', $data);
     })->name('frontdesk.amenities');
+
+    Route::get('/frontdesk/promos', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.frontdesk.promos', $data);
+    })->name('frontdesk.promos');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Promos and packages (Simulation, Front Desk writes only)
+    |--------------------------------------------------------------------------
+    |
+    | The team's site reads the same index, so a change shows on its next poll.
+    */
+    Route::get('/hotel/promos', [\App\Http\Controllers\HotelPromoController::class, 'index'])->name('hotel.promos.index');
+    Route::post('/hotel/promos', [\App\Http\Controllers\HotelPromoController::class, 'store'])->name('hotel.promos.store');
+    Route::patch('/hotel/promos/{id}', [\App\Http\Controllers\HotelPromoController::class, 'update'])->name('hotel.promos.update');
+    Route::delete('/hotel/promos/{id}', [\App\Http\Controllers\HotelPromoController::class, 'destroy'])->name('hotel.promos.destroy');
 });
 

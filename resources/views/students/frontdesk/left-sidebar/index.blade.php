@@ -107,6 +107,11 @@
                     {{-- Resolved by the department: the guest still has to be told. --}}
                     @include('students.frontdesk.left-sidebar.badge', ['key' => 'complaints'])
                 </a>
+                <a href="{{ route('students.frontdesk.promos') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.frontdesk.promos') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-tags text-[0.8125rem] text-emerald-400"></i> Promos &amp; Packages
+                </a>
                 <a href="{{ route('students.frontdesk.reports') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.frontdesk.reports') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">

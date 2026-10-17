@@ -178,6 +178,14 @@ class PublicSiteController extends Controller
         ]);
     }
 
+    /** Only the promos the site may show; see HotelPromo::siteFeed(). */
+    public function promos(string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        return response()->json(\App\Models\HotelPromo::siteFeed($groupName, $facultyId));
+    }
+
     /* ── The one write ────────────────────────────────────────────────────── */
 
     /**

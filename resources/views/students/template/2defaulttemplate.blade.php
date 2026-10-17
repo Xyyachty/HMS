@@ -4659,7 +4659,7 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
   );
 }
 
-function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, onBookNow, brandName, experiences, partners, canEditPartners, onAddPartner, onRenamePartner, onRemovePartner }) {
+function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, onBookNow, brandName, experiences, partners, canEditPartners, onAddPartner, onRenamePartner, onRemovePartner }) {
   const roomList = rooms && rooms.length ? rooms : [];
   const partnerList = partners && partners.length ? partners : DEFAULT_PARTNERS;
   // Which brand's × has been pressed once. The second press is the confirmation.
@@ -4826,7 +4826,11 @@ function HomePage({ onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEdi
           <span className="section-num" data-hms-stock="Offers">Offers</span>
           <h2 className="font-display" style={{ fontSize: '2rem', margin: '0.35rem 0 0' }} data-hms-stock="Promos and Packages">Promos and Packages</h2>
         </div>
-        <PromoShowcase promos={DEFAULT_PROMOS} canEdit={canEditHeroSlides} onToast={onToast} onBook={onBookNow} />
+        {sitePromos && !sitePromos.length ? (
+          <p style={{ color: 'var(--fg-muted)', margin: 0 }} data-hms-no-edit="1">No promos or packages are running right now. Please check back soon.</p>
+        ) : (
+          <PromoShowcase promos={sitePromos || DEFAULT_PROMOS} canEdit={canEditHeroSlides && !sitePromos} onToast={onToast} onBook={onBookNow} />
+        )}
       </section>
 
       <section data-hms-section="partners" data-hms-bg-target="1" style={{ padding: '0 1.5rem 5rem', maxWidth: 1100, margin: '0 auto' }}>
@@ -8541,6 +8545,7 @@ function App() {
   ));
   const [addons, setAddons] = useState([]);
   const [amenities, setAmenities] = useState([]);
+  const [sitePromos, setSitePromos] = useState(null);
   // Whether this student may change the facilities (the server's answer) and
   // whether they hold the Amenities page (the editor's).
   const [canCustomizeAmenities, setCanCustomizeAmenities] = useState(false);
@@ -8613,6 +8618,22 @@ function App() {
       .catch(() => {});
   }, []);
 
+  /* Front Desk's Simulation promos. null keeps the section's own starting cards:
+     the team has no promo yet, the feed is unreachable, or this is the editor or
+     a review of it, where those cards are the Customization work. Otherwise
+     only the active, unexpired ones, which can be none at all. */
+  const fetchPromos = useCallback(() => {
+    if (pendingWrites.current > 0) return;
+    if (window.__HMS_CAN_EDIT__ || window.__HMS_REVIEW_HIGHLIGHT__) return;
+    return fetch(hmsApi('promos', '/students/hotel/promos'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => {
+        if (!Array.isArray(data.items)) return;
+        setSitePromos(data.has_promos ? data.items.filter(p => p.live) : null);
+      })
+      .catch(() => {});
+  }, []);
+
   // The server decides who may edit the menu — the client only mirrors that answer.
   const fetchMenus = useCallback(() => {
     if (pendingWrites.current > 0) return;
@@ -8646,7 +8667,8 @@ function App() {
     const refresh = () => Promise.resolve(fetchRooms())
       .then(() => fetchMenus())
       .then(() => fetchAddons())
-      .then(() => fetchAmenities());
+      .then(() => fetchAmenities())
+      .then(() => fetchPromos());
     refresh();
     const id = setInterval(() => { if (!document.hidden) refresh(); }, 12000);
     window.addEventListener('focus', refresh);
@@ -8654,7 +8676,7 @@ function App() {
       clearInterval(id);
       window.removeEventListener('focus', refresh);
     };
-  }, [fetchRooms, fetchMenus, fetchAddons, fetchAmenities]);
+  }, [fetchRooms, fetchMenus, fetchAddons, fetchAmenities, fetchPromos]);
 
   const [isDesignMode, setIsDesignMode] = useState(() => window.__HMS_DESIGN_MODE__ === true);
 
@@ -9351,6 +9373,7 @@ function App() {
     home: (
       <HomePage
         onNav={navigateTo}
+        sitePromos={sitePromos}
         onToast={showToast}
         rooms={rooms}
         menus={menus}

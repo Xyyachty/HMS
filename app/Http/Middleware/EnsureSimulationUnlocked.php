@@ -25,6 +25,7 @@ class EnsureSimulationUnlocked
         'students.frontdesk.reports',
         'students.frontdesk.amenities',
         'students.frontdesk.complaints',
+        'students.frontdesk.promos',
         'students.roommanagement.manage',
         'students.roommanagement.complaints',
         'students.restaurant.manage',

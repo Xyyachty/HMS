@@ -170,4 +170,11 @@ class FacultyPreviewController extends Controller
                 ->values(),
         ]);
     }
+
+    public function promos(Request $request, string $group)
+    {
+        $membership = $this->team($group);
+
+        return response()->json(\App\Models\HotelPromo::siteFeed($membership->group_name, $membership->faculty_id));
+    }
 }
