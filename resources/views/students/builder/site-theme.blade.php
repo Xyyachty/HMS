@@ -30,11 +30,6 @@
         background: {{ $p['bg'] }};
         background-image: radial-gradient({{ $p['border'] }} 1px, transparent 1px);
     }
-    html[data-ops-site-themed] .status-bar {
-        background: {{ $p['warm'] }};
-        border-top: 1px solid {{ $p['border'] }};
-        color: {{ $p['muted'] }};
-    }
     html[data-ops-site-themed] ::-webkit-scrollbar-track { background: {{ $p['warm'] }}; }
     html[data-ops-site-themed] ::-webkit-scrollbar-thumb { background: {{ $p['border'] }}; }
 

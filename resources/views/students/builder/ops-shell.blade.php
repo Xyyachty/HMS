@@ -213,7 +213,6 @@
             opacity: 0; z-index: 9999;
         }
         #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        .status-bar { background: #09090b; border-top: 1px solid #18181b; }
 
         .topbar-row {
             display: flex; align-items: center; gap: 0.75rem;
@@ -286,7 +285,6 @@
         html[data-ops-theme="2"] #toast {
             background: #1a1a1a; border: 1px solid #2d2d2d; color: #f7f4ef;
         }
-        html[data-ops-theme="2"] .status-bar { background: #efe9e0; border-top: 1px solid #e2ddd5; color: #7a7570; }
 
         /* Shared left-sidebar partial (also used by the site editor, which never
            sets data-ops-theme) — overridden here by descendant selector only,
@@ -394,10 +392,6 @@
         <div id="opsContentWrap" class="flex-1 min-w-0 content-bg overflow-y-auto">
             @yield('content')
         </div>
-    </div>
-
-    <div class="status-bar h-8 flex items-center px-6 gap-4 shrink-0 text-[0.625rem] text-zinc-600">
-        <div class="flex items-center gap-2 text-green-500"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> <span>Online</span></div>
     </div>
 
     <div id="toast"></div>
