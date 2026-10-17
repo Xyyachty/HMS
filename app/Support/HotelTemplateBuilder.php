@@ -102,7 +102,7 @@ class HotelTemplateBuilder
      * [route name, query parameters].
      */
     public const ROLE_SIMULATION_ROUTES = [
-        'front_desk' => ['students.frontdesk.verify-guest', []],
+        'front_desk' => ['students.frontdesk.walk-in', []],
         'room_management' => ['students.roommanagement.manage', ['nav' => 'manage-room']],
         'restaurant_management' => ['students.restaurant.manage', ['nav' => 'manage-menu']],
         'housekeeping' => ['students.housekeeping.inspections', []],
