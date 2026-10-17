@@ -53,7 +53,7 @@ class HotelConcept extends Model
      */
     public const LIMITS = [
         'title' => 25,
-        'tagline' => 20,
+        'tagline' => 30,
         'description' => 100,
     ];
 
