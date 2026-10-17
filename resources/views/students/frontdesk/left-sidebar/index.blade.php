@@ -9,8 +9,10 @@
          rode on how tall that page's cards happened to be, not on which page
          it was. The pager itself is a shrink-0 sibling of this div for the
          same reason Back to Tasks is: to make sure it always renders in full
-         no matter what got clipped above it. --}}
-    <div class="px-5 pt-5 flex-1 overflow-hidden min-h-0">
+         no matter what got clipped above it. It scrolls rather than clips:
+         Front Desk's eight Staff Tools outgrow a short screen, and clipping
+         hid Reports, the last of them. --}}
+    <div class="px-5 pt-5 pb-4 flex-1 overflow-y-auto min-h-0">
         {{-- The template number used to be a badge in the top header
              (FRONT DESK / Template 1); it lives here now, above the team it
              belongs to, since every member below already carries their own
