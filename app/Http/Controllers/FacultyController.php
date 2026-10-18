@@ -747,12 +747,14 @@ class FacultyController extends Controller
         $validated = $request->validate([
             // Request field keeps its name — it is what the form and the bulk-upload
             // spreadsheet send. The column it validates against is student_number.
-            'student_id' => ['required', 'string', 'max:50', 'unique:user_information,student_number'],
+            'student_id' => ['required', 'regex:' . Student::NUMBER_PATTERN, 'unique:user_information,student_number'],
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'max:255'],
             'phone_number' => ['nullable', 'string', new PhilippineMobile()],
+        ], [
+            'student_id.regex' => 'Student ID must be numbers only, up to 10 digits.',
         ]);
 
         // Generated rather than typed, same as the bulk upload. The only place it is
@@ -1080,6 +1082,7 @@ class FacultyController extends Controller
             // Basic validation
             $errors = [];
             if ($studentId === '') $errors[] = 'student number is required';
+            elseif (!preg_match(Student::NUMBER_PATTERN, $studentId)) $errors[] = 'student ID must be numbers only, up to 10 digits';
             if ($firstName  === '') $errors[] = 'first name is required';
             if ($lastName   === '') $errors[] = 'last name is required';
             // Registrar lists carry "N/A" where a student never gave an address; the

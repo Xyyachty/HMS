@@ -759,7 +759,7 @@
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Student ID</label>
-                    <input name="student_id" type="text" placeholder="e.g. 2024-001" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    <input name="student_id" type="text" inputmode="numeric" pattern="\d{1,10}" maxlength="10" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)" title="Numbers only, up to 10 digits" placeholder="e.g. 2400689" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name</label>
