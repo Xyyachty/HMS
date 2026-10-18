@@ -335,6 +335,8 @@
         grid-template-columns: minmax(0, 1fr) 300px;
         align-items: start;
     }
+    /* Team setup footer: Create is green. */
+    #createModalSubmitBtn { background-color: #15803D; box-shadow: 0 4px 6px -1px rgba(21, 128, 61, .25); }
     .setup-field-grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .setup-role-grid { display: grid; gap: .625rem; grid-template-columns: repeat(5, minmax(0, 1fr)); }
     /* Steps 1 and 2 side by side on wide screens, roles on the right. Each card
@@ -1708,8 +1710,8 @@
         <div class="ts-footer px-5 py-3 bg-white border-t border-slate-200 flex items-center justify-end gap-3">
             <p class="ts-footer-note">Nothing is saved until you press this button.</p>
             <button type="button" onclick="submitActiveModalTab()" id="createModalSubmitBtn"
-                class="px-7 py-3 brand-gradient text-white rounded-xl font-bold text-sm hover:opacity-95 transition shadow-md shadow-brand/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                <span id="createModalSubmitLabel">Save teams</span>
+                class="px-7 py-3 text-white rounded-xl font-bold text-sm hover:opacity-95 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <span id="createModalSubmitLabel">Create</span>
                 <span class="iconify text-base" data-icon="mdi:check"></span>
             </button>
         </div>
