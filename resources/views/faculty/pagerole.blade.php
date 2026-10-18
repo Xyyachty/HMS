@@ -674,11 +674,6 @@
         @endphp
 
         <div class="px-4 sm:px-6 py-5">
-            <div class="mb-5">
-                <h2 class="text-2xl sm:text-[1.875rem] font-extrabold tracking-tight text-slate-900 leading-tight">Manage Teams</h2>
-                <p class="text-sm text-slate-500 mt-1">View, monitor, and manage all teams in the hotel simulation.</p>
-            </div>
-
             <!-- Overview figures -->
             <div class="tm-stat-grid mb-5">
                 <div class="rounded-2xl border border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
