@@ -1358,13 +1358,6 @@
                     $teamTotal = $teamCompleted->count() + $teamAssigned->count();
                     $selfRate = $selfTotal > 0 ? round(($selfCompleted->count() / $selfTotal) * 100) : 0;
                     $teamRate = $teamTotal > 0 ? round(($teamCompleted->count() / $teamTotal) * 100) : 0;
-                    $selfByRole = $selfCompleted->groupBy('role')->map->count();
-                    $teamByRole = $teamCompleted->groupBy('role')->map->count();
-                    // The team's logs arrive newest first, so the first row per role is
-                    // that role's most recent completion.
-                    $teamLastByRole = $teamCompleted->groupBy('role')->map->first();
-                    $maxSelfRole = max(1, (int) ($selfByRole->max() ?: 1));
-                    $maxTeamRole = max(1, (int) ($teamByRole->max() ?: 1));
                 @endphp
 
                 {{-- Tabs styled like the faculty and dean Reports pages (.rp-tab there). --}}
@@ -1450,40 +1443,17 @@
                         </div>
                     </div>
 
-                    <div class="rp-body grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]"><h3 class="text-sm font-bold text-slate-800">Tasks done, by role</h3></div>
-                        <div class="rp-scroll space-y-3 p-5">
-                            @forelse($selfByRole as $role => $count)
-                                <div>
-                                    <div class="flex items-center justify-between text-xs mb-1">
-                                        <span class="font-semibold text-slate-600">{{ $roleLabels[$role] ?? $role }}</span>
-                                        <span class="font-bold text-slate-800">{{ $count }}</span>
-                                    </div>
-                                    <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                        <div class="h-full rounded-full bg-brand" style="width: {{ round(($count / $maxSelfRole) * 100) }}%"></div>
-                                    </div>
-                                </div>
-                            @empty
-                                <p class="text-sm text-slate-400">No completed tasks for your roles yet.</p>
-                            @endforelse
-                        </div>
-                    </div>
-
+                    <div class="rp-body grid grid-cols-1 gap-4 items-start">
                     <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                         <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]">
                             <h3 class="text-sm font-bold text-slate-800">Tasks I finished</h3>
                         </div>
                         <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[26.25rem] overflow-y-auto">
                             @forelse($selfCompleted as $task)
-                                <div class="px-5 py-3.5 flex items-start gap-3">
-                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-                                        <span class="iconify text-lg" data-icon="mdi:check-circle-outline"></span>
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-sm font-bold text-slate-800 truncate">{{ $task->title }}</p>
-                                        <p class="text-xs text-slate-400 mt-0.5">{{ $roleLabels[$task->role] ?? $task->role }} · {{ optional($task->updated_at)->format('M d, Y') }}</p>
-                                    </div>
+                                {{-- One line per task: its title, then the day it was finished. --}}
+                                <div class="px-5 py-3 flex items-center justify-between gap-4">
+                                    <p class="text-sm font-bold text-slate-800 truncate min-w-0">{{ $task->title }}</p>
+                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y') }}</p>
                                 </div>
                             @empty
                                 <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No completed assignments yet.</div>
@@ -1525,57 +1495,17 @@
                         </div>
                     </div>
 
-                    <div class="rp-body grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]"><h3 class="text-sm font-bold text-slate-800">Team tasks done, by role</h3></div>
-                        <div class="rp-scroll space-y-4 p-5">
-                            @forelse($teamByRole as $role => $count)
-                                @php
-                                    $lastTask = $teamLastByRole[$role] ?? null;
-                                    $lastUser = $lastTask?->student?->user ?? $lastTask?->assignedTo;
-                                    $lastBy = $lastUser
-                                        ? (trim(implode(' ', array_filter([$lastUser->first_name, $lastUser->last_name]))) ?: $lastUser->name)
-                                        : null;
-                                @endphp
-                                <div>
-                                    <div class="flex items-center justify-between text-xs mb-1">
-                                        <span class="font-semibold text-slate-600">{{ $roleLabels[$role] ?? $role }}</span>
-                                        <span class="font-bold text-slate-800">{{ $count }}</span>
-                                    </div>
-                                    <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                        <div class="h-full rounded-full bg-plum-accent" style="width: {{ round(($count / $maxTeamRole) * 100) }}%"></div>
-                                    </div>
-                                    @if($lastTask)
-                                        <p class="text-[0.6875rem] text-slate-400 mt-1.5 flex items-center gap-1 min-w-0">
-                                            <span class="iconify text-amber-500 shrink-0" data-icon="mdi:history"></span>
-                                            <span class="truncate">
-                                                Last completed: <span class="font-semibold text-slate-600">{{ $lastTask->title }}</span>
-                                                @if($lastBy) · {{ $lastBy }} @endif
-                                                · {{ optional($lastTask->updated_at)->format('M d, Y') }}
-                                            </span>
-                                        </p>
-                                    @endif
-                                </div>
-                            @empty
-                                <p class="text-sm text-slate-400">No team completions yet.</p>
-                            @endforelse
-                        </div>
-                    </div>
-
+                    <div class="rp-body grid grid-cols-1 gap-4 items-start">
                     <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                         <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]">
                             <h3 class="text-sm font-bold text-slate-800">Tasks my team finished</h3>
                         </div>
                         <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[26.25rem] overflow-y-auto">
                             @forelse($teamCompleted as $task)
-                                <div class="px-5 py-3.5 flex items-start gap-3">
-                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-                                        <span class="iconify text-lg" data-icon="mdi:check-circle-outline"></span>
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-sm font-bold text-slate-800 truncate">{{ $task->title }}</p>
-                                        <p class="text-xs text-slate-400 mt-0.5">{{ $roleLabels[$task->role] ?? $task->role }} · {{ optional($task->updated_at)->format('M d, Y') }}</p>
-                                    </div>
+                                {{-- One line per task: its title, then the day it was finished. --}}
+                                <div class="px-5 py-3 flex items-center justify-between gap-4">
+                                    <p class="text-sm font-bold text-slate-800 truncate min-w-0">{{ $task->title }}</p>
+                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y') }}</p>
                                 </div>
                             @empty
                                 <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No team completed assignments yet.</div>
