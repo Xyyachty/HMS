@@ -663,7 +663,7 @@
                         <thead class="bg-slate-50 sticky top-0">
                             <tr>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">#</th>
-                                <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">Sheet</th>
+                                <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">Row</th>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">Student ID</th>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">Last Name</th>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">First Name</th>
@@ -675,7 +675,7 @@
                     </table>
                 </div>
                 <div class="flex items-center justify-between gap-3 mt-2">
-                    <p class="text-xs text-slate-400">Every row is imported, not just this page. &ldquo;Sheet&rdquo; is the row number in your Excel file.</p>
+                    <p class="text-xs text-slate-400">Every row is imported, not just this page. &ldquo;Row&rdquo; is the row number in your Excel file.</p>
                     <div id="bulkPreviewPager" class="hidden items-center gap-1 shrink-0">
                         <button type="button" onclick="bulkPreviewGo(bulkPreviewPage - 1)" id="bulkPreviewPrev"
                             class="bulk-pager-btn"
