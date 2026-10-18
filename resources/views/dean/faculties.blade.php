@@ -825,7 +825,7 @@
             if (!entry.concept) {
                 return '<div class="tm-concept-empty">'
                     + '<p class="tm-card-title">' + escHtml(entry.slot_label) + '</p>'
-                    + '<p class="tm-panel-note mt-1">Not proposed yet.</p>'
+                    + '<p class="tm-panel-note mt-1">This team has not proposed this concept yet.</p>'
                 + '</div>';
             }
             return '<div class="tm-card">'
