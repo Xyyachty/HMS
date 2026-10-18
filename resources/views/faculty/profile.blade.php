@@ -142,7 +142,7 @@
                     Cancel
                 </a>
                 <button type="submit"
-                    class="w-full sm:w-auto h-11 px-6 brand-gradient text-white text-sm font-bold rounded-xl shadow-lg shadow-brand/20 hover:scale-[1.02] transition flex items-center justify-center gap-2">
+                    class="hover-green w-full sm:w-auto h-11 px-6 brand-gradient text-white text-sm font-bold rounded-xl shadow-lg shadow-brand/20 hover:scale-[1.02] transition flex items-center justify-center gap-2">
                     <span class="iconify" data-icon="mdi:content-save-outline"></span>
                     Save Changes
                 </button>

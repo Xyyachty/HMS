@@ -6,6 +6,8 @@
 @section('content')
 
 <style>
+    /* Save buttons turn green on hover. Literal hex: faculty-palette.css remaps the emerald/green utilities to gold. */
+    .hover-green:hover { background: #16a34a !important; box-shadow: 0 10px 15px -3px rgba(22, 163, 74, .3) !important; }
     /* ── Responsive shim ──
        The frozen build ships no breakpoint utilities, so the sm:/lg: classes
        this page has always used resolved to nothing. Emitted here for the set
@@ -1871,7 +1873,7 @@
         <!-- Modal Footer (always visible, fixed at bottom) -->
         <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 flex-shrink-0">
             <button type="button" onclick="closeUpdateModal()" class="px-5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 transition font-semibold text-sm">Cancel</button>
-            <button type="button" onclick="document.getElementById('updateTeamForm').submit()" class="px-6 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-amber-400/30 flex items-center gap-2">
+            <button type="button" onclick="document.getElementById('updateTeamForm').submit()" class="hover-green px-6 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-amber-400/30 flex items-center gap-2">
                 <span class="iconify" data-icon="mdi:content-save-edit-outline"></span> Save Changes
             </button>
         </div>

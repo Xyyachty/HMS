@@ -1,5 +1,9 @@
 {{-- Change own password. Shared by the dean, faculty and student profile pages;
      posts to account.password, whose errors come back in the "password" bag. --}}
+<style>
+    /* Save buttons turn green on hover. Literal hex: faculty-palette.css remaps the emerald/green utilities to gold. */
+    .hover-green:hover { background: #16a34a !important; box-shadow: 0 10px 15px -3px rgba(22, 163, 74, .3) !important; }
+</style>
 @php $pwErrors = $errors->getBag('password'); @endphp
 <div id="change-password" style="scroll-margin-top: 1.5rem" class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
     <form method="POST" action="{{ route('account.password') }}" class="p-6 md:p-8 space-y-6">
@@ -62,7 +66,7 @@
 
         <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2 border-t border-slate-100">
             <button type="submit"
-                class="w-full sm:w-auto h-11 px-6 brand-gradient text-white text-sm font-bold rounded-xl shadow-lg shadow-brand/20 hover:scale-[1.02] transition flex items-center justify-center gap-2">
+                class="hover-green w-full sm:w-auto h-11 px-6 brand-gradient text-white text-sm font-bold rounded-xl shadow-lg shadow-brand/20 hover:scale-[1.02] transition flex items-center justify-center gap-2">
                 <span class="iconify" data-icon="mdi:lock-reset"></span>
                 Change Password
             </button>
