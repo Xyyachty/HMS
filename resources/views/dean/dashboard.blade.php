@@ -147,10 +147,10 @@
             @empty
                 <div class="px-5 py-12 text-center">
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
+                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:clipboard-text-off-outline"></span>
                     </div>
-                    <p class="text-sm font-semibold text-black">No recent activity</p>
-                    <p class="text-xs text-black mt-1">Task assignments and completions will appear here.</p>
+                    <p class="text-sm font-semibold text-black">No task was given yet</p>
+                    <p class="text-xs text-black mt-1">Tasks will appear here once faculty assign them.</p>
                 </div>
             @endforelse
         </div>
