@@ -211,7 +211,7 @@
                 <span class="iconify text-violet-500 text-2xl" data-icon="mdi:clipboard-check-outline"></span>
             </div>
             <div class="min-w-0">
-                <p class="text-[0.8125rem] text-slate-500 font-semibold">Total Activities</p>
+                <p class="text-[0.8125rem] text-slate-500 font-semibold">Total Task</p>
                 <p class="text-[1.75rem] font-extrabold text-slate-900 leading-none mt-1">{{ $totalActivities }}</p>
             </div>
         </div>
