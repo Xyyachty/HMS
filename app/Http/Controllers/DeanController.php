@@ -199,7 +199,19 @@ class DeanController extends Controller
         $systemBlocks = Faculty::existingClassLetters();
         $handOverBlocks = Faculty::handOverBlocks();
 
-        return view('dean.usermanagement', compact('users', 'availableBlocks', 'systemBlocks', 'handOverBlocks'));
+        // Per faculty account: how many students they hold and whether they can
+        // take another faculty's over (Faculty::transferEverythingTo) - read by the
+        // reassign prompt shown before a faculty is set Inactive.
+        $facultyLoad = Faculty::with(['user', 'classes'])->withCount('students')->get()
+            ->filter(fn (Faculty $f) => $f->user)
+            ->mapWithKeys(fn (Faculty $f) => [$f->user->user_id => [
+                'name' => $f->user->name ?? $f->user->email,
+                'status' => $f->user->status,
+                'students' => $f->students_count,
+                'blocks' => $f->handledBlocksLabel(),
+            ]]);
+
+        return view('dean.usermanagement', compact('users', 'availableBlocks', 'systemBlocks', 'handOverBlocks', 'facultyLoad'));
     }
 
     public function usersLive()
@@ -698,6 +710,42 @@ class DeanController extends Controller
         }
 
         $validated = $request->validate($rules);
+
+        // A faculty with students cannot simply go Inactive: their block, students
+        // and teams would be left with nobody. The dean names who takes them over.
+        $faculty = $user->role === 'faculty' ? $user->faculty : null;
+        if ($faculty && $validated['status'] === 'inactive' && $user->status !== 'inactive' && $faculty->students()->exists()) {
+            $blocks = $faculty->handledBlocksLabel();
+            $receiver = Faculty::with('user')
+                ->whereHas('user', fn ($q) => $q->where('user_id', (int) $request->input('transfer_to'))->where('status', '!=', 'inactive'))
+                ->first();
+            if (!$receiver) {
+                return redirect()->route('dean.users')->withErrors([
+                    'status' => 'Assign ' . $blocks . ' to another faculty before setting this account to Inactive.',
+                ]);
+            }
+
+            $students = $faculty->students()->count();
+            try {
+                $faculty->transferEverythingTo($receiver);
+            } catch (\RuntimeException $e) {
+                return redirect()->route('dean.users')->withErrors(['status' => $e->getMessage()]);
+            }
+
+            $user->status = 'inactive';
+            $user->save();
+            $faculty->refresh()->update(['status' => 'inactive']);
+
+            $receiverName = $receiver->user->name ?? $receiver->user->email;
+            ActivityLog::recordFor(
+                ActivityLog::ACCOUNT_UPDATED,
+                'Moved ' . $blocks . ' (' . $students . ' students) from ' . ($user->name ?? $user->email)
+                    . ' to ' . $receiverName . ' and set ' . ($user->name ?? $user->email) . ' to inactive.'
+            );
+
+            return redirect()->route('dean.users')->with('success', $blocks . ' and its ' . $students
+                . ' students now belong to ' . $receiverName . '. ' . ($user->name ?? $user->email) . ' is now Inactive.');
+        }
 
         $user->status = $validated['status'];
 

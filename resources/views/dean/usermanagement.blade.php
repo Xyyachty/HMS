@@ -475,6 +475,8 @@
         <form id="updateUserForm" method="POST" action="" onsubmit="return confirmStatusChange(this)">
             @csrf
             @method('PUT')
+            {{-- Filled by the reassign prompt in confirmStatusChange(). --}}
+            <input type="hidden" name="transfer_to" id="updateTransferTo" value="">
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name</label>
@@ -589,6 +591,8 @@
     const systemBlocks = @json($systemBlocks);
     // Blocks another faculty runs past their own, which can be handed to this one.
     const handOverBlocks = @json((object) $handOverBlocks);
+    // user_id => {name, status, students, blocks}; see DeanController::users().
+    const facultyLoad = @json((object) $facultyLoad);
     let currentTab = 'faculty';
     let currentBlock = ''; // '' = all blocks, '__none__' = students with no block
     const BLOCK_COLUMN_INDEX = 2;
@@ -977,6 +981,12 @@
         const role = document.getElementById('updateRole').textContent.trim().toLowerCase() || 'user';
         const name = [document.getElementById('updateFirstName').value, document.getElementById('updateLastName').value]
             .filter(Boolean).join(' ') || 'This account';
+        // A faculty with students hands their block to another faculty first.
+        const load = role === 'faculty' && !activating ? facultyLoad[form.dataset.userId] : null;
+        if (load && load.students > 0) {
+            return promptBlockReassign(form, name, load);
+        }
+
         let text = `${name} will be marked ${activating ? 'Active' : 'Inactive'}.`;
         if (role === 'student') {
             text = activating
@@ -994,6 +1004,44 @@
             reverseButtons: true,
         }).then((result) => {
             if (result.isConfirmed) form.submit();
+        });
+        return false;
+    }
+
+    /* Before a faculty with students goes Inactive, the dean picks who takes over
+       their block, students and teams. Only a faculty with no students yet can:
+       they become that block (Faculty::transferEverythingTo). */
+    function promptBlockReassign(form, name, load) {
+        const receivers = Object.entries(facultyLoad)
+            .filter(([id, f]) => id !== String(form.dataset.userId) && f.students === 0 && f.status !== 'inactive');
+        const studentText = `${load.students} student${load.students === 1 ? '' : 's'}`;
+
+        if (!receivers.length) {
+            Swal.fire({
+                icon: 'warning',
+                title: `Reassign ${load.blocks} first`,
+                text: `${name} has ${studentText} in ${load.blocks}. Before this account can be set to Inactive, another faculty must take them over, and only a faculty with no students yet can. Add a new faculty first, then try again.`,
+                confirmButtonText: 'OK',
+            });
+            return false;
+        }
+
+        Swal.fire({
+            icon: 'warning',
+            title: `Reassign ${load.blocks}`,
+            text: `${name} has ${studentText} in ${load.blocks}. Choose the faculty who will take over the block, its students and teams. ${name} will then be set to Inactive.`,
+            input: 'select',
+            inputOptions: Object.fromEntries(receivers.map(([id, f]) => [id, `${f.name} (${f.blocks})`])),
+            inputPlaceholder: 'Select a faculty',
+            inputValidator: (value) => value ? undefined : 'Choose a faculty to take over.',
+            showCancelButton: true,
+            confirmButtonText: 'Reassign and deactivate',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+            document.getElementById('updateTransferTo').value = result.value;
+            form.submit();
         });
         return false;
     }
@@ -1021,6 +1069,8 @@
         }
 
         form.action = `${updateBaseUrl}/${userId}`;
+        form.dataset.userId = userId;
+        document.getElementById('updateTransferTo').value = '';
         document.getElementById('updateFirstName').value = firstName;
         document.getElementById('updateMiddleName').value = middleName;
         document.getElementById('updateLastName').value = lastName;

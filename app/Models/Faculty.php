@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A faculty row of user_information. The primary key is user_information_id — students
@@ -251,6 +252,57 @@ class Faculty extends UserInformation
         ksort($blocks);
 
         return $blocks;
+    }
+
+    /**
+     * Hand everything this faculty runs - every block tab, its students, their
+     * teams and tasks - to another faculty, before this one is set Inactive.
+     *
+     * The receiving faculty must have no students yet. Tab letters are read
+     * against the owner's own block (FacultyClass::block_letter), so the two
+     * swap block letters: the receiver becomes this block, and this faculty is
+     * left with the receiver's empty one, the same as a newly created faculty.
+     *
+     * @throws \RuntimeException with a message fit for the dean when it cannot move.
+     */
+    public function transferEverythingTo(self $to): void
+    {
+        $fromId = (int) $this->user_information_id;
+        $toId = (int) $to->user_information_id;
+
+        if ($fromId === $toId) {
+            throw new \RuntimeException('Choose a different faculty to take over.');
+        }
+        if ($to->students()->exists()) {
+            throw new \RuntimeException(($to->user?->name ?? 'That faculty') . ' already has students. Choose a faculty with no students yet.');
+        }
+
+        DB::transaction(function () use ($fromId, $toId, $to) {
+            $teams = DB::table('student_groups')->where('faculty_id', $fromId)->distinct()->pluck('group_name')->all();
+            $clash = DB::table('groups')->where('faculty_id', $toId)->whereIn('group_name', $teams)->value('group_name');
+            if ($clash !== null) {
+                throw new \RuntimeException('The receiving faculty already has a team named "' . $clash . '".');
+            }
+
+            // Their empty tabs give way; this faculty's tabs become theirs.
+            FacultyClass::where('faculty_id', $toId)->delete();
+            FacultyClass::where('faculty_id', $fromId)->update(['faculty_id' => $toId]);
+            Student::where('faculty_id', $fromId)->update(['faculty_id' => $toId]);
+
+            foreach (Group::teamOwnedTables() as $name) {
+                DB::table($name)->where('faculty_id', $fromId)->update(['faculty_id' => $toId]);
+            }
+
+            // block is unique, so the swap goes through null.
+            $fromBlock = $this->block;
+            $toBlock = $to->block;
+            $this->update(['block' => null]);
+            $to->update(['block' => $fromBlock]);
+            $this->update(['block' => $toBlock]);
+
+            FacultyClass::reconcileForFaculty($toId);
+            FacultyClass::reconcileForFaculty($fromId);
+        });
     }
 
     /** Options for a faculty update dropdown: available class letters + their current block. */
