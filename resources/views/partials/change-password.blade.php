@@ -23,10 +23,23 @@
             @endif
 
             @if (session('password_success'))
-                <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 mb-5 text-sm text-emerald-700 flex items-center gap-3">
+                {{-- Literal green: faculty-palette.css turns the emerald utilities gold. --}}
+                <div class="rounded-2xl border px-5 py-4 mb-5 text-sm flex items-center gap-3"
+                     style="background: #f0fdf4; border-color: #bbf7d0; color: #15803d;">
                     <span class="iconify text-lg" data-icon="mdi:check-circle"></span>
                     {{ session('password_success') }}
                 </div>
+                <script>
+                    window.addEventListener('load', function () {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Password Changed',
+                            text: @json(session('password_success')),
+                            // heightAuto would let the page grow behind the dialog.
+                            heightAuto: false,
+                        });
+                    });
+                </script>
             @endif
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
