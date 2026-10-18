@@ -164,6 +164,10 @@
     #createUserModal .um-err { display: none; margin-top: .375rem; font-size: .75rem; font-weight: 600; color: #DC2626; }
     #createUserModal .um-err.show { display: block; }
     #createUserModal input.um-invalid { border-color: #DC2626; }
+
+    /* Update User modal: the save button is green. */
+    #updateUserSubmit { background-color: #15803D; box-shadow: 0 4px 6px -1px rgba(21, 128, 61, .25); }
+    #updateUserSubmit:hover { background-color: #166534; }
 </style>
 @endpush
 
@@ -525,7 +529,7 @@
             </div>
             <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0">
                 <button type="button" onclick="closeModal('updateUserModal')" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-200 transition font-semibold text-sm">Cancel</button>
-                <button type="submit" class="px-5 py-2 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20">Update User</button>
+                <button type="submit" id="updateUserSubmit" class="px-5 py-2 text-white rounded-xl font-bold text-sm hover:scale-105 transition">Update User</button>
             </div>
         </form>
     </div>
