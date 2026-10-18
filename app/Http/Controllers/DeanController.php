@@ -67,8 +67,8 @@ class DeanController extends Controller
             'housekeeping' => 'Housekeeping',
         ];
 
-        // One pass over every task in the system feeds the Recent list and the
-        // completion figure on the Teams card.
+        // One pass over every task in the system feeds the completion figure on
+        // the Teams card.
         $allTasks = Task::whereIn('status', ['active', 'archived'])
             ->get(['task_id', 'title', 'faculty_id', 'group_name', 'role', 'status', 'created_at']);
 
@@ -77,8 +77,8 @@ class DeanController extends Controller
             ? (int) round(($completedTasks / $allTasks->count()) * 100)
             : 0;
 
-        // Faculty display names, resolved once so the Recent list can label a
-        // task with the instructor who owns it.
+        // Faculty display names, resolved once so Team Progress can label a
+        // team with the instructor who owns it.
         $facultyNames = Faculty::with('user')
             ->get()
             ->mapWithKeys(function ($faculty) {
@@ -91,17 +91,12 @@ class DeanController extends Controller
                 return [$faculty->user_information_id => $name];
             });
 
-        // Recent: the open tasks handed out most recently.
-        $recentTasks = $allTasks
-            ->where('status', 'active')
-            ->sortByDesc('created_at')
+        // Recent Activity: the latest entries of the shared activity log, from
+        // every portal — sign-ins and sign-outs as well as task and team work.
+        $recentLogs = ActivityLog::with('user')
+            ->orderByDesc('activity_log_id')
             ->take(5)
-            ->values()
-            ->map(function ($task) use ($facultyNames) {
-                $task->faculty_name = $facultyNames[$task->faculty_id] ?? null;
-
-                return $task;
-            });
+            ->get();
 
         $teamProgress = self::teamProgress($facultyNames);
         $customizationPercent = self::averagePercent($teamProgress);
@@ -117,7 +112,7 @@ class DeanController extends Controller
             'recentActivity',
             'roleLabels',
             'newAccounts',
-            'recentTasks',
+            'recentLogs',
             'completedTasks',
             'completionRate',
             'teamProgress',

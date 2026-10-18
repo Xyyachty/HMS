@@ -200,35 +200,46 @@
         </div>
     </div>
 
-    <!-- Recent: the open tasks handed out most recently -->
+    <!-- Recent Activity: the latest entries of the shared activity log -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-black">Recent</p>
-            <a href="{{ route('dean.activity') }}" class="text-[0.6875rem] font-bold text-black hover:underline">View All</a>
+            <p class="text-sm font-bold text-black">Recent Activity</p>
         </div>
         <div class="divide-y divide-slate-50">
-            @forelse(($recentTasks ?? collect()) as $task)
-                <div class="px-5 py-3 flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $tint($task->role, 'bg') }} {{ $tint($task->role, 'text') }}">
-                        <span class="iconify text-lg" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
+            @forelse(($recentLogs ?? collect()) as $log)
+                @php
+                    $logUser = $log->user;
+                    $logName = $logUser
+                        ? (trim(implode(' ', array_filter([$logUser->first_name, $logUser->last_name]))) ?: ($logUser->name ?? 'User'))
+                        : 'Deleted account';
+                    $logIcon = match (true) {
+                        $log->activity === 'login'                    => 'mdi:login',
+                        $log->activity === 'logout'                   => 'mdi:logout',
+                        str_starts_with($log->activity, 'account_')   => 'mdi:account-outline',
+                        str_starts_with($log->activity, 'team_'),
+                        $log->activity === 'student_assigned',
+                        $log->activity === 'role_assigned'            => 'mdi:account-group-outline',
+                        str_starts_with($log->activity, 'task_')      => 'mdi:clipboard-text-outline',
+                        default                                       => 'mdi:history',
+                    };
+                @endphp
+                <div class="px-5 py-3 flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-amber-50 text-amber-500">
+                        <span class="iconify text-lg" data-icon="{{ $logIcon }}"></span>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <p class="text-[0.8125rem] font-bold text-black truncate">{{ $task->title }}</p>
-                        <p class="text-[0.6875rem] text-black mt-0.5 truncate">
-                            {{ $task->group_name ?: ($roleLabels[$task->role] ?? $task->role) }}
-                            @if($task->faculty_name)
-                                · {{ $task->faculty_name }}
-                            @endif
-                        </p>
+                        <p class="text-[0.8125rem] font-bold text-black truncate">{{ $log->activity_label }}</p>
+                        <p class="text-[0.6875rem] text-black mt-0.5 truncate">{{ $logName }} · {{ ucfirst($log->role) }}</p>
                     </div>
+                    <p class="text-[0.625rem] text-black font-medium whitespace-nowrap shrink-0">{{ optional($log->created_at)->diffForHumans(null, true) }}</p>
                 </div>
             @empty
                 <div class="px-5 py-12 text-center">
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:clipboard-text-outline"></span>
+                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
                     </div>
-                    <p class="text-sm font-semibold text-black">No active tasks</p>
-                    <p class="text-xs text-black mt-1">Tasks faculty assign will show up here.</p>
+                    <p class="text-sm font-semibold text-black">No activity yet</p>
+                    <p class="text-xs text-black mt-1">Sign-ins, sign-outs and task work will show up here.</p>
                 </div>
             @endforelse
         </div>
