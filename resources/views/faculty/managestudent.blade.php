@@ -115,8 +115,10 @@
         border-radius: .6rem; padding: .4rem .8rem; font-size: 0.7188rem; font-weight: 800;
         color: #111; background: #fff; border: 1px solid #111; transition: all .15s ease;
     }
+    /* Dark gray under the pointer; the row's hover only hints at it. */
+    #studentsTable tbody tr[data-student-id]:hover .st-update { background: #EFEFEF; border-color: #111; color: #181818; }
     .st-update:hover,
-    #studentsTable tbody tr[data-student-id]:hover .st-update { background: #dadada; border-color: #111; color: #181818; }
+    #studentsTable tbody tr[data-student-id]:hover .st-update:hover { background: #4B4B4B; border-color: #4B4B4B; color: #fff; }
     /* Bulk Upload and Add Student turn light gray on hover, like Update and search. */
     .ms-light-hover.ms-light-hover:hover { background: #dadada; color: #181818; opacity: 1; }
 
@@ -127,9 +129,9 @@
         font-size: 0.8125rem; font-weight: 700; color: #404040; background: #fff; border: 1px solid #E4E2E0;
         transition: all .15s ease;
     }
-    a.st-page:hover { color: #404040; border-color: #dadada; background: #dadada; }
-    /* Dark gray, not black, for the page you are on. */
-    .st-page.is-current { background: #404040; border-color: #404040; color: #fff; }
+    a.st-page:hover { color: #404040; border-color: #dadada; background: #EFEFEF; }
+    /* Gray, not black, for the page you are on. */
+    .st-page.is-current { background: #dadada; border-color: #BDBDBD; color: #111; }
     .st-page.is-disabled { color: #404040; opacity: .4; background: #fff; cursor: not-allowed; }
 
     /* Expandable student search — icon-only until opened */

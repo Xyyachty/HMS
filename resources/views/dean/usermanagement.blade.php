@@ -53,8 +53,10 @@
         border: 1px solid; transition: all .15s ease;
     }
     .st-update { color: #111; background: #fff; border-color: #111; }
+    /* Dark gray under the pointer; the row's hover only hints at it. */
+    table.dataTable#usersTable tbody tr:hover .st-update { background: #EFEFEF; border-color: #111; color: #181818; }
     .st-update:hover,
-    table.dataTable#usersTable tbody tr:hover .st-update { background: #dadada; border-color: #111; color: #181818; }
+    table.dataTable#usersTable tbody tr:hover .st-update:hover { background: #4B4B4B; border-color: #4B4B4B; color: #fff; }
     #addFacultyBtn { color: #fff; background: #4A4643; border: 1px solid #4A4643; }
     #addFacultyBtn:hover { color: #181818; background: #dadada; border-color: #dadada; }
     .st-approve { color: #fff; background: #111; border-color: #111; }
@@ -97,11 +99,12 @@
         border: 1px solid #E4E2E0 !important; box-shadow: none !important; transition: all .15s ease;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button:hover {
-        color: #181818 !important; border-color: #dadada !important; background: #dadada !important;
+        color: #181818 !important; border-color: #dadada !important; background: #EFEFEF !important;
     }
+    /* The page you are on is gray, not black. */
     #usersTable_wrapper .dataTables_paginate .paginate_button.current,
     #usersTable_wrapper .dataTables_paginate .paginate_button.current:hover {
-        background: #111 !important; border-color: #111 !important; color: #fff !important;
+        background: #dadada !important; border-color: #BDBDBD !important; color: #111 !important;
         box-shadow: none !important;
     }
     #usersTable_wrapper .dataTables_paginate .paginate_button.disabled,
@@ -117,7 +120,7 @@
     .um-page .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(17,17,17,.10); }
 
     /* Toolbar, filters and table text are black; only the Active status keeps its green.
-       Selected Block pill is a black fill so it still reads as selected. */
+       Selected Block pill is a gray fill so it still reads as selected. */
     .um-main .text-slate-500,
     .um-main .text-amber-500,
     .um-main .hover\:text-brand:hover,
@@ -125,7 +128,7 @@
     /* Faculty / Students tab labels are black, no maroon. */
     .um-main .tab-btn,
     .um-main .tab-btn:hover { color: #111; }
-    .um-main .block-tab-btn.bg-brand { background-color: #111; border-color: #111; color: #fff; }
+    .um-main .block-tab-btn.bg-brand { background-color: #dadada; border-color: #dadada; color: #111; }
     /* No soft fills on the page: the Faculty / Students tabs, the Block bar,
        the success notice and the initials tiles are white and keep their
        borders. Doubled class to outrank the .gray-accents fills. */
