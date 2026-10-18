@@ -190,9 +190,8 @@
     }
 
     /* Bulk upload preview. Written out rather than composed from utilities because
-       public/css/app.css is a frozen build — max-h-80, hover:border-brand and the
+       public/css/app.css is a frozen build — hover:border-brand and the
        disabled: variants this needs are not in it and would silently do nothing. */
-    .bulk-preview-scroll { max-height: 20rem; }
     .bulk-pager-btn {
         display: inline-flex; align-items: center; justify-content: center;
         padding: 0.25rem 0.5rem; border-radius: 0.5rem;
@@ -658,7 +657,7 @@
                         <span class="block mt-0.5 text-amber-700">They are marked below and will be skipped. Everyone else still imports.</span>
                     </div>
                 </div>
-                <div class="overflow-x-auto rounded-xl border border-slate-200 bulk-preview-scroll">
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-50 sticky top-0">
                             <tr>
@@ -1179,13 +1178,13 @@
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
             tr.innerHTML = `
-                <td class="px-3 py-2 text-slate-400">${start + i + 1}</td>
-                <td class="px-3 py-2 text-slate-400">${s.row}</td>
-                <td class="px-3 py-2 font-mono text-slate-700">${cell(s.student_number)}</td>
-                <td class="px-3 py-2">${cell(s.last_name)}</td>
-                <td class="px-3 py-2">${cell(s.first_name)}</td>
-                <td class="px-3 py-2 ${s.email ? 'text-slate-500' : 'text-amber-700 font-semibold'}">${s.email ? cell(s.email) : 'no email'}</td>
-                <td class="px-3 py-2 text-slate-500">${cell(s.phone_number)}</td>
+                <td class="px-3 py-1.5 text-slate-400">${start + i + 1}</td>
+                <td class="px-3 py-1.5 text-slate-400">${s.row}</td>
+                <td class="px-3 py-1.5 font-mono text-slate-700">${cell(s.student_number)}</td>
+                <td class="px-3 py-1.5">${cell(s.last_name)}</td>
+                <td class="px-3 py-1.5">${cell(s.first_name)}</td>
+                <td class="px-3 py-1.5 ${s.email ? 'text-slate-500' : 'text-amber-700 font-semibold'}">${s.email ? cell(s.email) : 'no email'}</td>
+                <td class="px-3 py-1.5 text-slate-500">${cell(s.phone_number)}</td>
             `;
             tbody.appendChild(tr);
         });
