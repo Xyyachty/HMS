@@ -42,7 +42,8 @@ class EnsurePasswordChanged
             // Keeps the sign-in's welcome message for the page they land on.
             $request->session()->reflash();
 
-            return redirect()->route($profile);
+            // The fragment scrolls the page straight to the form (partials.change-password).
+            return redirect()->route($profile)->withFragment('change-password');
         }
 
         abort(403, 'Change your temporary password first.');

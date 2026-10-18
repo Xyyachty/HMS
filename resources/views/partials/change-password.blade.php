@@ -1,7 +1,7 @@
 {{-- Change own password. Shared by the dean, faculty and student profile pages;
      posts to account.password, whose errors come back in the "password" bag. --}}
 @php $pwErrors = $errors->getBag('password'); @endphp
-<div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+<div id="change-password" style="scroll-margin-top: 1.5rem" class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
     <form method="POST" action="{{ route('account.password') }}" class="p-6 md:p-8 space-y-6">
         @csrf
         @method('PUT')
