@@ -281,11 +281,11 @@
             </div>
         </div>
 
-        <!-- Recent Activities -->
+        <!-- Recent Activity Report -->
         <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
             <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <p class="text-[0.9375rem] font-bold text-slate-800">Recent Activities</p>
+                    <p class="text-[0.9375rem] font-bold text-slate-800">Recent Activity Report</p>
                     <p class="text-[0.75rem] text-slate-400">Latest completed activities from all teams.</p>
                 </div>
                 <button type="button" onclick="switchReportTab('activity')"
