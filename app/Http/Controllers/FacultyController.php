@@ -221,7 +221,7 @@ class FacultyController extends Controller
 
         ActivityLog::recordFor(
             ActivityLog::TEAM_CREATED,
-            'Created team "' . $validated['group_name'] . '" with ' . $memberCount . ' member(s).'
+            'Created ' . \App\Models\Group::label($validated['group_name']) . ' with ' . $memberCount . ' member(s).'
         );
 
         Notifier::teamCreated(
@@ -233,13 +233,13 @@ class FacultyController extends Controller
 
         ActivityLog::recordFor(
             ActivityLog::ROLE_ASSIGNED,
-            'Assigned role(s) ' . implode(', ', $assignedRoles) . ' in team "' . $validated['group_name'] . '".'
+            'Assigned role(s) ' . implode(', ', $assignedRoles) . ' in ' . \App\Models\Group::label($validated['group_name']) . '.'
         );
 
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'teams',
             'class' => $request->input('class_letter') ?: null,
-        ]))->with('success', 'Team "' . $validated['group_name'] . '" created successfully.')
+        ]))->with('success', \App\Models\Group::label($validated['group_name']) . ' created successfully.')
           ->with('success_title', 'Team Created');
     }
 
@@ -573,7 +573,7 @@ class FacultyController extends Controller
             $user = $first->student?->user;
             $name = trim(($user?->first_name ?? '') . ' ' . ($user?->last_name ?? '')) ?: ($user?->name ?? 'A selected student');
 
-            return $name . ' is already on team "' . $first->group_name . '". A student can only be on one team.';
+            return $name . ' is already on ' . \App\Models\Group::label($first->group_name) . '. A student can only be on one team.';
         }
 
         return null;
@@ -1743,7 +1743,7 @@ class FacultyController extends Controller
         ActivityLog::record(
             $facultyUser,
             ActivityLog::ROLE_ASSIGNED,
-            'Confirmed the simulation roles for team "' . $groupName . '".'
+            'Confirmed the simulation roles for ' . \App\Models\Group::label($groupName) . '.'
         );
 
         $approval = $this->approvalSummary($groupName, (int) $facultyId);
@@ -2059,7 +2059,7 @@ class FacultyController extends Controller
 
         ActivityLog::recordFor(
             ActivityLog::TEAM_UPDATED,
-            'Updated team "' . $groupName . '"'
+            'Updated ' . \App\Models\Group::label($groupName)
                 . ($groupName !== $validated['group_name'] ? ' (renamed to "' . $validated['group_name'] . '")' : '')
                 . ' — ' . count($memberIds) . ' member(s) and their roles reassigned.'
         );
@@ -2067,7 +2067,7 @@ class FacultyController extends Controller
         if ($addedIds !== []) {
             ActivityLog::recordFor(
                 ActivityLog::STUDENT_ASSIGNED,
-                'Assigned ' . count($addedIds) . ' student(s) to team "' . $validated['group_name'] . '".'
+                'Assigned ' . count($addedIds) . ' student(s) to ' . \App\Models\Group::label($validated['group_name']) . '.'
             );
 
             Notifier::teamMembersAdded(auth()->user(), $validated['group_name'], (int) $facultyId, $addedIds);

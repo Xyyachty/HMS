@@ -285,7 +285,7 @@ class Notifier
             static::userIdsForStudents($studentIds),
             UserNotification::TEAM_CREATED,
             'You joined team ' . $groupName,
-            'Your faculty placed you on team "' . $groupName . '". Open your dashboard to see your role.',
+            'Your faculty placed you on ' . \App\Models\Group::label($groupName) . '. Open your dashboard to see your role.',
             route('students.dashboard'),
             $actor
         );
@@ -294,7 +294,7 @@ class Notifier
             static::deanUserIds(),
             UserNotification::TEAM_CREATED,
             'New team created',
-            'Team "' . $groupName . '" was created with ' . count($studentIds) . ' member(s).',
+            \App\Models\Group::label($groupName) . ' was created with ' . count($studentIds) . ' member(s).',
             route('dean.dashboard'),
             $actor
         );
@@ -309,7 +309,7 @@ class Notifier
             $newUserIds,
             UserNotification::TEAM_MEMBER_ADDED,
             'You joined team ' . $groupName,
-            'Your faculty added you to team "' . $groupName . '".',
+            'Your faculty added you to ' . \App\Models\Group::label($groupName) . '.',
             route('students.dashboard'),
             $actor
         );
@@ -454,7 +454,7 @@ class Notifier
             count($concepts) === 1
                 ? 'Hotel concept submitted for review'
                 : 'Hotel concepts submitted for review',
-            'Team ' . $membership->group_name . ' submitted ' . $titles . ' for your review.',
+            \App\Models\Group::label($membership->group_name) . ' submitted ' . $titles . ' for your review.',
             route('faculty.role', ['tab' => 'teams']),
             $actor
         );
@@ -517,8 +517,8 @@ class Notifier
         static::push(
             array_filter([static::facultyUserId($facultyId)]),
             UserNotification::SITE_PUBLISHED,
-            'Team ' . $groupName . ' published their site',
-            $who . ' published team "' . $groupName . '" hotel website' . $where . '.',
+            \App\Models\Group::label($groupName) . ' published their site',
+            $who . ' published ' . \App\Models\Group::label($groupName) . "'s hotel website" . $where . '.',
             route('faculty.role'),
             $actor
         );

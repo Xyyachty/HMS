@@ -2713,7 +2713,7 @@ function openTaskReview(taskId) {
             document.getElementById('reviewTaskTitle').textContent = d.title || 'Submission';
             document.getElementById('reviewTaskMeta').innerHTML = [
                 d.student_name ? reviewMetaChip('mdi:account-outline', d.student_name) : '',
-                d.group_name ? reviewMetaChip('mdi:account-group-outline', 'Team ' + d.group_name) : '',
+                d.group_name ? reviewMetaChip('mdi:account-group-outline', teamLabel(d.group_name)) : '',
                 d.role_label ? reviewMetaChip('mdi:briefcase-outline', d.role_label) : '',
             ].join('');
 
@@ -4576,6 +4576,11 @@ let teamModalActivityPage = 1;
 let teamModalActivityTab = null;
 const TEAM_MODAL_ACTIVITY_PER_PAGE = 5;
 
+// "Team 3" stays as it is; only a bare name gets the word (Group::label).
+function teamLabel(name) {
+    return !name ? 'Team' : (/^team\s/i.test(name) ? name : 'Team ' + name);
+}
+
 function escHtml(s) {
     return String(s == null ? '' : s)
         .replace(/&/g, '&amp;')
@@ -4794,8 +4799,8 @@ function renderTeamApproval() {
     const count = (label, n, key) => '<span style="margin-right:1rem;">' + label + ': <b class="status-text-' + key + '">' + n + '</b></span>';
 
     box.innerHTML = '<div class="flex items-center justify-between gap-2 flex-wrap">'
-            + '<p class="tm-section-title"><span class="iconify" data-icon="mdi:check-decagram-outline"></span>Team '
-                + escHtml(teamModalGroup) + ' — Hotel Customization</p>' + lock
+            + '<p class="tm-section-title"><span class="iconify" data-icon="mdi:check-decagram-outline"></span>'
+                + escHtml(teamLabel(teamModalGroup)) + ' — Hotel Customization</p>' + lock
         + '</div>'
         + '<p class="tm-muted mt-2">'
             + count('Required Tasks', a.required, 'not_started') + count('Approved', a.approved, 'completed')
@@ -4951,9 +4956,7 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
     const logs = (Array.isArray(activityLogs) ? activityLogs : [])
         .filter((l) => !options.onlyAwaitingReview || l.awaiting_review);
 
-    // Most names already read "Team 3"; only a bare name gets the prefix.
-    document.getElementById('modalTeamName').textContent = !groupName ? 'Team'
-        : (/^team\s/i.test(groupName) ? groupName : 'Team ' + groupName);
+    document.getElementById('modalTeamName').textContent = teamLabel(groupName);
     document.getElementById('modalTeamSummary').textContent = [
         members.length + (members.length === 1 ? ' member' : ' members'),
         createdAt ? 'Created ' + createdAt : '',
@@ -5181,14 +5184,14 @@ function collectNewSubmissions(byGroup, key, seen, describe) {
 function announceNewSubmissions(data) {
     const taskNew = collectNewSubmissions(
         (data && data.tasks) || {}, 'task_ids', pendingReviewSeen,
-        (group, entry) => 'Team ' + escHtml(group) + ' — '
+        (group, entry) => escHtml(teamLabel(group)) + ' — '
             + escHtml((entry.latest && entry.latest.student_name) || 'A student')
             + ' · ' + escHtml((entry.latest && entry.latest.role_label) || '')
             + ' · "' + escHtml((entry.latest && entry.latest.title) || '') + '"'
     );
     const conceptNew = collectNewSubmissions(
         (data && data.concepts) || {}, 'hotel_concept_ids', conceptPendingSeen,
-        (group, entry) => 'Team ' + escHtml(group) + ' — Hotel Concept · '
+        (group, entry) => escHtml(teamLabel(group)) + ' — Hotel Concept · '
             + escHtml((entry.latest && entry.latest.submitted_by) || 'A team member')
     );
 

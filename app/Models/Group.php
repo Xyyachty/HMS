@@ -17,6 +17,20 @@ class Group extends Model
         'slug',
     ];
 
+    /**
+     * A team as people read it: "Team 1" stays "Team 1", and only a bare name
+     * gets the word ("Eagles" -> "Team Eagles"), never "Team Team 1".
+     */
+    public static function label(?string $groupName): string
+    {
+        $name = trim((string) $groupName);
+        if ($name === '') {
+            return 'Team';
+        }
+
+        return preg_match('/^team\s/i', $name) ? $name : 'Team ' . $name;
+    }
+
     public function faculty()
     {
         return $this->belongsTo(Faculty::class, 'faculty_id', 'user_information_id');

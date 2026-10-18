@@ -186,7 +186,7 @@ class HotelConceptController extends Controller
                 $isNew ? ActivityLog::CONCEPT_CREATED : ActivityLog::CONCEPT_UPDATED,
                 ($isNew ? 'Proposed ' : 'Updated ')
                     . HotelConceptDesk::slotLabel($slot) . ' "'
-                    . $concept->title . '" for team "' . $membership->group_name . '"'
+                    . $concept->title . '" for ' . \App\Models\Group::label($membership->group_name)
                     . ($isNew
                         ? '.'
                         : ' — changed ' . implode(', ', array_map(

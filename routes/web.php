@@ -1124,7 +1124,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         ActivityLog::record(
             $authUser,
             ActivityLog::WEBSITE_CUSTOMIZED,
-            'Selected hotel website Template ' . $request->template . ' for team "' . $groupMembership->group_name . '".'
+            'Selected hotel website Template ' . $request->template . ' for ' . \App\Models\Group::label($groupMembership->group_name) . '.'
         );
 
         return response()->json([
@@ -1176,7 +1176,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             $authUser,
             ActivityLog::WEBSITE_CUSTOMIZED,
             $request->boolean('publish')
-                ? 'Published hotel website customizations to team "' . $groupMembership->group_name . '".'
+                ? 'Published hotel website customizations to ' . \App\Models\Group::label($groupMembership->group_name) . '.'
                 : 'Saved hotel website customizations.'
         );
 

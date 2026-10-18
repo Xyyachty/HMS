@@ -309,7 +309,7 @@ class FacultyClass extends Model
                 ->whereNotIn('student_id', $studentIds)
                 ->value('group_name');
             if ($mixed !== null) {
-                throw new \RuntimeException('Team "' . $mixed . '" has students in Block ' . $block
+                throw new \RuntimeException(\App\Models\Group::label($mixed) . ' has students in Block ' . $block
                     . ' and in another block. Move them into one block first.');
             }
 

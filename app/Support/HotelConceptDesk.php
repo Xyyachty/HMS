@@ -506,7 +506,7 @@ class HotelConceptDesk
                 'Submitted ' . $submitting
                     ->map(fn (HotelConcept $c) => self::slotLabel($c->slot) . ' "' . $c->title . '"')
                     ->implode(' and ')
-                    . ' of team "' . $membership->group_name . '" to faculty for review.'
+                    . ' of ' . \App\Models\Group::label($membership->group_name) . ' to faculty for review.'
             );
         });
 
@@ -590,7 +590,7 @@ class HotelConceptDesk
                 ActivityLog::CONCEPT_REVIEWED,
                 ($revise ? 'Requested changes on' : 'Approved')
                     . ' ' . self::slotLabel($concept->slot) . ' "' . $concept->title
-                    . '" of team "' . $membership->group_name . '"'
+                    . '" of ' . \App\Models\Group::label($membership->group_name)
                     . ($notSelected
                         ? ' as the official concept; ' . self::slotLabel($notSelected->slot) . ' not selected.'
                         : '.')

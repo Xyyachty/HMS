@@ -22,7 +22,7 @@
                 <p class="text-[0.625rem] font-bold uppercase tracking-wider text-[#8A817A]">
                     Hotel Customization &middot; Hotel Simulation
                 </p>
-                <h3 class="text-base font-bold text-[#181818]">Team {{ $groupMembership->group_name }} — Hotel Customization</h3>
+                <h3 class="text-base font-bold text-[#181818]">{{ \App\Models\Group::label($groupMembership->group_name) }} — Hotel Customization</h3>
             </div>
             @if($simSeats)
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-[#E7E1DD] bg-[#F5F2EF] text-[0.6875rem] font-bold text-slate-600">

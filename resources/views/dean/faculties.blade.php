@@ -713,7 +713,8 @@
         members = Array.isArray(members) ? members : [];
         loadTeamHotelConcept(facultyId, groupName);
 
-        document.getElementById('modalTeamName').textContent = groupName ? 'Team ' + groupName : 'Team';
+        // "Team 3" stays as it is; only a bare name gets the word (Group::label).
+        document.getElementById('modalTeamName').textContent = !groupName ? 'Team' : (/^team\s/i.test(groupName) ? groupName : 'Team ' + groupName);
         document.getElementById('modalTeamSummary').textContent = [
             members.length + (members.length === 1 ? ' member' : ' members'),
             createdAt ? 'Created ' + createdAt : '',
