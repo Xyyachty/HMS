@@ -1095,6 +1095,8 @@
                     <div id="teamModalApproval" class="tm-section" style="margin-bottom: 1rem;"></div>
                     <div id="teamModalActivityStats" class="tm-stats"></div>
                     <div class="tm-card">
+                        {{-- One tab per department and student; filled by renderTeamModalActivityPage(). --}}
+                        <div id="teamModalActivityTabs" class="tm-role-tabs"></div>
                         <table class="tm-table">
                             {{-- Grouped by department (renderTeamModalActivityPage): the
                                  department and its student head each group once, not every row. --}}
@@ -4570,6 +4572,8 @@ window.addEventListener('load', function () {
 // ── Team Info Modal ────────────────────────────
 let teamModalActivityLogs = [];
 let teamModalActivityPage = 1;
+// The department tab open in Team Task Activity ("role|student"); null picks one.
+let teamModalActivityTab = null;
 const TEAM_MODAL_ACTIVITY_PER_PAGE = 5;
 
 function escHtml(s) {
@@ -4644,6 +4648,8 @@ function renderTeamModalActivityPage() {
     renderTeamModalActivityStats(logs);
 
     if (total === 0) {
+        const emptyTabs = document.getElementById('teamModalActivityTabs');
+        if (emptyTabs) emptyTabs.innerHTML = '';
         activityBody.innerHTML = '<tr><td colspan="5"><div class="tm-empty">'
             + '<span class="iconify" data-icon="mdi:clipboard-outline"></span>'
             + 'No tasks have been given to this team yet.</div></td></tr>';
@@ -4705,7 +4711,33 @@ function renderTeamModalActivityPage() {
         '</tr>';
     };
 
-    activityBody.innerHTML = ordered.map(function([, items]) {
+    // Tabs, so only one department's tasks are on screen. Opens on the first
+    // department with work waiting for review, else the first one.
+    if (!groups.has(teamModalActivityTab)) {
+        const waitingGroup = ordered.find(([, items]) => items.some((l) => l.awaiting_review));
+        teamModalActivityTab = (waitingGroup || ordered[0])[0];
+    }
+    const tabs = document.getElementById('teamModalActivityTabs');
+    if (tabs) {
+        tabs.innerHTML = ordered.map(function([key, items]) {
+            const waiting = items.filter((l) => l.awaiting_review).length;
+            return '<button type="button" data-activity-tab="' + escHtml(key) + '"'
+                    + ' class="tm-role-tab' + (key === teamModalActivityTab ? ' is-active' : '') + '"'
+                    + ' title="' + escHtml(items[0].student_name || 'Not assigned') + '">'
+                + escHtml(items[0].role_label || items[0].role || 'Other')
+                + '<span class="tm-role-tab-count">' + items.length + '</span>'
+                + (waiting ? '<span class="tm-role-tab-alert" title="' + waiting + ' to review"></span>' : '')
+            + '</button>';
+        }).join('');
+        tabs.onclick = function(e) {
+            const btn = e.target.closest('[data-activity-tab]');
+            if (!btn) return;
+            teamModalActivityTab = btn.getAttribute('data-activity-tab');
+            renderTeamModalActivityPage();
+        };
+    }
+
+    activityBody.innerHTML = ordered.filter(([key]) => key === teamModalActivityTab).map(function([, items]) {
         const name = items[0].student_name;
         const waiting = items.filter((l) => l.awaiting_review).length;
         return '<tr class="tm-group-row"><td colspan="5">'
@@ -4968,6 +5000,7 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
 
     teamModalActivityLogs = logs;
     teamModalActivityPage = 1;
+    teamModalActivityTab = null;
     renderTeamModalActivityPage();
 
     // Overview by default, so the modal never reappears on the other tab; Review

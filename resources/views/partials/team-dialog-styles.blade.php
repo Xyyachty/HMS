@@ -208,6 +208,14 @@
     .tm-group-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
     .tm-group-title { font-size: 0.875rem; font-weight: 800; color: #181818; }
     .tm-group-student { display: flex; align-items: center; gap: .4rem; min-width: 0; margin-top: .2rem; font-size: 0.75rem; color: #5F5A55; }
+    .tm-role-tabs { display: flex; flex-wrap: wrap; gap: .4rem; padding: .7rem 1rem; border-bottom: 1px solid #EFEFEF; }
+    .tm-role-tabs:empty { display: none; }
+    .tm-role-tab { position: relative; display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border: 1px solid #E4E2E0; border-radius: 999px; background: #fff; font-size: 0.7812rem; font-weight: 700; color: #4A4643; cursor: pointer; transition: border-color .15s, background .15s; }
+    .tm-role-tab:hover { border-color: #9CA3AF; }
+    .tm-role-tab.is-active { background: #181818; border-color: #181818; color: #fff; }
+    .tm-role-tab-count { min-width: 1.25rem; padding: 0 .35rem; border-radius: 999px; background: #EFEFEF; color: #181818; font-size: 0.6875rem; text-align: center; }
+    .tm-role-tab.is-active .tm-role-tab-count { background: rgba(255, 255, 255, .2); color: #fff; }
+    .tm-role-tab-alert { position: absolute; top: -2px; right: -2px; width: .55rem; height: .55rem; border-radius: 999px; background: #D97706; box-shadow: 0 0 0 2px #fff; }
     .tm-task-no { margin-right: .5rem; font-size: 0.6875rem; font-weight: 800; color: #8C8782; letter-spacing: .04em; }
     .tm-muted { font-size: 0.75rem; color: #5F5A55; }
     .tm-table .tm-btn, .tm-table .tm-act { width: 100%; }
