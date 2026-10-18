@@ -908,8 +908,9 @@
 
                                             <!-- Assigned task -->
                                             <td class="px-4 py-3.5 text-center">
-                                                <p class="text-[0.8125rem] font-bold text-slate-700">{{ $stats['total'] }}</p>
-                                                <p class="text-[0.6875rem] text-slate-400 whitespace-nowrap">{{ $stats['done'] }} done</p>
+                                                {{-- Done out of assigned, e.g. 10/10. --}}
+                                                <p class="text-[0.8125rem] font-bold text-slate-700 whitespace-nowrap">{{ $stats['done'] }}/{{ $stats['total'] }}</p>
+                                                <p class="text-[0.6875rem] text-slate-400 whitespace-nowrap">done</p>
                                             </td>
 
                                             <!-- Task progress -->
