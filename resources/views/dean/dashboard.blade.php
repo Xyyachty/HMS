@@ -75,10 +75,10 @@
                 <span class="text-[0.6875rem] font-semibold text-black">No faculty yet</span>
             @elseif($pendingFaculty > 0)
                 <span class="iconify text-amber-500 text-sm" data-icon="mdi:clock-alert-outline"></span>
-                <span class="text-[0.6875rem] font-bold text-black">{{ $pendingFaculty }} not signed in yet</span>
+                <span class="text-[0.6875rem] font-bold text-black">{{ $pendingFaculty }} awaiting activation</span>
             @else
                 <span class="iconify text-emerald-500 text-sm" data-icon="mdi:check-circle-outline"></span>
-                <span class="text-[0.6875rem] font-semibold text-black">All faculty have signed in</span>
+                <span class="text-[0.6875rem] font-semibold text-black">All faculty accounts active</span>
             @endif
         </div>
     </a>
