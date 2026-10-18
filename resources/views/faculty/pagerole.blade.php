@@ -337,6 +337,15 @@
     }
     .setup-field-grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .setup-role-grid { display: grid; gap: .625rem; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    /* Steps 1 and 2 side by side on wide screens, roles on the right. Each card
+       is half width there, so its own grid drops to two columns. */
+    @media (min-width: 1024px) {
+        .setup-step-pair { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+        .setup-step-pair > * { margin-top: 0 !important; } /* undo space-y-4, kept for the stacked layout */
+        .setup-step-pair .setup-field-grid,
+        .setup-step-pair .setup-role-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .setup-step-pair .setup-field-grid > :last-child { grid-column: 1 / -1; }
+    }
     .manage-grid {
         display: grid; gap: .75rem;
         grid-template-columns: 280px minmax(0, 1fr);
@@ -1492,6 +1501,7 @@
                 @php $availableStudentCount = ($students ?? collect())->count(); @endphp
 
                 <div class="space-y-4">
+                    <div class="setup-step-pair space-y-4">
                     {{-- Step 1 — how many teams, and how big. Both figures are fixed by the
                          four-per-team rule, so they are shown rather than asked for. --}}
                     <div class="rounded-2xl border border-slate-200 bg-white p-5">
@@ -1556,6 +1566,7 @@
                                 </div>
                             @endforeach
                         </div>
+                    </div>
                     </div>
 
                     {{-- Step 3 — who lands where. Auto-Group fills every slot; the list
