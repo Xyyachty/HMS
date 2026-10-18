@@ -1421,20 +1421,28 @@
                 <div id="report-panel-self" class="rp-panel space-y-4">
                     <div class="rp-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completed</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfCompleted->count() }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completed</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $selfCompleted->count() }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfAssigned->count() }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $selfAssigned->count() }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Total</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfTotal }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Total</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $selfTotal }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
-                            <p class="text-2xl font-extrabold text-brand mt-1">{{ $selfRate }}%</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
+                                <p class="text-2xl font-extrabold text-brand leading-none">{{ $selfRate }}%</p>
+                            </div>
                             <div class="h-2 mt-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar"
                                  aria-valuenow="{{ $selfRate }}" aria-valuemin="0" aria-valuemax="100" aria-label="Completion rate">
                                 <div class="h-full rounded-full bg-brand" style="width: {{ min(100, max(0, $selfRate)) }}%"></div>
@@ -1488,20 +1496,28 @@
                 <div id="report-panel-team" class="rp-panel space-y-4 hidden">
                     <div class="rp-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completed</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamCompleted->count() }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completed</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamCompleted->count() }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamAssigned->count() }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamAssigned->count() }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Total</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamTotal }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Total</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamTotal }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
-                            <p class="text-2xl font-extrabold text-brand mt-1">{{ $teamRate }}%</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
+                                <p class="text-2xl font-extrabold text-brand leading-none">{{ $teamRate }}%</p>
+                            </div>
                             <div class="h-2 mt-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar"
                                  aria-valuenow="{{ $teamRate }}" aria-valuemin="0" aria-valuemax="100" aria-label="Completion rate">
                                 <div class="h-full rounded-full bg-brand" style="width: {{ min(100, max(0, $teamRate)) }}%"></div>
