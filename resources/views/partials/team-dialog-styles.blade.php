@@ -140,7 +140,9 @@
     .tm-help { margin-top: .3rem; font-size: 0.75rem; color: #5F5A55; }
 
     /* Members */
-    .tm-member-grid { display: grid; gap: .85rem; grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr)); }
+    /* Two by two: a team is four students, one per desk. One column on phones. */
+    .tm-member-grid { display: grid; gap: .85rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (max-width: 639px) { .tm-member-grid { grid-template-columns: minmax(0, 1fr); } }
     .tm-member {
         display: flex; flex-direction: column; gap: .8rem; padding: 1rem; border-radius: 1rem;
         border: 1px solid #E4E2E0; background: #fff; transition: border-color .15s, box-shadow .15s;
