@@ -1577,17 +1577,17 @@
                                 <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">3</span>
                                 <div class="min-w-0">
                                     <p class="text-[0.9375rem] font-bold text-slate-800">Assign Students to Teams</p>
-                                    <p class="text-[0.75rem] text-slate-400">Press "Automatically Create Teams", then check the list. You can move any student to another team or change their role.</p>
+                                    <p class="text-[0.75rem] text-slate-400">Press "Automatically Create Teams" to fill every team, then "Shuffle Teams" for a new mix. "Reset to Manual" empties the teams so you can pick each student's team and role below.</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
                                 <button type="button" onclick="autoGroupStudentsIntoTeamsOfFour()"
                                     class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition inline-flex items-center justify-center gap-1.5">
-                                    <span class="iconify text-base" data-icon="mdi:shuffle-variant"></span> Automatically Create Teams
+                                    <span class="iconify text-base" data-icon="mdi:shuffle-variant"></span> <span id="bulkAutoGroupLabel">Automatically Create Teams</span>
                                 </button>
                                 <button type="button" onclick="resetBulkAssignment()"
                                     class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition">
-                                    Start over
+                                    Reset to Manual
                                 </button>
                             </div>
                         </div>
@@ -3277,15 +3277,23 @@ function renderTeamHotelConcept(data) {
         + '</div>';
 }
 
-/* Step 3's Reset: hand every student back to Unassigned and clear their roles,
-   then let the preview code redraw the (now empty) team slots. */
+/* Step 3's Reset to Manual: hand every student back to Unassigned and clear
+   their roles, then let the preview code redraw the (now empty) team slots.
+   The faculty member then picks each student's team and role in the list. */
 function resetBulkAssignment() {
     document.querySelectorAll('#bulkStudentAssignList .bulk-student-row').forEach((row) => {
         const select = row.querySelector('.bulk-team-select');
         if (select) select.value = '';
         row.querySelectorAll('.bulk-role-checkbox').forEach((box) => { box.checked = false; });
     });
+    setBulkAutoGroupLabel(false);
     if (typeof refreshBulkTeamPreviews === 'function') refreshBulkTeamPreviews();
+}
+
+// Once teams are filled, pressing the same button again reshuffles them.
+function setBulkAutoGroupLabel(grouped) {
+    const label = document.getElementById('bulkAutoGroupLabel');
+    if (label) label.textContent = grouped ? 'Shuffle Teams' : 'Automatically Create Teams';
 }
 
 /* A message in the corner instead of the browser's "site says" dialog. Raised
@@ -3566,10 +3574,13 @@ function refreshBulkTeamPreviews() {
             previewEl.innerHTML = '<span class="text-slate-400">No students assigned yet.</span>';
             return;
         }
+        // Each member with the role they hold, so the team reads at a glance.
+        const roleLabels = window.TEAM_ROLE_LABELS || {};
         previewEl.innerHTML = members.map((member) => `
-            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600">
+            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600">
+                ${member.roles.map((role) => `<span class="w-1.5 h-1.5 rounded-full role-dot-${escapeBulkAttr(role)} shrink-0"></span>`).join('')}
                 <span class="font-semibold">${escapeBulkHtml(member.name)}</span>
-                ${member.roles.length ? `<span class="text-slate-400">· ${escapeBulkHtml(member.roles.length)} role${member.roles.length === 1 ? '' : 's'}</span>` : ''}
+                <span class="text-slate-400">· ${member.roles.length ? member.roles.map((role) => escapeBulkHtml(roleLabels[role] || role)).join(', ') : 'No role yet'}</span>
             </span>
         `).join('');
     });
@@ -3622,7 +3633,12 @@ function autoGroupStudentsIntoTeamsOfFour() {
         row.querySelectorAll('.bulk-role-checkbox').forEach((cb) => { cb.checked = false; });
     });
 
-    const shuffled = [...rows].sort(() => Math.random() - 0.5);
+    // Fisher-Yates: every mix of students is equally likely on each shuffle.
+    const shuffled = [...rows];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
     const toAssign = shuffled.slice(0, teamCount * BULK_TEAM_SIZE);
 
     toAssign.forEach((row, index) => {
@@ -3636,6 +3652,7 @@ function autoGroupStudentsIntoTeamsOfFour() {
     });
 
     refreshBulkTeamPreviews();
+    setBulkAutoGroupLabel(true);
 
     const leftover = rows.length - toAssign.length;
     if (leftover > 0) {
