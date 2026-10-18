@@ -1354,14 +1354,14 @@
                     showConfirmButton: blockNews,
                     confirmButtonText: 'OK',
                     backdrop: 'rgba(42,17,24, 0.35)',
-                    iconColor: '#C9A45C',
+                    // Green, like every other success dialog (hms-swal-theme.js).
+                    iconColor: '#16A34A',
+                    confirmButtonColor: '#16A34A',
                     customClass: {
                         popup: 'rounded-2xl p-6 bg-white shadow-2xl',
                         title: 'text-lg font-bold text-slate-800',
                         htmlContainer: 'mt-1',
-                        confirmButton: 'mt-4 bg-brand text-white px-4 py-2 rounded-lg font-semibold hover:bg-brand-dark',
                     },
-                    buttonsStyling: false,
                 });
 
                 const letter = data.open_class || '';
