@@ -335,8 +335,8 @@
         grid-template-columns: minmax(0, 1fr) 300px;
         align-items: start;
     }
-    /* Team setup footer: Create is green. */
-    #createModalSubmitBtn { background-color: #15803D; box-shadow: 0 4px 6px -1px rgba(21, 128, 61, .25); }
+    /* Team setup footer: Create is green; so is Set Tasks. */
+    #createModalSubmitBtn, #submitTasksBtn { background-color: #15803D; box-shadow: 0 4px 6px -1px rgba(21, 128, 61, .25); }
     .setup-field-grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .setup-role-grid { display: grid; gap: .625rem; grid-template-columns: repeat(5, minmax(0, 1fr)); }
     /* Steps 1 and 2 side by side on wide screens, roles on the right. Each card
@@ -2243,7 +2243,7 @@
                     </div>
 
                     <button type="submit" id="submitTasksBtn"
-                        class="px-6 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" disabled>
+                        class="px-6 py-2.5 text-white rounded-xl font-bold text-sm hover:scale-105 transition flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" disabled>
                         <span class="iconify" data-icon="mdi:check-circle-outline"></span> Set Tasks
                     </button>
                 </div>
