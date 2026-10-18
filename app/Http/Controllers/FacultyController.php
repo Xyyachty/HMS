@@ -2200,6 +2200,7 @@ class FacultyController extends Controller
         $dueUpdated = [];
 
         // Check if any tasks were selected
+        $titlesByTeam = [];
         $tasksCreated = 0;
         // users.id => how many task rows landed on them, so each student gets one
         // "3 new tasks" notification rather than one per row.
@@ -2281,6 +2282,8 @@ class FacultyController extends Controller
                                 'due_date'    => $validated['due_date'] ?? null,
                                 'status'      => 'active',
                             ];
+                            // For the dean's notification: each title once per team, not per member.
+                            $titlesByTeam[$groupName][$title] = true;
 
                             /* The four activities come off the checklist here rather
                                than out of the form: they are the same four for every
@@ -2365,6 +2368,9 @@ class FacultyController extends Controller
         }
 
         Notifier::tasksAssigned(auth()->user(), $assignedCounts);
+        if ($tasksCreated > 0) {
+            Notifier::teamTasksAssigned(auth()->user(), $titlesByTeam, $validated['due_date'] ?? null);
+        }
 
         /* Land on the block the team belongs to - the block most of its members
            sit in, as role() places teams. The posted block was the tab the form

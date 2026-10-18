@@ -284,7 +284,7 @@ class Notifier
         static::push(
             static::userIdsForStudents($studentIds),
             UserNotification::TEAM_CREATED,
-            'You joined team ' . $groupName,
+            'You joined ' . \App\Models\Group::label($groupName),
             'Your faculty placed you on ' . \App\Models\Group::label($groupName) . '. Open your dashboard to see your role.',
             route('students.dashboard'),
             $actor
@@ -308,7 +308,7 @@ class Notifier
         static::push(
             $newUserIds,
             UserNotification::TEAM_MEMBER_ADDED,
-            'You joined team ' . $groupName,
+            'You joined ' . \App\Models\Group::label($groupName),
             'Your faculty added you to ' . \App\Models\Group::label($groupName) . '.',
             route('students.dashboard'),
             $actor
@@ -346,6 +346,31 @@ class Notifier
     }
 
     /**
+     * Faculty assigned tasks to one or more teams. Every dean hears it, one
+     * notification per team naming the tasks, the faculty and the due date.
+     *
+     * @param array<string, array<string, true>> $titlesByTeam team name => task titles (as keys)
+     */
+    public static function teamTasksAssigned(?User $actor, array $titlesByTeam, $dueDate = null): void
+    {
+        $who = $actor?->name ?? 'A faculty member';
+        $due = $dueDate ? ' Due ' . \Illuminate\Support\Carbon::parse($dueDate)->format('M d, Y g:i A') . '.' : '';
+
+        foreach ($titlesByTeam as $team => $titles) {
+            $titles = array_keys($titles);
+            static::push(
+                static::deanUserIds(),
+                UserNotification::TASK_ASSIGNED,
+                count($titles) === 1 ? 'Task assigned to ' . \App\Models\Group::label($team) : count($titles) . ' tasks assigned to ' . \App\Models\Group::label($team),
+                $who . ' assigned ' . collect($titles)->map(fn ($t) => '"' . $t . '"')->join(', ', ' and ')
+                    . ' to ' . \App\Models\Group::label($team) . '.' . $due,
+                route('dean.faculties'),
+                $actor
+            );
+        }
+    }
+
+    /**
      * A student submitted a task for review. Faculty owns the verdict; every dean
      * hears it too, named in full (student, team, task, when) and linked to a
      * read-only review page of their own.
@@ -370,7 +395,7 @@ class Notifier
             static::deanUserIds(),
             UserNotification::TASK_SUBMITTED,
             'Task submitted for review',
-            $who . ($team ? ' of team ' . $team : '') . ' submitted "' . $task->title . '" ('
+            $who . ($team ? ' of ' . \App\Models\Group::label($team) : '') . ' submitted "' . $task->title . '" ('
                 . $task->role_label . ') on ' . now('Asia/Manila')->format('M d, Y g:i A') . '.',
             route('dean.tasks.review', $task),
             $actor
