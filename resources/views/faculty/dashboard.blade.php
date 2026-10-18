@@ -97,7 +97,6 @@
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
             <p class="text-sm font-bold text-slate-800">Task Overview</p>
-            <a href="{{ route('faculty.activity') }}" class="text-[0.6875rem] font-bold text-rose-600 hover:underline">View All</a>
         </div>
             <div class="divide-y divide-slate-100">
                 @forelse(($recentActivity ?? collect()) as $task)
@@ -188,7 +187,6 @@
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
             <p class="text-sm font-bold text-slate-800">Task</p>
-            <a href="{{ route('faculty.activity') }}" class="text-[0.6875rem] font-bold text-rose-600 hover:underline">View All</a>
         </div>
         <div class="divide-y divide-slate-100">
             @forelse(($upcomingTasks ?? collect()) as $task)
