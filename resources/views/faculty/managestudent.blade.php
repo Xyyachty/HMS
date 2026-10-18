@@ -788,7 +788,7 @@
                 <div class="md:col-span-2">
                     <div class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
                         <span class="iconify text-base text-slate-400 shrink-0 mt-0.5" data-icon="mdi:key-outline"></span>
-                        <span>A password is generated for this student and emailed to them with their sign-in details. Nobody types it, so no two students share one.</span>
+                        <span>No need to make a password. The system creates one for this student and sends it to their email, along with how to log in.</span>
                     </div>
                 </div>
             </div>
