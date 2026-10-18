@@ -596,7 +596,8 @@ class DeanController extends Controller
     {
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
+            // The complete middle name, not an initial like "A.".
+            'middle_name' => ['nullable', 'string', 'max:255', "regex:/^\p{L}[\p{L}\s'-]*\p{L}$/u"],
             'last_name' => ['required', 'string', 'max:255'],
             // Students keep the plain rule; only a faculty account needs Gmail.
             'email' => $request->input('role') === 'faculty'
@@ -606,7 +607,9 @@ class DeanController extends Controller
             'role' => ['required', 'in:faculty,student'],
             // A faculty password is generated and emailed, so the dean types none.
             'password' => ['exclude_if:role,faculty', 'required', 'string', 'min:8', 'confirmed'],
-        ], self::FACULTY_EMAIL_MESSAGES);
+        ], self::FACULTY_EMAIL_MESSAGES + [
+            'middle_name.regex' => 'Enter the complete middle name, not an initial.',
+        ]);
 
         $plainPassword = $validated['role'] === 'faculty'
             ? StudentWelcomeMailer::generatePassword()

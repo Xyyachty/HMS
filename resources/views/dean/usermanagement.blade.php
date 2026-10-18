@@ -159,6 +159,11 @@
         cursor: pointer;
     }
     :is(#createUserModal, #updateUserModal) select:hover:not(:disabled) { border-color: #9CA3AF; }
+
+    /* Add Faculty: a reminder under a field that is empty or in the wrong format. */
+    #createUserModal .um-err { display: none; margin-top: .375rem; font-size: .75rem; font-weight: 600; color: #DC2626; }
+    #createUserModal .um-err.show { display: block; }
+    #createUserModal input.um-invalid { border-color: #DC2626; }
 </style>
 @endpush
 
@@ -391,7 +396,7 @@
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <form method="POST" action="{{ route('dean.users.store') }}">
+        <form id="createUserForm" method="POST" action="{{ route('dean.users.store') }}" novalidate>
         @csrf
         @if ($errors->any())
             <div class="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -402,18 +407,22 @@
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name</label>
                 <input name="last_name" type="text" placeholder="e.g. Smith" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <p class="um-err" data-err-for="last_name"></p>
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">First Name</label>
                 <input name="first_name" type="text" placeholder="e.g. Jane" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <p class="um-err" data-err-for="first_name"></p>
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Middle Name</label>
-                <input name="middle_name" type="text" placeholder="e.g. A." class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <input name="middle_name" type="text" placeholder="e.g. Santos" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <p class="um-err" data-err-for="middle_name"></p>
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
                 <input name="email" type="email" placeholder="name@gmail.com" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <p class="um-err" data-err-for="email"></p>
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
@@ -421,6 +430,7 @@
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs font-medium">+63</span>
                     <input name="phone_number" type="text" inputmode="numeric" autocomplete="tel-national" pattern="9[0-9]{9}" title="10 digits after +63, starting with 9 (e.g. 9123456789)" data-ph-phone placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
+                <p class="um-err" data-err-for="phone_number"></p>
             </div>
             {{-- This modal only ever adds faculty (the Add Faculty button is hidden on the
                  Students tab), so the role is fixed and not shown — the title says it.
@@ -429,16 +439,8 @@
             <input type="hidden" name="role" value="faculty">
             {{-- No block to choose: it is always the next free class letter, so it
                  is assigned on save. Changing one is what the Block field on the
-                 update form below is for. --}}
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
-                {{-- Not a choice: a new faculty account is Pending Activation until its
-                     owner first signs in with the emailed password - see the Faculties
-                     page. Deactivating an account is what the update form below is for. --}}
-                <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full" style="background:#C9A45C"></span> Pending Activation
-                </div>
-            </div>
+                 update form below is for. No status either: a new faculty account is
+                 always Pending Activation until its owner first signs in. --}}
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
                 {{-- Not typed by the dean: generated on save and sent to the faculty
@@ -1100,6 +1102,48 @@
             icon.setAttribute('data-icon', 'mdi:eye-off-outline');
         }
     }
+
+    /* Add Faculty reminders. A field is checked once it has been left (or on
+       Submit), then on every keystroke, so the reminder clears as soon as the
+       value is fixed. The server repeats each rule in storeUser. */
+    (function () {
+        const form = document.getElementById('createUserForm');
+        const rules = {
+            last_name: v => v ? '' : 'Last name is required.',
+            first_name: v => v ? '' : 'First name is required.',
+            middle_name: v => !v || /^\p{L}[\p{L}\s'-]*\p{L}$/u.test(v) ? '' : 'Enter the complete middle name, not an initial.',
+            email: v => !v ? 'Email is required.'
+                : /^[a-z0-9][a-z0-9.+]*@gmail\.com$/i.test(v) ? '' : 'Enter a valid Gmail address (ending in @gmail.com).',
+            phone_number: v => !v || /^9\d{9}$/.test(v) ? '' : 'Enter the 10 digits after +63, starting with 9.',
+        };
+
+        function check(input) {
+            const message = rules[input.name](input.value.trim());
+            const err = form.querySelector(`[data-err-for="${input.name}"]`);
+            err.textContent = message;
+            err.classList.toggle('show', message !== '');
+            input.classList.toggle('um-invalid', message !== '');
+            return message === '';
+        }
+
+        Object.keys(rules).forEach(name => {
+            const input = form.elements[name];
+            input.addEventListener('blur', () => { input.dataset.touched = '1'; check(input); });
+            input.addEventListener('input', () => { if (input.dataset.touched) check(input); });
+        });
+
+        form.addEventListener('submit', event => {
+            let ok = true;
+            Object.keys(rules).forEach(name => {
+                form.elements[name].dataset.touched = '1';
+                ok = check(form.elements[name]) && ok;
+            });
+            if (!ok) {
+                event.preventDefault();
+                form.querySelector('.um-invalid').focus();
+            }
+        });
+    })();
 
     @if ($errors->any() && old('role'))
         openModal('createUserModal');
