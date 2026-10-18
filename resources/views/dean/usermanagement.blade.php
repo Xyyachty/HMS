@@ -1008,19 +1008,19 @@
         return false;
     }
 
-    /* Before a faculty with students goes Inactive, the dean picks who takes over
-       their block, students and teams. Only a faculty with no students yet can:
-       they become that block (Faculty::transferEverythingTo). */
+    /* Before a faculty with students goes Inactive, the dean picks, right here, who
+       takes over their block, students and teams. Any other faculty who is not
+       Inactive can; the blocks join theirs (Faculty::transferEverythingTo). */
     function promptBlockReassign(form, name, load) {
         const receivers = Object.entries(facultyLoad)
-            .filter(([id, f]) => id !== String(form.dataset.userId) && f.students === 0 && f.status !== 'inactive');
+            .filter(([id, f]) => id !== String(form.dataset.userId) && f.status !== 'inactive');
         const studentText = `${load.students} student${load.students === 1 ? '' : 's'}`;
 
         if (!receivers.length) {
             Swal.fire({
                 icon: 'warning',
                 title: `Reassign ${load.blocks} first`,
-                text: `${name} has ${studentText} in ${load.blocks}. Before this account can be set to Inactive, another faculty must take them over, and only a faculty with no students yet can. Add a new faculty first, then try again.`,
+                text: `${name} has ${studentText} in ${load.blocks}. Before this account can be set to Inactive, another faculty must take them over, and there is no other active faculty. Add a faculty first, then try again.`,
                 confirmButtonText: 'OK',
             });
             return false;
@@ -1028,14 +1028,15 @@
 
         Swal.fire({
             icon: 'warning',
-            title: `Reassign ${load.blocks}`,
-            text: `${name} has ${studentText} in ${load.blocks}. Choose the faculty who will take over the block, its students and teams. ${name} will then be set to Inactive.`,
+            title: `Assign ${load.blocks} first`,
+            text: `${name} handles ${load.blocks} with ${studentText}. Choose the faculty who will take over the block, its students and teams. ${name} will then be set to Inactive.`,
             input: 'select',
-            inputOptions: Object.fromEntries(receivers.map(([id, f]) => [id, `${f.name} (${f.blocks})`])),
+            inputOptions: Object.fromEntries(receivers.map(([id, f]) => [id,
+                `${f.name} — ${f.blocks === '—' ? 'no block' : f.blocks}, ${f.students} student${f.students === 1 ? '' : 's'}`])),
             inputPlaceholder: 'Select a faculty',
             inputValidator: (value) => value ? undefined : 'Choose a faculty to take over.',
             showCancelButton: true,
-            confirmButtonText: 'Reassign and deactivate',
+            confirmButtonText: 'Assign and deactivate',
             cancelButtonText: 'Cancel',
             reverseButtons: true,
         }).then((result) => {

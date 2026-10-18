@@ -258,10 +258,11 @@ class Faculty extends UserInformation
      * Hand everything this faculty runs - every block tab, its students, their
      * teams and tasks - to another faculty, before this one is set Inactive.
      *
-     * The receiving faculty must have no students yet. Tab letters are read
-     * against the owner's own block (FacultyClass::block_letter), so the two
-     * swap block letters: the receiver becomes this block, and this faculty is
-     * left with the receiver's empty one, the same as a newly created faculty.
+     * The receiver keeps what they have and gains these blocks as extra tabs.
+     * Tab letters are read against the owner's own block (FacultyClass::block_letter),
+     * so the receiver's own block becomes the lowest block they now hold and every
+     * tab is re-lettered from it. This faculty is left with no block; Update User
+     * gives them the next free one if they are made Active again.
      *
      * @throws \RuntimeException with a message fit for the dean when it cannot move.
      */
@@ -273,36 +274,99 @@ class Faculty extends UserInformation
         if ($fromId === $toId) {
             throw new \RuntimeException('Choose a different faculty to take over.');
         }
-        if ($to->students()->exists()) {
-            throw new \RuntimeException(($to->user?->name ?? 'That faculty') . ' already has students. Choose a faculty with no students yet.');
-        }
 
         DB::transaction(function () use ($fromId, $toId, $to) {
-            $teams = DB::table('student_groups')->where('faculty_id', $fromId)->distinct()->pluck('group_name')->all();
-            $clash = DB::table('groups')->where('faculty_id', $toId)->whereIn('group_name', $teams)->value('group_name');
-            if ($clash !== null) {
-                throw new \RuntimeException('The receiving faculty already has a team named "' . $clash . '".');
+            // Every tab of both, by the block it really is. Empty ones give way.
+            $owners = [$fromId => $this, $toId => $to];
+            $blocks = [];
+            $classes = FacultyClass::whereIn('faculty_id', [$fromId, $toId])->withCount('students')->get();
+            foreach ($classes as $class) {
+                $block = $class->setRelation('faculty', $owners[(int) $class->faculty_id])->block_letter;
+                if ($class->students_count === 0) {
+                    $class->delete();
+                    continue;
+                }
+                if (isset($blocks[$block])) {
+                    throw new \RuntimeException('Both faculty have students in Block ' . $block . '.');
+                }
+                $blocks[$block] = $class;
+            }
+            if ($blocks === []) {
+                return;
             }
 
-            // Their empty tabs give way; this faculty's tabs become theirs.
-            FacultyClass::where('faculty_id', $toId)->delete();
-            FacultyClass::where('faculty_id', $fromId)->update(['faculty_id' => $toId]);
-            Student::where('faculty_id', $fromId)->update(['faculty_id' => $toId]);
+            // Teams are keyed by name per faculty; a name the receiver already uses
+            // gets this block added to it ("Team 1 (Block B)").
+            $taken = DB::table('groups')->where('faculty_id', $toId)->pluck('group_name')->all();
+            $teams = DB::table('groups')->where('faculty_id', $fromId)->pluck('group_name')
+                ->merge(DB::table('student_groups')->where('faculty_id', $fromId)->pluck('group_name'))
+                ->unique();
+            $tables = Group::teamOwnedTables();
+            foreach ($teams as $team) {
+                if (!in_array($team, $taken, true)) {
+                    $taken[] = $team;
+                    continue;
+                }
+                $base = $team . ' (Block ' . $this->block . ')';
+                for ($renamed = $base, $n = 2; in_array($renamed, $taken, true); $n++) {
+                    $renamed = $base . ' ' . $n;
+                }
+                foreach ($tables as $name) {
+                    DB::table($name)->where('faculty_id', $fromId)->where('group_name', $team)->update(['group_name' => $renamed]);
+                }
+                $taken[] = $renamed;
+            }
 
-            foreach (Group::teamOwnedTables() as $name) {
+            Student::where('faculty_id', $fromId)->update(['faculty_id' => $toId]);
+            foreach ($tables as $name) {
                 DB::table($name)->where('faculty_id', $fromId)->update(['faculty_id' => $toId]);
             }
 
-            // block is unique, so the swap goes through null.
-            $fromBlock = $this->block;
-            $toBlock = $to->block;
-            $this->update(['block' => null]);
-            $to->update(['block' => $fromBlock]);
-            $this->update(['block' => $toBlock]);
+            uksort($blocks, fn ($a, $b) => static::letterIndex($a) <=> static::letterIndex($b));
+            $own = array_key_first($blocks);
 
+            // block is unique: free this faculty's before the receiver takes it.
+            $this->update(['block' => null]);
+            $to->update(['block' => $own]);
+
+            // (faculty_id, letter) is unique, so park every tab before re-lettering.
+            foreach ($blocks as $class) {
+                $class->update(['faculty_id' => $toId, 'letter' => '#' . $class->faculty_class_id]);
+            }
+            $order = 0;
+            foreach ($blocks as $block => $class) {
+                $class->update([
+                    'letter' => static::letterAt(static::letterIndex($block) - static::letterIndex($own)),
+                    'sort_order' => ++$order,
+                    'name' => 'Block ' . $block,
+                ]);
+            }
+
+            // ponytail: a faculty whose block sits in a gap here (B, when the receiver
+            // now holds A and C) can still open a C tab once full; guard openNextClass if that happens.
             FacultyClass::reconcileForFaculty($toId);
-            FacultyClass::reconcileForFaculty($fromId);
         });
+    }
+
+    /** A=0 ... Z=25, AA=26: the same order FacultyClass::nextLetter() walks. */
+    private static function letterIndex(string $letter): int
+    {
+        $n = 0;
+        foreach (str_split(strtoupper($letter)) as $char) {
+            $n = $n * 26 + (ord($char) - 64);
+        }
+
+        return $n - 1;
+    }
+
+    private static function letterAt(int $index): string
+    {
+        $letter = '';
+        for ($index++; $index > 0; $index = intdiv($index - 1, 26)) {
+            $letter = chr(65 + ($index - 1) % 26) . $letter;
+        }
+
+        return $letter;
     }
 
     /** Options for a faculty update dropdown: available class letters + their current block. */

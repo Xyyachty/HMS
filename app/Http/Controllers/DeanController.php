@@ -702,8 +702,10 @@ class DeanController extends Controller
                 fn ($b) => $b['from_id'] !== (int) $user->faculty?->user_information_id
             );
             $selectable = array_merge($selectable, array_keys($handOver));
+            // A faculty whose blocks were handed over on deactivation has none; it
+            // may stay empty and is filled with the next free block below.
             $rules['block'] = [
-                'required',
+                $user->faculty?->block ? 'required' : 'nullable',
                 'string',
                 'in:' . implode(',', $selectable ?: ['__none__']),
             ];
@@ -753,9 +755,13 @@ class DeanController extends Controller
 
         if ($user->role === 'faculty' && $user->faculty) {
             $user->faculty->status = $validated['status'];
-            $block = strtoupper($validated['block']);
+            $block = strtoupper((string) ($validated['block'] ?? ''));
 
-            if (isset($handOver[$block])) {
+            if ($block === '') {
+                $user->faculty->block = Faculty::nextAvailableBlock();
+                $user->faculty->save();
+                FacultyClass::reconcileForFaculty($user->faculty->user_information_id);
+            } elseif (isset($handOver[$block])) {
                 $user->faculty->save();
                 $from = $handOver[$block];
                 try {
@@ -772,13 +778,13 @@ class DeanController extends Controller
 
                 return redirect()->route('dean.users')->with('success', 'Block ' . $block . ' and its '
                     . $from['students'] . ' students now belong to ' . ($user->name ?? $user->email) . '.');
+            } else {
+                if (!Faculty::isValidBlock($block)) {
+                    return redirect()->route('dean.users')->withErrors(['block' => 'Invalid block selected.']);
+                }
+                $user->faculty->block = $block;
+                $user->faculty->save();
             }
-
-            if (!Faculty::isValidBlock($block)) {
-                return redirect()->route('dean.users')->withErrors(['block' => 'Invalid block selected.']);
-            }
-            $user->faculty->block = $block;
-            $user->faculty->save();
         }
 
         ActivityLog::recordFor(
