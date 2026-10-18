@@ -146,6 +146,16 @@ class Task extends Model
         return $this->status === 'archived' && $this->feedback_at === null && !$this->is_hotel_concept;
     }
 
+    /**
+     * Handed in again after faculty sent it back: awaiting review like any other
+     * submission, but labelled Resubmitted so faculty know it is a revision.
+     * revision_count goes up on every send-back (FacultyController).
+     */
+    public function getIsResubmittedAttribute(): bool
+    {
+        return $this->awaiting_review && (int) $this->revision_count > 0;
+    }
+
     public function faculty()
     {
         return $this->belongsTo(Faculty::class, 'faculty_id', 'user_information_id');

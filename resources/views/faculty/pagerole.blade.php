@@ -2715,7 +2715,7 @@ function openTaskReview(taskId) {
             const badges = [];
             if (d.awaiting_review) {
                 // Handed in, no verdict yet: it is not Completed until approved.
-                badges.push('<span class="tm-badge status-badge-pending"><span class="tm-dot status-fill-pending"></span>Pending Review' + (d.submitted_at ? ' · handed in ' + escHtml(d.submitted_at) : '') + '</span>');
+                badges.push('<span class="tm-badge status-badge-pending"><span class="tm-dot status-fill-pending"></span>' + (d.revision_count > 0 ? 'Resubmitted' : 'Pending Review') + (d.submitted_at ? ' · handed in ' + escHtml(d.submitted_at) : '') + '</span>');
             } else if (d.status === 'archived') {
                 badges.push('<span class="tm-badge status-badge-completed"><span class="tm-dot status-fill-completed"></span>' + (d.is_hotel_concept ? 'Submitted' : 'Approved') + (d.submitted_at ? ' · ' + escHtml(d.submitted_at) : '') + '</span>');
             } else if (d.needs_revision) {
@@ -4594,7 +4594,9 @@ function teamTaskState(log) {
     const key = log.state || (log.awaiting_review ? 'pending'
         : (log.status === 'archived' ? 'approved'
         : 'not_started'));
-    return { key: key === 'approved' ? 'completed' : key, label: labels[key] };
+    // A revision handed back in is still pending, but says so.
+    const label = key === 'pending' && log.resubmitted ? 'Resubmitted' : labels[key];
+    return { key: key === 'approved' ? 'completed' : key, label };
 }
 
 /* Three counts over the team's tasks, so faculty see at a glance whether

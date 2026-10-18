@@ -390,7 +390,7 @@ class DeanController extends Controller
 
         [$status, $statusLabel] = match (true) {
             $task->status === 'archived' && $task->feedback_at !== null => ['completed', 'Completed'],
-            $task->status === 'archived' => ['submitted', 'Submitted'],
+            $task->status === 'archived' => ['submitted', $task->is_resubmitted ? 'Resubmitted' : 'Submitted'],
             $task->needs_revision => ['needs_revision', 'Needs Revision'],
             $task->is_started => ['in_progress', 'In Progress'],
             default => ['not_started', 'Not Started'],

@@ -1549,6 +1549,8 @@ class FacultyController extends Controller
                         // Submitted with no verdict yet. has_feedback reads the comment,
                         // which an approval may leave empty, so it cannot tell this apart.
                         'awaiting_review' => $task->awaiting_review,
+                        // Awaiting review again after a send-back: shown as Resubmitted.
+                        'resubmitted' => $task->is_resubmitted,
                         // One of SimulationPhase::STATUS_LABELS' keys.
                         'state' => \App\Support\SimulationPhase::taskState($task),
                         // Approved, then the department's page changed. A hint only:

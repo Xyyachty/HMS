@@ -210,6 +210,10 @@
                             $isMine        = !$isCompleted && !$isPending && \App\Support\TaskClaim::mayWork($task, auth()->user(), $groupMembership ?? null);
                             $needsRevision = $row->status === 'revision';
                             $rowMeta       = $groupStatusMeta[$row->status];
+                            // Handed back in after a send-back: still pending, labelled as a revision.
+                            if ($isPending && $task->is_resubmitted) {
+                                $rowMeta['label'] = 'Resubmitted';
+                            }
                             $rowModule     = \App\Support\HotelTemplateBuilder::modulesForRoles([$task->role])[0] ?? null;
                             $rowDetailId   = 'taskDetail' . $task->task_id;
                             // The instructions dialog reads its heading off the drawer it
