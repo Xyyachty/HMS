@@ -78,8 +78,7 @@
             {{ $isTeamSetup
                  ? 'is-active bg-brand text-white shadow-md shadow-brand/20 border border-transparent'
                  : 'bg-white text-slate-600 border border-slate-200 hover:border-brand/40 hover:text-brand' }}">
-            <span class="iconify text-base" data-icon="mdi:cog-outline"></span>
-            <span class="iconify text-sm" data-icon="mdi:plus"></span>
+            <span class="iconify text-base" data-icon="mdi:plus"></span>
             Create Team
         </button>
         @if($setTaskBlockReason)
