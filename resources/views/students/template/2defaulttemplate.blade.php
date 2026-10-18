@@ -276,11 +276,14 @@
     font-size: 0.55rem; font-weight: 600;
     letter-spacing: 0.08em; text-transform: uppercase;
   }
+  /* Wraps: a card narrower than its name and buttons (Remove and Replace side
+     by side) drops the buttons to a line of their own instead of overlapping. */
   .hero-slide-row {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
     gap: 0.5rem; padding: 0.5rem 0.6rem;
   }
   .hero-slide-name {
+    white-space: nowrap;
     font-size: 0.72rem; letter-spacing: 0.06em;
     text-transform: uppercase; color: var(--fg-muted);
   }
@@ -4441,18 +4444,24 @@ function RoomPhotosModal({ room, onSave, onClose }) {
               <div
                 className="hero-slide-thumb"
                 style={url
-                  ? { backgroundImage: cssUrl(url) }
+                  ? undefined
                   : { display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-muted)' }}
                 role="button"
                 aria-label={(url ? 'Replace photo ' : 'Choose photo ') + (i + 1)}
                 onClick={() => replaceAt(i)}
               >
-                {i === 0 && url ? <span className="hero-slide-badge">Primary</span> : null}
+                {/* An <img>, like the card it previews: the CSS background this
+                    used left the thumbnail blank. */}
+                {url ? (
+                  <img src={url} alt={'Photo ' + (i + 1)}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : null}
+                {i === 0 && url ? <span className="hero-slide-badge" style={{ zIndex: 1 }}>Primary</span> : null}
                 {!url ? <i className="fa-solid fa-plus"></i> : null}
               </div>
               <div className="hero-slide-row">
                 <span className="hero-slide-name">Photo {i + 1}</span>
-                <span style={{ display: 'flex', gap: '0.35rem' }}>
+                <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                   {url ? (
                     <button type="button" className="hero-slide-replace" onClick={() => clearAt(i)}>Remove</button>
                   ) : null}
@@ -7947,18 +7956,24 @@ function AmenityPhotosModal({ amenity, onSave, onClose }) {
               <div
                 className="hero-slide-thumb"
                 style={url
-                  ? { backgroundImage: 'url(' + url + ')' }
+                  ? undefined
                   : { display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-muted)' }}
                 role="button"
                 aria-label={(url ? 'Replace photo ' : 'Choose photo ') + (i + 1)}
                 onClick={() => replaceAt(i)}
               >
-                {i === 0 && url ? <span className="hero-slide-badge">Primary</span> : null}
+                {/* An <img>, like the card it previews: the CSS background this
+                    used left the thumbnail blank. */}
+                {url ? (
+                  <img src={url} alt={'Photo ' + (i + 1)}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : null}
+                {i === 0 && url ? <span className="hero-slide-badge" style={{ zIndex: 1 }}>Primary</span> : null}
                 {!url ? <i className="fa-solid fa-plus"></i> : null}
               </div>
               <div className="hero-slide-row">
                 <span className="hero-slide-name">Photo {i + 1}</span>
-                <span style={{ display: 'flex', gap: '0.35rem' }}>
+                <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                   {url ? (
                     <button type="button" className="hero-slide-replace" onClick={() => clearAt(i)}>Remove</button>
                   ) : null}
