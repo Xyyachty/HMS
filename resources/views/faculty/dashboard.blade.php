@@ -71,7 +71,7 @@
         </div>
     </a>
 
-    <a href="{{ route('faculty.activity') }}" class="stat-card bg-white rounded-2xl p-5 border border-slate-100 shadow-sm block">
+    <a href="{{ route('faculty.role') }}" class="stat-card bg-white rounded-2xl p-5 border border-slate-100 shadow-sm block">
         <div class="flex items-center gap-3">
             <div class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
                 <span class="iconify text-white text-xl" data-icon="mdi:trending-up"></span>
