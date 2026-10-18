@@ -44,14 +44,15 @@
             </div>
         </div>
         <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
-            @if($studentTrend !== 0)
-                <span class="iconify text-sm {{ $studentTrend > 0 ? 'text-emerald-500' : 'text-rose-500' }}"
-                      data-icon="{{ $studentTrend > 0 ? 'mdi:trending-up' : 'mdi:trending-down' }}"></span>
-                <span class="text-[0.6875rem] font-bold text-black">{{ $studentTrend > 0 ? '+' : '' }}{{ $studentTrend }}%</span>
-                <span class="text-[0.6875rem] text-black font-medium">vs last month</span>
+            @if($totalStudents === 0)
+                <span class="iconify text-slate-300 text-sm" data-icon="mdi:account-off-outline"></span>
+                <span class="text-[0.6875rem] font-semibold text-black">No students yet</span>
+            @elseif($studentsThisMonth > 0)
+                <span class="iconify text-emerald-500 text-sm" data-icon="mdi:account-plus-outline"></span>
+                <span class="text-[0.6875rem] font-semibold text-black">{{ $studentsThisMonth }} new {{ Str::plural('student', $studentsThisMonth) }} this month</span>
             @else
-                <span class="iconify text-slate-300 text-sm" data-icon="mdi:trending-neutral"></span>
-                <span class="text-[0.6875rem] font-semibold text-black">No change vs last month</span>
+                <span class="iconify text-slate-300 text-sm" data-icon="mdi:account-clock-outline"></span>
+                <span class="text-[0.6875rem] font-semibold text-black">No new students this month</span>
             @endif
         </div>
     </a>
@@ -69,12 +70,15 @@
             </div>
         </div>
         <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
-            @if($pendingFaculty > 0)
+            @if($totalFaculty === 0)
+                <span class="iconify text-slate-300 text-sm" data-icon="mdi:account-off-outline"></span>
+                <span class="text-[0.6875rem] font-semibold text-black">No faculty yet</span>
+            @elseif($pendingFaculty > 0)
                 <span class="iconify text-amber-500 text-sm" data-icon="mdi:clock-alert-outline"></span>
-                <span class="text-[0.6875rem] font-bold text-black">{{ $pendingFaculty }} awaiting approval</span>
+                <span class="text-[0.6875rem] font-bold text-black">{{ $pendingFaculty }} not signed in yet</span>
             @else
                 <span class="iconify text-emerald-500 text-sm" data-icon="mdi:check-circle-outline"></span>
-                <span class="text-[0.6875rem] font-semibold text-black">All accounts approved</span>
+                <span class="text-[0.6875rem] font-semibold text-black">All faculty have signed in</span>
             @endif
         </div>
     </a>

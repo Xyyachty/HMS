@@ -24,8 +24,10 @@ class DeanController extends Controller
     {
         $totalStudents = Student::count();
         $totalFaculty = Faculty::count();
+        // Faculty are never 'pending' (that is a student status); a dean-created
+        // account waits as Pending Activation until its owner first signs in.
         $pendingFaculty = User::where('role', 'faculty')
-            ->where('status', 'pending')
+            ->where('status', User::PENDING_ACTIVATION)
             ->count();
 
         // A team is a (faculty, name) pair. Counted as DISTINCT rows rather than
@@ -38,16 +40,6 @@ class DeanController extends Controller
             ->count();
 
         $studentsThisMonth = Student::where('created_at', '>=', now()->startOfMonth())->count();
-        $studentsLastMonth = Student::whereBetween('created_at', [
-            now()->subMonth()->startOfMonth(),
-            now()->subMonth()->endOfMonth(),
-        ])->count();
-
-        if ($studentsLastMonth > 0) {
-            $studentTrend = (int) round((($studentsThisMonth - $studentsLastMonth) / $studentsLastMonth) * 100);
-        } else {
-            $studentTrend = $studentsThisMonth > 0 ? 100 : 0;
-        }
 
         $teamsThisMonth = StudentGroup::query()
             ->where('created_at', '>=', now()->startOfMonth())
@@ -120,7 +112,7 @@ class DeanController extends Controller
             'totalFaculty',
             'pendingFaculty',
             'totalTeams',
-            'studentTrend',
+            'studentsThisMonth',
             'teamsThisMonth',
             'recentActivity',
             'roleLabels',
