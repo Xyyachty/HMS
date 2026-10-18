@@ -527,7 +527,7 @@
                 </div>
                 <div>
                     <h4 class="font-bold text-emerald-800 text-lg leading-none">Bulk Upload Students</h4>
-                    <p class="text-xs text-emerald-600 mt-0.5">Upload the official block list, or the template, to add many students at once</p>
+                    <p class="text-xs text-emerald-600 mt-0.5">Upload the official student list, or the template, to add many students at once</p>
                 </div>
             </div>
             <button onclick="closeBulkModal()" class="text-slate-400 hover:text-red-500 hover:bg-red-50 w-8 h-8 rounded-full transition flex items-center justify-center">
