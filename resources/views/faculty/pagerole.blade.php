@@ -1408,7 +1408,7 @@
                     @if($unassignedStudentCount > 0)
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <label class="text-xs font-bold text-slate-600">Students Not Yet Assigned</label>
+                            <label class="text-xs font-bold" style="color: #DC2626;">Students Not Yet Assigned</label>
                             <span class="text-[0.6875rem] text-slate-400">{{ ($students ?? collect())->count() }} to choose from</span>
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 max-h-[22rem] overflow-y-auto">
@@ -1521,7 +1521,7 @@
                                     <span class="iconify text-brand text-xl" data-icon="mdi:account-multiple-outline"></span>
                                 </div>
                                 <div class="min-w-0">
-                                    <p class="text-[0.75rem] font-bold text-slate-600">Students Not Yet Assigned</p>
+                                    <p class="text-[0.75rem] font-bold" style="color: #DC2626;">Students Not Yet Assigned</p>
                                     <p class="text-2xl font-extrabold text-slate-900 leading-none mt-0.5">{{ $availableStudentCount }}</p>
                                     <p class="text-[0.6875rem] text-slate-400">ready to be put into teams</p>
                                 </div>
@@ -1666,7 +1666,7 @@
                     <div class="ts-glance">
                         <p class="ts-glance-title">Block Summary{{ $activeClass ? ' · ' . $activeClass->name : '' }}</p>
                         <div class="ts-glance-row">
-                            <span>Students Not Yet Assigned</span>
+                            <span style="color: #DC2626;">Students Not Yet Assigned</span>
                             <b>{{ $unassignedStudentCount }}</b>
                         </div>
                         <div class="ts-glance-row">
