@@ -202,6 +202,13 @@
     .tm-table tbody tr:hover { background: #FAFAFA; }
     .tm-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tm-task-name { font-weight: 800; }
+    /* Team Task Activity grouped by department: a header row per department and student. */
+    .tm-table tr.tm-group-row td { padding: .7rem 1rem; background: #F5F5F5; border-top: 1px solid #E4E2E0; }
+    .tm-table tbody tr.tm-group-row:hover { background: none; }
+    .tm-group-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+    .tm-group-title { font-size: 0.875rem; font-weight: 800; color: #181818; }
+    .tm-group-student { display: flex; align-items: center; gap: .4rem; min-width: 0; margin-top: .2rem; font-size: 0.75rem; color: #5F5A55; }
+    .tm-task-no { margin-right: .5rem; font-size: 0.6875rem; font-weight: 800; color: #8C8782; letter-spacing: .04em; }
     .tm-muted { font-size: 0.75rem; color: #5F5A55; }
     .tm-table .tm-btn, .tm-table .tm-act { width: 100%; }
     .tm-pager { padding: .65rem 1rem; border-top: 1px solid #EFEFEF; background: #FAFAFA; }

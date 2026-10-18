@@ -1096,22 +1096,22 @@
                     <div id="teamModalActivityStats" class="tm-stats"></div>
                     <div class="tm-card">
                         <table class="tm-table">
+                            {{-- Grouped by department (renderTeamModalActivityPage): the
+                                 department and its student head each group once, not every row. --}}
                             <colgroup>
                                 <col>
                                 <col style="width: 10.5rem;">
                                 <col style="width: 8.5rem;">
-                                <col style="width: 8.5rem;">
-                                <col style="width: 7rem;">
+                                <col style="width: 7.5rem;">
                                 <col style="width: 9rem;">
                             </colgroup>
                             <thead>
                                 <tr>
                                     <th>Task</th>
-                                    <th>Student</th>
-                                    <th>Department</th>
+                                    <th>Due Date</th>
                                     <th>Status</th>
                                     <th>Handed in</th>
-                                    <th class="text-center">Open</th>
+                                    <th class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="teamModalActivityBody"></tbody>
@@ -4630,12 +4630,13 @@ function renderTeamModalActivityPage() {
     const pageLabel = document.getElementById('teamModalActivityPageLabel');
     const prevBtn = document.getElementById('teamModalActivityPrev');
     const nextBtn = document.getElementById('teamModalActivityNext');
-    // Approved tasks sink to the end, so what still needs faculty stays on top.
-    // Stable sort: the rest keep their order. Runs on every render, so a task
-    // approved in place moves down at once.
+    // Approved tasks sink to the end of their department, so what still needs
+    // faculty stays on top. Stable sort: the rest keep their order. Runs on every
+    // render, so a task approved in place moves down at once.
     const logs = teamModalActivityLogs.sort((a, b) => (a.state === 'approved') - (b.state === 'approved'));
     const total = logs.length;
-    const totalPages = Math.max(1, Math.ceil(total / TEAM_MODAL_ACTIVITY_PER_PAGE));
+    // Every task on one page: the department groups replace paging.
+    const totalPages = 1;
 
     if (teamModalActivityPage > totalPages) teamModalActivityPage = totalPages;
     if (teamModalActivityPage < 1) teamModalActivityPage = 1;
@@ -4643,7 +4644,7 @@ function renderTeamModalActivityPage() {
     renderTeamModalActivityStats(logs);
 
     if (total === 0) {
-        activityBody.innerHTML = '<tr><td colspan="6"><div class="tm-empty">'
+        activityBody.innerHTML = '<tr><td colspan="5"><div class="tm-empty">'
             + '<span class="iconify" data-icon="mdi:clipboard-outline"></span>'
             + 'No tasks have been given to this team yet.</div></td></tr>';
         if (pager) pager.classList.add('hidden');
@@ -4651,23 +4652,27 @@ function renderTeamModalActivityPage() {
         return;
     }
 
-    const start = (teamModalActivityPage - 1) * TEAM_MODAL_ACTIVITY_PER_PAGE;
-    const pageLogs = logs.slice(start, start + TEAM_MODAL_ACTIVITY_PER_PAGE);
-    const end = start + pageLogs.length;
+    const start = 0;
+    const end = total;
 
-    activityBody.innerHTML = pageLogs.map(function(log) {
+    // One group per department and student, in desk order. A task fans out one
+    // row per member, so the student is named once in the group's header
+    // instead of on every task.
+    const ROLE_ORDER = ['front_desk', 'room_management', 'restaurant_management', 'housekeeping', 'maintenance'];
+    const groups = new Map();
+    logs.forEach((log) => {
+        const key = (log.role || '') + '|' + (log.student_name || '');
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(log);
+    });
+    const rank = (key) => { const i = ROLE_ORDER.indexOf(key.split('|')[0]); return i === -1 ? ROLE_ORDER.length : i; };
+    const ordered = [...groups.entries()].sort((a, b) => rank(a[0]) - rank(b[0]));
+
+    const taskRow = function(log, index) {
         const isDone = log.status === 'archived';
         const state = teamTaskState(log);
         const statusBadge = '<span class="tm-badge status-badge-' + state.key + '">'
             + '<span class="tm-dot status-fill-' + state.key + '"></span>' + state.label + '</span>';
-
-        // A task fans out one row per member, so the student tells identical titles apart.
-        const student = log.student_name
-            ? '<div class="flex items-center gap-2 min-w-0">'
-                + '<img src="{{ asset('images/default-avatar.svg') }}" alt="" class="tm-avatar tm-avatar-sm">'
-                + '<span class="tm-ellipsis" title="' + escHtml(log.student_name) + '">' + escHtml(log.student_name) + '</span>'
-              + '</div>'
-            : '<span class="tm-muted">Not assigned</span>';
 
         // A task can be opened and looked at any time — it's only the decision
         // (inside the dialog, gated by canAct there) that waits on a submission.
@@ -4685,11 +4690,10 @@ function renderTeamModalActivityPage() {
 
         return '<tr>' +
             '<td>' +
-                '<p class="tm-task-name">' + escHtml(log.title || 'Untitled task') + '</p>' +
+                '<p class="tm-task-name"><span class="tm-task-no">Task ' + String(index + 1).padStart(2, '0') + '</span>' + escHtml(log.title || 'Untitled task') + '</p>' +
                 (log.description ? '<p class="tm-muted tm-ellipsis">' + escHtml(log.description) + '</p>' : '') +
             '</td>' +
-            '<td>' + student + '</td>' +
-            '<td>' + escHtml(log.role_label || log.role || 'None') + '</td>' +
+            '<td' + (log.due_date ? '' : ' class="tm-muted"') + '>' + escHtml(log.due_date || 'No due date') + '</td>' +
             '<td>' + statusBadge
                 + (log.edited_since_approval
                     ? '<p class="tm-muted mt-1" style="color:#B45309;" title="The department page changed after you approved this. Open it and ask for changes if it no longer meets the task.">Edited after approval</p>'
@@ -4697,15 +4701,33 @@ function renderTeamModalActivityPage() {
             '<td' + (isDone ? '' : ' class="tm-muted"') + '>' +
                 escHtml(isDone ? (log.submitted_at || log.updated_at || '') : 'Not yet') +
             '</td>' +
-            '<td>' + openCell + '</td>' +
+            '<td class="text-center">' + openCell + '</td>' +
         '</tr>';
+    };
+
+    activityBody.innerHTML = ordered.map(function([, items]) {
+        const name = items[0].student_name;
+        const waiting = items.filter((l) => l.awaiting_review).length;
+        return '<tr class="tm-group-row"><td colspan="5">'
+                + '<div class="tm-group-head">'
+                    + '<div class="min-w-0">'
+                        + '<p class="tm-group-title">' + escHtml(items[0].role_label || items[0].role || 'Other') + '</p>'
+                        + '<p class="tm-group-student">'
+                            + '<img src="{{ asset('images/default-avatar.svg') }}" alt="" class="tm-avatar tm-avatar-sm">'
+                            + '<span class="tm-ellipsis">' + escHtml(name || 'Not assigned') + '</span></p>'
+                    + '</div>'
+                    + '<span class="tm-muted" style="white-space:nowrap;">' + items.length + (items.length === 1 ? ' task' : ' tasks')
+                        + (waiting ? ' · <b style="color:#B45309;">' + waiting + ' to review</b>' : '') + '</span>'
+                + '</div>'
+            + '</td></tr>'
+            + items.map(taskRow).join('');
     }).join('');
 
     if (meta) meta.textContent = '(tasks ' + (start + 1) + ' to ' + end + ' of ' + total + ')';
     if (pageLabel) pageLabel.textContent = 'Page ' + teamModalActivityPage + ' of ' + totalPages;
 
     if (pager) {
-        if (total > TEAM_MODAL_ACTIVITY_PER_PAGE) {
+        if (totalPages > 1) {
             pager.classList.remove('hidden');
             pager.classList.add('flex');
         } else {
