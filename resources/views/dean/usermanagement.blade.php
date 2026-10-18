@@ -634,7 +634,8 @@
         });
 
         syncSeenUserIds();
-        switchTab('faculty');
+        // ?tab=student opens the Students tab (the dashboard's Total Students card links here).
+        switchTab(new URLSearchParams(location.search).get('tab') === 'student' ? 'student' : 'faculty');
     });
 
     function filterUsersTable(query) {

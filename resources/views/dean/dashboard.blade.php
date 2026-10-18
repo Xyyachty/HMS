@@ -32,7 +32,7 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
 
     <!-- Total Students -->
-    <a href="{{ route('dean.users') }}" class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 block">
+    <a href="{{ route('dean.users', ['tab' => 'student']) }}" class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 block">
         <div class="flex items-center gap-3.5">
             <div class="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
                 <span class="iconify text-white text-xl" data-icon="mdi:account-group-outline"></span>
