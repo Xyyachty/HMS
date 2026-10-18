@@ -1165,6 +1165,19 @@
     </div>
   </footer>
 
+  {{-- Set by EnforceSessionRules::end() when a deactivated account's open page
+       is signed out: say why in a SweetAlert, over the login drawer. --}}
+  @if (session('session_alert'))
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ asset('js/hms-swal-theme.js') }}?v={{ filemtime(public_path('js/hms-swal-theme.js')) }}"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const alert = @json(session('session_alert'));
+        Swal.fire({ icon: 'error', title: alert.title, text: alert.message, heightAuto: false });
+      });
+    </script>
+  @endif
+
   <script>
     // ---------- Login slide panel ----------
     const loginOverlay = document.getElementById('loginOverlay');

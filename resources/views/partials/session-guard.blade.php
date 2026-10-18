@@ -11,9 +11,9 @@
        keeps the session; when the countdown ends it goes to /session-ended,
        which signs out and says why. Every open tab shows the same countdown,
        and pressing the button in one closes it in all of them.
-     - Asks once a minute, and on coming back to the tab, whether the session is
-       still the account's live one, so a sign-in on another device shows here
-       without waiting for a click. --}}
+     - Asks every 30 seconds, and on coming back to the tab, whether the session
+       is still the account's live one, so a sign-in on another device or the
+       account being set Inactive shows here without waiting for a click. --}}
 @auth
 <script>
 (function () {
@@ -43,7 +43,7 @@
     function leave(reason) {
         if (leaving) return;
         leaving = true;
-        window.location.href = ENDED_URL + '?reason=' + (reason === 'replaced' ? 'replaced' : 'idle');
+        window.location.href = ENDED_URL + '?reason=' + (reason === 'replaced' || reason === 'deactivated' ? reason : 'idle');
     }
 
     function ping(active) {
@@ -157,9 +157,11 @@
 
     setInterval(tick, 1000);
 
+    // ponytail: polled, so a deactivation lands within 30s; push over the user's
+    // private Echo channel if it has to be instant.
     setInterval(function () {
         if (!document.hidden && !leaving) ping(false);
-    }, 60000);
+    }, 30000);
 
     document.addEventListener('visibilitychange', function () {
         if (document.hidden || leaving) return;

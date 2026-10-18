@@ -82,7 +82,7 @@ Route::get('/forgot-password/check-email', [AuthController::class, 'checkForgotP
 |
 | No middleware on purpose. NOT `guest` — that alias is RedirectIfAuthenticated, which
 | would bounce a student clicking their own team's link off to a dashboard. The `web`
-| group already applies, and EnsureStudentIsActive inside it is a no-op with no session.
+| group already applies, and EnforceSessionRules inside it is a no-op with no session.
 |
 | The team's Publish in the builder is what opens the door; before that every one of
 | these 404s, with the same response an unknown slug gets so the URL cannot be used to

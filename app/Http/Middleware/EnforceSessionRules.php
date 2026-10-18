@@ -26,6 +26,10 @@ use Symfony\Component\HttpFoundation\Response;
  * ends the session itself once both have passed, plus GRACE_SECONDS so a "Stay
  * Logged In" click in the last second still lands.
  *
+ * Deactivation: the dean can set a faculty account Inactive, and dean or faculty
+ * a student's. That ends every session the account holds on its next request,
+ * so an open page signs out within one ping of partials.session-guard.
+ *
  * Ending a session uses logoutCurrentDevice(), not logout(): logout() cycles
  * remember_token, which would end the newer session too.
  */
@@ -48,7 +52,17 @@ class EnforceSessionRules
             'title' => 'Signed In Elsewhere',
             'message' => 'Your account was logged in on another device. Please log in again.',
         ],
+        'deactivated' => [
+            'title' => 'Account Deactivated',
+            'message' => 'Your account has been deactivated. Contact your instructor or the dean.',
+        ],
     ];
+
+    /** Faculty and student accounts set Inactive can no longer sign in or stay signed in. */
+    public static function isDeactivated($user): bool
+    {
+        return in_array($user->role, ['faculty', 'student'], true) && $user->status === 'inactive';
+    }
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -58,6 +72,11 @@ class EnforceSessionRules
         }
 
         $session = $request->session();
+
+        // Signing out needs no alert, even from a deactivated account.
+        if (self::isDeactivated($user) && !$request->routeIs('logout')) {
+            return self::end($request, 'deactivated');
+        }
 
         // A remember-me cookie from before this rule signs in without a session
         // that can show recent activity; the user has been away, so make them
@@ -109,9 +128,11 @@ class EnforceSessionRules
         }
 
         // withErrors() flashes straight away, so it has to run after invalidate().
+        // A deactivation also pops a SweetAlert on the landing page.
         return redirect()->to('/?login=1')
             ->withErrors(['email' => self::REASONS[$reason]['message']])
-            ->with('error_title', self::REASONS[$reason]['title']);
+            ->with('error_title', self::REASONS[$reason]['title'])
+            ->with('session_alert', $reason === 'deactivated' ? self::REASONS[$reason] : null);
     }
 
     private static function isInteraction(Request $request): bool

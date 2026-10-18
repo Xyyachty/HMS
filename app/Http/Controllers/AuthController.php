@@ -47,17 +47,17 @@ class AuthController extends Controller
                 ])->with('error_title', 'Account Pending')->onlyInput('email');
             }
 
-            // Dean/faculty can deactivate a student's account; block the sign-in here.
-            // (An already-open session is caught on the next request by
-            // EnsureStudentIsActive middleware.)
-            if ($user && $user->role === 'student' && ($user->status ?? 'active') === 'inactive') {
+            // The dean can deactivate a faculty account, dean or faculty a student's;
+            // block the sign-in here. (An already-open session is ended on its next
+            // request by EnforceSessionRules.)
+            if ($user && EnforceSessionRules::isDeactivated($user)) {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
                 return back()->withErrors([
-                    'email' => 'Your account has been deactivated. Contact your instructor or the dean.',
-                ])->with('error_title', 'Account Deactivated')->onlyInput('email');
+                    'email' => EnforceSessionRules::REASONS['deactivated']['message'],
+                ])->with('error_title', EnforceSessionRules::REASONS['deactivated']['title'])->onlyInput('email');
             }
 
             // The first sign-in on a faculty account the dean created, with the
