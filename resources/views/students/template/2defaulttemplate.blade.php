@@ -7988,7 +7988,7 @@ function AmenityPhotosModal({ amenity, onSave, onClose }) {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginTop: '1.4rem' }}>
           <span className="header-modal-hint" style={{ margin: 0 }}>
-            {saving ? 'Saving…' : 'An amenity left without any photo is shown with a stand-in.'}
+            {saving ? 'Saving…' : 'An amenity left without any photo is shown with default photos.'}
           </span>
           <button type="button" className="btn-ghost" onClick={onClose}>Done</button>
         </div>
