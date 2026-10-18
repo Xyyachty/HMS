@@ -118,7 +118,8 @@
     $rpBarColor = '#4A4643';
 
     $rpRoleTotal = collect($roleParticipation)->sum('count');
-    $rpTopStudents = collect($studentPerformance ?? [])->take(5);
+    // Already ranked first-to-finish first (ReportDesk); the card shows ten.
+    $rpTopStudents = collect($studentPerformance ?? [])->take(10);
 @endphp
 
 <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
@@ -232,7 +233,7 @@
             <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <p class="text-[0.9375rem] font-bold text-slate-800">Top Performing Students</p>
-                    <p class="text-[0.75rem] text-slate-400">Students with the highest activity completion rate.</p>
+                    <p class="text-[0.75rem] text-slate-400">The first 10 students to hand in and complete every task given to them.</p>
                 </div>
                 <button type="button" onclick="switchReportTab('students')"
                         class="h-9 px-3.5 rounded-xl border border-slate-200 text-[0.75rem] font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition shrink-0 rp-no-print">View All</button>

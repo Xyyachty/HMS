@@ -258,11 +258,27 @@ class ReportDesk
                 'total'   => $total,
                 'done'    => $done,
                 'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+                // When the last of their tasks was handed in. Only meaningful once
+                // all are complete; rows from before submitted_at use updated_at.
+                'finished_at' => $total > 0 && $done === $total
+                    ? $mine->max(fn (Task $t) => ($t->submitted_at ?? $t->updated_at)?->timestamp)
+                    : null,
             ];
         })
             // Filtered by task, a student with no row of that task has nothing to report.
             ->filter(fn ($row) => !$filters['task'] || $row['total'] > 0)
-            ->sortByDesc(fn ($row) => [$row['percent'], $row['done']])
+            // Top performers are the first to hand in and complete every task they
+            // were given, earliest first. Everyone still working follows, most done first.
+            ->sort(function ($a, $b) {
+                if (($a['finished_at'] === null) !== ($b['finished_at'] === null)) {
+                    return $a['finished_at'] === null ? 1 : -1;
+                }
+                if ($a['finished_at'] !== null) {
+                    return $a['finished_at'] <=> $b['finished_at'];
+                }
+
+                return [$b['percent'], $b['done']] <=> [$a['percent'], $a['done']];
+            })
             ->values();
 
         /* The latest completed work across every team: handed in and approved. A

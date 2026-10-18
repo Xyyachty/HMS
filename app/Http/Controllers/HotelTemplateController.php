@@ -286,6 +286,7 @@ class HotelTemplateController extends Controller
                         // A resubmission after "revise" is a new submission awaiting
                         // review; the send-back's stamp would make it read as approved.
                         'feedback_at' => null,
+                        'submitted_at' => now(),
                         'student_id' => $membership->student_id,
                         'assigned_to' => $user->user_id,
                         'previous_version_id' => $previousVersionId,

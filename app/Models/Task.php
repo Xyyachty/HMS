@@ -34,6 +34,8 @@ class Task extends Model
         'activities',
         // First save on this task in the Template Editor: Not Started -> In Progress.
         'started_at',
+        // Last hand-in; approval rewrites updated_at, so this is the one to rank by.
+        'submitted_at',
         'due_date',
         'status',
         'feedback',
@@ -52,6 +54,7 @@ class Task extends Model
         'due_date' => 'datetime',
         'feedback_at' => 'datetime',
         'started_at' => 'datetime',
+        'submitted_at' => 'datetime',
         'revision_count' => 'integer',
         'activities' => 'array',
     ];
