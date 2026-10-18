@@ -57,6 +57,10 @@
         font-size: 0.75rem; font-weight: 800; color: #fff; background: #5F5A55;
     }
     #bulkDropZone.drag-over { border-color: #8A817A; background-color: #F3F2F1; }
+    /* Add Student and Import Now are green. Hex, not bg-emerald-600:
+       faculty-palette.css turns that class gold. */
+    #addStudentSubmit, #bulkImportBtn { background-color: #15803D; box-shadow: 0 4px 6px -1px rgba(21, 128, 61, .25); }
+    #addStudentSubmit:hover, #bulkImportBtn:hover:not(:disabled) { background-color: #166534; }
     #bulkImportBtn:disabled {
         opacity:.6;
         cursor:not-allowed;
@@ -729,7 +733,7 @@
         <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center sticky bottom-0">
             <button onclick="closeBulkModal()" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-200 transition font-semibold text-sm">Close</button>
             <div class="flex gap-3">
-                <button id="bulkImportBtn" onclick="startBulkImport()" class="hidden px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-emerald-600/20 flex items-center gap-2">
+                <button id="bulkImportBtn" onclick="startBulkImport()" class="hidden px-6 py-2 text-white rounded-xl font-bold text-sm hover:scale-105 transition flex items-center gap-2">
                     <span class="iconify" data-icon="mdi:cloud-upload"></span>
                     <span id="bulkImportBtnLabel">Import Now</span>
                 </button>
@@ -796,7 +800,7 @@
             </div>
             <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0">
                 <button type="button" onclick="closeModal('createStudentModal')" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-200 transition font-semibold text-sm">Cancel</button>
-                <button type="submit" class="px-5 py-2 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20">Add Student</button>
+                <button type="submit" id="addStudentSubmit" class="px-5 py-2 text-white rounded-xl font-bold text-sm hover:scale-105 transition">Add Student</button>
             </div>
         </form>
     </div>
