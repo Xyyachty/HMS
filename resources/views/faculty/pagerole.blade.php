@@ -1311,7 +1311,17 @@
             <div class="setup-grid p-4">
                 <div class="min-w-0">
             @php $unassignedStudentCount = ($students ?? collect())->count(); @endphp
-            @if($unassignedStudentCount === 0)
+            @if($unassignedStudentCount === 0 && (int) ($activeClass->seats_taken ?? 0) === 0)
+                {{-- An empty block is not a block where everyone has a team. --}}
+                <div class="ts-done">
+                    <span class="ts-done-icon"><span class="iconify" data-icon="mdi:account-off-outline"></span></span>
+                    <p class="ts-done-title">No students{{ $activeClass ? ' in ' . $activeClass->name : '' }}</p>
+                    <p class="ts-done-sub">Add students under Manage Students first, then come back here to put them into teams.</p>
+                    <a href="{{ route('faculty.students', array_filter(['class' => $activeClass->letter ?? null])) }}" class="ts-btn-dark">
+                        <span class="iconify" data-icon="mdi:account-plus-outline"></span> Go to Manage Students
+                    </a>
+                </div>
+            @elseif($unassignedStudentCount === 0)
                 {{-- Nothing to build: say so plainly and point at where changes are made,
                      instead of a form full of disabled fields. --}}
                 <div class="ts-done">
