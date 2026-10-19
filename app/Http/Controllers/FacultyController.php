@@ -174,7 +174,6 @@ class FacultyController extends Controller
 
         DB::transaction(function () use (&$validated, $facultyId, $memberIds, $rolesByMember) {
             $validated['group_name'] = $this->claimTeamNames(
-                (int) $facultyId,
                 [$validated['group_name'] ?? null],
                 fn () => 'group_name'
             )[0];
@@ -244,16 +243,16 @@ class FacultyController extends Controller
     }
 
     /**
-     * The lowest unused "Team N" names for a faculty, gaps first: with Team 1, 2
-     * and 4 taken, the next is Team 3. Names compare case-insensitively, the same
-     * way the citext group_name column does.
+     * The lowest unused "Team N" names, gaps first: with Team 1, 2 and 4 taken,
+     * the next is Team 3. Names compare case-insensitively, the same way the
+     * citext group_name column does.
      *
      * @param  array<string, true>  $taken  lowercased names already used
      * @return array<int, string>
      */
-    private function nextTeamNames(int $facultyId, int $count, ?array $taken = null): array
+    private function nextTeamNames(int $count, ?array $taken = null): array
     {
-        $taken ??= $this->takenTeamNames($facultyId);
+        $taken ??= $this->takenTeamNames();
 
         $names = [];
         for ($n = 1; count($names) < $count; $n++) {
@@ -265,19 +264,25 @@ class FacultyController extends Controller
         return $names;
     }
 
-    /** @return array<string, true> lowercased team names this faculty already uses */
-    private function takenTeamNames(int $facultyId): array
+    /**
+     * Lowercased team names in use by any faculty, so Block A and Block B never
+     * both get a "Team 1". The groups table keeps a team's name after its last
+     * member leaves; reading it too stops a new team inheriting that team's tasks.
+     *
+     * @return array<string, true>
+     */
+    private function takenTeamNames(): array
     {
-        return StudentGroup::where('faculty_id', $facultyId)
-            ->pluck('group_name')
+        return DB::table('groups')->pluck('group_name')
+            ->merge(StudentGroup::pluck('group_name'))
             ->mapWithKeys(fn ($name) => [mb_strtolower(trim((string) $name)) => true])
             ->all();
     }
 
     /**
      * Settles the name of every team about to be created. Runs inside the
-     * creating transaction and first locks the faculty's row, so two saves at
-     * once queue up here instead of both taking the same number.
+     * creating transaction and first takes a lock, so two saves at once (from
+     * any faculty) queue up here instead of both taking the same number.
      *
      * A blank name, or a "Team N" someone already has, becomes the lowest free
      * "Team N". Any other name already in use is refused — renaming a team the
@@ -287,11 +292,15 @@ class FacultyController extends Controller
      * @param  callable(int): string  $errorKey  field to report a clash against
      * @return array<int, string>  same keys as $requested
      */
-    private function claimTeamNames(int $facultyId, array $requested, callable $errorKey): array
+    private function claimTeamNames(array $requested, callable $errorKey): array
     {
-        UserInformation::whereKey($facultyId)->lockForUpdate()->first();
+        // Names are shared by every faculty, so one faculty's row is not enough to
+        // lock. SQLite (tests) already runs one writer at a time.
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('select pg_advisory_xact_lock(?)', [crc32('team-names')]);
+        }
 
-        $taken = $this->takenTeamNames($facultyId);
+        $taken = $this->takenTeamNames();
         $names = [];
         $pending = [];
 
@@ -313,7 +322,7 @@ class FacultyController extends Controller
         }
 
         foreach ($pending as $index) {
-            $names[$index] = $this->nextTeamNames($facultyId, 1, $taken)[0];
+            $names[$index] = $this->nextTeamNames(1, $taken)[0];
             $taken[mb_strtolower($names[$index])] = true;
         }
 
@@ -395,7 +404,6 @@ class FacultyController extends Controller
 
         DB::transaction(function () use (&$normalizedTeams, $facultyId) {
             $names = $this->claimTeamNames(
-                $facultyId,
                 array_column($normalizedTeams, 'group_name'),
                 fn (int $index) => "teams.{$index}.group_name"
             );
@@ -1629,7 +1637,7 @@ class FacultyController extends Controller
             ->all();
 
         // Prefilled into Create Team; up to 40 since that is the bulk form's cap.
-        $nextTeamNames = $this->nextTeamNames((int) $facultyId, 40);
+        $nextTeamNames = $this->nextTeamNames(40);
 
         return view('faculty.pagerole', compact(
             'nextTeamNames',
@@ -1990,6 +1998,12 @@ class FacultyController extends Controller
             ->all();
         if ($currentMemberIds === []) {
             return back()->withErrors(['group_name' => 'The selected team does not exist.'])->withInput();
+        }
+
+        // Renaming onto a name another team holds would merge the two teams.
+        $newKey = mb_strtolower(trim($validated['group_name']));
+        if ($newKey !== mb_strtolower(trim($groupName)) && isset($this->takenTeamNames()[$newKey])) {
+            return back()->withErrors(['group_name' => "Team name \"{$validated['group_name']}\" is already used."])->withInput();
         }
 
         // Students joining in this save. Update Team is the one place a student is
