@@ -2358,7 +2358,7 @@ class FacultyController extends Controller
                                     $tasksCreated++;
 
                                     if ($assigneeUserId) {
-                                        $assignedCounts[$assigneeUserId] = ($assignedCounts[$assigneeUserId] ?? 0) + 1;
+                                        $assignedCounts[$assigneeUserId][] = $title;
                                     }
                                 }
                             }
@@ -2399,7 +2399,7 @@ class FacultyController extends Controller
             ActivityLog::recordFor(ActivityLog::TASK_CREATED, $dueMessage);
         }
 
-        Notifier::tasksAssigned(auth()->user(), $assignedCounts);
+        Notifier::tasksAssigned(auth()->user(), $assignedCounts, $validated['due_date'] ?? null);
         if ($tasksCreated > 0) {
             Notifier::teamTasksAssigned(auth()->user(), $titlesByTeam, $validated['due_date'] ?? null);
         }
@@ -2724,7 +2724,7 @@ class FacultyController extends Controller
                 );
 
                 if ($unlocked->assigned_to) {
-                    Notifier::tasksAssigned($facultyUser, [$unlocked->assigned_to => 1]);
+                    Notifier::tasksAssigned($facultyUser, [$unlocked->assigned_to => [$unlocked->title]], $unlocked->due_date);
                 }
             }
         }

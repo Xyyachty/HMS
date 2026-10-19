@@ -234,6 +234,7 @@
                                 : '') +
                             '<span class="block mt-1 text-[0.6875rem] text-slate-400">' +
                                 escapeHtml(n.created_at_human) +
+                                (n.created_at ? ' · ' + escapeHtml(n.created_at) : '') +
                             '</span>' +
                         '</span>' +
                         (n.read
