@@ -1576,7 +1576,7 @@
                                 <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">3</span>
                                 <div class="min-w-0">
                                     <p class="text-[0.9375rem] font-bold text-slate-800">Assign Students to Teams</p>
-                                    <p class="text-[0.75rem] text-slate-400">Press "Automatically Create Teams" to fill every team, then "Shuffle Teams" for a new mix. "Reset to Manual" empties the teams so you can pick each student's team and role below.</p>
+                                    <p class="text-[0.75rem] text-slate-400">Press "Automatically Create Teams" to fill every team, then "Shuffle Teams" for a new mix. "Reset" empties the teams so you can pick each student's team and role below.</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
@@ -1586,7 +1586,7 @@
                                 </button>
                                 <button type="button" onclick="resetBulkAssignment()"
                                     class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition">
-                                    Reset to Manual
+                                    Reset
                                 </button>
                             </div>
                         </div>
@@ -3276,7 +3276,7 @@ function renderTeamHotelConcept(data) {
         + '</div>';
 }
 
-/* Step 3's Reset to Manual: hand every student back to Unassigned and clear
+/* Step 3's Reset: hand every student back to Unassigned and clear
    their roles, then let the preview code redraw the (now empty) team slots.
    The faculty member then picks each student's team and role in the list. */
 function resetBulkAssignment() {
