@@ -248,6 +248,7 @@
         display: flex; align-items: center; justify-content: center;
         background: #DCFCE7; color: #15803D; font-size: 1.5rem;
     }
+    #panel-team_setup .ts-done-icon.is-empty { background: #FEE2E2; color: #DC2626; }
     #panel-team_setup .ts-done-title { font-size: 1rem; font-weight: 800; color: #111827; }
     #panel-team_setup .ts-done-sub { font-size: 0.8125rem; color: #6B7280; max-width: 34rem; margin: .35rem 0 1.1rem; line-height: 1.55; }
     #panel-team_setup .ts-btn-dark {
@@ -1314,7 +1315,7 @@
             @if($unassignedStudentCount === 0 && (int) ($activeClass->seats_taken ?? 0) === 0)
                 {{-- An empty block is not a block where everyone has a team. --}}
                 <div class="ts-done">
-                    <span class="ts-done-icon"><span class="iconify" data-icon="mdi:account-off-outline"></span></span>
+                    <span class="ts-done-icon is-empty"><span class="iconify" data-icon="mdi:account-off-outline"></span></span>
                     <p class="ts-done-title">No students{{ $activeClass ? ' in ' . $activeClass->name : '' }}</p>
                     <p class="ts-done-sub">Add students under Manage Students first, then come back here to put them into teams.</p>
                     <a href="{{ route('faculty.students', array_filter(['class' => $activeClass->letter ?? null])) }}" class="ts-btn-dark">
