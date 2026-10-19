@@ -192,6 +192,7 @@
       animation: spin 0.7s linear infinite;
     }
   </style>
+@include('partials.no-horizontal-scroll')
 </head>
 <body class="bg-white">
 

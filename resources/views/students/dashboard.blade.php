@@ -262,6 +262,7 @@
     @include('partials.status-badge-styles')
     @include('partials.portal-scale')
     @include('partials.select-caret-styles')
+@include('partials.no-horizontal-scroll')
 </head>
 <body class="bg-surface min-h-screen flex">
 

@@ -314,6 +314,7 @@
     @include('students.builder.site-theme', ['p' => $opsSitePalette])
 @endif
     @include('partials.portal-scale')
+@include('partials.no-horizontal-scroll')
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 

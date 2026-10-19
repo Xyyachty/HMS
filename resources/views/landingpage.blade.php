@@ -892,6 +892,7 @@
       .footer__inner { justify-content: center; text-align: center; }
     }
   </style>
+@include('partials.no-horizontal-scroll')
 </head>
 <body>
 

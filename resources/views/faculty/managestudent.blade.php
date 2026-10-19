@@ -90,6 +90,10 @@
     #studentsTable .col-status { width: 12%; }
     #studentsTable .col-joined { width: 14%; }
     #studentsTable .col-action { width: 15%; }
+    /* Too narrow for six columns without sideways scrolling: Phone and Joined drop out. */
+    @media (max-width: 760px) {
+        #studentsTable :is(th, td):is(:nth-child(3), :nth-child(5)) { display: none; }
+    }
     #studentsTable .cell-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: block; }
 
     .st-id {

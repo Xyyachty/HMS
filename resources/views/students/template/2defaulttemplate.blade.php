@@ -1446,6 +1446,7 @@
     }
   } catch (e) { /* cross-origin */ }
 </script>
+@include('partials.no-horizontal-scroll')
 </head>
 <body>
 <div id="root"></div>

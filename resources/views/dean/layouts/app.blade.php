@@ -112,6 +112,7 @@
     @include('partials.ink-all-styles')
     @include('partials.portal-scale')
     @include('partials.select-caret-styles')
+@include('partials.no-horizontal-scroll')
 </head>
 <body class="bg-slate-50 antialiased">
 

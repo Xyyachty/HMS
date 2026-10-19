@@ -146,6 +146,7 @@
     ::-webkit-scrollbar-track { background: #FDF2F8; }
     ::-webkit-scrollbar-thumb { background: #DB2777; border-radius: 99px; }
   </style>
+@include('partials.no-horizontal-scroll')
 </head>
 <body class="min-h-screen bg-white flex">
 
