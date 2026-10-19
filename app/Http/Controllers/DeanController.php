@@ -405,10 +405,13 @@ class DeanController extends Controller
             'step' => $step,
             'code' => $step === null ? null : 'TASK ' . str_pad((string) ($step + 1), 2, '0', STR_PAD_LEFT),
             'title' => (string) $task->title,
+            'description' => $task->description,
             'role' => (string) $task->role,
             'role_label' => $roleLabels[$task->role] ?? $task->role,
             'student' => $studentName,
-            'due_date' => optional($task->due_date)->format('M d, Y'),
+            // Same formats as the faculty Team Task Activity table.
+            'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
+            'submitted_at' => $task->status === 'archived' ? optional($task->updated_at)->format('M d, Y') : null,
             'status' => $status,
             'status_label' => $statusLabel,
         ];

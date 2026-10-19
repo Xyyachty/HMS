@@ -365,36 +365,28 @@
                     </div>
                     <div id="teamModalActivityStats" class="tm-stats"></div>
                     <div class="tm-card">
+                        {{-- Same layout as the faculty table: one tab per department and
+                             student, filled by renderTeamModalActivityPage(). --}}
+                        <div id="teamModalActivityTabs" class="tm-role-tabs"></div>
                         <table class="tm-table">
                             <colgroup>
                                 <col>
                                 <col style="width: 10.5rem;">
                                 <col style="width: 8.5rem;">
-                                <col style="width: 7rem;">
+                                <col style="width: 7.5rem;">
                                 <col style="width: 9rem;">
-                                <col style="width: 7rem;">
                             </colgroup>
                             <thead>
                                 <tr>
                                     <th>Task</th>
-                                    <th>Student</th>
-                                    <th>Department</th>
-                                    <th>Due</th>
+                                    <th>Due Date</th>
                                     <th>Status</th>
-                                    <th>Preview</th>
+                                    <th>Handed in</th>
+                                    <th class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="teamModalActivityBody"></tbody>
                         </table>
-                        <div id="teamModalActivityPager" class="tm-pager hidden flex items-center justify-between gap-2">
-                            <button type="button" id="teamModalActivityPrev" class="tm-btn tm-btn-sm">
-                                <span class="iconify" data-icon="mdi:chevron-left"></span> Previous
-                            </button>
-                            <span class="tm-pager-label"><span id="teamModalActivityPageLabel"></span> <span id="teamModalActivityMeta"></span></span>
-                            <button type="button" id="teamModalActivityNext" class="tm-btn tm-btn-sm">
-                                Next <span class="iconify" data-icon="mdi:chevron-right"></span>
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -593,8 +585,8 @@
 @include('partials.team-completion-live')
 <script>
     let teamModalActivityLogs = [];
-    let teamModalActivityPage = 1;
-    const TEAM_MODAL_ACTIVITY_PER_PAGE = 5;
+    // The department tab open in Team Task Activity ("role|student"); null picks one.
+    let teamModalActivityTab = null;
     // Status colour per DeanController::teamTaskRow() status, from the shared
     // status-badge-* / status-fill-* classes. Submitted is the students' Pending.
     const TASK_STATUS_KEYS = {
@@ -644,68 +636,94 @@
 
     function renderTeamModalActivityPage() {
         const activityBody = document.getElementById('teamModalActivityBody');
-        const pager = document.getElementById('teamModalActivityPager');
-        const meta = document.getElementById('teamModalActivityMeta');
-        const pageLabel = document.getElementById('teamModalActivityPageLabel');
-        const prevBtn = document.getElementById('teamModalActivityPrev');
-        const nextBtn = document.getElementById('teamModalActivityNext');
+        const tabs = document.getElementById('teamModalActivityTabs');
         const logs = teamModalActivityLogs;
-        const total = logs.length;
-        const totalPages = Math.max(1, Math.ceil(total / TEAM_MODAL_ACTIVITY_PER_PAGE));
-
-        if (teamModalActivityPage > totalPages) teamModalActivityPage = totalPages;
-        if (teamModalActivityPage < 1) teamModalActivityPage = 1;
+        const keyOf = (l) => TASK_STATUS_KEYS[l.status] || 'not_started';
 
         renderTeamModalActivityStats(logs);
 
-        if (total === 0) {
-            activityBody.innerHTML = '<tr><td colspan="6"><div class="tm-empty">'
+        if (logs.length === 0) {
+            tabs.innerHTML = '';
+            activityBody.innerHTML = '<tr><td colspan="5"><div class="tm-empty">'
                 + '<span class="iconify" data-icon="mdi:clipboard-outline"></span>'
                 + 'No tasks have been given to this team yet.</div></td></tr>';
-            if (pager) pager.classList.add('hidden');
-            if (meta) meta.textContent = '';
             return;
         }
 
-        const start = (teamModalActivityPage - 1) * TEAM_MODAL_ACTIVITY_PER_PAGE;
-        const pageLogs = logs.slice(start, start + TEAM_MODAL_ACTIVITY_PER_PAGE);
-        const end = start + pageLogs.length;
+        // One group per department and student, in desk order, as on the
+        // faculty page: the student is named once in the group's header.
+        const ROLE_ORDER = ['front_desk', 'room_management', 'restaurant_management', 'housekeeping', 'maintenance'];
+        const groups = new Map();
+        logs.forEach((log) => {
+            const key = (log.role || '') + '|' + (log.student || '');
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(log);
+        });
+        const rank = (key) => { const i = ROLE_ORDER.indexOf(key.split('|')[0]); return i === -1 ? ROLE_ORDER.length : i; };
+        const ordered = [...groups.entries()].sort((a, b) => rank(a[0]) - rank(b[0]));
 
-        activityBody.innerHTML = pageLogs.map(function (log) {
-            const key = TASK_STATUS_KEYS[log.status] || 'not_started';
+        const taskRow = function (log, index) {
+            const key = keyOf(log);
+            const isDone = key === 'pending' || key === 'completed';
             const statusBadge = '<span class="tm-badge status-badge-' + key + '">'
                 + '<span class="tm-dot status-fill-' + key + '"></span>' + escHtml(log.status_label) + '</span>';
-            const student = log.student
-                ? '<div class="flex items-center gap-2 min-w-0">'
-                    + '<img src="{{ asset('images/default-avatar.svg') }}" alt="" class="tm-avatar tm-avatar-sm">'
-                    + '<span class="tm-ellipsis" title="' + escHtml(log.student) + '">' + escHtml(log.student) + '</span>'
-                  + '</div>'
-                : '<span class="tm-muted">Not taken yet</span>';
             // View only: the team's live site as last saved, in a new tab.
-            const preview = log.preview_url
+            const action = log.preview_url
                 ? '<a href="' + escHtml(log.preview_url) + '" target="_blank" rel="noopener" class="tm-btn tm-btn-sm"'
                     + ' title="See the team site as its students last saved it">'
-                    + '<span class="iconify" data-icon="mdi:eye-outline"></span> Preview</a>'
+                    + '<span class="iconify" data-icon="mdi:eye-outline"></span>' + (isDone ? 'View work' : 'View progress') + '</a>'
                 : '<span class="tm-muted">No site change</span>';
 
             return '<tr>' +
                 '<td>' +
-                    (log.code ? '<p class="tm-muted">' + escHtml(log.code) + '</p>' : '') +
-                    '<p class="tm-task-name">' + escHtml(log.title) + '</p>' +
+                    '<p class="tm-task-name"><span class="tm-task-no">Task ' + String(index + 1).padStart(2, '0') + '</span>' + escHtml(log.title || 'Untitled task') + '</p>' +
+                    (log.description ? '<p class="tm-muted tm-ellipsis">' + escHtml(log.description) + '</p>' : '') +
                 '</td>' +
-                '<td>' + student + '</td>' +
-                '<td>' + escHtml(log.role_label || log.role || 'None') + '</td>' +
-                '<td' + (log.due_date ? '' : ' class="tm-muted"') + '>' + escHtml(log.due_date || 'No date') + '</td>' +
+                '<td' + (log.due_date ? '' : ' class="tm-muted"') + '>' + escHtml(log.due_date || 'No due date') + '</td>' +
                 '<td>' + statusBadge + '</td>' +
-                '<td>' + preview + '</td>' +
+                '<td' + (log.submitted_at ? '' : ' class="tm-muted"') + '>' + escHtml(log.submitted_at || 'Not yet') + '</td>' +
+                '<td class="text-center">' + action + '</td>' +
             '</tr>';
-        }).join('');
+        };
 
-        if (meta) meta.textContent = '(tasks ' + (start + 1) + ' to ' + end + ' of ' + total + ')';
-        if (pageLabel) pageLabel.textContent = 'Page ' + teamModalActivityPage + ' of ' + totalPages;
-        if (pager) pager.classList.toggle('hidden', total <= TEAM_MODAL_ACTIVITY_PER_PAGE);
-        if (prevBtn) prevBtn.disabled = teamModalActivityPage <= 1;
-        if (nextBtn) nextBtn.disabled = teamModalActivityPage >= totalPages;
+        // Opens on the first department with work waiting for faculty, else the first one.
+        if (!groups.has(teamModalActivityTab)) {
+            const waitingGroup = ordered.find(([, items]) => items.some((l) => keyOf(l) === 'pending'));
+            teamModalActivityTab = (waitingGroup || ordered[0])[0];
+        }
+        tabs.innerHTML = ordered.map(function ([key, items]) {
+            const waiting = items.filter((l) => keyOf(l) === 'pending').length;
+            return '<button type="button" data-activity-tab="' + escHtml(key) + '"'
+                    + ' class="tm-role-tab' + (key === teamModalActivityTab ? ' is-active' : '') + '"'
+                    + ' title="' + escHtml(items[0].student || 'Not assigned') + '">'
+                + escHtml(items[0].role_label || items[0].role || 'Other')
+                + '<span class="tm-role-tab-count">' + items.length + '</span>'
+                + (waiting ? '<span class="tm-role-tab-alert" title="' + waiting + ' waiting for faculty"></span>' : '')
+            + '</button>';
+        }).join('');
+        tabs.onclick = function (e) {
+            const btn = e.target.closest('[data-activity-tab]');
+            if (!btn) return;
+            teamModalActivityTab = btn.getAttribute('data-activity-tab');
+            renderTeamModalActivityPage();
+        };
+
+        activityBody.innerHTML = ordered.filter(([key]) => key === teamModalActivityTab).map(function ([, items]) {
+            const waiting = items.filter((l) => keyOf(l) === 'pending').length;
+            return '<tr class="tm-group-row"><td colspan="5">'
+                    + '<div class="tm-group-head">'
+                        + '<div class="min-w-0">'
+                            + '<p class="tm-group-title">' + escHtml(items[0].role_label || items[0].role || 'Other') + '</p>'
+                            + '<p class="tm-group-student">'
+                                + '<img src="{{ asset('images/default-avatar.svg') }}" alt="" class="tm-avatar tm-avatar-sm">'
+                                + '<span class="tm-ellipsis">' + escHtml(items[0].student || 'Not assigned') + '</span></p>'
+                        + '</div>'
+                        + '<span class="tm-muted" style="white-space:nowrap;">' + items.length + (items.length === 1 ? ' task' : ' tasks')
+                            + (waiting ? ' · <b style="color:#B45309;">' + waiting + ' waiting for faculty</b>' : '') + '</span>'
+                    + '</div>'
+                + '</td></tr>'
+                + items.map(taskRow).join('');
+        }).join('');
     }
 
     function openTeamModal(groupName, members, createdAt, activityLogs, facultyId) {
@@ -757,7 +775,7 @@
         closeMemberActivityPanel();
 
         teamModalActivityLogs = logs;
-        teamModalActivityPage = 1;
+        teamModalActivityTab = null;
         renderTeamModalActivityPage();
 
         switchTeamModalTab('members');
@@ -1022,27 +1040,6 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        const prevBtn = document.getElementById('teamModalActivityPrev');
-        const nextBtn = document.getElementById('teamModalActivityNext');
-        if (prevBtn) {
-            prevBtn.addEventListener('click', function () {
-                if (teamModalActivityPage > 1) {
-                    teamModalActivityPage -= 1;
-                    renderTeamModalActivityPage();
-                }
-            });
-        }
-        if (nextBtn) {
-            nextBtn.addEventListener('click', function () {
-                const totalPages = Math.max(1, Math.ceil(teamModalActivityLogs.length / TEAM_MODAL_ACTIVITY_PER_PAGE));
-                if (teamModalActivityPage < totalPages) {
-                    teamModalActivityPage += 1;
-                    renderTeamModalActivityPage();
-                }
-            });
-        }
-    });
 </script>
 @endpush
 @endsection
