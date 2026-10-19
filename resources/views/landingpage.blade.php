@@ -784,7 +784,7 @@
       height: 50px;
       font-size: .82rem;
       text-transform: uppercase;
-      color: var(--wine-900);
+      color: #000;
       background: linear-gradient(120deg, var(--gold-300), var(--gold-500));
       border: 1px solid var(--gold-300);
       box-shadow: 0 12px 28px rgba(94, 16, 36, .26);
