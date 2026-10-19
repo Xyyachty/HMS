@@ -26,7 +26,6 @@
     // Gold on cream for every icon: faculty-palette.css turns rose, blue, violet
     // and teal into one crimson that reads as red next to the maroon.
     $teamTints = ['bg-amber-50 text-amber-500'];
-    $teamBars  = ['bg-rose-500', 'bg-amber-500', 'bg-brand', 'bg-emerald-500', 'bg-blue-500'];
 @endphp
 
 <!-- Stats Cards -->
@@ -167,7 +166,8 @@
                         </p>
                     </div>
                     <div class="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
-                        <div class="h-full rounded-full {{ $teamBars[$i % count($teamBars)] }}" style="width: {{ $team['percent'] }}%"></div>
+                        {{-- Inline blue: faculty-palette.css turns bg-blue-500 maroon. --}}
+                        <div class="h-full rounded-full" style="width: {{ $team['percent'] }}%; background-color: #2563EB;"></div>
                     </div>
                     <p class="text-[0.8125rem] font-extrabold text-slate-700 w-10 text-right shrink-0">{{ $team['percent'] }}%</p>
                 </div>
