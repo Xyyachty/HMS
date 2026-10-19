@@ -40,7 +40,7 @@
             <div class="min-w-0">
                 <p class="text-[0.625rem] font-bold uppercase tracking-[0.12em] text-black">Total Students</p>
                 <p class="text-3xl font-extrabold text-black leading-tight">{{ number_format($totalStudents) }}</p>
-                <p class="text-[0.6875rem] text-black font-medium truncate">Enrolled learners</p>
+                <p class="text-[0.6875rem] text-black font-medium truncate">Enrolled</p>
             </div>
         </div>
         <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
