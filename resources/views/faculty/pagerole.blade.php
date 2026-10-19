@@ -4789,10 +4789,10 @@ function renderTeamApproval() {
     if (!a || !a.required) { box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
 
-    // The Simulation is open to every team; the badge says how far approval is.
+    // The badge says how far approval is.
     const lock = a.unlocked
-        ? '<span class="tm-badge status-badge-completed"><span class="tm-dot status-fill-completed"></span>All tasks approved · Simulation open</span>'
-        : '<span class="tm-badge status-badge-in_progress"><span class="tm-dot status-fill-in_progress"></span>Approval in progress · Simulation open</span>';
+        ? '<span class="tm-badge status-badge-completed"><span class="tm-dot status-fill-completed"></span>All tasks approved</span>'
+        : '<span class="tm-badge status-badge-in_progress"><span class="tm-dot status-fill-in_progress"></span>Approval in progress</span>';
     const count = (label, n, key) => '<span style="margin-right:1rem;">' + label + ': <b class="status-text-' + key + '">' + n + '</b></span>';
 
     box.innerHTML = '<div class="flex items-center justify-between gap-2 flex-wrap">'
