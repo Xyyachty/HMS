@@ -545,11 +545,14 @@ class DeanController extends Controller
     {
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
+            // The complete middle name, not an initial like "A.".
+            'middle_name' => ['nullable', 'string', 'max:255', "regex:/^\p{L}[\p{L}\s'-]*\p{L}$/u"],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => $this->facultyEmailRules($request),
             'phone_number' => ['nullable', 'string', new PhilippineMobile()],
-        ], self::FACULTY_EMAIL_MESSAGES);
+        ], self::FACULTY_EMAIL_MESSAGES + [
+            'middle_name.regex' => 'Enter the complete middle name, not an initial.',
+        ]);
 
         // Generated, not typed by the dean. Readable only in the welcome email.
         $plainPassword = StudentWelcomeMailer::generatePassword();

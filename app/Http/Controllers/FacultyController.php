@@ -749,12 +749,14 @@ class FacultyController extends Controller
             // spreadsheet send. The column it validates against is student_number.
             'student_id' => ['required', 'regex:' . Student::NUMBER_PATTERN, 'unique:user_information,student_number'],
             'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
+            // The complete middle name, not an initial like "A.".
+            'middle_name' => ['nullable', 'string', 'max:255', "regex:/^\p{L}[\p{L}\s'-]*\p{L}$/u"],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'max:255'],
             'phone_number' => ['nullable', 'string', new PhilippineMobile()],
         ], [
             'student_id.regex' => 'Student ID must be numbers only, up to 10 digits.',
+            'middle_name.regex' => 'Enter the complete middle name, not an initial.',
         ]);
 
         // Generated rather than typed, same as the bulk upload. The only place it is
