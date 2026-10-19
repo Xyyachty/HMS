@@ -159,7 +159,7 @@
     <!-- Newly: the student and faculty accounts added most recently -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-black">Newly</p>
+            <p class="text-sm font-bold text-black">Newly Added</p>
             <a href="{{ route('dean.users') }}" class="text-[0.6875rem] font-bold text-black hover:underline">View All</a>
         </div>
         <div class="divide-y divide-slate-50">
