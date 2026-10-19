@@ -644,7 +644,7 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
                 {errText('serviceId')}
                 {amenityServices.length === 0 && (
                   <p style={{ margin: '0.35rem 0 0', color: 'var(--warn)', fontSize: '0.72rem' }}>
-                    Housekeeping has not added any services for this facility yet.
+                    Housekeeping has not added any services for this facility.
                   </p>
                 )}
               </div>
@@ -744,7 +744,7 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
                 )}
                 {packages.length === 0 && (
                   <p style={{ margin: '0.35rem 0 0', color: 'var(--warn)', fontSize: '0.72rem' }}>
-                    Restaurant Services have not published any catering packages yet.
+                    Restaurant Services have not published any catering packages.
                   </p>
                 )}
               </div>
@@ -1153,7 +1153,7 @@ function AmenityActions({ amenity, visits, reservations, canRegister, now, onOpe
       ) : (
         <p className="af-note">
           <i className="fa-solid fa-circle-info"></i>
-          <span>No bookings yet.</span>
+          <span>No bookings.</span>
         </p>
       )}
     </div>
@@ -1328,7 +1328,7 @@ function App() {
       ) : amenities.length === 0 ? (
         <div className="af-empty">
           <div className="af-empty-icon"><i className="fa-solid fa-person-swimming"></i></div>
-          <h2>No amenities yet</h2>
+          <h2>No amenities</h2>
           <p>Housekeeping adds the hotel's facilities. Once they do, they will show up here.</p>
         </div>
       ) : (

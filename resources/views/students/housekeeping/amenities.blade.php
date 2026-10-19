@@ -917,7 +917,7 @@ function AmenityCard({ amenity, canManage, canCustomize, verifying, removing, on
 
         {amenity.description
           ? <p className="am-desc">{amenity.description}</p>
-          : <p className="am-desc is-empty">No description yet.</p>}
+          : <p className="am-desc is-empty">No description.</p>}
 
         <ul className="am-facts">
           <li><i className="fa-solid fa-location-dot"></i>{amenity.location ? <span>{amenity.location}</span> : <span className="is-empty">No location given</span>}</li>
@@ -1102,7 +1102,7 @@ function AmenitiesPanel({ amenities, loading, failed, canManage, canCustomize, t
       ) : amenities.length === 0 ? (
         <div className="am-empty">
           <div className="am-empty-icon"><i className="fa-solid fa-person-swimming"></i></div>
-          <h3>No facilities yet</h3>
+          <h3>No facilities</h3>
           <p>Add the first one, like a swimming pool or a gym. It will show on the Amenities page of your hotel website.</p>
           {canCustomize ? (
             <button type="button" className="am-btn is-solid" onClick={() => setEditing('new')}>
@@ -1226,7 +1226,7 @@ function ServiceModal({ service, amenities, onClose, onSaved }) {
               {appointmentAmenities.map(a => <option key={a.dbId} value={a.dbId}>{a.name}</option>)}
             </select>
             {appointmentAmenities.length === 0 && (
-              <p className="am-error">No facility is set to "Guests book a time" yet. Edit one first.</p>
+              <p className="am-error">No facility is set to "Guests book a time". Edit one first.</p>
             )}
           </div>
 
@@ -1310,7 +1310,7 @@ function ServicesPanel({ services, amenities, canManage, onSaved }) {
       {services.length === 0 ? (
         <div className="am-empty">
           <div className="am-empty-icon"><i className="fa-solid fa-spa"></i></div>
-          <h3>No services yet</h3>
+          <h3>No services</h3>
           <p>Add what guests can book, like a 60-minute massage, so the Front Desk can sell it.</p>
         </div>
       ) : (

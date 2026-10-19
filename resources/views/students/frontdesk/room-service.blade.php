@@ -427,7 +427,7 @@ function NewOrderPanel({ onPlaced }) {
 
       <p className={`rs-step-head${chosen ? ' is-done' : ''}`}><span className="rs-step-num">1</span> Who is the food for?</p>
       {rooms === null ? <p className="rs-hint">Loading guests&hellip;</p> : guests.length === 0 ? (
-        <p className="rs-hint" style={{ marginBottom: '1rem' }}>No guest is booked into a room yet. Book one on Walk-in Guests first, then come back here.</p>
+        <p className="rs-hint" style={{ marginBottom: '1rem' }}>No guest is booked into a room. Book one on Walk-in Guests first, then come back here.</p>
       ) : (
         <div className="rs-guests" role="radiogroup" aria-label="Guest">
           {guests.map(r => (
@@ -444,7 +444,7 @@ function NewOrderPanel({ onPlaced }) {
 
       <p className={`rs-step-head${lines.length ? ' is-done' : ''}`}><span className="rs-step-num">2</span> What would they like?</p>
       {menu === null ? <p className="rs-hint">Loading the menu&hellip;</p> : menu.length === 0 ? (
-        <p className="rs-hint">The restaurant has not put any dishes on its menu yet.</p>
+        <p className="rs-hint">The restaurant has not put any dishes on its menu.</p>
       ) : (
         <>
           <div className="rs-courses" role="group" aria-label="Course">
@@ -509,10 +509,10 @@ function RoomServicePage({ orders, onBack, onOrdered }) {
   let emptyTitle = `No orders are ${current.label.toLowerCase()}`;
   let emptyText = 'Pick another tab to see the rest of the orders.';
   if (roomServiceOrders.length === 0) {
-    emptyTitle = 'No orders yet';
+    emptyTitle = 'No orders';
     emptyText = 'Orders you send, and ones guests place on the hotel website, show up here.';
   } else if (tab === 'Completed') {
-    emptyTitle = 'Nothing delivered yet';
+    emptyTitle = 'Nothing delivered';
     emptyText = 'Orders move here once the kitchen has brought them to the guest’s room.';
   }
 

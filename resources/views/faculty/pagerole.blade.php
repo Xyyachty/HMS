@@ -762,7 +762,7 @@
                         // instead - the line-clamp CSS on the card still caps it visually.
                         $cardConceptText = $cardConcept
                             ? \Illuminate\Support\Str::words($cardConcept->description ?: $cardConcept->hotel_type_label, 20, '…')
-                            : 'No hotel concept proposed yet.';
+                            : 'No hotel concept proposed.';
 
                         // Progress across the task rows this team owns.
                         $cardTaskRows  = $teamActivityByGroup[$groupName] ?? [];
@@ -895,7 +895,7 @@
                                 <div class="ov-grid">
                                     <section class="ov-tile">
                                         <p class="ov-label"><span class="iconify" data-icon="mdi:lightbulb-outline"></span> Hotel Concept</p>
-                                        <p class="ov-value">{{ $cardConcept->title ?? 'No concept yet' }}</p>
+                                        <p class="ov-value">{{ $cardConcept->title ?? 'No concept' }}</p>
                                         <p class="ov-tag">{{ $cardConcept ? \App\Support\HotelConceptDesk::statusLabel($cardConcept) : 'Front Desk proposes this' }}</p>
                                         <p class="ov-text">{{ $cardConceptText }}</p>
                                         <button type="button" class="ov-link" onclick="switchTeamModalTab('concept')">Open Hotel Concept <span class="iconify" data-icon="mdi:arrow-right"></span></button>
@@ -903,7 +903,7 @@
 
                                     <section class="ov-tile">
                                         <p class="ov-label"><span class="iconify" data-icon="mdi:palette-outline"></span> Selected Hotel Template</p>
-                                        <p class="ov-value">{{ $cardTemplate['name'] ?? 'Not chosen yet' }}</p>
+                                        <p class="ov-value">{{ $cardTemplate['name'] ?? 'Not chosen' }}</p>
                                         <p class="ov-tag {{ $cardTemplate ? 'is-good' : '' }}">{{ $cardTemplate['style'] ?? 'Front Desk picks this' }}</p>
                                     </section>
 
@@ -916,7 +916,7 @@
                                             @if($cardSteps['total'] > 0)
                                                 {{ $cardSteps['finished'] }} of {{ $cardSteps['total'] }} task{{ $cardSteps['total'] === 1 ? '' : 's' }} complete
                                             @else
-                                                No tasks assigned yet.
+                                                No tasks assigned.
                                             @endif
                                         </p>
                                         <button type="button" class="ov-link" onclick="switchTeamModalTab('tasks')">Open Task Activity <span class="iconify" data-icon="mdi:arrow-right"></span></button>
@@ -939,7 +939,7 @@
                                                     {{ $roleLabels[$cardRole] ?? $cardRole }}
                                                 </span>
                                             @empty
-                                                <span class="ov-text">No roles assigned yet</span>
+                                                <span class="ov-text">No roles assigned</span>
                                             @endforelse
                                         </div>
                                         <button type="button" class="ov-link" onclick="switchTeamModalTab('members')">Open Members &amp; Roles <span class="iconify" data-icon="mdi:arrow-right"></span></button>
@@ -965,9 +965,9 @@
                         </div>
                         <p class="text-sm font-semibold text-slate-400">
                             @if($activeClass)
-                                No teams in {{ $activeClass->name }} yet.
+                                No teams in {{ $activeClass->name }}.
                             @else
-                                No teams created yet.
+                                No teams created.
                             @endif
                         </p>
                         <button onclick="openCreateTeamModal()"
@@ -1181,7 +1181,7 @@
                     <div id="reviewPreviewEmpty" class="absolute inset-0 flex items-center justify-center text-center px-6">
                         <div class="tm-empty">
                             <span class="iconify" data-icon="mdi:web-off"></span>
-                            No site to show for this task yet.
+                            No website to show for this task.
                         </div>
                     </div>
                     <iframe id="reviewPreviewFrame" src="" title="Team site preview"
@@ -1638,7 +1638,7 @@
                                                 </div>
                                                 <select class="bulk-team-select h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition sm:w-44"
                                                     onchange="onBulkStudentTeamChange(this)">
-                                                    <option value="">No team yet</option>
+                                                    <option value="">No team</option>
                                                 </select>
                                             </div>
                                             <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-1.5 bulk-role-grid">
@@ -1969,7 +1969,7 @@
                     @if(($groups ?? collect())->isEmpty())
                         <div class="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
                             <span class="iconify text-3xl text-slate-300" data-icon="mdi:account-group-outline"></span>
-                            <p class="text-sm font-bold text-slate-500 mt-2">No teams in this block yet</p>
+                            <p class="text-sm font-bold text-slate-500 mt-2">No teams in this block</p>
                             <p class="text-xs text-slate-400 mt-1">Build a team first, then come back to set its tasks.</p>
                         </div>
                     @else
@@ -1999,7 +1999,7 @@
                                 @endphp
                                 <label data-team="{{ $groupName }}"
                                     data-concept-submitted="{{ $teamConceptSubmitted ? '1' : '0' }}"
-                                    @if(!$hasStudents) title="No students are assigned to {{ $groupName }} yet." @endif
+                                    @if(!$hasStudents) title="No students are assigned to {{ $groupName }}." @endif
                                     class="task-team-btn group p-4 rounded-xl border-2 transition-all flex items-start gap-3 text-left
                                     {{ $hasStudents
                                         ? 'border-slate-200 bg-white hover:border-brand/40 hover:shadow-md cursor-pointer has-[:checked]:border-brand has-[:checked]:bg-brand-soft'
@@ -2850,7 +2850,7 @@ function renderReviewConceptCard(entry) {
     if (!concept) {
         return '<div class="tm-concept-empty">'
             + '<p class="tm-card-title">' + escHtml(entry.slot_label) + '</p>'
-            + '<p class="tm-panel-note mt-1">Not proposed yet.</p>'
+            + '<p class="tm-panel-note mt-1">Not proposed.</p>'
             + '</div>';
     }
 
@@ -3036,7 +3036,7 @@ function showTeamConceptError(msg) {
    who-changed-what stays in the student task dialog. */
 function renderTeamConceptSlots(data) {
     const rows = (data.slots || []).map((entry) => renderTeamConceptCard(entry, data)).join('')
-        || '<div class="tm-empty tm-span-all"><span class="iconify" data-icon="mdi:lightbulb-off-outline"></span>This team has no hotel concepts yet.</div>';
+        || '<div class="tm-empty tm-span-all"><span class="iconify" data-icon="mdi:lightbulb-off-outline"></span>This team has no hotel concepts.</div>';
 
     if (!data.all_slots_filled) {
         return rows + '<p class="tm-panel-note tm-span-all">'
@@ -3054,7 +3054,7 @@ function renderTeamConceptCard(entry, data) {
     if (!concept) {
         return '<div class="tm-concept-empty">'
             + '<p class="tm-card-title">' + escHtml(entry.slot_label) + '</p>'
-            + '<p class="tm-panel-note mt-1">Not proposed yet.</p>'
+            + '<p class="tm-panel-note mt-1">Not proposed.</p>'
         + '</div>';
     }
 
@@ -3215,7 +3215,7 @@ function renderTeamHotelConcept(data) {
     const concept = data.concept;
     const history = Array.isArray(data.history) ? data.history : [];
     if (!concept) {
-        return '<p class="tm-panel-note">Not proposed yet.</p>';
+        return '<p class="tm-panel-note">Not proposed.</p>';
     }
 
     const status = concept.status || 'draft';
@@ -3267,7 +3267,7 @@ function renderTeamHotelConcept(data) {
                     : '<p class="mt-1">' + escHtml(entry.title) + ', ' + escHtml(entry.hotel_type_label) + '</p>')
             + '</div>';
         }).join('')
-        : '<div class="tm-history-row tm-muted">No changes recorded yet.</div>';
+        : '<div class="tm-history-row tm-muted">No changes recorded.</div>';
 
     return conceptBlock
         + '<div class="tm-history">'
@@ -3431,7 +3431,7 @@ function rebuildBulkTeamSlots(forcedCount = null) {
                     <p class="bulk-team-count h-10 px-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-600 flex items-center">0 / ${BULK_TEAM_SIZE}</p>
                 </div>
             </div>
-            <div class="bulk-team-preview mt-3 flex flex-wrap gap-1.5 text-[0.6875rem] text-slate-400">No students assigned yet.</div>
+            <div class="bulk-team-preview mt-3 flex flex-wrap gap-1.5 text-[0.6875rem] text-slate-400">No students assigned.</div>
         </div>
     `).join('');
 
@@ -3570,7 +3570,7 @@ function refreshBulkTeamPreviews() {
         }
         if (!previewEl) return;
         if (!members.length) {
-            previewEl.innerHTML = '<span class="text-slate-400">No students assigned yet.</span>';
+            previewEl.innerHTML = '<span class="text-slate-400">No students assigned.</span>';
             return;
         }
         // Each member with the role they hold, so the team reads at a glance.
@@ -3579,7 +3579,7 @@ function refreshBulkTeamPreviews() {
             <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600">
                 ${member.roles.map((role) => `<span class="w-1.5 h-1.5 rounded-full role-dot-${escapeBulkAttr(role)} shrink-0"></span>`).join('')}
                 <span class="font-semibold">${escapeBulkHtml(member.name)}</span>
-                <span class="text-slate-400">· ${member.roles.length ? member.roles.map((role) => escapeBulkHtml(roleLabels[role] || role)).join(', ') : 'No role yet'}</span>
+                <span class="text-slate-400">· ${member.roles.length ? member.roles.map((role) => escapeBulkHtml(roleLabels[role] || role)).join(', ') : 'No role'}</span>
             </span>
         `).join('');
     });
@@ -3927,7 +3927,7 @@ function renderCreateTeamSummary() {
                     ${escapeBulkHtml(labels[key] || key)}
                 </span>
             `).join('')
-            : '<span class="text-amber-700">No role yet</span>';
+            : '<span class="text-amber-700">No role</span>';
 
         return `
             <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white border border-slate-200 text-[0.6875rem]">
@@ -4654,7 +4654,7 @@ function renderTeamModalActivityPage() {
         if (emptyTabs) emptyTabs.innerHTML = '';
         activityBody.innerHTML = '<tr><td colspan="5"><div class="tm-empty">'
             + '<span class="iconify" data-icon="mdi:clipboard-outline"></span>'
-            + 'No tasks have been given to this team yet.</div></td></tr>';
+            + 'No tasks have been given to this team.</div></td></tr>';
         if (pager) pager.classList.add('hidden');
         if (meta) meta.textContent = '';
         return;
@@ -4707,7 +4707,7 @@ function renderTeamModalActivityPage() {
                     ? '<p class="tm-muted mt-1" style="color:#B45309;" title="The department page changed after you approved this. Open it and ask for changes if it no longer meets the task.">Edited after approval</p>'
                     : '') + '</td>' +
             '<td' + (isDone ? '' : ' class="tm-muted"') + '>' +
-                escHtml(isDone ? (log.submitted_at || log.updated_at || '') : 'Not yet') +
+                escHtml(isDone ? (log.submitted_at || log.updated_at || '') : 'Not submitted') +
             '</td>' +
             '<td class="text-center">' + openCell + '</td>' +
         '</tr>';
@@ -4849,7 +4849,7 @@ function renderTeamSimRoles() {
         + teamModalMembers.map((m) =>
             '<div>'
                 + '<p class="tm-ellipsis" style="font-size:0.8125rem; font-weight:700; color:#181818; margin-bottom:.35rem;">' + escHtml(m.name)
-                    + ' <span class="tm-muted">(' + escHtml((m.role_labels || []).join(', ') || 'No role yet') + ')</span></p>'
+                    + ' <span class="tm-muted">(' + escHtml((m.role_labels || []).join(', ') || 'No role') + ')</span></p>'
                 + '<div style="display:flex; flex-wrap:wrap; gap:.4rem;">' + desks(m) + '</div>'
             + '</div>'
         ).join('')
@@ -4965,13 +4965,13 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
     if (members.length === 0) {
         grid.innerHTML = '<div class="tm-empty" style="grid-column: 1 / -1;">'
             + '<span class="iconify" data-icon="mdi:account-off-outline"></span>'
-            + 'This team has no members yet.</div>';
+            + 'This team has no members.</div>';
     } else {
         grid.innerHTML = members.map(function(m, i) {
             const roleLabels = m.role_labels || [m.role_label || m.role];
             const roleChips = roleLabels.filter(Boolean).map(function(rl) {
                 return '<span class="tm-chip"><span class="iconify" data-icon="mdi:briefcase-outline"></span>' + escHtml(rl) + '</span>';
-            }).join('') || '<span class="tm-muted">No role yet</span>';
+            }).join('') || '<span class="tm-muted">No role</span>';
             const activityBtn = m.user_id
                 ? '<button type="button" data-activity-user="' + Number(m.user_id) + '"'
                     + ' data-activity-name="' + escHtml(m.name) + '" class="tm-btn"'
@@ -5422,7 +5422,7 @@ function viewMemberActivity(userId, memberName) {
 
 function renderActivityRows(logs) {
     if (!logs.length) {
-        return '<div class="tm-empty">No recorded activity for this member yet.</div>';
+        return '<div class="tm-empty">No activity recorded for this member.</div>';
     }
     return logs.map(function (log) {
         return '<div class="tm-activity-row">'

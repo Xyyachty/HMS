@@ -15,7 +15,7 @@
                 class="flex-1 py-1.5 rounded-md text-[0.6875rem] font-semibold text-zinc-500">Preview</button>
         </div>
         @unless($builderCanEdit)
-            <p class="text-[0.625rem] text-amber-400/90 mt-2">View only — faculty must assign this role (or grant edit permission).</p>
+            <p class="text-[0.625rem] text-amber-400/90 mt-2">View only. Ask your faculty to assign you this role or give you edit access.</p>
         @else
             <p class="text-[0.625rem] text-zinc-600 mt-2">Build: edit on the page. Preview: live hotel site.</p>
         @endunless

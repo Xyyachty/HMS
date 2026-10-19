@@ -632,7 +632,7 @@ function App() {
         <div className="ao-panel-head">
           <div>
             <h2 id="ao-list">Items guests can borrow</h2>
-            <p>{addons.length === 0 ? 'No items yet.' : `${plural(addons.length, 'item', 'items')} on the list.`}</p>
+            <p>{addons.length === 0 ? 'No items.' : `${plural(addons.length, 'item', 'items')} on the list.`}</p>
           </div>
           <span className="ao-live">Updates on its own</span>
         </div>
@@ -666,7 +666,7 @@ function App() {
         ) : addons.length === 0 ? (
           <div className="ao-empty">
             <div className="ao-empty-icon"><i className="fa-solid fa-cart-flatbed"></i></div>
-            <h2>No items yet</h2>
+            <h2>No items</h2>
             <p>Add the first thing guests can borrow, like a folding bed or an extra towel. The Front Desk will see it when checking a guest in.</p>
             {canManage ? (
               <button type="button" className="ao-btn is-solid" onClick={() => setEditing('new')}>

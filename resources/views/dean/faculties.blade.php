@@ -137,7 +137,7 @@
                                             </p>
                                         </div>
                                     @empty
-                                        <span class="text-xs text-slate-400">Not proposed yet</span>
+                                        <span class="text-xs text-slate-400">Not proposed</span>
                                     @endforelse
                                 </td>
                                 <td class="px-5 py-3.5">
@@ -264,7 +264,7 @@
             @empty
                 <div class="cp-empty">
                     <span class="iconify" data-icon="mdi:tray-arrow-up"></span>
-                    <p class="cp-empty-title">Nothing handed in yet</p>
+                    <p class="cp-empty-title">Nothing handed in</p>
                     <p class="cp-empty-sub">When a student hands in a task, it shows up here under their team.</p>
                 </div>
             @endforelse
@@ -646,7 +646,7 @@
             tabs.innerHTML = '';
             activityBody.innerHTML = '<tr><td colspan="5"><div class="tm-empty">'
                 + '<span class="iconify" data-icon="mdi:clipboard-outline"></span>'
-                + 'No tasks have been given to this team yet.</div></td></tr>';
+                + 'No tasks have been given to this team.</div></td></tr>';
             return;
         }
 
@@ -681,7 +681,7 @@
                 '</td>' +
                 '<td' + (log.due_date ? '' : ' class="tm-muted"') + '>' + escHtml(log.due_date || 'No due date') + '</td>' +
                 '<td>' + statusBadge + '</td>' +
-                '<td' + (log.submitted_at ? '' : ' class="tm-muted"') + '>' + escHtml(log.submitted_at || 'Not yet') + '</td>' +
+                '<td' + (log.submitted_at ? '' : ' class="tm-muted"') + '>' + escHtml(log.submitted_at || 'Not submitted') + '</td>' +
                 '<td class="text-center">' + action + '</td>' +
             '</tr>';
         };
@@ -744,13 +744,13 @@
         if (members.length === 0) {
             grid.innerHTML = '<div class="tm-empty" style="grid-column: 1 / -1;">'
                 + '<span class="iconify" data-icon="mdi:account-off-outline"></span>'
-                + 'This team has no members yet.</div>';
+                + 'This team has no members.</div>';
         } else {
             grid.innerHTML = members.map(function (m, i) {
                 const roleLabels = m.role_labels || [m.role_label || m.role];
                 const roleChips = roleLabels.filter(Boolean).map(function (rl) {
                     return '<span class="tm-chip"><span class="iconify" data-icon="mdi:briefcase-outline"></span>' + escHtml(rl) + '</span>';
-                }).join('') || '<span class="tm-muted">No role yet</span>';
+                }).join('') || '<span class="tm-muted">No role</span>';
                 const activityBtn = m.user_id
                     ? '<button type="button" data-activity-user="' + Number(m.user_id) + '"'
                         + ' data-activity-name="' + escHtml(m.name) + '" class="tm-btn"'
@@ -844,14 +844,14 @@
             if (!entry.concept) {
                 return '<div class="tm-concept-empty">'
                     + '<p class="tm-card-title">' + escHtml(entry.slot_label) + '</p>'
-                    + '<p class="tm-panel-note mt-1">This team has not proposed this concept yet.</p>'
+                    + '<p class="tm-panel-note mt-1">This team has not proposed this concept.</p>'
                 + '</div>';
             }
             return '<div class="tm-card">'
                 + '<div class="tm-card-head"><p class="tm-card-title">' + escHtml(entry.slot_label) + '</p></div>'
                 + '<div class="tm-concept-body">' + renderTeamHotelConcept(entry) + '</div>'
             + '</div>';
-        }).join('') || '<div class="tm-empty tm-span-all"><span class="iconify" data-icon="mdi:lightbulb-off-outline"></span>This team has no hotel concepts yet.</div>';
+        }).join('') || '<div class="tm-empty tm-span-all"><span class="iconify" data-icon="mdi:lightbulb-off-outline"></span>This team has no hotel concepts.</div>';
     }
 
     /* One concept and its edit history, inside its card. */
@@ -893,7 +893,7 @@
                         : '<p class="mt-1">' + escHtml(entry.title) + ', ' + escHtml(entry.hotel_type_label) + '</p>')
                 + '</div>';
             }).join('')
-            : '<div class="tm-history-row tm-muted">No changes recorded yet.</div>';
+            : '<div class="tm-history-row tm-muted">No changes recorded.</div>';
 
         return conceptBlock
             + '<div class="tm-history">'
@@ -955,7 +955,7 @@
 
     function renderActivityRows(logs) {
         if (!logs.length) {
-            return '<div class="tm-empty">No recorded activity for this member yet.</div>';
+            return '<div class="tm-empty">No activity recorded for this member.</div>';
         }
         return logs.map(function (log) {
             return '<div class="tm-activity-row">'

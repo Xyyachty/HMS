@@ -553,7 +553,7 @@ function App() {
         <div className="dn-empty">
           <i className="fa-solid fa-utensils" style={{ fontSize: '1.8rem', color: 'var(--fg-muted)', opacity: 0.35, display: 'block', marginBottom: '0.7rem' }}></i>
           <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.88rem' }}>
-            Restaurant Management hasn't added any tables yet.
+            Restaurant Management has not added any tables.
           </p>
         </div>
       ) : visible.length === 0 ? (

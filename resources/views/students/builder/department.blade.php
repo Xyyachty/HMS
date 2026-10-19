@@ -896,7 +896,7 @@
             const layout = window.hmsBuilder.state.layout || [];
             const lib = @json(\App\Support\HotelTemplateBuilder::COMPONENT_LIBRARY);
             if (!layout.length) {
-                list.innerHTML = '<p class="text-zinc-600">No sections yet. Add from the library.</p>';
+                list.innerHTML = '<p class="text-zinc-600">No sections. Add one from the library.</p>';
                 return;
             }
             list.innerHTML = layout.map(function (row, idx) {
@@ -921,7 +921,7 @@
                 const data = await window.hmsBuilder.loadVersions();
                 const versions = data.versions || [];
                 if (!versions.length) {
-                    box.innerHTML = '<p class="text-zinc-600">No versions yet.</p>';
+                    box.innerHTML = '<p class="text-zinc-600">No saved versions.</p>';
                     return;
                 }
                 box.innerHTML = versions.map(function (v) {
@@ -1620,7 +1620,7 @@
             if (assignedTasks.length === 0) {
                 const empty = document.createElement('p');
                 empty.className = 'text-[0.6875rem] text-zinc-500';
-                empty.textContent = 'No assigned tasks yet.';
+                empty.textContent = 'No tasks assigned.';
                 list.appendChild(empty);
                 if (pager) pager.classList.add('hidden');
                 return;

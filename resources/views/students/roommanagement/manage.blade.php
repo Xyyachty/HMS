@@ -1419,7 +1419,7 @@ function RoomCard({ room, onEdit }) {
             <small>per 12 hours</small>
           </div>
         </div>
-        <p className={`mr-desc ${room.desc ? '' : 'is-empty'}`}>{room.desc || 'No description yet.'}</p>
+        <p className={`mr-desc ${room.desc ? '' : 'is-empty'}`}>{room.desc || 'No description.'}</p>
         <p className="mr-next">
           <i className="fa-regular fa-calendar"></i>
           <span>{now.key === 'guest' && room.reservation ? `${room.reservation.fullName || 'Guest'} is staying` : bookingLine}</span>
@@ -1532,7 +1532,7 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCate
         <div className="mr-panel-head">
           <div>
             <h2 id="mr-list">Your rooms</h2>
-            <p>{list.length ? `${mrPlural(list.length, 'room', 'rooms')} in the hotel.` : 'No rooms yet.'}</p>
+            <p>{list.length ? `${mrPlural(list.length, 'room', 'rooms')} in the hotel.` : 'No rooms.'}</p>
           </div>
           <span className="mr-live">Updates on its own</span>
         </div>
@@ -1587,7 +1587,7 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCate
         {filtered.length === 0 ? (
           <div className="mr-empty">
             <div className="mr-empty-icon"><i className={`fa-solid ${q ? 'fa-magnifying-glass' : 'fa-bed'}`}></i></div>
-            <h3>{q ? 'No room matches your search' : list.length === 0 ? 'No rooms yet' : `No ${tab} rooms yet`}</h3>
+            <h3>{q ? 'No room matches your search' : list.length === 0 ? 'No rooms' : `No ${tab} rooms`}</h3>
             <p>{q ? 'Check the spelling, or clear the search box.' : 'Use "Add a room" to create one. Guests can book it right away.'}</p>
             {!q ? (
               <button type="button" className="mr-btn is-solid" onClick={() => setAddOpen(true)}>
@@ -1780,7 +1780,7 @@ function GuestDetailsModal({ room, onClose }) {
           <section className="mr-section">
             <h3>Payments</h3>
             {payments.length === 0 ? (
-              <p className="mr-help">Nothing has been paid on this stay yet.</p>
+              <p className="mr-help">Nothing has been paid on this stay.</p>
             ) : (
               <div className="mr-payments">
                 {payments.map(p => (
@@ -1914,7 +1914,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   let emptyText = 'When the Front Desk books a guest into a room, they show up here.';
   if (q) { emptyTitle = 'No guest matches your search'; emptyText = 'Check the spelling, or clear the search box.'; }
   else if (occupied.length && tab === 'waiting') { emptyTitle = 'Nobody is waiting'; emptyText = 'Every booked guest is already checked in.'; }
-  else if (occupied.length && tab === 'in') { emptyTitle = 'Nobody is staying yet'; emptyText = 'Guests show here once you check them in.'; }
+  else if (occupied.length && tab === 'in') { emptyTitle = 'Nobody is staying'; emptyText = 'Guests show here once you check them in.'; }
 
   return (
     <div className="mr">

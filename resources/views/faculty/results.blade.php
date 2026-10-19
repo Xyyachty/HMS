@@ -89,7 +89,7 @@
         @empty
             <div class="p-12 text-center">
                 <span class="iconify text-5xl text-slate-300" data-icon="mdi:file-document-outline"></span>
-                <p class="mt-3 font-semibold text-slate-500">No completed outputs yet</p>
+                <p class="mt-3 font-semibold text-slate-500">No completed work</p>
                 <p class="text-xs text-slate-400 mt-1">When students finish assigned tasks, they will appear here.</p>
             </div>
         @endforelse

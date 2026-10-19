@@ -176,7 +176,7 @@
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                         <span class="iconify text-2xl text-slate-300" data-icon="mdi:chart-timeline-variant"></span>
                     </div>
-                    <p class="text-sm font-semibold text-slate-400">No teams yet</p>
+                    <p class="text-sm font-semibold text-slate-400">No teams</p>
                     <p class="text-xs text-slate-300 mt-1">Progress appears once you create a team.</p>
                 </div>
             @endforelse

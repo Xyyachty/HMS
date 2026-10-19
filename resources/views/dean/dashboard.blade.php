@@ -46,7 +46,7 @@
         <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
             @if($totalStudents === 0)
                 <span class="iconify text-slate-300 text-sm" data-icon="mdi:account-off-outline"></span>
-                <span class="text-[0.6875rem] font-semibold text-black">No students yet</span>
+                <span class="text-[0.6875rem] font-semibold text-black">No students</span>
             @elseif($studentsThisMonth > 0)
                 <span class="iconify text-emerald-500 text-sm" data-icon="mdi:account-plus-outline"></span>
                 <span class="text-[0.6875rem] font-semibold text-black">{{ $studentsThisMonth }} new {{ Str::plural('student', $studentsThisMonth) }} this month</span>
@@ -72,7 +72,7 @@
         <div class="mt-3 pt-2.5 border-t border-slate-50 flex items-center gap-1.5">
             @if($totalFaculty === 0)
                 <span class="iconify text-slate-300 text-sm" data-icon="mdi:account-off-outline"></span>
-                <span class="text-[0.6875rem] font-semibold text-black">No faculty yet</span>
+                <span class="text-[0.6875rem] font-semibold text-black">No faculty</span>
             @elseif($pendingFaculty > 0)
                 <span class="iconify text-amber-500 text-sm" data-icon="mdi:clock-alert-outline"></span>
                 <span class="text-[0.6875rem] font-bold text-black">{{ $pendingFaculty }} awaiting activation</span>
@@ -149,7 +149,7 @@
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                         <span class="iconify text-2xl text-slate-300" data-icon="mdi:clipboard-text-off-outline"></span>
                     </div>
-                    <p class="text-sm font-semibold text-black">No task was given yet</p>
+                    <p class="text-sm font-semibold text-black">No tasks given</p>
                     <p class="text-xs text-black mt-1">Tasks will appear here once faculty assign them.</p>
                 </div>
             @endforelse
@@ -238,7 +238,7 @@
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                         <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
                     </div>
-                    <p class="text-sm font-semibold text-black">No activity yet</p>
+                    <p class="text-sm font-semibold text-black">No activity</p>
                     <p class="text-xs text-black mt-1">Sign-ins, sign-outs and task work will show up here.</p>
                 </div>
             @endforelse
@@ -292,7 +292,7 @@
                 <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                     <span class="iconify text-2xl text-slate-300" data-icon="mdi:chart-timeline-variant"></span>
                 </div>
-                <p class="text-sm font-semibold text-black">No teams yet</p>
+                <p class="text-sm font-semibold text-black">No teams</p>
                 <p class="text-xs text-black mt-1">Progress appears once faculty create teams.</p>
             </div>
         @endforelse

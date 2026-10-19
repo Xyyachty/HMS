@@ -854,7 +854,7 @@ function TableWalkIn() {
           {!loaded ? <CardSkeletons /> : tables.length === 0 ? (
             <div className="wi-empty">
               <i className="fa-solid fa-chair"></i>
-              Restaurant Management has not added any tables yet.
+              Restaurant Management has not added any tables.
             </div>
           ) : fits.length === 0 ? (
             <div className="wi-empty">

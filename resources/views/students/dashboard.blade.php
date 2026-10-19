@@ -477,7 +477,7 @@
                             <div class="min-w-0 flex-1">
                                 <p class="text-[0.9375rem] font-bold text-slate-800 leading-tight">Team Members</p>
                                 <p class="text-[2.125rem] font-extrabold text-slate-900 leading-none mt-1">{{ $homeMemberCount }}</p>
-                                <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">{{ $studentClass->name ?? $group->name ?? 'No team yet' }}</p>
+                                <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">{{ $studentClass->name ?? $group->name ?? 'No team' }}</p>
                                 <button type="button" onclick="showSection('group')" aria-label="Open My Team"
                                         class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded after:absolute after:inset-0 after:rounded-2xl after:content-['']">
                                     View Team <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
@@ -645,7 +645,7 @@
                                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                                         <span class="iconify text-2xl text-slate-300" data-icon="mdi:chart-timeline-variant"></span>
                                     </div>
-                                    <p class="text-sm font-semibold text-slate-400">No tasks yet</p>
+                                    <p class="text-sm font-semibold text-slate-400">No tasks</p>
                                     <p class="text-xs text-slate-300 mt-1">Progress appears once your faculty assigns work.</p>
                                 </div>
                             @endforelse
@@ -766,7 +766,7 @@
                                     <p id="teamHeaderEyebrow" class="text-slate-400 text-[0.8125rem] font-semibold mt-1">Hotel Management Simulation</p>
                                     <p id="teamHeaderType" class="hidden text-[0.75rem] font-bold text-slate-500 mt-0.5"></p>
                                 @else
-                                    <h3 class="text-2xl font-extrabold text-slate-900 leading-tight">Not assigned yet</h3>
+                                    <h3 class="text-2xl font-extrabold text-slate-900 leading-tight">Not assigned</h3>
                                     <p class="text-slate-400 text-[0.8125rem] font-semibold mt-1">Team</p>
                                 @endif
 
@@ -957,7 +957,7 @@
                             <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                                 <span class="iconify text-slate-300 text-3xl" data-icon="mdi:account-group-outline"></span>
                             </div>
-                            <p class="text-sm font-bold text-slate-400">No members yet</p>
+                            <p class="text-sm font-bold text-slate-400">No members</p>
                             <p class="text-xs text-slate-300 mt-1">They'll appear once assigned by faculty</p>
                         </div>
                     @endif
@@ -1195,7 +1195,7 @@
                     <div class="bg-white rounded-2xl border border-[#E7E1DD] px-5 py-4 flex items-center justify-between gap-4 min-w-0">
                         <div class="flex items-center gap-3 min-w-0"><span class="w-12 h-12 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-2xl text-[#4A4643]" data-icon="mdi:clock-outline"></span></span><span class="text-[0.9375rem] font-semibold text-slate-700">Last activity</span></div>
                         <div class="text-right min-w-0">
-                            <p class="text-xl font-extrabold text-slate-900 leading-tight truncate">{{ $actLast ? ($actLast['activity_label'] ?? 'Activity') : 'None yet' }}</p>
+                            <p class="text-xl font-extrabold text-slate-900 leading-tight truncate">{{ $actLast ? ($actLast['activity_label'] ?? 'Activity') : 'None' }}</p>
                             @if($actLast)<p class="text-[0.8125rem] text-slate-500 truncate">{{ $actLast['created_at_human'] }}</p>@endif
                         </div>
                     </div>
@@ -1225,14 +1225,14 @@
                     @if($actRows->isEmpty())
                         <div class="py-12 text-center bg-white rounded-2xl border border-[#E7E1DD]">
                             <span class="w-14 h-14 rounded-2xl bg-[#EFEFEF] flex items-center justify-center mx-auto mb-3"><span class="iconify text-2xl text-[#8A817A]" data-icon="mdi:history"></span></span>
-                            <p class="text-sm font-bold text-slate-800">Nothing recorded yet</p>
+                            <p class="text-sm font-bold text-slate-800">Nothing recorded</p>
                             <p class="text-xs text-slate-500 mt-1">When you sign in, hand in a task or save your work, it will show up here.</p>
                         </div>
                     @else
                         <div class="act-columns grid grid-cols-1 lg:grid-cols-2 gap-3" id="activityTimeline">
                             @foreach([
                                 'recent'   => ['title' => 'Recent',   'hint' => 'Last 7 days', 'icon' => 'mdi:clock-fast',          'empty' => 'Nothing in the last 7 days.'],
-                                'previous' => ['title' => 'Previous', 'hint' => 'Older',       'icon' => 'mdi:calendar-blank-outline', 'empty' => 'Nothing older yet.'],
+                                'previous' => ['title' => 'Previous', 'hint' => 'Older',       'icon' => 'mdi:calendar-blank-outline', 'empty' => 'Nothing older.'],
                             ] as $actColKey => $actCol)
                                 @php $actColRows = $actRows->where('recent', $actColKey === 'recent')->values(); @endphp
                                 <section data-act-col class="act-col flex flex-col min-h-0 min-w-0 bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
@@ -1457,7 +1457,7 @@
                                     <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y') }}</p>
                                 </div>
                             @empty
-                                <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No completed assignments yet.</div>
+                                <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No completed assignments.</div>
                             @endforelse
                         </div>
                     </div>
@@ -1509,7 +1509,7 @@
                                     <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y') }}</p>
                                 </div>
                             @empty
-                                <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No team completed assignments yet.</div>
+                                <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No team completed assignments.</div>
                             @endforelse
                         </div>
                     </div>
@@ -1641,7 +1641,7 @@
                                             {{ \App\Support\HotelTemplateBuilder::ROLES[$role] ?? $role }}
                                         </span>
                                     @empty
-                                        <span class="text-xs text-slate-400">No role assigned yet</span>
+                                        <span class="text-xs text-slate-400">No role assigned</span>
                                     @endforelse
                                 </dd>
                             </div>
@@ -2365,7 +2365,7 @@
                         : '')
                     + '<p class="text-[0.6875rem] font-bold text-slate-500">' + conceptEscape(concept.hotel_type_label) + '</p>'
                     + '<p class="text-xs text-slate-500 leading-relaxed mt-1.5 whitespace-pre-line">' + conceptEscape(concept.description) + '</p>'
-                : '<p class="text-sm font-bold text-slate-400 mt-1">Not proposed yet</p>'
+                : '<p class="text-sm font-bold text-slate-400 mt-1">Not proposed</p>'
                     + '<p class="text-xs text-slate-400 mt-1">'
                     + (entry.can_edit
                         ? 'Write this one to complete the pair.'
@@ -2407,7 +2407,7 @@
 
         function renderConceptHistory(history) {
             if (history.length === 0) {
-                return '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>';
+                return '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded.</div>';
             }
 
             return history.map(function (entry) {
@@ -2587,7 +2587,7 @@
         function renderMyActivityRows(logs) {
             if (!logs.length) {
                 return `<div class="px-5 py-12 text-center">
-                            <p class="text-sm font-semibold text-slate-400">No activity recorded yet</p>
+                            <p class="text-sm font-semibold text-slate-400">No activity recorded</p>
                             <p class="text-xs text-slate-300 mt-1">Logins, task submissions and saved work will show here.</p>
                        </div>`;
             }

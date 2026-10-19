@@ -206,7 +206,7 @@
                 list.innerHTML =
                     '<div class="px-4 py-12 text-center">' +
                     '<span class="iconify text-3xl text-slate-300" data-icon="mdi:bell-sleep-outline"></span>' +
-                    '<p class="mt-2 text-xs font-medium text-slate-400">No notifications yet</p>' +
+                    '<p class="mt-2 text-xs font-medium text-slate-400">No notifications</p>' +
                     '</div>';
                 return;
             }

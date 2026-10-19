@@ -772,7 +772,7 @@ function GuestDetailsModal({ room, reservation, onClose }) {
 
           <p className="bill-section-title">Payments</p>
           {payments.length === 0 ? (
-            <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Nothing has been paid on this stay yet.</p>
+            <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Nothing has been paid on this stay.</p>
           ) : (
             payments.map(p => (
               <div key={p.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(42,38,33,0.5)' }}>
@@ -950,7 +950,7 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
             <div style={{ border: '1px solid rgba(244,63,94,0.35)', background: 'rgba(244,63,94,0.08)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>
               <i className="fa-solid fa-door-open" style={{ fontSize: '1.8rem', color: 'var(--danger, #fb7185)', opacity: 0.45, display: 'block', marginBottom: '0.65rem' }}></i>
               <p style={{ margin: 0, color: 'var(--danger, #fb7185)', fontWeight: 600, fontSize: '0.9rem' }}>No reservations found</p>
-              <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.8rem' }}>No guests have been registered yet.</p>
+              <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.8rem' }}>No guests have been registered.</p>
             </div>
           ) : filtered.length === 0 ? (
             <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>

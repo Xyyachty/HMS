@@ -128,7 +128,7 @@ class FacultyController extends Controller
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
-            return back()->withErrors(['group_name' => 'Faculty account not found for the current user.'])->withInput();
+            return back()->withErrors(['group_name' => 'Your faculty account could not be found. Please log in again.'])->withInput();
         }
 
         if ($lock = $this->intakeLockReason()) {
@@ -1696,10 +1696,10 @@ class FacultyController extends Controller
         $facultyUser = auth()->user();
         $facultyId = $facultyUser?->faculty?->user_information_id;
         if (!$facultyId) {
-            return response()->json(['error' => 'Faculty account not found for the current user.'], 403);
+            return response()->json(['error' => 'Your faculty account could not be found. Please log in again.'], 403);
         }
         if (!\App\Support\SimulationPhase::supported()) {
-            return response()->json(['error' => 'Simulation roles are not set up on this database yet.'], 422);
+            return response()->json(['error' => 'Simulation roles are not available right now. Please contact the administrator.'], 422);
         }
 
         // Confirming is final: each student has already been told their desk.
@@ -3041,7 +3041,7 @@ class FacultyController extends Controller
                     'error' => $e->getMessage(),
                 ]);
 
-                return back()->withErrors(['avatar' => 'Could not upload the photo to storage. Please try again.']);
+                return back()->withErrors(['avatar' => 'Could not upload the photo. Please try again.']);
             }
 
             if ($user->avatar) {

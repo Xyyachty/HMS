@@ -59,7 +59,7 @@ class HotelTemplateController extends Controller
             report($e);
 
             return [null, response()->json([
-                'error' => 'Your changes could not be saved, and nothing was changed on the server. They are still on your screen — try again in a moment.',
+                'error' => 'Your changes could not be saved. They are still on your screen — try again in a moment.',
             ], 500)];
         }
     }

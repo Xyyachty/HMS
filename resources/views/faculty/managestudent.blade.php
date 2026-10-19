@@ -472,7 +472,7 @@
                                     <p class="text-xs ms-ink">Try a student number, name, email or phone number.</p>
                                 @else
                                     <p class="font-semibold ms-ink">
-                                        No students in {{ $activeClass->name ?? 'this block' }} yet
+                                        No students in {{ $activeClass->name ?? 'this block' }}
                                     </p>
                                     <p class="text-xs ms-ink">
                                         Use Add Student or Bulk Upload — seats fill the open class (max {{ $classCapacity ?? 40 }}).

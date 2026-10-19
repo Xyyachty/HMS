@@ -139,7 +139,7 @@ class HotelSimulationAuth
 
         $staffUser = User::whereEmail($email)->first();
         if (!$staffUser || !Hash::check($password, $staffUser->password)) {
-            return ['ok' => false, 'error' => 'Invalid staff email or password.', 'status' => 401];
+            return ['ok' => false, 'error' => 'The staff email or password is incorrect.', 'status' => 401];
         }
 
         $student = $staffUser->student;
@@ -298,7 +298,7 @@ class HotelSimulationAuth
             ->first();
 
         if (!$customer || !Hash::check($password, $customer->password)) {
-            return ['ok' => false, 'error' => 'Invalid guest email or password.', 'status' => 401];
+            return ['ok' => false, 'error' => 'The guest email or password is incorrect.', 'status' => 401];
         }
 
         $auth = [

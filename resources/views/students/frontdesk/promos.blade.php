@@ -623,7 +623,7 @@ function App() {
         <div className="ao-panel-head">
           <div>
             <h2 id="ao-list">Your promos and packages</h2>
-            <p>{promos.length === 0 ? 'None yet.' : `${promos.length} saved.`}</p>
+            <p>{promos.length === 0 ? 'None saved.' : `${promos.length} saved.`}</p>
           </div>
           <span className="ao-live">Updates on its own</span>
         </div>
@@ -650,7 +650,7 @@ function App() {
         ) : promos.length === 0 ? (
           <div className="ao-empty">
             <div className="ao-empty-icon"><i className="fa-solid fa-tags"></i></div>
-            <h2>No promos yet</h2>
+            <h2>No promos</h2>
             <p>Until you add one, the website keeps the promo cards from your customized template.</p>
             {canManage ? (
               <button type="button" className="ao-btn is-solid" onClick={() => setEditing('new')}>

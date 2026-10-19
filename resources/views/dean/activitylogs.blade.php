@@ -72,7 +72,7 @@
     @empty
         <div class="al-empty">
             <span class="al-empty-icon"><span class="iconify" data-icon="mdi:clipboard-check-outline"></span></span>
-            <p class="al-empty-title">No finished tasks yet</p>
+            <p class="al-empty-title">No finished tasks</p>
             <p class="al-muted">When a team finishes a task and its faculty approves it, it shows up here.</p>
         </div>
     @endforelse

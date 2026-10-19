@@ -795,7 +795,7 @@ function App() {
     emptyText = 'Check the room number or guest name, or clear the search box.';
     emptyIcon = 'fa-magnifying-glass';
   } else if (inspections.length === 0) {
-    emptyTitle = 'No guest has checked out yet';
+    emptyTitle = 'No guest has checked out';
     emptyText = 'When the Front Desk checks a guest out, their room appears here so you can clean and check it.';
     emptyIcon = 'fa-broom';
   } else if (tab === 'todo') {
@@ -806,7 +806,7 @@ function App() {
     emptyTitle = 'No room is with Maintenance';
     emptyText = 'If you find something broken or missing while checking a room, it will wait here until Maintenance fixes it.';
   } else if (tab === 'done') {
-    emptyTitle = 'No room finished yet';
+    emptyTitle = 'No rooms finished';
     emptyText = 'Rooms you mark ready for the next guest will be listed here.';
   }
 

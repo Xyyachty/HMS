@@ -741,7 +741,7 @@ function MenuCard({ item, onEdit, onRemove }) {
           </div>
           <b className="mn-price">{typeof item.price === 'number' ? formatPeso(item.price) : (item.price || '—')}</b>
         </div>
-        <p className={`mn-desc ${item.sub ? '' : 'is-empty'}`}>{item.sub || 'No description yet.'}</p>
+        <p className={`mn-desc ${item.sub ? '' : 'is-empty'}`}>{item.sub || 'No description.'}</p>
         <div className="mn-card-actions">
           <button type="button" className="mn-btn is-small" onClick={() => onEdit(item)}>
             <i className="fa-solid fa-pen"></i> Edit
@@ -826,7 +826,7 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast }
         <div className="mn-panel-head">
           <div>
             <h2 id="mn-list">Your menu</h2>
-            <p>{list.length ? `${list.length} ${list.length === 1 ? 'dish' : 'dishes and drinks'} on the menu.` : 'Nothing on the menu yet.'}</p>
+            <p>{list.length ? `${list.length} ${list.length === 1 ? 'dish' : 'dishes and drinks'} on the menu.` : 'Nothing on the menu.'}</p>
           </div>
           <span className="mn-live">Updates on its own</span>
         </div>
@@ -877,7 +877,7 @@ function ManageMenuPanel({ menus, onAddMenu, onEditMenu, onRemoveMenu, onToast }
         {visible.length === 0 ? (
           <div className="mn-empty">
             <div className="mn-empty-icon"><i className={`fa-solid ${q ? 'fa-magnifying-glass' : (MENU_ICONS[filter] || 'fa-utensils')}`}></i></div>
-            <h3>{q ? 'No dish matches your search' : list.length === 0 ? 'No dishes yet' : stockFilter === 'attention' ? 'Nothing is running low' : `Nothing in ${filter} yet`}</h3>
+            <h3>{q ? 'No dish matches your search' : list.length === 0 ? 'No dishes' : stockFilter === 'attention' ? 'Nothing is running low' : `Nothing in ${filter}`}</h3>
             <p>{q ? 'Check the spelling, or clear the search box.' : stockFilter === 'attention' ? 'Every dish has more than 5 servings ready.' : 'Use "Add a dish" to put something on the menu. Guests can order it right away.'}</p>
             {!q && stockFilter !== 'attention' ? (
               <button type="button" className="mn-btn is-solid" onClick={() => setEditing('new')}>
@@ -1077,7 +1077,7 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
             <>
               {bill.items.length === 0 ? (
                 <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', margin: '0 0 1rem' }}>
-                  Nothing has been ordered at this table yet. Close it out instead of billing it.
+                  Nothing has been ordered at this table. Close it out instead of billing it.
                 </p>
               ) : (
                 <>
@@ -1256,7 +1256,7 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
       )}
 
       {list.length === 0 ? (
-        <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>No tables yet.</p>
+        <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>No tables.</p>
       ) : (
         <div style={{ display: 'grid', gap: '0.6rem' }}>
           {list.map(table => {
@@ -1525,7 +1525,7 @@ function CateringPackagesPanel({ packages, canManage, onSaved, onBack }) {
       {packages.length === 0 ? (
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--fg-muted)' }}>
           <i className="fa-solid fa-champagne-glasses" style={{ fontSize: '1.6rem', opacity: 0.4, display: 'block', marginBottom: '0.6rem' }}></i>
-          <p style={{ margin: 0, fontSize: '0.85rem' }}>No catering packages yet.</p>
+          <p style={{ margin: 0, fontSize: '0.85rem' }}>No catering packages.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
@@ -1847,7 +1847,7 @@ function NewDineInOrderModal({ tables, menus, onPlaceOrder, onToast, onClose }) 
           </div>
 
           <div className="ord-cart">
-            <span>{cartCount ? `${cartCount} ${cartCount === 1 ? 'dish' : 'dishes'} · ` : 'Nothing added yet'}{cartCount ? <b>{formatPeso(cartTotal)}</b> : null}</span>
+            <span>{cartCount ? `${cartCount} ${cartCount === 1 ? 'dish' : 'dishes'} · ` : 'Nothing added'}{cartCount ? <b>{formatPeso(cartTotal)}</b> : null}</span>
           </div>
           {error ? <p className="mn-error">{error}</p> : null}
 
@@ -1921,9 +1921,9 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
     : orderType === 'catering'
       ? 'Catering shows here on its own when the Front Desk books the function room with a catering package.'
       : 'Room-service orders show here on their own when a checked-in guest orders food to their room.';
-  if (typed.length && view === 'done') { emptyTitle = 'Nothing finished yet'; emptyText = 'Orders move here once they are delivered, served or cancelled.'; }
+  if (typed.length && view === 'done') { emptyTitle = 'Nothing finished'; emptyText = 'Orders move here once they are delivered, served or cancelled.'; }
   else if (typed.length && view !== 'todo' && view !== 'all') { emptyTitle = `No orders at "${stepText({ orderType }, view).label}"`; emptyText = 'Pick another step to see the rest.'; }
-  else if (!typed.length) emptyTitle = `No ${typeInfo.label.toLowerCase()} orders yet`;
+  else if (!typed.length) emptyTitle = `No ${typeInfo.label.toLowerCase()} orders`;
 
   return (
     <div className="mn">

@@ -2564,7 +2564,7 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
                   <div style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 10, padding: '0.85rem' }}>
                     {addonList.length === 0 ? (
                       <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
-                        Housekeeping has not added any add-ons yet.
+                        Housekeeping has not added any add-ons.
                       </p>
                     ) : addonList.map(addon => (
                       <div key={addon.id} style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
@@ -2776,7 +2776,7 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
             </div>
             <div>
               <p style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.4rem' }}>Description</p>
-              <p style={{ color: 'var(--fg-muted)', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>{item.sub || 'No description yet.'}</p>
+              <p style={{ color: 'var(--fg-muted)', fontSize: '0.88rem', lineHeight: 1.6, margin: 0 }}>{item.sub || 'No description.'}</p>
             </div>
           </div>
 
@@ -2883,7 +2883,7 @@ function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, on
           </div>
 
           {cart.length === 0 ? (
-            <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>No items yet — add dishes from the menu first.</p>
+            <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>No items — add dishes from the menu first.</p>
           ) : (
             <>
               <div style={{ display: 'grid', gap: '0.6rem', marginBottom: '1.1rem', maxHeight: 260, overflowY: 'auto' }}>
@@ -5283,7 +5283,7 @@ function CategoryAvailability({ roomsIn, detail, checkIn, checkOut, onOpen, onPi
             {total} room{total === 1 ? '' : 's'} in this category
             {roomsIn.length ? <> · <span style={{ color: freeCount ? '#15803d' : '#be123c' }}>{freeCount} free{checkIn && checkOut ? ' for your dates' : ' today'}</span></> : null}
           </>
-        ) : 'No rooms have been added to this category yet.'}
+        ) : 'No rooms have been added to this category.'}
       </p>
 
       {shown.length ? (
@@ -5906,7 +5906,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
 
       <section style={{ padding: '0 1.5rem 3rem', maxWidth: 1100, margin: '0 auto' }}>
         {categoryRows.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--fg-muted)', padding: '3rem 1rem' }}>No room categories yet.</p>
+          <p style={{ textAlign: 'center', color: 'var(--fg-muted)', padding: '3rem 1rem' }}>No room categories.</p>
         ) : (
           <div style={{ display: 'grid', gap: '1.5rem' }}>
             {categoryRows.map((row) => (
@@ -6822,7 +6822,7 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
           ) : null}
         />
         {filteredMenus.length === 0 ? (
-          <EmptyState text={`No items in ${menuTab} yet.`} />
+          <EmptyState text={`No items in ${menuTab}.`} />
         ) : (
           <>
             <div style={{ display: 'grid', gap: '1.25rem', marginTop: '1.25rem' }}>
@@ -7612,7 +7612,7 @@ function FacilityBooking({ facility, onToast }) {
                   </select>
                   {services.length === 0 && (
                     <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                      No treatments are listed yet. Ask the front desk.
+                      No treatments are listed. Ask the front desk.
                     </p>
                   )}
                 </div>

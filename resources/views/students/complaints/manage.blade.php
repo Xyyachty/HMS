@@ -538,7 +538,7 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
           <span>{complaint.resolutionNote}</span>
         </div>
       ) : (
-        <p className="cx-meta">No resolution notes yet.</p>
+        <p className="cx-meta">No resolution notes.</p>
       )}
 
       {canHandle && isOpen && (
@@ -760,10 +760,10 @@ function App() {
   let emptyTitle = 'Nothing matches';
   let emptyText = 'Try another tab, another department, or clear the search.';
   if (complaints.filter(inDepartment).length === 0) {
-    emptyTitle = 'No complaints yet';
+    emptyTitle = 'No complaints';
     emptyText = canFile && !isDepartmentView
       ? 'When a guest reports a problem, use the form to send it to the right department.'
-      : 'Nothing has been sent to your department yet. New complaints will show up here.';
+      : 'Nothing has been sent to your department. New complaints will show up here.';
   } else if (statusFilter === 'open' && !search.trim()) {
     emptyTitle = 'Nothing left to resolve';
     emptyText = 'Every complaint here has been resolved. See them under Resolved or Closed.';

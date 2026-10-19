@@ -10,7 +10,7 @@
         <div class="text-center">
             <p class="text-[0.625rem] font-semibold tracking-widest text-rose-500 uppercase mb-2">Room Management</p>
             <h2 class="text-xl font-bold text-white mb-1">No Template Selected</h2>
-            <p class="text-xs text-zinc-500">The Front Desk team hasn't selected a template yet.</p>
+            <p class="text-xs text-zinc-500">The Front Desk team has not chosen a template.</p>
         </div>
         <div class="w-16 h-16 rounded-full border-2 border-dashed border-zinc-700 flex items-center justify-center">
             <i class="fas fa-image text-2xl text-zinc-600"></i>

@@ -46,7 +46,7 @@ class EnforceSessionRules
     public const REASONS = [
         'idle' => [
             'title' => 'Session Expired',
-            'message' => 'Your session has expired due to inactivity. Please log in again.',
+            'message' => 'You were logged out because you were inactive for too long. Please log in again.',
         ],
         'replaced' => [
             'title' => 'Signed In Elsewhere',

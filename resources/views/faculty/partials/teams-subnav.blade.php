@@ -62,7 +62,7 @@
                 @endif
             </a>
         @empty
-            <p class="text-sm text-slate-500 pb-3">No blocks yet.</p>
+            <p class="text-sm text-slate-500 pb-3">No blocks.</p>
         @endforelse
     </div>
 

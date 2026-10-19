@@ -275,7 +275,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No students on a team yet.</td></tr>
+                            <tr><td colspan="4" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No students on a team.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -335,7 +335,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No activity recorded yet.</td></tr>
+                            <tr><td colspan="5" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No activity recorded.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -393,7 +393,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No students on a team yet.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No students on a team.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -444,7 +444,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-12 text-center text-sm text-slate-400 font-semibold">No finalized completed tasks to report yet.</td>
+                        <td colspan="6" class="px-4 py-12 text-center text-sm text-slate-400 font-semibold">No finished tasks to report.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -534,7 +534,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No activity recorded yet.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No activity recorded.</td></tr>
                     @endforelse
                 </tbody>
             </table>

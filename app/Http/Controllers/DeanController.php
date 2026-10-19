@@ -787,7 +787,7 @@ class DeanController extends Controller
                     . $from['students'] . ' students now belong to ' . ($user->name ?? $user->email) . '.');
             } else {
                 if (!Faculty::isValidBlock($block)) {
-                    return redirect()->route('dean.users')->withErrors(['block' => 'Invalid block selected.']);
+                    return redirect()->route('dean.users')->withErrors(['block' => 'Please choose a valid block.']);
                 }
                 $user->faculty->block = $block;
                 $user->faculty->save();
@@ -1033,7 +1033,7 @@ class DeanController extends Controller
                     'error' => $e->getMessage(),
                 ]);
 
-                return back()->withErrors(['avatar' => 'Could not upload the photo to storage. Please try again.']);
+                return back()->withErrors(['avatar' => 'Could not upload the photo. Please try again.']);
             }
 
             if ($user->avatar) {
