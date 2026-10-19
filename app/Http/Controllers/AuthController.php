@@ -169,7 +169,7 @@ class AuthController extends Controller
 
         $user = $request->user();
         $user->password = Hash::make($data['password']);
-        // Lifts EnsurePasswordChanged off a dean-created faculty account.
+        // Lifts EnsurePasswordChanged off an account still on its temporary password.
         $user->must_change_password = false;
         $user->save();
 

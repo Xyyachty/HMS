@@ -651,8 +651,9 @@ class DeanController extends Controller
         ];
 
         $userData['status'] = $status;
-        // The generated password is a temporary one; see EnsurePasswordChanged.
-        $userData['must_change_password'] = $validated['role'] === 'faculty';
+        // Generated (faculty) or typed by the dean (student), the password is a
+        // temporary one either way; see EnsurePasswordChanged.
+        $userData['must_change_password'] = true;
         $userData['phone_number'] = User::normalizePhone($validated['phone_number'] ?? null);
 
         $user = User::create($userData);

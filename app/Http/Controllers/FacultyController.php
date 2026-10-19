@@ -811,6 +811,8 @@ class FacultyController extends Controller
                 'status' => 'active',
                 'phone_number' => User::normalizePhone($validated['phone_number'] ?? null),
                 'email_verified_at' => now(),
+                // The generated password is a temporary one; see EnsurePasswordChanged.
+                'must_change_password' => true,
             ]);
 
             $student = Student::create([
@@ -942,6 +944,8 @@ class FacultyController extends Controller
 
         if (!empty($plainPassword)) {
             $updateData['password'] = Hash::make($plainPassword);
+            // Faculty knows this one, so the student replaces it; see EnsurePasswordChanged.
+            $updateData['must_change_password'] = true;
         }
 
         // A corrected address means the account email reached nobody, so it is sent
@@ -959,6 +963,7 @@ class FacultyController extends Controller
             } elseif ($user->last_seen_at === null) {
                 $plainPassword = StudentWelcomeMailer::generatePassword();
                 $updateData['password'] = Hash::make($plainPassword);
+                $updateData['must_change_password'] = true;
                 $resendWelcome = true;
             }
         }
@@ -1145,6 +1150,8 @@ class FacultyController extends Controller
                         'status'       => 'active',
                         'phone_number' => $phone,
                         'email_verified_at' => now(),
+                        // The generated password is a temporary one; see EnsurePasswordChanged.
+                        'must_change_password' => true,
                     ]);
 
                     $student = Student::create([

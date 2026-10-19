@@ -15,10 +15,10 @@
             <p class="text-xs text-slate-400 mb-5">Enter your current password, then choose a new one of at least 8 characters.</p>
 
             @if (auth()->user()?->must_change_password)
-                {{-- Set on a dean-created faculty account; EnsurePasswordChanged keeps them here until it clears. --}}
+                {{-- Set on an account created with a temporary password; EnsurePasswordChanged keeps them here until it clears. --}}
                 <div class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 mb-5 text-sm text-amber-800 flex items-center gap-3">
                     <span class="iconify text-lg shrink-0" data-icon="mdi:shield-key-outline"></span>
-                    You signed in with the temporary password sent to your Gmail. Set a new password to continue using the portal.
+                    You signed in with the temporary password sent to your email. Set a new password to continue using the portal.
                 </div>
             @endif
 

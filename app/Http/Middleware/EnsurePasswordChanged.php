@@ -7,8 +7,8 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * A faculty account the dean creates signs in with a generated password sent to
- * their Gmail (users.must_change_password). Until they replace it, every page
+ * A faculty account the dean creates, or a student account faculty (or the dean)
+ * creates, signs in with a temporary password (users.must_change_password). Until they replace it, every page
  * sends them to their profile, where the Change Password form is; a fetch or form
  * post gets a 403. AuthController::updatePassword clears the flag.
  */

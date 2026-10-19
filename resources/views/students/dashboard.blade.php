@@ -1890,7 +1890,14 @@
                 $profileFields = ['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'avatar'];
                 $profileHasErrors = collect($profileFields)->contains(fn ($f) => $errors->has($f));
             @endphp
-            @if ($profileHasErrors || $errors->getBag('password')->any() || session('password_success'))
+            @if (auth()->user()?->must_change_password)
+                // Still on the temporary password: EnsurePasswordChanged keeps them
+                // on this page, so open Profile at the Change Password form.
+                section = 'profile';
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.getElementById('change-password')?.scrollIntoView({ block: 'start' });
+                });
+            @elseif ($profileHasErrors || $errors->getBag('password')->any() || session('password_success'))
                 section = 'profile';
             @elseif ($errors->has('task') || session('task_success'))
                 // Mark as done: back to Tasks, where the button was pressed, and
