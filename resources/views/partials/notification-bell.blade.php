@@ -148,7 +148,7 @@
     const ENDPOINTS = {
         index:   @json(route('notifications.index')),
         readAll: @json(route('notifications.read-all')),
-        read:    id => @json(url('/notifications')) + '/' + id + '/read',
+        open:    id => @json(url('/notifications')) + '/' + id + '/open',
     };
 
     const ACCENTS = {
@@ -218,7 +218,6 @@
                 return (
                     '<button type="button" data-notify-item data-id="' + n.id + '"' +
                         ' data-read="' + (n.read ? '1' : '0') + '"' +
-                        ' data-url="' + escapeHtml(n.url || '') + '"' +
                         ' class="w-full text-left px-4 py-3 flex gap-3 hover:bg-slate-50 transition-colors ' + unreadClasses + '">' +
                         '<span class="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"' +
                             ' style="background:' + accent.bg + ';color:' + accent.fg + '">' +
@@ -300,22 +299,29 @@
             const item = e.target.closest('[data-notify-item]');
             if (!item) return;
 
-            const id = item.dataset.id;
-            const url = item.dataset.url;
-            const wasUnread = item.dataset.read === '0';
-
-            const done = wasUnread
-                ? postJson(ENDPOINTS.read(id)).catch(() => {})
-                : Promise.resolve();
-
-            done.then(() => {
-                if (url) {
-                    window.location.href = url;
-                } else {
-                    load();
-                }
-            });
+            // The server marks it read and checks the task or team it names still
+            // exists (NotificationTarget), so a stale one explains itself here
+            // instead of opening an unrelated page.
+            postJson(ENDPOINTS.open(item.dataset.id))
+                .then((d) => {
+                    if (d.url) {
+                        window.location.href = d.url;
+                        return;
+                    }
+                    showNotice(d.error || 'This notification has no page to open.');
+                })
+                .catch((status) => showNotice(status === 404
+                    ? 'This notification no longer exists.'
+                    : 'Could not open this notification. Please try again.'));
         });
+
+        function showNotice(message) {
+            load().then(() => {
+                list.insertAdjacentHTML('afterbegin',
+                    '<div data-notify-notice class="px-4 py-3 text-xs font-medium" style="background:#fef3c7;color:#92400e">' +
+                    escapeHtml(message) + '</div>');
+            });
+        }
 
         // Badge-only poll keeps the bell honest without opening the dropdown.
         fetch(@json(route('notifications.unread-count')), {

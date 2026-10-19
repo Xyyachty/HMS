@@ -1320,7 +1320,14 @@ class FacultyController extends Controller
         });
 
         $openClass = $classes->firstWhere('status', 'open') ?? $classes->first();
-        $requestedLetter = strtoupper((string) request('class', $openClass?->letter ?? 'A'));
+        // A notification link names a team, not its block: open the block most
+        // of its members are in, or the page would not have the team's card.
+        $linkedClassId = request()->filled('team') && !request()->filled('class')
+            ? StudentGroup::where('faculty_id', $facultyId)->where('group_name', (string) request('team'))
+                ->with('student')->get()
+                ->map(fn ($m) => $m->student?->faculty_class_id)->filter()->countBy()->sortDesc()->keys()->first()
+            : null;
+        $requestedLetter = strtoupper((string) request('class', $classes->firstWhere('faculty_class_id', $linkedClassId)?->letter ?? $openClass?->letter ?? 'A'));
         $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $openClass;
         $classCapacity = FacultyClass::CAPACITY;
 

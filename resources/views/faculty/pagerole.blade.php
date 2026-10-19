@@ -5253,10 +5253,35 @@ function focusTeamAwaitingReview(groupName) {
         btn.click();
         return;
     }
-    if (!card) {
+    // Already on a ?team= link: the server opened the team's block, so a
+    // missing card means going again would only loop.
+    if (!card && !new URLSearchParams(window.location.search).has('team')) {
         window.location.href = TEAM_REVIEW_DEEPLINK_URL
             .replace('__TEAM__', encodeURIComponent(groupName));
     }
+}
+
+/* ?team=<name>[&focus=concept] - a notification about one team. Opens what is
+   waiting on that team (its concepts when the link is about them, else its
+   submissions); with nothing waiting, the team itself, as View Team does. */
+function openTeamFromLink(groupName, focus) {
+    const want = String(groupName || '').toLowerCase();
+    const card = Array.from(document.querySelectorAll('.team-card[data-team-name]'))
+        .find((c) => (c.dataset.teamName || '').toLowerCase() === want);
+    if (!card) {
+        focusTeamAwaitingReview(groupName);
+        return;
+    }
+    const waiting = (selector) => {
+        const badge = card.querySelector(selector);
+        return badge && !badge.classList.contains('hidden') ? badge.querySelector('button') : null;
+    };
+    const btn = (focus === 'concept' && waiting('[data-concept-pending-badge]'))
+        || waiting('[data-pending-review-badge]')
+        || card.querySelector('.tc-actions .tc-btn-primary');
+    if (typeof switchTab === 'function') switchTab('teams');
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (btn) btn.click();
 }
 
 function fetchPendingReviewPayload() {
@@ -5363,7 +5388,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // A notification deep link names the team it is about.
     @if(filled(request('team')))
-        focusTeamAwaitingReview(@json(request('team')));
+        openTeamFromLink(@json(request('team')), @json(request('focus')));
     @endif
 
     schedulePulse(PULSE_RUNGS[0]);

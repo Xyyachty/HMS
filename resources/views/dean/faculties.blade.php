@@ -151,7 +151,8 @@
                                 </td>
                                 <td class="px-5 py-3.5 text-slate-500 text-sm">{{ $createdAt }}</td>
                                 <td class="px-5 py-3.5">
-                                    <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }}, {{ (int) $faculty->user_information_id }})'
+                                    <button data-team-view="{{ $groupName }}" data-faculty-id="{{ (int) $faculty->user_information_id }}"
+                                        onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }}, {{ (int) $faculty->user_information_id }})'
                                         class="view-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border rounded-lg text-xs font-bold transition" style="border-color: #111;">
                                         <span class="iconify" data-icon="mdi:eye-outline"></span> View
                                     </button>
@@ -985,6 +986,18 @@
         document.getElementById('fpanel-teams').classList.toggle('hidden', tab !== 'teams');
         document.getElementById('fpanel-complied').classList.toggle('hidden', tab !== 'complied');
     }
+
+    /* ?team=<name>&faculty=<id> - a notification about one team opens its details. */
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const team = (params.get('team') || '').toLowerCase(); // group_name is citext
+        if (!team) return;
+        const btn = Array.from(document.querySelectorAll('[data-team-view]')).find((b) =>
+            b.dataset.teamView.toLowerCase() === team && b.dataset.facultyId === params.get('faculty'));
+        if (!btn) return;
+        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        btn.click();
+    });
 
     /* Complied tab: the status chips and the search narrow the rows; a team with
        nothing left showing hides, a team with matches opens, and a note says when

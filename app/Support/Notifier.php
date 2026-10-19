@@ -286,7 +286,7 @@ class Notifier
             UserNotification::TEAM_CREATED,
             'You joined ' . \App\Models\Group::label($groupName),
             'Your faculty placed you on ' . \App\Models\Group::label($groupName) . '. Open your dashboard to see your role.',
-            route('students.dashboard'),
+            route('students.dashboard', ['section' => 'group']),
             $actor
         );
 
@@ -295,7 +295,7 @@ class Notifier
             UserNotification::TEAM_CREATED,
             'New team created',
             \App\Models\Group::label($groupName) . ' was created with ' . count($studentIds) . ' member(s).',
-            route('dean.dashboard'),
+            route('dean.faculties', ['team' => $groupName, 'faculty' => $facultyId]),
             $actor
         );
     }
@@ -310,7 +310,7 @@ class Notifier
             UserNotification::TEAM_MEMBER_ADDED,
             'You joined ' . \App\Models\Group::label($groupName),
             'Your faculty added you to ' . \App\Models\Group::label($groupName) . '.',
-            route('students.dashboard'),
+            route('students.dashboard', ['section' => 'group']),
             $actor
         );
 
@@ -321,7 +321,7 @@ class Notifier
             UserNotification::TEAM_MEMBER_ADDED,
             'New teammate on ' . $groupName,
             count($studentIds) . ' student(s) joined your team.',
-            route('students.dashboard'),
+            route('students.dashboard', ['section' => 'group']),
             $actor
         );
     }
@@ -338,8 +338,8 @@ class Notifier
                 [$userId],
                 UserNotification::TASK_ASSIGNED,
                 $count === 1 ? 'New task assigned' : $count . ' new tasks assigned',
-                'Your faculty assigned you ' . $count . ' task(s). Check your dashboard for details.',
-                route('students.dashboard'),
+                'Your faculty assigned you ' . $count . ' task(s). Open Tasks to see them.',
+                route('students.dashboard', ['section' => 'tasks']),
                 $actor
             );
         }
@@ -364,7 +364,7 @@ class Notifier
                 count($titles) === 1 ? 'Task assigned to ' . \App\Models\Group::label($team) : count($titles) . ' tasks assigned to ' . \App\Models\Group::label($team),
                 $who . ' assigned ' . collect($titles)->map(fn ($t) => '"' . $t . '"')->join(', ', ' and ')
                     . ' to ' . \App\Models\Group::label($team) . '.' . $due,
-                route('dean.faculties'),
+                route('dean.faculties', array_filter(['team' => $team, 'faculty' => $actor?->faculty?->user_information_id])),
                 $actor
             );
         }
@@ -417,7 +417,7 @@ class Notifier
             $revise
                 ? 'Feedback on "' . $task->title . '": ' . (string) $task->feedback
                 : '"' . $task->title . '" was approved by your faculty.',
-            route('students.dashboard'),
+            route('students.dashboard', ['section' => 'tasks', 'task' => $task->task_id]),
             $actor
         );
     }
@@ -480,7 +480,7 @@ class Notifier
                 ? 'Hotel concept submitted for review'
                 : 'Hotel concepts submitted for review',
             \App\Models\Group::label($membership->group_name) . ' submitted ' . $titles . ' for your review.',
-            route('faculty.role', ['tab' => 'teams']),
+            route('faculty.role', ['tab' => 'teams', 'team' => $membership->group_name, 'focus' => 'concept']),
             $actor
         );
     }
@@ -519,7 +519,7 @@ class Notifier
                 ? 'Changes requested on ' . HotelConceptDesk::slotLabel($concept->slot)
                 : HotelConceptDesk::slotLabel($concept->slot) . ' approved as your hotel concept',
             $body,
-            route('students.dashboard'),
+            route('students.dashboard', ['section' => 'group', 'focus' => 'concepts']),
             $actor
         );
     }
@@ -544,7 +544,7 @@ class Notifier
             UserNotification::SITE_PUBLISHED,
             \App\Models\Group::label($groupName) . ' published their site',
             $who . ' published ' . \App\Models\Group::label($groupName) . "'s hotel website" . $where . '.',
-            route('faculty.role'),
+            route('faculty.role', ['tab' => 'teams', 'team' => $groupName]),
             $actor
         );
     }

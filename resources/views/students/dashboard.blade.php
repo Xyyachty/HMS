@@ -1925,6 +1925,33 @@
             if (section && document.getElementById(section + '-section')) {
                 document.addEventListener('DOMContentLoaded', () => showSection(section));
             }
+
+            /* ?task=<id> or ?focus=concepts - a notification about one task, or
+               about the team's concepts: bring it into view and outline it briefly. */
+            document.addEventListener('DOMContentLoaded', () => {
+                const params = new URLSearchParams(window.location.search);
+                const taskId = params.get('task');
+                const root = document.getElementById((section || 'home') + '-section') || document;
+                const el = taskId
+                    ? root.querySelector('[data-task-card][data-task-id="' + CSS.escape(taskId) + '"]')
+                    : (params.get('focus') === 'concepts' ? document.getElementById('conceptTeamCard') : null);
+                if (!el) {
+                    if (taskId && window.Swal) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Task not found',
+                            text: 'This task is no longer on your task list.',
+                            confirmButtonColor: '#7B1730',
+                            heightAuto: false,
+                        });
+                    }
+                    return;
+                }
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.style.transition = 'box-shadow .3s ease';
+                el.style.boxShadow = '0 0 0 3px #7B1730';
+                setTimeout(() => { el.style.boxShadow = ''; }, 2500);
+            });
         })();
 
         /* ── Hotel concepts: the panel is the source of truth on screen ──────
