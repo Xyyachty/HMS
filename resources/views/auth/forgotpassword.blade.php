@@ -26,9 +26,9 @@
       --cream-2: #FBEEE9;
       --surface: #FFFFFF;
 
-      --ink: #2A1118;
-      --ink-soft: #6B4A54;
-      --ink-muted: #7A6068;
+      --ink: #000000;
+      --ink-soft: #000000;
+      --ink-muted: #000000;
 
       --r-card: 16px;
       --r-input: 12px;
@@ -310,7 +310,7 @@
       margin: 0 0 8px;
       font-size: clamp(1.5rem, 2.4vw, 1.9rem);
       line-height: 1.2;
-      color: var(--wine-800);
+      color: #000;
     }
     .card__lead {
       margin: 0;
@@ -406,7 +406,7 @@
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: .12em;
-      color: var(--gold-500);
+      color: #000;
     }
     .divider::before, .divider::after {
       content: '';
@@ -462,7 +462,7 @@
       background: #fff;
     }
     .done__note .tips__icon { background: linear-gradient(140deg, var(--wine-800), var(--wine-600)); }
-    .done__note strong { display: block; font-size: .86rem; color: var(--wine-800); }
+    .done__note strong { display: block; font-size: .86rem; color: #000; }
     .done__note span { font-size: .76rem; color: var(--ink-muted); }
 
     /* ---------- Footer (mirrors the landing page) ------------------------- */
@@ -480,7 +480,7 @@
     }
     .footer__brand { display: flex; align-items: center; gap: 12px; }
     .footer__brand img { height: 36px; width: auto; object-fit: contain; }
-    .footer__brand p { margin: 0; font-size: .68rem; font-weight: 700; color: var(--wine-800); }
+    .footer__brand p { margin: 0; font-size: .68rem; font-weight: 700; color: #000; }
     .footer__brand span { display: block; margin-top: 2px; font-size: .64rem; font-weight: 500; color: var(--ink-muted); }
     .footer__meta { margin: 0; font-size: .66rem; line-height: 1.7; color: var(--ink-muted); }
     .footer__note { margin: 0; font-size: .66rem; font-weight: 700; color: var(--ink-soft); }
