@@ -104,10 +104,10 @@
     .tc-name { flex: 1; min-width: 0; font-size: 1rem; font-weight: 800; color: #181818; line-height: 1.25; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tc-members {
         flex-shrink: 0; display: inline-flex; align-items: center; gap: .3rem;
-        padding: .2rem .55rem; border-radius: 999px; border: 1px solid #E4E2E0; background: #fff;
-        font-size: 0.75rem; font-weight: 800; color: #4A4643; font-variant-numeric: tabular-nums;
+        padding: .2rem .55rem; border-radius: 999px; border: 1px solid #E5E7EB; background: #F3F4F6;
+        font-size: 0.75rem; font-weight: 800; color: #6B7280; font-variant-numeric: tabular-nums;
     }
-    .tc-members.is-full { background: #4A4643; border-color: #4A4643; color: #fff; }
+    .tc-members.is-full { background: #16A34A; border-color: #15803D; color: #fff; }
 
     .tc-status-row { display: flex; align-items: center; gap: .5rem; min-height: 1.6rem; }
     .tc-status {

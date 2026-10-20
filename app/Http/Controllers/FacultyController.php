@@ -1388,7 +1388,7 @@ class FacultyController extends Controller
             }
 
             return ($teamClassIdByName[$groupName] ?? null) === $activeClass->faculty_class_id;
-        });
+        })->sortKeys(SORT_NATURAL | SORT_FLAG_CASE); // Team 2 before Team 10
 
         /* Whether Set Task has anywhere to send work.
          *
