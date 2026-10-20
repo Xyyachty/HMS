@@ -234,23 +234,9 @@
       background: linear-gradient(90deg, var(--gold-500), transparent);
     }
     .aside h1 {
-      margin: 0 0 16px;
+      margin: 0 0 28px;
       font-size: clamp(2rem, 3.2vw, 3rem);
       line-height: 1.08;
-    }
-    .aside h1 span {
-      display: block;
-      background: linear-gradient(96deg, var(--gold-300), var(--gold-500) 52%, var(--gold-300));
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      color: transparent;
-    }
-    .aside__lead {
-      margin: 0 0 28px;
-      font-size: .98rem;
-      line-height: 1.68;
-      color: rgba(255, 255, 255, .8);
     }
     .tips { margin: 0; padding: 0; list-style: none; }
     .tips li {
@@ -274,6 +260,8 @@
       color: var(--gold-300);
     }
     .tips__icon .iconify { font-size: 1.15rem; }
+    .tips__no { font-size: 1.1rem; font-variant-numeric: lining-nums; }
+    .tips strong { display: block; margin-bottom: 2px; font-size: .9rem; color: #fff; }
 
     /* Right: the form on cream, in a card like the landing value cards. */
     .main {
@@ -527,22 +515,21 @@
       <img src="{{ asset('chtm-building.png') }}" alt="" />
       <div class="aside__copy">
         <p class="eyebrow">Account Recovery</p>
-        <h1 class="display">Reset your password. <span>We'll get you back in.</span></h1>
-        <p class="aside__lead">It happens to the best of us. Confirm your email and choose a new password to return to the simulation.</p>
-        <ul class="tips">
+        <h1 class="display">Reset your password.</h1>
+        <ol class="tips">
           <li>
-            <span class="tips__icon"><span class="iconify" data-icon="mdi:shield-check-outline"></span></span>
-            Your data is safe. We never share your credentials.
+            <span class="tips__icon tips__no display">1</span>
+            <span><strong>Enter your email</strong>Type the email address on your account.</span>
           </li>
           <li>
-            <span class="tips__icon"><span class="iconify" data-icon="mdi:magnify"></span></span>
-            We verify your email automatically as you type.
+            <span class="tips__icon tips__no display">2</span>
+            <span><strong>Wait for verification</strong>We check your email automatically as you type.</span>
           </li>
           <li>
-            <span class="tips__icon"><span class="iconify" data-icon="mdi:key-outline"></span></span>
-            Choose a strong password you haven't used before.
+            <span class="tips__icon tips__no display">3</span>
+            <span><strong>Set a new password</strong>Choose a strong one you haven't used before, then confirm it.</span>
           </li>
-        </ul>
+        </ol>
       </div>
     </aside>
 
