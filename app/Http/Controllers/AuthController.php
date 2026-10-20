@@ -68,6 +68,12 @@ class AuthController extends Controller
                 ActivityLog::record($user, ActivityLog::ACCOUNT_UPDATED, 'Activated their account on first sign-in.');
             }
 
+            // A faculty deleted outside the app leaves their block vacant; the
+            // faculty after them moves into it here (Faculty::closeBlockGaps).
+            if ($user && $user->role === 'faculty') {
+                \App\Models\Faculty::closeBlockGaps();
+            }
+
             if ($user) {
                 // This sign-in becomes the account's only session: any other
                 // device holding the old token ends on its next request.

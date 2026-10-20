@@ -194,7 +194,9 @@ class DeanController extends Controller
 
     public function users()
     {
-        $users = User::with(['faculty.classes', 'student.facultyClass.faculty'])->latest()->get();
+        Faculty::closeBlockGaps();
+
+        $users =User::with(['faculty.classes', 'student.facultyClass.faculty'])->latest()->get();
         $availableBlocks = Faculty::availableBlocks();
         $systemBlocks = Faculty::existingClassLetters();
         $handOverBlocks = Faculty::handOverBlocks();

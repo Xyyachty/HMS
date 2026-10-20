@@ -134,6 +134,8 @@ class Faculty extends UserInformation
      */
     public static function nextAvailableBlock(): string
     {
+        static::closeBlockGaps();
+
         $free = static::availableBlocks();
         if ($free !== []) {
             return $free[0];
@@ -151,6 +153,43 @@ class Faculty extends UserInformation
         sort($all);
 
         return FacultyClass::nextLetter((string) (end($all) ?: 'A'));
+    }
+
+    /**
+     * Move every faculty down into a vacant block before theirs.
+     *
+     * A faculty deleted straight from the database takes their classes with them
+     * (cascade) and leaves their block empty: with Block A's faculty gone, Block B's
+     * stayed on B, locked behind an empty Block A (intakeLockReason). Each faculty,
+     * in block order, now takes the first block nobody holds. Their tabs follow,
+     * since a tab's block is read against its owner's (FacultyClass::block_letter),
+     * and students, teams and tasks key on faculty_id, so nothing else moves.
+     *
+     * Run at sign-in and on the dean's pages: a delete made outside the app fires no
+     * model event to catch.
+     */
+    public static function closeBlockGaps(): void
+    {
+        DB::transaction(function () {
+            $faculty = static::with('classes')
+                ->whereNotNull('block')
+                ->where('block', '!=', '')
+                ->lockForUpdate()
+                ->get()
+                ->sortBy(fn (self $f) => static::letterIndex(trim((string) $f->block)));
+
+            $next = 0;
+            foreach ($faculty as $f) {
+                $block = static::letterAt($next);
+                // block is unique. Moving down in order never lands on a block whose
+                // holder has not moved yet: theirs sits above this one's.
+                if (strtoupper(trim((string) $f->block)) !== $block) {
+                    $f->update(['block' => $block]);
+                }
+                // Extra tabs (Block B in Block A's tabs) hold the blocks after their own.
+                $next += 1 + (int) $f->classes->map(fn (FacultyClass $c) => static::letterIndex($c->letter ?: 'A'))->max();
+            }
+        });
     }
 
     /**
