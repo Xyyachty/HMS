@@ -6,9 +6,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use App\Http\Middleware\EnforceSessionRules;
+use App\Mail\PasswordResetCodeMail;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Support\StudentWelcomeMailer;
 use Illuminate\Http\JsonResponse;
 
 class AuthController extends Controller
@@ -109,9 +113,109 @@ class AuthController extends Controller
         ])->with('error_title', 'Login Failed')->onlyInput('email');
     }
 
-    public function forgotPassword()
+    /* Forgot-password state lives in the session: the code proves the inbox, and
+       tying it to the session means a code read off someone else's screen is no
+       use in another browser. Shape: email, code (hash), expires, attempts, verified. */
+    private const RESET_KEY = 'forgot_password';
+    private const RESET_CODE_MINUTES = 10;
+    private const RESET_MAX_ATTEMPTS = 5;
+
+    /** The email this session has proven it owns, or null. */
+    private function verifiedResetEmail(Request $request): ?string
     {
-        return view('auth.forgotpassword');
+        $state = $request->session()->get(self::RESET_KEY);
+
+        if (!$state || empty($state['verified']) || now()->timestamp > $state['expires']) {
+            return null;
+        }
+
+        return $state['email'];
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        // Lets the page reopen on the password step after a validation error.
+        return view('auth.forgotpassword', ['verifiedEmail' => $this->verifiedResetEmail($request)]);
+    }
+
+    public function sendResetCode(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $user = $this->resettableAccount($request->input('email'));
+
+        if (!$user) {
+            return response()->json(['message' => 'This account is not registered. Please contact your Faculty.'], 422);
+        }
+
+        if (!StudentWelcomeMailer::isDeliverable($user->email)) {
+            return response()->json(['message' => 'This account has no real email address on file. Please contact your Faculty.'], 422);
+        }
+
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // A new code replaces the old one and starts the attempts over.
+        $request->session()->put(self::RESET_KEY, [
+            'email' => $user->email,
+            'code' => Hash::make($code),
+            'expires' => now()->addMinutes(self::RESET_CODE_MINUTES)->timestamp,
+            'attempts' => 0,
+            'verified' => false,
+        ]);
+
+        try {
+            Mail::to($user->email)->send(new PasswordResetCodeMail(
+                userName: trim((string) ($user->first_name ?: $user->name)) ?: 'there',
+                code: $code,
+                expiresInMinutes: self::RESET_CODE_MINUTES,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Password reset code email failed for ' . $user->email . ': ' . $e->getMessage());
+            $request->session()->forget(self::RESET_KEY);
+
+            return response()->json(['message' => 'We could not send the code right now. Please try again later.'], 500);
+        }
+
+        return response()->json(['sent' => true]);
+    }
+
+    public function verifyResetCode(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'code' => ['required', 'digits:6'],
+        ]);
+
+        $state = $request->session()->get(self::RESET_KEY);
+
+        if (!$state || $state['email'] !== strtolower(trim($data['email'])) || now()->timestamp > $state['expires']) {
+            return response()->json(['message' => 'This code has expired. Please send a new one.', 'expired' => true], 422);
+        }
+
+        if (!Hash::check($data['code'], $state['code'])) {
+            $state['attempts']++;
+            $left = self::RESET_MAX_ATTEMPTS - $state['attempts'];
+
+            // Six digits fall to guessing without a cap, so a code dies after five misses.
+            if ($left <= 0) {
+                $request->session()->forget(self::RESET_KEY);
+
+                return response()->json(['message' => 'Too many incorrect codes. Please send a new one.', 'expired' => true], 422);
+            }
+
+            $request->session()->put(self::RESET_KEY, $state);
+
+            return response()->json(['message' => "Incorrect code. {$left} " . ($left === 1 ? 'try' : 'tries') . ' left.'], 422);
+        }
+
+        $state['verified'] = true;
+        // Fresh window to choose a password, counted from the moment of proof.
+        $state['expires'] = now()->addMinutes(self::RESET_CODE_MINUTES)->timestamp;
+        $request->session()->put(self::RESET_KEY, $state);
+
+        return response()->json(['verified' => true]);
     }
 
     /* A password may only be reset onto an account that exists and is usable. Pending
@@ -141,6 +245,14 @@ class AuthController extends Controller
             'password' => ['required', 'min:8', 'confirmed'],
         ]);
 
+        // The emailed code is the only proof of ownership; without it, knowing an
+        // address would be enough to take over its account.
+        if ($this->verifiedResetEmail($request) !== strtolower(trim($data['email']))) {
+            return back()->withErrors([
+                'email' => 'Please verify your email with the code we sent first.',
+            ])->withInput($request->only('email'));
+        }
+
         $user = $this->resettableAccount($data['email']);
 
         if (!$user) {
@@ -148,6 +260,9 @@ class AuthController extends Controller
                 'email' => 'This account is not registered. Please contact your Faculty.',
             ])->withInput();
         }
+
+        // One code, one reset.
+        $request->session()->forget(self::RESET_KEY);
 
         $user->password = Hash::make($data['password']);
         // A password they chose themselves, so the temporary one no longer needs replacing.

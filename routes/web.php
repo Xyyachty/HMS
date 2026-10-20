@@ -71,6 +71,13 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPasswordSubmit'])
 Route::get('/forgot-password/check-email', [AuthController::class, 'checkForgotPasswordEmail'])
     ->middleware(['guest', 'throttle:20,1'])
     ->name('forgot-password.check-email');
+// Each send is an email out, so a tight cap; verify also caps tries per code in the controller.
+Route::post('/forgot-password/send-code', [AuthController::class, 'sendResetCode'])
+    ->middleware(['guest', 'throttle:5,10'])
+    ->name('forgot-password.send-code');
+Route::post('/forgot-password/verify-code', [AuthController::class, 'verifyResetCode'])
+    ->middleware(['guest', 'throttle:10,1'])
+    ->name('forgot-password.verify-code');
 
 /*
 |--------------------------------------------------------------------------

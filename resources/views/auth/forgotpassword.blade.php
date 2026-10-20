@@ -422,6 +422,23 @@
     }
     .reveal-section .btn--submit { margin-top: 8px; }
 
+    .code-input { letter-spacing: .5em; font-weight: 800; font-size: 1.05rem; }
+    .code-input::placeholder { letter-spacing: .5em; font-weight: 500; }
+    .code-hint { margin: 0 0 16px; font-size: .8rem; line-height: 1.6; color: var(--ink-soft); }
+    .code-actions { margin-top: 14px; text-align: center; font-size: .76rem; }
+    .link-btn {
+      border: 0;
+      padding: 0;
+      background: none;
+      font: inherit;
+      font-weight: 800;
+      color: var(--wine-700);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .link-btn:disabled { color: var(--ink-muted); text-decoration: none; cursor: default; opacity: .6; }
+    .btn--submit:disabled { opacity: .6; cursor: default; transform: none; }
+
     /* ---------- Success ---------------------------------------------------- */
     .done { text-align: center; }
     .done__badge {
@@ -523,7 +540,7 @@
           </li>
           <li>
             <span class="tips__icon tips__no display">2</span>
-            <span><strong>Wait for verification</strong>We check your email automatically as you type.</span>
+            <span><strong>Verify it's you</strong>We email a 6-digit code to that address. Enter it to continue.</span>
           </li>
           <li>
             <span class="tips__icon tips__no display">3</span>
@@ -542,7 +559,7 @@
           <div class="card__head">
             <div class="card__icon"><span class="iconify" data-icon="mdi:lock-reset"></span></div>
             <h2 class="display">Forgot your password?</h2>
-            <p class="card__lead">Enter the email address on your account and set your new password.</p>
+            <p class="card__lead">Enter the email address on your account. We'll send a code to verify it's you.</p>
           </div>
 
           <form id="resetForm" method="POST" action="{{ route('forgot-password.submit') }}">
@@ -583,12 +600,49 @@
               </p>
               <p id="emailExistsMsg" class="field__msg field__msg--ok hidden">
                 <span class="iconify" data-icon="mdi:check-circle-outline"></span>
-                <span>Email verified. You can reset your password.</span>
+                <span>Account found. Send a verification code to continue.</span>
               </p>
             </div>
 
-            {{-- Stays closed until the email is confirmed to belong to a registered,
-                 active account, so there is no form to fill in before that. --}}
+            {{-- Opens once the email belongs to a registered, active account. The
+                 code proves the person typing owns that inbox. --}}
+            <div id="codeSection" class="reveal-section">
+              <div class="divider">Verify Your Email</div>
+
+              <div id="sendCodeStep">
+                <button type="button" id="sendCodeBtn" class="btn btn--submit">
+                  <span class="iconify" data-icon="mdi:email-fast-outline"></span>
+                  <span class="btn__text">Send Verification Code</span>
+                </button>
+              </div>
+
+              <div id="enterCodeStep" class="hidden">
+                <p class="code-hint">We sent a 6-digit code to <strong id="codeSentTo"></strong>. It expires in 10 minutes. Check your spam folder if it's not in your inbox.</p>
+                <div class="field">
+                  <label for="codeInput" class="field__label">Verification Code</label>
+                  <div class="field__wrap">
+                    <span class="iconify" data-icon="mdi:shield-key-outline"></span>
+                    <input id="codeInput" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+                      autocomplete="one-time-code" class="input-field code-input" />
+                  </div>
+                </div>
+                <button type="button" id="verifyCodeBtn" class="btn btn--submit">
+                  <span class="iconify" data-icon="mdi:shield-check-outline"></span>
+                  <span class="btn__text">Verify Code</span>
+                </button>
+                <p class="code-actions">
+                  Didn't get it? <button type="button" id="resendBtn" class="link-btn">Resend code</button>
+                </p>
+              </div>
+
+              <p id="codeMsg" class="field__msg hidden">
+                <span class="iconify" data-icon="mdi:alert-circle-outline"></span>
+                <span id="codeMsgText"></span>
+              </p>
+            </div>
+
+            {{-- Stays closed until the emailed code checks out, so there is no form
+                 to fill in before that. The server checks the same thing on submit. --}}
             <div id="passwordSection" class="reveal-section">
               <div class="divider">Set New Password</div>
 
@@ -674,9 +728,22 @@
     const checkingMsg = document.getElementById('emailCheckingMsg');
     const missingMsg = document.getElementById('emailMissingMsg');
     const existsMsg = document.getElementById('emailExistsMsg');
+    const codeSection = document.getElementById('codeSection');
+    const sendCodeStep = document.getElementById('sendCodeStep');
+    const enterCodeStep = document.getElementById('enterCodeStep');
+    const sendCodeBtn = document.getElementById('sendCodeBtn');
+    const verifyCodeBtn = document.getElementById('verifyCodeBtn');
+    const resendBtn = document.getElementById('resendBtn');
+    const codeInput = document.getElementById('codeInput');
+    const codeMsg = document.getElementById('codeMsg');
     const passwordSection = document.getElementById('passwordSection');
     const resetForm = document.getElementById('resetForm');
+    const csrfToken = resetForm.querySelector('input[name="_token"]').value;
+    // Set when this session already proved the email (e.g. back from a password error).
+    const verifiedEmail = @json($verifiedEmail ?? null);
+    const RESEND_SECONDS = 60;
     let debounceTimer = null;
+    let resendTimer = null;
     let isChecking = false;
 
     /* Closing the section also empties it: a password typed against one email must not
@@ -689,11 +756,65 @@
       }
     }
 
+    function showCodeMsg(text, ok = false) {
+      codeMsg.classList.toggle('hidden', !text);
+      codeMsg.classList.toggle('field__msg--ok', ok);
+      codeMsg.classList.toggle('field__msg--bad', !ok);
+      codeMsg.lastElementChild.textContent = text || '';
+    }
+
+    function stopResendCooldown() {
+      clearInterval(resendTimer);
+      resendBtn.disabled = false;
+      resendBtn.textContent = 'Resend code';
+    }
+
+    function startResendCooldown() {
+      let left = RESEND_SECONDS;
+      clearInterval(resendTimer);
+      resendBtn.disabled = true;
+      resendBtn.textContent = `Resend code (${left}s)`;
+      resendTimer = setInterval(() => {
+        left--;
+        if (left <= 0) return stopResendCooldown();
+        resendBtn.textContent = `Resend code (${left}s)`;
+      }, 1000);
+    }
+
+    function resetCodeStep() {
+      codeSection.classList.remove('visible');
+      sendCodeStep.classList.remove('hidden');
+      enterCodeStep.classList.add('hidden');
+      codeInput.value = '';
+      codeInput.classList.remove('error');
+      showCodeMsg('');
+      stopResendCooldown();
+    }
+
     function resetEmailStatus() {
       emailInput.classList.remove('error', 'success', 'checking');
       [checkingIcon, successIcon, errorIcon, checkingMsg, missingMsg, existsMsg]
         .forEach(el => el.classList.add('hidden'));
+      resetCodeStep();
       setPasswordSectionVisible(false);
+    }
+
+    async function postJson(url, body) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify(body),
+      });
+      let data = {};
+      try { data = await response.json(); } catch (e) {}
+
+      if (!response.ok) {
+        const message = response.status === 429 ? 'Too many attempts. Please wait a few minutes and try again.'
+          : response.status === 419 ? 'This page has expired. Please reload it and try again.'
+          : (data.message || 'Something went wrong. Please try again.');
+        throw Object.assign(new Error(message), { data });
+      }
+      return data;
     }
 
     async function checkEmail(email) {
@@ -722,22 +843,94 @@
           emailInput.classList.add('success');
           successIcon.classList.remove('hidden');
           existsMsg.classList.remove('hidden');
-          setPasswordSectionVisible(true);
+          codeSection.classList.add('visible');
         } else {
           emailInput.classList.add('error');
           errorIcon.classList.remove('hidden');
           missingMsg.classList.remove('hidden');
-          setPasswordSectionVisible(false);
         }
       } catch (error) {
         checkingIcon.classList.add('hidden');
         checkingMsg.classList.add('hidden');
         emailInput.classList.remove('checking');
-        setPasswordSectionVisible(false);
       } finally {
         isChecking = false;
       }
     }
+
+    async function sendCode() {
+      const email = emailInput.value.trim();
+      sendCodeBtn.disabled = true;
+      resendBtn.disabled = true;
+      showCodeMsg('');
+
+      try {
+        await postJson(`{{ route('forgot-password.send-code') }}`, { email });
+        document.getElementById('codeSentTo').textContent = email;
+        sendCodeStep.classList.add('hidden');
+        enterCodeStep.classList.remove('hidden');
+        codeInput.value = '';
+        codeInput.classList.remove('error');
+        codeInput.focus();
+        startResendCooldown();
+      } catch (error) {
+        showCodeMsg(error.message);
+        resendBtn.disabled = false;
+      } finally {
+        sendCodeBtn.disabled = false;
+      }
+    }
+
+    function showVerified(email) {
+      stopResendCooldown();
+      codeSection.classList.remove('visible');
+      // Locked from here: the proof belongs to this address only. Reload to start over.
+      emailInput.value = email;
+      emailInput.readOnly = true;
+      emailInput.classList.add('success');
+      successIcon.classList.remove('hidden');
+      existsMsg.classList.remove('hidden');
+      existsMsg.lastElementChild.textContent = 'Email verified. Set your new password.';
+      setPasswordSectionVisible(true);
+    }
+
+    async function verifyCode() {
+      const code = codeInput.value.trim();
+      codeInput.classList.remove('error');
+
+      if (!/^\d{6}$/.test(code)) {
+        codeInput.classList.add('error');
+        return showCodeMsg('Enter the 6-digit code from your email.');
+      }
+
+      verifyCodeBtn.disabled = true;
+      try {
+        await postJson(`{{ route('forgot-password.verify-code') }}`, { email: emailInput.value.trim(), code });
+        showVerified(emailInput.value.trim());
+        document.getElementById('newPassword').focus();
+      } catch (error) {
+        codeInput.classList.add('error');
+        showCodeMsg(error.message);
+        // The server dropped the code; let them ask for a new one straight away.
+        if (error.data && error.data.expired) stopResendCooldown();
+      } finally {
+        verifyCodeBtn.disabled = false;
+      }
+    }
+
+    sendCodeBtn.addEventListener('click', sendCode);
+    resendBtn.addEventListener('click', sendCode);
+    verifyCodeBtn.addEventListener('click', verifyCode);
+
+    codeInput.addEventListener('input', function () {
+      this.value = this.value.replace(/\D/g, '').slice(0, 6);
+    });
+    codeInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        verifyCode();
+      }
+    });
 
     emailInput.addEventListener('input', function () {
       const email = this.value.trim();
@@ -755,18 +948,24 @@
 
     emailInput.addEventListener('blur', function () {
       const email = this.value.trim();
-      if (!email || isChecking) return;
+      if (!email || isChecking || this.readOnly || codeSection.classList.contains('visible')) return;
       if (email.includes('@') && email.includes('.') && email.length > 5) {
         checkEmail(email);
       }
     });
 
-    /* UX guard only — forgotPasswordSubmit() re-runs the same check server-side. */
+    /* UX guard only — forgotPasswordSubmit() checks the verified code server-side. */
     resetForm.addEventListener('submit', function (e) {
       if (!passwordSection.classList.contains('visible')) {
         e.preventDefault();
       }
     });
+
+    if (verifiedEmail) {
+      showVerified(verifiedEmail);
+    } else if (emailInput.value.trim()) {
+      checkEmail(emailInput.value.trim());
+    }
 
     function togglePasswordVisibility(inputId, btn) {
       const input = document.getElementById(inputId);
