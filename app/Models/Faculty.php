@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * A faculty row of user_information. The primary key is user_information_id — students
@@ -165,18 +166,27 @@ class Faculty extends UserInformation
      * since a tab's block is read against its owner's (FacultyClass::block_letter),
      * and students, teams and tasks key on faculty_id, so nothing else moves.
      *
+     * The deleted faculty's students are handed over first (adoptOrphans), so the
+     * faculty who moves down takes them along with the block.
+     *
      * Run at sign-in and on the dean's pages: a delete made outside the app fires no
      * model event to catch.
      */
     public static function closeBlockGaps(): void
     {
         DB::transaction(function () {
-            $faculty = static::with('classes')
+            $load = fn () => static::with('classes')
                 ->whereNotNull('block')
                 ->where('block', '!=', '')
                 ->lockForUpdate()
                 ->get()
-                ->sortBy(fn (self $f) => static::letterIndex(trim((string) $f->block)));
+                ->sortBy(fn (self $f) => static::letterIndex(trim((string) $f->block)))
+                ->values();
+
+            $faculty = $load();
+            if (static::adoptOrphans($faculty)) {
+                $faculty = $load();
+            }
 
             $next = 0;
             foreach ($faculty as $f) {
@@ -186,10 +196,123 @@ class Faculty extends UserInformation
                 if (strtoupper(trim((string) $f->block)) !== $block) {
                     $f->update(['block' => $block]);
                 }
-                // Extra tabs (Block B in Block A's tabs) hold the blocks after their own.
-                $next += 1 + (int) $f->classes->map(fn (FacultyClass $c) => static::letterIndex($c->letter ?: 'A'))->max();
+                $next += static::blockSpan($f);
             }
         });
+    }
+
+    /** How many blocks a faculty's tabs cover: extra tabs (Block B in Block A's) hold the ones after their own. */
+    private static function blockSpan(self $faculty): int
+    {
+        return 1 + (int) $faculty->classes->map(fn (FacultyClass $c) => static::letterIndex($c->letter ?: 'A'))->max();
+    }
+
+    /**
+     * Hand students left with no faculty to one that has a block. True when any moved.
+     *
+     * Deleting a faculty in the database nulls their students' faculty_id and
+     * faculty_class_id, and their team memberships' faculty_id, so the students and
+     * teams survive but no faculty lists them (Faculty 2's dashboard read 0 students).
+     * They were the deleted faculty's block, so:
+     * - with a vacant block, the first faculty after it takes that block over and
+     *   their own tabs keep their blocks (they become this faculty's later tabs);
+     * - with none (the gap was already closed), the last faculty takes them: as their
+     *   own block when they have no students yet, else as the block after their last.
+     * Memberships and every team-owned row whose faculty is gone (hotel rows carry no
+     * foreign key) follow the team, and the groups row the delete cascaded away is
+     * made again. Tasks and team templates that cascaded are gone for good.
+     *
+     * ponytail: all orphans of one run land in one block; two faculty deleted between
+     * runs share it. Split by stale faculty_id if that ever happens.
+     */
+    private static function adoptOrphans($faculty): bool
+    {
+        $ids = static::pluck('user_information_id')->all();
+        $stale = fn ($q) => $q->whereNull('faculty_id')->orWhereNotIn('faculty_id', $ids);
+        $orphans = Student::where($stale)->pluck('user_information_id')->all();
+        if ($orphans === [] || $faculty->isEmpty()) {
+            return false;
+        }
+
+        $next = 0;
+        $gap = null;
+        foreach ($faculty as $f) {
+            if (static::letterIndex(trim((string) $f->block)) > $next) {
+                [$gap, $to] = [$next, $f];
+                break;
+            }
+            $next += static::blockSpan($f);
+        }
+        $to ??= $faculty->last();
+        $toId = (int) $to->user_information_id;
+
+        // Teams: a name the receiver already uses gets " (Adopted)" added.
+        $taken = DB::table('groups')->where('faculty_id', $toId)->pluck('group_name')
+            ->merge(DB::table('student_groups')->where('faculty_id', $toId)->pluck('group_name'))
+            ->unique()->all();
+        $teams = DB::table('student_groups')->whereIn('student_id', $orphans)->distinct()->pluck('group_name');
+        $tables = Group::teamOwnedTables();
+        foreach ($teams as $team) {
+            $renamed = $team;
+            for ($n = 2; in_array($renamed, $taken, true); $n++) {
+                $renamed = $team . ' (Adopted)' . ($n > 2 ? ' ' . $n : '');
+            }
+            $taken[] = $renamed;
+            foreach ($tables as $name) {
+                DB::table($name)->where('group_name', $team)->where($stale)
+                    ->update(['faculty_id' => $toId, 'group_name' => $renamed]);
+            }
+            $groupId = Group::firstOrCreate(['group_name' => $renamed, 'faculty_id' => $toId])->group_id;
+            foreach ($tables as $name) {
+                if (Schema::hasColumn($name, 'group_id')) {
+                    DB::table($name)->where('faculty_id', $toId)->where('group_name', $renamed)
+                        ->whereNull('group_id')->update(['group_id' => $groupId]);
+                }
+            }
+        }
+        // A student's own tasks outside any team follow them too.
+        DB::table('tasks')->whereIn('student_id', $orphans)->whereNull('group_name')->where($stale)
+            ->update(['faculty_id' => $toId]);
+
+        // Tabs: empty ones give way. The receiver's own block drops to the vacant
+        // one, and every tab they keep is re-lettered from it so it stays its block.
+        FacultyClass::where('faculty_id', $toId)->whereDoesntHave('students')->delete();
+        $kept = FacultyClass::where('faculty_id', $toId)->get();
+        $own = static::letterIndex(trim((string) $to->block));
+        $base = $gap ?? $own;
+        $at = $gap ?? ($kept->isEmpty() ? $own : $own + static::blockSpan($to->setRelation('classes', $kept)));
+
+        // (faculty_id, letter) is unique, so park every tab before re-lettering.
+        $letters = $kept->mapWithKeys(fn (FacultyClass $c) => [$c->faculty_class_id => static::letterIndex($c->letter ?: 'A')]);
+        foreach ($kept as $class) {
+            $class->update(['letter' => '#' . $class->faculty_class_id]);
+        }
+        foreach ($kept as $class) {
+            $class->update(['letter' => static::letterAt($letters[$class->faculty_class_id] + $own - $base)]);
+        }
+        $to->update(['block' => static::letterAt($base)]);
+
+        $class = FacultyClass::create([
+            'faculty_id' => $toId,
+            'name' => 'Block ' . static::letterAt($at),
+            'letter' => static::letterAt($at - $base),
+            'capacity' => FacultyClass::CAPACITY,
+            'status' => 'open',
+            'sort_order' => 0,
+        ]);
+        Student::whereIn('user_information_id', $orphans)
+            ->update(['faculty_id' => $toId, 'faculty_class_id' => $class->faculty_class_id]);
+
+        // Tabs of the deleted faculty that outlived them (no foreign key) are empty now.
+        FacultyClass::whereNotIn('faculty_id', $ids)->delete();
+
+        $order = 0;
+        foreach (FacultyClass::where('faculty_id', $toId)->get()->sortBy(fn ($c) => static::letterIndex($c->letter)) as $tab) {
+            $tab->update(['sort_order' => ++$order]);
+        }
+        FacultyClass::reconcileForFaculty($toId);
+
+        return true;
     }
 
     /**
