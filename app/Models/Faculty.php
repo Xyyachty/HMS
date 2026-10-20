@@ -174,6 +174,17 @@ class Faculty extends UserInformation
      */
     public static function closeBlockGaps(): void
     {
+        // A repair that fails must not take sign-in or the Users page down with it:
+        // it rolls back, is logged, and is tried again on the next run.
+        try {
+            static::closeBlockGapsNow();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    private static function closeBlockGapsNow(): void
+    {
         DB::transaction(function () {
             $load = fn () => static::with('classes')
                 ->whereNotNull('block')
@@ -258,9 +269,21 @@ class Faculty extends UserInformation
                 $renamed = $team . ' (Adopted)' . ($n > 2 ? ' ' . $n : '');
             }
             $taken[] = $renamed;
+            // Rows left by every faculty ever deleted share names like "Team 1"; only
+            // the newest deleted faculty's are this team's. Moving all of them broke
+            // unique keys (hotel_customers_team_email_unique) and 500'd the page.
+            $from = collect($tables)->map(fn ($name) => DB::table($name)->where('group_name', $team)
+                ->whereNotIn('faculty_id', $ids)->max('faculty_id'))->max();
             foreach ($tables as $name) {
-                DB::table($name)->where('group_name', $team)->where($stale)
-                    ->update(['faculty_id' => $toId, 'group_name' => $renamed]);
+                $rows = DB::table($name)->where('group_name', $team);
+                if ($name === 'student_groups') {
+                    $rows->whereIn('student_id', $orphans)->where($stale);
+                } elseif ($from !== null) {
+                    $rows->where('faculty_id', $from);
+                } else {
+                    continue;
+                }
+                $rows->update(['faculty_id' => $toId, 'group_name' => $renamed]);
             }
             $groupId = Group::firstOrCreate(['group_name' => $renamed, 'faculty_id' => $toId])->group_id;
             foreach ($tables as $name) {
