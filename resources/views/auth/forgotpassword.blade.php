@@ -3,367 +3,680 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hotel Management System — Forgot Password</title>
+  <title>SPC Hotel | Forgot Password</title>
   <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}" />
-  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Manrope', 'sans-serif'] },
-          colors: {
-            brand: '#DB2777',
-            'brand-light': '#F472B6',
-            'brand-dark': '#9D174D',
-            'brand-soft': '#FDF2F8',
-            'rose-accent': '#FB7185',
-            'plum-accent': '#A855F7',
-          },
-        }
-      }
-    }
-  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500;1,600&display=swap" rel="stylesheet" />
   <style>
-    ::selection { background: #DB2777; color: #fff; }
-    body { font-family: 'Manrope', sans-serif; }
+    /* Same wine-and-gold system as landingpage.blade.php, self-contained for the
+       same reason: public/css/app.css is a frozen Tailwind build. */
+    :root {
+      --wine-900: #4A0D1C;
+      --wine-800: #5E1024;
+      --wine-700: #7B1730;
+      --wine-600: #9E1B3C;
+      --rose-500: #C4425E;
+      --gold-500: #C9A45C;
+      --gold-300: #E4C97E;
+      --gold-100: #F2E3BE;
 
-    .brand-gradient { background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D); }
-    .brand-gradient-alt { background: linear-gradient(135deg, #FB7185, #DB2777, #A855F7); }
+      --cream: #FDF6F3;
+      --cream-2: #FBEEE9;
+      --surface: #FFFFFF;
 
-    .gradient-text {
-      background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+      --ink: #2A1118;
+      --ink-soft: #6B4A54;
+      --ink-muted: #7A6068;
 
-    .input-field { transition: all 0.2s ease; }
-    .input-field:focus {
-      border-color: #DB2777;
-      box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.12);
-    }
-    .input-field.error {
-      border-color: #EF4444;
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-    }
-    .input-field.success {
-      border-color: #22C55E;
-      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
-    }
-    .input-field.checking {
-      border-color: #F59E0B;
-      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
-    }
-    .input-field:disabled {
-      background: #F8FAFC;
-      color: #64748B;
-      cursor: not-allowed;
-      opacity: 0.8;
+      --r-card: 16px;
+      --r-input: 12px;
+      --r-pill: 999px;
+
+      --ease: cubic-bezier(.16, 1, .3, 1);
+      --gutter: clamp(18px, 3.2vw, 64px);
     }
 
-    @keyframes floatA {
-      0%, 100% { transform: translate(0, 0) rotate(0deg); }
-      33% { transform: translate(15px, -20px) rotate(5deg); }
-      66% { transform: translate(-10px, 10px) rotate(-3deg); }
-    }
-    @keyframes floatB {
-      0%, 100% { transform: translate(0, 0) rotate(0deg); }
-      33% { transform: translate(-20px, 15px) rotate(-5deg); }
-      66% { transform: translate(10px, -10px) rotate(3deg); }
-    }
-    @keyframes floatC {
-      0%, 100% { transform: translate(0, 0) rotate(0deg); }
-      50% { transform: translate(10px, 15px) rotate(8deg); }
-    }
-    .float-a { animation: floatA 8s ease-in-out infinite; }
-    .float-b { animation: floatB 10s ease-in-out infinite; }
-    .float-c { animation: floatC 6s ease-in-out infinite; }
+    *, *::before, *::after { box-sizing: border-box; }
 
-    .strength-bar { transition: width 0.4s ease, background 0.4s ease; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-family: 'Manrope', system-ui, sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner { animation: spin 0.7s linear infinite; }
+    ::selection { background: var(--wine-700); color: #dadada }
 
+    .hidden { display: none !important; }
+
+    .display {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      letter-spacing: -.01em;
+    }
+
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
     @keyframes scaleIn {
       0% { transform: scale(0); opacity: 0; }
-      60% { transform: scale(1.15); }
+      60% { transform: scale(1.12); }
       100% { transform: scale(1); opacity: 1; }
     }
-    @keyframes fadeUp {
-      0% { transform: translateY(20px); opacity: 0; }
-      100% { transform: translateY(0); opacity: 1; }
-    }
-    .anim-scale { animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    .anim-fade-1 { animation: fadeUp 0.5s ease-out 0.3s forwards; opacity: 0; }
-    .anim-fade-2 { animation: fadeUp 0.5s ease-out 0.5s forwards; opacity: 0; }
-    .anim-fade-3 { animation: fadeUp 0.5s ease-out 0.7s forwards; opacity: 0; }
-    .anim-fade-4 { animation: fadeUp 0.5s ease-out 0.9s forwards; opacity: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin .7s linear infinite; }
 
-    @keyframes toastIn {
-      0% { transform: translateY(20px); opacity: 0; }
-      100% { transform: translateY(0); opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+      }
     }
-    @keyframes toastOut {
-      0% { transform: translateY(0); opacity: 1; }
-      100% { transform: translateY(-20px); opacity: 0; }
-    }
-    .toast-in { animation: toastIn 0.4s ease-out forwards; }
-    .toast-out { animation: toastOut 0.3s ease-in forwards; }
 
-    /* Reveal animation for password fields */
+    /* ---------- Navigation (mirrors the landing page) --------------------- */
+    .nav {
+      position: relative;
+      z-index: 50;
+      height: 72px;
+      overflow: hidden;
+      background: linear-gradient(94deg, var(--wine-900) 0%, var(--wine-800) 46%, var(--wine-700) 100%);
+      border-bottom: 1px solid rgba(201, 164, 92, .38);
+      box-shadow: 0 10px 34px rgba(74, 13, 28, .22);
+    }
+    .nav::after {
+      content: '';
+      position: absolute;
+      top: -64px;
+      right: -40px;
+      width: 340px;
+      height: 200px;
+      border-radius: 0 0 0 100%;
+      background: linear-gradient(210deg, rgba(228, 201, 126, .42), rgba(196, 66, 94, .30) 55%, transparent 78%);
+      pointer-events: none;
+    }
+    .nav__inner {
+      position: relative;
+      z-index: 1;
+      height: 72px;
+      padding: 0 var(--gutter);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      text-decoration: none;
+    }
+    .brand img { height: 42px; width: auto; object-fit: contain; }
+    .brand__name {
+      display: block;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.32rem;
+      font-weight: 700;
+      line-height: 1;
+      color: #fff;
+    }
+    .brand__sub {
+      display: block;
+      margin-top: 4px;
+      font-size: .58rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--gold-300);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 0;
+      border-radius: var(--r-pill);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      text-decoration: none;
+      transition: transform .2s var(--ease), box-shadow .2s var(--ease), background-color .2s ease;
+    }
+    .btn:active { transform: translateY(1px) scale(.99); }
+
+    .btn--back {
+      flex: 0 0 auto;
+      padding: 9px 20px 9px 16px;
+      font-size: .8rem;
+      color: #000;
+      background: linear-gradient(120deg, var(--gold-300), var(--gold-500));
+      border: 1px solid var(--gold-300);
+      box-shadow: 0 6px 18px rgba(74, 13, 28, .2);
+    }
+    .btn--back:hover { background: var(--gold-500); }
+
+    .btn--submit {
+      width: 100%;
+      height: 50px;
+      font-size: .82rem;
+      text-transform: uppercase;
+      color: #000;
+      background: linear-gradient(120deg, var(--gold-300), var(--gold-500));
+      border: 1px solid var(--gold-300);
+      box-shadow: 0 12px 28px rgba(94, 16, 36, .26);
+    }
+    .btn--submit:hover { transform: translateY(-1px); background: var(--gold-500); }
+    .btn--submit .iconify { font-size: 1.1rem; }
+
+    /* ---------- Layout ---------------------------------------------------- */
+    .page {
+      flex: 1 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* Left: the landing hero's photograph under a wine wash. */
+    .aside {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+      padding: 56px var(--gutter);
+      color: #fff;
+    }
+    .aside > img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .aside::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: linear-gradient(180deg, rgba(74, 13, 28, .35) 0%, rgba(74, 13, 28, .78) 55%, rgba(74, 13, 28, .94) 100%);
+    }
+    .aside__copy {
+      position: relative;
+      z-index: 2;
+      max-width: 30rem;
+      animation: riseIn .8s var(--ease) both;
+    }
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 0 0 18px;
+      font-size: .66rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--gold-300);
+    }
+    .eyebrow::after {
+      content: '';
+      flex: 0 1 84px;
+      height: 1px;
+      background: linear-gradient(90deg, var(--gold-500), transparent);
+    }
+    .aside h1 {
+      margin: 0 0 16px;
+      font-size: clamp(2rem, 3.2vw, 3rem);
+      line-height: 1.08;
+    }
+    .aside h1 span {
+      display: block;
+      background: linear-gradient(96deg, var(--gold-300), var(--gold-500) 52%, var(--gold-300));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+    }
+    .aside__lead {
+      margin: 0 0 28px;
+      font-size: .98rem;
+      line-height: 1.68;
+      color: rgba(255, 255, 255, .8);
+    }
+    .tips { margin: 0; padding: 0; list-style: none; }
+    .tips li {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      font-size: .82rem;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, .82);
+    }
+    .tips li + li { border-top: 1px solid rgba(228, 201, 126, .22); }
+    .tips__icon {
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--gold-500);
+      border-radius: var(--r-pill);
+      color: var(--gold-300);
+    }
+    .tips__icon .iconify { font-size: 1.15rem; }
+
+    /* Right: the form on cream, in a card like the landing value cards. */
+    .main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 56px var(--gutter);
+    }
+    .card {
+      width: 100%;
+      max-width: 30rem;
+      padding: 38px 36px;
+      border: 1px solid rgba(201, 164, 92, .32);
+      border-radius: var(--r-card);
+      background: linear-gradient(168deg, #fff 0%, var(--cream) 100%);
+      box-shadow: 0 18px 46px rgba(94, 16, 36, .12);
+      animation: riseIn .8s var(--ease) .1s both;
+    }
+    .card__head { text-align: center; margin-bottom: 28px; }
+    .card__icon {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 18px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--r-pill);
+      border: 2px solid var(--gold-500);
+      background: linear-gradient(140deg, var(--wine-800), var(--wine-600));
+      color: var(--gold-300);
+      box-shadow: inset 0 0 0 3px rgba(253, 246, 243, .9);
+    }
+    .card__icon .iconify { font-size: 1.6rem; }
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: clamp(1.5rem, 2.4vw, 1.9rem);
+      line-height: 1.2;
+      color: var(--wine-800);
+    }
+    .card__lead {
+      margin: 0;
+      font-size: .9rem;
+      line-height: 1.65;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- Fields (same as the landing login drawer) ------------------ */
+    .field { margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+    .field__label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: .68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .field__wrap { position: relative; }
+    .field__wrap > .iconify {
+      position: absolute;
+      top: 50%;
+      left: 14px;
+      transform: translateY(-50%);
+      font-size: 1.1rem;
+      color: var(--ink-muted);
+      pointer-events: none;
+    }
+    .input-field {
+      width: 100%;
+      height: 48px;
+      padding: 0 46px 0 40px;
+      font-family: 'Manrope', sans-serif;
+      font-size: .9rem;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid #DCC8CD;
+      border-radius: var(--r-input);
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    .input-field::placeholder { color: var(--ink-muted); }
+    .input-field:focus {
+      outline: none;
+      border-color: #111;
+      box-shadow: 0 0 0 3px rgba(17, 17, 17, .10);
+    }
+    .input-field.error   { border-color: #C0392B; box-shadow: 0 0 0 3px rgba(192, 57, 43, .12); }
+    .input-field.success { border-color: #2E7D4F; box-shadow: 0 0 0 3px rgba(46, 125, 79, .12); }
+    .input-field.checking { border-color: var(--gold-500); box-shadow: 0 0 0 3px rgba(201, 164, 92, .18); }
+
+    .field__status, .field__toggle {
+      position: absolute;
+      top: 50%;
+      right: 12px;
+      transform: translateY(-50%);
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      font-size: 1.15rem;
+    }
+    .field__toggle {
+      border: 0;
+      background: none;
+      color: var(--ink-muted);
+      cursor: pointer;
+    }
+    .field__toggle:hover { color: var(--wine-700); }
+    .status--checking { color: var(--gold-500); }
+    .status--ok { color: #2E7D4F; }
+    .status--bad { color: #C0392B; }
+
+    .field__msg {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin: 7px 0 0;
+      font-size: .72rem;
+      font-weight: 600;
+    }
+    .field__msg .iconify { font-size: .9rem; flex: 0 0 auto; }
+    .field__msg--checking { color: #9A7432; }
+    .field__msg--bad { color: #C0392B; }
+    .field__msg--ok { color: #2E7D4F; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      font-size: .64rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--gold-500);
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(201, 164, 92, .4);
+    }
+
+    /* Password fields stay closed until the email checks out. */
     .reveal-section {
       max-height: 0;
       opacity: 0;
       overflow: hidden;
-      transition: max-height 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease, margin 0.4s ease;
-      margin-top: 0;
+      transition: max-height .6s var(--ease), opacity .4s ease, margin .4s ease;
+      /* Side and bottom room so the clip box doesn't cut the button's shadow. */
+      margin: 0 -20px;
+      padding: 0 20px;
     }
     .reveal-section.visible {
-      max-height: 600px;
+      max-height: 640px;
       opacity: 1;
-      margin-top: 1.5rem;
+      margin-top: 24px;
+      margin-bottom: -20px;
+      padding-bottom: 32px;
     }
+    .reveal-section .btn--submit { margin-top: 8px; }
 
-    /* Status icon fade */
-    .status-icon {
-      transition: opacity 0.2s ease, transform 0.2s ease;
+    /* ---------- Success ---------------------------------------------------- */
+    .done { text-align: center; }
+    .done__badge {
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 24px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--r-pill);
+      border: 2px solid var(--gold-500);
+      background: linear-gradient(140deg, var(--wine-800), var(--wine-600));
+      color: var(--gold-300);
+      box-shadow: inset 0 0 0 4px rgba(253, 246, 243, .9), 0 16px 36px rgba(94, 16, 36, .28);
+      animation: scaleIn .6s var(--ease) both;
     }
-    .status-icon.hidden {
-      opacity: 0;
-      transform: scale(0.8);
-      pointer-events: none;
-      position: absolute;
+    .done__badge .iconify { font-size: 2.6rem; }
+    .done__note {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 24px 0;
+      padding: 16px 18px;
+      text-align: left;
+      border: 1px solid rgba(201, 164, 92, .32);
+      border-radius: var(--r-input);
+      background: #fff;
     }
-    .status-icon.visible {
-      opacity: 1;
-      transform: scale(1);
-      position: relative;
-    }
+    .done__note .tips__icon { background: linear-gradient(140deg, var(--wine-800), var(--wine-600)); }
+    .done__note strong { display: block; font-size: .86rem; color: var(--wine-800); }
+    .done__note span { font-size: .76rem; color: var(--ink-muted); }
 
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #FDF2F8; }
-    ::-webkit-scrollbar-thumb { background: #DB2777; border-radius: 99px; }
+    /* ---------- Footer (mirrors the landing page) ------------------------- */
+    .footer {
+      padding: 22px var(--gutter);
+      background: var(--cream-2);
+      border-top: 1px solid rgba(201, 164, 92, .34);
+    }
+    .footer__inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .footer__brand { display: flex; align-items: center; gap: 12px; }
+    .footer__brand img { height: 36px; width: auto; object-fit: contain; }
+    .footer__brand p { margin: 0; font-size: .68rem; font-weight: 700; color: var(--wine-800); }
+    .footer__brand span { display: block; margin-top: 2px; font-size: .64rem; font-weight: 500; color: var(--ink-muted); }
+    .footer__meta { margin: 0; font-size: .66rem; line-height: 1.7; color: var(--ink-muted); }
+    .footer__note { margin: 0; font-size: .66rem; font-weight: 700; color: var(--ink-soft); }
+
+    /* ---------- Responsive ------------------------------------------------ */
+    @media (max-width: 900px) {
+      .page { grid-template-columns: 1fr; }
+      .aside { display: none; }
+      .main { padding: 36px var(--gutter) 48px; }
+    }
+    @media (max-width: 620px) {
+      .brand__sub { display: none; }
+      .btn--back .btn__label { display: none; }
+      .btn--back { padding: 9px 12px; }
+      .card { padding: 30px 22px; }
+      .footer__inner { justify-content: center; text-align: center; }
+    }
   </style>
 @include('partials.no-horizontal-scroll')
 </head>
-<body class="min-h-screen bg-white flex">
+<body>
 
-  <!-- Toast Container -->
-  <div id="toastContainer" class="fixed top-6 right-6 z-[200] flex flex-col gap-3 pointer-events-none"></div>
-
-
-  <!-- ==================== LEFT PANEL ==================== -->
-  <div class="hidden lg:flex lg:w-[45%] relative overflow-hidden brand-gradient-alt items-center justify-center p-12 xl:p-16">
-    <div class="absolute inset-0">
-      <div class="float-a absolute top-16 left-16 w-20 h-20 border-2 border-white/10 rounded-3xl"></div>
-      <div class="float-b absolute top-32 right-24 w-14 h-14 bg-white/5 rounded-2xl"></div>
-      <div class="float-c absolute bottom-32 left-24 w-16 h-16 border-2 border-white/10 rounded-full"></div>
-      <div class="float-a absolute bottom-20 right-16 w-24 h-24 bg-white/5 rounded-3xl"></div>
-      <div class="float-b absolute top-1/2 left-8 w-10 h-10 bg-white/10 rounded-xl"></div>
-      <div class="float-c absolute top-1/3 right-12 w-12 h-12 border border-white/10 rounded-2xl"></div>
-    </div>
-    <div class="absolute inset-0 opacity-[0.03]" style="background-image: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');"></div>
-
-    <div class="relative z-10 max-w-sm text-center">
-      <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm mx-auto mb-8" />
-
-      <h1 class="text-4xl font-extrabold text-white tracking-tight mb-3">Reset Your<br/>Password</h1>
-      <p class="text-base text-white/60 font-light leading-relaxed mb-10">No worries — it happens to the best of us. We'll get you back into your account in no time.</p>
-
-      <div class="space-y-3 text-left">
-        <div class="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-xl border border-white/10 backdrop-blur-sm">
-          <span class="iconify text-white/70 text-lg" data-icon="mdi:shield-check-outline"></span>
-          <p class="text-xs text-white/60 font-light">Your data is safe — we never share your credentials</p>
-        </div>
-        <div class="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-xl border border-white/10 backdrop-blur-sm">
-          <span class="iconify text-white/70 text-lg" data-icon="mdi:magnify"></span>
-          <p class="text-xs text-white/60 font-light">We automatically verify your email as you type</p>
-        </div>
-        <div class="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-xl border border-white/10 backdrop-blur-sm">
-          <span class="iconify text-white/70 text-lg" data-icon="mdi:key-outline"></span>
-          <p class="text-xs text-white/60 font-light">Choose a strong password you haven't used before</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ==================== RIGHT PANEL ==================== -->
-  <div class="w-full lg:w-[55%] flex flex-col min-h-screen">
-    <!-- Top bar -->
-    <div class="flex items-center justify-between px-6 md:px-12 py-5 border-b border-slate-100">
-      <div class="flex items-center gap-2.5 lg:hidden">
-        <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-10 w-auto object-contain drop-shadow-sm" />
-        <span class="text-sm font-bold tracking-tight">Hotel Management System</span>
-      </div>
-      <div class="hidden lg:block"></div>
-      <a href="{{ route('login') }}" class="text-sm text-brand font-semibold hover:text-brand-dark transition-colors flex items-center gap-1">
+  <!-- ==================== NAVIGATION ==================== -->
+  <nav class="nav">
+    <div class="nav__inner">
+      <a href="{{ url('/') }}" class="brand">
+        <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" />
+        <span>
+          <span class="brand__name">SPC HOTEL</span>
+          <span class="brand__sub">College of Hospitality &amp; Tourism Management</span>
+        </span>
+      </a>
+      <a href="{{ route('login') }}" class="btn btn--back" aria-label="Back to Log In">
         <span class="iconify" data-icon="mdi:arrow-left"></span>
-        Back to Log In
+        <span class="btn__label">Back to Log In</span>
       </a>
     </div>
+  </nav>
 
-    <!-- Form container -->
-    <div class="flex-1 flex items-center justify-center px-6 md:px-12 py-8 md:py-12">
-      <div class="w-full max-w-md">
+  <main class="page">
+
+    <!-- ==================== LEFT: PHOTO ==================== -->
+    <aside class="aside">
+      <img src="{{ asset('chtm-building.png') }}" alt="" />
+      <div class="aside__copy">
+        <p class="eyebrow">Account Recovery</p>
+        <h1 class="display">Reset your password. <span>We'll get you back in.</span></h1>
+        <p class="aside__lead">It happens to the best of us. Confirm your email and choose a new password to return to the simulation.</p>
+        <ul class="tips">
+          <li>
+            <span class="tips__icon"><span class="iconify" data-icon="mdi:shield-check-outline"></span></span>
+            Your data is safe. We never share your credentials.
+          </li>
+          <li>
+            <span class="tips__icon"><span class="iconify" data-icon="mdi:magnify"></span></span>
+            We verify your email automatically as you type.
+          </li>
+          <li>
+            <span class="tips__icon"><span class="iconify" data-icon="mdi:key-outline"></span></span>
+            Choose a strong password you haven't used before.
+          </li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- ==================== RIGHT: FORM ==================== -->
+    <section class="main">
+      <div class="card">
 
         <!-- ============ MAIN FORM ============ -->
         <div id="formPanel" class="{{ session('password_reset') ? 'hidden' : '' }}">
-          <div class="text-center mb-8">
-            <div class="w-14 h-14 bg-brand-soft rounded-2xl flex items-center justify-center mb-5 mx-auto">
-              <span class="iconify text-brand text-3xl" data-icon="mdi:lock-reset"></span>
-            </div>
-            <h2 class="text-3xl font-bold tracking-tight mb-2">Forgot your password?</h2>
-            <p class="text-slate-500 font-light leading-relaxed">Enter the email address on your account and set your new password.</p>
+          <div class="card__head">
+            <div class="card__icon"><span class="iconify" data-icon="mdi:lock-reset"></span></div>
+            <h2 class="display">Forgot your password?</h2>
+            <p class="card__lead">Enter the email address on your account and set your new password.</p>
           </div>
 
-          <form id="resetForm" method="POST" action="{{ route('forgot-password.submit') }}" class="space-y-0">
+          <form id="resetForm" method="POST" action="{{ route('forgot-password.submit') }}">
             @csrf
 
             <!-- ===== EMAIL FIELD ===== -->
-            <div class="space-y-1.5">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email Address</label>
-              <div class="relative">
-                <span class="iconify absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:email-outline"></span>
-                <input id="emailInput" name="email" type="email" placeholder="you@hms.edu" required autocomplete="email"
-                  value="{{ old('email') }}"
-                  class="input-field w-full h-12 pl-10 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none" />
+            <div class="field">
+              <label for="emailInput" class="field__label">Email Address</label>
+              <div class="field__wrap">
+                <span class="iconify" data-icon="mdi:email-outline"></span>
+                <input id="emailInput" name="email" type="email" placeholder="you@school.edu" required autocomplete="email"
+                  value="{{ old('email') }}" class="input-field" />
 
-                <!-- Status icons inside input -->
-                <div class="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">
-                  <!-- Checking spinner -->
-                  <div id="checkingIcon" class="status-icon hidden">
-                    <span class="iconify spinner text-amber-500 text-lg" data-icon="mdi:loading"></span>
-                  </div>
-                  <!-- Success -->
-                  <div id="emailSuccessIcon" class="status-icon hidden">
-                    <div class="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center">
-                      <span class="iconify text-green-600 text-base" data-icon="mdi:check-circle"></span>
-                    </div>
-                  </div>
-                  <!-- Error -->
-                  <div id="emailErrorIcon" class="status-icon hidden">
-                    <div class="w-7 h-7 bg-red-100 rounded-lg flex items-center justify-center">
-                      <span class="iconify text-red-500 text-base" data-icon="mdi:close-circle"></span>
-                    </div>
-                  </div>
-                </div>
+                <span id="checkingIcon" class="field__status status--checking hidden">
+                  <span class="iconify spinner" data-icon="mdi:loading"></span>
+                </span>
+                <span id="emailSuccessIcon" class="field__status status--ok hidden">
+                  <span class="iconify" data-icon="mdi:check-circle"></span>
+                </span>
+                <span id="emailErrorIcon" class="field__status status--bad hidden">
+                  <span class="iconify" data-icon="mdi:close-circle"></span>
+                </span>
               </div>
-              <!-- Messages -->
-              <div id="emailCheckingMsg" class="hidden flex items-center gap-1">
-                <span class="iconify spinner text-amber-500 text-xs" data-icon="mdi:loading"></span>
-                <span class="text-[10px] text-amber-600 font-medium">Checking your email...</span>
-              </div>
+
+              <p id="emailCheckingMsg" class="field__msg field__msg--checking hidden">
+                <span class="iconify spinner" data-icon="mdi:loading"></span>
+                <span>Checking your email...</span>
+              </p>
               @error('email')
-                <p class="text-[10px] text-red-500 font-medium flex items-center gap-1">
-                  <span class="iconify text-xs" data-icon="mdi:alert-circle-outline"></span>
+                <p class="field__msg field__msg--bad">
+                  <span class="iconify" data-icon="mdi:alert-circle-outline"></span>
                   <span>{{ $message }}</span>
                 </p>
               @enderror
-              <p id="emailMissingMsg" class="text-[10px] text-red-500 font-medium hidden flex items-center gap-1">
-                <span class="iconify text-xs" data-icon="mdi:close-circle"></span>
+              <p id="emailMissingMsg" class="field__msg field__msg--bad hidden">
+                <span class="iconify" data-icon="mdi:close-circle"></span>
                 <span>This account is not registered. Please contact your Faculty.</span>
               </p>
-              <p id="emailExistsMsg" class="text-[10px] text-green-600 font-medium hidden flex items-center gap-1">
-                <span class="iconify text-xs" data-icon="mdi:check-circle-outline"></span>
+              <p id="emailExistsMsg" class="field__msg field__msg--ok hidden">
+                <span class="iconify" data-icon="mdi:check-circle-outline"></span>
                 <span>Email verified. You can reset your password.</span>
               </p>
             </div>
+
             {{-- Stays closed until the email is confirmed to belong to a registered,
                  active account, so there is no form to fill in before that. --}}
-            <div id="passwordSection" class="reveal-section space-y-4">
-              <div class="space-y-4">
-                <!-- Divider -->
-                <div class="flex items-center gap-3">
-                  <div class="flex-1 h-px bg-slate-200"></div>
-                  <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Set New Password</span>
-                  <div class="flex-1 h-px bg-slate-200"></div>
-                </div>
+            <div id="passwordSection" class="reveal-section">
+              <div class="divider">Set New Password</div>
 
-                <!-- New Password -->
-                <div>
-                  <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">New Password</label>
-                  <div class="relative">
-                    <span class="iconify absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:lock-outline"></span>
-                    <input id="newPassword" name="password" type="password" placeholder="Min. 8 characters" required
-                      class="input-field w-full h-12 pl-10 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none" />
-                    <button type="button" onclick="togglePasswordVisibility('newPassword', this)" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
-                      <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                    </button>
-                  </div>
-                  @error('password')
-                    <p class="text-[10px] text-red-500 font-medium mt-1.5 flex items-center gap-1">
-                      <span class="iconify text-xs" data-icon="mdi:alert-circle-outline"></span>
-                      <span>{{ $message }}</span>
-                    </p>
-                  @enderror
+              <div class="field">
+                <label for="newPassword" class="field__label">New Password</label>
+                <div class="field__wrap">
+                  <span class="iconify" data-icon="mdi:lock-outline"></span>
+                  <input id="newPassword" name="password" type="password" placeholder="Min. 8 characters" required class="input-field" />
+                  <button type="button" class="field__toggle" onclick="togglePasswordVisibility('newPassword', this)" aria-label="Toggle password visibility">
+                    <span class="iconify" data-icon="mdi:eye-off-outline"></span>
+                  </button>
                 </div>
-
-                <!-- Confirm Password -->
-                <div>
-                  <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm New Password</label>
-                  <div class="relative">
-                    <span class="iconify absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:lock-check-outline"></span>
-                    <input id="confirmPassword" name="password_confirmation" type="password" placeholder="Re-enter your new password" required
-                      class="input-field w-full h-12 pl-10 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none" />
-                  </div>
-                </div>
-
-                <!-- Reset Button -->
-                <button type="submit" id="resetBtn"
-                  class="w-full h-12 brand-gradient text-white text-sm font-bold uppercase tracking-wider rounded-xl hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-150 shadow-lg shadow-brand/20 flex items-center justify-center gap-2 mt-2">
-                  <span class="iconify text-lg" data-icon="mdi:lock-reset"></span>
-                  Reset Password
-                </button>
+                @error('password')
+                  <p class="field__msg field__msg--bad">
+                    <span class="iconify" data-icon="mdi:alert-circle-outline"></span>
+                    <span>{{ $message }}</span>
+                  </p>
+                @enderror
               </div>
-            </div>
 
+              <div class="field">
+                <label for="confirmPassword" class="field__label">Confirm New Password</label>
+                <div class="field__wrap">
+                  <span class="iconify" data-icon="mdi:lock-check-outline"></span>
+                  <input id="confirmPassword" name="password_confirmation" type="password" placeholder="Re-enter your new password" required class="input-field" />
+                </div>
+              </div>
+
+              <button type="submit" id="resetBtn" class="btn btn--submit">
+                <span class="iconify" data-icon="mdi:lock-reset"></span>
+                Reset Password
+              </button>
+            </div>
           </form>
         </div>
 
-
         <!-- ============ SUCCESS STATE ============ -->
-        <div id="successPanel" class="{{ session('password_reset') ? '' : 'hidden' }}">
-          <div class="text-center py-6">
-            <div class="anim-scale w-24 h-24 mx-auto mb-8 brand-gradient rounded-full flex items-center justify-center shadow-xl shadow-brand/30">
-              <span class="iconify text-white text-5xl" data-icon="mdi:check-bold"></span>
-            </div>
-            <h2 class="anim-fade-1 text-3xl font-bold tracking-tight mb-3">Password Reset!</h2>
-            <p class="anim-fade-2 text-slate-500 font-light leading-relaxed max-w-sm mx-auto mb-8">
-              Your password has been successfully updated. You can now log in with your new credentials.
-            </p>
-            <div class="anim-fade-3 bg-brand-soft rounded-2xl p-5 text-left max-w-sm mx-auto mb-8 border border-brand/10">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                  <span class="iconify text-green-600 text-xl" data-icon="mdi:shield-check"></span>
-                </div>
-                <div>
-                  <p class="text-sm font-semibold text-slate-800">Account Secured</p>
-                  <p class="text-xs text-slate-400 font-light">Password updated just now</p>
-                </div>
-              </div>
-            </div>
-            <div class="anim-fade-4 flex flex-col gap-3 max-w-sm mx-auto">
-              <a href="{{ route('login') }}"
-                class="h-12 brand-gradient text-white text-sm font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-all shadow-lg shadow-brand/20">
-                <span class="iconify text-lg" data-icon="mdi:login"></span>
-                Log In Now
-              </a>
+        <div id="successPanel" class="done {{ session('password_reset') ? '' : 'hidden' }}">
+          <div class="done__badge"><span class="iconify" data-icon="mdi:check-bold"></span></div>
+          <h2 class="display">Password Reset!</h2>
+          <p class="card__lead">Your password has been updated. You can now log in with your new credentials.</p>
+          <div class="done__note">
+            <span class="tips__icon"><span class="iconify" data-icon="mdi:shield-check"></span></span>
+            <div>
+              <strong>Account Secured</strong>
+              <span>Password updated just now</span>
             </div>
           </div>
+          <a href="{{ route('login') }}" class="btn btn--submit">
+            <span class="iconify" data-icon="mdi:login"></span>
+            Log In Now
+          </a>
         </div>
 
       </div>
-    </div>
+    </section>
+  </main>
 
-    <!-- Footer -->
-    <div class="px-6 md:px-12 py-4 border-t border-slate-100">
-      <p class="text-[10px] text-slate-400 text-center">&copy; 2025 Hotel Management System. All rights reserved.</p>
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__brand">
+        <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" />
+        <div>
+          <p>College of Hospitality &amp; Tourism Management</p>
+          <span>SPC Hotel Simulation System</span>
+        </div>
+      </div>
+      <p class="footer__meta">
+        &copy; {{ date('Y') }} Southern de Oro Philippines College. All rights reserved.<br />
+        Developed by: Jun Alexes Orao and Xyron Sandigan
+      </p>
+      <p class="footer__note">For educational purposes only</p>
     </div>
-  </div>
-
+  </footer>
 
   <!-- ==================== SCRIPTS ==================== -->
   <script>
@@ -391,15 +704,8 @@
 
     function resetEmailStatus() {
       emailInput.classList.remove('error', 'success', 'checking');
-      checkingIcon.classList.add('hidden');
-      checkingIcon.classList.remove('visible');
-      successIcon.classList.add('hidden');
-      successIcon.classList.remove('visible');
-      errorIcon.classList.add('hidden');
-      errorIcon.classList.remove('visible');
-      checkingMsg.classList.add('hidden');
-      missingMsg.classList.add('hidden');
-      existsMsg.classList.add('hidden');
+      [checkingIcon, successIcon, errorIcon, checkingMsg, missingMsg, existsMsg]
+        .forEach(el => el.classList.add('hidden'));
       setPasswordSectionVisible(false);
     }
 
@@ -410,7 +716,6 @@
       resetEmailStatus();
       emailInput.classList.add('checking');
       checkingIcon.classList.remove('hidden');
-      checkingIcon.classList.add('visible');
       checkingMsg.classList.remove('hidden');
 
       try {
@@ -423,26 +728,22 @@
         const data = await response.json();
 
         checkingIcon.classList.add('hidden');
-        checkingIcon.classList.remove('visible');
         checkingMsg.classList.add('hidden');
         emailInput.classList.remove('checking');
 
         if (data.exists) {
           emailInput.classList.add('success');
           successIcon.classList.remove('hidden');
-          successIcon.classList.add('visible');
           existsMsg.classList.remove('hidden');
           setPasswordSectionVisible(true);
         } else {
           emailInput.classList.add('error');
           errorIcon.classList.remove('hidden');
-          errorIcon.classList.add('visible');
           missingMsg.classList.remove('hidden');
           setPasswordSectionVisible(false);
         }
       } catch (error) {
         checkingIcon.classList.add('hidden');
-        checkingIcon.classList.remove('visible');
         checkingMsg.classList.add('hidden');
         emailInput.classList.remove('checking');
         setPasswordSectionVisible(false);
