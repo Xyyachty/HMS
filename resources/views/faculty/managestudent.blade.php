@@ -39,21 +39,24 @@
     .bu-notes { margin-top: .875rem; display: grid; gap: .45rem; }
     .bu-notes li { display: flex; align-items: flex-start; gap: .5rem; font-size: 0.7188rem; line-height: 1.5; color: #111; }
     .bu-notes li .iconify { flex: 0 0 auto; font-size: .95rem; color: #4A4643; margin-top: .1rem; }
+    /* One row, not a tall column: stacked, step 1 ran past the footer on a
+       laptop screen and the dialog had to scroll. */
     .bu-drop {
-        margin-top: 1rem; border: 2px dashed #D4D0CD; border-radius: 1.1rem; background: #fff;
-        padding: 2rem 1.25rem; display: flex; flex-direction: column; align-items: center; gap: .4rem;
-        text-align: center; cursor: pointer; transition: border-color .2s ease, background-color .2s ease;
+        margin-top: .875rem; border: 2px dashed #D4D0CD; border-radius: 1.1rem; background: #fff;
+        padding: .875rem 1.25rem; display: flex; align-items: center; gap: .875rem;
+        cursor: pointer; transition: border-color .2s ease, background-color .2s ease;
     }
+    .bu-drop-text { flex: 1 1 auto; min-width: 0; }
     .bu-drop:hover { border-color: #8A817A; background: #F3F2F1; }
     .bu-drop-icon {
-        width: 3.25rem; height: 3.25rem; border-radius: 9999px; margin-bottom: .25rem;
+        width: 2.75rem; height: 2.75rem; border-radius: 9999px; flex: 0 0 auto;
         display: inline-flex; align-items: center; justify-content: center;
         background: #fff; color: #4A4643; font-size: 1.6rem; box-shadow: 0 6px 16px -8px rgba(24,24,24,.35);
     }
     .bu-drop-title { font-size: 0.8438rem; font-weight: 800; color: #111; }
     .bu-drop-sub { font-size: 0.7188rem; color: #6B6B6B; }
     .bu-browse {
-        margin-top: .35rem; display: inline-flex; align-items: center; padding: .45rem .95rem; border-radius: .7rem;
+        flex: 0 0 auto; display: inline-flex; align-items: center; padding: .45rem .95rem; border-radius: .7rem;
         font-size: 0.75rem; font-weight: 800; color: #fff; background: #5F5A55;
     }
     #bulkDropZone.drag-over { border-color: #8A817A; background-color: #F3F2F1; }
@@ -643,8 +646,10 @@
                     ondragleave="bulkDragLeave(event)"
                     ondrop="bulkDrop(event)">
                     <span class="bu-drop-icon"><span class="iconify" data-icon="mdi:cloud-upload-outline"></span></span>
-                    <p class="bu-drop-title">Drag &amp; drop your Excel file here</p>
-                    <p class="bu-drop-sub">.xlsx or .xls, up to 5MB</p>
+                    <div class="bu-drop-text">
+                        <p class="bu-drop-title">Drag &amp; drop your Excel file here</p>
+                        <p class="bu-drop-sub">.xlsx or .xls, up to 5MB</p>
+                    </div>
                     <span class="bu-browse">Browse files</span>
                     <input id="bulkExcelInput" name="excel_file" type="file" accept=".xlsx,.xls,.ods" class="hidden" onchange="bulkFileSelected(this.files[0])">
                 </div>
