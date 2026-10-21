@@ -2039,7 +2039,7 @@
             const modal = document.getElementById('hotelConceptModal');
             if (!modal) return;
             modal.classList.add('hidden');
-            document.body.style.overflow = 'auto';
+            document.body.style.overflow = '';
         }
 
         function hideHotelConceptError() {

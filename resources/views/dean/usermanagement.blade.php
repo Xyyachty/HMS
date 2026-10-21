@@ -954,7 +954,7 @@
     setInterval(pollLiveUsers, 5000);
 
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
-    function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = 'auto'; }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = ''; }
 
     function parseNameParts(fullName) {
         const parts = fullName.trim().split(/\s+/).filter(Boolean);

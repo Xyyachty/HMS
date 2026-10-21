@@ -904,7 +904,7 @@
 
     function closeModal(modalId) {
         document.getElementById(modalId).classList.add('hidden');
-        document.body.style.overflow = 'auto';
+        document.body.style.overflow = '';
     }
 
     document.addEventListener('DOMContentLoaded', function() {

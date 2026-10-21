@@ -4102,7 +4102,7 @@ function openUpdateModal(groupName, memberData) {
 
 function closeUpdateModal() {
     document.getElementById('updateTeamModal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    document.body.style.overflow = '';
 }
 
 function filterUpdateStudentList() {
@@ -4294,7 +4294,7 @@ function openTaskDetailsModal(step) {
 
 function closeTaskDetailsModal(step) {
     document.getElementById('taskDetailsModal-' + step)?.classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    document.body.style.overflow = '';
 }
 
 // ── Search + category filter over the task cards ──
@@ -5500,7 +5500,7 @@ function applyTaskVerdictInPlace(taskId, decision, d) {
 
 function closeTeamModal() {
     document.getElementById('teamInfoModal').classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    document.body.style.overflow = '';
     if (teamModalStale) window.location.reload();
 }
 

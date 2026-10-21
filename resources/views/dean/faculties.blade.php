@@ -972,7 +972,7 @@
 
     function closeTeamModal() {
         document.getElementById('teamInfoModal').classList.add('hidden');
-        document.body.style.overflow = 'auto';
+        document.body.style.overflow = '';
     }
 
     function switchFacultyTab(tab) {
@@ -1039,7 +1039,7 @@
     })();
 
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
-    function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = 'auto'; }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = ''; }
 
     function togglePassword(btn) {
         const input = btn.parentElement.querySelector('input');
