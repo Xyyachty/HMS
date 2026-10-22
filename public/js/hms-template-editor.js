@@ -2122,17 +2122,29 @@
     e.stopPropagation();
     selectElement(el);
     beginHistoryStep();
-    textLines(el); // count a lined heading's lines before any can be deleted
-    el.contentEditable = 'true';
-    el.focus();
+    /* A lined heading is edited line by line, each line its own editing host.
+       Made editable as a whole, clearing a line let the browser delete that
+       line's element, and what was typed next landed inside the line above:
+       still gold and italic on screen (the browser carries the formatting
+       over), but saved as one line, so the hero's second line came back white
+       after a reload. A host cannot delete itself. */
+    const lines = textLines(el); // also counts the lines before any can go
+    const hosts = lines || [el];
+    hosts.forEach((host) => {
+      host.contentEditable = 'true';
+      // An emptied line keeps a height, so the caret has somewhere to sit.
+      if (lines) host.style.minHeight = '1em';
+    });
+    const host = lines ? (lines.find((line) => line.contains(e.target)) || lines[0]) : el;
+    host.focus();
     /* A button takes focus without a caret, so what was typed went nowhere, or
        into the text edited before it. Select the text when the caret is not
        already inside: the label only, so a button's icon is kept. */
     const sel = window.getSelection();
-    if (sel && !(sel.anchorNode && el.contains(sel.anchorNode))) {
-      const slot = textSlot(el);
+    if (sel && !(sel.anchorNode && host.contains(sel.anchorNode))) {
+      const slot = lines ? host : textSlot(el);
       const range = document.createRange();
-      range.selectNodeContents(slot && slot.nodeType === 3 ? slot : el);
+      range.selectNodeContents(slot && slot.nodeType === 3 ? slot : (lines ? host : el));
       sel.removeAllRanges();
       sel.addRange(range);
     }
@@ -2156,16 +2168,24 @@
     const finish = () => {
       clearTimeout(liveSaveTimer);
       textEditEl = null;
-      el.contentEditable = 'false';
-      el.removeEventListener('blur', finish);
+      hosts.forEach((h) => {
+        h.contentEditable = 'false';
+        if (lines) h.style.removeProperty('min-height');
+      });
+      el.removeEventListener('focusout', onFocusOut);
       el.removeEventListener('input', onInput);
       el.removeEventListener('keydown', onKeyDown);
       saveElementState(el);
       selectElement(el);
     };
+    // Clicking from one line of a lined heading into the next is still the same edit.
+    const onFocusOut = (ev) => {
+      if (ev.relatedTarget && el.contains(ev.relatedTarget)) return;
+      finish();
+    };
     el.addEventListener('input', onInput);
     el.addEventListener('keydown', onKeyDown);
-    el.addEventListener('blur', finish);
+    el.addEventListener('focusout', onFocusOut);
   }
 
   /* A '\n' at the caret, inside the line it is on, shown by pre-line. A break
