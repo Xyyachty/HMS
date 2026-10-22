@@ -263,7 +263,7 @@
                                          approve the task there is nothing left to do, so none. --}}
                                     @if($isCompleted)
                                     @elseif($task->is_hotel_concept)
-                                        <button type="button" onclick="showSection('group')"
+                                        <button type="button" onclick="showSection('group'); document.getElementById('conceptTeamCard')?.scrollIntoView({ block: 'start' })"
                                                 title="Write the concepts in My Team"
                                                 class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl brand-gradient text-white text-[0.75rem] font-bold shadow-md shadow-brand/20 hover:opacity-90 transition whitespace-nowrap">
                                             Proceed

@@ -983,7 +983,7 @@
                      drift. Gated on the team, like the dialog it opens: a member with no
                      team has no concepts to write. --}}
                 @if($group)
-                <div id="conceptTeamCard" class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                <div id="conceptTeamCard" class="scroll-mt-24 bg-white rounded-2xl border border-slate-100 overflow-hidden">
                     <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
                         <div class="min-w-0">
                             <h3 class="text-sm font-bold text-slate-800">Hotel Concepts</h3>
