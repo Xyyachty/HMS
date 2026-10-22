@@ -2223,7 +2223,7 @@ function RoomAvailabilityCalendar({ ranges, checkIn, checkOut, onPick }) {
   );
 }
 
-function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
+function RoomDetailModal({ room, addons, capacity, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -2233,6 +2233,7 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
     contactNo: '',
     email: '',
     idNumber: '',
+    guestCount: '1',
     // The stay the guest asked about on the Rooms page. They chose these dates
     // to find this room, so asking for them a second time is asking twice.
     checkIn: stayFrom || '',
@@ -2265,7 +2266,7 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
 
   useEffect(() => {
     setStep('details');
-    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', checkIn: '', checkInTime: '', checkOut: '' });
+    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', guestCount: '1', checkIn: '', checkInTime: '', checkOut: '' });
     setPaymentForm({ type: 'full', amount: '', method: 'Cash', reference: '', payerName: '', notes: '' });
     setAddonLines([]);
     setShowAddons(false);
@@ -2336,6 +2337,11 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
     }
     if (!String(guestForm.checkInTime || '').trim()) {
       if (onToast) onToast('Check-In Time is required.');
+      return;
+    }
+    // The server holds the same line; this just says so before the payment step.
+    if (capacity && Number(guestForm.guestCount) > capacity) {
+      if (onToast) onToast(`${room.name} sleeps ${capacity} guest${capacity === 1 ? '' : 's'}.`);
       return;
     }
     if (rangeHitsBooked(guestForm.checkIn, guestForm.checkOut, bookedSet)) {
@@ -2523,6 +2529,11 @@ function RoomDetailModal({ room, addons, onClose, onChangeStatus, canEditStatus,
                     <label style={fieldLabel}>ID</label>
                     <input type="text" className="booking-input" placeholder="Government / passport ID" value={guestForm.idNumber}
                       onChange={e => updateGuest('idNumber', e.target.value)} required />
+                  </div>
+                  <div>
+                    <label style={fieldLabel}>Guests{capacity ? ` (sleeps ${capacity})` : ''}</label>
+                    <input type="number" className="booking-input" min="1" max={capacity || 99} value={guestForm.guestCount}
+                      onChange={e => updateGuest('guestCount', e.target.value)} required />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
                     <div>
@@ -6009,6 +6020,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
         canReserve={canReserveRooms !== false}
         onRequireGuest={onRequireGuest}
         onReserve={handleReserve}
+        capacity={selectedRoom ? (((categoryDetails || []).find((c) => c && c.name === selectedRoom.category) || {}).capacity || null) : null}
         onToast={onToast}
       />
     </>
@@ -8282,6 +8294,7 @@ function BookingPage({ onToast, rooms, onCreateBooking }) {
         // The form asks for a name and an email; the desk takes the rest on arrival.
         fullName: form.name, contactNo: '', email: form.email, idNumber: '',
         checkIn: form.checkIn, checkOut: form.checkOut, checkInTime: '',
+        guestCount: form.guests,
       },
       null,
       []
@@ -9097,6 +9110,7 @@ function App() {
         },
         check_in: guest.checkIn,
         check_in_time: guest.checkInTime || '',
+        guest_count: parseInt(guest.guestCount, 10) || null,
         check_out: guest.checkOut,
         payment: payment ? {
           type: payment.type,

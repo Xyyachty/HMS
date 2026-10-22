@@ -6,6 +6,7 @@ use App\Models\HotelBooking;
 use App\Models\HotelBookingPayment;
 use App\Models\HotelGuest;
 use App\Models\HotelRoom;
+use App\Models\HotelRoomCategory;
 use App\Models\StudentGroup;
 use Illuminate\Support\Facades\DB;
 
@@ -59,7 +60,7 @@ class HotelBookingDesk
      * Takes a booking: guest record, stay, and the payment collected up front.
      *
      * $guest keys: full_name, contact_no, email, id_number.
-     * $stay  keys: check_in, check_in_time, check_out, booked_by, notes.
+     * $stay  keys: check_in, check_in_time, check_out, guest_count, booked_by, notes.
      * $payment (optional) keys: type, amount_paid, method, reference, payer_name, notes.
      * $addons (optional) lines: [['addon_id' => int, 'qty' => int], ...]. Attaching them
      * here rather than in a second request means a folding bed that ran out takes the
@@ -74,8 +75,25 @@ class HotelBookingDesk
         array $addons = []
     ): HotelBooking {
         $scope = self::scope($membership);
+        $guestCount = isset($stay['guest_count']) ? max(1, (int) $stay['guest_count']) : null;
 
-        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons) {
+        // The category's "Sleeps N" is the limit. A category with no capacity set takes
+        // any party, the same as before the field existed.
+        if ($guestCount !== null) {
+            $capacity = (int) HotelRoomCategory::where('group_name', $room->group_name)
+                ->where('faculty_id', $room->faculty_id)
+                ->where('name', $room->category)
+                ->value('capacity');
+
+            if ($capacity && $guestCount > $capacity) {
+                throw new \RuntimeException(
+                    $room->name . ' sleeps ' . $capacity . ' guest' . ($capacity === 1 ? '' : 's')
+                    . ' — that party is too large for it.'
+                );
+            }
+        }
+
+        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount) {
             $guestModel = HotelGuest::findOrCreateFor($scope, $guest);
 
             $booking = HotelBooking::create($scope + [
@@ -85,6 +103,7 @@ class HotelBookingDesk
                 'check_in'       => $stay['check_in'] ?? null,
                 'check_in_time'  => $stay['check_in_time'] ?? null,
                 'check_out'      => $stay['check_out'] ?? null,
+                'guest_count'    => $guestCount,
                 // Snapshot: repricing the room later must not move a sold stay.
                 'room_rate'      => (int) $room->price,
                 'reserved_at'    => now(),

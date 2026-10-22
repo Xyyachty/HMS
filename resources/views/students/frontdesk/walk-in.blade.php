@@ -440,6 +440,7 @@ function Done({ title, rows, note, primary, onAgain }) {
 /* ── A room for a guest standing at the desk ─────────────────────────── */
 function RoomWalkIn() {
   const [rooms, setRooms] = useState([]);
+  const [sleeps, setSleeps] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [fullName, setFullName] = useState('');
@@ -447,6 +448,7 @@ function RoomWalkIn() {
   const [email, setEmail] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [nights, setNights] = useState(1);
+  const [guests, setGuests] = useState(1);
   const [checkInTime, setCheckInTime] = useState(nowClock);
   const [category, setCategory] = useState('All');
   const [roomId, setRoomId] = useState(null);
@@ -467,6 +469,8 @@ function RoomWalkIn() {
       .then(data => {
         if (writing.current) return;
         setRooms(Array.isArray(data.rooms) ? data.rooms : []);
+        // Category name to how many it sleeps; a category without one takes any party.
+        setSleeps(Object.fromEntries((data.categories || []).filter(c => c.capacity).map(c => [c.name, c.capacity])));
         setLoadError('');
         setLoaded(true);
       })
@@ -483,11 +487,13 @@ function RoomWalkIn() {
   const checkIn = today();
   const checkOut = addDays(checkIn, nights);
 
-  /* Ready now and free for the whole stay. A room Housekeeping has not cleared
-     can still be sold for next week, but not handed to someone standing here. */
+  /* Ready now, free for the whole stay, and big enough for the party. A room
+     Housekeeping has not cleared can still be sold for next week, but not handed
+     to someone standing here. */
   const free = useMemo(
-    () => rooms.filter(r => r.status === 'Available' && freeFor(r, checkIn, checkOut)),
-    [rooms, checkIn, checkOut]
+    () => rooms.filter(r => r.status === 'Available' && freeFor(r, checkIn, checkOut)
+      && !(sleeps[r.category] < guests)),
+    [rooms, checkIn, checkOut, sleeps, guests]
   );
   const categories = useMemo(() => ['All', ...Array.from(new Set(free.map(r => r.category).filter(Boolean)))], [free]);
   const shown = category === 'All' ? free : free.filter(r => r.category === category);
@@ -506,7 +512,7 @@ function RoomWalkIn() {
 
   const reset = () => {
     setFullName(''); setContactNo(''); setEmail(''); setIdNumber('');
-    setNights(1); setCheckInTime(nowClock()); setRoomId(null);
+    setNights(1); setGuests(1); setCheckInTime(nowClock()); setRoomId(null);
     setPayType('Full'); setAmount(''); setMethod('Cash'); setNotes('');
     setError(''); setTried(false); setDone(null); load();
   };
@@ -540,6 +546,7 @@ function RoomWalkIn() {
         check_in: checkIn,
         check_in_time: checkInTime,
         check_out: checkOut,
+        guest_count: guests,
         notes: ('Walk-in guest. ' + notes.trim()).trim(),
         payment,
         arrived: true,
@@ -622,10 +629,15 @@ function RoomWalkIn() {
               <i className="fa-solid fa-arrow-right" style={{ color: 'var(--fg-muted)', fontSize: '0.75rem' }}></i>
               <span>Check-out</span><b>{niceDate(checkOut)}</b>
             </div>
-            <Field id="wi-notes" label="Notes for the team" optional>
-              <input id="wi-notes" className="wi-input" value={notes} onChange={e => setNotes(e.target.value)}
-                placeholder="e.g. Late check-out, extra pillow" autoComplete="off" />
-            </Field>
+            <div className="wi-two">
+              <Field id="wi-guests" label="Guests">
+                <Stepper value={guests} min={1} max={20} onChange={setGuests} unit="guest" />
+              </Field>
+              <Field id="wi-notes" label="Notes for the team" optional>
+                <input id="wi-notes" className="wi-input" value={notes} onChange={e => setNotes(e.target.value)}
+                  placeholder="e.g. Late check-out, extra pillow" autoComplete="off" />
+              </Field>
+            </div>
           </div>
         </Section>
 
@@ -641,7 +653,7 @@ function RoomWalkIn() {
           {!loaded ? <CardSkeletons /> : shown.length === 0 ? (
             <div className="wi-empty">
               <i className="fa-solid fa-bed"></i>
-              No clean room is free for {nights === 1 ? 'tonight' : 'those ' + nights + ' nights'}.<br />
+              No clean room {guests > 1 ? 'for ' + guests + ' guests ' : ''}is free for {nights === 1 ? 'tonight' : 'those ' + nights + ' nights'}.<br />
               {nights > 1 ? 'Try fewer nights.' : 'Rooms show here once Housekeeping cleans them.'}
             </div>
           ) : (
@@ -673,6 +685,7 @@ function RoomWalkIn() {
         rows={[
           ['Guest', fullName.trim()],
           ['Room', room ? room.name : ''],
+          ['Guests', plural(guests, 'guest')],
           ['Stay', plural(nights, 'night') + ', until ' + niceDate(checkOut)],
           ['Pay now', room ? (payType === 'None' ? 'Nothing yet' : peso(paidNow) + ' by ' + method) : ''],
         ]}

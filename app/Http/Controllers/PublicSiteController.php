@@ -371,6 +371,7 @@ class PublicSiteController extends Controller
             'check_in'         => 'required|date',
             'check_in_time'    => 'nullable|string|max:10',
             'check_out'        => 'required|date|after:check_in',
+            'guest_count'      => 'nullable|integer|min:1|max:99',
             'notes'            => 'nullable|string|max:2000',
             // 'payment' and 'addons' are deliberately absent. Anything sent under those
             // keys is not validated, not read, and never reaches HotelBookingDesk.
@@ -411,29 +412,35 @@ class PublicSiteController extends Controller
 
         $guestName = trim($data['guest']['full_name']);
 
-        $booking = HotelBookingDesk::reserve(
-            $membership,
-            $room,
-            [
-                'full_name'  => $guestName,
-                'contact_no' => $data['guest']['contact_no'] ?? null,
-                'email'      => $data['guest']['email'] ?? null,
-                // No id_number: a guest is not asked for identification online. Front Desk
-                // takes it on arrival.
-                'id_number'  => null,
-            ],
-            [
-                'check_in'      => $data['check_in'],
-                // Front Desk can move it; a default keeps the stay-length maths honest.
-                'check_in_time' => trim((string) ($data['check_in_time'] ?? '')) ?: '14:00',
-                'check_out'     => $data['check_out'],
-                // The channel, not a user. Front Desk can see at a glance which stays came
-                // in from the portfolio rather than across the desk.
-                'booked_by'     => 'Online · ' . $guestName,
-                'notes'         => $data['notes'] ?? null,
-            ]
-            // No $payment, no $addons — the defaults are null and [].
-        );
+        try {
+            $booking = HotelBookingDesk::reserve(
+                $membership,
+                $room,
+                [
+                    'full_name'  => $guestName,
+                    'contact_no' => $data['guest']['contact_no'] ?? null,
+                    'email'      => $data['guest']['email'] ?? null,
+                    // No id_number: a guest is not asked for identification online. Front Desk
+                    // takes it on arrival.
+                    'id_number'  => null,
+                ],
+                [
+                    'check_in'      => $data['check_in'],
+                    // Front Desk can move it; a default keeps the stay-length maths honest.
+                    'check_in_time' => trim((string) ($data['check_in_time'] ?? '')) ?: '14:00',
+                    'check_out'     => $data['check_out'],
+                    'guest_count'   => $data['guest_count'] ?? null,
+                    // The channel, not a user. Front Desk can see at a glance which stays came
+                    // in from the portfolio rather than across the desk.
+                    'booked_by'     => 'Online · ' . $guestName,
+                    'notes'         => $data['notes'] ?? null,
+                ]
+                // No $payment, no $addons — the defaults are null and [].
+            );
+        } catch (\RuntimeException $e) {
+            // The party is bigger than the room sleeps.
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json([
             'message' => 'Thank you. Your booking request has been sent to the front desk.',
