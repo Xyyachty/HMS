@@ -1327,8 +1327,11 @@ class FacultyController extends Controller
                 ->with('student')->get()
                 ->map(fn ($m) => $m->student?->faculty_class_id)->filter()->countBy()->sortDesc()->keys()->first()
             : null;
-        $requestedLetter = strtoupper((string) request('class', $classes->firstWhere('faculty_class_id', $linkedClassId)?->letter ?? $openClass?->letter ?? 'A'));
-        $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $openClass;
+        // Opened from the sidebar, Manage Teams starts on the first block (Block A),
+        // not the one open for enrolment: once A fills, that was B every time.
+        $firstClass = $classes->first();
+        $requestedLetter = strtoupper((string) request('class', $classes->firstWhere('faculty_class_id', $linkedClassId)?->letter ?? $firstClass?->letter ?? 'A'));
+        $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $firstClass;
         $classCapacity = FacultyClass::CAPACITY;
 
         $assignedStudentIds = StudentGroup::where('faculty_id', $facultyId)
