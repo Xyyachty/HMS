@@ -226,6 +226,9 @@
       const stock = stockNav[el.getAttribute('data-hms-nav-link')] || [];
       if (stock.indexOf(normalise(el.textContent)) === -1) out.push(el);
     });
+    // The Sign in button: the template marks it once its colour or words differ
+    // from stock (guestButtonChanged).
+    queryAll('[data-hms-guest-changed]').forEach(function (el) { out.push(el); });
     // The phone menu's copies are never on screen in the review; counting them
     // would tell faculty about outlines they cannot see.
     return out.filter(function (el) { return !el.closest('.mobile-menu'); });

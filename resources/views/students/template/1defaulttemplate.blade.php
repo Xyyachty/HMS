@@ -2103,6 +2103,11 @@ const currentAccentHex = () => {
   return '#b8864b';
 };
 const guestText = (texts, key) => (texts && texts[key]) || GUEST_AUTH_TEXT.find((f) => f.key === key).fallback;
+// The Sign in button no longer as the template ships it: a colour picked, or
+// words other than the stock label. Marked on the button so the faculty
+// review can outline it with the branding check.
+const guestButtonChanged = (texts) => !!guestColor(texts)
+  || guestText(texts, 'buttonLabel').trim().toLowerCase() !== GUEST_AUTH_TEXT.find((f) => f.key === 'buttonLabel').fallback.toLowerCase();
 
 function GuestAuthModal({ open, mode, onMode, onClose, onSignedIn, notice, texts }) {
   const [form, setForm] = useState({
@@ -2925,6 +2930,7 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, br
         ) : (
           <button type="button" className={`btn-outline${editing && canEditGuestAuth ? ' hms-header-edit' : ''}`} data-hms-no-edit="1"
                   data-hms-guest-signin="1"
+                  data-hms-guest-changed={guestButtonChanged(guestTexts) ? '1' : undefined}
                   data-hms-edit-label="Edit sign in"
                   title={editing && canEditGuestAuth ? 'Click to change the sign in text' : undefined}
                   style={Object.assign({ fontSize: '0.66rem', padding: '0.45rem 0.9rem' }, guestButtonStyle(guestTexts))}
