@@ -4,166 +4,22 @@
 
 @section('content')
 @php
-    $avatarLabel = trim(implode(' ', array_filter([
-        $user->first_name ?? null,
-        $user->last_name ?? null,
-    ]))) ?: ($user->name ?? 'Faculty');
-    $avatarSrc = $user->avatar_url;
     $phoneValue = old('phone_number', \App\Models\User::normalizePhone($user->phone_number ?? $faculty->phone_number));
+    $blockNames = \App\Models\FacultyClass::where('faculty_id', $faculty->user_information_id)->orderBy('sort_order')->pluck('name')->implode(', ');
 @endphp
 
-<div class="ink-all max-w-4xl mx-auto space-y-6">
-    @if (session('success'))
-        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700 flex items-center gap-3">
-            <span class="iconify text-lg" data-icon="mdi:check-circle"></span>
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if ($errors->any())
-        <div class="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-600">
-            <p class="font-semibold mb-2">Please fix the following:</p>
-            <ul class="list-disc pl-5 space-y-1">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div class="brand-gradient px-6 py-8 md:px-8">
-            <div class="flex flex-col sm:flex-row items-center gap-5">
-                <img id="profileAvatarPreview" src="{{ $avatarSrc }}" alt="Profile" class="w-20 h-20 rounded-2xl border-4 border-white/30 shadow-lg object-cover bg-white/10">
-                <div class="text-center sm:text-left text-white">
-                    <h3 class="text-2xl font-bold tracking-tight">{{ $avatarLabel }}</h3>
-                    <p class="text-sm text-white/80 mt-1">{{ $user->email }}</p>
-                    <p class="text-[0.6875rem] uppercase tracking-widest text-white/60 mt-2">Faculty Account</p>
-                </div>
-            </div>
-        </div>
-
-        <form method="POST" action="{{ route('faculty.profile.update') }}" enctype="multipart/form-data" class="p-6 md:p-8 space-y-6">
-            @csrf
-            @method('PUT')
-
-            <div>
-                <h4 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-1">Profile Picture</h4>
-                <p class="text-xs text-slate-400 mb-4">Upload a square photo (JPG, PNG, WEBP, or GIF — max 2MB).</p>
-
-                <div class="flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <img id="profileAvatarThumb" src="{{ $avatarSrc }}" alt="Avatar" class="w-16 h-16 rounded-2xl object-cover border border-slate-200 bg-white shrink-0">
-                    <div class="flex-1 min-w-0 space-y-3">
-                        <input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif"
-                            class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-[#5F5A55] file:text-white file:text-xs file:font-bold hover:file:bg-[#4A4643] file:cursor-pointer">
-                        @if($user->avatar)
-                            <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 cursor-pointer">
-                                <input type="checkbox" name="remove_avatar" value="1" class="rounded border-slate-300 text-brand focus:ring-brand/30">
-                                Remove current photo
-                            </label>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <h4 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-1">Update Information</h4>
-                <p class="text-xs text-slate-400 mb-5">Edit your profile fields below, then save.</p>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                        <label for="first_name" class="block text-xs font-semibold text-slate-600 mb-2">
-                            <span class="inline-flex items-center gap-1.5">
-                                <span class="iconify text-brand" data-icon="mdi:account"></span>
-                                First Name
-                            </span>
-                        </label>
-                        <input id="first_name" name="first_name" type="text" value="{{ old('first_name', $user->first_name) }}"
-                            class="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 transition"
-                            required>
-                    </div>
-
-                    <div>
-                        <label for="middle_name" class="block text-xs font-semibold text-slate-600 mb-2">
-                            <span class="inline-flex items-center gap-1.5">
-                                <span class="iconify text-brand" data-icon="mdi:account-outline"></span>
-                                Middle Name
-                            </span>
-                        </label>
-                        <input id="middle_name" name="middle_name" type="text" value="{{ old('middle_name', $user->middle_name) }}"
-                            class="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 transition">
-                    </div>
-
-                    <div>
-                        <label for="last_name" class="block text-xs font-semibold text-slate-600 mb-2">
-                            <span class="inline-flex items-center gap-1.5">
-                                <span class="iconify text-brand" data-icon="mdi:account-box"></span>
-                                Last Name
-                            </span>
-                        </label>
-                        <input id="last_name" name="last_name" type="text" value="{{ old('last_name', $user->last_name) }}"
-                            class="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 transition"
-                            required>
-                    </div>
-
-                    <div>
-                        <label for="email" class="block text-xs font-semibold text-slate-600 mb-2">
-                            <span class="inline-flex items-center gap-1.5">
-                                <span class="iconify text-brand" data-icon="mdi:email-outline"></span>
-                                Email
-                            </span>
-                        </label>
-                        <input id="email" name="email" type="email" value="{{ old('email', $user->email) }}"
-                            class="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 transition"
-                            required>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label for="phone_number" class="block text-xs font-semibold text-slate-600 mb-2">
-                            <span class="inline-flex items-center gap-1.5">
-                                <span class="iconify text-brand" data-icon="mdi:phone-outline"></span>
-                                Phone Number
-                            </span>
-                        </label>
-                        <div class="relative">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs font-medium">+63</span>
-                            <input id="phone_number" name="phone_number" type="text" value="{{ $phoneValue }}"
-                            inputmode="numeric" autocomplete="tel-national" pattern="9[0-9]{9}" title="10 digits after +63, starting with 9 (e.g. 9123456789)" data-ph-phone
-                            class="w-full h-11 pl-12 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/15 transition"
-                            placeholder="912 345 6789">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2 border-t border-slate-100">
-                <a href="{{ route('faculty.dashboard') }}"
-                    class="w-full sm:w-auto h-11 px-5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition flex items-center justify-center gap-2">
-                    Cancel
-                </a>
-                <button type="submit"
-                    class="hover-green w-full sm:w-auto h-11 px-6 brand-gradient text-white text-sm font-bold rounded-xl shadow-lg shadow-brand/20 hover:scale-[1.02] transition flex items-center justify-center gap-2">
-                    <span class="iconify" data-icon="mdi:content-save-outline"></span>
-                    Save Changes
-                </button>
-            </div>
-        </form>
-    </div>
-
-    @include('partials.change-password')
-</div>
+@include('partials.profile-page', [
+    'pfUser'        => $user,
+    'pfRoleLabel'   => 'Faculty Account',
+    'pfAction'      => route('faculty.profile.update'),
+    'pfPhoneValue'  => $phoneValue,
+    'pfPhPhone'     => true,
+    'pfRecordTitle' => 'Account',
+    'pfRecords'     => [
+        ['Role', 'Faculty'],
+        ['Blocks', $blockNames],
+        ['Phone', $phoneValue ? '+63 ' . $phoneValue : null],
+        ['Joined', optional($user->created_at)->format('M j, Y')],
+    ],
+])
 @endsection
-
-@push('scripts')
-<script>
-document.getElementById('avatar')?.addEventListener('change', function (e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    const preview = document.getElementById('profileAvatarPreview');
-    const thumb = document.getElementById('profileAvatarThumb');
-    if (preview) preview.src = url;
-    if (thumb) thumb.src = url;
-});
-</script>
-@endpush
