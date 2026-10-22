@@ -100,6 +100,97 @@
   .bill-meta dd { margin: 0; color: var(--fg); font-size: 0.85rem; }
   @media (max-width: 520px) { .bill-meta { grid-template-columns: 1fr; } }
 
+  /* Guest list. Reads the shell's tokens (--card, --border, --fg, --fg-muted,
+     --accent), so it follows Template 1, Template 2 and a team's own colours.
+     Below 1000px each row becomes a small card, so nothing scrolls sideways. */
+  .room-status-badge { white-space: nowrap; }
+  .vg {
+    --vg-soft: color-mix(in srgb, var(--fg) 4%, transparent);
+    --vg-tint: color-mix(in srgb, var(--accent) 12%, transparent);
+    padding: 1.1rem 1.5rem 1.5rem; color: var(--fg);
+  }
+  .vg-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .vg-head h1 { margin: 0; font-size: 1.6rem; line-height: 1.15; color: var(--fg); }
+  .vg-head p { margin: 0.3rem 0 0; color: var(--fg-muted); font-size: 0.86rem; line-height: 1.45; }
+  .vg-panel { background: var(--card); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1rem 1.1rem 1.1rem; }
+
+  .vg-tools { display: flex; gap: 0.6rem 0.9rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.9rem; }
+  .vg-search { position: relative; flex: 1 1 280px; min-width: 0; }
+  .vg-search i { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--fg-muted); font-size: 0.8rem; pointer-events: none; }
+  .vg-search .booking-input { box-sizing: border-box; padding-left: 2.3rem; border-radius: 0.625rem; font-size: 0.88rem; }
+  .vg-filters { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+  .vg-filter {
+    display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.5rem 0.8rem; border-radius: 999px;
+    border: 1.5px solid var(--border); background: transparent; color: var(--fg-muted); cursor: pointer;
+    font: 600 0.8rem/1 var(--font-body, 'Outfit', sans-serif); transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .vg-filter:hover { border-color: var(--accent); color: var(--fg); }
+  .vg-filter.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .vg-filter b { font-variant-numeric: tabular-nums; font-size: 0.72rem; padding: 0.12rem 0.42rem; border-radius: 999px; background: var(--vg-soft); }
+  .vg-filter.is-on b { background: color-mix(in srgb, var(--bg) 22%, transparent); }
+
+  .vg-tablewrap { border: 1px solid var(--border); border-radius: 0.75rem; overflow: hidden; }
+  .vg-table { width: 100%; border-collapse: collapse; font-family: var(--font-body, 'Outfit', sans-serif); }
+  .vg-table th {
+    padding: 0.6rem 0.85rem; font-size: 0.74rem; font-weight: 600; color: var(--fg-muted); text-align: left;
+    white-space: nowrap; border-bottom: 1px solid var(--border); background: var(--vg-soft);
+  }
+  .vg-table td { padding: 0.75rem 0.85rem; font-size: 0.84rem; color: var(--fg-muted); border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .vg-table tbody tr:last-child td { border-bottom: 0; }
+  .vg-table tbody tr:hover td { background: var(--vg-soft); }
+  .vg-main { display: block; color: var(--fg); font-weight: 600; overflow-wrap: anywhere; }
+  .vg-sub { display: block; margin-top: 0.15rem; font-size: 0.74rem; color: var(--fg-muted); }
+  .vg-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .vg-status + .vg-sub { margin-top: 0.3rem; }
+  .vg-status { border-radius: 999px; letter-spacing: 0; text-transform: none; font-size: 0.76rem; padding: 0.28rem 0.65rem; }
+
+  .vg-actions { display: flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap; }
+  .vg-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; white-space: nowrap; cursor: pointer;
+    padding: 0.5rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); background: transparent; color: var(--fg);
+    font: 600 0.78rem/1 var(--font-body, 'Outfit', sans-serif); text-decoration: none; transition: border-color 0.15s, color 0.15s, background 0.15s, filter 0.15s;
+  }
+  .vg-btn i { font-size: 0.72rem; }
+  .vg-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .vg-btn-main { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .vg-btn-main:hover { filter: brightness(1.08); color: var(--bg); }
+  .vg-btn-line { border-color: var(--accent); color: var(--accent); }
+  .vg-btn-line:hover { background: var(--vg-tint); }
+  .vg-btn:focus-visible, .vg-filter:focus-visible, .vg-page:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .vg-empty { border: 1.5px dashed var(--border); border-radius: 0.875rem; padding: 2rem 1rem; text-align: center; color: var(--fg-muted); font-size: 0.86rem; line-height: 1.5; }
+  .vg-empty i.vg-empty-icon { display: block; font-size: 1.5rem; margin-bottom: 0.6rem; color: var(--accent); }
+  .vg-empty b { display: block; color: var(--fg); font-size: 0.95rem; margin-bottom: 0.2rem; }
+  .vg-empty .vg-btn { margin-top: 0.9rem; }
+
+  .vg-pager { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.85rem; font-size: 0.78rem; color: var(--fg-muted); }
+  .vg-pager-btns { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+  .vg-page {
+    min-width: 2rem; height: 2rem; padding: 0 0.55rem; border-radius: 0.5rem; cursor: pointer;
+    border: 1px solid var(--border); background: transparent; color: var(--fg-muted); font-size: 0.78rem;
+  }
+  .vg-page.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 700; }
+  .vg-page:disabled { opacity: 0.4; cursor: default; }
+
+  @media (max-width: 1000px) {
+    .vg-tablewrap { border: 0; border-radius: 0; overflow: visible; }
+    .vg-table thead { display: none; }
+    .vg-table, .vg-table tbody { display: block; }
+    .vg-table tr {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem 1rem;
+      padding: 0.85rem 0.9rem; margin-bottom: 0.6rem; border: 1px solid var(--border); border-radius: 0.75rem;
+    }
+    .vg-table td { display: block; padding: 0; border: 0; }
+    .vg-table tbody tr:hover td { background: none; }
+    .vg-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 0.15rem; font-size: 0.7rem; color: var(--fg-muted); }
+    .vg-table td.vg-wide { grid-column: 1 / -1; }
+    .vg-actions { justify-content: flex-start; }
+  }
+  @media (max-width: 640px) {
+    .vg { padding: 1rem 1rem 2.5rem; }
+    .vg-head h1 { font-size: 1.4rem; }
+  }
+
   /* ── Template 2 (cream / forest green / DM Sans + Cormorant Garamond) ──
      Additive only — nothing above this block is touched, so a Template 1
      team (or one that hasn't chosen a template yet) renders unchanged. */
@@ -144,6 +235,7 @@
 @section('scripts')
 <script>
   window.HMS_FRONTDESK_URL = @json(route('students.dashboard', ['section' => 'tasks']));
+  window.HMS_WALKIN_URL = @json(route('students.frontdesk.walk-in'));
   // The name printed at the top of the guest's receipt: the team's approved hotel.
   window.HMS_HOTEL_NAME = @json(\App\Support\HotelTemplateBuilder::hotelDefaults($groupName ?? null, isset($facultyId) ? (int) $facultyId : null)['name']);
 </script>
@@ -274,7 +366,23 @@ function remainingStay(reservation, now) {
   return { text: `${hours}h ${minutes}m`, tone: hours < 2 ? 'soon' : 'ok' };
 }
 
-const STAY_TONE_COLORS = { ok: 'var(--fg)', soon: '#fbbf24', over: 'var(--danger, #fb7185)', idle: 'var(--fg-muted)' };
+/* One line under each status badge, so the desk knows what that status means. */
+const STATUS_HINTS = { 'Booked': 'Not here yet', 'Arrived': 'At the desk, needs a key', 'Checked In': 'In the room' };
+
+/* 'Oct 23' from 'YYYY-MM-DD', and 'Oct 23, 12:48 AM' with a clock time: the list's short form. */
+function formatShortDate(dateStr) {
+  const [y, m, d] = String(dateStr || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+function formatShortDateTime(dateStr, timeStr) {
+  const day = formatShortDate(dateStr);
+  const clock = formatClockTime(timeStr);
+  if (!day) return clock || '—';
+  return clock ? `${day}, ${clock}` : day;
+}
+
+const STAY_TONE_COLORS ={ ok: 'var(--fg)', soon: '#fbbf24', over: 'var(--danger, #fb7185)', idle: 'var(--fg-muted)' };
 
 /* A one-second tick. Aligned to the next whole second so every row flips
    together, and repainted on visibilitychange because a backgrounded tab
@@ -596,7 +704,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                   the money column with every other line, and the method and date sit
                   under it rather than being folded into the label. */}
               <p className="bill-section-title">Previous Payments</p>
-              <p className="bill-section-note">Already paid by the guest before checkout.</p>
+              <p className="bill-section-note">Money the guest already paid during the stay.</p>
               {bill.payments.length === 0 ? (
                 <div className="bill-line"><span style={{ opacity: 0.6 }}>None</span><span className="bill-amt">− {formatPeso(0)}</span></div>
               ) : (
@@ -611,13 +719,13 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                 ))
               )}
               <div className="bill-line is-subtotal">
-                <span>Total Previously Paid</span>
+                <span>Total Paid Before</span>
                 <span className="bill-amt">− {formatPeso(bill.amountPaid)}</span>
               </div>
               {/* The money to collect right now. Red only when something is actually
                   owed — a settled stay showing ₱0 in red reads as a problem. */}
               <div className={'bill-line is-subtotal' + (balance > 0 ? ' is-balance' : '')}>
-                <span>Amount Due at Checkout</span>
+                <span>Still to Pay Now</span>
                 <span className="bill-amt" style={balance > 0 ? undefined : { color: 'var(--success, #4ade80)', fontWeight: 700 }}>
                   {formatPeso(balance)}
                 </span>
@@ -629,7 +737,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
               </div>
 
               <form onSubmit={settle} style={{ marginTop: '1.4rem' }}>
-                <p className="bill-section-title" style={{ marginTop: 0 }}>Settle</p>
+                <p className="bill-section-title" style={{ marginTop: 0 }}>Take Payment</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
                   <div>
                     <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>Payment Method</label>
@@ -638,7 +746,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>Amount Paid</label>
+                    <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>Amount Received</label>
                     <input type="number" className="booking-input" min="0" step="0.01" value={amount}
                       onChange={e => setAmount(e.target.value)} />
                   </div>
@@ -653,11 +761,11 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                 <p style={{ margin: '0.65rem 0 0', fontSize: '0.76rem', color: remainingAfter > 0 ? 'var(--danger, #fb7185)' : 'var(--success, #4ade80)' }}>
                   {remainingAfter > 0
                     ? `${formatPeso(remainingAfter)} will still be unpaid.`
-                    : 'This settles the bill in full.'}
+                    : 'This pays the bill in full.'}
                 </p>
                 <button type="submit" className="btn-solid" disabled={busy} style={{ width: '100%', marginTop: '1rem' }}>
                   <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '0.7rem' }}></i>
-                  {busy ? 'Working…' : 'Settle & Check Out'}
+                  {busy ? 'Working…' : 'Take Payment & Check Out'}
                 </button>
               </form>
             </>
@@ -801,6 +909,7 @@ function fdThemeColor(name, fallback) {
 
 function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onSettleAndCheckOut }) {
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
   const now = useNow(1000);
   const PER_PAGE = 8;
@@ -883,213 +992,184 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
   }, []);
 
   const q = search.trim().toLowerCase();
-  const filtered = q
-    ? allReservations.filter(({ room, reservation }) =>
-        (reservation.fullName || '').toLowerCase().includes(q) ||
-        (room.name || '').toLowerCase().includes(q) ||
-        (reservation.email || '').toLowerCase().includes(q) ||
-        (reservation.contactNo || '').toLowerCase().includes(q) ||
-        (reservation.idNumber || '').toLowerCase().includes(q)
-      )
-    : allReservations;
+  const filtered = allReservations.filter(({ room, reservation }) =>
+    (statusFilter === 'All' || reservation.status === statusFilter) && (!q ||
+      (reservation.fullName || '').toLowerCase().includes(q) ||
+      (room.name || '').toLowerCase().includes(q) ||
+      (reservation.email || '').toLowerCase().includes(q) ||
+      (reservation.contactNo || '').toLowerCase().includes(q) ||
+      (reservation.idNumber || '').toLowerCase().includes(q))
+  );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const pageRows = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
-  /* No nowrap and no fixed widths: the table has to fit the page rather than force a
-     horizontal scrollbar, so long headers wrap instead of pushing the table wider.
-     Cells that must stay on one line (dates, countdown, rate) opt in via tdTight. */
-  const thStyle = {
-    padding: '0.6rem 0.7rem', fontSize: '0.6rem', fontWeight: 700,
-    letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)',
-    borderBottom: '1px solid var(--border)',
-    textAlign: 'left', background: 'rgba(255,255,255,0.02)',
-  };
-  const tdStyle = {
-    padding: '0.7rem', fontSize: '0.78rem', color: 'var(--fg-muted)',
-    borderBottom: '1px solid rgba(42,38,33,0.5)', verticalAlign: 'middle',
-  };
-  const tdTight = { ...tdStyle, whiteSpace: 'nowrap' };
-  const rowBtn = {
-    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-    padding: '0.35rem 0.65rem', borderRadius: 6, cursor: 'pointer',
-    fontFamily: 'var(--font-body, Outfit, sans-serif)', fontSize: '0.68rem', fontWeight: 600,
-    letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-  };
+  const statusTabs = [['All', 'All'], ['Booked', 'Booked'], ['Arrived', 'Arrived'], ['Checked In', 'Checked in']];
+  const countFor = (key) => (key === 'All'
+    ? allReservations.length
+    : allReservations.filter(({ reservation }) => reservation.status === key).length);
+  const clearFilters = () => { setSearch(''); setStatusFilter('All'); setPage(1); };
 
   return (
-    <div data-hms-no-edit="1" style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+    <div className="vg" data-hms-no-edit="1">
+      <header className="vg-head">
         <div>
-          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Front Desk</p>
-          <h1 className="font-display" style={{ fontSize: '1.9rem', margin: 0, color: 'var(--fg)' }}>Guest Information</h1>
+          <h1 className="font-display">Guest Information</h1>
+          <p>Everyone booked or staying right now. Use the button on each row for the next step.</p>
         </div>
-      </div>
+        {window.HMS_WALKIN_URL && (
+          <a className="vg-btn vg-btn-line" href={window.HMS_WALKIN_URL}>
+            <i className="fa-solid fa-user-plus"></i> Book a walk-in guest
+          </a>
+        )}
+      </header>
 
-      <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '1.5rem 1.6rem 1.75rem' }}>
-          <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', marginBottom: '1rem' }}>
-            {allReservations.length > 0
-              ? `${allReservations.length} active reservation${allReservations.length > 1 ? 's' : ''}`
-              : 'No active reservations at this time.'}
-          </p>
-
-          <div style={{ position: 'relative', marginBottom: '1.1rem' }}>
-            <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--fg-muted)', fontSize: '0.75rem', pointerEvents: 'none' }}></i>
+      <div className="vg-panel">
+        <div className="vg-tools">
+          <div className="vg-search">
+            <i className="fa-solid fa-magnifying-glass"></i>
             <input
               type="text"
               className="booking-input"
-              placeholder="Search by name, room, email, contact, or ID…"
+              placeholder="Search name, room, phone, email or ID"
+              aria-label="Search guests"
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
-              style={{ paddingLeft: '2.1rem' }}
             />
           </div>
+          <div className="vg-filters" role="radiogroup" aria-label="Show guests by status">
+            {statusTabs.map(([key, label]) => (
+              <button key={key} type="button" role="radio" aria-checked={statusFilter === key}
+                className={'vg-filter' + (statusFilter === key ? ' is-on' : '')}
+                onClick={() => { setStatusFilter(key); setPage(1); }}>
+                {label} <b>{countFor(key)}</b>
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {allReservations.length === 0 ? (
-            <div style={{ border: '1px solid rgba(244,63,94,0.35)', background: 'rgba(244,63,94,0.08)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>
-              <i className="fa-solid fa-door-open" style={{ fontSize: '1.8rem', color: 'var(--danger, #fb7185)', opacity: 0.45, display: 'block', marginBottom: '0.65rem' }}></i>
-              <p style={{ margin: 0, color: 'var(--danger, #fb7185)', fontWeight: 600, fontSize: '0.9rem' }}>No reservations found</p>
-              <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.8rem' }}>No guests have been registered.</p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '2rem', textAlign: 'center' }}>
-              <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '1.5rem', color: 'var(--fg-muted)', opacity: 0.35, display: 'block', marginBottom: '0.65rem' }}></i>
-              <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.88rem' }}>No results for "{search}"</p>
-            </div>
-          ) : (
-            <>
-              <div style={{ borderRadius: 10, border: '1px solid var(--border)' }}>
-                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ ...thStyle, width: '17%' }}>Guest Name</th>
-                      <th style={{ ...thStyle, width: '14%' }}>Room</th>
-                      <th style={{ ...thStyle, width: '14%' }}>Check-In</th>
-                      <th style={{ ...thStyle, width: '11%' }}>Check-Out</th>
-                      <th style={{ ...thStyle, width: '12%' }}>Time Remaining</th>
-                      <th style={{ ...thStyle, width: '10%' }}>Rate / 12 hrs</th>
-                      <th style={{ ...thStyle, width: '10%' }}>Status</th>
-                      <th style={{ ...thStyle, width: '12%' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageRows.map(({ room, reservation }, idx) => {
-                      const rowBg = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)';
-                      const checkedIn = reservation.status === 'Checked In';
-                      const remaining = remainingStay(reservation, now);
-                      return (
-                        <tr key={room.id} style={{ background: rowBg }}>
-                          <td style={{ ...tdStyle, color: 'var(--fg)', fontWeight: 600, overflowWrap: 'anywhere' }}>
-                            {reservation.fullName || '—'}
-                          </td>
-                          <td style={tdStyle}>
-                            <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>{room.label || room.category}</span>
-                            <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{room.name}</span>
-                          </td>
-                          <td style={tdStyle}>{formatCheckIn(reservation.checkIn, reservation.checkInTime)}</td>
-                          <td style={tdTight}>{reservation.checkOut || '—'}</td>
-                          <td style={{
-                            ...tdTight,
-                            color: STAY_TONE_COLORS[remaining.tone],
-                            fontWeight: remaining.tone === 'idle' ? 400 : 600,
-                            opacity: remaining.tone === 'idle' ? 0.6 : 1,
-                            fontVariantNumeric: 'tabular-nums',
-                          }}>
-                            {remaining.text}
-                          </td>
-                          <td style={{ ...tdTight, color: 'var(--accent)' }}>{formatPeso(room.price)}</td>
-                          <td style={tdStyle}>
-                            <span className={`room-status-badge ${bookingStatusClass(reservation.status)}`} style={{ position: 'static' }}>
-                              {reservation.status}
-                            </span>
-                          </td>
-                          <td style={tdStyle}>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => setDetailsFor({ room, reservation })}
-                                title="See everything recorded for this stay"
-                                style={{ ...rowBtn, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg)' }}
-                              >
-                                <i className="fa-solid fa-eye" style={{ fontSize: '0.68rem' }}></i> View
+        {allReservations.length === 0 ? (
+          <div className="vg-empty">
+            <i className="fa-solid fa-door-open vg-empty-icon"></i>
+            <b>No guests right now</b>
+            New bookings and walk-in guests show up here.
+            {window.HMS_WALKIN_URL && (
+              <div><a className="vg-btn vg-btn-main" href={window.HMS_WALKIN_URL}><i className="fa-solid fa-user-plus"></i> Book a walk-in guest</a></div>
+            )}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="vg-empty">
+            <i className="fa-solid fa-magnifying-glass vg-empty-icon"></i>
+            <b>No guests match</b>
+            {q ? `Nothing found for "${search}"` : 'No guests have this status right now'}{statusFilter !== 'All' && q ? ' with this status' : ''}.
+            <div><button type="button" className="vg-btn" onClick={clearFilters}><i className="fa-solid fa-xmark"></i> Show all guests</button></div>
+          </div>
+        ) : (
+          <>
+            <div className="vg-tablewrap">
+              <table className="vg-table">
+                <thead>
+                  <tr>
+                    <th>Guest</th>
+                    <th>Room</th>
+                    <th>Stay</th>
+                    <th>Time left</th>
+                    <th>Rate (12 hrs)</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageRows.map(({ room, reservation }) => {
+                    const status = reservation.status;
+                    const remaining = remainingStay(reservation, now);
+                    return (
+                      <tr key={room.id}>
+                        <td className="vg-wide">
+                          <span className="vg-main">{reservation.fullName || '—'}</span>
+                          {reservation.contactNo && <span className="vg-sub">{reservation.contactNo}</span>}
+                        </td>
+                        <td data-label="Room">
+                          <span className="vg-main">{room.name}</span>
+                          <span className="vg-sub">{room.label || room.category}</span>
+                        </td>
+                        <td data-label="Stay">
+                          <span className="vg-num" style={{ color: 'var(--fg)' }}>In {formatShortDateTime(reservation.checkIn, reservation.checkInTime)}</span>
+                          <span className="vg-sub vg-num">Out {formatShortDate(reservation.checkOut) || '—'}</span>
+                        </td>
+                        <td data-label="Time left" className="vg-num" style={{
+                          color: STAY_TONE_COLORS[remaining.tone],
+                          fontWeight: remaining.tone === 'idle' ? 400 : 600,
+                          opacity: remaining.tone === 'idle' ? 0.7 : 1,
+                        }}>
+                          {remaining.text}
+                        </td>
+                        <td data-label="Rate (12 hrs)" className="vg-num">{formatPeso(room.price)}</td>
+                        <td data-label="Status">
+                          <span className={`room-status-badge vg-status ${bookingStatusClass(status)}`}>{status}</span>
+                          {STATUS_HINTS[status] && <span className="vg-sub">{STATUS_HINTS[status]}</span>}
+                        </td>
+                        <td className="vg-wide">
+                          <div className="vg-actions">
+                            {status === 'Booked' && (
+                              <button type="button" className="vg-btn vg-btn-line"
+                                onClick={() => onBookingAction(reservation.bookingId, 'arrive')}
+                                title="The guest is here at the desk">
+                                <i className="fa-solid fa-door-open"></i> Mark arrived
                               </button>
-                              {checkedIn && (
-                                <button
-                                  type="button"
-                                  onClick={() => openBill(room, reservation)}
-                                  title="Show the final bill and check the guest out"
-                                  style={{ ...rowBtn, border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)' }}
-                                >
-                                  <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '0.68rem' }}></i> Check Out
-                                </button>
-                              )}
-                              {reservation.status === 'Booked' && (
-                                <button
-                                  type="button"
-                                  onClick={() => onBookingAction(reservation.bookingId, 'arrive')}
-                                  title="Confirm the guest has arrived at the desk"
-                                  style={{ ...rowBtn, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)' }}
-                                >
-                                  <i className="fa-solid fa-door-open" style={{ fontSize: '0.68rem' }}></i> Arrive
-                                </button>
-                              )}
-                              {reservation.status === 'Arrived' && (
-                                <button
-                                  type="button"
-                                  onClick={() => checkInGuest(room, reservation)}
-                                  title="Hand the guest the key and start their stay"
-                                  style={{ ...rowBtn, border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)' }}
-                                >
-                                  <i className="fa-solid fa-key" style={{ fontSize: '0.68rem' }}></i> Check In
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            )}
+                            {status === 'Arrived' && (
+                              <button type="button" className="vg-btn vg-btn-main"
+                                onClick={() => checkInGuest(room, reservation)}
+                                title="Give the guest the key and start their stay">
+                                <i className="fa-solid fa-key"></i> Check in
+                              </button>
+                            )}
+                            {status === 'Checked In' && (
+                              <button type="button" className="vg-btn vg-btn-main"
+                                onClick={() => openBill(room, reservation)}
+                                title="Show the final bill and check the guest out">
+                                <i className="fa-solid fa-right-from-bracket"></i> Check out
+                              </button>
+                            )}
+                            <button type="button" className="vg-btn"
+                              onClick={() => setDetailsFor({ room, reservation })}
+                              title="See everything recorded for this stay">
+                              <i className="fa-solid fa-eye"></i> Details
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-              {totalPages > 1 && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.85rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--fg-muted)' }}>
-                    Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, filtered.length)} of {filtered.length}
-                  </span>
-                  <div style={{ display: 'flex', gap: '0.35rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={safePage === 1}
-                      style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === 1 ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === 1 ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === 1 ? 0.4 : 1 }}
-                    >
-                      <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
+            {totalPages > 1 && (
+              <div className="vg-pager">
+                <span>Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, filtered.length)} of {filtered.length}</span>
+                <div className="vg-pager-btns">
+                  <button type="button" className="vg-page" aria-label="Previous page"
+                    onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>
+                    <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                    <button key={n} type="button" className={'vg-page' + (n === safePage ? ' is-on' : '')}
+                      aria-current={n === safePage ? 'page' : undefined} onClick={() => setPage(n)}>
+                      {n}
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => setPage(n)}
-                        style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid ' + (n === safePage ? 'var(--accent)' : 'var(--border)'), background: n === safePage ? 'var(--accent)' : 'transparent', color: n === safePage ? 'var(--bg)' : 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: n === safePage ? 700 : 400 }}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                      disabled={safePage === totalPages}
-                      style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === totalPages ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === totalPages ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === totalPages ? 0.4 : 1 }}
-                    >
-                      <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
-                    </button>
-                  </div>
+                  ))}
+                  <button type="button" className="vg-page" aria-label="Next page"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>
+                    <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
+                  </button>
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <FinalBillModal
