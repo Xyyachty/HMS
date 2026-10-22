@@ -5,7 +5,10 @@
 @section('content')
 @php
     $phoneValue = old('phone_number', \App\Models\User::normalizePhone($user->phone_number ?? $faculty->phone_number));
-    $blockNames = \App\Models\FacultyClass::where('faculty_id', $faculty->user_information_id)->orderBy('sort_order')->pluck('name')->implode(', ');
+    // Through the model, not pluck(): the label is the name accessor (stored
+    // names are stale, e.g. two rows both saved as "Block A").
+    $blockNames = \App\Models\FacultyClass::with('faculty')->where('faculty_id', $faculty->user_information_id)
+        ->orderBy('sort_order')->get()->map->name->implode(', ');
 @endphp
 
 @include('partials.profile-page', [
