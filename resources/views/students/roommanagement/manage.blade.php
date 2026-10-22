@@ -1041,6 +1041,49 @@ function RenameCategoryModal({ from, saving, error, onSubmit, onCancel }) {
   );
 }
 
+/* How many guests one room of this type sleeps. Bookings for a bigger party are
+   refused at the desk and online; left blank, the type takes any party. */
+function SleepsModal({ category, current, saving, error, onSubmit, onCancel }) {
+  const [value, setValue] = useState(current ? String(current) : '');
+  const uid = useId();
+  useEscapeKey(onCancel);
+
+  const parsed = parseInt(String(value).replace(/[^0-9]/g, ''), 10);
+  const next = Number.isNaN(parsed) ? null : parsed;
+  const canSave = !saving && (next === null || (next >= 1 && next <= 99)) && next !== (current || null);
+  const submit = (e) => {
+    if (e) e.preventDefault();
+    if (canSave) onSubmit(next);
+  };
+
+  return (
+    <div className="mr-overlay" onClick={onCancel}>
+      <div className="mr-modal is-small" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <MrModalHead titleId={uid + '-t'} title={`Guest limit for ${category}`} text="A booking for more guests than this is refused, at the desk and on your hotel website." onClose={onCancel} />
+        <form onSubmit={submit} className="mr-form" noValidate>
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-n'}>Sleeps</label>
+            <input
+              id={uid + '-n'} type="text" inputMode="numeric" className={`mr-input ${error ? 'has-error' : ''}`}
+              value={value} maxLength={2} placeholder="e.g. 2" autoFocus
+              onChange={e => setValue(e.target.value)}
+            />
+            {error
+              ? <p className="mr-error">{error}</p>
+              : <p className="mr-help">Leave it empty for no limit.</p>}
+          </div>
+          <div className="mr-actions">
+            <button type="button" className="mr-btn is-quiet" onClick={onCancel}>Cancel</button>
+            <button type="submit" className="mr-btn is-solid" disabled={!canSave}>
+              <i className="fa-solid fa-user-group"></i> {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* A room type the team invents. The rate seeds the price of every room created under
    it, and a type stored at zero would price its rooms at nothing, so it is required
    here exactly as it is in the site's own Add Room Category dialog — same default,
@@ -1434,7 +1477,7 @@ function RoomCard({ room, onEdit }) {
 
 const MR_PAGE = 12;
 
-function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCategory, onRenameCategory, onToast }) {
+function ManageRoomPanel({ rooms, categories, sleeps, onSubmit, onRoomUpdated, onAddCategory, onRenameCategory, onSetSleeps, onToast }) {
   // The inventory list that used to be its own Room Availability section. Adding a
   // room and looking one up are the same job, so they share a screen.
   const [tab, setTab] = useState('All');
@@ -1446,6 +1489,10 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCate
   const [renameFrom, setRenameFrom] = useState(null);
   const [renameSaving, setRenameSaving] = useState(false);
   const [renameError, setRenameError] = useState('');
+  // The type the guest-limit dialog is open on, or null when it is closed.
+  const [sleepsFor, setSleepsFor] = useState(null);
+  const [sleepsSaving, setSleepsSaving] = useState(false);
+  const [sleepsError, setSleepsError] = useState('');
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [categorySaving, setCategorySaving] = useState(false);
   const [categoryError, setCategoryError] = useState('');
@@ -1483,6 +1530,21 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCate
       // Follow the rename: the tab this panel was filtering on is gone by that name.
       setTab(prev => (prev === from ? renamed : prev));
       if (onToast) onToast(`${from} is now ${renamed}`);
+    });
+  };
+
+  const submitSleeps = (capacity) => {
+    const category = sleepsFor;
+    setSleepsSaving(true);
+    setSleepsError('');
+    Promise.resolve(onSetSleeps(category, capacity)).then((ok) => {
+      setSleepsSaving(false);
+      if (!ok) {
+        setSleepsError('Could not save the guest limit. Try again.');
+        return;
+      }
+      setSleepsFor(null);
+      if (onToast) onToast(capacity ? `${category} now sleeps ${mrPlural(capacity, 'guest', 'guests')}.` : `${category} has no guest limit.`);
     });
   };
 
@@ -1575,6 +1637,11 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCate
                 <i className="fa-solid fa-pen"></i> Rename {tab}
               </button>
             ) : null}
+            {onSetSleeps && tab !== 'All' ? (
+              <button type="button" className="mr-link" onClick={() => { setSleepsError(''); setSleepsFor(tab); }}>
+                <i className="fa-solid fa-user-group"></i> {(sleeps || {})[tab] ? `Sleeps ${sleeps[tab]}` : 'No guest limit'}
+              </button>
+            ) : null}
           </p>
           {list.length > 0 ? (
             <div className="mr-search">
@@ -1639,6 +1706,18 @@ function ManageRoomPanel({ rooms, categories, onSubmit, onRoomUpdated, onAddCate
           error={renameError}
           onSubmit={submitRename}
           onCancel={() => { setRenameFrom(null); setRenameError(''); }}
+        />
+      )}
+
+      {sleepsFor && (
+        <SleepsModal
+          key={sleepsFor}
+          category={sleepsFor}
+          current={(sleeps || {})[sleepsFor] || null}
+          saving={sleepsSaving}
+          error={sleepsError}
+          onSubmit={submitSleeps}
+          onCancel={() => { setSleepsFor(null); setSleepsError(''); }}
         />
       )}
 
@@ -1992,7 +2071,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   );
 }
 
-function RoomManagementPage({ initialNav, rooms, categories, onAddRoom, onRoomUpdated, onAddCategory, onRenameCategory, onBookingAction, onToast }) {
+function RoomManagementPage({ initialNav, rooms, categories, sleeps, onAddRoom, onRoomUpdated, onAddCategory, onRenameCategory, onSetSleeps, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
   const handleAddRoom = (payload) => {
@@ -2008,7 +2087,7 @@ function RoomManagementPage({ initialNav, rooms, categories, onAddRoom, onRoomUp
         // Manage Room is the fallback: ?nav=rooms was the old Room Availability
         // section, whose room list lives here now, so an old link still lands
         // somewhere sensible instead of on a blank panel.
-        <ManageRoomPanel rooms={rooms} categories={categories} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} onAddCategory={onAddCategory} onRenameCategory={onRenameCategory} onToast={onToast} />
+        <ManageRoomPanel rooms={rooms} categories={categories} sleeps={sleeps} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} onAddCategory={onAddCategory} onRenameCategory={onRenameCategory} onSetSleeps={onSetSleeps} onToast={onToast} />
       )}
     </div>
   );
@@ -2019,7 +2098,24 @@ function App() {
   // The team's categories ride along with the rooms, so a category added while
   // customising the site's Rooms section shows up here on the next poll.
   const [categories, setCategories] = useState(DEFAULT_ROOM_CATEGORIES);
+  // Category name to how many guests it sleeps; a type without one takes any party.
+  const [sleeps, setSleeps] = useState({});
   const pendingWrites = useRef(0);
+
+  // Every response that carries the team's categories goes through here.
+  const applyCategories = useCallback((list) => {
+    const names = list.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+    const floors = {};
+    const capacities = {};
+    list.forEach(c => {
+      if (c && c.name && c.floor) floors[c.name] = c.floor;
+      if (c && c.name && c.capacity) capacities[c.name] = c.capacity;
+    });
+    setRoomCategoryNames(names);
+    setCategoryFloors(floors);
+    setCategories(names);
+    setSleeps(capacities);
+  }, []);
 
   const fetchRooms = useCallback(() => {
     if (pendingWrites.current > 0) return;
@@ -2028,14 +2124,7 @@ function App() {
       .then(data => {
         if (pendingWrites.current > 0) return;
         if (Array.isArray(data.rooms)) setRooms(data.rooms);
-        if (Array.isArray(data.categories) && data.categories.length) {
-          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
-          const floors = {};
-          data.categories.forEach(c => { if (c && c.name && c.floor) floors[c.name] = c.floor; });
-          setRoomCategoryNames(names);
-          setCategoryFloors(floors);
-          setCategories(names);
-        }
+        if (Array.isArray(data.categories) && data.categories.length) applyCategories(data.categories);
       })
       .catch(() => {});
   }, []);
@@ -2074,14 +2163,7 @@ function App() {
     })
       .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
       .then(data => {
-        if (data && Array.isArray(data.categories)) {
-          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
-          const floors = {};
-          data.categories.forEach(c => { if (c && c.name && c.floor) floors[c.name] = c.floor; });
-          setRoomCategoryNames(names);
-          setCategoryFloors(floors);
-          setCategories(names);
-        }
+        if (data && Array.isArray(data.categories)) applyCategories(data.categories);
         return data && data.category ? data.category.name : null;
       })
       .catch(() => null)
@@ -2098,20 +2180,32 @@ function App() {
     })
       .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
       .then(data => {
-        if (data && Array.isArray(data.categories)) {
-          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
-          const floors = {};
-          data.categories.forEach(c => { if (c && c.name && c.floor) floors[c.name] = c.floor; });
-          setRoomCategoryNames(names);
-          setCategoryFloors(floors);
-          setCategories(names);
-        }
+        if (data && Array.isArray(data.categories)) applyCategories(data.categories);
         if (data && Array.isArray(data.rooms)) setRooms(data.rooms);
         return data && data.category ? data.category.name : null;
       })
       .catch(() => null)
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
+
+  /* Room Management's own edit of a type's guest limit: the same write the site
+     builder's category dialog makes. Resolves true once saved. */
+  const setCategorySleeps = useCallback((name, capacity) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/room-categories/details', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ name, capacity }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && Array.isArray(data.categories)) applyCategories(data.categories);
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, [applyCategories]);
 
   // Check-in and check-out are booking moves. The room status follows on the server,
   // and the response hands the updated room back so this page never has to infer it.
@@ -2135,11 +2229,13 @@ function App() {
       initialNav={window.HMS_ROOM_MGMT_INITIAL_NAV}
       rooms={rooms}
       categories={categories}
+      sleeps={sleeps}
       onBack={() => { window.location.href = window.HMS_ROOMMANAGEMENT_URL; }}
       onAddRoom={addRoom}
       onRoomUpdated={replaceRoom}
       onAddCategory={addCategory}
       onRenameCategory={renameCategory}
+      onSetSleeps={setCategorySleeps}
       onBookingAction={bookingAction}
       onToast={(msg) => window.toast && window.toast(msg)}
     />
