@@ -6681,7 +6681,7 @@ function RestaurantHero({ menus, onExplore, onNav, onReserveTable, cardImages, c
             <button type="button" className="btn-primary" onClick={onExplore} data-hms-stock="View the Menu">
               View the Menu <i className="fa-solid fa-arrow-down" style={{ fontSize: '0.7rem' }}></i>
             </button>
-            <button type="button" className="btn-ghost" onClick={() => (onReserveTable ? onReserveTable() : onNav && onNav('booking'))} data-hms-stock="Reserve a Table">
+            <button type="button" className="btn-ghost" onClick={() => onReserveTable && onReserveTable()} data-hms-stock="Reserve a Table">
               Reserve a Table
             </button>
           </div>
@@ -8434,163 +8434,6 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
 }
 
 
-/* â•â•â•â•â•â•â• BOOKING â•â•â•â•â•â•â• */
-function BookingPage({ onToast, rooms, onCreateBooking, guest }) {
-  const roomList = rooms && rooms.length ? rooms : [];
-  // A signed-in guest's name and email are filled in for them, here and after each booking.
-  const signedIn = guest && guest.type === 'customer' ? guest : null;
-  const blankForm = () => ({ checkIn: '', checkOut: '', guests: '', roomType: '',
-    name: (signedIn && signedIn.name) || '', email: (signedIn && signedIn.email) || '' });
-  const [form, setForm] = useState(blankForm);
-  useEffect(() => {
-    if (!signedIn) return;
-    setForm(prev => Object.assign({}, prev, { name: prev.name || signedIn.name || '', email: prev.email || signedIn.email || '' }));
-  }, [signedIn && signedIn.name, signedIn && signedIn.email]);
-  const today = new Date().toISOString().split('T')[0];
-  // Check-out must be a later date than check-in, so the day of check-in itself is
-  // not selectable on the check-out calendar.
-  const minCheckOut = addDays(form.checkIn || today, 1);
-  const update = (f, v) => setForm(p => { const n = { ...p, [f]: v }; if (f === 'checkIn' && v) n.checkOut = ''; return n; });
-
-  const getEst = () => {
-    if (!form.checkIn || !form.checkOut || !form.roomType) return null;
-    const blocks = stayBlocks(form.checkIn, form.checkOut, '');
-    const room = roomList.find(r => r.id === form.roomType);
-    return room ? { blocks, price: room.price, total: blocks * room.price, name: room.name } : null;
-  };
-  const est = getEst();
-
-  /* On the Mini Portfolio this really books. In the builder it stays the demo it has
-     always been — a student clicking through their own design should not be filing
-     reservations against their hotel. onCreateBooking is the same call the Rooms page
-     makes, so both entry points go through one endpoint and one set of guards. */
-  const [sending, setSending] = useState(false);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!isSiteInteractive() || sending) return;
-    const room = roomList.find(r => r.id === form.roomType);
-
-    if (!window.__HMS_PUBLIC__ || !onCreateBooking) {
-      onToast(`Thank you, ${form.name}! Your booking for the ${room ? room.name : 'room'} has been submitted.`);
-      setForm(blankForm());
-      return;
-    }
-
-    if (!room) { onToast('Please choose a room type.'); return; }
-
-    setSending(true);
-    // createBooking carries the dates on the guest object, not a separate one.
-    // No payment and no add-ons: the public endpoint refuses both anyway.
-    Promise.resolve(onCreateBooking(
-      room,
-      {
-        // The form asks for a name and an email; the desk takes the rest on arrival.
-        fullName: form.name, contactNo: '', email: form.email, idNumber: '',
-        checkIn: form.checkIn, checkOut: form.checkOut, checkInTime: '',
-        guestCount: form.guests,
-      },
-      null,
-      []
-    ))
-      .then(() => {
-        onToast(`Thank you, ${form.name}! Your request for the ${room.name} is with the front desk.`);
-        setForm(blankForm());
-      })
-      .catch(err => onToast((err && err.message) ? err.message : 'That booking could not be sent.'))
-      .finally(() => setSending(false));
-  };
-
-  return (
-    <>
-      <div className="page-header">
-        <span className="section-num">04 — Reservations</span>
-        <h1 className="font-display">Book Your Stay</h1>
-        <p>Select your dates and preferences, and our concierge team will confirm your booking within the hour.</p>
-      </div>
-      <section style={{ padding: '0 1.5rem 6rem', maxWidth: 1000, margin: '0 auto' }}>
-        <div className="booking-card">
-          <div className="booking-layout" style={{ display: 'flex' }}>
-            <div className="booking-sidebar" style={{ flex: '0 0 280px' }}>
-              <h3 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem' }}>Why {brandName}</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {[
-                  { icon: 'fa-shield-halved', text: 'Free cancellation up to 48h before check-in' },
-                  { icon: 'fa-tag', text: 'Best price guarantee on direct bookings' },
-                  { icon: 'fa-champagne-glasses', text: 'Complimentary welcome drink on arrival' },
-                  { icon: 'fa-wifi', text: 'High-speed WiFi throughout the property' }
-                ].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                    <i className={`fa-solid ${item.icon}`} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', marginTop: '0.15rem', width: 16, flexShrink: 0 }}></i>
-                    <span style={{ fontSize: '0.82rem', lineHeight: 1.45, color: 'rgba(247,244,239,0.85)' }}>{item.text}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.12)' }}>
-                <p style={{ fontSize: '0.72rem', color: 'rgba(247,244,239,0.4)', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Need help?</p>
-                <p style={{ fontSize: '0.85rem', color: 'rgba(247,244,239,0.8)' }}>
-                  <i className="fa-solid fa-phone" style={{ fontSize: '0.7rem', marginRight: '0.4rem' }}></i>+33 1 42 60 00 00
-                </p>
-              </div>
-            </div>
-            <div style={{ flex: 1, padding: '2.5rem' }}>
-              <form onSubmit={handleSubmit}>
-                <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' }}>Check-in</label>
-                    <input type="date" className="booking-input" value={form.checkIn} min={today} onChange={e => update('checkIn', e.target.value)} required />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' }}>Check-out</label>
-                    <input type="date" className="booking-input" value={form.checkOut} min={minCheckOut} onChange={e => update('checkOut', e.target.value)} required />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' }}>Guests</label>
-                    <select className="booking-input" value={form.guests} onChange={e => update('guests', e.target.value)} required>
-                      <option value="">Select</option>
-                      {[1,2,3,4].map(n => <option key={n} value={n}>{n} Guest{n > 1 ? 's' : ''}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' }}>Room Type</label>
-                    <select className="booking-input" value={form.roomType} onChange={e => update('roomType', e.target.value)} required>
-                      <option value="">Select</option>
-                      {roomList.map(r => <option key={r.id} value={r.id}>{r.name} — {formatPeso(r.price)} / {BLOCK_HOURS} hrs</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' }}>Full Name</label>
-                    <input type="text" className="booking-input" placeholder="James Whitfield" value={form.name} onChange={e => update('name', e.target.value)} required />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' }}>Email</label>
-                    <input type="email" className="booking-input" placeholder="james@example.com" value={form.email} onChange={e => update('email', e.target.value)} required />
-                  </div>
-                </div>
-                {est && (
-                  <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '1rem 1.25rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Estimated Total</span>
-                      <div><strong className="font-display" style={{ fontSize: '1.6rem', color: 'var(--accent)', fontWeight: 700 }}>{formatPeso(est.total)}</strong></div>
-                    </div>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--fg-muted)' }}>{est.blocks} &times; {BLOCK_HOURS} hrs &times; {formatPeso(est.price)}</span>
-                  </div>
-                )}
-                <button type="submit" className="btn-warm" style={{ width: '100%', justifyContent: 'center' }}>
-                  <i className="fa-solid fa-paper-plane" style={{ fontSize: '0.7rem' }}></i> Book Now
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </section>
-    </>
-  );
-}
-
-
 /* â•â•â•â•â•â•â• FOOTER â•â•â•â•â•â•â• */
 function Footer({ onNav, cardImages, page, brandName, hotelInfo, socialLinks }) {
   // Passed only so the footer re-renders when the shared logo changes.
@@ -8656,7 +8499,7 @@ function Footer({ onNav, cardImages, page, brandName, hotelInfo, socialLinks }) 
           <div>
             <h4 className="footer-heading" data-hms-stock="Services">Services</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-              <a href="javascript:void(0)" onClick={() => onNav('booking')} style={{ fontSize: '0.82rem' }} data-hms-stock="Book Now">Book Now</a>
+              <a href="javascript:void(0)" onClick={() => onNav('rooms')} style={{ fontSize: '0.82rem' }} data-hms-stock="Book Now">Book Now</a>
               <a href="#" style={{ fontSize: '0.82rem' }} data-hms-stock="Concierge">Concierge</a>
               <a href="#" style={{ fontSize: '0.82rem' }} data-hms-stock="Airport Transfer">Airport Transfer</a>
               <a href="#" style={{ fontSize: '0.82rem' }} data-hms-stock="Gift Vouchers">Gift Vouchers</a>
@@ -9711,7 +9554,6 @@ function App() {
         onRemove={removeAmenity}
       />
     ),
-    booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} guest={guestAuth} />,
   };
 
   const pickRoomCardBg = (hex) => {
