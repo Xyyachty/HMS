@@ -43,6 +43,15 @@ class HotelRoomDefaults
         'Family'   => 6000,
     ];
 
+    /** How many guests one room of each starting category sleeps. Room Management can change it. */
+    public const CATEGORY_CAPACITY = [
+        'Classic'  => 2,
+        'Superior' => 2,
+        'Deluxe'   => 3,
+        'Premium'  => 4,
+        'Family'   => 6,
+    ];
+
     public const CATEGORY_DESCRIPTIONS = [
         'Classic'  => 'A comfortable room with the essentials done well.',
         'Superior' => 'More space and a better view than the Classic.',
@@ -87,7 +96,7 @@ class HotelRoomDefaults
                     || ($description !== '' && $description !== self::CATEGORY_DESCRIPTIONS[$stock])
                     || !empty($category['inclusions'])
                     || $category['rooms_available'] !== null
-                    || $category['capacity'] !== null
+                    || ($category['capacity'] !== null && (int) $category['capacity'] !== self::CATEGORY_CAPACITY[$stock])
                     || filled($category['bed_type'])
                     || filled($category['room_size']),
                 'photos' => filled($category['image']) || !empty($category['gallery']),
@@ -252,7 +261,7 @@ class HotelRoomDefaults
                 'description'  => self::CATEGORY_DESCRIPTIONS[$name],
                 'created_at'   => $now,
                 'updated_at'   => $now,
-            ];
+            ] + (HotelRoomCategory::supportsShowcase() ? ['capacity' => self::CATEGORY_CAPACITY[$name]] : []);
         }
 
         if (empty($rows)) {
@@ -329,7 +338,7 @@ class HotelRoomDefaults
                 'gallery' => [],
                 'inclusions' => [],
                 'rooms_available' => null,
-                'capacity' => null,
+                'capacity' => self::CATEGORY_CAPACITY[$name],
                 'bed_type' => null,
                 'room_size' => null,
             ];
