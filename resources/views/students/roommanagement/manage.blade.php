@@ -1500,7 +1500,7 @@ function RoomCard({ room, sleeps, onEdit }) {
             <h3 className="mr-name">{room.name}</h3>
             <span className="mr-type">
               {room.label || room.category}
-              {(room.capacity || sleeps) ? ` · Sleeps ${room.capacity || sleeps}` : ''}
+              {(room.capacity || sleeps) ? ` · ${mrPlural(room.capacity || sleeps, 'Guest', 'Guests')}` : ''}
             </span>
           </div>
           <div className="mr-price">
@@ -1685,7 +1685,7 @@ function ManageRoomPanel({ rooms, categories, sleeps, onSubmit, onRoomUpdated, o
             ) : null}
             {onSetSleeps && tab !== 'All' ? (
               <button type="button" className="mr-link" onClick={() => { setSleepsError(''); setSleepsFor(tab); }}>
-                <i className="fa-solid fa-user-group"></i> {(sleeps || {})[tab] ? `Sleeps ${sleeps[tab]}` : 'No guest limit'}
+                <i className="fa-solid fa-user-group"></i> {(sleeps || {})[tab] ? mrPlural(sleeps[tab], 'Guest', 'Guests') : 'No guest limit'}
               </button>
             ) : null}
           </p>
