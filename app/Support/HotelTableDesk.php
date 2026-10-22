@@ -3,10 +3,13 @@
 namespace App\Support;
 
 use App\Models\ActivityLog;
+use App\Models\Group;
 use App\Models\HotelCustomer;
 use App\Models\HotelDineInTable;
+use App\Models\StudentGroup;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
@@ -19,6 +22,73 @@ use RuntimeException;
  */
 class HotelTableDesk
 {
+    /**
+     * The dining room every team starts with, as name => seats: tables for two,
+     * for four, for six and one for eight. Restaurant Management adds, renames,
+     * resizes and removes them like any other.
+     */
+    public const DEFAULT_TABLES = [
+        'Table 1'  => 2,
+        'Table 2'  => 2,
+        'Table 3'  => 2,
+        'Table 4'  => 4,
+        'Table 5'  => 4,
+        'Table 6'  => 4,
+        'Table 7'  => 4,
+        'Table 8'  => 6,
+        'Table 9'  => 6,
+        'Table 10' => 8,
+    ];
+
+    /**
+     * Hands a team the starting tables, once. The team's groups row records that it
+     * happened, so a restaurant that removes every table is not given them back, and
+     * a team that already set up tables of its own is only marked.
+     */
+    public static function ensureDefaultsFor(StudentGroup $membership): void
+    {
+        $group = Group::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->first();
+
+        if (!$group || $group->tables_seeded_at) {
+            return;
+        }
+
+        DB::transaction(function () use ($group) {
+            // Two screens loading at once must not seed twenty.
+            $group = Group::whereKey($group->group_id)->lockForUpdate()->first();
+            if ($group->tables_seeded_at) {
+                return;
+            }
+            self::seed($group);
+        });
+    }
+
+    /** Writes the starting tables for a team with none, and marks the team either way. */
+    public static function seed(Group $group): void
+    {
+        $exists = HotelDineInTable::where('group_name', $group->group_name)
+            ->where('faculty_id', $group->faculty_id)
+            ->exists();
+
+        if (!$exists) {
+            $now = now();
+            HotelDineInTable::insert(collect(self::DEFAULT_TABLES)->map(fn ($seats, $name) => [
+                'group_name' => $group->group_name,
+                'faculty_id' => $group->faculty_id,
+                'group_id'   => $group->group_id,
+                'name'       => $name,
+                'capacity'   => $seats,
+                'status'     => 'Available',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->values()->all());
+        }
+
+        $group->forceFill(['tables_seeded_at' => now()])->save();
+    }
+
     /**
      * $data keys: guest_name, contact_no, party_size, reserved_for.
      * $seatNow is a walk-in: they are here, so the table goes straight to Occupied.
