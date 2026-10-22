@@ -2426,7 +2426,7 @@ class FacultyController extends Controller
             'tab' => 'create_task',
             'class' => $teamClassLetter ?: $request->input('class'),
         ]))->with('success', trim(
-                ($tasksCreated > 0 ? $tasksCreated . ' task(s) assigned to ' . $teamLabel . '. ' : '')
+                ($tasksCreated > 0 ? $tasksCreated . ' ' . Str::plural('task', $tasksCreated) . ' assigned to ' . $teamLabel . '. ' : '')
                 . $dueMessage
                 . ($alreadyHeld !== [] ? ' ' . $this->alreadyHeldMessage($alreadyHeld) : '')
             ))
@@ -2448,12 +2448,14 @@ class FacultyController extends Controller
     {
         $parts = [];
         foreach ($alreadyHeld as $groupName => $titles) {
-            $parts[] = $groupName . ' already has ' . collect(array_keys($titles))
+            $parts[] = collect(array_keys($titles))
                 ->map(fn ($title) => '"' . $title . '"')
-                ->join(', ', ' and ');
+                ->join(', ', ' and ')
+                . (count($alreadyHeld) > 1 ? ' for ' . $groupName : '');
         }
 
-        return implode('; ', $parts) . '.';
+        // "Skipped "Propose Two Hotel Concepts" (already assigned)."
+        return 'Skipped ' . implode('; ', $parts) . ' (already assigned).';
     }
 
     /**
