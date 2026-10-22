@@ -492,7 +492,7 @@ function RoomWalkIn() {
      to someone standing here. */
   const free = useMemo(
     () => rooms.filter(r => r.status === 'Available' && freeFor(r, checkIn, checkOut)
-      && !(sleeps[r.category] < guests)),
+      && !((r.capacity || sleeps[r.category]) < guests)),
     [rooms, checkIn, checkOut, sleeps, guests]
   );
   const categories = useMemo(() => ['All', ...Array.from(new Set(free.map(r => r.category).filter(Boolean)))], [free]);

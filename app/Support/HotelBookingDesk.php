@@ -77,13 +77,13 @@ class HotelBookingDesk
         $scope = self::scope($membership);
         $guestCount = isset($stay['guest_count']) ? max(1, (int) $stay['guest_count']) : null;
 
-        // The category's "Sleeps N" is the limit. A category with no capacity set takes
-        // any party, the same as before the field existed.
+        // The room's own limit, else its category's "Sleeps N". Neither set takes any
+        // party, the same as before the fields existed.
         if ($guestCount !== null) {
-            $capacity = (int) HotelRoomCategory::where('group_name', $room->group_name)
+            $capacity = (int) ($room->capacity ?: HotelRoomCategory::where('group_name', $room->group_name)
                 ->where('faculty_id', $room->faculty_id)
                 ->where('name', $room->category)
-                ->value('capacity');
+                ->value('capacity'));
 
             if ($capacity && $guestCount > $capacity) {
                 throw new \RuntimeException(

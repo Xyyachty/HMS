@@ -771,7 +771,7 @@ function pickImageFile(onPicked) {
 // When opened from a category tab, carry that category into the form instead of
 // silently falling back to the first category in the inventory.
 function createEmptyRoomForm(category) {
-  return { category: String(category || '').trim(), status: 'Available', price: '', desc: '', imgs: toRoomSlots(null) };
+  return { category: String(category || '').trim(), status: 'Available', price: '', capacity: '', desc: '', imgs: toRoomSlots(null) };
 }
 
 /* Mirrors App\Support\HotelRoomDefaults: each category numbers from its own hundreds
@@ -919,7 +919,17 @@ function validateRoomForm(form, requireName = true) {
   if (!String(form.price || '').trim() || !Number.isFinite(price) || price <= 0) {
     errors.price = 'Enter a valid price.';
   }
+  const capacity = Number(form.capacity);
+  if (String(form.capacity || '').trim() && !(Number.isInteger(capacity) && capacity >= 1 && capacity <= 99)) {
+    errors.capacity = 'Type a number from 1 to 99, or leave it empty.';
+  }
   return errors;
+}
+
+/* The Guests field as the server takes it: a whole number, or null for "follow the type". */
+function roomCapacityPayload(form) {
+  const n = parseInt(String(form.capacity || '').trim(), 10);
+  return Number.isNaN(n) ? null : n;
 }
 
 /* ── Manage Rooms: plain-language cards and dialogs ─────────────────────────
@@ -1173,13 +1183,14 @@ function PhotoStrip({ imgs, onOpen }) {
 
 /* Adding a room is the rare move; looking one up is the common one — so the form
    lives in a dialog and the page leads with the rooms. Same POST, same validation. */
-function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) {
+function AddRoomModal({ rooms, categories, sleeps, defaultCategory, onClose, onAdded }) {
   const [form, setForm] = useState(() => createEmptyRoomForm(defaultCategory));
   const [errors, setErrors] = useState({});
   const [imgModal, setImgModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const uid = useId();
   const typeList = (categories && categories.length ? categories : DEFAULT_ROOM_CATEGORIES);
+  const typeSleeps = (sleeps || {})[form.category] || null;
 
   // Preview only — HotelRoomDefaults::nextNameFor() decides the real one on save.
   const nextRoomName = form.category ? nextRoomNameFor(rooms || [], form.category) : '';
@@ -1207,6 +1218,7 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
       body: JSON.stringify(Object.assign({
         category: form.category,
         price: parseInt(String(form.price).replace(/,/g, ''), 10),
+        capacity: roomCapacityPayload(form),
         description: String(form.desc || '').trim(),
       }, roomSlotsPayload(form.imgs))),
     })
@@ -1264,6 +1276,20 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
           </div>
 
           <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-g'}>Guests allowed <em>(optional)</em></label>
+            <input
+              id={uid + '-g'} type="number" min="1" max="99" step="1" inputMode="numeric"
+              className={`mr-input ${errors.capacity ? 'has-error' : ''}`} placeholder={typeSleeps ? String(typeSleeps) : 'No limit'}
+              value={form.capacity} onChange={e => update('capacity', e.target.value)}
+            />
+            {errors.capacity ? <p className="mr-error">{errors.capacity}</p> : <p className="mr-help">
+              {typeSleeps
+                ? `Leave empty to use the ${form.category} limit of ${mrPlural(typeSleeps, 'guest', 'guests')}.`
+                : 'Leave empty for no limit. Bookings for more guests are refused.'}
+            </p>}
+          </div>
+
+          <div className="mr-field">
             <label className="mr-label" htmlFor={uid + '-d'}>Short description <em>(optional)</em></label>
             <textarea
               id={uid + '-d'} className="mr-input" rows={3} placeholder="Example: Queen bed, city view and a work desk."
@@ -1295,11 +1321,12 @@ function AddRoomModal({ rooms, categories, defaultCategory, onClose, onAdded }) 
 
 /* The Edit button on a room card. Edits the room's own fields; the booked dates
    below stay read-only — they belong to bookings, not to the room. */
-function EditRoomModal({ room, categories, onClose, onSaved }) {
+function EditRoomModal({ room, categories, sleeps, onClose, onSaved }) {
   const [form, setForm] = useState(() => ({
     name: room.name || '',
     category: normalizeRoomCategory(room.category || room.label),
     price: String(room.price || ''),
+    capacity: room.capacity ? String(room.capacity) : '',
     desc: room.desc || '',
     imgs: toRoomSlots(room),
   }));
@@ -1308,6 +1335,7 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const uid = useId();
   const typeList = (categories && categories.length ? categories : DEFAULT_ROOM_CATEGORIES);
+  const typeSleeps = (sleeps || {})[form.category] || null;
   const now = roomNow(room);
 
   const update = (field, value) => {
@@ -1339,6 +1367,7 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
         name: String(form.name).trim(),
         category: form.category,
         price: parseInt(String(form.price).replace(/,/g, ''), 10),
+        capacity: roomCapacityPayload(form),
         description: String(form.desc || '').trim(),
       }, roomSlotsPayload(form.imgs))),
     })
@@ -1402,6 +1431,20 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
           </div>
 
           <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-g'}>Guests allowed <em>(optional)</em></label>
+            <input
+              id={uid + '-g'} type="number" min="1" max="99" step="1" inputMode="numeric"
+              className={`mr-input ${errors.capacity ? 'has-error' : ''}`} placeholder={typeSleeps ? String(typeSleeps) : 'No limit'}
+              value={form.capacity} onChange={e => update('capacity', e.target.value)}
+            />
+            {errors.capacity ? <p className="mr-error">{errors.capacity}</p> : <p className="mr-help">
+              {typeSleeps
+                ? `Leave empty to use the ${form.category} limit of ${mrPlural(typeSleeps, 'guest', 'guests')}.`
+                : 'Leave empty for no limit. Bookings for more guests are refused.'}
+            </p>}
+          </div>
+
+          <div className="mr-field">
             <label className="mr-label" htmlFor={uid + '-d'}>Short description <em>(optional)</em></label>
             <textarea id={uid + '-d'} className="mr-input" rows={3} value={form.desc} onChange={e => update('desc', e.target.value)} />
           </div>
@@ -1433,7 +1476,7 @@ function EditRoomModal({ room, categories, onClose, onSaved }) {
   );
 }
 
-function RoomCard({ room, onEdit }) {
+function RoomCard({ room, sleeps, onEdit }) {
   const now = roomNow(room);
   const next = nextBooking(room);
   const today = todayStr();
@@ -1455,7 +1498,10 @@ function RoomCard({ room, onEdit }) {
         <div className="mr-card-top">
           <div style={{ minWidth: 0 }}>
             <h3 className="mr-name">{room.name}</h3>
-            <span className="mr-type">{room.label || room.category}</span>
+            <span className="mr-type">
+              {room.label || room.category}
+              {(room.capacity || sleeps) ? ` · Sleeps ${room.capacity || sleeps}` : ''}
+            </span>
           </div>
           <div className="mr-price">
             <b>{formatPeso(room.price)}</b>
@@ -1665,7 +1711,7 @@ function ManageRoomPanel({ rooms, categories, sleeps, onSubmit, onRoomUpdated, o
         ) : (
           <>
             <div className="mr-grid">
-              {visible.map(room => <RoomCard key={room.id} room={room} onEdit={r => setSelectedRoomId(r.id)} />)}
+              {visible.map(room => <RoomCard key={room.id} room={room} sleeps={(sleeps || {})[room.category]} onEdit={r => setSelectedRoomId(r.id)} />)}
             </div>
             <div className="mr-more">
               <span>Showing {visible.length} of {filtered.length}</span>
@@ -1683,6 +1729,7 @@ function ManageRoomPanel({ rooms, categories, sleeps, onSubmit, onRoomUpdated, o
         <AddRoomModal
           rooms={list}
           categories={categoryNames}
+          sleeps={sleeps}
           defaultCategory={tab === 'All' ? '' : tab}
           onClose={() => setAddOpen(false)}
           onAdded={onSubmit}
@@ -1725,6 +1772,7 @@ function ManageRoomPanel({ rooms, categories, sleeps, onSubmit, onRoomUpdated, o
         <EditRoomModal
           room={selectedRoom}
           categories={categoryNames}
+          sleeps={sleeps}
           onClose={() => setSelectedRoomId(null)}
           onSaved={onRoomUpdated}
         />

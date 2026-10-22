@@ -1536,6 +1536,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'name'        => 'sometimes|required|string|max:255',
             'category'    => 'sometimes|required|string|max:100',
             'price'       => 'sometimes|required|integer|min:1',
+            'capacity'    => 'sometimes|nullable|integer|min:1|max:99',
             'description' => 'sometimes|nullable|string|max:5000',
             'image'       => 'sometimes|nullable|string|max:900000',
             'gallery'     => 'sometimes|nullable|array|max:' . HotelRoom::GALLERY_MAX,
@@ -1546,10 +1547,11 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'gallery.*.max' => 'One of those images is too large. Please choose a smaller one.',
         ]);
 
-        foreach (['name', 'category', 'price', 'description'] as $field) {
+        foreach (['name', 'category', 'price', 'capacity', 'description'] as $field) {
             if (array_key_exists($field, $data)) {
                 $room->{$field} = match ($field) {
                     'price' => (int) $data[$field],
+                    'capacity' => $data[$field] === null ? null : (int) $data[$field],
                     // Kept to a category the team actually has, so an edit cannot strand a
                     // room under a tab that is not drawn anywhere.
                     'category' => \App\Support\HotelRoomDefaults::normalizeCategory($data[$field], $membership),
@@ -1620,6 +1622,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         $data = $request->validate([
             'category'    => 'required|string|max:100',
             'price'       => 'required|integer|min:1',
+            'capacity'    => 'nullable|integer|min:1|max:99',
             'description' => 'nullable|string|max:5000',
             'image'       => 'nullable|string|max:900000',
             'gallery'     => 'nullable|array|max:' . HotelRoom::GALLERY_MAX,
@@ -1653,6 +1656,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'category'    => $category,
             'status'      => 'Available',
             'price'       => (int) $data['price'],
+            'capacity'    => isset($data['capacity']) ? (int) $data['capacity'] : null,
             'description' => $data['description'] ?? null,
             'image'       => $imagePath,
         ] + (HotelRoom::supportsGallery() ? ['gallery' => $gallery] : []));

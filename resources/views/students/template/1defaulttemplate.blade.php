@@ -5820,7 +5820,7 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
         canReserve={canReserveRooms !== false}
         onRequireGuest={onRequireGuest}
         onReserve={handleReserve}
-        capacity={selectedRoom ? (((categoryDetails || []).find((c) => c && c.name === selectedRoom.category) || {}).capacity || null) : null}
+        capacity={selectedRoom ? (selectedRoom.capacity || ((categoryDetails || []).find((c) => c && c.name === selectedRoom.category) || {}).capacity || null) : null}
         onToast={onToast}
       />
     </>

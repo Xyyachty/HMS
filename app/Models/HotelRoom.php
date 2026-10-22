@@ -40,6 +40,7 @@ class HotelRoom extends Model
         'category',
         'status',
         'price',
+        'capacity',
         'description',
         'image',
         'gallery',
@@ -163,6 +164,8 @@ class HotelRoom extends Model
             'category'     => $this->category,
             'status'       => $this->status,
             'price'        => (int) $this->price,
+            // The room's own guest limit; null means it follows its category's.
+            'capacity'     => $this->capacity === null ? null : (int) $this->capacity,
             'desc'         => $this->description ?? '',
             'img'          => \App\Support\HotelImageStore::url($this->image),
             // Primary first. The card rotates through these; 'img' stays for the
@@ -211,6 +214,8 @@ class HotelRoom extends Model
             'category'     => $this->category,
             'status'       => $this->status,
             'price'        => (int) $this->price,
+            // The room's own guest limit; null means it follows its category's.
+            'capacity'     => $this->capacity === null ? null : (int) $this->capacity,
             'desc'         => $this->description ?? '',
             'img'          => \App\Support\HotelImageStore::url($this->image),
             // Primary first. The card rotates through these; 'img' stays for the
