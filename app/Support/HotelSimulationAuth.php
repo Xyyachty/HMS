@@ -113,6 +113,11 @@ class HotelSimulationAuth
             'type' => $type,
             'name' => $auth['name'] ?? null,
             'email' => $auth['email'] ?? null,
+            // Read off the account rather than the session, so a guest signed in before
+            // this was added still gets it. The booking form fills it in for them.
+            'contact_number' => $type === 'customer'
+                ? HotelCustomer::find($auth['customer_id'] ?? null)?->contact_number
+                : null,
             'can_redesign' => $type === 'staff' && count($editable) > 0,
             'editable_pages' => $editable,
             'preferred_page' => $editable[0] ?? 'home',

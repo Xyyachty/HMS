@@ -2223,7 +2223,7 @@ function RoomAvailabilityCalendar({ ranges, checkIn, checkOut, onPick }) {
   );
 }
 
-function RoomDetailModal({ room, addons, capacity, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
+function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -2284,6 +2284,19 @@ function RoomDetailModal({ room, addons, capacity, onClose, onChangeStatus, canE
   // booking here, so the day of check-in itself is not selectable on the calendar.
   const minCheckOut = addDays(guestForm.checkIn || today, 1);
   const bookedSet = useMemo(() => bookedDateSet(room.bookedRanges), [room.bookedRanges]);
+
+  /* Only a signed-in guest account can reserve (see requireGuest), and it gave its
+     name, email, contact number and a photo of its ID at sign-up. The details step
+     starts from those instead of asking again; anything already typed is kept. */
+  const isGuestAccount = !!(guest && guest.type === 'customer');
+  useEffect(() => {
+    if (step !== 'register' || !isGuestAccount) return;
+    setGuestForm(prev => Object.assign({}, prev, {
+      fullName: prev.fullName || guest.name || '',
+      email: prev.email || guest.email || '',
+      contactNo: prev.contactNo || guest.contact_number || '',
+    }));
+  }, [step, isGuestAccount, guest && guest.name, guest && guest.email, guest && guest.contact_number]);
 
   const updateGuest = (field, value) => {
     setGuestForm(prev => {
@@ -2527,8 +2540,15 @@ function RoomDetailModal({ room, addons, capacity, onClose, onChangeStatus, canE
                   </div>
                   <div>
                     <label style={fieldLabel}>ID</label>
-                    <input type="text" className="booking-input" placeholder="Government / passport ID" value={guestForm.idNumber}
-                      onChange={e => updateGuest('idNumber', e.target.value)} required />
+                    {isGuestAccount ? (
+                      <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+                        <i className="fa-solid fa-id-card" style={{ color: 'var(--accent)', marginRight: '0.4rem' }}></i>
+                        Your ID from sign-up is on file. The front desk checks it at check-in.
+                      </p>
+                    ) : (
+                      <input type="text" className="booking-input" placeholder="Government / passport ID" value={guestForm.idNumber}
+                        onChange={e => updateGuest('idNumber', e.target.value)} required />
+                    )}
                   </div>
                   <div>
                     <label style={fieldLabel}>Guests{capacity ? ` (sleeps ${capacity})` : ''}</label>
@@ -5579,7 +5599,7 @@ function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, o
   );
 }
 
-function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onEditRoomPhotos, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest }) {
+function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onEditRoomPhotos, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest }) {
   const list = rooms && rooms.length ? rooms : [];
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
@@ -6019,6 +6039,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
         canEditStatus={!!canManageRooms}
         canReserve={canReserveRooms !== false}
         onRequireGuest={onRequireGuest}
+        guest={guest}
         onReserve={handleReserve}
         capacity={selectedRoom ? (selectedRoom.capacity || ((categoryDetails || []).find((c) => c && c.name === selectedRoom.category) || {}).capacity || null) : null}
         onToast={onToast}
@@ -8249,9 +8270,17 @@ function AmenitiesPage({ amenities, slideSeconds, onToast, canEdit, onAdd, onEdi
 
 
 /* â•â•â•â•â•â•â• BOOKING â•â•â•â•â•â•â• */
-function BookingPage({ onToast, rooms, onCreateBooking }) {
+function BookingPage({ onToast, rooms, onCreateBooking, guest }) {
   const roomList = rooms && rooms.length ? rooms : [];
-  const [form, setForm] = useState({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
+  // A signed-in guest's name and email are filled in for them, here and after each booking.
+  const signedIn = guest && guest.type === 'customer' ? guest : null;
+  const blankForm = () => ({ checkIn: '', checkOut: '', guests: '', roomType: '',
+    name: (signedIn && signedIn.name) || '', email: (signedIn && signedIn.email) || '' });
+  const [form, setForm] = useState(blankForm);
+  useEffect(() => {
+    if (!signedIn) return;
+    setForm(prev => Object.assign({}, prev, { name: prev.name || signedIn.name || '', email: prev.email || signedIn.email || '' }));
+  }, [signedIn && signedIn.name, signedIn && signedIn.email]);
   const today = new Date().toISOString().split('T')[0];
   // Check-out must be a later date than check-in, so the day of check-in itself is
   // not selectable on the check-out calendar.
@@ -8279,7 +8308,7 @@ function BookingPage({ onToast, rooms, onCreateBooking }) {
 
     if (!window.__HMS_PUBLIC__ || !onCreateBooking) {
       onToast(`Thank you, ${form.name}! Your booking for the ${room ? room.name : 'room'} has been submitted.`);
-      setForm({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
+      setForm(blankForm());
       return;
     }
 
@@ -8301,7 +8330,7 @@ function BookingPage({ onToast, rooms, onCreateBooking }) {
     ))
       .then(() => {
         onToast(`Thank you, ${form.name}! Your request for the ${room.name} is with the front desk.`);
-        setForm({ checkIn: '', checkOut: '', guests: '', roomType: '', name: '', email: '' });
+        setForm(blankForm());
       })
       .catch(err => onToast((err && err.message) ? err.message : 'That booking could not be sent.'))
       .finally(() => setSending(false));
@@ -9443,6 +9472,7 @@ function App() {
     rooms: (
       <RoomsPage
         onNav={navigateTo}
+        guest={guestAuth}
         onToast={showToast}
         rooms={rooms}
         addons={addons}
@@ -9511,7 +9541,7 @@ function App() {
         onRemove={removeAmenity}
       />
     ),
-    booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} />,
+    booking: <BookingPage onToast={showToast} rooms={rooms} onCreateBooking={createBooking} guest={guestAuth} />,
   };
 
   const pickRoomCardBg = (hex) => {
