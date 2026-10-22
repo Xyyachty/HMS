@@ -1,5 +1,5 @@
 {{--
-    Sidebar footer card: avatar, name, role pill, then My Profile and Sign Out rows.
+    Sidebar footer card: avatar, name, role pill, then My Profile and Logout rows.
     Shared by the Dean, Faculty and Student sidebars. Styled with its own CSS
     because the Faculty layout runs on a frozen Tailwind build.
 
@@ -10,7 +10,7 @@
         $profileHref     Link for My Profile.
         $profileOnclick  Optional onclick for My Profile (Student dashboard sections).
 
-    The Sign Out form keeps id="logoutForm" so each layout's confirm dialog still binds.
+    The Logout form keeps id="logoutForm" so each layout's confirm dialog still binds.
 --}}
 <style>
     .spc { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 1.125rem; box-shadow: 0 10px 30px -12px rgba(0,0,0,0.45); overflow: hidden; }
@@ -49,7 +49,7 @@
             @csrf
             <button type="submit" class="spc-row">
                 <span class="spc-tile spc-tile-out"><span class="iconify" data-icon="lucide:log-out"></span></span>
-                <span class="spc-label">Sign Out</span>
+                <span class="spc-label">Logout</span>
                 <span class="iconify spc-chev" data-icon="lucide:chevron-right"></span>
             </button>
         </form>
