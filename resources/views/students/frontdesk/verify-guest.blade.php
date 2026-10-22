@@ -102,7 +102,9 @@
 
   /* Guest list. Reads the shell's tokens (--card, --border, --fg, --fg-muted,
      --accent), so it follows Template 1, Template 2 and a team's own colours.
-     Below 1000px each row becomes a small card, so nothing scrolls sideways. */
+     Every cell stays on one line. When the panel is too narrow for that
+     (a container query, so the sidebar's width counts), each row becomes a
+     small card instead, so nothing wraps crooked or scrolls sideways. */
   .room-status-badge { white-space: nowrap; }
   .vg {
     --vg-soft: color-mix(in srgb, var(--fg) 4%, transparent);
@@ -112,7 +114,7 @@
   .vg-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
   .vg-head h1 { margin: 0; font-size: 1.6rem; line-height: 1.15; color: var(--fg); }
   .vg-head p { margin: 0.3rem 0 0; color: var(--fg-muted); font-size: 0.86rem; line-height: 1.45; }
-  .vg-panel { background: var(--card); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1rem 1.1rem 1.1rem; }
+  .vg-panel { container-type: inline-size; background: var(--card); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1rem 1.1rem 1.1rem; }
 
   .vg-tools { display: flex; gap: 0.6rem 0.9rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.9rem; }
   .vg-search { position: relative; flex: 1 1 280px; min-width: 0; }
@@ -135,7 +137,8 @@
     padding: 0.6rem 0.85rem; font-size: 0.74rem; font-weight: 600; color: var(--fg-muted); text-align: left;
     white-space: nowrap; border-bottom: 1px solid var(--border); background: var(--vg-soft);
   }
-  .vg-table td { padding: 0.75rem 0.85rem; font-size: 0.84rem; color: var(--fg-muted); border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .vg-table td { padding: 0.75rem 0.85rem; font-size: 0.84rem; color: var(--fg-muted); border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+  .vg-table td.vg-guest { white-space: normal; min-width: 9rem; }
   .vg-table tbody tr:last-child td { border-bottom: 0; }
   .vg-table tbody tr:hover td { background: var(--vg-soft); }
   .vg-main { display: block; color: var(--fg); font-weight: 600; overflow-wrap: anywhere; }
@@ -144,7 +147,7 @@
   .vg-status + .vg-sub { margin-top: 0.3rem; }
   .vg-status { border-radius: 999px; letter-spacing: 0; text-transform: none; font-size: 0.76rem; padding: 0.28rem 0.65rem; }
 
-  .vg-actions { display: flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap; }
+  .vg-actions { display: flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: nowrap; }
   .vg-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; white-space: nowrap; cursor: pointer;
     padding: 0.5rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); background: transparent; color: var(--fg);
@@ -172,19 +175,19 @@
   .vg-page.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 700; }
   .vg-page:disabled { opacity: 0.4; cursor: default; }
 
-  @media (max-width: 1000px) {
+  @container (max-width: 58rem) {
     .vg-tablewrap { border: 0; border-radius: 0; overflow: visible; }
     .vg-table thead { display: none; }
     .vg-table, .vg-table tbody { display: block; }
     .vg-table tr {
-      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem 1rem;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(min(8.5rem, 100%), 1fr)); gap: 0.65rem 1rem;
       padding: 0.85rem 0.9rem; margin-bottom: 0.6rem; border: 1px solid var(--border); border-radius: 0.75rem;
     }
-    .vg-table td { display: block; padding: 0; border: 0; }
+    .vg-table td { display: block; padding: 0; border: 0; white-space: normal; }
     .vg-table tbody tr:hover td { background: none; }
     .vg-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 0.15rem; font-size: 0.7rem; color: var(--fg-muted); }
     .vg-table td.vg-wide { grid-column: 1 / -1; }
-    .vg-actions { justify-content: flex-start; }
+    .vg-actions { justify-content: flex-start; flex-wrap: wrap; }
   }
   @media (max-width: 640px) {
     .vg { padding: 1rem 1rem 2.5rem; }
@@ -367,7 +370,7 @@ function remainingStay(reservation, now) {
 }
 
 /* One line under each status badge, so the desk knows what that status means. */
-const STATUS_HINTS = { 'Booked': 'Not here yet', 'Arrived': 'At the desk, needs a key', 'Checked In': 'In the room' };
+const STATUS_HINTS = { 'Booked': 'Not here yet', 'Arrived': 'Needs a key', 'Checked In': 'In the room' };
 
 /* 'Oct 23' from 'YYYY-MM-DD', and 'Oct 23, 12:48 AM' with a clock time: the list's short form. */
 function formatShortDate(dateStr) {
@@ -1075,7 +1078,6 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                     <th>Room</th>
                     <th>Stay</th>
                     <th>Time left</th>
-                    <th>Rate (12 hrs)</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
@@ -1086,13 +1088,13 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                     const remaining = remainingStay(reservation, now);
                     return (
                       <tr key={room.id}>
-                        <td className="vg-wide">
+                        <td className="vg-wide vg-guest">
                           <span className="vg-main">{reservation.fullName || '—'}</span>
                           {reservation.contactNo && <span className="vg-sub">{reservation.contactNo}</span>}
                         </td>
                         <td data-label="Room">
                           <span className="vg-main">{room.name}</span>
-                          <span className="vg-sub">{room.label || room.category}</span>
+                          <span className="vg-sub">{room.label || room.category} · {formatPeso(room.price)} / 12 hrs</span>
                         </td>
                         <td data-label="Stay">
                           <span className="vg-num" style={{ color: 'var(--fg)' }}>In {formatShortDateTime(reservation.checkIn, reservation.checkInTime)}</span>
@@ -1105,7 +1107,6 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                         }}>
                           {remaining.text}
                         </td>
-                        <td data-label="Rate (12 hrs)" className="vg-num">{formatPeso(room.price)}</td>
                         <td data-label="Status">
                           <span className={`room-status-badge vg-status ${bookingStatusClass(status)}`}>{status}</span>
                           {STATUS_HINTS[status] && <span className="vg-sub">{STATUS_HINTS[status]}</span>}
