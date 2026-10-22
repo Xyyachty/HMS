@@ -1431,9 +1431,9 @@ class HotelTemplateBuilder
             ->first();
 
         $selected = $frontDesk?->selected_template ?: $template->selected_template;
-        $payload = [
-            'is_published' => (bool) ($frontDesk?->is_published ?? $template->is_published),
-        ];
+        // is_published is left alone: Front Desk's "Open hotel to guests" on the
+        // dashboard owns it, and a builder save must not close the site again.
+        $payload = [];
 
         if ($selected !== null && $selected !== '') {
             $payload['selected_template'] = $selected;

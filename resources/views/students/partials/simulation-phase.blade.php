@@ -104,5 +104,48 @@
                 </span>
             @endif
         </div>
+
+        {{-- The team's website, where guests book online. Front Desk opens it;
+             until then /hotel/{slug} 404s (PublicSiteController::publishedTeam). --}}
+        @php
+            $siteOpen = (bool) \App\Models\GroupSettings::where('group_name', $groupMembership->group_name)
+                ->where('faculty_id', $groupMembership->faculty_id)
+                ->value('is_published');
+            $siteSlug = \App\Models\Group::slugForTeam($groupMembership->group_name, (int) $groupMembership->faculty_id);
+        @endphp
+        @if($siteSlug)
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-[#E7E1DD] bg-white p-4">
+                <span class="iconify text-2xl shrink-0 {{ $siteOpen ? 'status-text-completed' : 'text-slate-400' }}" data-icon="mdi:web"></span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-[#181818]">
+                        Hotel Website &middot; {{ $siteOpen ? 'Open to guests' : 'Closed' }}
+                    </p>
+                    @if($siteOpen)
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <input id="hotelSiteUrl" readonly value="{{ url('/hotel/' . $siteSlug) }}" onclick="this.select()"
+                                   class="flex-1 min-w-0 rounded-lg border border-[#E7E1DD] bg-[#F5F2EF] px-2 py-1 text-[0.75rem] text-slate-600">
+                            <button type="button" title="Copy link"
+                                    onclick="(function(b){var i=document.getElementById('hotelSiteUrl');i.select();navigator.clipboard&&navigator.clipboard.writeText(i.value);b.textContent='Copied';setTimeout(function(){b.textContent='Copy';},1200);})(this)"
+                                    class="px-3 py-1 rounded-lg border border-[#E7E1DD] text-[0.75rem] font-semibold text-slate-600 hover:bg-[#F5F2EF]">Copy</button>
+                            <a href="{{ url('/hotel/' . $siteSlug) }}" target="_blank" rel="noopener"
+                               class="px-3 py-1 rounded-lg border border-[#E7E1DD] text-[0.75rem] font-semibold text-slate-600 hover:bg-[#F5F2EF]">Open</a>
+                        </div>
+                    @else
+                        <p class="text-[0.75rem] text-slate-600">Guests can book online once Front Desk opens the hotel.</p>
+                    @endif
+                </div>
+                @if(in_array('front_desk', $simSeats, true))
+                    <form method="POST" action="{{ route('students.hotel-site.publish') }}">
+                        @csrf
+                        <input type="hidden" name="publish" value="{{ $siteOpen ? 0 : 1 }}">
+                        <button type="submit"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition {{ $siteOpen ? 'border border-[#E7E1DD] bg-white text-slate-600 hover:bg-[#F5F2EF]' : 'brand-gradient text-white shadow-lg shadow-brand/20 hover:opacity-90' }}">
+                            <span class="iconify text-base" data-icon="{{ $siteOpen ? 'mdi:door-closed' : 'mdi:door-open' }}"></span>
+                            {{ $siteOpen ? 'Close to guests' : 'Open hotel to guests' }}
+                        </button>
+                    </form>
+                @endif
+            </div>
+        @endif
     </div>
 @endif

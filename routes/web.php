@@ -676,6 +676,10 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'phase_signature' => md5(json_encode([
                 \Illuminate\Support\Arr::except($phase, 'items'),
                 \App\Support\SimulationPhase::seatsFor($groupMembership),
+                // So teammates see the website open or close without a reload.
+                (bool) \App\Models\GroupSettings::where('group_name', $groupMembership?->group_name)
+                    ->where('faculty_id', $facultyId)
+                    ->value('is_published'),
             ])),
             'phase_html'   => view('students.partials.simulation-phase', [
                 'groupMembership' => $groupMembership,
@@ -993,6 +997,27 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'updated_by_roles' => \App\Support\StudentGroupSync::roleKeys($membership),
         ]);
     })->name('frontdesk.template.sync');
+
+    // Front Desk opens the team's website to guests, or closes it again. This is the
+    // only writer of group_settings.is_published, the gate PublicSiteController checks.
+    Route::post('/hotel-site/publish', function (Request $request) {
+        $data = $request->validate(['publish' => ['required', 'boolean']]);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent(auth()->user()->student?->user_information_id);
+        abort_unless($membership, 404);
+        abort_unless(in_array('front_desk', \App\Support\SimulationPhase::seatsFor($membership), true), 403);
+
+        $publish = (bool) $data['publish'];
+        \App\Models\GroupSettings::updateOrCreate(
+            ['group_name' => $membership->group_name, 'faculty_id' => $membership->faculty_id],
+            ['is_published' => $publish, 'group_id' => $membership->group_id]
+        );
+
+        if ($publish) {
+            \App\Support\Notifier::sitePublished(auth()->user(), (string) $membership->group_name, (int) $membership->faculty_id, 'Front Desk');
+        }
+
+        return back()->with('success', $publish ? 'Your hotel is open to guests.' : 'Your hotel is closed to guests.');
+    })->name('hotel-site.publish');
 
     Route::get('/frontdesk/template/1', function (Request $request) {
         $customizations = [];
