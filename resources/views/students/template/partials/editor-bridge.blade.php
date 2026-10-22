@@ -29,6 +29,7 @@
         'bookings'   => '/students/hotel/bookings',
         'amenityReservations' => '/students/hotel/amenity-reservations',
         'amenityVisits'       => '/students/hotel/amenity-visits',
+        'tables'     => '/students/hotel/tables',
     ];
 
     /* Root-relative, like the public map below: an absolute route() bakes in
@@ -117,6 +118,8 @@
         bookings:  @json("/hotel/{$hmsPublicSlug}/api/bookings"),
         amenityReservations: @json("/hotel/{$hmsPublicSlug}/api/amenity-reservations"),
         amenityVisits:       @json("/hotel/{$hmsPublicSlug}/api/amenity-visits"),
+        tables:              @json("/hotel/{$hmsPublicSlug}/api/tables"),
+        tableReservations:   @json("/hotel/{$hmsPublicSlug}/api/table-reservations"),
     };
     // No media upload: it is a named route inside the students auth group, and a
     // visitor has no business uploading to the team's site anyway.

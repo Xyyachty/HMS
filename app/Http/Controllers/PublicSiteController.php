@@ -318,6 +318,67 @@ class PublicSiteController extends Controller
      * The register records who is inside; a guest with no stay yet is still inside
      * it, so the visit is written with their name and no room rather than refused.
      */
+    /**
+     * The dining tables, as much as a visitor needs to pick one: which exist, how many
+     * each seats and whether it is free. Who is sitting at a table, or due at it, stays
+     * with the staff endpoint.
+     */
+    public function tables(string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $tables = \App\Models\HotelDineInTable::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($table) => [
+                'id'       => $table->hotel_dine_in_table_id,
+                'name'     => $table->name,
+                'capacity' => (int) $table->capacity,
+                'status'   => $table->status,
+            ]);
+
+        return response()->json(['tables' => $tables, 'can_manage' => false, 'can_assign' => false]);
+    }
+
+    /** A signed-in guest reserving a table for themselves; see HotelTableDesk::reserveForGuest(). */
+    public function reserveTable(Request $request, string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $auth = \App\Support\HotelSimulationAuth::current();
+        if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer'
+            || strcasecmp((string) ($auth['group_name'] ?? ''), $groupName) !== 0) {
+            return response()->json(['message' => 'Sign in as a guest to reserve a table.'], 403);
+        }
+
+        $data = $request->validate([
+            'table_id'     => 'required|integer',
+            'party_size'   => 'required|integer|min:1|max:50',
+            'reserved_for' => 'required|date',
+        ]);
+
+        $table = \App\Models\HotelDineInTable::where('hotel_dine_in_table_id', $data['table_id'])
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->firstOrFail();
+
+        try {
+            $table = \App\Support\HotelTableDesk::reserveForGuest(
+                $table, $auth, (int) $data['party_size'], (string) $data['reserved_for']
+            );
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
+        }
+
+        return response()->json(['table' => [
+            'id'       => $table->hotel_dine_in_table_id,
+            'name'     => $table->name,
+            'capacity' => (int) $table->capacity,
+            'status'   => $table->status,
+        ]], 201);
+    }
+
     public function enterAmenity(Request $request, string $slug)
     {
         [$groupName, $facultyId] = $this->publishedTeam($slug);

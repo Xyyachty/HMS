@@ -144,6 +144,12 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
         ->middleware('throttle:10,1')
         ->name('.amenity-visits');
 
+    // Dining tables: which are free, and a signed-in guest reserving one.
+    Route::get('/{slug}/api/tables', [PublicSiteController::class, 'tables'])->name('.tables');
+    Route::post('/{slug}/api/table-reservations', [PublicSiteController::class, 'reserveTable'])
+        ->middleware('throttle:10,1')
+        ->name('.table-reservations');
+
     // Food, ordered by the guest reading the menu. Same reason as the two above:
     // the staff endpoint sits behind the students login a visitor does not have.
     Route::post('/{slug}/api/orders', [PublicSiteController::class, 'orderFood'])
@@ -4101,7 +4107,30 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'seat_now'    => 'sometimes|boolean',
         ]);
 
-        $assignedNow = false;
+        /* A guest signed into the hotel's website reserves a table for themselves.
+           Their name and number come off their account, whatever the request says.
+           Only the website asks for this (as_guest): a Front Desk student still signed
+           in as a test guest keeps the desk's own path on the Dine-in page. */
+        $guestAuth = \App\Support\HotelSimulationAuth::current();
+        if ($request->boolean('as_guest')) {
+            if (!is_array($guestAuth) || ($guestAuth['type'] ?? null) !== 'customer'
+                || strcasecmp((string) ($guestAuth['group_name'] ?? ''), (string) $membership->group_name) !== 0) {
+                return response()->json(['message' => 'Sign in as a guest to reserve a table.'], 403);
+            }
+            if (empty($data['reserved_for']) || empty($data['party_size'])) {
+                return response()->json(['message' => 'Choose a date, a time and how many are coming.'], 422);
+            }
+            try {
+                $table = \App\Support\HotelTableDesk::reserveForGuest(
+                    $table, $guestAuth, (int) $data['party_size'], (string) $data['reserved_for']
+                );
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
+            }
+
+            return response()->json(['table' => $table->toTemplateArray()]);
+        }
+
         $closedNow = false;
         $arrivedNow = false;
 
@@ -4148,39 +4177,16 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             if (!$assigns) {
                 return response()->json(['message' => 'Only Front Desk staff can reserve a table for a guest.'], 403);
             }
-            if ($table->status !== 'Available') {
-                return response()->json([
-                    'message' => $table->status === 'Reserved'
-                        ? 'This table is already reserved for someone else.'
-                        : 'This table already has a customer at it.',
-                ], 422);
-            }
-            $partySize = (int) ($data['party_size'] ?? 0);
-            if ($partySize < 1) {
-                return response()->json(['message' => 'Enter how many guests are in the party.'], 422);
-            }
-            if ($partySize > $table->capacity) {
-                return response()->json([
-                    'message' => "This table seats {$table->capacity} — the party is too large for it.",
-                ], 422);
+            // Shared with the guest path above; see HotelTableDesk.
+            try {
+                $table = \App\Support\HotelTableDesk::reserve(
+                    $table, $data, auth()->user(), auth()->user()?->name, $request->boolean('seat_now')
+                );
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
             }
 
-            // Reserved, not Occupied: the desk is holding the table, and nobody is
-            // sitting at it until they walk in — see the 'arrive' branch above. A
-            // walk-in is already standing there, so they are seated at once.
-            $seatNow = $request->boolean('seat_now');
-            $table->status = $seatNow ? 'Occupied' : 'Reserved';
-            $table->guest_name = isset($data['guest_name']) ? trim($data['guest_name']) : null;
-            $table->contact_no = isset($data['contact_no']) ? trim($data['contact_no']) : null;
-            $table->party_size = $partySize;
-            // assigned_at is when the desk wrote this down; reserved_for is when the
-            // customer is due, which is the one the restaurant reads off the floor.
-            $table->reserved_for = $seatNow
-                ? now()
-                : (!empty($data['reserved_for']) ? \Carbon\Carbon::parse($data['reserved_for']) : null);
-            $table->assigned_by = auth()->user()?->name;
-            $table->assigned_at = now();
-            $assignedNow = true;
+            return response()->json(['table' => $table->toTemplateArray()]);
         } else {
             if (!$manages) {
                 return response()->json(['message' => 'Only Restaurant Management staff can edit a table.'], 403);
@@ -4196,34 +4202,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             }
         }
 
-        if ($assignedNow) {
-            /* Written only if the table is still Available. The check above read it
-               without a lock, so two desks taking the same table at once both passed
-               it and the second silently replaced the first desk's guest. */
-            $taken = HotelDineInTable::where('hotel_dine_in_table_id', $table->hotel_dine_in_table_id)
-                ->where('status', 'Available')
-                ->update($table->getDirty() + ['updated_at' => now()]);
-            if ($taken === 0) {
-                return response()->json([
-                    'message' => 'Someone just took ' . $table->name . ' at another desk. Pick another table.',
-                ], 409);
-            }
-            $table->syncOriginal();
-        } else {
-            $table->save();
-        }
+        $table->save();
 
-        if ($assignedNow) {
-            \App\Support\Notifier::tableAssigned(auth()->user(), $table);
-
-            ActivityLog::record(
-                auth()->user(),
-                ActivityLog::TABLE_ASSIGNED,
-                ($table->status === 'Occupied' ? 'Seated walk-in ' : 'Reserved ' . $table->name . ' for ')
-                    . ($table->guest_name ?: 'a guest') . ' (party of ' . $table->party_size . ')'
-                    . ($table->status === 'Occupied' ? ' at ' . $table->name : '') . '.'
-            );
-        }
         if ($arrivedNow) {
             ActivityLog::record(
                 auth()->user(),

@@ -5980,6 +5980,156 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
  * items array; this is what actually gives Front Desk a way to fill it with more
  * than one line before placing the order was the missing piece.
  */
+/* A signed-in guest reserving a dining table. They choose the day, the time and how
+   many are coming, then one of the free tables big enough for them. The table is held
+   for them exactly as when Front Desk reserves it, and the restaurant seats them when
+   they arrive. Who they are comes from their account, so the form does not ask. */
+function TableReserveModal({ open, onClose, guest, onToast }) {
+  // The hotel's calendar day, not the browser's or the server's (UTC).
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  const [date, setDate] = useState(today);
+  const [time, setTime] = useState('19:00');
+  const [party, setParty] = useState('2');
+  const [tables, setTables] = useState(null);
+  const [tableId, setTableId] = useState(null);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const loadTables = useCallback(() => {
+    fetch(hmsApi('tables', '/students/hotel/tables'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => setTables(Array.isArray(data.tables) ? data.tables : []))
+      .catch(() => setTables([]));
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    setDate(today); setTime('19:00'); setParty('2'); setTableId(null); setError(''); setTables(null);
+    loadTables();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const partySize = Math.max(1, parseInt(party, 10) || 1);
+  // Smallest table that fits first, the same rule the walk-in desk uses.
+  const fits = (tables || [])
+    .filter(t => t.status === 'Available' && t.capacity >= partySize)
+    .sort((a, b) => a.capacity - b.capacity);
+  const picked = fits.find(t => t.id === tableId) || null;
+  const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!picked || saving || !isSiteInteractive()) return;
+    setSaving(true);
+    setError('');
+    // The published site has its own endpoint; inside the Simulation it is the desk's.
+    const isPublic = !!window.__HMS_PUBLIC__;
+    fetch(isPublic ? hmsApi('tableReservations', '') : '/students/hotel/tables/' + picked.id, {
+      method: isPublic ? 'POST' : 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ table_id: picked.id, party_size: partySize, reserved_for: date + ' ' + time + ':00', as_guest: true }),
+    })
+      .then(r => r.json().catch(() => ({})).then(data => (r.ok ? data : Promise.reject(Object.assign({ status: r.status }, data)))))
+      .then(() => {
+        const when = new Date(date + 'T' + time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        if (onToast) onToast(`${picked.name} is reserved for you on ${when}. Give your name at the restaurant.`);
+        onClose();
+      })
+      .catch(err => {
+        setError((err && err.message) || 'That table could not be reserved. Please try again.');
+        // Someone else took it: show what is still free.
+        if (err && err.status === 409) { setTableId(null); loadTables(); }
+      })
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <div className="room-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="room-modal" onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '1.5rem 1.5rem 1.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.1rem' }}>
+            <div>
+              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Restaurant</p>
+              <h2 className="font-display" style={{ fontSize: '1.55rem', margin: 0 }}>Reserve a Table</h2>
+            </div>
+            <button type="button" onClick={onClose} aria-label="Close"
+              style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <form onSubmit={submit}>
+            <div style={{ display: 'grid', gap: '0.85rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+                <div>
+                  <label style={fieldLabel}>Date</label>
+                  <input type="date" className="booking-input" value={date} min={today}
+                    onChange={e => setDate(e.target.value)} required style={{ colorScheme: 'dark' }} />
+                </div>
+                <div>
+                  <label style={fieldLabel}>Time</label>
+                  <input type="time" className="booking-input" value={time}
+                    onChange={e => setTime(e.target.value)} required style={{ colorScheme: 'dark' }} />
+                </div>
+              </div>
+              <div>
+                <label style={fieldLabel}>Guests</label>
+                <input type="number" className="booking-input" min="1" max="20" value={party}
+                  onChange={e => { setParty(e.target.value); setTableId(null); }} required />
+              </div>
+              <div>
+                <label style={fieldLabel}>Choose a table</label>
+                {tables === null ? (
+                  <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>Looking for free tables…</p>
+                ) : fits.length === 0 ? (
+                  <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0, lineHeight: 1.5 }}>
+                    No free table seats {partySize} right now. Try a smaller party, or ask the front desk.
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.5rem', maxHeight: 210, overflowY: 'auto' }}>
+                    {fits.map(t => {
+                      const on = t.id === tableId;
+                      return (
+                        <button key={t.id} type="button" onClick={() => setTableId(t.id)} aria-pressed={on}
+                          style={{ textAlign: 'left', padding: '0.65rem 0.75rem', borderRadius: 8, cursor: 'pointer',
+                            border: '1px solid ' + (on ? 'var(--accent)' : 'var(--border)'),
+                            background: on ? 'rgba(201,168,76,0.12)' : 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}>
+                          <span style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem' }}>{t.name}</span>
+                          <span style={{ display: 'block', color: 'var(--fg-muted)', fontSize: '0.74rem' }}>
+                            <i className="fa-solid fa-chair" style={{ marginRight: '0.3rem' }}></i>Seats {t.capacity}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem', lineHeight: 1.5 }}>
+                <i className="fa-solid fa-user" style={{ color: 'var(--accent)', marginRight: '0.4rem' }}></i>
+                Reserving as <strong style={{ color: 'var(--fg)' }}>{(guest && guest.name) || 'Guest'}</strong>
+                {guest && guest.contact_number ? ' · ' + guest.contact_number : ''}
+              </p>
+              {error ? <p style={{ margin: 0, color: '#fb7185', fontSize: '0.8rem' }}>{error}</p> : null}
+            </div>
+            <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }} disabled={!picked || saving}>
+              {saving ? 'Reserving…' : (picked ? 'Reserve ' + picked.name : 'Reserve a Table')} <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, onPlaceOrder, onToast, guest }) {
   const [roomId, setRoomId] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -6539,7 +6689,7 @@ function bestSellerList(menus) {
   const picked = list.filter(item => item && item.bestSeller);
   return (picked.length ? picked : list).slice(0, 6);
 }
-function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, canEditImage, onToast }) {
+function RestaurantHero({ menus, onExplore, onNavigate, onReserveTable, brandName, cardImages, canEditImage, onToast }) {
   const menuList = menus || [];
   const dishCount = menuList.length;
   /* A picture chosen with Change Image wins, then the team's first
@@ -6591,7 +6741,7 @@ function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, c
             <button type="button" className="btn-primary" onClick={onExplore} data-hms-stock="View the Menu">
               View the Menu <i className="fa-solid fa-arrow-down" style={{ fontSize: '0.7rem' }}></i>
             </button>
-            <button type="button" className="btn-outline" onClick={() => onNavigate && onNavigate('booking')} data-hms-stock="Reserve a Table">
+            <button type="button" className="btn-outline" onClick={() => (onReserveTable ? onReserveTable() : onNavigate && onNavigate('booking'))} data-hms-stock="Reserve a Table">
               Reserve a Table
             </button>
           </div>
@@ -6663,7 +6813,7 @@ function RestaurantHero({ menus, onExplore, onNavigate, brandName, cardImages, c
   );
 }
 
-function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, menuLockedReason, cardImages, isDesignMode, rooms, guest }) {
+function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, menuLockedReason, cardImages, isDesignMode, rooms, guest, onReserveTable }) {
   const menuList = menus || [];
   /* The hero's own call to action lands here, on the menu's heading, rather than
      navigating away from the page. */
@@ -6879,7 +7029,7 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
 
   return (
     <>
-      <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNavigate={onNavigate} cardImages={cardImages} canEditImage={canEditMenuColor} onToast={onToast} />
+      <RestaurantHero menus={menuList} onExplore={scrollToMenu} onNavigate={onNavigate} onReserveTable={onReserveTable} cardImages={cardImages} canEditImage={canEditMenuColor} onToast={onToast} />
       {/* The dining venues (Restaurant & Bar, with its All / Fine Dining /
           Japanese / Bar & Lounge tabs) read as a second Best Seller and were
           removed. These empty stand-ins keep their place: saved edits are keyed
@@ -8708,6 +8858,7 @@ function App() {
      point of asking there rather than on a page of its own. */
   const [guestAuth, setGuestAuth] = useState(() => window.__HMS_HOTEL_AUTH__ || { authenticated: false });
   const [guestAuthModal, setGuestAuthModal] = useState(null);
+  const [tableReserveOpen, setTableReserveOpen] = useState(false);
   const pendingGuestAction = useRef(null);
   const [canOrderMenu, setCanOrderMenu] = useState(false);
   const [addons, setAddons] = useState([]);
@@ -9657,6 +9808,10 @@ function App() {
         cardImages={cardImages}
         isDesignMode={isDesignMode}
         rooms={rooms}
+        onReserveTable={() => {
+          if (!isSiteInteractive()) return;
+          requireGuest(() => setTableReserveOpen(true), 'Sign in to reserve a table. You will come straight back to it.');
+        }}
       />
     ),
     experience: (
@@ -9836,6 +9991,7 @@ function App() {
         onSignedIn={onGuestSignedIn}
         texts={guestTexts}
       />
+      <TableReserveModal open={tableReserveOpen} onClose={() => setTableReserveOpen(false)} guest={guestAuth} onToast={showToast} />
       <SiteTheme colors={siteColors} type={typography} />
       <SiteColorsModal
         open={cardColorKind === 'site'}
