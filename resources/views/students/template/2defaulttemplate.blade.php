@@ -5836,6 +5836,13 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
     onCreateBooking(room, guest, payment, addonLines).then(() => {
       // What is free changed the moment those add-ons went out with the guest.
       if (typeof onRefreshAddons === 'function') onRefreshAddons();
+      // A guest on the published site stays on the hotel's page. Everything below is
+      // for staff booking from the builder: the staff toast, Room Management's
+      // notification, and the jump to Verify Guest, a students-only page.
+      if (window.__HMS_PUBLIC__) {
+        if (onToast) onToast(`Thank you, ${guest.fullName}! Your ${room.name} is booked. Please bring your ID at check-in.`);
+        return;
+      }
       // The toast and the cross-module notification are both advisory, and the
       // notification writes customizations + localStorage. The booking is already saved
       // by the time either runs, so they are fenced off together: a failure in here must
