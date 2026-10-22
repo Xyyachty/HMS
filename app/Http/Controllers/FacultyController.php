@@ -1506,99 +1506,19 @@ class FacultyController extends Controller
             $teamRoleCounts[$groupName] = $counts;
         }
 
-        $roleLabels = [
-            'front_desk'            => 'Front Desk',
-            'restaurant_management' => 'Restaurant',
-            'room_management'       => 'Rooms',
-            'maintenance'           => 'Maintenance',
-            'housekeeping'          => 'Housekeeping',
-        ];
-
-        $allTasks = Task::with('assignedTo')
-            ->where('faculty_id', $facultyId)
-            // The hotel concept heads each team's list — it is their first task.
-            ->conceptFirst()
-            ->orderByDesc('updated_at')
-            ->limit(500)
-            ->get();
+        $allTasks = $this->teamActivityTasks((int) $facultyId);
 
         $teamActivityByGroup = [];
         $teamApprovalByGroup = [];
         foreach ($allGroups as $groupName => $members) {
-            $teamEdits = null;
             $teamApprovalByGroup[$groupName] = $this->approvalSummary((string) $groupName, (int) $facultyId);
-            $teamUnlocked = $teamApprovalByGroup[$groupName]['unlocked'];
-            $memberStudentIds = $members->pluck('student_id')->filter()->map(fn ($id) => (int) $id)->unique()->all();
-            $memberRoles = $members
-                ->flatMap(fn ($m) => $m->roles->pluck('role'))
-                ->filter()
-                ->unique()
-                ->values()
-                ->all();
-
-            $teamActivityByGroup[$groupName] = $allTasks
-                ->filter(function (Task $task) use ($memberStudentIds, $memberRoles) {
-                    // The hotel concept has its own "Hotel Concept" tab in this same
-                    // modal — it should not also clutter Team Task Activity.
-                    if ($task->is_hotel_concept) {
-                        return false;
-                    }
-
-                    // A claimed row belongs to exactly one student, so show it only to
-                    // that student's team. Falling through to the role match here listed
-                    // every team's rows under every team holding the same role.
-                    if ($task->student_id) {
-                        return in_array((int) $task->student_id, $memberStudentIds, true);
-                    }
-
-                    // Unclaimed pool rows still show for any team holding the role.
-                    return in_array($task->role, $memberRoles, true);
-                })
-                ->take(100)
-                ->values()
-                ->map(function (Task $task) use ($roleLabels, &$teamEdits, $groupName, $facultyId, $teamUnlocked) {
-                    // Tasks fan out one row per member, so name the student the row
-                    // belongs to — otherwise identical titles are indistinguishable.
-                    $u = $task->assignedTo;
-                    $studentName = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name])));
-                    $studentName = $studentName !== '' ? $studentName : ($u?->name ?? null);
-
-                    return [
-                        'id' => $task->task_id,
-                        'title' => $task->title,
-                        'description' => $task->description,
-                        'role' => $task->role,
-                        'role_label' => $roleLabels[$task->role] ?? $task->role,
-                        'status' => $task->status,
-                        // The concept task is not deletable and reviews differently.
-                        'is_hotel_concept' => $task->is_hotel_concept,
-                        'has_feedback' => filled($task->feedback),
-                        // Submitted with no verdict yet. has_feedback reads the comment,
-                        // which an approval may leave empty, so it cannot tell this apart.
-                        'awaiting_review' => $task->awaiting_review,
-                        // Awaiting review again after a send-back: shown as Resubmitted.
-                        'resubmitted' => $task->is_resubmitted,
-                        // One of SimulationPhase::STATUS_LABELS' keys.
-                        'state' => \App\Support\SimulationPhase::taskState($task),
-                        // Approved, then the department's page changed. A hint only:
-                        // faculty decide whether to send it back. Not raised once the
-                        // simulation is open, where rooms and menus change every shift.
-                        'edited_since_approval' => $task->status === 'archived'
-                            && $task->feedback_at !== null
-                            && !$teamUnlocked
-                            && \App\Support\SimulationPhase::editedSinceApproval(
-                                $task,
-                                $teamEdits ??= \App\Support\SimulationPhase::lastEdits((string) $groupName, (int) $facultyId)
-                            ),
-                        'student_name' => $studentName,
-                        'submitted_at' => $task->status === 'archived'
-                            ? optional($task->updated_at)->format('M d, Y')
-                            : null,
-                        'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
-                        'updated_at' => optional($task->updated_at)->format('M d, Y'),
-                    ];
-                })
-                ->all();
+            $teamActivityByGroup[$groupName] = $this->teamActivityRows(
+                (string) $groupName,
+                $members,
+                $allTasks,
+                (int) $facultyId,
+                $teamApprovalByGroup[$groupName]['unlocked']
+            );
         }
 
         // The Task Submission Indicator on each card, first-paint — the poll
@@ -1684,6 +1604,130 @@ class FacultyController extends Controller
      * shape the Manage Teams modal paints from. Recomputed after every verdict so
      * the modal never shows a count the verdict just changed.
      */
+    private const ACTIVITY_ROLE_LABELS = [
+        'front_desk'            => 'Front Desk',
+        'restaurant_management' => 'Restaurant',
+        'room_management'       => 'Rooms',
+        'maintenance'           => 'Maintenance',
+        'housekeeping'          => 'Housekeeping',
+    ];
+
+    /** The task pool every team's Team Task Activity list is cut from. */
+    private function teamActivityTasks(int $facultyId)
+    {
+        return Task::with('assignedTo')
+            ->where('faculty_id', $facultyId)
+            // The hotel concept heads each team's list — it is their first task.
+            ->conceptFirst()
+            ->orderByDesc('updated_at')
+            ->limit(500)
+            ->get();
+    }
+
+    /**
+     * One team's Team Task Activity rows, as the team modal's Tasks tab renders
+     * them (Review now buttons included). Shared by the first paint and
+     * teamActivity(), so a live refresh paints exactly what a reload would.
+     */
+    private function teamActivityRows(string $groupName, $members, $allTasks, int $facultyId, bool $teamUnlocked): array
+    {
+        $teamEdits = null;
+        $memberStudentIds = $members->pluck('student_id')->filter()->map(fn ($id) => (int) $id)->unique()->all();
+        $memberRoles = $members
+            ->flatMap(fn ($m) => $m->roles->pluck('role'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $allTasks
+            ->filter(function (Task $task) use ($memberStudentIds, $memberRoles) {
+                // The hotel concept has its own "Hotel Concept" tab in this same
+                // modal — it should not also clutter Team Task Activity.
+                if ($task->is_hotel_concept) {
+                    return false;
+                }
+
+                // A claimed row belongs to exactly one student, so show it only to
+                // that student's team. Falling through to the role match here listed
+                // every team's rows under every team holding the same role.
+                if ($task->student_id) {
+                    return in_array((int) $task->student_id, $memberStudentIds, true);
+                }
+
+                // Unclaimed pool rows still show for any team holding the role.
+                return in_array($task->role, $memberRoles, true);
+            })
+            ->take(100)
+            ->values()
+            ->map(function (Task $task) use (&$teamEdits, $groupName, $facultyId, $teamUnlocked) {
+                // Tasks fan out one row per member, so name the student the row
+                // belongs to — otherwise identical titles are indistinguishable.
+                $u = $task->assignedTo;
+                $studentName = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name])));
+                $studentName = $studentName !== '' ? $studentName : ($u?->name ?? null);
+
+                return [
+                    'id' => $task->task_id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'role' => $task->role,
+                    'role_label' => self::ACTIVITY_ROLE_LABELS[$task->role] ?? $task->role,
+                    'status' => $task->status,
+                    // The concept task is not deletable and reviews differently.
+                    'is_hotel_concept' => $task->is_hotel_concept,
+                    'has_feedback' => filled($task->feedback),
+                    // Submitted with no verdict yet. has_feedback reads the comment,
+                    // which an approval may leave empty, so it cannot tell this apart.
+                    'awaiting_review' => $task->awaiting_review,
+                    // Awaiting review again after a send-back: shown as Resubmitted.
+                    'resubmitted' => $task->is_resubmitted,
+                    // One of SimulationPhase::STATUS_LABELS' keys.
+                    'state' => \App\Support\SimulationPhase::taskState($task),
+                    // Approved, then the department's page changed. A hint only:
+                    // faculty decide whether to send it back. Not raised once the
+                    // simulation is open, where rooms and menus change every shift.
+                    'edited_since_approval' => $task->status === 'archived'
+                        && $task->feedback_at !== null
+                        && !$teamUnlocked
+                        && \App\Support\SimulationPhase::editedSinceApproval(
+                            $task,
+                            $teamEdits ??= \App\Support\SimulationPhase::lastEdits((string) $groupName, (int) $facultyId)
+                        ),
+                    'student_name' => $studentName,
+                    'submitted_at' => $task->status === 'archived'
+                        ? $task->updated_at?->timezone('Asia/Manila')->format('M d, Y')
+                        : null,
+                    'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
+                    'updated_at' => $task->updated_at?->timezone('Asia/Manila')->format('M d, Y'),
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * Fresh Team Task Activity for one team. The team buttons carry the list
+     * as it stood at page load, so the modal refetches it on open and whenever
+     * the review pulse moves - a submission then shows Review now without a reload.
+     */
+    public function teamActivity(string $groupName)
+    {
+        $facultyId = (int) auth()->user()?->faculty?->user_information_id;
+        $members = StudentGroup::with('roles')
+            ->where('faculty_id', $facultyId)
+            ->where('group_name', $groupName)
+            ->get();
+        if (!$facultyId || $members->isEmpty()) {
+            return response()->json(['logs' => []]);
+        }
+
+        $unlocked = $this->approvalSummary($groupName, $facultyId)['unlocked'];
+
+        return response()->json([
+            'logs' => $this->teamActivityRows($groupName, $members, $this->teamActivityTasks($facultyId), $facultyId, $unlocked),
+        ])->header('Cache-Control', 'no-store');
+    }
+
     private function approvalSummary(string $groupName, int $facultyId): array
     {
         \App\Support\SimulationPhase::forget();
@@ -1857,7 +1901,7 @@ class FacultyController extends Controller
                 'role' => $task->role,
                 'role_label' => $task->role_label,
                 'title' => $task->title,
-                'submitted_at' => optional($task->updated_at)->format('M d, Y g:i A'),
+                'submitted_at' => $task->updated_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
                 'submitted_human' => optional($task->updated_at)->diffForHumans(),
                 /* Epoch so the badge can age itself between payload fetches.
                    submitted_human is computed here and would otherwise still
@@ -1903,7 +1947,7 @@ class FacultyController extends Controller
                 'submitted_by' => $concept->submitter
                     ? \App\Http\Controllers\HotelConceptController::displayName($concept->submitter)
                     : 'A team member',
-                'submitted_at' => optional($concept->submitted_at)->format('M d, Y g:i A'),
+                'submitted_at' => $concept->submitted_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
                 'submitted_human' => optional($concept->submitted_at)->diffForHumans(),
                 'submitted_ts' => optional($concept->submitted_at)->getTimestamp(),
             ];
@@ -2583,7 +2627,7 @@ class FacultyController extends Controller
             'group_name' => $membership?->group_name,
             'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
             'submitted_at' => $task->status === 'archived'
-                ? optional($task->updated_at)->format('M d, Y g:i A')
+                ? $task->updated_at?->timezone('Asia/Manila')->format('M d, Y g:i A')
                 : null,
             'feedback' => $task->feedback,
             // Campus time: this is the approval stamp faculty read on the review.

@@ -210,6 +210,8 @@ Route::prefix('faculty')->middleware(['auth', 'role:faculty'])->name('faculty.')
     Route::get('/role/pulse', [FacultyController::class, 'reviewPulse'])
         ->middleware('throttle:120,1')
         ->name('role.pulse');
+    // Fresh Team Task Activity for the team modal, refetched when the pulse moves.
+    Route::get('/role/team-activity/{groupName}', [FacultyController::class, 'teamActivity'])->name('role.team-activity');
     Route::post('/role/groups', [FacultyController::class, 'storeGroup'])->name('role.groups.store');
     Route::put('/role/groups/{groupName}', [FacultyController::class, 'updateGroup'])->name('role.groups.update');
     // The old Tasks page is gone; links already sent in notifications land on

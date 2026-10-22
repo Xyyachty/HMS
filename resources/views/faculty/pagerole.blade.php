@@ -4961,8 +4961,9 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
     teamModalMembers = Array.isArray(members) ? members : [];
     // Review Submission opens straight onto what it announced — every other
     // caller (View Team, Update) gets the full, unfiltered activity list.
+    teamModalOnlyAwaiting = !!options.onlyAwaitingReview;
     const logs = (Array.isArray(activityLogs) ? activityLogs : [])
-        .filter((l) => !options.onlyAwaitingReview || l.awaiting_review);
+        .filter((l) => !teamModalOnlyAwaiting || l.awaiting_review);
 
     document.getElementById('modalTeamName').textContent = teamLabel(groupName);
     document.getElementById('modalTeamSummary').textContent = [
@@ -5013,6 +5014,8 @@ function openTeamModal(groupName, members, createdAt, activityLogs, options) {
     teamModalActivityPage = 1;
     teamModalActivityTab = null;
     renderTeamModalActivityPage();
+    // The logs above are the page-load copy; this swaps in the live list.
+    refreshTeamModalActivity();
 
     // Overview by default, so the modal never reappears on the other tab; Review
     // Submission asks for Tasks instead, already filtered above.
@@ -5055,6 +5058,35 @@ function openTeamModalAwaitingReview(groupName, members, createdAt, activityLogs
    text and its history, this just lands on the tab that shows it. */
 function openTeamModalConceptReview(groupName, members, createdAt, activityLogs) {
     openTeamModal(groupName, members, createdAt, activityLogs, { tab: 'concept' });
+}
+
+/* The team buttons carry Team Task Activity as it stood at page load, so a
+   submission made since would open without its Review now button. Refetched on
+   open and on every pulse change while the modal is up. A row already on
+   screen stays even under the awaiting-review filter, so a task reviewed
+   in place does not vanish mid-look; new arrivals join it. */
+const TEAM_ACTIVITY_URL = @json(route('faculty.role.team-activity', ['groupName' => '__G__']));
+let teamModalOnlyAwaiting = false;
+
+function refreshTeamModalActivity() {
+    const group = teamModalGroup;
+    const modal = document.getElementById('teamInfoModal');
+    if (!group || !modal || modal.classList.contains('hidden')) return;
+
+    fetch(TEAM_ACTIVITY_URL.replace('__G__', encodeURIComponent(group)), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+    })
+        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+        .then((d) => {
+            if (group !== teamModalGroup || modal.classList.contains('hidden') || !Array.isArray(d.logs)) return;
+            const shown = new Set(teamModalActivityLogs.map((l) => String(l.id)));
+            teamModalActivityLogs = d.logs.filter((l) => !teamModalOnlyAwaiting
+                || l.awaiting_review || shown.has(String(l.id)));
+            renderTeamModalActivityPage();
+        })
+        .catch(() => {});
 }
 
 /* ── Submission indicators: kept live ──────────────────────────────────────
@@ -5308,6 +5340,7 @@ function fetchPendingReviewPayload() {
             // human is still looking at, not against the repaint.
             announceNewSubmissions(data);
             updatePendingReviewBadges(data);
+            refreshTeamModalActivity();
         });
 }
 
