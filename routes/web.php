@@ -642,6 +642,13 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 ->map(fn ($t) => $t->task_id . ':' . $t->status . ':' . (int) $t->needs_revision . ':' . optional($t->updated_at)->timestamp)
                 ->sort()
                 ->implode('|')
+            // Submitting the concepts leaves the task row untouched but turns its
+            // card to Under Review, so their statuses count as a change too.
+            . '#' . \App\Models\HotelConcept::where('group_name', $groupMembership?->group_name)
+                ->where('faculty_id', $facultyId)
+                ->orderBy('slot')
+                ->pluck('status')
+                ->implode(',')
         );
 
         $phase = \App\Support\SimulationPhase::progress(

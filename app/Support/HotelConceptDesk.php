@@ -240,6 +240,16 @@ class HotelConceptDesk
         return $concepts->contains(fn ($concept) => self::status($concept) !== self::STATUS_DRAFT);
     }
 
+    /**
+     * Handed in and waiting on faculty: every concept is submitted, none sent
+     * back or decided. The concept task's row reads Under Review while this holds.
+     */
+    public static function isUnderReview(Collection $concepts): bool
+    {
+        return $concepts->isNotEmpty()
+            && $concepts->every(fn ($concept) => self::status($concept) === self::STATUS_SUBMITTED);
+    }
+
     public static function hasSubmittedConcept(?string $groupName, ?int $facultyId): bool
     {
         return self::isSubmitted(self::conceptsFor($groupName, $facultyId));

@@ -33,9 +33,20 @@
         ]);
     };
 
+    // The concept task stays active until faculty decide, so handing the
+    // concepts in changes nothing on the row itself; their status says it.
+    $conceptUnderReview = $groupMembership
+        && $myRoleTasks->contains(fn ($t) => $t->is_hotel_concept)
+        && \App\Support\HotelConceptDesk::isUnderReview(
+            \App\Support\HotelConceptDesk::conceptsFor($groupMembership->group_name, (int) $groupMembership->faculty_id)
+        );
+
     foreach ($myRoleTasks as $task) {
         if ($task->needs_revision) {
             $rowStatus  = 'revision';
+            $rowPercent = 50;
+        } elseif ($task->is_hotel_concept && $conceptUnderReview) {
+            $rowStatus  = 'pending';
             $rowPercent = 50;
         } elseif ($task->is_started) {
             // Saved on in the editor at least once.
@@ -213,6 +224,10 @@
                             // Handed back in after a send-back: still pending, labelled as a revision.
                             if ($isPending && $task->is_resubmitted) {
                                 $rowMeta['label'] = 'Resubmitted';
+                            }
+                            // The concept cards in Team Overview say Under Review; match them.
+                            if ($isPending && $task->is_hotel_concept) {
+                                $rowMeta['label'] = 'Under Review';
                             }
                             $rowModule     = \App\Support\HotelTemplateBuilder::modulesForRoles([$task->role])[0] ?? null;
                             $rowDetailId   = 'taskDetail' . $task->task_id;
