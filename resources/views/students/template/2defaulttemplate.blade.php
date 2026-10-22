@@ -9414,7 +9414,8 @@ function App() {
     home: (
       <HomePage
         onNav={navigateTo}
-        sitePromos={sitePromos}
+        // The editor customizes the starting cards; Front Desk's promos show everywhere else.
+        sitePromos={isDesignMode ? null : sitePromos}
         onToast={showToast}
         rooms={rooms}
         menus={menus}

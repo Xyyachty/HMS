@@ -23,6 +23,8 @@ class HotelPromoController extends Controller
             return response()->json(['items' => [], 'has_promos' => false, 'can_manage' => false]);
         }
 
+        HotelPromo::ensureDefaultsFor($membership);
+
         $items = HotelPromo::forTeam($membership->group_name, $membership->faculty_id)
             ->get()
             ->map->toTemplateArray();
