@@ -4600,7 +4600,15 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
                   <div>
                     <label style={fieldLabel}>Guests{capacity ? ` (sleeps ${capacity})` : ''}</label>
                     <input type="number" className="booking-input" min="1" max={capacity || 99} value={guestForm.guestCount}
-                      onChange={e => updateGuest('guestCount', e.target.value)} required />
+                      onChange={e => updateGuest('guestCount', e.target.value)} required
+                      aria-invalid={!!(capacity && Number(guestForm.guestCount) > capacity)}
+                      style={capacity && Number(guestForm.guestCount) > capacity ? { borderColor: '#f08a99' } : undefined} />
+                    {/* Said at the field, as soon as the number goes over, not only on Proceed. */}
+                    {capacity && Number(guestForm.guestCount) > capacity ? (
+                      <p role="alert" style={{ color: '#f08a99', fontSize: '0.78rem', margin: '0.4rem 0 0' }}>
+                        This room sleeps up to {capacity} guest{capacity === 1 ? '' : 's'}. Please enter {capacity} or fewer.
+                      </p>
+                    ) : null}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
                     <div>
