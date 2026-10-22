@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\HotelComplaintAccess;
 use App\Support\HotelImageStore;
+use App\Support\HotelTemplateBuilder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\DB;
  * section's starting cards; until then the section keeps the cards the team
  * customized in the editor. The editor itself always shows those cards, so
  * this never touches a Customization task.
+ *
+ * The four starting promos stay tied to those cards by template_key: a title,
+ * description or picture changed on a card in the builder is copied onto its
+ * promo here (syncFromTemplate), so the Simulation runs what the team designed.
  */
 class HotelPromo extends Model
 {
@@ -74,6 +79,7 @@ class HotelPromo extends Model
         'start_date',
         'end_date',
         'is_active',
+        'template_key',
     ];
 
     protected $casts = [
@@ -119,8 +125,9 @@ class HotelPromo extends Model
                 $start = now('Asia/Manila')->toDateString();
                 $end = now('Asia/Manila')->addDays(self::DEFAULT_DAYS)->toDateString();
 
-                foreach (self::DEFAULTS as $promo) {
+                foreach (self::DEFAULTS as $i => $promo) {
                     self::create($promo + [
+                        'template_key' => 'promo-' . ($i + 1),
                         'group_name' => $membership->group_name,
                         'faculty_id' => $membership->faculty_id,
                         'group_id'   => $group->group_id,
@@ -133,6 +140,140 @@ class HotelPromo extends Model
 
             $group->forceFill(['promos_seeded_at' => now()])->save();
         });
+
+        // A team that customized the cards before its promos existed starts with
+        // its own words and pictures, not the stock ones.
+        self::adoptTemplateContent($membership->group_name, (int) $membership->faculty_id);
+    }
+
+    /**
+     * The builder's promo cards as promo fields: ['promo-1' => ['name' => ...,
+     * 'description' => ..., 'image' => ...]]. Text is read off the card's title and
+     * description elements, the picture off the card-image map. The offer label and
+     * the terms line are left out: on a promo those are drawn from its price and
+     * dates, which Front Desk sets.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public static function templateContent(array $customizations): array
+    {
+        $out = [];
+
+        foreach ($customizations as $key => $entry) {
+            if (!is_string($key) || !is_array($entry) || !isset($entry['text'])) {
+                continue;
+            }
+            if (preg_match('/\[data-hms-category="(promo-\d+)-(title|desc)"\]$/', $key, $m)) {
+                $text = trim(preg_replace('/\s+/', ' ', (string) $entry['text']));
+                if ($text !== '') {
+                    $out[$m[1]][$m[2] === 'title' ? 'name' : 'description'] = $m[2] === 'title'
+                        ? mb_substr($text, 0, 120)
+                        : mb_substr($text, 0, 600);
+                }
+            }
+        }
+
+        $map = $customizations[HotelTemplateBuilder::CARD_IMAGES_KEY]['map'] ?? [];
+        foreach (is_array($map) ? $map : [] as $ref => $url) {
+            if (preg_match('/^promo:(promo-\d+)$/', (string) $ref, $m) && is_string($url) && trim($url) !== '') {
+                $out[$m[1]]['image'] = HotelImageStore::relativize($url);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Copies the team's customized cards onto its starting promos, field by field,
+     * only where the promo still holds the stock value. What Front Desk already
+     * changed in the Simulation is left alone.
+     */
+    public static function adoptTemplateContent(string $groupName, int $facultyId): void
+    {
+        $content = self::templateContent(HotelTemplateBuilder::mergeTeamCustomizations($groupName, $facultyId));
+        if ($content === []) {
+            return;
+        }
+
+        foreach (self::forTeam($groupName, $facultyId)->whereNotNull('template_key')->get() as $promo) {
+            $stock = self::DEFAULTS[(int) substr($promo->template_key, 6) - 1] ?? null;
+            foreach ($stock ? ($content[$promo->template_key] ?? []) : [] as $field => $value) {
+                if ($promo->$field === $stock[$field]) {
+                    $promo->$field = $value;
+                }
+            }
+            $promo->save();
+        }
+    }
+
+    /**
+     * Called on every builder save. Copies onto the starting promos only the card
+     * fields this save changed, so an unrelated edit elsewhere on the site never
+     * writes stale card text over a promo Front Desk has since edited.
+     *
+     * $previousText is this role's stored promo card text before the save
+     * (storedTemplateText), $previousImages its stored card-image map, $mine the
+     * customizations just written, $storedImages the card-image map after the write,
+     * where a newly uploaded picture has become a storage path.
+     */
+    public static function syncFromTemplate(
+        string $groupName,
+        int $facultyId,
+        array $previousText,
+        array $previousImages,
+        array $mine,
+        callable $storedImages
+    ): void {
+        $before = self::templateContent(
+            collect($previousText)->map(fn ($text) => ['text' => $text])->all()
+            + [HotelTemplateBuilder::CARD_IMAGES_KEY => ['map' => $previousImages]]
+        );
+
+        $changes = [];
+        foreach (self::templateContent($mine) as $key => $fields) {
+            foreach ($fields as $field => $value) {
+                if (($before[$key][$field] ?? null) !== $value) {
+                    $changes[$key][$field] = $value;
+                }
+            }
+        }
+        if ($changes === []) {
+            return;
+        }
+
+        // A picture sent as a data-URL is only a storage path once written.
+        $stored = null;
+        foreach ($changes as $key => $fields) {
+            if (isset($fields['image']) && str_starts_with($fields['image'], 'data:')) {
+                $stored ??= $storedImages();
+                $path = $stored['promo:' . $key] ?? '';
+                if ($path !== '' && !str_starts_with($path, 'data:')) {
+                    $changes[$key]['image'] = HotelImageStore::relativize($path);
+                } else {
+                    unset($changes[$key]['image']);
+                }
+            }
+        }
+
+        foreach (self::forTeam($groupName, $facultyId)->whereIn('template_key', array_keys($changes))->get() as $promo) {
+            $promo->fill($changes[$promo->template_key])->save();
+        }
+    }
+
+    /**
+     * This template row's stored promo card text, keyed like its customizations.
+     *
+     * @return array<string, string>
+     */
+    public static function storedTemplateText(int $templateId): array
+    {
+        return TemplateElement::query()
+            ->where('team_role_template_id', $templateId)
+            ->where('version_id', \App\Support\TemplateCustomizationStore::LIVE_VERSION_ID)
+            ->where('element_key', 'like', '%data-hms-category="promo-%')
+            ->pluck('text_content', 'element_key')
+            ->map(fn ($text) => (string) $text)
+            ->all();
     }
 
     public static function forTeam(string $groupName, ?int $facultyId)

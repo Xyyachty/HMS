@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Exceptions\TemplateConflictException;
 use App\Models\GroupSettings;
 use App\Models\HotelConcept;
+use App\Models\HotelPromo;
 use App\Models\StudentGroup;
 use App\Models\TeamRoleTemplate;
 use App\Models\TeamRoleTemplateVersion;
@@ -1068,6 +1069,7 @@ class HotelTemplateBuilder
                 // Read before the write below replaces it: claimChangedCardImages()
                 // needs to know which pictures this save actually changed.
                 $previousCardImages = self::storedCardImageMap($templateId);
+                $previousPromoText = HotelPromo::storedTemplateText($templateId);
                 $ownCustomizations = self::filterCustomizationsForRole(
                     is_array($data['customizations']) ? $data['customizations'] : [],
                     $template->role
@@ -1146,6 +1148,15 @@ class HotelTemplateBuilder
             self::claimSharedLogo($template, $ownCustomizations ?? null);
             if (isset($previousCardImages)) {
                 self::claimChangedCardImages($template, $previousCardImages, $ownCustomizations);
+                // The Simulation's starting promos follow their Home page cards.
+                HotelPromo::syncFromTemplate(
+                    $groupName,
+                    $facultyId,
+                    $previousPromoText,
+                    $previousCardImages,
+                    $ownCustomizations,
+                    fn () => self::storedCardImageMap($templateId)
+                );
             }
 
             // Keep legacy group_settings in sync (merged team site)
