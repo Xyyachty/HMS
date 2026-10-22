@@ -320,7 +320,7 @@ const STATE_LOOK = {
   Running:   { tone: 'tone-ok',    icon: 'fa-circle-check', label: 'On the website' },
   Scheduled: { tone: 'tone-guest', icon: 'fa-clock',        label: 'Starts soon' },
   Expired:   { tone: 'tone-bad',   icon: 'fa-calendar-xmark', label: 'Expired' },
-  Inactive:  { tone: 'tone-muted', icon: 'fa-eye-slash',    label: 'Inactive' },
+  Inactive:  { tone: 'tone-muted', icon: 'fa-eye-slash',    label: 'On hold' },
 };
 
 function PromoModal({ promo, onClose, onSaved }) {
@@ -400,7 +400,7 @@ function PromoModal({ promo, onClose, onSaved }) {
         <div className="ao-modal-head">
           <div>
             <h2 id={ids.title} className="font-display">{isEdit ? `Edit ${promo.name}` : 'Add a promo or package'}</h2>
-            <p>Active promos show in the Promos and Packages section of the hotel website until their end date.</p>
+            <p>Available promos show in the Promos and Packages section of the hotel website until their end date.</p>
           </div>
           <button type="button" className="ao-close" onClick={onClose} aria-label="Close">
             <i className="fa-solid fa-xmark"></i>
@@ -457,17 +457,17 @@ function PromoModal({ promo, onClose, onSaved }) {
             </div>
           </div>
 
-          <div className="ao-field" role="group" aria-label="Status">
-            <span className="ao-label">Status</span>
+          <div className="ao-field" role="group" aria-label="Availability">
+            <span className="ao-label">Availability</span>
             <div className="ao-seg">
               <button type="button" aria-pressed={form.status === 'active'} onClick={() => update('status', 'active')}>
-                <i className="fa-solid fa-eye"></i> Active
+                <i className="fa-solid fa-eye"></i> Available
               </button>
               <button type="button" aria-pressed={form.status === 'inactive'} onClick={() => update('status', 'inactive')}>
-                <i className="fa-solid fa-eye-slash"></i> Inactive
+                <i className="fa-solid fa-eye-slash"></i> On hold
               </button>
             </div>
-            <p className="ao-help">Inactive promos are saved but hidden from the website.</p>
+            <p className="ao-help">A promo on hold is kept but not offered to guests on the website.</p>
           </div>
 
           <div className="ao-actions">
@@ -511,7 +511,7 @@ function PromoCard({ promo, canManage, busy, onEdit, onToggle, onDelete }) {
             </button>
             <button type="button" className="ao-btn is-small is-quiet" onClick={() => onToggle(promo)} disabled={busy}>
               <i className={`fa-solid ${promo.status === 'active' ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-              {promo.status === 'active' ? 'Deactivate' : 'Activate'}
+              {promo.status === 'active' ? 'Put on hold' : 'Offer again'}
             </button>
             <button type="button" className="ao-btn is-small is-danger" onClick={() => onDelete(promo)} disabled={busy} aria-label={'Delete ' + promo.name} title="Delete">
               <i className="fa-solid fa-trash-can"></i>
@@ -571,9 +571,9 @@ function App() {
     send(CONFIG.storeUrl + '/' + promo.dbId, 'PATCH', { status: promo.status === 'active' ? 'inactive' : 'active' })
       .then(data => {
         handleSaved(data.item);
-        swal('success', data.item.status === 'active' ? 'Promo activated' : 'Promo deactivated', data.item.live
+        swal('success', data.item.status === 'active' ? 'Promo offered again' : 'Promo on hold', data.item.live
           ? data.item.name + ' is on the hotel website.'
-          : data.item.name + ' is hidden from the hotel website.');
+          : data.item.name + ' is no longer offered to guests on the hotel website.');
       })
       .catch(err => swal('error', 'Not changed', errorMessage(err, 'Could not change the status. Please try again.'))));
 
@@ -599,8 +599,8 @@ function App() {
           <p className="ao-eyebrow">Front Desk</p>
           <h1 className="font-display">Promos &amp; Packages</h1>
           <p className="ao-lead">
-            Offers for guests, like a weekend stay or a dine-and-stay package. Active promos show on
-            your hotel website until their end date. Inactive or expired ones are hidden on their own.
+            Offers for guests, like a weekend stay or a dine-and-stay package. Available promos show on
+            your hotel website until their end date. Promos on hold or past their end date are hidden on their own.
           </p>
         </div>
         <div className="ao-head-actions">
@@ -632,7 +632,7 @@ function App() {
           <div className="ao-stats">
             <div className="ao-stat"><span className="ao-stat-icon tone-ok"><i className="fa-solid fa-globe"></i></span><div><b>{count('Running')}</b><span>On the website now</span></div></div>
             <div className="ao-stat"><span className="ao-stat-icon tone-guest"><i className="fa-solid fa-clock"></i></span><div><b>{count('Scheduled')}</b><span>Starting later</span></div></div>
-            <div className="ao-stat"><span className="ao-stat-icon tone-muted"><i className="fa-solid fa-eye-slash"></i></span><div><b>{count('Inactive')}</b><span>Inactive</span></div></div>
+            <div className="ao-stat"><span className="ao-stat-icon tone-muted"><i className="fa-solid fa-eye-slash"></i></span><div><b>{count('Inactive')}</b><span>On hold</span></div></div>
             <div className="ao-stat"><span className="ao-stat-icon tone-bad"><i className="fa-solid fa-calendar-xmark"></i></span><div><b>{count('Expired')}</b><span>Expired</span></div></div>
           </div>
         ) : null}
