@@ -193,6 +193,7 @@
 
                 <div class="flex items-center gap-3 md:gap-5">
                     @include('partials.datetime-clock')
+                    @include('partials.tour-button')
                     @include('partials.notification-bell')
                 </div>
             </header>
@@ -226,7 +227,6 @@
                 <li><a href="{{ route('faculty.students') }}" class="nav-item {{ request()->routeIs('faculty.students') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Manage Students</span></a></li>
                 <li><a href="{{ route('faculty.role') }}" class="nav-item {{ request()->routeIs('faculty.role') || request()->routeIs('faculty.activity') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Manage Teams</span></a></li>
                 <li><a href="{{ route('faculty.reports') }}" class="nav-item {{ request()->routeIs('faculty.reports') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Reports</span></a></li>
-                <li><a href="{{ route('faculty.dashboard', ['tour' => 1]) }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Restart Guided Tour</span></a></li>
             </ul>
         </nav>
     </aside>

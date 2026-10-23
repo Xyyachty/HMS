@@ -361,6 +361,7 @@
                 <!-- Right side actions -->
                 <div class="flex items-center gap-2">
                     @include('partials.datetime-clock')
+                    @include('partials.tour-button')
                     @include('partials.notification-bell')
                 </div>
             </div>

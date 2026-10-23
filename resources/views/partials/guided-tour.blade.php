@@ -4,7 +4,7 @@
     Included by all three portals; renders only on the role's dashboard. Opens by
     itself until users.tour_completed_at is set (Finish or Skip posts to
     account.tour), and again whenever the dashboard is opened with ?tour=1, which
-    is where Restart Guided Tour in the sidebar profile card points.
+    is where the Restart Guided Tour button in the header points.
 
     Steps point at existing elements by id or data-tour; none of them change the
     page. A step whose element is hidden at that moment (the sidebar on a phone)
@@ -26,7 +26,8 @@
 
     $tourMenu = ['el' => '[data-tour="menu-toggle"]', 'title' => 'Menu', 'text' => 'Tap here to open the menu. All the pages in this tour are inside it.', 'mobile' => true];
     $tourBell = ['el' => '[data-notify-root]', 'title' => 'Notifications', 'text' => 'The bell shows a number when something new needs your attention. Click it to read your notifications.'];
-    $tourHelp = ['el' => '[data-tour="help"]', 'title' => 'My Profile and Help', 'text' => 'My Profile is where you change your photo and password. Click Restart Guided Tour anytime to see this tour again.'];
+    $tourProfile = ['el' => '[data-tour="profile"]', 'title' => 'My Profile', 'text' => 'Change your photo and password here. Logout is just below it.'];
+    $tourHelp = ['el' => '[data-tour="help"]', 'title' => 'Restart Guided Tour', 'text' => 'Click here anytime to see this tour again.'];
 
     if ($tourRole === 'dean') {
         $tourSteps = [
@@ -38,6 +39,7 @@
             ['el' => '[data-tour="nav-teams"]', 'title' => 'Teams Overview', 'text' => 'See every faculty member, their student teams, and each team\'s task progress.'],
             ['el' => '[data-tour="nav-reports"]', 'title' => 'Reports', 'text' => 'View and print reports on teams, tasks and results.'],
             $tourBell,
+            $tourProfile,
             $tourHelp,
         ];
     } elseif ($tourRole === 'faculty') {
@@ -49,6 +51,7 @@
             ['el' => '[data-tour="nav-teams"]', 'title' => 'Manage Teams', 'text' => 'Create teams, put students in them, and give each student a hotel role (Front Desk, Rooms, Restaurant, Housekeeping). Here you also set tasks, open submitted work, and approve it or ask for a revision.'],
             ['el' => '[data-tour="nav-reports"]', 'title' => 'Reports', 'text' => 'View and print reports on your teams and their tasks.'],
             $tourBell,
+            $tourProfile,
             $tourHelp,
         ];
     } elseif ($tourRole === 'student') {
@@ -92,6 +95,7 @@
             ['section' => 'home', 'el' => '#nav-activity', 'title' => 'Activity Logs', 'text' => 'A record of what you and your teammates have done.'],
             ['section' => 'home', 'el' => '#nav-reports', 'title' => 'Reports', 'text' => 'See your own work and your team\'s work in numbers.'],
             $tourBell + ['section' => 'home'],
+            $tourProfile + ['section' => 'home'],
             $tourHelp + ['section' => 'home'],
         ];
     }
