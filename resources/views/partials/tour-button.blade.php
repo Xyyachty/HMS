@@ -13,9 +13,9 @@
     @media (max-width: 767px) { .hms-tour-btn span:last-child { display: none; } }
 </style>
 <a href="{{ route($tourDashboard, ['tour' => 1]) }}" class="hms-tour-btn" data-tour="help"
-   title="Restart Guided Tour" aria-label="Restart Guided Tour"
+   title="Guided Tour" aria-label="Guided Tour"
    onclick="if (window.startGuidedTour) return startGuidedTour();">
     <span class="iconify" data-icon="lucide:circle-help"></span>
-    <span>Restart Guided Tour</span>
+    <span>Guided Tour</span>
 </a>
 @endif
