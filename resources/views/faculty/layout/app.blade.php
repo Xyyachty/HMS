@@ -129,22 +129,22 @@
             <nav class="flex-1 py-6 overflow-y-auto">
                 <ul class="space-y-1 px-4">
                     <li>
-                        <a href="{{ route('faculty.dashboard') }}" class="nav-item {{ request()->routeIs('faculty.dashboard') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
+                        <a href="{{ route('faculty.dashboard') }}" data-tour="nav-dashboard" class="nav-item {{ request()->routeIs('faculty.dashboard') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
                             <span class="font-semibold text-sm">Dashboard</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('faculty.students') }}" class="nav-item {{ request()->routeIs('faculty.students') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
+                        <a href="{{ route('faculty.students') }}" data-tour="nav-students" class="nav-item {{ request()->routeIs('faculty.students') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
                             <span class="font-medium text-sm">Manage Students</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('faculty.role') }}" class="nav-item {{ request()->routeIs('faculty.role') || request()->routeIs('faculty.activity') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
+                        <a href="{{ route('faculty.role') }}" data-tour="nav-teams" class="nav-item {{ request()->routeIs('faculty.role') || request()->routeIs('faculty.activity') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
                             <span class="font-medium text-sm">Manage Teams</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('faculty.reports') }}" class="nav-item {{ request()->routeIs('faculty.reports') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
+                        <a href="{{ route('faculty.reports') }}" data-tour="nav-reports" class="nav-item {{ request()->routeIs('faculty.reports') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
                             <span class="font-medium text-sm">Reports</span>
                         </a>
                     </li>
@@ -182,7 +182,7 @@
             <header class="glass-header h-20 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10 shrink-0">
                 <div class="flex items-center gap-4">
                     <!-- Mobile menu toggle -->
-                    <button onclick="toggleSidebar()" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
+                    <button onclick="toggleSidebar()" data-tour="menu-toggle" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
                         <span class="iconify text-xl text-slate-600" data-icon="mdi:menu"></span>
                     </button>
                     <div class="{{ $inkAll ? 'ink-all' : '' }}">
@@ -226,6 +226,7 @@
                 <li><a href="{{ route('faculty.students') }}" class="nav-item {{ request()->routeIs('faculty.students') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Manage Students</span></a></li>
                 <li><a href="{{ route('faculty.role') }}" class="nav-item {{ request()->routeIs('faculty.role') || request()->routeIs('faculty.activity') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Manage Teams</span></a></li>
                 <li><a href="{{ route('faculty.reports') }}" class="nav-item {{ request()->routeIs('faculty.reports') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Reports</span></a></li>
+                <li><a href="{{ route('faculty.dashboard', ['tour' => 1]) }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Restart Guided Tour</span></a></li>
             </ul>
         </nav>
     </aside>
@@ -273,5 +274,6 @@
     @stack('scripts')
 @include('partials.logout-confirm')
 @include('partials.session-guard')
+@include('partials.guided-tour')
 </body>
 </html>

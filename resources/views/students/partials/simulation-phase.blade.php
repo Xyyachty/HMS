@@ -16,7 +16,7 @@
         : collect();
 @endphp
 @if($groupMembership && $simPhase['required'] > 0)
-    <div class="bg-white rounded-2xl border border-[#E7E1DD] shadow-sm p-5 space-y-4">
+    <div data-tour="phase" class="bg-white rounded-2xl border border-[#E7E1DD] shadow-sm p-5 space-y-4">
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
                 <p class="text-[0.625rem] font-bold uppercase tracking-wider text-[#8A817A]">
@@ -71,7 +71,7 @@
                 </p>
             </div>
             @if($simPhase['can_start'] && $simEntries->count() === 1)
-                <a href="{{ $simEntries[0]['simulation_url'] }}"
+                <a href="{{ $simEntries[0]['simulation_url'] }}" data-tour="start-simulation"
                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl brand-gradient text-white text-xs font-bold shadow-lg shadow-brand/20 hover:opacity-90 active:scale-[0.98] transition">
                     <span class="iconify text-base" data-icon="mdi:play-circle-outline"></span>
                     Start Simulation
@@ -79,7 +79,7 @@
             @elseif($simPhase['can_start'] && $simEntries->count() > 1)
                 {{-- toggleTaskAreaMenu() lives on the dashboard and closes on an outside click. --}}
                 <div class="relative" data-task-area-menu>
-                    <button type="button" onclick="toggleTaskAreaMenu('simulationStartMenu')"
+                    <button type="button" onclick="toggleTaskAreaMenu('simulationStartMenu')" data-tour="start-simulation"
                             aria-haspopup="true" aria-controls="simulationStartMenu"
                             class="inline-flex items-center gap-2 px-4 py-2 rounded-xl brand-gradient text-white text-xs font-bold shadow-lg shadow-brand/20 hover:opacity-90 active:scale-[0.98] transition">
                         <span class="iconify text-base" data-icon="mdi:play-circle-outline"></span>
@@ -135,7 +135,7 @@
                     @endif
                 </div>
                 @if(in_array('front_desk', $simSeats, true))
-                    <form method="POST" action="{{ route('students.hotel-site.publish') }}">
+                    <form method="POST" action="{{ route('students.hotel-site.publish') }}" data-tour="hotel-site">
                         @csrf
                         <input type="hidden" name="publish" value="{{ $siteOpen ? 0 : 1 }}">
                         <button type="submit"

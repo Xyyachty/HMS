@@ -29,7 +29,7 @@
      colour instead of the gold tint, so the two dashboards' icons match. --}}
 <div class="ink-all">
 <!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+<div data-tour="dash-stats" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
 
     <!-- Total Students -->
     <a href="{{ route('dean.users', ['tab' => 'student']) }}" class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 block">

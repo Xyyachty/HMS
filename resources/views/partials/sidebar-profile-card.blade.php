@@ -39,12 +39,22 @@
             <span class="spc-role"><span class="iconify" data-icon="mdi:shield"></span>{{ $role }}</span>
         </div>
     </div>
-    <div class="spc-rows">
+    <div class="spc-rows" data-tour="help">
         <a href="{{ $profileHref }}" class="spc-row" @isset($profileOnclick) onclick="{{ $profileOnclick }}" @endisset>
             <span class="spc-tile"><span class="iconify" data-icon="lucide:user-round"></span></span>
             <span class="spc-label">My Profile</span>
             <span class="iconify spc-chev" data-icon="lucide:chevron-right"></span>
         </a>
+        {{-- Help: replays the dashboard's guided tour (partials.guided-tour). On the
+             dashboard it starts in place; elsewhere it opens the dashboard with ?tour=1. --}}
+        @php $tourDashboard = ['dean' => 'dean.dashboard', 'faculty' => 'faculty.dashboard', 'student' => 'students.dashboard'][$user?->portal()] ?? null; @endphp
+        @if($tourDashboard)
+            <a href="{{ route($tourDashboard, ['tour' => 1]) }}" class="spc-row" onclick="if (window.startGuidedTour) return startGuidedTour();">
+                <span class="spc-tile"><span class="iconify" data-icon="lucide:circle-help"></span></span>
+                <span class="spc-label">Restart Guided Tour</span>
+                <span class="iconify spc-chev" data-icon="lucide:chevron-right"></span>
+            </a>
+        @endif
         <form method="POST" action="{{ route('logout') }}" id="logoutForm">
             @csrf
             <button type="submit" class="spc-row">

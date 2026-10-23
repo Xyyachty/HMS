@@ -124,6 +124,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'last_seen_at' => 'datetime',
         'must_change_password' => 'boolean',
+        'tour_completed_at' => 'datetime',
     ];
 
     /**

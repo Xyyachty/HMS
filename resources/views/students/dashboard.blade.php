@@ -345,7 +345,7 @@
         <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
             <div class="px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
                 <!-- Mobile hamburger -->
-                <button onclick="openMobileSidebar()" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors -ml-2">
+                <button onclick="openMobileSidebar()" data-tour="menu-toggle" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors -ml-2">
                     <span class="iconify text-xl text-slate-600" data-icon="mdi:menu"></span>
                 </button>
 
@@ -1078,14 +1078,14 @@
                             @foreach($taskAreas as $area)
                                 @continue(empty($area['modules']))
                                 @if(count($area['modules']) === 1)
-                                    <a href="{{ $area['modules'][0][$area['urlKey']] }}"
+                                    <a href="{{ $area['modules'][0][$area['urlKey']] }}" data-tour="customize"
                                        class="inline-flex items-center gap-2 px-4 py-2 border text-xs font-bold rounded-xl transition {{ $area['class'] }}">
                                         <span class="iconify text-base" data-icon="{{ $area['icon'] }}"></span>
                                         {{ $area['label'] }}
                                     </a>
                                 @else
                                     <div class="relative" data-task-area-menu>
-                                        <button type="button" onclick="toggleTaskAreaMenu('{{ $area['id'] }}')"
+                                        <button type="button" onclick="toggleTaskAreaMenu('{{ $area['id'] }}')" data-tour="customize"
                                                 aria-haspopup="true" aria-controls="{{ $area['id'] }}"
                                                 class="inline-flex items-center gap-2 px-4 py-2 border text-xs font-bold rounded-xl transition {{ $area['class'] }}">
                                             <span class="iconify text-base" data-icon="{{ $area['icon'] }}"></span>
@@ -2908,5 +2908,6 @@
 
 @include('partials.logout-confirm')
 @include('partials.session-guard')
+@include('partials.guided-tour')
 </body>
 </html>

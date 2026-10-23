@@ -136,22 +136,22 @@
             <nav class="flex-1 py-6 overflow-y-auto">
                 <ul class="space-y-1 px-4">
                     <li>
-                        <a href="{{ route('dean.dashboard') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white @yield('dashboard_active')">
+                        <a href="{{ route('dean.dashboard') }}" data-tour="nav-dashboard" class="nav-item flex items-center px-4 py-3 rounded-xl text-white @yield('dashboard_active')">
                             <span class="font-medium text-sm">Dashboard</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('dean.users') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white @yield('users_active')">
+                        <a href="{{ route('dean.users') }}" data-tour="nav-users" class="nav-item flex items-center px-4 py-3 rounded-xl text-white @yield('users_active')">
                             <span class="font-medium text-sm">Manage User</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('dean.faculties') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white @yield('faculties_active')">
+                        <a href="{{ route('dean.faculties') }}" data-tour="nav-teams" class="nav-item flex items-center px-4 py-3 rounded-xl text-white @yield('faculties_active')">
                             <span class="font-medium text-sm">Teams Overview</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('dean.reports') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white @yield('reports_active')">
+                        <a href="{{ route('dean.reports') }}" data-tour="nav-reports" class="nav-item flex items-center px-4 py-3 rounded-xl text-white @yield('reports_active')">
                             <span class="font-medium text-sm">Reports</span>
                         </a>
                     </li>
@@ -186,7 +186,7 @@
             <!-- Top Header -->
             <header class="glass-header h-20 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10 shrink-0">
                 <div class="flex items-center gap-4">
-                    <button onclick="toggleSidebar()" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
+                    <button onclick="toggleSidebar()" data-tour="menu-toggle" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
                         <span class="iconify text-xl text-slate-600" data-icon="mdi:menu"></span>
                     </button>
                     <div>
@@ -231,6 +231,7 @@
                 <li><a href="{{ route('dean.faculties') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Teams Overview</span></a></li>
                 <li><a href="{{ route('dean.reports') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Reports</span></a></li>
                 <li><a href="{{ route('dean.profile') }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">My Profile</span></a></li>
+                <li><a href="{{ route('dean.dashboard', ['tour' => 1]) }}" class="nav-item flex items-center px-4 py-3 rounded-xl text-white"><span class="font-medium text-sm">Restart Guided Tour</span></a></li>
             </ul>
         </nav>
     </aside>
@@ -267,5 +268,6 @@
     @stack('scripts')
 @include('partials.logout-confirm')
 @include('partials.session-guard')
+@include('partials.guided-tour')
 </body>
 </html>

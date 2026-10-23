@@ -45,6 +45,12 @@ Route::get('/', function () {
 Route::get('/login', [AuthController::class, 'login'])->middleware('guest')->name('login');
 // Dean, faculty and students change their own password from their profile page.
 Route::put('/account/password', [AuthController::class, 'updatePassword'])->middleware('auth')->name('account.password');
+// The first-login guided tour was finished or skipped, so it stops opening by itself.
+Route::post('/account/tour', function (Request $request) {
+    $request->user()->forceFill(['tour_completed_at' => now()])->save();
+
+    return response()->noContent();
+})->middleware('auth')->name('account.tour');
 Route::post('/login', [AuthController::class, 'authenticate'])->middleware('guest')->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
