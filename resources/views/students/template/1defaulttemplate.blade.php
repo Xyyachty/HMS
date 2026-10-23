@@ -6006,6 +6006,10 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
     if (!open) return;
     setDate(today); setTime('19:00'); setParty('2'); setTableId(null); setError(''); setTables(null);
     loadTables();
+    // Tables Restaurant Management adds, removes or resizes, and ones another guest
+    // takes, show up while the dialog is open, not only the next time it opens.
+    const id = setInterval(() => { if (!document.hidden) loadTables(); }, 8000);
+    return () => clearInterval(id);
   }, [open]);
 
   useEffect(() => {
