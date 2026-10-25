@@ -542,5 +542,6 @@
     @yield('scripts')
 @include('partials.logout-confirm')
 @include('partials.session-guard')
+@include('partials.nav-loader')
 </body>
 </html>

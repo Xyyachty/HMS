@@ -1,10 +1,12 @@
-{{-- Loading circle while a sidebar link (dean and faculty .nav-item) loads the next
-     page, so a slow server read does not look like a click that did nothing.
-     Not shown for a click that opens a new tab, and hidden again when the browser
-     restores the page from its back/forward cache. --}}
+{{-- Loading circle while the next page loads, on every portal page: dean, faculty,
+     the student dashboard and the Simulation pages. It hangs off beforeunload, so a
+     link, a window.location change (the builder leaves that way) and a form post all
+     get it. A page asking "Leave site?" keeps the circle off.
+     A mailto:/tel:/download link fires beforeunload without leaving, so those are
+     skipped, and the circle is cleared when the back/forward cache restores a page. --}}
 <style>
     #hmsNavLoader {
-        position: fixed; inset: 0; z-index: 9999;
+        position: fixed; inset: 0; z-index: 99999;
         display: none; align-items: center; justify-content: center;
         background: rgba(255, 255, 255, 0.55);
     }
@@ -20,13 +22,28 @@
 <script>
 (function () {
     var loader = document.getElementById('hmsNavLoader');
+    var skipUntil = 0;
+    var hideTimer;
 
-    document.addEventListener('click', function (e) {
-        var link = e.target.closest('a.nav-item[href]');
-        if (!link || e.defaultPrevented || e.button !== 0
-            || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || link.target === '_blank') return;
-        if (new URL(link.href, location.href).origin !== location.origin) return;
-        loader.classList.add('is-on');
+    window.addEventListener('click', function (e) {
+        var link = e.target.closest && e.target.closest('a[href]');
+        if (link && (link.hasAttribute('download') || !/^https?:$/.test(link.protocol))) {
+            skipUntil = Date.now() + 1000;
+        }
+    }, true);
+
+    window.addEventListener('beforeunload', function (e) {
+        if (Date.now() < skipUntil) return;
+        // Next tick, after every other beforeunload listener has run, whenever it
+        // was registered: one that asked "Leave site?" has marked the event by then.
+        setTimeout(function () {
+            if (e.defaultPrevented || (typeof e.returnValue === 'string' && e.returnValue !== '')) return;
+            loader.classList.add('is-on');
+            // ponytail: a link that turns out to be a file download never leaves the
+            // page, so the circle clears itself; a page slower than this loses it early.
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(function () { loader.classList.remove('is-on'); }, 15000);
+        }, 0);
     });
 
     window.addEventListener('pageshow', function () { loader.classList.remove('is-on'); });

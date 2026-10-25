@@ -2909,6 +2909,7 @@
 
 @include('partials.logout-confirm')
 @include('partials.session-guard')
+@include('partials.nav-loader')
 @include('partials.guided-tour')
 </body>
 </html>
