@@ -1355,11 +1355,11 @@
                 <div class="ts-modes" role="group" aria-label="How to make teams">
                     <button type="button" id="createModeSingleBtn" onclick="switchCreateTeamMode('single')" aria-pressed="true"
                         class="ts-mode shadow-sm">
-                        <span class="iconify" data-icon="mdi:account-multiple-plus-outline"></span> One Team
+                        <span class="iconify" data-icon="mdi:account-plus-outline"></span> Create One Team
                     </button>
                     <button type="button" id="createModeMultiBtn" onclick="switchCreateTeamMode('multiple')" aria-pressed="false"
                         class="ts-mode">
-                        <span class="iconify" data-icon="mdi:auto-fix"></span> All Teams Automatically
+                        <span class="iconify" data-icon="mdi:account-multiple-outline"></span> Create All Teams Automatically
                     </button>
                 </div>
                 <p class="ts-mode-hint" data-mode="single">You pick 4 students and give each one a role.</p>
