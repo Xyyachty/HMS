@@ -27,6 +27,20 @@
     }
     table.dataTable#usersTable.no-footer { border-bottom: 0 !important; }
 
+    /* Until DataTables has run, the table is raw: unstyled, every user on one page
+       and the Faculty/Students filter not applied. The browser paints that while
+       the scripts at the bottom of the page load, so a refresh flashed it. Show the
+       loading circle (keyframes from partials.nav-loader) in its place instead. */
+    #usersTable:not(.dataTable) { display: none; }
+    .st-card:has(#usersTable:not(.dataTable)) {
+        min-height: 12rem; display: flex; align-items: center; justify-content: center;
+    }
+    .st-card:has(#usersTable:not(.dataTable))::before {
+        content: ''; width: 2.5rem; height: 2.5rem; border-radius: 50%;
+        border: 4px solid rgba(123, 23, 48, 0.2); border-top-color: #7B1730;
+        animation: hmsNavSpin 0.8s linear infinite;
+    }
+
     .st-name { font-size: 0.8438rem; font-weight: 800; color: #111; }
     .st-email { font-size: 0.7188rem; color: #111; margin-top: .1rem; }
     .st-muted { font-size: 0.75rem; color: #111; font-weight: 600; }
@@ -541,8 +555,7 @@
 </div>
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="{{ asset('js/hms-swal-theme.js') }}?v={{ filemtime(public_path('js/hms-swal-theme.js')) }}"></script>
+{{-- SweetAlert2 and its theme come from dean.layouts.app. --}}
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
