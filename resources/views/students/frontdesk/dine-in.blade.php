@@ -19,6 +19,8 @@
   .dn-occupied  { background: rgba(59,130,246,0.18); color: #60a5fa; border-color: rgba(59,130,246,0.35); }
   /* Held, nobody at it yet — amber reads as "pending" against Occupied's blue. */
   .dn-reserved  { background: rgba(245,158,11,0.18); color: #fbbf24; border-color: rgba(245,158,11,0.35); }
+  /* History only: the customer never came and the table went back to Available. */
+  .dn-no-show   { background: rgba(244,63,94,0.16); color: #fb7185; border-color: rgba(244,63,94,0.35); }
   .btn-outline {
     display: inline-flex; align-items: center; gap: 0.5rem;
     background: transparent; color: var(--accent);
@@ -181,6 +183,7 @@
   :root[data-ops-theme="2"] .dn-available { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
   :root[data-ops-theme="2"] .dn-occupied { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
   :root[data-ops-theme="2"] .dn-reserved { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+  :root[data-ops-theme="2"] .dn-no-show { background: #ffe4e6; color: #be123c; border-color: #fecdd3; }
   :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
   :root[data-ops-theme="2"] .dn-step,
   :root[data-ops-theme="2"] .dn-party,
@@ -419,8 +422,32 @@ function TableCard({ table, canReserve, onOpenReserve, onSeat, busy }) {
   );
 }
 
+/* A reservation the customer never turned up for, kept after the table was freed. */
+function NoShowCard({ entry }) {
+  return (
+    <div className="dn-card">
+      <div className="dn-card-head">
+        <div style={{ minWidth: 0 }}>
+          <p className="dn-card-name">{entry.tableName}</p>
+        </div>
+        <span className="dn-badge dn-no-show">No-Show</span>
+      </div>
+      <dl className="dn-meta">
+        <dt>Guest</dt><dd>{entry.guestName || 'Guest'}</dd>
+        {entry.contactNo ? (<><dt>Contact</dt><dd>{entry.contactNo}</dd></>) : null}
+        <dt>Booked</dt><dd className="is-when">{formatWhen(entry.reservedFor)}</dd>
+        <dt>Party</dt><dd>{entry.partySize || '—'}</dd>
+      </dl>
+      <p className="dn-card-note">
+        Released {formatWhen(entry.markedAt)}{entry.assignedBy ? ` · reserved by ${entry.assignedBy}` : ''}
+      </p>
+    </div>
+  );
+}
+
 function App() {
   const [tables, setTables] = useState([]);
+  const [noShows, setNoShows] = useState([]);
   const [canReserve, setCanReserve] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
@@ -436,6 +463,7 @@ function App() {
       .then(data => {
         if (pendingWrites.current > 0) return;
         if (Array.isArray(data.tables)) setTables(data.tables);
+        if (Array.isArray(data.no_shows)) setNoShows(data.no_shows);
         setCanReserve(!!data.can_assign);
         setLoaded(true);
       })
@@ -504,7 +532,14 @@ function App() {
     { key: 'Available', count: availableCount },
     { key: 'Reserved', count: reservedCount },
     { key: 'Occupied', count: seatedCount },
+    { key: 'No-Show', count: noShows.length },
   ];
+
+  const visibleNoShows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return noShows.filter(n => !q || [n.tableName, n.guestName, n.contactNo]
+      .some(field => String(field || '').toLowerCase().includes(q)));
+  }, [noShows, search]);
 
   return (
     <div data-hms-no-edit="1" style={{ padding: '1.5rem' }}>
@@ -556,6 +591,18 @@ function App() {
             Restaurant Management has not added any tables.
           </p>
         </div>
+      ) : filter === 'No-Show' ? (
+        visibleNoShows.length === 0 ? (
+          <div className="dn-empty">
+            <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.88rem' }}>
+              {search.trim() ? `No no-shows match "${search}"` : 'No no-shows yet.'}
+            </p>
+          </div>
+        ) : (
+          <div className="dn-grid">
+            {visibleNoShows.map(entry => <NoShowCard key={entry.id} entry={entry} />)}
+          </div>
+        )
       ) : visible.length === 0 ? (
         <div className="dn-empty">
           <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.88rem' }}>

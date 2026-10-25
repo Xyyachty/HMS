@@ -22,6 +22,9 @@ use RuntimeException;
  */
 class HotelTableDesk
 {
+    /** How late a reserved customer can be before the table is released as a no-show. */
+    public const NO_SHOW_GRACE_MINUTES = 30;
+
     /**
      * The dining room every team starts with, as name => seats: tables for two,
      * for four, for six and one for eight. Restaurant Management adds, renames,
@@ -113,6 +116,16 @@ class HotelTableDesk
             throw new RuntimeException("This table seats {$table->capacity} — the party is too large for it.", 422);
         }
 
+        // reserved_for is the Manila wall-clock time the customer is due (the app runs
+        // on UTC); releaseNoShows() and toTemplateArray() read it back that way.
+        $due = $seatNow
+            ? now('Asia/Manila')
+            : (!empty($data['reserved_for']) ? Carbon::parse($data['reserved_for'], 'Asia/Manila') : null);
+        // A time already gone would be released as a no-show on the next refresh.
+        if (!$seatNow && $due && $due->lt(now('Asia/Manila')->subMinutes(5))) {
+            throw new RuntimeException('That time has already passed. Pick a later time.', 422);
+        }
+
         // Reserved, not Occupied: the desk is holding the table, and nobody is
         // sitting at it until they walk in. A walk-in is already standing there.
         $table->status = $seatNow ? 'Occupied' : 'Reserved';
@@ -121,9 +134,7 @@ class HotelTableDesk
         $table->party_size = $partySize;
         // assigned_at is when the desk wrote this down; reserved_for is when the
         // customer is due, which is the one the restaurant reads off the floor.
-        $table->reserved_for = $seatNow
-            ? now()
-            : (!empty($data['reserved_for']) ? Carbon::parse($data['reserved_for']) : null);
+        $table->reserved_for = $due;
         $table->assigned_by = $assignedBy;
         $table->assigned_at = now();
 
@@ -152,6 +163,83 @@ class HotelTableDesk
     }
 
     /**
+     * Frees every table of a team whose customer is more than NO_SHOW_GRACE_MINUTES
+     * late, keeping the reservation in hotel_dine_in_no_shows. Run on every table
+     * read, so Front Desk, Restaurant Management and the website all see it freed
+     * without a scheduler. Only Reserved tables: a seated customer is never touched.
+     */
+    public static function releaseNoShows(string $groupName, int $facultyId): void
+    {
+        $cutoff = now('Asia/Manila')->subMinutes(self::NO_SHOW_GRACE_MINUTES)->format('Y-m-d H:i:s');
+
+        $late = HotelDineInTable::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->where('status', 'Reserved')
+            ->where('reserved_for', '<', $cutoff)
+            ->get();
+
+        foreach ($late as $table) {
+            DB::transaction(function () use ($table) {
+                // Still Reserved: the customer may have been seated, or another
+                // screen freed it, since the read above.
+                $freed = HotelDineInTable::whereKey($table->getKey())
+                    ->where('status', 'Reserved')
+                    ->update([
+                        'status'       => 'Available',
+                        'guest_name'   => null,
+                        'contact_no'   => null,
+                        'party_size'   => null,
+                        'reserved_for' => null,
+                        'assigned_by'  => null,
+                        'assigned_at'  => null,
+                        'updated_at'   => now(),
+                    ]);
+                if (!$freed) {
+                    return;
+                }
+
+                DB::table('hotel_dine_in_no_shows')->insert([
+                    'group_name'             => $table->group_name,
+                    'faculty_id'             => $table->faculty_id,
+                    'group_id'               => $table->group_id,
+                    'hotel_dine_in_table_id' => $table->hotel_dine_in_table_id,
+                    'table_name'             => $table->name,
+                    'guest_name'             => $table->guest_name,
+                    'contact_no'             => $table->contact_no,
+                    'party_size'             => $table->party_size,
+                    'reserved_for'           => $table->getRawOriginal('reserved_for'),
+                    'assigned_by'            => $table->assigned_by,
+                    'assigned_at'            => $table->getRawOriginal('assigned_at'),
+                    'created_at'             => now(),
+                    'updated_at'             => now(),
+                ]);
+            });
+        }
+    }
+
+    /** A team's latest no-shows, newest first, for the Front Desk's No-Show list. */
+    public static function noShows(string $groupName, int $facultyId): array
+    {
+        return DB::table('hotel_dine_in_no_shows')
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->orderByDesc('hotel_dine_in_no_show_id')
+            ->limit(50)
+            ->get()
+            ->map(fn ($row) => [
+                'id'          => $row->hotel_dine_in_no_show_id,
+                'tableName'   => $row->table_name,
+                'guestName'   => $row->guest_name ?? '',
+                'contactNo'   => $row->contact_no ?? '',
+                'partySize'   => $row->party_size,
+                'reservedFor' => $row->reserved_for ? Carbon::parse($row->reserved_for, 'Asia/Manila')->toIso8601String() : null,
+                'assignedBy'  => $row->assigned_by ?? '',
+                'markedAt'    => Carbon::parse($row->created_at)->toIso8601String(),
+            ])
+            ->all();
+    }
+
+    /**
      * A guest signed into the hotel's website reserving for themselves. Who they are
      * comes off their account, never off the request, and they can only book ahead:
      * a table for a time already gone is refused, and nobody is seated from home.
@@ -160,20 +248,14 @@ class HotelTableDesk
      */
     public static function reserveForGuest(HotelDineInTable $table, array $auth, int $partySize, string $reservedFor): HotelDineInTable
     {
-        // Users are in Manila while the app runs on UTC.
-        $due = Carbon::parse($reservedFor, 'Asia/Manila');
-        if ($due->lt(now('Asia/Manila')->subMinutes(5))) {
-            throw new RuntimeException('That time has already passed. Pick a later time.', 422);
-        }
-
         $name = trim((string) ($auth['name'] ?? '')) ?: 'Guest';
 
         return self::reserve($table, [
             'guest_name'   => $name,
             'contact_no'   => HotelCustomer::find($auth['customer_id'] ?? null)?->contact_number,
             'party_size'   => $partySize,
-            // Stored as the Manila wall-clock time the guest picked, like the desk's.
-            'reserved_for' => $due->format('Y-m-d H:i:s'),
+            // reserve() refuses a time already gone.
+            'reserved_for' => $reservedFor,
         ], null, 'Online · ' . $name);
     }
 }

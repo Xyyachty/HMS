@@ -4046,6 +4046,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
 
         // A team starts with a dining room to seat people in; see HotelTableDesk.
         \App\Support\HotelTableDesk::ensureDefaultsFor($membership);
+        \App\Support\HotelTableDesk::releaseNoShows($membership->group_name, (int) $membership->faculty_id);
 
         $tables = HotelDineInTable::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
@@ -4055,6 +4056,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
 
         return response()->json([
             'tables'      => $tables,
+            'no_shows'    => \App\Support\HotelTableDesk::noShows($membership->group_name, (int) $membership->faculty_id),
             'can_manage'  => \App\Support\HotelTableAccess::canManage($membership),
             'can_assign'  => \App\Support\HotelTableAccess::canAssign($membership),
         ]);

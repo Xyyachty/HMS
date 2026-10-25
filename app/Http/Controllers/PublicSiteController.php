@@ -326,6 +326,7 @@ class PublicSiteController extends Controller
     public function tables(string $slug)
     {
         [$groupName, $facultyId] = $this->publishedTeam($slug);
+        \App\Support\HotelTableDesk::releaseNoShows($groupName, (int) $facultyId);
 
         $tables = \App\Models\HotelDineInTable::where('group_name', $groupName)
             ->where('faculty_id', $facultyId)

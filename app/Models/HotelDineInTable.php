@@ -77,7 +77,8 @@ class HotelDineInTable extends Model
             'guestName' => $this->guest_name ?? '',
             'contactNo' => $this->contact_no ?? '',
             'partySize' => $this->party_size,
-            'reservedFor' => optional($this->reserved_for)->toIso8601String(),
+            // Stored as Manila wall-clock; sent with +08:00 so browsers show that time.
+            'reservedFor' => $this->reserved_for?->shiftTimezone('Asia/Manila')->toIso8601String(),
             'assignedBy' => $this->assigned_by ?? '',
             'assignedAt' => optional($this->assigned_at)->toIso8601String(),
             'updatedAt' => optional($this->updated_at)->toIso8601String(),
