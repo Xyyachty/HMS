@@ -208,28 +208,49 @@
     /* Teams & Students, in plain words and neutral grays. Every rule is scoped
        to the panel id so it outranks .gray-accents and .ink-all, which would
        otherwise tint these warm or force all of their text black. */
-    #panel-team_setup .ts-tabs,
-    #panel-team_setup .ts-modes { display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    #panel-team_setup .ts-modes { margin-top: .75rem; }
-    #panel-team_setup :is(.ts-tab, .ts-mode) {
+    #panel-team_setup .ts-tabs { display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #panel-team_setup .ts-tab {
         display: flex; align-items: center; gap: .8rem; width: 100%; text-align: left;
         padding: .85rem 1rem; border-radius: 1rem; border: 1.5px solid #E5E7EB; background: #fff;
         transition: border-color .25s cubic-bezier(.16, 1, .3, 1), background-color .25s cubic-bezier(.16, 1, .3, 1);
     }
-    #panel-team_setup :is(.ts-tab, .ts-mode):hover { border-color: #9CA3AF; }
-    #panel-team_setup :is(.ts-tab, .ts-mode):active { transform: translateY(1px); }
-    #panel-team_setup :is(.ts-tab.border-brand, .ts-mode.shadow-sm) { border-color: #374151; background: #F9FAFB; box-shadow: 0 8px 20px -14px rgba(17, 24, 39, .35); }
+    #panel-team_setup .ts-tab:hover { border-color: #9CA3AF; }
+    #panel-team_setup .ts-tab:active { transform: translateY(1px); }
+    #panel-team_setup .ts-tab.border-brand { border-color: #374151; background: #F9FAFB; box-shadow: 0 8px 20px -14px rgba(17, 24, 39, .35); }
+
+    /* Create Student Teams: the method picker (head) and the chosen method's
+       form (body) read as one box. The picker is a two-button segmented control;
+       the chosen button (shadow-sm, set by switchCreateTeamMode) is filled dark. */
+    #panel-team_setup .ts-method-head {
+        padding: .85rem 1rem; border: 1px solid #E5E7EB; border-bottom: 0;
+        border-radius: 1rem 1rem 0 0; background: #F9FAFB;
+    }
+    #panel-team_setup .ts-method-body { border: 1px solid #E5E7EB; border-radius: 0 0 1rem 1rem; background: #fff; }
+    #panel-team_setup .ts-method-body.hidden { display: none; }
+    #panel-team_setup .ts-modes {
+        display: inline-flex; gap: .25rem; margin-top: .6rem; padding: .25rem;
+        border: 1px solid #E5E7EB; border-radius: .75rem; background: #fff;
+    }
+    #panel-team_setup .ts-mode {
+        display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+        padding: .45rem .9rem; border: 0; border-radius: .55rem; background: transparent;
+        font-size: 0.8125rem; font-weight: 700; color: #4B5563; white-space: nowrap;
+        transition: background-color .2s ease, color .2s ease;
+    }
+    #panel-team_setup .ts-mode:hover { background: #F3F4F6; color: #111827; }
+    #panel-team_setup .ts-mode.shadow-sm { background: #374151; color: #fff; box-shadow: 0 4px 10px -6px rgba(17, 24, 39, .5); }
+    #panel-team_setup .ts-mode .iconify { font-size: 1rem; }
+    #panel-team_setup .ts-mode-hint { font-size: 0.75rem; color: #6B7280; margin-top: .45rem; }
+    #panel-team_setup .ts-mode-hint.hidden { display: none; }
     #panel-team_setup .ts-tab-icon {
         flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: .75rem;
         display: flex; align-items: center; justify-content: center;
         background: #F3F4F6; color: #374151; font-size: 1.25rem;
     }
     #panel-team_setup .ts-tab.border-brand .ts-tab-icon { background: #374151; color: #fff; }
-    #panel-team_setup .ts-mode-icon { flex-shrink: 0; font-size: 1.35rem; color: #6B7280; }
-    #panel-team_setup .ts-mode.shadow-sm .ts-mode-icon { color: #111827; }
-    #panel-team_setup :is(.ts-tab-copy, .ts-mode-copy) { min-width: 0; display: flex; flex-direction: column; }
-    #panel-team_setup :is(.ts-tab-title, .ts-mode-title) { font-size: 0.9062rem; font-weight: 800; color: #111827; }
-    #panel-team_setup :is(.ts-tab-sub, .ts-mode-sub) { font-size: 0.7812rem; font-weight: 500; color: #6B7280; line-height: 1.4; margin-top: .1rem; }
+    #panel-team_setup .ts-tab-copy { min-width: 0; display: flex; flex-direction: column; }
+    #panel-team_setup .ts-tab-title { font-size: 0.9062rem; font-weight: 800; color: #111827; }
+    #panel-team_setup .ts-tab-sub { font-size: 0.7812rem; font-weight: 500; color: #6B7280; line-height: 1.4; margin-top: .1rem; }
     #panel-team_setup .ts-tab:not(.border-brand) .ts-tab-title { color: #4B5563; }
 
     #panel-team_setup .ts-lead { font-size: 0.875rem; color: #374151; line-height: 1.55; }
@@ -327,8 +348,9 @@
     #updateTeamModal .update-new-badge { background: #111827; border-color: #111827; color: #fff; }
 
     @media (max-width: 640px) {
-        #panel-team_setup .ts-tabs,
-        #panel-team_setup .ts-modes { grid-template-columns: minmax(0, 1fr); }
+        #panel-team_setup .ts-tabs { grid-template-columns: minmax(0, 1fr); }
+        #panel-team_setup .ts-modes { display: flex; }
+        #panel-team_setup .ts-mode { flex: 1; white-space: normal; }
         #panel-team_setup .ts-footer-note { display: none; }
     }
     .setup-grid {
@@ -338,17 +360,6 @@
     }
     /* Team setup footer: Create is green; so is Set Tasks. */
     #createModalSubmitBtn, #submitTasksBtn { background-color: #15803D; box-shadow: 0 4px 6px -1px rgba(21, 128, 61, .25); }
-    .setup-field-grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .setup-role-grid { display: grid; gap: .625rem; grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    /* Steps 1 and 2 side by side on wide screens, roles on the right. Each card
-       is half width there, so its own grid drops to two columns. */
-    @media (min-width: 1024px) {
-        .setup-step-pair { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
-        .setup-step-pair > * { margin-top: 0 !important; } /* undo space-y-4, kept for the stacked layout */
-        .setup-step-pair .setup-field-grid,
-        .setup-step-pair .setup-role-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .setup-step-pair .setup-field-grid > :last-child { grid-column: 1 / -1; }
-    }
     .manage-grid {
         display: grid; gap: .75rem;
         grid-template-columns: 280px minmax(0, 1fr);
@@ -362,17 +373,14 @@
         .tm-toolbar .tm-search { flex-basis: 100%; }
         .tm-toolbar .tm-select { flex: 1 1 10rem; width: auto; }
         .setup-grid { grid-template-columns: minmax(0, 1fr); }
-        .setup-role-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
     @media (max-width: 1023px) {
-        .setup-field-grid { grid-template-columns: minmax(0, 1fr); }
         .manage-grid { grid-template-columns: minmax(0, 1fr); }
         .tm-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 767px) {
         .tm-stat-grid { grid-template-columns: minmax(0, 1fr); }
         .tm-card-grid { grid-template-columns: minmax(0, 1fr); }
-        .setup-role-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     /* ── Utilities the frozen build never emitted ── */
@@ -1334,34 +1342,31 @@
                     </button>
                 </div>
             @else
-            <div class="px-1 pt-1">
+            {{-- One box: the method picker on top, and below it only the chosen
+                 method's own form and numbered steps, so those steps never read as
+                 part of the choice. --}}
+            <div class="ts-method-head">
                 <p class="ts-lead">
                     <b>{{ $unassignedStudentCount }} {{ Str::plural('student', $unassignedStudentCount) }}</b>
                     {{ $unassignedStudentCount === 1 ? 'is' : 'are' }} not yet assigned to a team{{ $activeClass ? ' in ' . $activeClass->name : '' }}.
-                    How would you like to create the teams?
+                    How do you want to make teams?
                 </p>
                 {{-- switchCreateTeamMode() adds shadow-sm to the chosen one; .ts-mode reads that as on. --}}
-                <div class="ts-modes">
-                    <button type="button" id="createModeSingleBtn" onclick="switchCreateTeamMode('single')"
-                        class="ts-mode bg-white text-brand shadow-sm border border-brand/10">
-                        <span class="iconify ts-mode-icon" data-icon="mdi:hand-pointing-right"></span>
-                        <span class="ts-mode-copy">
-                            <span class="ts-mode-title">Choose Students Myself</span>
-                            <span class="ts-mode-sub">Create one team: you choose the 4 students and their roles</span>
-                        </span>
+                <div class="ts-modes" role="group" aria-label="How to make teams">
+                    <button type="button" id="createModeSingleBtn" onclick="switchCreateTeamMode('single')" aria-pressed="true"
+                        class="ts-mode shadow-sm">
+                        <span class="iconify" data-icon="mdi:account-multiple-plus-outline"></span> One Team
                     </button>
-                    <button type="button" id="createModeMultiBtn" onclick="switchCreateTeamMode('multiple')"
-                        class="ts-mode text-slate-500 hover:text-slate-700">
-                        <span class="iconify ts-mode-icon" data-icon="mdi:account-group-outline"></span>
-                        <span class="ts-mode-copy">
-                            <span class="ts-mode-title">Automatically Create Teams</span>
-                            <span class="ts-mode-sub">The system puts all students into teams of 4. You can still make changes.</span>
-                        </span>
+                    <button type="button" id="createModeMultiBtn" onclick="switchCreateTeamMode('multiple')" aria-pressed="false"
+                        class="ts-mode">
+                        <span class="iconify" data-icon="mdi:auto-fix"></span> All Teams Automatically
                     </button>
                 </div>
+                <p class="ts-mode-hint" data-mode="single">You pick 4 students and give each one a role.</p>
+                <p class="ts-mode-hint hidden" data-mode="multiple">The system puts every student without a team into teams of 4. You can still change them before saving.</p>
             </div>
             @endif
-            <div @class(['hidden' => $unassignedStudentCount === 0])>
+            <div @class(['ts-method-body', 'hidden' => $unassignedStudentCount === 0])>
 
             <form method="POST" id="createTeamFormSingle" action="{{ route('faculty.role.groups.store') }}">
                 @csrf
@@ -1369,13 +1374,13 @@
                 <input type="hidden" name="class_letter" value="{{ $activeClass->letter ?? '' }}">
 
                 @if($errors->any() && old('_form_source') === 'create_team')
-                    <div class="mx-6 mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+                    <div class="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
                         <span class="iconify flex-shrink-0" data-icon="mdi:alert-circle-outline"></span>
                         {{ $errors->first() }}
                     </div>
                 @endif
 
-                <div class="p-5 space-y-4">
+                <div class="p-4 space-y-4">
                     <div>
                         <label class="ts-label">1. Team Name</label>
                         <input name="group_name" type="text" placeholder="{{ $nextTeamNames[0] ?? 'e.g. Team 1' }}"
@@ -1502,7 +1507,7 @@
                 <div id="bulkTeamsHiddenInputs"></div>
 
                 @if($errors->any() && old('_form_source') === 'create_teams_bulk')
-                    <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+                    <div class="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
                         <span class="iconify flex-shrink-0" data-icon="mdi:alert-circle-outline"></span>
                         {{ $errors->first() }}
                     </div>
@@ -1510,90 +1515,43 @@
 
                 @php $availableStudentCount = ($students ?? collect())->count(); @endphp
 
-                <div class="space-y-4">
-                    <div class="setup-step-pair space-y-4">
-                    {{-- Step 1 — how many teams, and how big. Both figures are fixed by the
-                         four-per-team rule, so they are shown rather than asked for. --}}
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                        <div class="flex items-start gap-3 mb-4">
-                            <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">1</span>
-                            <div class="min-w-0">
-                                <p class="text-[0.9375rem] font-bold text-slate-800">Number of Teams</p>
-                                <p class="text-[0.75rem] text-slate-400">Counted for you from the students not yet assigned to a team.</p>
-                            </div>
-                        </div>
-                        <div class="setup-field-grid">
-                            <div>
-                                <label class="ts-label">Teams to Create</label>
-                                <input type="number" id="bulkTeamCount" min="0" max="40" readonly
-                                    value="{{ (int) floor($availableStudentCount / 4) }}"
-                                    class="w-full h-11 px-4 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none cursor-not-allowed">
-                                <p class="text-[0.6875rem] text-slate-400 mt-1.5">You don't need to change this.</p>
-                            </div>
-                            <div>
-                                <label class="ts-label">Students per Team</label>
-                                <input type="text" value="4" readonly
-                                    class="w-full h-11 px-4 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 focus:outline-none cursor-not-allowed">
-                                <p class="text-[0.6875rem] text-slate-400 mt-1.5">Always 4: one for each role.</p>
-                            </div>
-                            <div class="rounded-xl border border-brand/15 bg-brand-soft/40 px-4 py-3 flex items-center gap-3">
-                                <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center shrink-0">
-                                    <span class="iconify text-brand text-xl" data-icon="mdi:account-multiple-outline"></span>
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="text-[0.75rem] font-bold" style="color: #DC2626;">Students Not Yet Assigned</p>
-                                    <p class="text-2xl font-extrabold text-slate-900 leading-none mt-0.5">{{ $availableStudentCount }}</p>
-                                    <p class="text-[0.6875rem] text-slate-400">ready to be put into teams</p>
-                                </div>
-                            </div>
-                        </div>
-                        <p id="bulkTeamHint" class="text-[0.6875rem] text-slate-400 mt-3">
-                            {{ $availableStudentCount }} {{ Str::plural('student', $availableStudentCount) }} not yet assigned{{ $activeClass ? ' in ' . $activeClass->name : '' }}, 4 in each team.
+                <div class="p-4 space-y-4">
+                    {{-- Step 1 — what will be made. Team count and size are fixed by the
+                         four-per-team rule and the roles by the simulation, so they are
+                         stated in one line rather than shown as fields to fill in. --}}
+                    <div>
+                        <p class="ts-label">1. Teams to Create</p>
+                        <p class="ts-help">
+                            <b class="text-slate-800">{{ (int) floor($availableStudentCount / 4) }} {{ Str::plural('team', (int) floor($availableStudentCount / 4)) }} of 4</b>
+                            from {{ $availableStudentCount }} {{ Str::plural('student', $availableStudentCount) }} not yet assigned{{ $activeClass ? ' in ' . $activeClass->name : '' }}.
                             @if($availableStudentCount > 0 && $availableStudentCount % 4 !== 0)
                                 {{ $availableStudentCount % 4 }} {{ Str::plural('student', $availableStudentCount % 4) }} will be left over until more students join.
                             @endif
                         </p>
-                    </div>
-
-                    {{-- Step 2 — the roles a team can hold. Every simulation runs all five,
-                         so they are listed rather than picked. --}}
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                        <div class="flex items-start gap-3 mb-4">
-                            <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">2</span>
-                            <div class="min-w-0">
-                                <p class="text-[0.9375rem] font-bold text-slate-800">The 4 roles in every team</p>
-                                <p class="text-[0.75rem] text-slate-400">Each student in a team gets one of these roles. Nothing to choose here.</p>
-                            </div>
-                        </div>
-                        <div class="setup-role-grid">
+                        <div class="flex flex-wrap items-center gap-2 mt-2">
+                            <span class="text-[0.6875rem] font-semibold text-slate-500 mr-1">Each team gets one student for each role:</span>
                             @foreach($teamRoleOptions as $rk => $rl)
-                                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                                    <div class="flex items-center gap-2">
-                                        <span class="w-2.5 h-2.5 rounded-full role-dot-{{ $rk }} shrink-0"></span>
-                                        <p class="text-[0.8125rem] font-bold text-slate-700 truncate">{{ $rl }}</p>
-                                    </div>
-                                    <p class="text-[0.6875rem] text-slate-400 mt-1 leading-snug">{{ $roleBlurbs[$rk] ?? 'Hotel simulation role' }}</p>
-                                </div>
+                                <span title="{{ $roleBlurbs[$rk] ?? '' }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[0.6875rem] font-semibold text-slate-600">
+                                    <span class="w-2 h-2 rounded-full role-dot-{{ $rk }}"></span>{{ $rl }}
+                                </span>
                             @endforeach
                         </div>
                     </div>
-                    </div>
 
-                    {{-- Step 3 — who lands where. Auto-Group fills every slot; the list
+                    {{-- Step 2 — who lands where. Auto-Group fills every slot; the list
                          below stays editable afterwards. --}}
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5">
+                    <div>
                         <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
                             <div class="flex items-start gap-3 min-w-0">
-                                <span class="w-8 h-8 rounded-full brand-gradient text-white text-sm font-bold flex items-center justify-center shrink-0">3</span>
                                 <div class="min-w-0">
-                                    <p class="text-[0.9375rem] font-bold text-slate-800">Assign Students to Teams</p>
-                                    <p class="text-[0.75rem] text-slate-400">Press "Automatically Create Teams" to fill every team, then "Shuffle Teams" for a new mix. "Reset" empties the teams so you can pick each student's team and role below.</p>
+                                    <p class="ts-label">2. Put Students into Teams</p>
+                                    <p class="ts-help">Press "Fill Teams" to put every student in a team, then "Shuffle Teams" for a new mix. "Reset" empties the teams so you can pick each student's team and role below.</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
                                 <button type="button" onclick="autoGroupStudentsIntoTeamsOfFour()"
                                     class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition inline-flex items-center justify-center gap-1.5">
-                                    <span class="iconify text-base" data-icon="mdi:shuffle-variant"></span> <span id="bulkAutoGroupLabel">Automatically Create Teams</span>
+                                    <span class="iconify text-base" data-icon="mdi:shuffle-variant"></span> <span id="bulkAutoGroupLabel">Fill Teams</span>
                                 </button>
                                 <button type="button" onclick="resetBulkAssignment()"
                                     class="h-10 px-4 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition">
@@ -2411,18 +2369,18 @@ function switchCreateTeamMode(mode) {
     if (singleForm) singleForm.classList.toggle('hidden', currentCreateTeamMode !== 'single');
     if (multiForm) multiForm.classList.toggle('hidden', currentCreateTeamMode !== 'multiple');
 
-    const activeCls = ['bg-white', 'text-brand', 'shadow-sm', 'border', 'border-brand/10'];
-    const idleCls = ['text-slate-500', 'hover:text-slate-700'];
-
+    // .ts-mode.shadow-sm is the chosen button's look.
     function styleModeBtn(btn, active) {
         if (!btn) return;
-        activeCls.forEach((c) => btn.classList.toggle(c, active));
-        idleCls.forEach((c) => btn.classList.toggle(c, !active));
-        if (!active) btn.classList.remove('border', 'border-brand/10');
+        btn.classList.toggle('shadow-sm', active);
+        btn.setAttribute('aria-pressed', String(active));
     }
 
     styleModeBtn(singleBtn, currentCreateTeamMode === 'single');
     styleModeBtn(multiBtn, currentCreateTeamMode === 'multiple');
+    document.querySelectorAll('.ts-mode-hint').forEach((hint) => {
+        hint.classList.toggle('hidden', hint.dataset.mode !== currentCreateTeamMode);
+    });
 
     if (currentCreateTeamMode === 'multiple') {
         rebuildBulkTeamSlots(maxCompleteBulkTeams());
@@ -3303,7 +3261,7 @@ function resetBulkAssignment() {
 // Once teams are filled, pressing the same button again reshuffles them.
 function setBulkAutoGroupLabel(grouped) {
     const label = document.getElementById('bulkAutoGroupLabel');
-    if (label) label.textContent = grouped ? 'Shuffle Teams' : 'Automatically Create Teams';
+    if (label) label.textContent = grouped ? 'Shuffle Teams' : 'Fill Teams';
 }
 
 /* A message in the corner instead of the browser's "site says" dialog. Raised
@@ -3726,7 +3684,7 @@ function buildBulkTeamsHiddenInputs() {
     for (let i = 0; i < buckets.length; i++) {
         const count = buckets[i].members.length;
         if (count !== BULK_TEAM_SIZE) {
-            teamFormNotice(`"${names[i]}" must have exactly ${BULK_TEAM_SIZE} members (currently ${count}). Press Automatically Create Teams to fix it.`);
+            teamFormNotice(`"${names[i]}" must have exactly ${BULK_TEAM_SIZE} members (currently ${count}). Press Fill Teams to fix it.`);
             return false;
         }
     }
