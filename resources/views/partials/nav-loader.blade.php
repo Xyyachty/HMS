@@ -3,10 +3,12 @@
      link, a window.location change (the builder leaves that way) and a form post all
      get it. A page asking "Leave site?" keeps the circle off.
      A mailto:/tel:/download link fires beforeunload without leaving, so those are
-     skipped, and the circle is cleared when the back/forward cache restores a page. --}}
+     skipped, and the circle is cleared when the back/forward cache restores a page.
+     It covers the page's content area only (AREA), never its header or sidebar. --}}
 <style>
+    /* z-index under the mobile sidebars (40, 50), so one left open stays on top. */
     #hmsNavLoader {
-        position: fixed; inset: 0; z-index: 99999;
+        position: fixed; inset: 0; z-index: 35;
         display: none; align-items: center; justify-content: center;
         background: rgba(255, 255, 255, 0.55);
     }
@@ -22,6 +24,8 @@
 <script>
 (function () {
     var loader = document.getElementById('hmsNavLoader');
+    // Dean, faculty and student dashboard <main>; Simulation pages; the builder canvas.
+    var AREA = 'main, #opsContentWrap, #centerCanvasWrap';
     var skipUntil = 0;
     var hideTimer;
 
@@ -38,6 +42,15 @@
         // was registered: one that asked "Leave site?" has marked the event by then.
         setTimeout(function () {
             if (e.defaultPrevented || (typeof e.returnValue === 'string' && e.returnValue !== '')) return;
+            var area = document.querySelector(AREA);
+            if (area) {
+                var r = area.getBoundingClientRect();
+                loader.style.inset = 'auto';
+                loader.style.top = r.top + 'px';
+                loader.style.left = r.left + 'px';
+                loader.style.width = r.width + 'px';
+                loader.style.height = r.height + 'px';
+            }
             loader.classList.add('is-on');
             // ponytail: a link that turns out to be a file download never leaves the
             // page, so the circle clears itself; a page slower than this loses it early.
