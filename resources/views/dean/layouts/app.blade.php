@@ -269,5 +269,6 @@
 @include('partials.logout-confirm')
 @include('partials.session-guard')
 @include('partials.guided-tour')
+@include('partials.nav-loader')
 </body>
 </html>
