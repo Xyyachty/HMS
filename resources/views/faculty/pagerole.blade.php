@@ -228,11 +228,13 @@
     #panel-team_setup .ts-method-body { border: 1px solid #E5E7EB; border-radius: 0 0 1rem 1rem; background: #fff; }
     #panel-team_setup .ts-method-body.hidden { display: none; }
     #panel-team_setup .ts-modes {
-        display: inline-flex; gap: .25rem; margin-top: .6rem; padding: .25rem;
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem;
+        max-width: 42rem; margin-top: .6rem; padding: .25rem;
         border: 1px solid #E5E7EB; border-radius: .75rem; background: #fff;
     }
+    #panel-team_setup .ts-mode-opt { min-width: 0; }
     #panel-team_setup .ts-mode {
-        display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+        display: flex; width: 100%; align-items: center; justify-content: center; gap: .4rem;
         padding: .45rem .9rem; border: 0; border-radius: .55rem; background: transparent;
         font-size: 0.8125rem; font-weight: 700; color: #4B5563; white-space: nowrap;
         transition: background-color .2s ease, color .2s ease;
@@ -240,8 +242,9 @@
     #panel-team_setup .ts-mode:hover { background: #F3F4F6; color: #111827; }
     #panel-team_setup .ts-mode.shadow-sm { background: #374151; color: #fff; box-shadow: 0 4px 10px -6px rgba(17, 24, 39, .5); }
     #panel-team_setup .ts-mode .iconify { font-size: 1rem; }
-    #panel-team_setup .ts-mode-hint { font-size: 0.75rem; color: #6B7280; margin-top: .45rem; }
-    #panel-team_setup .ts-mode-hint.hidden { display: none; }
+    /* Each option's description sits under its own button, darker when chosen. */
+    #panel-team_setup .ts-mode-desc { margin: .35rem .45rem .2rem; font-size: 0.7188rem; line-height: 1.4; color: #9CA3AF; }
+    #panel-team_setup .ts-mode-opt:has(.ts-mode.shadow-sm) .ts-mode-desc { color: #374151; }
     #panel-team_setup .ts-tab-icon {
         flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: .75rem;
         display: flex; align-items: center; justify-content: center;
@@ -349,8 +352,7 @@
 
     @media (max-width: 640px) {
         #panel-team_setup .ts-tabs { grid-template-columns: minmax(0, 1fr); }
-        #panel-team_setup .ts-modes { display: flex; }
-        #panel-team_setup .ts-mode { flex: 1; white-space: normal; }
+        #panel-team_setup .ts-mode { white-space: normal; }
         #panel-team_setup .ts-footer-note { display: none; }
     }
     .setup-grid {
@@ -1353,17 +1355,21 @@
                 </p>
                 {{-- switchCreateTeamMode() adds shadow-sm to the chosen one; .ts-mode reads that as on. --}}
                 <div class="ts-modes" role="group" aria-label="How to make teams">
-                    <button type="button" id="createModeSingleBtn" onclick="switchCreateTeamMode('single')" aria-pressed="true"
-                        class="ts-mode shadow-sm">
-                        <span class="iconify" data-icon="mdi:account-plus-outline"></span> Create One Team
-                    </button>
-                    <button type="button" id="createModeMultiBtn" onclick="switchCreateTeamMode('multiple')" aria-pressed="false"
-                        class="ts-mode">
-                        <span class="iconify" data-icon="mdi:account-multiple-outline"></span> Create All Teams Automatically
-                    </button>
+                    <div class="ts-mode-opt">
+                        <button type="button" id="createModeSingleBtn" onclick="switchCreateTeamMode('single')" aria-pressed="true"
+                            aria-describedby="createModeSingleDesc" class="ts-mode shadow-sm">
+                            <span class="iconify" data-icon="mdi:account-plus-outline"></span> Create One Team
+                        </button>
+                        <p id="createModeSingleDesc" class="ts-mode-desc">Create one team: you choose the 4 students and their roles</p>
+                    </div>
+                    <div class="ts-mode-opt">
+                        <button type="button" id="createModeMultiBtn" onclick="switchCreateTeamMode('multiple')" aria-pressed="false"
+                            aria-describedby="createModeMultiDesc" class="ts-mode">
+                            <span class="iconify" data-icon="mdi:account-multiple-outline"></span> Create All Teams Automatically
+                        </button>
+                        <p id="createModeMultiDesc" class="ts-mode-desc">The system puts all students into teams of 4. You can still make changes.</p>
+                    </div>
                 </div>
-                <p class="ts-mode-hint" data-mode="single">You pick 4 students and give each one a role.</p>
-                <p class="ts-mode-hint hidden" data-mode="multiple">The system puts every student without a team into teams of 4. You can still change them before saving.</p>
             </div>
             @endif
             <div @class(['ts-method-body', 'hidden' => $unassignedStudentCount === 0])>
@@ -2378,9 +2384,6 @@ function switchCreateTeamMode(mode) {
 
     styleModeBtn(singleBtn, currentCreateTeamMode === 'single');
     styleModeBtn(multiBtn, currentCreateTeamMode === 'multiple');
-    document.querySelectorAll('.ts-mode-hint').forEach((hint) => {
-        hint.classList.toggle('hidden', hint.dataset.mode !== currentCreateTeamMode);
-    });
 
     if (currentCreateTeamMode === 'multiple') {
         rebuildBulkTeamSlots(maxCompleteBulkTeams());
