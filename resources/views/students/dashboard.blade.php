@@ -1710,6 +1710,12 @@
     <script>
         // ── Section switching ──
         function showSection(section) {
+            // The same loading circle as a page change, for a click once the page is
+            // up; the sections opened on load (?section=) skip it.
+            const switching = document.getElementById(section + '-section')?.classList.contains('hidden');
+            if (switching && document.readyState === 'complete' && window.hmsNavLoader) {
+                window.hmsNavLoader.show(350);
+            }
             document.querySelectorAll('.section-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(section + '-section').classList.remove('hidden');
             // Re-trigger fade animation

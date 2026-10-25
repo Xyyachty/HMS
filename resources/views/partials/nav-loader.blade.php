@@ -4,7 +4,8 @@
      get it. A page asking "Leave site?" keeps the circle off.
      A mailto:/tel:/download link fires beforeunload without leaving, so those are
      skipped, and the circle is cleared when the back/forward cache restores a page.
-     It covers the page's content area only (AREA), never its header or sidebar. --}}
+     It covers the page's content area only (AREA), never its header or sidebar.
+     The student dashboard also calls window.hmsNavLoader.show() on a section switch. --}}
 <style>
     /* z-index under the mobile sidebars (40, 50), so one left open stays on top. */
     #hmsNavLoader {
@@ -42,23 +43,30 @@
         // was registered: one that asked "Leave site?" has marked the event by then.
         setTimeout(function () {
             if (e.defaultPrevented || (typeof e.returnValue === 'string' && e.returnValue !== '')) return;
-            var area = document.querySelector(AREA);
-            if (area) {
-                var r = area.getBoundingClientRect();
-                loader.style.inset = 'auto';
-                loader.style.top = r.top + 'px';
-                loader.style.left = r.left + 'px';
-                loader.style.width = r.width + 'px';
-                loader.style.height = r.height + 'px';
-            }
-            loader.classList.add('is-on');
             // ponytail: a link that turns out to be a file download never leaves the
             // page, so the circle clears itself; a page slower than this loses it early.
-            clearTimeout(hideTimer);
-            hideTimer = setTimeout(function () { loader.classList.remove('is-on'); }, 15000);
+            show(15000);
         }, 0);
     });
 
     window.addEventListener('pageshow', function () { loader.classList.remove('is-on'); });
+
+    function show(ms) {
+        var area = document.querySelector(AREA);
+        if (area) {
+            var r = area.getBoundingClientRect();
+            loader.style.inset = 'auto';
+            loader.style.top = r.top + 'px';
+            loader.style.left = r.left + 'px';
+            loader.style.width = r.width + 'px';
+            loader.style.height = r.height + 'px';
+        }
+        loader.classList.add('is-on');
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(function () { loader.classList.remove('is-on'); }, ms);
+    }
+
+    // For a section that switches without leaving the page (student dashboard).
+    window.hmsNavLoader = { show: show };
 })();
 </script>
