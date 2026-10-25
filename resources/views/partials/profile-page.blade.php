@@ -74,7 +74,7 @@
     .pf-name { margin-top: 1rem; font-size: 1.125rem; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; }
     .pf-mail { margin-top: .2rem; font-size: .75rem; color: var(--muted); word-break: break-all; }
     .pf-pill { margin-top: .75rem; display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .6rem; border-radius: 9999px;
-               font-size: .625rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: #FBEEE9; color: var(--wine); }
+               font-size: .625rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: var(--wine); color: #fff; }
     .pf-photo-note { margin-top: .85rem; font-size: .6875rem; color: var(--muted); line-height: 1.45; }
     .pf-remove { margin-top: .35rem; display: inline-flex; align-items: center; gap: .4rem; font-size: .6875rem; font-weight: 700; color: var(--wine); cursor: pointer; }
     .pf-remove input { accent-color: var(--wine); }
