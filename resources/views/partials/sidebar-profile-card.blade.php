@@ -18,8 +18,9 @@
     .spc-avatar { width: 2.875rem; height: 2.875rem; flex-shrink: 0; border-radius: 9999px; padding: 2px; background: linear-gradient(135deg, rgba(236,175,190,0.7), rgba(123,23,48,0.6)); }
     .spc-avatar > * { width: 100% !important; height: 100% !important; border-radius: 9999px !important; object-fit: cover; }
     .spc-name { margin: 0 0 0.375rem; font-size: 0.875rem; font-weight: 800; color: #fff; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .spc-role { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.625rem; border-radius: 0.5rem; background: #fff; color: #7B1730; font-size: 0.6875rem; font-weight: 700; }
-    .spc-role .iconify { color: #7B1730; font-size: 0.8125rem; }
+    /* Plain label, not a chip: a filled pill read as a button. White on the wine sidebar. */
+    .spc-role { display: inline-flex; align-items: center; gap: 0.375rem; color: #fff; font-size: 0.6875rem; font-weight: 700; }
+    .spc-role .iconify { color: #fff; font-size: 0.8125rem; }
     .spc-rows { padding: 0.375rem; }
     .spc-row { box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border: 0; border-radius: 0.75rem; background: transparent; color: #fff; font: inherit; font-size: 0.875rem; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; transition: background .2s ease; }
     .spc-row:hover, .spc-row:focus-visible { background: rgba(255,255,255,0.06); outline: none; }
