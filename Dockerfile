@@ -4,7 +4,7 @@
 # public/ directly; there is no Node build step because the views load their CSS and
 # JS from CDNs rather than through Vite.
 
-FROM php:8.2-apache
+FROM php:8.3-apache
 
 # pdo_pgsql for Supabase; gd for image handling; zip for the spreadsheet import.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -48,6 +48,8 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-in
 COPY . .
 
 RUN composer dump-autoload --optimize --no-dev \
+    && php -v \
+    && composer check-platform-reqs --no-dev \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
