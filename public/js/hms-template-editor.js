@@ -1490,8 +1490,9 @@
       // page must not hide the second room card too.
       if (typeof entry !== 'string' && !entryBelongsToCurrentPage(entry, id)) return;
       const el = findByKey(id);
-      // A legacy entry for "#root > nav" would hide the whole header.
-      if (el && !isHeaderLocked(el)) el.style.display = 'none';
+      // A legacy entry for "#root > nav" would hide the whole header, and one
+      // for a locked block hid a record its own buttons manage.
+      if (el && !isHeaderLocked(el) && !el.closest('[data-hms-no-edit]')) el.style.display = 'none';
     });
   }
 
@@ -1558,6 +1559,12 @@
         migrated = true;
         return;
       }
+
+      // Inside a locked block (a partner brand card, tool buttons): nothing
+      // there can be selected any more, so an entry for it is left over from
+      // before the lock - a logo resized past its card, a card "deleted" by
+      // position that hid whichever brand moved into its place. Not applied.
+      if (el.closest('[data-hms-no-edit]')) return;
 
       /* A translation saved together with the coordinates it replaced. Both
          describe where the element sits and they disagree, so which one wins

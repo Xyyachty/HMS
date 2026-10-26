@@ -5065,7 +5065,11 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAd
             const stock = DEFAULT_PARTNERS.find(d => d.id === partner.id);
             const state = !stock ? 'added' : (logo || name !== stock.label ? 'changed' : undefined);
             return (
-              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state}>
+              /* A brand is a record: its own buttons change the logo, rename it
+                 and remove it, and Add Brand brings one back. Locked from the
+                 canvas, so the logo always fills its card and nothing can hide
+                 a brand by position where Add Brand cannot undo it. */
+              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state} data-hms-no-edit="1">
                 {/* The name is the brand's record, renamed with the pencil, so
                     Design mode does not lay a second copy of it over the card. */}
                 {logo
