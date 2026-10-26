@@ -45,10 +45,12 @@
 
     /* Recent activity: on a wide screen it takes whatever height is left, so the
        page ends at the bottom of the window instead of in grey space; its list
-       scrolls inside. Narrow screens stack and cap it instead. */
+       scrolls inside. Narrow screens stack and cap it instead. The 16rem floor
+       keeps about five entries in view on a short laptop screen (1366x768 at
+       100%); the page scrolls to reach them rather than squeezing the list. */
     .pf-activity { display: flex; flex-direction: column; min-height: 0; }
     .pf-feed { list-style: none; margin: 0; padding: .35rem 1.25rem .6rem; overflow-y: auto; max-height: 18rem; }
-    @media (min-width: 1024px) { .pf-activity { flex: 1 1 0; } .pf-feed { flex: 1 1 0; min-height: 6rem; max-height: none; } }
+    @media (min-width: 1024px) { .pf-activity { flex: 1 1 0; } .pf-feed { flex: 1 1 0; min-height: 16rem; max-height: none; } }
     .pf-feed li { display: flex; align-items: flex-start; gap: .75rem; padding: .6rem 0; border-bottom: 1px solid #F0EEEC; }
     .pf-feed li:last-child { border-bottom: 0; }
     .pf-dot { width: 1.9rem; height: 1.9rem; border-radius: 9999px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; background: var(--soft); color: var(--btn); font-size: .95rem; }
