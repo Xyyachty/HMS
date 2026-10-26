@@ -52,9 +52,19 @@
     .rp-track { height: .5rem; border-radius: 9999px; background: #E4E2E0; overflow: hidden; }
     .rp-track > span { display: block; height: 100%; border-radius: 9999px; }
 
+    /* The shared no-horizontal-scroll rule lets table cells break anywhere, so
+       a squeezed column split "10" into "1 / 0" and names mid-word. Report
+       cells break only between words, and a table too wide for a phone scrolls
+       inside its own card rather than crushing its columns. */
+    html .overflow-x-auto > table.rp-table.rp-table td { overflow-wrap: break-word; }
+    html .overflow-x-auto.rp-scroll { overflow-x: auto; }
+
+    /* Side by side only where both tables have room for whole words. */
+    @media (max-width: 1535px) {
+        .rp-split-grid { grid-template-columns: minmax(0, 1fr); }
+    }
     @media (max-width: 1279px) {
         .rp-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .rp-split-grid { grid-template-columns: minmax(0, 1fr); }
     }
     @media (max-width: 767px) {
         .rp-stat-grid { grid-template-columns: minmax(0, 1fr); }
@@ -238,8 +248,8 @@
                 <button type="button" onclick="switchReportTab('students')"
                         class="h-9 px-3.5 rounded-xl border border-slate-200 text-[0.75rem] font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition shrink-0 rp-no-print">View All</button>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left">
+            <div class="overflow-x-auto rp-scroll">
+                <table class="rp-table w-full text-left">
                     <thead>
                         <tr class="border-b border-slate-100 bg-slate-50/60">
                             <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500 w-10">#</th>
@@ -261,10 +271,10 @@
                                             'rounded'      => 'rounded-full',
                                             'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold',
                                         ])
-                                        <span class="text-[0.8125rem] font-semibold text-slate-700 truncate">{{ $row['name'] }}</span>
+                                        <span class="text-[0.8125rem] font-semibold text-slate-700 leading-snug">{{ $row['name'] }}</span>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 text-[0.8125rem] text-slate-500 truncate">{{ $row['team'] }}</td>
+                                <td class="px-4 py-3 text-[0.8125rem] text-slate-500">{{ $row['team'] }}</td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2.5">
                                         <span class="rp-track" style="flex: 1 1 auto">
@@ -292,8 +302,8 @@
                 <button type="button" onclick="switchReportTab('activity')"
                         class="h-9 px-3.5 rounded-xl border border-slate-200 text-[0.75rem] font-bold text-slate-600 hover:border-brand/40 hover:text-brand transition shrink-0 rp-no-print">View All</button>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left">
+            <div class="overflow-x-auto rp-scroll">
+                <table class="rp-table w-full text-left">
                     <thead>
                         <tr class="border-b border-slate-100 bg-slate-50/60">
                             <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Date</th>
@@ -319,10 +329,10 @@
                                             'rounded'      => 'rounded-full',
                                             'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold',
                                         ])
-                                        <span class="text-[0.8125rem] font-semibold text-slate-700 truncate">{{ $row['student'] }}</span>
+                                        <span class="text-[0.8125rem] font-semibold text-slate-700 leading-snug">{{ $row['student'] }}</span>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 text-[0.8125rem] text-slate-500 truncate">{{ $row['team'] }}</td>
+                                <td class="px-4 py-3 text-[0.8125rem] text-slate-500">{{ $row['team'] }}</td>
                                 <td class="px-4 py-3">
                                     <p class="text-[0.8125rem] font-semibold text-slate-700 leading-snug">{{ $row['activity'] }}</p>
                                     <p class="text-[0.6875rem] text-slate-400">{{ $row['role_label'] }}</p>
@@ -354,8 +364,8 @@
             </div>
             <span class="text-[0.75rem] font-bold text-brand shrink-0">{{ collect($studentPerformance)->count() }} students</span>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left">
+        <div class="overflow-x-auto rp-scroll">
+            <table class="rp-table w-full text-left">
                 <thead>
                     <tr class="border-b border-slate-100 bg-slate-50/60">
                         <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500 w-10">#</th>
@@ -378,10 +388,10 @@
                                         'rounded'      => 'rounded-full',
                                         'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold',
                                     ])
-                                    <span class="text-[0.8125rem] font-semibold text-slate-700 truncate">{{ $row['name'] }}</span>
+                                    <span class="text-[0.8125rem] font-semibold text-slate-700 leading-snug">{{ $row['name'] }}</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-[0.8125rem] text-slate-500 truncate">{{ $row['team'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] text-slate-500">{{ $row['team'] }}</td>
                             <td class="px-4 py-3 text-[0.8125rem] text-slate-600 whitespace-nowrap">{{ $row['done'] }} / {{ $row['total'] }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5">
@@ -408,8 +418,8 @@
         <h3 class="text-sm font-bold text-slate-800">Completed Tasks by Team</h3>
         <span class="text-[0.6875rem] font-semibold text-slate-400">{{ $teamReports->count() }} team{{ $teamReports->count() === 1 ? '' : 's' }}</span>
     </div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm" style="table-layout:fixed">
+    <div class="overflow-x-auto rp-scroll">
+        <table class="rp-table w-full text-sm" style="table-layout:fixed">
             <thead>
                 <tr class="bg-slate-50 border-b border-slate-200">
                     <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Team Name</th>
@@ -423,7 +433,7 @@
                 @forelse($teamReports as $index => $report)
                     <tr class="hover:bg-slate-50/80">
                         <td class="px-4 py-3">
-                            <p class="font-semibold text-slate-800 truncate" title="{{ $report['team_name'] }}">{{ $report['team_name'] }}</p>
+                            <p class="font-semibold text-slate-800 leading-snug" title="{{ $report['team_name'] }}">{{ $report['team_name'] }}</p>
                             <p class="text-[0.6875rem] text-slate-400">{{ $report['task_count'] }} completed task{{ $report['task_count'] === 1 ? '' : 's' }}@if($showFaculty && $report['faculty_name']) &middot; {{ $report['faculty_name'] }}@endif</p>
                         </td>
                         <td class="px-4 py-3 text-xs font-semibold text-slate-600">
@@ -464,8 +474,8 @@
             </div>
             <span class="text-[0.75rem] font-bold text-brand shrink-0">{{ $doneActivities }} of {{ $totalActivities }} done</span>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left">
+        <div class="overflow-x-auto rp-scroll">
+            <table class="rp-table w-full text-left">
                 <thead>
                     <tr class="border-b border-slate-100 bg-slate-50/60">
                         <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Role</th>
@@ -502,8 +512,8 @@
             <p class="text-[0.9375rem] font-bold text-slate-800">Latest Completed</p>
             <p class="text-[0.75rem] text-slate-400">The most recent rows across every team.</p>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left">
+        <div class="overflow-x-auto rp-scroll">
+            <table class="rp-table w-full text-left">
                 <thead>
                     <tr class="border-b border-slate-100 bg-slate-50/60">
                         <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Date</th>
@@ -520,8 +530,8 @@
                                 <p class="text-[0.75rem] font-semibold text-slate-600 whitespace-nowrap">{{ $row['date'] }}</p>
                                 <p class="text-[0.6875rem] text-slate-400 whitespace-nowrap">{{ $row['time'] }}</p>
                             </td>
-                            <td class="px-4 py-3 text-[0.8125rem] font-semibold text-slate-700 truncate">{{ $row['student'] }}</td>
-                            <td class="px-4 py-3 text-[0.8125rem] text-slate-500 truncate">{{ $row['team'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] font-semibold text-slate-700">{{ $row['student'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] text-slate-500">{{ $row['team'] }}</td>
                             <td class="px-4 py-3">
                                 <p class="text-[0.8125rem] font-semibold text-slate-700 leading-snug">{{ $row['activity'] }}</p>
                                 <p class="text-[0.6875rem] text-slate-400">{{ $row['role_label'] }}</p>
